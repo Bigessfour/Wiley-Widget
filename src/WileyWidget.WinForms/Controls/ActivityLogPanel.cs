@@ -34,6 +34,7 @@ namespace WileyWidget.WinForms.Controls
         private CheckBoxAdv? _chkAutoRefresh;
         private BindingSource? _bindingSource;
         private CancellationTokenSource? _autoRefreshCancellationTokenSource;
+        private readonly SemaphoreSlim _refreshSemaphore = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
@@ -43,29 +44,34 @@ namespace WileyWidget.WinForms.Controls
             ILogger<ScopedPanelBase<ActivityLogViewModel>> logger)
             : base(scopeFactory, logger)
         {
-            InitializeComponent();
+            // Create controls programmatically instead of using InitializeComponent
+            CreateControls();
             ApplyTheme();
             SetupUI();
             InitializeAutoRefresh();
         }
 
-        private void InitializeComponent()
+        private void CreateControls()
         {
             this.SuspendLayout();
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
 
-            // Main horizontal split for header (top) + grid (bottom)
-            var mainSplit = new SplitContainer
+            // Main TableLayoutPanel root
+            var mainTable = new TableLayoutPanel
             {
-                Name = "MainSplit",
+                Name = "MainTable",
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 60
+                RowCount = 2,
+                ColumnCount = 1
             };
 
-            // Header panel (top section)
+            // Row 0: Header panel with _panelHeader and buttons
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            // Header panel (Row 0)
             var headerPanel = new Panel
             {
                 Name = "HeaderPanel",
@@ -85,7 +91,6 @@ namespace WileyWidget.WinForms.Controls
             _btnExport.Click += OnExportClicked;
             _btnExport.AccessibleName = "Export Activity Log";
             _btnExport.AccessibleDescription = "Export activity log entries to CSV file";
-
             _btnExport.TabIndex = 2;
             headerPanel.Controls.Add(_btnExport);
 
@@ -99,7 +104,6 @@ namespace WileyWidget.WinForms.Controls
             _btnClearLog.Click += OnClearLogClicked;
             _btnClearLog.AccessibleName = "Clear Activity Log";
             _btnClearLog.AccessibleDescription = "Clears all activity log entries";
-
             _btnClearLog.TabIndex = 3;
             headerPanel.Controls.Add(_btnClearLog);
 
@@ -114,7 +118,6 @@ namespace WileyWidget.WinForms.Controls
             _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
             _chkAutoRefresh.AccessibleName = "Auto Refresh";
             _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
-
             _chkAutoRefresh.TabIndex = 4;
             headerPanel.Controls.Add(_chkAutoRefresh);
 
@@ -128,9 +131,18 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.TabIndex = 0;
             headerPanel.Controls.Add(_panelHeader);
 
-            mainSplit.Panel1.Controls.Add(headerPanel);
+            mainTable.Controls.Add(headerPanel, 0, 0);
 
-            // Data grid (bottom section)
+            // Row 1: SplitContainer with _activityGrid
+            var gridSplit = new SplitContainer
+            {
+                Name = "GridSplit",
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 0 // No header in split, just the grid
+            };
+
+            // Data grid in the split container
             _activityGrid = new SfDataGrid
             {
                 Name = "ActivityGrid",
@@ -178,9 +190,10 @@ namespace WileyWidget.WinForms.Controls
                 Width = 80
             });
 
-            mainSplit.Panel2.Controls.Add(_activityGrid);
+            gridSplit.Panel1.Controls.Add(_activityGrid);
+            mainTable.Controls.Add(gridSplit, 0, 1);
 
-            Controls.Add(mainSplit);
+            Controls.Add(mainTable);
 
             this.ResumeLayout(false);
         }
@@ -364,6 +377,13 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         private async Task RefreshActivityLogsAsync(CancellationToken cancellationToken = default)
         {
+            // Prevent concurrent refreshes
+            if (!await _refreshSemaphore.WaitAsync(0, cancellationToken))
+            {
+                Logger?.LogDebug("Refresh already in progress, skipping");
+                return;
+            }
+
             try
             {
                 if (IsDisposed || ViewModel == null || _chkAutoRefresh?.Checked != true)
@@ -385,6 +405,10 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Logger?.LogWarning(ex, "Auto-refresh failed");
+            }
+            finally
+            {
+                _refreshSemaphore.Release();
             }
         }
 
@@ -500,6 +524,9 @@ namespace WileyWidget.WinForms.Controls
 
                 try { _panelHeader?.Dispose(); } catch { }
                 _panelHeader = null;
+
+                // Dispose semaphore
+                try { _refreshSemaphore?.Dispose(); } catch { }
             }
             base.Dispose(disposing);
         }

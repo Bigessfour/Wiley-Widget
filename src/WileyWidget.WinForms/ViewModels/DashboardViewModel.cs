@@ -147,8 +147,8 @@ namespace WileyWidget.WinForms.ViewModels
         public ObservableCollection<DepartmentSummary> DepartmentMetrics => DepartmentSummaries;
 
         // Computed summary properties for DashboardFactory navigation cards
-        public string AccountsSummary => AccountCount > 0 ? $"{AccountCount:N0} Municipal Accounts" : MainFormResources.LoadingText;
-        public string BudgetStatus => TotalBudgeted > 0 ? $"Variance: {TotalVariance:C} ({VariancePercentage:F1}%)" : StatusText;
+        public string AccountsSummary => HasError ? (ErrorMessage ?? "Load failed") : (AccountCount > 0 ? $"{AccountCount:N0} Municipal Accounts" : MainFormResources.LoadingText);
+        public string BudgetStatus => HasError ? (ErrorMessage ?? "Load failed") : (TotalBudgeted > 0 ? $"Variance: {TotalVariance:C} ({VariancePercentage:F1}%)" : StatusText);
 
         #endregion
 
@@ -488,6 +488,7 @@ namespace WileyWidget.WinForms.ViewModels
                             FundSummaries.Count, DepartmentSummaries.Count, TopVariances.Count);
                         _logger.LogInformation("=== Dashboard load COMPLETED SUCCESSFULLY ===");
                         ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: COMPLETED SUCCESSFULLY");
+                        HasError = false;
                         // Successfully loaded—exit retry loop
                         break;
                     }
@@ -512,6 +513,7 @@ namespace WileyWidget.WinForms.ViewModels
                     {
                         _logger.LogError(ex, "Error loading dashboard data");
                         ErrorMessage = $"Failed to load dashboard: {ex.Message}";
+                        HasError = true;
                         // Increment retry count so we don't loop infinitely
                         retryCount++;
 
@@ -520,7 +522,8 @@ namespace WileyWidget.WinForms.ViewModels
                         {
                             _logger.LogError("Dashboard load failed after {Attempts} attempts - falling back to sample data", MaxRetryAttempts);
                             LoadSampleDashboardData();
-                            ErrorMessage = null; // Clear error since we're showing valid sample data
+                            ErrorMessage = "Failed to load data, showing sample";
+                            HasError = true;
                             break; // Exit retry loop
                         }
                     }

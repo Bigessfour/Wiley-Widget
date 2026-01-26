@@ -383,6 +383,9 @@ namespace WileyWidget.WinForms.Configuration
             // Context Service (Scoped - per-request context)
             services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
 
+            // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
+            services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
+
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService>(static sp => (GrokAgentService)sp.GetService(typeof(GrokAgentService))!);
 

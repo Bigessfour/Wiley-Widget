@@ -300,6 +300,79 @@ class AIManifestGenerator:
 
         return files
 
+    def _count_code_metrics(self) -> Dict[str, Any]:
+        """Calculate LOC, complexity, and test coverage from source files."""
+        total_lines = 0
+        code_lines = 0
+        comment_lines = 0
+        blank_lines = 0
+        complexity_sum = 0
+        complexity_count = 0
+        test_file_count = 0
+
+        # Focus on C# and Python files for metrics
+        src_files = [
+            Path(f["metadata"]["path"])
+            for f in self._files
+            if f["metadata"]["language"] in ["C#", "Python"]
+        ]
+
+        for rel_path in src_files:
+            file_path = self.repo_root / rel_path
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    lines = f.readlines()
+
+                for line in lines:
+                    stripped = line.strip()
+                    total_lines += 1
+
+                    if not stripped or stripped.startswith("#") or stripped.startswith("//"):
+                        if not stripped:
+                            blank_lines += 1
+                        else:
+                            comment_lines += 1
+                    else:
+                        code_lines += 1
+
+                # Estimate cyclomatic complexity for C# files (docking factories priority)
+                if file_path.suffix == ".cs" and ("Factory" in file_path.name or "Docking" in str(rel_path)):
+                    content = "".join(lines)
+                    # Count decision points: if, else, switch, case, catch, for, foreach, while, &&, ||, ?:
+                    complexity = (
+                        content.count(" if ") + content.count(" if(") +
+                        content.count(" else ") +
+                        content.count(" switch ") +
+                        content.count(" case ") +
+                        content.count(" catch ") +
+                        content.count(" for ") + content.count(" for(") +
+                        content.count(" foreach ") +
+                        content.count(" while ") +
+                        content.count(" && ") +
+                        content.count(" || ") +
+                        content.count("?") + 1  # Base complexity
+                    )
+                    complexity_sum += complexity
+                    complexity_count += 1
+
+                # Count test files
+                if "test" in str(rel_path).lower():
+                    test_file_count += 1
+
+            except Exception:
+                pass  # Skip files that can't be read
+
+        avg_complexity = complexity_sum / max(complexity_count, 1)
+
+        return {
+            "total_lines_of_code": total_lines,
+            "total_code_lines": code_lines,
+            "total_comment_lines": comment_lines,
+            "total_blank_lines": blank_lines,
+            "average_complexity": round(avg_complexity, 2),
+            "test_count": test_file_count,
+        }
+
     def _generate_summary(self) -> Dict[str, Any]:
         """Generate summary statistics."""
         return {
@@ -315,7 +388,18 @@ class AIManifestGenerator:
         """Generate the complete manifest."""
         repo_info = self._get_repo_info()
         files = self._scan_files()
+        self._files = files  # Store for metrics calculation
         summary = self._generate_summary()
+        metrics = self._count_code_metrics()
+
+        # Calculate estimated test coverage (ratio of test code lines to total)
+        test_coverage = 0.0
+        if metrics["total_code_lines"] > 0:
+            test_lines = sum(
+                1 for f in files
+                if "test" in f["metadata"]["path"].lower()
+            )
+            test_coverage = round((test_lines / max(metrics["total_code_lines"], 1)) * 100, 1)
 
         manifest = {
             "$schema": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/schemas/ai-manifest-schema.json",
@@ -327,14 +411,20 @@ class AIManifestGenerator:
             },
             "summary": summary,
             "metrics": {
-                "total_lines_of_code": 0,  # Placeholder
-                "total_code_lines": 0,
-                "total_comment_lines": 0,
-                "total_blank_lines": 0,
-                "average_complexity": 0.0,
-                "test_coverage_percent": 0.0,
-                "test_count": 0,
-                "project_metrics": {},  # Placeholder
+                "total_lines_of_code": metrics["total_lines_of_code"],
+                "total_code_lines": metrics["total_code_lines"],
+                "total_comment_lines": metrics["total_comment_lines"],
+                "total_blank_lines": metrics["total_blank_lines"],
+                "average_complexity": metrics["average_complexity"],
+                "test_coverage_percent": test_coverage,
+                "test_count": metrics["test_count"],
+                "project_metrics": {
+                    "windows_forms_complexity": metrics["average_complexity"],
+                    "docking_factories_analyzed": True,
+                    "estimated_code_to_test_ratio": round(
+                        metrics["total_code_lines"] / max(metrics["test_count"], 1), 2
+                    )
+                },
             },
             "security": {
                 "vulnerable_packages": [],

@@ -78,11 +78,18 @@ public static class DashboardFactory
             const int cardHeight = 80;
 
             // Card 1: Accounts
-            var accountsCard = CreateDashboardCard("Accounts", viewModel?.AccountsSummary ?? "Loading...", cardWidth, cardHeight).Panel;
+            var accountsTuple = CreateDashboardCard("Accounts", viewModel != null ? viewModel.AccountsSummary : "Error: Dashboard ViewModel not available", cardWidth, cardHeight);
+            var accountsCard = accountsTuple.Panel;
+            var accountsDesc = accountsTuple.DescriptionLabel;
             SetupCardClickHandler(accountsCard, () =>
             {
                 panelNavigator?.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left);
             });
+            if (viewModel != null)
+            {
+                accountsDesc.DataBindings.Add("Text", viewModel, "AccountsSummary");
+                viewModel.LoadCommand.Execute(null);
+            }
 
             // Card 2: Charts
             var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", cardWidth, cardHeight).Panel;
@@ -106,11 +113,17 @@ public static class DashboardFactory
             });
 
             // Card 5: Budget Status (Static/Status Display)
-            var infoCard = CreateDashboardCard("Budget Status", viewModel?.BudgetStatus ?? "Loading...", cardWidth, cardHeight).Panel;
+            var infoTuple = CreateDashboardCard("Budget Status", viewModel != null ? viewModel.BudgetStatus : "Error: Dashboard ViewModel not available", cardWidth, cardHeight);
+            var infoCard = infoTuple.Panel;
+            var infoDesc = infoTuple.DescriptionLabel;
             SetupCardClickHandler(infoCard, () =>
             {
                 panelNavigator?.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom);
             });
+            if (viewModel != null)
+            {
+                infoDesc.DataBindings.Add("Text", viewModel, "BudgetStatus");
+            }
 
             // Add cards to flow layout
             dashboardPanel.Controls.Add(accountsCard);

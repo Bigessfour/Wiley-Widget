@@ -19,6 +19,7 @@ using Syncfusion.Windows.Forms.Gauge;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.Abstractions;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -33,7 +34,7 @@ namespace WileyWidget.WinForms.Controls
     /// - Prominent "Required Rate Increase" display
     /// Production-Ready: Full validation, databinding, error handling, sizing, accessibility.
     /// </summary>
-    public partial class WarRoomPanel : ScopedPanelBase<WarRoomViewModel>
+    public partial class WarRoomPanel : ScopedPanelBase<WarRoomViewModel>, WileyWidget.Abstractions.ILazyLoadViewModel, IAsyncInitializable
     {
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
@@ -792,6 +793,96 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
+        /// Called after the ViewModel has been resolved from the scoped provider.
+        /// Ensures UI bindings are applied when the ViewModel becomes available.
+        /// </summary>
+        protected override void OnViewModelResolved(WarRoomViewModel viewModel)
+        {
+            if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
+            base.OnViewModelResolved(viewModel);
+            try
+            {
+                BindViewModel();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error binding ViewModel in OnViewModelResolved for WarRoomPanel");
+            }
+        }
+
+        /// <summary>
+        /// Perform deferred async initialization without blocking the UI thread.
+        /// This defers heavy loads to the panel lifecycle and protects against NREs during navigation.
+        /// </summary>
+        protected override async Task OnHandleCreatedAsync()
+        {
+            try
+            {
+                var ct = RegisterOperation();
+                await LoadAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("WarRoomPanel async handle creation cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error during async initialization of WarRoomPanel");
+            }
+        }
+
+        /// <summary>
+        /// ILazyLoadViewModel implementation: called when the panel's visibility changes.
+        /// Delegates to the ViewModel if it supports lazy loading, otherwise triggers panel-level LoadAsync.
+        /// </summary>
+        public async Task OnVisibilityChangedAsync(bool isVisible)
+        {
+            try
+            {
+                if (isVisible)
+                {
+                    if (ViewModel is WileyWidget.Abstractions.ILazyLoadViewModel lazyVm)
+                    {
+                        await lazyVm.OnVisibilityChangedAsync(true).ConfigureAwait(false);
+                        return;
+                    }
+
+                    var ct = RegisterOperation();
+                    await LoadAsync(ct).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Error during OnVisibilityChangedAsync for WarRoomPanel");
+            }
+        }
+
+        /// <summary>
+        /// IAsyncInitializable implementation: allows external orchestrators to trigger async init.
+        /// </summary>
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (ViewModel == null)
+                {
+                    // ViewModel not yet resolved; OnHandleCreatedAsync will handle the load
+                    return;
+                }
+
+                await LoadAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("WarRoomPanel InitializeAsync cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error during InitializeAsync for WarRoomPanel");
+            }
+        }
+
+        /// <summary>
         /// Handles Run Scenario button click with validation and busy state tracking.
         /// </summary>
         private async Task OnRunScenarioClickAsync()
@@ -868,8 +959,21 @@ namespace WileyWidget.WinForms.Controls
         {
             try
             {
+                // Ensure we are on the UI thread when updating controls
+                if (IsDisposed) return;
+
+                if (this.InvokeRequired)
+                {
+                    try
+                    {
+                        BeginInvoke(new Action(() => ViewModel_PropertyChanged(sender, e)));
+                    }
+                    catch { }
+                    return;
+                }
+
                 // Verify ViewModel still exists (may be disposed)
-                if (ViewModel == null || IsDisposed)
+                if (ViewModel == null)
                     return;
 
                 switch (e?.PropertyName)

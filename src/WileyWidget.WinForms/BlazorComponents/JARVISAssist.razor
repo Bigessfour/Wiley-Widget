@@ -10,40 +10,62 @@
 @implements IDisposable
 @inject IChatBridgeService ChatBridge
 @inject IJSRuntime JS
+@inject IUserContext UserContext
 
 <div class="jarvis-container">
-    <div class="messages" @ref="_messageContainer" role="log" aria-live="polite" aria-label="Chat messages">
+    <div class="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
         @foreach (var msg in _messages)
         {
-            <div class="message @(msg.IsUser ? "user" : "assistant")">
-                <div class="message-content">
-                    @msg.Content
+            <div class="message @(msg.IsUser ? "message-user" : "message-assistant")">
+                <div class="message-avatar">
+                    <div class="avatar @(msg.IsUser ? "avatar-user" : "avatar-assistant")">
+                        @(msg.IsUser ? GetUserInitials() : "JA")
+                    </div>
+                </div>
+                <div class="message-bubble">
+                    <div class="message-content">@msg.Content</div>
+                    @if (msg.Timestamp > DateTime.MinValue)
+                    {
+                        <div class="message-timestamp">@msg.Timestamp.ToString("hh:mm tt")</div>
+                    }
                 </div>
             </div>
         }
         @if (_isThinking)
         {
-            <div class="message assistant thinking" role="alert" aria-live="assertive">
-                <div class="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+            <div class="message message-assistant">
+                <div class="message-avatar">
+                    <div class="avatar avatar-assistant">JA</div>
+                </div>
+                <div class="message-bubble typing-indicator">
+                    <span></span><span></span><span></span>
                 </div>
             </div>
         }
     </div>
 
-    <div class="input-area">
+    <div class="chat-footer">
         <SfTextArea @bind-Value="_userInput"
                     Placeholder="Ask JARVIS anything..."
                     Rows="3"
                     aria-label="Message input"
-                    @onkeyup="HandleKeyUp"></SfTextArea>
+                    @onkeyup="HandleKeyUp"
+                    class="message-input"></SfTextArea>
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <div class="error-message">@_errorMessage</div>
+            <div class="error-message" role="alert" aria-live="assertive">
+                <i class="error-icon">⚠️</i> @_errorMessage
+            </div>
         }
-        <SfButton Command="_sendCommand" Disabled="@(string.IsNullOrWhiteSpace(_userInput) || _isThinking || _isSending)">Send</SfButton>
+        <div class="button-group">
+            <SfButton @onclick="SendMessageAsync"
+                      Disabled="@(string.IsNullOrWhiteSpace(_userInput) || _isThinking || _isSending)"
+                      IconCss="e-icons e-send"
+                      CssClass="send-button"
+                      Title="Send message (Shift+Enter for newline)">
+                <span class="button-icon">▶</span> Send
+            </SfButton>
+        </div>
     </div>
 </div>
 
@@ -53,294 +75,340 @@
         flex-direction: column;
         height: 100%;
         width: 100%;
-        /* Theme colors from SfSkinManager - injected via parent form */
-        background: var(--sf-surface-color, #f5f5f5);
-        color: var(--sf-text-color, #333333);
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        color: #333333;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
-    .messages {
+    .chat-messages {
         flex: 1;
         overflow-y: auto;
         padding: 20px;
+        background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+        border-bottom: 2px solid #e0e0e0;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: linear-gradient(to bottom, #007bff, #0056b3);
+        border-radius: 10px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(to bottom, #0056b3, #003d82);
     }
 
     .message {
         display: flex;
-        margin-bottom: 10px;
-        max-width: 85%;
-        padding: 12px 16px;
-        border-radius: 8px;
-        word-wrap: break-word;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        gap: 12px;
+        margin-bottom: 8px;
+        animation: slideIn 0.3s ease-out;
     }
 
-    .message.user {
-        align-self: flex-end;
-        background: var(--sf-primary-color, #0078d4);
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .message-user {
+        justify-content: flex-end;
+    }
+
+    .message-user .message-avatar {
+        order: 2;
+    }
+
+    .message-user .message-bubble {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
         color: white;
-        margin-left: auto;
-        border-bottom-right-radius: 2px;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
     }
 
-    .message.assistant {
-        align-self: flex-start;
-        background: var(--sf-surface-color, white);
-        color: var(--sf-text-color, #333333);
-        border: 1px solid var(--sf-border-color, #e0e0e0);
-        border-bottom-left-radius: 2px;
+    .message-assistant {
+        justify-content: flex-start;
+    }
+
+    .message-assistant .message-bubble {
+        background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+        color: #333;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        word-wrap: break-word;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+
+    .message:hover .message-bubble {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        transform: translateY(-2px);
     }
 
     .message-content {
         line-height: 1.5;
         white-space: pre-wrap;
         word-break: break-word;
+        margin-bottom: 4px;
     }
 
-    .message.thinking {
-        background: transparent;
-        border: none;
-        box-shadow: none;
+    .message-timestamp {
+        font-size: 12px;
+        opacity: 0.7;
+        margin-top: 4px;
+    }
+
+    .message-avatar {
+        flex-shrink: 0;
+    }
+
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 14px;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .avatar-user {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    }
+
+    .avatar-assistant {
+        background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
     }
 
     .typing-indicator {
-        display: flex;
+        display: flex !important;
         gap: 4px;
         align-items: center;
+        padding: 12px 16px;
     }
 
     .typing-indicator span {
-        display: inline-block;
         width: 8px;
         height: 8px;
-        background: #0078d4;
         border-radius: 50%;
-        animation: blink 1.4s infinite;
+        background: #999;
+        animation: typeBounce 1.4s infinite;
     }
 
-    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
-    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-    @@keyframes blink {
-        0%, 60%, 100% { opacity: 0.3; }
-        30% { opacity: 1; }
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
     }
 
-    .input-area {
-        padding: 20px;
-        background: var(--sf-surface-color, #ffffff);
-        border-top: 1px solid var(--sf-border-color, #e0e0e0);
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @@keyframes typeBounce {
+        0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.7;
+        }
+        30% {
+            transform: translateY(-10px);
+            opacity: 1;
+        }
+    }
+
+    .chat-footer {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-        min-height: 120px;
+        padding: 12px;
+        gap: 12px;
+        background: white;
+        border-top: 1px solid #dee2e6;
+        box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
     }
 
-    /* Syncfusion TextArea overrides */
-    .input-area ::deep .e-textarea,
-    .input-area ::deep .e-input-group,
-    .input-area ::deep .e-input {
-        background: var(--sf-surface-color, #ffffff) !important;
-        border: 1px solid var(--sf-border-color, #cccccc) !important;
-        color: var(--sf-text-color, #333333) !important;
-        border-radius: 4px;
-        padding: 10px;
-        font-family: 'Segoe UI', sans-serif;
+    .message-input {
+        border-radius: 20px !important;
+        border: 2px solid #e0e0e0 !important;
+        padding: 12px 20px !important;
+        font-size: 14px !important;
+        transition: all 0.3s ease !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        resize: none !important;
     }
 
-    .input-area ::deep .e-textarea:focus,
-    .input-area ::deep .e-input:focus {
-        border-color: var(--sf-primary-color, #0078d4) !important;
-        box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
-        outline: none;
+    .message-input:focus {
+        border-color: #007bff !important;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+        outline: none !important;
     }
 
-    .input-area ::deep .e-btn {
-        background: var(--sf-primary-color, #0078d4) !important;
-        color: white !important;
-        border: none !important;
-        padding: 10px 24px !important;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 500;
-    }
-
-    .input-area ::deep .e-btn:hover:not(:disabled) {
-        background: var(--sf-primary-hover, #005a9e) !important;
-    }
-
-    .input-area ::deep .e-btn:disabled {
-        background: var(--sf-disabled-color, #cccccc) !important;
-        cursor: not-allowed;
-        opacity: 0.6;
+    .message-input::placeholder {
+        color: #999;
     }
 
     .error-message {
-        color: var(--sf-error-color, #d32f2f);
-        font-size: 0.9em;
-        padding: 8px;
-        background: var(--sf-error-bg, #ffebee);
-        border-radius: 4px;
-        border-left: 4px solid var(--sf-error-color, #d32f2f);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        background: linear-gradient(135deg, #fff3cd 0%, #ffe6e6 100%);
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        color: #856404;
+        font-size: 13px;
+        animation: slideDownError 0.3s ease-out;
+    }
+
+    .error-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    @@keyframes slideDownError {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .button-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .send-button {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+        border: none !important;
+        border-radius: 20px !important;
+        padding: 10px 24px !important;
+        font-weight: 600 !important;
+        color: white !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+    }
+
+    .send-button:hover:not(:disabled) {
+        background: linear-gradient(135deg, #0056b3 0%, #003d82 100%) !important;
+        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    .send-button:active:not(:disabled) {
+        transform: translateY(0) !important;
+        box-shadow: 0 1px 2px rgba(0, 123, 255, 0.3) !important;
+    }
+
+    .send-button:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+    }
+
+    .button-icon {
+        font-size: 16px;
+    }
+
+    @@media (max-width: 768px) {
+        .message-bubble {
+            max-width: 90%;
+        }
+
+        .message-input {
+            max-height: 80px !important;
+        }
+
+        .send-button {
+            padding: 8px 16px !important;
+            font-size: 13px !important;
+        }
+    }
+
+    @@media (prefers-color-scheme: dark) {
+        .jarvis-container {
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+        }
+
+        .chat-messages {
+            background: linear-gradient(to bottom, #262626, #1f1f1f);
+        }
+
+        .message-input {
+            background: #333 !important;
+            color: white !important;
+            border-color: #555 !important;
+        }
+
+        .message-input::placeholder {
+            color: #777;
+        }
+
+        .message-assistant .message-bubble {
+            background: linear-gradient(135deg, #333 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+        }
+
+        .chat-footer {
+            background: #262626;
+            border-top-color: #444;
+        }
     }
 </style>
 
 @code {
-    private string _userInput = "";
-    private bool _isThinking = false;
-    private bool _isSending = false;
     private List<ChatMessage> _messages = new();
-    private ElementReference _messageContainer;
-    private string _conversationId = Guid.NewGuid().ToString();
-    private string _errorMessage = "";
-    private CancellationTokenSource? _cts;
-    private AsyncRelayCommand? _sendCommand;
-    private DateTime _lastRenderTime = DateTime.UtcNow;
-    private const int MinRenderIntervalMs = 100; // Throttle renders to max 10/sec
-    private bool _suppressRender;
-    private Task? _deferredRenderTask;
+    private string _userInput = string.Empty;
+    private string _errorMessage = string.Empty;
+    private bool _isThinking;
+    private bool _isSending;
     private string? _streamingMessageId;
+    private string? _conversationId;
+    private CancellationTokenSource? _cts;
+    private DateTime _lastRenderTime = DateTime.MinValue;
+    private readonly TimeSpan _renderThrottle = TimeSpan.FromMilliseconds(50);
 
-    [Parameter] public string Theme { get; set; } = "office-2019-colorful";
-
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _sendCommand = new AsyncRelayCommand(SendMessageAsync);
-        _messages.Add(new ChatMessage { Content = "Hello, I am JARVIS. How can I assist you today?", IsUser = false });
-
         ChatBridge.OnMessageReceived += HandleMessageReceived;
         ChatBridge.ResponseChunkReceived += HandleResponseChunkReceived;
         ChatBridge.ExternalPromptRequested += HandleExternalPromptRequested;
-    }
+        _conversationId = Guid.NewGuid().ToString();
 
-    private void HandleMessageReceived(object? sender, ChatMessage msg)
-    {
-        _ = InvokeAsync(() =>
-        {
-            if (msg == null)
-            {
-                return;
-            }
-
-            var messageId = string.IsNullOrWhiteSpace(msg.Id) ? Guid.NewGuid().ToString() : msg.Id;
-            var existing = _messages.FirstOrDefault(m => m.Id == messageId);
-            if (existing == null)
-            {
-                msg.Id = messageId;
-                _messages.Add(msg);
-            }
-            else
-            {
-                existing.Content = msg.Content;
-                existing.IsUser = msg.IsUser;
-                existing.Timestamp = msg.Timestamp;
-            }
-
-            _streamingMessageId = messageId;
-            _isThinking = false;
-            RequestRender();
-        });
-    }
-
-    private void HandleResponseChunkReceived(object? sender, ChatResponseChunkEventArgs e)
-    {
-        if (string.IsNullOrEmpty(e.Chunk))
-        {
-            return;
-        }
-
-        _ = InvokeAsync(() =>
-        {
-            var message = _streamingMessageId != null
-                ? _messages.FirstOrDefault(m => m.Id == _streamingMessageId)
-                : null;
-
-            if (message == null)
-            {
-                message = new ChatMessage
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    IsUser = false,
-                    Content = string.Empty
-                };
-                _messages.Add(message);
-                _streamingMessageId = message.Id;
-            }
-
-            message.Content += e.Chunk;
-            _isThinking = false;
-            RequestRender();
-        });
-    }
-
-    private void HandleExternalPromptRequested(object? sender, ChatExternalPromptEventArgs e)
-    {
-        if (string.IsNullOrWhiteSpace(e.Prompt))
-        {
-            return;
-        }
-
-        _ = InvokeAsync(async () =>
-        {
-            if (_isSending)
-            {
-                return;
-            }
-
-            _userInput = e.Prompt;
-            await SendMessageAsync();
-        });
-    }
-
-    private void RequestRender()
-    {
-        var now = DateTime.UtcNow;
-        var timeSinceLastRender = (now - _lastRenderTime).TotalMilliseconds;
-        if (timeSinceLastRender >= MinRenderIntervalMs)
-        {
-            _lastRenderTime = now;
-            _suppressRender = false;
-            StateHasChanged();
-            ScrollToBottom();
-            return;
-        }
-
-        var delay = (int)Math.Max(1d, MinRenderIntervalMs - timeSinceLastRender);
-        _suppressRender = true;
-
-        if (_deferredRenderTask == null || _deferredRenderTask.IsCompleted)
-        {
-            _deferredRenderTask = InvokeAsync(async () =>
-            {
-                try
-                {
-                    await Task.Delay(delay);
-                    _lastRenderTime = DateTime.UtcNow;
-                    _suppressRender = false;
-                    StateHasChanged();
-                    ScrollToBottom();
-                }
-                catch
-                {
-                    _suppressRender = false;
-                }
-            });
-        }
-    }
-
-    protected override bool ShouldRender()
-    {
-        if (_suppressRender)
-        {
-            _suppressRender = false;
-            return false;
-        }
-
-        return true;
+        await base.OnInitializedAsync();
     }
 
     private async Task SendMessageAsync()
@@ -356,30 +424,33 @@
             return;
         }
 
-        // Sanitize input
         var sanitizedInput = _userInput.Trim();
         if (string.IsNullOrEmpty(sanitizedInput))
             return;
 
-        // Rate limiting
         _isSending = true;
         _errorMessage = "";
 
-        var userMsg = new ChatMessage { Content = sanitizedInput, IsUser = true, Id = Guid.NewGuid().ToString() };
+        // Add user message
+        var userMsg = new ChatMessage
+        {
+            Id = Guid.NewGuid().ToString(),
+            Content = sanitizedInput,
+            IsUser = true,
+            Timestamp = DateTime.Now
+        };
         _messages.Add(userMsg);
+
         var prompt = sanitizedInput;
         _userInput = "";
         _isThinking = true;
         _streamingMessageId = null;
 
-        // Single state change for all mutations
-        _lastRenderTime = DateTime.UtcNow;
-        StateHasChanged();
-        ScrollToBottom();
+        ThrottledStateHasChanged();
+        await ScrollToBottom();
 
-        // Cancellation token for long calls
         _cts = new CancellationTokenSource();
-        _cts.CancelAfter(TimeSpan.FromMinutes(5)); // Timeout after 5 minutes
+        _cts.CancelAfter(TimeSpan.FromMinutes(5));
 
         try
         {
@@ -389,8 +460,7 @@
         {
             _errorMessage = $"Error sending message: {ex.Message}";
             _isThinking = false;
-            _lastRenderTime = DateTime.UtcNow;
-            StateHasChanged();
+            ThrottledStateHasChanged();
         }
         finally
         {
@@ -408,9 +478,103 @@
         }
     }
 
-    private void ScrollToBottom()
+    private void HandleMessageReceived(object? sender, ChatMessage msg)
     {
-        JS.InvokeVoidAsync("scrollToBottom", _messageContainer);
+        _ = InvokeAsync(async () =>
+        {
+            if (msg == null)
+                return;
+
+            var assistantMsg = new ChatMessage
+            {
+                Id = msg.Id ?? Guid.NewGuid().ToString(),
+                Content = msg.Content,
+                IsUser = false,
+                Timestamp = DateTime.Now
+            };
+            _messages.Add(assistantMsg);
+
+            _isThinking = false;
+            _streamingMessageId = null;
+            ThrottledStateHasChanged();
+            await ScrollToBottom();
+        });
+    }
+
+    private void HandleResponseChunkReceived(object? sender, ChatResponseChunkEventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (string.IsNullOrEmpty(_streamingMessageId))
+            {
+                _streamingMessageId = Guid.NewGuid().ToString();
+                var placeholderMsg = new ChatMessage
+                {
+                    Id = _streamingMessageId,
+                    Content = e.Chunk,
+                    IsUser = false,
+                    Timestamp = DateTime.Now
+                };
+                _messages.Add(placeholderMsg);
+            }
+            else
+            {
+                var existingMsg = _messages.FirstOrDefault(m => m.Id == _streamingMessageId);
+                if (existingMsg != null)
+                {
+                    existingMsg.Content += e.Chunk;
+                }
+            }
+
+            ThrottledStateHasChanged();
+            await ScrollToBottom();
+        });
+    }
+
+    private void HandleExternalPromptRequested(object? sender, ChatExternalPromptEventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (string.IsNullOrEmpty(e.Prompt) || _isSending)
+                return;
+
+            _userInput = e.Prompt;
+            await SendMessageAsync();
+        });
+    }
+
+    private void ThrottledStateHasChanged()
+    {
+        var now = DateTime.UtcNow;
+        if ((now - _lastRenderTime) > _renderThrottle)
+        {
+            _lastRenderTime = now;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "window.scrollTo(0, document.body.scrollHeight)");
+        }
+        catch
+        {
+            // Silently handle if scroll unavailable
+        }
+    }
+
+    private string GetUserInitials()
+    {
+        var displayName = UserContext?.DisplayName ?? "You";
+        if (string.IsNullOrEmpty(displayName))
+            return "U";
+
+        var parts = displayName.Split(' ');
+        return parts.Length > 1
+            ? $"{parts[0][0]}{parts[^1][0]}".ToUpper()
+            : $"{parts[0][0]}".ToUpper();
     }
 
     public void Dispose()

@@ -103,7 +103,8 @@ namespace WileyWidget.WinForms.Services.AI
             if (_chatBridge != null)
             {
                 _chatBridge.PromptSubmitted += OnChatPromptSubmitted;
-                _logger?.LogInformation("[XAI] ChatBridgeService subscribed for prompt events");
+                _chatBridge.ExternalPromptRequested += OnExternalPromptRequested;
+                _logger?.LogInformation("[XAI] ChatBridgeService subscribed for prompt and external prompt events");
             }
 
             // ✅ FIXED: Use injected IGrokApiKeyProvider instead of reading environment variables directly
@@ -1142,6 +1143,52 @@ namespace WileyWidget.WinForms.Services.AI
         }
 
         /// <summary>
+        /// Event handler for external prompt requests from chat bridge.
+        /// Routes external prompts (e.g., from JARVISChatUserControl initial prompt) through the agent.
+        /// </summary>
+        private void OnExternalPromptRequested(object? sender, ChatExternalPromptEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(e?.Prompt) || _disposed)
+            {
+                _logger?.LogWarning("[XAI] Chat bridge external prompt ignored: prompt empty or service disposed");
+                return;
+            }
+
+            _logger?.LogInformation("[XAI] Chat bridge external prompt received: {PromptLength} chars", e.Prompt.Length);
+
+            // Queue async work on the thread pool with proper error handling
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // Use safe token access - check if disposed first
+                    var token = CancellationToken.None;
+                    try
+                    {
+                        if (!_disposed && _serviceCts != null)
+                        {
+                            token = _serviceCts.Token;
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Service already disposed, use default token
+                    }
+
+                    await RunAgentToChatBridgeAsync(e.Prompt, null, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogInformation("[XAI] Chat bridge external prompt operation cancelled");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "[XAI] Error in chat bridge external prompt handler");
+                }
+            });
+        }
+
+        /// <summary>
         /// Event handler for chat bridge prompt submissions.
         /// Routes prompts from Blazor through the agent and streams responses back via the bridge.
         /// </summary>
@@ -1206,6 +1253,23 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 _logger?.LogWarning("RunAgentToChatBridgeAsync called with empty user request");
                 return;
+            }
+
+            // Reinforce initialization: Ensure service is initialized before processing
+            if (!_isInitialized)
+            {
+                _logger?.LogInformation("[XAI] GrokAgentService not initialized; initializing now before processing chat request");
+                try
+                {
+                    await InitializeAsync(ct).ConfigureAwait(false);
+                }
+                catch (Exception initEx)
+                {
+                    _logger?.LogError(initEx, "[XAI] Failed to initialize GrokAgentService during chat request; falling back to simple response");
+                    var fallback = await GetSimpleResponse(userRequest, _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt).ConfigureAwait(false);
+                    await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = fallback ?? $"Grok initialization failed: {initEx.Message}", IsUser = false, Timestamp = DateTime.UtcNow });
+                    return;
+                }
             }
 
             if (!_isInitialized || _kernel == null)
@@ -1590,6 +1654,7 @@ namespace WileyWidget.WinForms.Services.AI
                     if (_chatBridge != null)
                     {
                         _chatBridge.PromptSubmitted -= OnChatPromptSubmitted;
+                        _chatBridge.ExternalPromptRequested -= OnExternalPromptRequested;
                     }
 
                     if (_ownsHttpClient)

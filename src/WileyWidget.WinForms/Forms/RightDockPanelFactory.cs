@@ -162,33 +162,41 @@ public static class RightDockPanelFactory
             // Switch tabs based on target mode - guard against empty Controls collection
             if (rightDockPanel.Controls != null && rightDockPanel.Controls.Count > 0 && rightDockPanel.Controls[0] is TabControl tabControl)
             {
-                switch (targetMode)
+                tabControl.SuspendLayout();
+                try
                 {
-                    case RightPanelMode.ActivityLog:
-                        var activityLogTab = tabControl.TabPages.Cast<TabPage>()
-                            .FirstOrDefault(tp => tp.Name == "ActivityLogTab");
-                        if (activityLogTab != null)
-                        {
-                            tabControl.SelectedTab = activityLogTab;
-                            activityLogTab.Visible = true;
-                            logger?.LogDebug("RightDockPanelFactory: Activity Log tab selected and visible");
-                        }
-                        break;
+                    switch (targetMode)
+                    {
+                        case RightPanelMode.ActivityLog:
+                            var activityLogTab = tabControl.TabPages.Cast<TabPage>()
+                                .FirstOrDefault(tp => tp.Name == "ActivityLogTab");
+                            if (activityLogTab != null)
+                            {
+                                tabControl.SelectedTab = activityLogTab;
+                                activityLogTab.Visible = true;
+                                logger?.LogDebug("RightDockPanelFactory: Activity Log tab selected and visible");
+                            }
+                            break;
 
-                    case RightPanelMode.JarvisChat:
-                        var jarvisTab = tabControl.TabPages.Cast<TabPage>()
-                            .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
-                        if (jarvisTab != null)
-                        {
-                            tabControl.SelectedTab = jarvisTab;
-                            jarvisTab.Visible = true;
-                            logger?.LogDebug("RightDockPanelFactory: JARVIS Chat tab selected and visible");
-                        }
-                        else
-                        {
-                            logger?.LogWarning("RightDockPanelFactory: JARVIS Chat tab not found in TabControl");
-                        }
-                        break;
+                        case RightPanelMode.JarvisChat:
+                            var jarvisTab = tabControl.TabPages.Cast<TabPage>()
+                                .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
+                            if (jarvisTab != null)
+                            {
+                                tabControl.SelectedTab = jarvisTab;
+                                jarvisTab.Visible = true;
+                                logger?.LogDebug("RightDockPanelFactory: JARVIS Chat tab selected and visible");
+                            }
+                            else
+                            {
+                                logger?.LogWarning("RightDockPanelFactory: JARVIS Chat tab not found in TabControl");
+                            }
+                            break;
+                    }
+                }
+                finally
+                {
+                    tabControl.ResumeLayout();
                 }
             }
             else

@@ -29,11 +29,15 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private TableLayoutPanel? _layout;
     private BindingSource? _accountsBinding;
     private ErrorProvider? _errorProvider;
-    private Panel? _toolbarPanel;
+    private FlowLayoutPanel? _toolbarPanel;
     private SfButton? _createButton;
     private SfButton? _editButton;
     private SfButton? _deleteButton;
     private SfButton? _refreshButton;
+
+    // Event handlers for proper cleanup
+    private Syncfusion.WinForms.DataGrid.Events.SelectionChangedEventHandler? _gridSelectionChangedHandler;
+    private Syncfusion.WinForms.DataGrid.Events.CellClickEventHandler? _gridCellDoubleClickHandler;
 
     /// <summary>
     /// Maximum row count threshold for grid validation.
@@ -84,100 +88,45 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         SuspendLayout();
 
-        Name = "AccountsPanel";
-        Dock = DockStyle.Fill;
-        // Apply the application's current Syncfusion visual theme to runtime-created controls.
-        var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(this, theme);
-        Logger?.LogDebug("Applied theme {ThemeName} to AccountsPanel", theme);
-        
-        _header = new PanelHeader
-        {
-            Title = "Municipal Accounts",
-            Dock = DockStyle.Top,
-            Height = 42
-        };
-        _header.AccessibleName = "Accounts Panel Header";
-        _header.AccessibleDescription = "Header for the municipal accounts panel";
-        _header.TabIndex = 0;
-
-        // Create toolbar with CRUD buttons
-        _toolbarPanel = new Panel
-        {
-            Dock = DockStyle.Top,
-            Height = 40,
-            Padding = new Padding(5)
-        };
-
-        var buttonPanel = new FlowLayoutPanel
+        _layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoScroll = true
+            ColumnCount = 1,
+            RowCount = 3
         };
+        _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        _createButton = new SfButton
-        {
-            Text = "Create",
-            Width = 80,
-            Height = 30,
-            Margin = new Padding(2)
-        };
-        _createButton.Click += CreateButton_Click;
+        _header = new PanelHeader { Dock = DockStyle.Fill, Title = "Chart of Accounts" };
+        _layout.Controls.Add(_header, 0, 0);
 
-        _editButton = new SfButton
-        {
-            Text = "Edit",
-            Width = 80,
-            Height = 30,
-            Margin = new Padding(2),
-            Enabled = false // Disabled until row selected
-        };
-        _editButton.Click += EditButton_Click;
-
-        _deleteButton = new SfButton
-        {
-            Text = "Delete",
-            Width = 80,
-            Height = 30,
-            Margin = new Padding(2),
-            Enabled = false // Disabled until row selected
-        };
+        _toolbarPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
+        _createButton = new SfButton { Text = "New Account", AutoSize = true };
+        _createButton.Click += (s, e) => CreateAccount();
+        _editButton = new SfButton { Text = "Edit", AutoSize = true, Enabled = false };
+        _editButton.Click += (s, e) => EditAccount();
+        _deleteButton = new SfButton { Text = "Delete", AutoSize = true, Enabled = false };
         _deleteButton.Click += DeleteButton_Click;
-
-        _refreshButton = new SfButton
-        {
-            Text = "Refresh",
-            Width = 80,
-            Height = 30,
-            Margin = new Padding(2)
-        };
+        _refreshButton = new SfButton { Text = "Refresh", AutoSize = true };
         _refreshButton.Click += RefreshButton_Click;
 
-        buttonPanel.Controls.Add(_createButton);
-        buttonPanel.Controls.Add(_editButton);
-        buttonPanel.Controls.Add(_deleteButton);
-        buttonPanel.Controls.Add(_refreshButton);
-
-        _toolbarPanel.Controls.Add(buttonPanel);
+        _toolbarPanel.Controls.AddRange(new Control[] { _createButton, _editButton, _deleteButton, _refreshButton });
+        _layout.Controls.Add(_toolbarPanel, 0, 1);
 
         _accountsGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
         {
             Dock = DockStyle.Fill,
             AutoGenerateColumns = false,
-            AllowSorting = true,
             AllowFiltering = true,
+            AllowSorting = true,
             AllowResizingColumns = true,
-            RowHeight = 36,
-            ThemeName = theme
+            RowHeight = 36
         };
-        _accountsGrid.AccessibleName = "Accounts Grid";
-        _accountsGrid.AccessibleDescription = "Displays municipal accounts in a sortable, filterable grid";
-        _accountsGrid.TabIndex = 1;
-        _accountsGrid.SelectionChanged += Grid_SelectionChanged;
-        _accountsGrid.CellDoubleClick += Grid_CellDoubleClick;
+        _accountsGrid.SelectionChanged += _gridSelectionChangedHandler = Grid_SelectionChanged;
+        _accountsGrid.CellDoubleClick += _gridCellDoubleClickHandler = Grid_CellDoubleClick;
 
+        // Re-apply detailed column configuration
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountNumber", HeaderText = "Account #", MinimumWidth = 90, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountName", HeaderText = "Name", AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "FundName", HeaderText = "Fund", MinimumWidth = 80 });
@@ -187,25 +136,15 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Department", HeaderText = "Department", MinimumWidth = 100 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridCheckBoxColumn { MappingName = "IsActive", HeaderText = "Active", MinimumWidth = 70 });
 
-        _layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3
-        };
-        _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-        _layout.Controls.Add(_header, 0, 0);
-        _layout.Controls.Add(_toolbarPanel, 0, 1);
         _layout.Controls.Add(_accountsGrid, 0, 2);
 
-        // Initialize ErrorProvider for validation feedback
-        _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
-        _errorProvider.SetError(_accountsGrid, string.Empty); // Initialize error state
+        _errorProvider = new ErrorProvider(this);
 
-        Controls.Add(_layout);
+        this.Controls.Add(_layout);
+
+        // Apply theme via SfSkinManager
+        var theme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme);
 
         ResumeLayout(true);
         this.PerformLayout();
@@ -273,20 +212,16 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         }
     }
 
-    /// <summary>
-    /// Handles grid selection changed event to update ViewModel and enable/disable edit/delete buttons.
-    /// </summary>
-    private void Grid_SelectionChanged(object? sender, EventArgs e)
+    private void UpdateButtonState(object? sender = null, EventArgs? e = null)
     {
         if (_accountsGrid?.SelectedItem is MunicipalAccountDisplay selectedAccount)
         {
-            ViewModel?.PropertyChanged += (_, e) => { };
             if (ViewModel != null)
             {
                 ViewModel.SelectedAccount = selectedAccount;
             }
-            _editButton!.Enabled = true;
-            _deleteButton!.Enabled = true;
+            if (_editButton != null) _editButton.Enabled = true;
+            if (_deleteButton != null) _deleteButton.Enabled = true;
             _logger.LogDebug("Grid selection changed: {AccountNumber}", selectedAccount.AccountNumber);
         }
         else
@@ -295,8 +230,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             {
                 ViewModel.SelectedAccount = null;
             }
-            _editButton!.Enabled = false;
-            _deleteButton!.Enabled = false;
+            if (_editButton != null) _editButton.Enabled = false;
+            if (_deleteButton != null) _deleteButton.Enabled = false;
             _logger.LogDebug("Grid selection cleared");
         }
     }
@@ -312,10 +247,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         }
     }
 
-    /// <summary>
-    /// Handles Create button click - opens AccountCreateDialog.
-    /// </summary>
-    private void CreateButton_Click(object? sender, EventArgs e)
+    private void CreateAccount(object? sender = null, EventArgs? e = null)
     {
         try
         {
@@ -324,9 +256,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 var result = dialog.ShowDialog(this);
                 if (result == DialogResult.OK && dialog.CreatedAccount != null)
                 {
-                    _logger.LogInformation("Create dialog returned OK with new account: {AccountNumber}", 
+                    _logger.LogInformation("Create dialog returned OK with new account: {AccountNumber}",
                         dialog.CreatedAccount.AccountNumber?.Value);
-                    
+
                     // Execute the ViewModel's CreateAccountCommand
                     if (ViewModel?.CreateAccountCommand.CanExecute(dialog.CreatedAccount) ?? false)
                     {
@@ -338,7 +270,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error opening create dialog");
-            MessageBox.Show($"Error opening create dialog: {ex.Message}", "Error", 
+            MessageBox.Show($"Error opening create dialog: {ex.Message}", "Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -346,7 +278,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// <summary>
     /// Handles Edit button click - opens AccountEditDialog with selected account.
     /// </summary>
-    private void EditButton_Click(object? sender, EventArgs e)
+    private void EditAccount(object? sender = null, EventArgs? e = null)
     {
         if (ViewModel?.SelectedAccount is MunicipalAccountDisplay selectedDisplay)
         {
@@ -383,7 +315,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 {
                     _logger.LogInformation("Edit dialog returned OK with updated account: {AccountNumber}",
                         accountToEdit.AccountNumber?.Value);
-                    
+
                     // Execute the ViewModel's UpdateAccountCommand
                     if (ViewModel?.UpdateAccountCommand.CanExecute(accountToEdit) ?? false)
                     {
@@ -417,7 +349,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             if (confirmed)
             {
                 _logger.LogInformation("Delete confirmed for account: {AccountNumber}", selectedDisplay.AccountNumber);
-                
+
                 // Execute the ViewModel's DeleteAccountCommand
                 if (ViewModel?.DeleteAccountCommand.CanExecute(null) ?? false)
                 {
@@ -754,6 +686,11 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         }
     }
 
+    private void Grid_SelectionChanged(object? sender, Syncfusion.WinForms.DataGrid.Events.SelectionChangedEventArgs e)
+    {
+        UpdateButtonState();
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -773,8 +710,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             // Unsubscribe from grid events
             if (_accountsGrid != null)
             {
-                _accountsGrid.SelectionChanged -= Grid_SelectionChanged;
-                _accountsGrid.CellDoubleClick -= Grid_CellDoubleClick;
+                if (_gridSelectionChangedHandler != null) _accountsGrid.SelectionChanged -= _gridSelectionChangedHandler;
+                if (_gridCellDoubleClickHandler != null) _accountsGrid.CellDoubleClick -= _gridCellDoubleClickHandler;
                 _accountsGrid.DataSource = null;
             }
 

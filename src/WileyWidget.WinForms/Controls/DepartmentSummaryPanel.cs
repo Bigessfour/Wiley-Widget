@@ -38,7 +38,6 @@ namespace WileyWidget.WinForms.Controls
         private Label? _lblVarianceValue;
         private Label? _lblOverBudgetCountValue;
         private Label? _lblUnderBudgetCountValue;
-        private Label? _lblLastUpdated;
 
         // Status and validation
         private StatusStrip? _statusStrip;
@@ -60,47 +59,38 @@ namespace WileyWidget.WinForms.Controls
             ILogger<ScopedPanelBase<DepartmentSummaryViewModel>> logger)
             : base(scopeFactory, logger)
         {
-            InitializeComponent();
-
             // Apply theme via SfSkinManager (single source of truth)
             try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
             SetupUI();
             SubscribeToThemeChanges();
         }
 
-        private void InitializeComponent()
-        {
-            this.SuspendLayout();
 
-            Name = "DepartmentSummaryPanel";
-            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
-            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-            AutoScroll = true;
-            Padding = new Padding(8);
-            Dock = DockStyle.Fill;
-            AccessibleName = "Department Summary Panel";
-            AccessibleDescription = "Displays department budget summary with key metrics and detailed grid";
-
-            try
-            {
-                AutoScaleMode = AutoScaleMode.Dpi;
-            }
-            catch
-            {
-                // Fall back if DPI scaling not supported
-            }
-            this.ResumeLayout(false);
-
-        }
 
         private void SetupUI()
         {
             SuspendLayout();
 
-            // Panel header with title and actions
+            // Create root TableLayoutPanel
+            var rootTable = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 1,
+                AutoSize = true,
+                Padding = new Padding(8),
+                AccessibleName = "Department Summary Layout"
+            };
+
+            // Configure rows
+            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Header
+            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 2: Summary panel
+            rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Row 3: Grid (fills remaining space)
+
+            // Row 1: Panel header
             _panelHeader = new PanelHeader
             {
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 Title = "Department Summary",
                 AccessibleName = "Department Summary header"
             };
@@ -108,12 +98,12 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
             _panelHeaderCloseHandler = (s, e) => ClosePanel();
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-            Controls.Add(_panelHeader);
+            rootTable.Controls.Add(_panelHeader, 0, 0);
 
-            // Summary cards panel (top section)
+            // Row 2: Summary panel with cards
             _summaryPanel = new GradientPanelExt
             {
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 Height = 120,
                 Padding = new Padding(8),
                 BorderStyle = BorderStyle.None,
@@ -147,9 +137,9 @@ namespace WileyWidget.WinForms.Controls
             _lblUnderBudgetCountValue = CreateSummaryCard(_summaryCardsPanel, "Under Budget", "0", 4, "Number of departments under budget");
 
             _summaryPanel.Controls.Add(_summaryCardsPanel);
-            Controls.Add(_summaryPanel);
+            rootTable.Controls.Add(_summaryPanel, 0, 1);
 
-            // Data grid for detailed metrics
+            // Row 3: Data grid for detailed metrics
             _metricsGrid = new SfDataGrid
             {
                 Dock = DockStyle.Fill,
@@ -169,22 +159,12 @@ namespace WileyWidget.WinForms.Controls
             };
 
             ConfigureGridColumns();
-            Controls.Add(_metricsGrid);
+            rootTable.Controls.Add(_metricsGrid, 0, 2);
 
-            // Last updated timestamp label
-            _lblLastUpdated = new Label
-            {
-                Dock = DockStyle.Bottom,
-                Height = 24,
-                TextAlign = ContentAlignment.MiddleRight,
-                Text = "Last updated: --",
-                Font = new Font("Segoe UI", 8F, FontStyle.Italic),
-                Padding = new Padding(0, 0, 8, 0),
-                AccessibleName = "Last updated timestamp"
-            };
-            Controls.Add(_lblLastUpdated);
+            // Add root table to panel
+            Controls.Add(rootTable);
 
-            // Status strip
+            // Status strip (bottom of panel)
             _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
             _statusLabel = new ToolStripStatusLabel { Text = "Ready" };
             _statusStrip.Items.Add(_statusLabel);
@@ -485,9 +465,6 @@ namespace WileyWidget.WinForms.Controls
                     _lblUnderBudgetCountValue.Text = ViewModel.DepartmentsUnderBudget.ToString(CultureInfo.CurrentCulture);
                     _lblUnderBudgetCountValue.ForeColor = Color.Green; // Semantic status
                 }
-
-                if (_lblLastUpdated != null)
-                    _lblLastUpdated.Text = $"Last updated: {ViewModel.LastUpdated:yyyy-MM-dd HH:mm:ss}";
             }
             catch (Exception ex)
             {

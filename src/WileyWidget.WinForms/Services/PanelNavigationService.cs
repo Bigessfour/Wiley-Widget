@@ -103,6 +103,9 @@ namespace WileyWidget.WinForms.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
 
+        // Map panels to their DockStateChanged handlers so we can unsubscribe cleanly when panels are disposed/removed
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<UserControl, Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler> _dockEventHandlers = new();
+
         /// <summary>
         /// Tracks the currently active panel name for ribbon button highlighting.
         /// </summary>
@@ -149,6 +152,7 @@ namespace WileyWidget.WinForms.Services
             ILogger<PanelNavigationService> logger)
         {
             _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager), "DockingManager must be initialized before PanelNavigationService construction.");
+            // No global subscription here; per-panel subscriptions are added when the panel is docked. (Keep handler registration localized.)
             _parentControl = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -180,8 +184,12 @@ namespace WileyWidget.WinForms.Services
             {
                 try
                 {
-                    _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
-                    return;
+                    // Use BeginInvoke only when parent control is valid and not disposed
+                    if (!_parentControl.IsDisposed && _parentControl.IsHandleCreated)
+                    {
+                        _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                        return;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -389,7 +397,19 @@ namespace WileyWidget.WinForms.Services
             // This replaces the Thread.Sleep(250) hack with proper event-driven synchronization
             try
             {
-                _dockingManager.DockStateChanged += (sender, e) => OnDockStateChanged(panel, panelName);
+                // Create a typed handler and store it so we can unsubscribe later
+                Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler handler = (sender, e) => OnDockStateChanged(panel, panelName);
+                _dockEventHandlers[panel] = handler;
+                _dockingManager.DockStateChanged += handler;
+
+                // Ensure we remove the handler if the panel is disposed
+                panel.Disposed += (s, e) =>
+                {
+                    if (_dockEventHandlers.TryRemove(panel, out var existing))
+                    {
+                        try { _dockingManager.DockStateChanged -= existing; } catch { }
+                    }
+                };
             }
             catch (Exception eventEx)
             {

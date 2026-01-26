@@ -261,10 +261,37 @@ namespace WileyWidget.WinForms.Controls
         {
             _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
 
-            // Panel header
+            // Create root TableLayoutPanel
+            var rootTable = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 3,
+                ColumnCount = 1,
+                AutoSize = true,
+                Padding = new Padding(8),
+                AccessibleName = "Budget Analytics Layout"
+            };
+
+            // Configure rows
+            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Header and filter panel
+            rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50F)); // Row 2: Charts (50% of space)
+            rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50F)); // Row 3: Grid (50% of space)
+
+            // Row 1: Panel header and filter panel
+            var headerTable = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 2,
+                ColumnCount = 1,
+                AutoSize = true,
+                AccessibleName = "Header and Filter Layout"
+            };
+            headerTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Header
+            headerTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Filter panel
+
             _panelHeader = new PanelHeader
             {
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 TabIndex = 0,
                 AccessibleName = "Budget Analytics Header",
                 AccessibleDescription = "Header with refresh and help buttons"
@@ -275,29 +302,24 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.HelpClicked += (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
             _panelHeaderCloseHandler = (s, e) => ClosePanel();
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-            Controls.Add(_panelHeader);
+            headerTable.Controls.Add(_panelHeader, 0, 0);
 
-            // Filter panel with proper Dock-based layout
+            // Filter panel
             CreateFilterPanel();
-            Controls.Add(_filterPanel!);
+            headerTable.Controls.Add(_filterPanel!, 0, 1);
 
-            // Main analytics split container
-            var mainSplit = new SplitContainer
+            rootTable.Controls.Add(headerTable, 0, 0);
+
+            // Row 2: Charts side-by-side
+            var chartsTable = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal
+                RowCount = 1,
+                ColumnCount = 2,
+                AccessibleName = "Charts Layout"
             };
-            // Defer setting min sizes and splitter distance until control is sized
-            SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(mainSplit, 250, 150, 400);
-
-            // Top: Charts side-by-side
-            var chartSplit = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                FixedPanel = FixedPanel.None
-            };
-            SafeSplitterDistanceHelper.TrySetSplitterDistance(chartSplit, 400);
+            chartsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F)); // Trend chart
+            chartsTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F)); // Department chart
 
             _trendChart = new ChartControl
             {
@@ -306,7 +328,7 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Displays budget vs actual trend over time"
             };
             ConfigureTrendChart();
-            chartSplit.Panel1.Controls.Add(_trendChart);
+            chartsTable.Controls.Add(_trendChart, 0, 0);
 
             _departmentChart = new ChartControl
             {
@@ -315,11 +337,11 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Displays department budget performance"
             };
             ConfigureDepartmentChart();
-            chartSplit.Panel2.Controls.Add(_departmentChart);
+            chartsTable.Controls.Add(_departmentChart, 1, 0);
 
-            mainSplit.Panel1.Controls.Add(chartSplit);
+            rootTable.Controls.Add(chartsTable, 0, 1);
 
-            // Bottom: Analytics grid
+            // Row 3: Analytics grid
             _analyticsGrid = new SfDataGrid
             {
                 Dock = DockStyle.Fill,
@@ -337,11 +359,12 @@ namespace WileyWidget.WinForms.Controls
                 AccessibleDescription = "Displays detailed budget analytics by department and period"
             };
             ConfigureGridColumns();
-            mainSplit.Panel2.Controls.Add(_analyticsGrid);
+            rootTable.Controls.Add(_analyticsGrid, 0, 2);
 
-            Controls.Add(mainSplit);
+            // Add root table to panel
+            Controls.Add(rootTable);
 
-            // Summary label
+            // Summary label (bottom of panel)
             _summaryLabel = new Label
             {
                 Dock = DockStyle.Bottom,
@@ -350,7 +373,7 @@ namespace WileyWidget.WinForms.Controls
                 Text = "Ready",
                 Font = new Font("Segoe UI", 8F, FontStyle.Italic),
                 Padding = new Padding(0, 0, 8, 0),
-                BorderStyle = BorderStyle.FixedSingle  // Added: visual border separation for status bar
+                BorderStyle = BorderStyle.FixedSingle
             };
             Controls.Add(_summaryLabel);
 
@@ -371,19 +394,20 @@ namespace WileyWidget.WinForms.Controls
         }
 
         /// <summary>
-        /// Creates the filter panel with proper Dock-based layout (no absolute positioning).
+        /// Creates the filter panel with proper TableLayoutPanel layout.
         /// </summary>
         private void CreateFilterPanel()
         {
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             _filterPanel = new GradientPanelExt
             {
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 Height = 100,
                 Padding = new Padding(8),
-                BorderStyle = BorderStyle.FixedSingle,  // Added: visible border for better UI separation
+                BorderStyle = BorderStyle.FixedSingle,
                 CornerRadius = 2,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                AccessibleName = "Filter Panel"
             };
             SfSkinManager.SetVisualStyle(_filterPanel, currentTheme);
 

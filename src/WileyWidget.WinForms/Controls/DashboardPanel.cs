@@ -50,15 +50,13 @@ namespace WileyWidget.WinForms.Controls
         private ToolStripButton _btnRefresh = null!;
         private ToolStripButton _btnLoadDashboard = null!;
         private ToolStripButton _btnExportExcel = null!;
-        private ToolStripButton _btnExportPdf = null!;
-        private ToolStripButton _btnAccounts = null!;
-        private ToolStripButton _btnCharts = null!;
         private Label _lblLastRefreshed = null!;
 
         private SfListView? _kpiList = null;
         private ChartControl _mainChart = null!;
         private ChartControlRegionEventWiring? _mainChartRegionEventWiring;
         private SfDataGrid _detailsGrid = null!;
+        private SplitContainer _mainSplitContainer = null!;
         private StatusStrip _statusStrip = null!;
         private ErrorProvider? _errorProvider;
         private ToolStripStatusLabel _statusLabel = null!;
@@ -67,23 +65,16 @@ namespace WileyWidget.WinForms.Controls
         // Named event handlers for PanelHeader (stored for proper unsubscription)
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
-        // Stored event handlers for proper unsubscription
-        private EventHandler? _btnLoadDashboardClickHandler;
-        private EventHandler? _btnRefreshClickHandler;
-        private EventHandler? _btnExportExcelClickHandler;
-        private EventHandler? _btnExportPdfClickHandler;
-        private EventHandler? _btnAccountsClickHandler;
-        private EventHandler? _btnChartsClickHandler;
         // per-tile sparkline references
-        private ChartControl? _sparkBudget;
-        private ChartControlRegionEventWiring? _sparkBudgetRegionEventWiring;
-        private ChartControl? _sparkExpenditure;
-        private ChartControlRegionEventWiring? _sparkExpenditureRegionEventWiring;
-        private ChartControl? _sparkRemaining;
-        private ChartControlRegionEventWiring? _sparkRemainingRegionEventWiring;
-        private Label? _tileBudgetValueLabel;
-        private Label? _tileExpenditureValueLabel;
-        private Label? _tileRemainingValueLabel;
+        private readonly ChartControl? _sparkBudget;
+        private readonly ChartControlRegionEventWiring? _sparkBudgetRegionEventWiring;
+        private readonly ChartControl? _sparkExpenditure;
+        private readonly ChartControlRegionEventWiring? _sparkExpenditureRegionEventWiring;
+        private readonly ChartControl? _sparkRemaining;
+        private readonly ChartControlRegionEventWiring? _sparkRemainingRegionEventWiring;
+        private readonly Label? _tileBudgetValueLabel;
+        private readonly Label? _tileExpenditureValueLabel;
+        private readonly Label? _tileRemainingValueLabel;
         // Gauge controls for dashboard metrics
         private RadialGauge? _budgetUtilizationGauge;
         private RadialGauge? _revenueGauge;
@@ -122,7 +113,7 @@ namespace WileyWidget.WinForms.Controls
                 (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600.0f)
             );
 
-            InitializeComponent();
+            InitializeControls();
 
             // Apply theme via SfSkinManager (single source of truth)
             try { var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
@@ -232,272 +223,74 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private void InitializeComponent()
+        private void InitializeControls()
         {
+            if (ViewModel == null) return;
+
             // Suspend layout during initialization to prevent flickering and layout thrashing
-            // Complex nested layouts (4 gauge panels, 1 chart, 1 grid, 3 sparklines) benefit from batched redraws
             this.SuspendLayout();
-            
+
             var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            // Top panel and toolbar
-            // Shared header (consistent 44px height + 8px padding)
-            _panelHeader = new PanelHeader { Dock = DockStyle.Top };
-            try { _panelHeader.Title = DashboardPanelResources.PanelTitle; } catch { }
-            try
-            {
-                var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
-                var txtProp = dh?.GetType().GetProperty("Text");
-                if (dh != null && txtProp != null) txtProp.SetValue(dh, DashboardPanelResources.PanelTitle);
-            }
-            catch { }
-            _topPanel = new GradientPanelExt
-            {
-                Dock = DockStyle.Top,
-                Height = 44,
-                Padding = new Padding(8),
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-            };
-            theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            SfSkinManager.SetVisualStyle(_topPanel, theme);
-            _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
 
-            _btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { Name = "Toolbar_RefreshButton", AccessibleName = "Refresh Dashboard", AccessibleDescription = "Reload metrics and charts", ToolTipText = "Reload dashboard metrics and charts (F5)" };
-
-            // Load button (automation-friendly id)
-            _btnLoadDashboard = new ToolStripButton("Load Dashboard") { Name = "Toolbar_LoadButton", AccessibleName = "Load Dashboard", ToolTipText = "Load dashboard data" };
-            _btnLoadDashboardClickHandler = async (s, e) => { try { if (_vm?.LoadDataCommand != null) await _vm.LoadDataCommand.ExecuteAsync(null); } catch { } };
-            _btnLoadDashboard.Click += _btnLoadDashboardClickHandler;
-            var refreshCommand = _vm?.RefreshCommand;
-            _btnRefreshClickHandler = (s, e) => { try { refreshCommand?.ExecuteAsync(null); } catch { } };
-            _btnRefresh.Click += _btnRefreshClickHandler;
-
-            try
-            {
-                // Icon removed per SfSkinManager enforcement rules
-                _btnRefresh.ImageAlign = ContentAlignment.MiddleLeft;
-                _btnRefresh.TextImageRelation = TextImageRelation.ImageBeforeText;
-            }
-            catch { }
-
-            _lblLastRefreshed = new Label { Name = "LastUpdatedLabel", AutoSize = true, Text = "Last: -", Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
-
-            // Dashboard label (icon removed per SfSkinManager enforcement)
-            var dashboardLabel = new ToolStripLabel("Dashboard");
-            _toolStrip.Items.Add(dashboardLabel);
-            _toolStrip.Items.Add(new ToolStripSeparator());
-            _toolStrip.Items.Add(_btnRefresh);
-            _toolStrip.Items.Add(_btnLoadDashboard);
-            _toolStrip.Items.Add(new ToolStripSeparator());
-
-            // Export buttons (Excel / PDF)
-            _btnExportExcel = new ToolStripButton("Export Excel") { Name = "Toolbar_ExportButton", AccessibleName = "Export", ToolTipText = "Export details to Excel" };
-            _btnExportExcelClickHandler = async (s, e) =>
-            {
-                try
-                {
-                    using var sfd = new SaveFileDialog { Filter = "Excel Workbook|*.xlsx", DefaultExt = "xlsx", FileName = "dashboard-details.xlsx" };
-                    if (sfd.ShowDialog() != DialogResult.OK) return;
-                    await ExportGridToExcelAsync(_detailsGrid, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-            };
-            _btnExportExcel.Click += _btnExportExcelClickHandler;
-            _toolStrip.Items.Add(_btnExportExcel);
-
-            _btnExportPdf = new ToolStripButton("Export PDF") { Name = "Toolbar_ExportPdf", AccessibleName = "Export PDF", ToolTipText = "Export details/chart to PDF" };
-            _btnExportPdfClickHandler = async (s, e) =>
-            {
-                try
-                {
-                    using var sfd = new SaveFileDialog { Filter = "PDF Document|*.pdf", DefaultExt = "pdf", FileName = "dashboard.pdf" };
-                    if (sfd.ShowDialog() != DialogResult.OK) return;
-                    // Export main chart into PDF
-                    await ExportChartToPdfAsync(_mainChart, sfd.FileName);
-                    MessageBox.Show($"Exported to {sfd.FileName}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Export", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-            };
-            _btnExportPdf.Click += _btnExportPdfClickHandler;
-            _toolStrip.Items.Add(_btnExportPdf);
-
-            _btnAccounts = new ToolStripButton("Accounts")
-            {
-                AccessibleName = "View Accounts",
-                AccessibleDescription = "Navigate to Accounts panel",
-                ToolTipText = "View Municipal Accounts (Ctrl+Shift+A)"
-            };
-            // Icon removed per SfSkinManager enforcement rules
-            _btnAccountsClickHandler = (s, e) =>
-            {
-                try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Accounts"); } catch { }
-                NavigateToPanel<AccountsPanel>("Accounts");
-            };
-            _btnAccounts.Click += _btnAccountsClickHandler;
-            _toolStrip.Items.Add(_btnAccounts);
-
-            _btnCharts = new ToolStripButton("Charts")
-            {
-                AccessibleName = "View Charts",
-                AccessibleDescription = "Navigate to Charts analytics panel",
-                ToolTipText = "View Budget Analytics (Ctrl+Shift+C)"
-            };
-            // Icon removed per SfSkinManager enforcement rules
-            _btnChartsClickHandler = (s, e) =>
-            {
-                try { Serilog.Log.Information("DashboardPanel: Navigate requested -> Charts"); } catch { }
-                NavigateToPanel<BudgetAnalyticsPanel>("Charts");
-            };
-            _btnCharts.Click += _btnChartsClickHandler;
-            _toolStrip.Items.Add(_btnCharts);
-
-            _toolStrip.Items.Add(new ToolStripSeparator());
-            _toolStrip.Items.Add(new ToolStripLabel(" "));
-
-            // Wire header actions
-            try
-            {
-                _panelHeader.Title = DashboardPanelResources.PanelTitle;
-                _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
-                _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
-                _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
-                _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-            }
-            catch { }
-
-            _topPanel.Controls.Add(_toolStrip);
-            Controls.Add(_panelHeader);
-            Controls.Add(_topPanel);
-
-            // Create a split layout - KPI tiles + gauge row + main content area
-            // Optimized layout: 2-row design with gauges at top, content below
-            // Row 1: Gauge metrics (20% - increased from 15% for better visibility)
-            // Row 2: Chart + Data grid (80% - more space for content)
-            var mainSplit = new TableLayoutPanel
+            var rootTable = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                RowCount = 2,
-                ColumnCount = 2,
-                Padding = new Padding(8)
-            };
-            // Row allocation: 22% gauges at top, 78% content below
-            mainSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 22)); // Gauge row
-            mainSplit.RowStyles.Add(new RowStyle(SizeType.Percent, 78)); // Content area (chart + grid)
-            // Column split: 50% chart / 50% grid for balanced visibility
-            mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            mainSplit.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-
-            // Gauge metrics panel - 4 RadialGauges in horizontal layout
-            // Replaces separate KPI list for cleaner, more visual dashboard
-            // Use TableLayoutPanel instead of FlowLayoutPanel to prevent overflow on small screens
-            // TableLayoutPanel supports AutoScroll and provides better control over cell sizing
-            var gaugePanel = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                MinimumSize = new Size(600, 140),
-                AutoScroll = true,  // Allow horizontal scroll if panel < 1120px wide (4 × 280px)
-                ColumnCount = 4,
-                RowCount = 1,
-                Padding = new Padding(8)
-            };
-            // Allocate each column equally (25% each)
-            for (int i = 0; i < 4; i++)
-            {
-                gaugePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
-            }
-            gaugePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-
-            // Create 4 gauge panels for metrics
-            var gaugeControls = new[]
-            {
-                CreateGaugePanel("Budget Utilization", "gauge"),
-                CreateGaugePanel("Revenue Collection", "gauge"),
-                CreateGaugePanel("Expense Ratio", "gauge"),
-                CreateGaugePanel("Budget Variance", "gauge")
-            };
-
-            int gaugeIndex = 0;
-            foreach (var gaugeControl in gaugeControls)
-            {
-                // TableLayoutPanel.Controls.Add(control, col, row)
-                gaugePanel.Controls.Add(gaugeControl, gaugeIndex, 0);
-                gaugeIndex++;
-            }
-
-            // Add gauge panel to row 0, spanning both columns
-            mainSplit.Controls.Add(gaugePanel, 0, 0);
-            mainSplit.SetColumnSpan(gaugePanel, 2);
-
-            // Left column: chart area - configured per Syncfusion demo patterns
-            // Enforce minimum size to prevent cramped chart legend placement
-            var chartPanel = new GradientPanelExt
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(12),  // Increased padding for better breathing room
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                MinimumSize = new Size(300, 200)  // Enforce minimum chart area (prevents cramped legend)
-            };
-            theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(chartPanel, theme);
-            _mainChart = new ChartControl { Dock = DockStyle.Fill, AccessibleName = "Budget chart", AccessibleDescription = "Displays budget vs expenditure" };
-            _mainChartRegionEventWiring = new ChartControlRegionEventWiring(_mainChart);
-
-            // Theme applied automatically by SfSkinManager cascade from parent form
-            // Baseline chart defaults centralized for consistency (keep domain-specific settings below)
-            ChartControlDefaults.Apply(_mainChart, logger: Logger);
-            _mainChart.ChartArea.PrimaryXAxis.HidePartialLabels = true; // Per demos: hide partial labels
-
-            // Axis configuration per demos (ChartAppearance.cs patterns)
-            _mainChart.PrimaryXAxis.Title = "Category";
-            _mainChart.PrimaryXAxis.Font = new Font("Segoe UI", 10F);
-            _mainChart.PrimaryXAxis.DrawGrid = false;
-            _mainChart.PrimaryXAxis.TickSize = new Size(1, 5); // Per demos: tick size
-            _mainChart.PrimaryYAxis.Title = "Amount";
-            _mainChart.PrimaryYAxis.Font = new Font("Segoe UI", 10F);
-            _mainChart.PrimaryYAxis.TickSize = new Size(5, 1); // Per demos: tick size
-
-            // Legend configuration per demos (ChartAppearance.cs patterns)
-            // OPTION C: Use ChartControl's built-in ResponsiveLayout to adapt legend placement
-            // If available in Syncfusion WinForms, ResponsiveLayout automatically repositions legend to prevent overlap
-            _mainChart.ShowLegend = true;  // Show legend for clarity
-            _mainChart.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside; // Per demos
-            
-            // Attempt to enable ResponsiveLayout if available in this Syncfusion version
-            try
-            {
-                var responsiveLayoutProp = _mainChart.GetType().GetProperty("EnableResponsiveLayout");
-                if (responsiveLayoutProp != null)
-                {
-                    responsiveLayoutProp.SetValue(_mainChart, true);
-                    Logger.LogDebug("DashboardPanel: EnableResponsiveLayout activated for chart legend");
-                }
-            }
-            catch { /* ResponsiveLayout not available in this Syncfusion version; use default legend placement */ }
-            
-            // Fallback: Set bottom placement as default; legend will adapt if ResponsiveLayout is enabled
-            _mainChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;  // Bottom placement per Syncfusion best practices
-            _mainChart.Legend.ItemsAlignment = StringAlignment.Center;  // Center alignment
-
-            chartPanel.Controls.Add(_mainChart);
-            mainSplit.Controls.Add(chartPanel, 0, 1); // Row 1, column 0 (chart)
-
-            // Right column: details grid
-            // OPTION B: Document expected grid height; defer to user resizing for high DPI scenarios
-            // Grid MinimumSize is NOT enforced here; instead, document that SfDataGrid requires ≥200px height
-            // to display 3+ rows (DPI-aware). Users on 150%+ DPI should resize parent form accordingly.
-            var rightPanel = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                RowCount = 2,
                 ColumnCount = 1,
-                Padding = new Padding(12)  // Increased padding for better breathing room
+                RowCount = 3
             };
-            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 70));
-            rightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
+            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Header/Toolbar
+            rootTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 180F)); // Row 2: KPI Gauges
+            rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Row 3: Content
 
-            // SfDataGrid configured per Syncfusion demos (Getting Started, Themes demos)
+            // --- Row 1: Header and ToolStrip ---
+            var headerTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Height = 48 };
+            headerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            headerTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+            _panelHeader = new PanelHeader { Dock = DockStyle.Fill, Title = DashboardPanelResources.PanelTitle };
+            _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
+            _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
+            _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+            _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+
+            _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
+            SetupToolStrip(_toolStrip);
+
+            headerTable.Controls.Add(_panelHeader, 0, 0);
+            headerTable.Controls.Add(_toolStrip, 1, 0);
+            rootTable.Controls.Add(headerTable, 0, 0);
+
+            // --- Row 2: KPI and Gauges ---
+            var kpiPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1 };
+            for (int i = 0; i < 4; i++) kpiPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
+            kpiPanel.Controls.Add(CreateGaugePanel("Budget Utilization", "gauge"), 0, 0);
+            kpiPanel.Controls.Add(CreateGaugePanel("Revenue Collection", "gauge"), 1, 0);
+            kpiPanel.Controls.Add(CreateGaugePanel("Expense Ratio", "gauge"), 2, 0);
+            kpiPanel.Controls.Add(CreateGaugePanel("Budget Variance", "gauge"), 3, 0);
+
+            rootTable.Controls.Add(kpiPanel, 0, 1);
+
+            // --- Row 3: Content Area (SplitContainer with Chart and Grid) ---
+            _mainSplitContainer = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 300
+            };
+
+            // Chart setup
+            _mainChart = new ChartControl
+            {
+                Dock = DockStyle.Fill,
+                AccessibleName = "Budget chart",
+                AccessibleDescription = "Displays budget vs expenditure"
+            };
+            _mainChartRegionEventWiring = new ChartControlRegionEventWiring(_mainChart);
+            ChartControlDefaults.Apply(_mainChart, logger: Logger);
+            ConfigureChart(_mainChart);
+
+            // Grid setup
             _detailsGrid = new SfDataGrid
             {
                 Dock = DockStyle.Fill,
@@ -508,149 +301,70 @@ namespace WileyWidget.WinForms.Controls
                 ShowRowHeader = false,
                 SelectionMode = Syncfusion.WinForms.DataGrid.Enums.GridSelectionMode.Single,
                 AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill,
-                RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f), // Per demos: DPI-aware
-                HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f), // Per demos: DPI-aware
-                AllowResizingColumns = true, // Per demos: enable column resize
-                AllowTriStateSorting = true, // Per demos: tri-state sorting
-                ShowSortNumbers = true, // Per demos: show sort order numbers
-                LiveDataUpdateMode = Syncfusion.Data.LiveDataUpdateMode.AllowDataShaping, // Per demos: real-time
-                AccessibleName = "Details grid",
-                AccessibleDescription = "Details list for top departments/accounts"
+                RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f),
+                HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f)
             };
-            try { _detailsGrid.ShowGroupDropArea = true; } catch { }
-            try
-            {
-                // Column configuration per Syncfusion demos - explicit column definitions for predictable behavior
-                _detailsGrid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
+            ConfigureDetailsGrid(_detailsGrid);
 
-                var colBudget = new GridNumericColumn
-                {
-                    MappingName = "BudgetedAmount",
-                    HeaderText = "Budget",
-                    MinimumWidth = 120,
-                    Format = "C0"  // Currency format with no decimal places
-                };
+            _mainSplitContainer.Panel1.Controls.Add(_mainChart);
+            _mainSplitContainer.Panel2.Controls.Add(_detailsGrid);
+            rootTable.Controls.Add(_mainSplitContainer, 0, 2);
 
-                var colActual = new GridNumericColumn
-                {
-                    MappingName = "Amount",
-                    HeaderText = "Actual",
-                    MinimumWidth = 120,
-                    Format = "C0"  // Currency format with no decimal places
-                };
-
-                _detailsGrid.Columns.Add(colBudget);
-                _detailsGrid.Columns.Add(colActual);
-            }
-            catch { }
-
-            // Theme applied automatically by SFSkinManager cascade from parent form
-
-            rightPanel.Controls.Add(_detailsGrid, 0, 0);
-
-            // small summary area
-            var summaryPanel = new GradientPanelExt
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(12),  // Increased padding for better breathing room
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                MinimumSize = new Size(0, 80)  // Prevent summary row from compressing below 80px
-            };
-            theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            SfSkinManager.SetVisualStyle(summaryPanel, theme);
-            // Replace the small summary labels with three tile widgets that include a sparkline next to each
-            var summaryTiles = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = false };
-            summaryTiles.WrapContents = false;
-
-            // Helper to create a tile
-            Func<string, string, decimal, ChartControl> createTile = (title, tooltip, value) =>
-            {
-                var tile = new GradientPanelExt
-                {
-                    Width = 260,
-                    Height = 72,
-                    Padding = new Padding(8),
-                    Margin = new Padding(6),
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-                };
-                var tileTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                SfSkinManager.SetVisualStyle(tile, tileTheme);
-
-                var lbl = new Label { Text = title, AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
-                var valLbl = new Label { Text = value.ToString("C0", CultureInfo.CurrentCulture), AutoSize = false, Height = 20, Dock = DockStyle.Top, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 11, FontStyle.Bold) };
-
-                var spark = new ChartControl { Width = 220, Height = 28, Dock = DockStyle.Bottom, AccessibleName = title + " sparkline" };
-                ChartControlRegionEventWiring? sparkWiring = null;
-                try { sparkWiring = new ChartControlRegionEventWiring(spark); } catch { }
-                spark.ShowLegend = false;
-                ChartControlDefaults.Apply(spark, new ChartControlDefaults.Options
-                {
-                    SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality,
-                    ElementsSpacing = 2,
-                    ShowToolTips = false,
-                    EnableZooming = false,
-                    EnableAxisScrollBar = false
-                }, logger: Logger);
-                spark.PrimaryYAxis.HidePartialLabels = true;
-                spark.PrimaryXAxis.HidePartialLabels = true;
-
-                tile.Controls.Add(spark);
-                tile.Controls.Add(valLbl);
-                tile.Controls.Add(lbl);
-
-                // Capture references to the value labels for later updates
-                if (title.StartsWith("Total Budget", StringComparison.Ordinal)) { _tileBudgetValueLabel = valLbl; _sparkBudgetRegionEventWiring = sparkWiring; }
-                else if (title.StartsWith("Expenditure", StringComparison.Ordinal)) { _tileExpenditureValueLabel = valLbl; _sparkExpenditureRegionEventWiring = sparkWiring; }
-                else if (title.StartsWith("Remaining", StringComparison.Ordinal)) { _tileRemainingValueLabel = valLbl; _sparkRemainingRegionEventWiring = sparkWiring; }
-
-                summaryTiles.Controls.Add(tile);
-
-                return spark;
-            };
-
-            // Create three tiles (values will be updated in bindings)
-            _sparkBudget = createTile("Total Budget", "Total budget", _vm?.TotalBudget ?? 0);
-            _sparkExpenditure = createTile("Expenditure", "Total expenditure", _vm?.TotalExpenditure ?? 0);
-            _sparkRemaining = createTile("Remaining", "Remaining budget", _vm?.RemainingBudget ?? 0);
-
-            summaryPanel.Controls.Add(summaryTiles);
-
-            rightPanel.Controls.Add(summaryPanel, 0, 1);
-
-            mainSplit.Controls.Add(rightPanel, 1, 1); // Row 1, column 1 (grid + summary)
-
-            Controls.Add(mainSplit);
-
-            // status bar
+            // Status Bar
             _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
             _statusLabel = new ToolStripStatusLabel { Text = "Ready" };
             _statusStrip.Items.Add(_statusLabel);
-            Controls.Add(_statusStrip);
 
-            // Add overlays for loading/no-data states
-            _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard...", Dock = DockStyle.Fill };
-            Controls.Add(_loadingOverlay);
+            // Overlays
+            _loadingOverlay = new LoadingOverlay { Message = "Loading dashboard...", Dock = DockStyle.Fill, Visible = false };
+            _noDataOverlay = new NoDataOverlay { Message = "No data yet.", Dock = DockStyle.Fill, Visible = false };
 
-            _noDataOverlay = new NoDataOverlay
-            {
-                Message = "No data yet – import or add entries to get started.",
-                Dock = DockStyle.Fill
-            };
-            Controls.Add(_noDataOverlay);
+            this.Controls.Add(_loadingOverlay);
+            this.Controls.Add(_noDataOverlay);
+            this.Controls.Add(_statusStrip);
+            this.Controls.Add(rootTable);
 
-            // Resume layout after all controls added
-            this.ResumeLayout(false);
-            this.PerformLayout();
-            this.Refresh();
+            _loadingOverlay.BringToFront();
+            _noDataOverlay.BringToFront();
+
             try { Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name); } catch { }
 
             // Validate toolbar visibility post-layout (OPTION B)
             // Logs if toolbar is collapsed or invisible after layout settles
             ValidateToolbarVisibility();
 
-            // Theme handler removed - SfSkinManager cascade handles all theme changes automatically
+            ResumeLayout(true);
+            this.PerformLayout();
+            this.Refresh();
+        }
+
+        private void SetupToolStrip(ToolStrip toolStrip)
+        {
+            var btnRefresh = new ToolStripButton(DashboardPanelResources.RefreshText) { ToolTipText = "Reload metrics (F5)" };
+            btnRefresh.Click += (s, e) => _vm?.RefreshCommand?.ExecuteAsync(null);
+
+            var btnLoad = new ToolStripButton("Load") { ToolTipText = "Load dashboard data" };
+            btnLoad.Click += async (s, e) => { if (_vm?.LoadDataCommand != null) await _vm.LoadDataCommand.ExecuteAsync(null); };
+
+            toolStrip.Items.Add(new ToolStripLabel("Dashboard"));
+            toolStrip.Items.Add(new ToolStripSeparator());
+            toolStrip.Items.Add(btnRefresh);
+            toolStrip.Items.Add(btnLoad);
+        }
+
+        private void ConfigureChart(ChartControl chart)
+        {
+            chart.PrimaryXAxis.Title = "Category";
+            chart.PrimaryYAxis.Title = "Amount";
+            chart.ShowLegend = true;
+            chart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;
+        }
+
+        private void ConfigureDetailsGrid(SfDataGrid grid)
+        {
+            grid.Columns.Add(new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 });
+            grid.Columns.Add(new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budget", Format = "C0", MinimumWidth = 120 });
+            grid.Columns.Add(new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", Format = "C0", MinimumWidth = 120 });
         }
 
         /// <summary>
@@ -1495,13 +1209,8 @@ namespace WileyWidget.WinForms.Controls
                 // Unsubscribe from ViewModel events
                 try { if (_viewModelPropertyChangedHandler != null && _vm is INotifyPropertyChanged npc) npc.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
 
-                // Unsubscribe from button click events
-                try { if (_btnLoadDashboardClickHandler != null) _btnLoadDashboard.Click -= _btnLoadDashboardClickHandler; } catch { }
-                try { if (_btnRefreshClickHandler != null) _btnRefresh.Click -= _btnRefreshClickHandler; } catch { }
-                try { if (_btnExportExcelClickHandler != null) _btnExportExcel.Click -= _btnExportExcelClickHandler; } catch { }
-                try { if (_btnExportPdfClickHandler != null) _btnExportPdf.Click -= _btnExportPdfClickHandler; } catch { }
-                try { if (_btnAccountsClickHandler != null) _btnAccounts.Click -= _btnAccountsClickHandler; } catch { }
-                try { if (_btnChartsClickHandler != null) _btnCharts.Click -= _btnChartsClickHandler; } catch { }
+                // Button click handlers are wired with inline lambdas, no need to unsubscribe
+                // They will be disposed with their parent controls
 
                 // Unsubscribe from PanelHeader events using stored named handlers (no reflection needed)
                 try
@@ -1538,6 +1247,7 @@ namespace WileyWidget.WinForms.Controls
                 try { _detailsGrid?.Dispose(); } catch { }
                 try { _statusStrip?.Dispose(); } catch { }
                 try { _toolStrip?.Dispose(); } catch { }
+                try { _mainSplitContainer?.Dispose(); } catch { }
                 try { _topPanel?.Dispose(); } catch { }
                 try { _btnRefresh?.Dispose(); } catch { }
                 try { _lblLastRefreshed?.Dispose(); } catch { }
@@ -1552,11 +1262,8 @@ namespace WileyWidget.WinForms.Controls
 
                 // Dispose per-tile sparks
                 try { _sparkBudgetRegionEventWiring?.Dispose(); } catch { }
-                _sparkBudgetRegionEventWiring = null;
                 try { _sparkExpenditureRegionEventWiring?.Dispose(); } catch { }
-                _sparkExpenditureRegionEventWiring = null;
                 try { _sparkRemainingRegionEventWiring?.Dispose(); } catch { }
-                _sparkRemainingRegionEventWiring = null;
                 try { _sparkBudget?.Dispose(); } catch { }
                 try { _sparkExpenditure?.Dispose(); } catch { }
                 try { _sparkRemaining?.Dispose(); } catch { }
