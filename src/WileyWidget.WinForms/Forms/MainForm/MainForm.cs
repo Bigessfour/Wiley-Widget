@@ -334,7 +334,9 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnLoad START");
             base.OnLoad(e);
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnLoad base.OnLoad completed");
 
             // [PERF] Track lifecycle event
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -354,29 +356,41 @@ namespace WileyWidget.WinForms.Forms
             _initialized = true;
 
             // [PERF] Load MRU and restore window state (once, in OnLoad)
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Loading MRU list");
             LoadMruList();
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Restoring window state");
             _windowStateService.RestoreWindowState(this);
 
             // [PERF] Initialize UI chrome (Ribbon/StatusBar/MenuBar)
-            _logger?.LogDebug("OnLoad: Starting UI chrome initialization");
-            InitializeChrome();
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting UI chrome initialization");
+            try
+            {
+                InitializeChrome();
+                _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI chrome initialization completed");
+            }
+            catch (Exception chromeEx)
+            {
+                _logger?.LogError(chromeEx, "[DIAGNOSTIC] OnLoad: InitializeChrome FAILED - {Type}: {Message}", chromeEx.GetType().Name, chromeEx.Message);
+                throw;
+            }
 
             // [PERF] Z-order management
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting Z-order management");
             try
             {
                 if (_ribbon != null) _ribbon.BringToFront();
                 if (_statusBar != null) _statusBar.BringToFront();
                 Refresh();
                 Invalidate();
-                _logger?.LogDebug("Z-order management completed");
+                _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Z-order management completed");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "OnLoad failed during z-order configuration");
+                _logger?.LogError(ex, "[DIAGNOSTIC] OnLoad failed during z-order configuration - {Type}: {Message}", ex.GetType().Name, ex.Message);
                 throw;
             }
 
-            _logger?.LogInformation("OnLoad: UI initialization completed");
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI initialization COMPLETED SUCCESSFULLY");
         }
 
         /// <summary>
@@ -404,10 +418,12 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnShown START");
+
             // [PERF] Guard against multiple OnShown calls
             if (Interlocked.Exchange(ref _onShownExecuted, 1) != 0)
             {
-                _logger?.LogWarning("OnShown called multiple times - ignoring duplicate");
+                _logger?.LogWarning("[DIAGNOSTIC] OnShown called multiple times - ignoring duplicate");
                 return;
             }
 
@@ -440,12 +456,13 @@ namespace WileyWidget.WinForms.Forms
             {
                 try
                 {
-                    _logger?.LogInformation("OnShown: Validating initialization state");
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validating initialization state");
                     ValidateInitializationState();
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validation state check PASSED");
                 }
                 catch (InvalidOperationException valEx)
                 {
-                    _logger?.LogError(valEx, "OnShown: Initialization state validation failed");
+                    _logger?.LogError(valEx, "[DIAGNOSTIC] OnShown: Initialization state validation FAILED - {Message}", valEx.Message);
                     UIHelper.ShowErrorOnUI(this,
                         $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.",
                         "Initialization Error", _logger);
@@ -455,30 +472,36 @@ namespace WileyWidget.WinForms.Forms
 
                 try
                 {
-                    _logger?.LogInformation("OnShown: Initializing Syncfusion docking");
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting Syncfusion docking initialization");
                     InitializeSyncfusionDocking();
                     _syncfusionDockingInitialized = true;
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
                     this.Refresh();
 
                     // Defer docking layout loading to OnShown for better timing
                     if (_uiConfig?.UseSyncfusionDocking == true)
                     {
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Loading docking layout");
                         var layoutPath = GetDockingLayoutPath();
                         _ = LoadAndApplyDockingLayout(layoutPath, cancellationToken);
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Applying theme to docking panels");
                         ApplyThemeToDockingPanels();
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Docking layout and theme applied");
                         // Z-order adjustment is now handled by debounced handler in DockStateChanged
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "OnShown: Syncfusion docking initialization failed - {Type}: {Message}",
-                        ex.GetType().Name, ex.Message);
+                    _logger?.LogError(ex, "[DIAGNOSTIC] OnShown: Syncfusion docking initialization FAILED - {Type}: {Message}\nStack: {Stack}",
+                        ex.GetType().Name, ex.Message, ex.StackTrace);
                 }
             }
 
+            _logger?.LogInformation("[DIAGNOSTIC] OnShown: Calling base.OnShown");
             base.OnShown(e);
+            _logger?.LogInformation("[DIAGNOSTIC] OnShown: base.OnShown completed");
 
-            _logger?.LogInformation("[UI] OnShown: Starting deferred initialization");
+            _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting deferred initialization");
 
             // [PERF] Track lifecycle event
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions

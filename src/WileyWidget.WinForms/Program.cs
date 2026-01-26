@@ -86,12 +86,49 @@ namespace WileyWidget.WinForms
                 e.SetObserved(); // Suppress crash, log only
             };
 
+            // AppDomain-level handler to catch exceptions that ThreadException misses
+            AppDomain.CurrentDomain.UnhandledException += (s, ev) =>
+            {
+                var ex = ev.ExceptionObject as Exception;
+                Log.Fatal(ex, "[FATAL] Unhandled AppDomain exception (isTerminating={IsTerminating})", ev.IsTerminating);
+                if (ev.IsTerminating)
+                {
+                    try
+                    {
+                        var message = $"FATAL ERROR - Application terminating:\n\n{ex?.GetType().Name}: {ex?.Message}\n\nStack:\n{ex?.StackTrace}";
+                        MessageBox.Show(message, "Fatal Application Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    catch { } // Ignore MessageBox errors during app shutdown
+                }
+            };
+
             System.Windows.Forms.Application.ThreadException += static (s, e) =>
             {
-                Log.Error(e.Exception, "Unhandled UI thread exception");
-                // Show minimal error dialog to user, full details to log
-                ShowErrorDialog("Application Error", e.Exception.Message, e.Exception);
-                // Note: ThreadExceptionEventArgs doesn't support suppression; application will terminate
+                Log.Error(e.Exception, "[CRITICAL] Unhandled UI thread exception - application will terminate with code -1");
+                // Log full exception details before showing dialog
+                var ex = e.Exception;
+                var depth = 0;
+                while (ex != null && depth < 5)
+                {
+                    Log.Fatal($"[Depth {depth}] {ex.GetType().Name}: {ex.Message}");
+                    if (!string.IsNullOrEmpty(ex.StackTrace))
+                    {
+                        Log.Fatal($"Stack Trace:\n{ex.StackTrace}");
+                    }
+                    ex = ex.InnerException;
+                    depth++;
+                }
+                Log.CloseAndFlush(); // Flush logs before showing dialog
+                // Show minimal error dialog to user
+                try
+                {
+                    ShowErrorDialog("Application Error", e.Exception.Message, e.Exception);
+                }
+                catch (Exception dialogEx)
+                {
+                    Log.Error(dialogEx, "Failed to show error dialog");
+                }
+                // Note: ThreadExceptionEventArgs doesn't support suppression; application will terminate with code -1
             };
 
             try
