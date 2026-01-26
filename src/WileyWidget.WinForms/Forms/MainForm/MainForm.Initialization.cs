@@ -109,6 +109,40 @@ public partial class MainForm
                 }
             }
 
+            // ============================================================================
+            // NAVIGATION HARDENING: Enable ribbon buttons once docking system is confirmed ready
+            // This prevents clicks on navigation buttons before the docking system has initialized
+            // NOTE: Disabled - ToolStripButton is not a Control, can't iterate via Controls collection
+            // ============================================================================
+            // try
+            // {
+            //     if (_ribbon != null && IsHandleCreated && !IsDisposed)
+            //     {
+            //         _ribbon.InvokeIfRequired(() =>
+            //         {
+            //             try
+            //             {
+            //                 var allControls = new List<Control>();
+            //                 CollectAllControls(_ribbon, allControls);
+            //
+            //                 int enabledCount = 0;
+            //                 foreach (var ctrl in allControls)
+            //                 {
+            //                     // Can't check ToolStripButton here - not a Control
+            //                 }
+            //             }
+            //             catch (Exception ex)
+            //             {
+            //                 _logger?.LogWarning(ex, "[RIBBON] Failed to enable navigation buttons (non-critical)");
+            //             }
+            //         });
+            //     }
+            // }
+            // catch (Exception ex)
+            // {
+            //     _logger?.LogWarning(ex, "[RIBBON] Unexpected error enabling navigation buttons (non-critical)");
+            // }
+
             _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
         }
         catch (OperationCanceledException)

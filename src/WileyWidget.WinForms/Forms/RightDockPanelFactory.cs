@@ -162,6 +162,20 @@ public static class RightDockPanelFactory
             // Switch tabs based on target mode - guard against empty Controls collection
             if (rightDockPanel.Controls != null && rightDockPanel.Controls.Count > 0 && rightDockPanel.Controls[0] is TabControl tabControl)
             {
+                // Defensive guard: verify TabControl and TabPages are valid
+                if (tabControl.IsDisposed)
+                {
+                    logger?.LogWarning("RightDockPanelFactory: TabControl is disposed - cannot switch to {TargetMode}", targetMode);
+                    return;
+                }
+
+                if (tabControl.TabPages == null || tabControl.TabPages.Count == 0)
+                {
+                    logger?.LogWarning("RightDockPanelFactory: TabControl has no TabPages ({Count}) - cannot switch to {TargetMode}",
+                        tabControl.TabPages?.Count ?? -1, targetMode);
+                    return;
+                }
+
                 tabControl.SuspendLayout();
                 try
                 {
@@ -170,26 +184,63 @@ public static class RightDockPanelFactory
                         case RightPanelMode.ActivityLog:
                             var activityLogTab = tabControl.TabPages.Cast<TabPage>()
                                 .FirstOrDefault(tp => tp.Name == "ActivityLogTab");
-                            if (activityLogTab != null)
+                            if (activityLogTab != null && tabControl.TabPages.Contains(activityLogTab))
                             {
-                                tabControl.SelectedTab = activityLogTab;
-                                activityLogTab.Visible = true;
-                                logger?.LogDebug("RightDockPanelFactory: Activity Log tab selected and visible");
+                                try
+                                {
+                                    tabControl.SelectedTab = activityLogTab;
+                                    activityLogTab.Visible = true;
+                                    logger?.LogDebug("RightDockPanelFactory: Activity Log tab selected and visible");
+                                }
+                                catch (ArgumentOutOfRangeException ex)
+                                {
+                                    logger?.LogError(ex,
+                                        "RightDockPanelFactory: ArgumentOutOfRangeException setting ActivityLog tab. " +
+                                        "TabPages.Count={Count}, SelectedIndex={SelectedIndex}, TabDisposed={TabDisposed}",
+                                        tabControl.TabPages.Count, tabControl.SelectedIndex, activityLogTab.IsDisposed);
+                                    // Fallback: select first available tab
+                                    if (tabControl.TabPages.Count > 0)
+                                        tabControl.SelectedIndex = 0;
+                                }
+                            }
+                            else
+                            {
+                                logger?.LogWarning("RightDockPanelFactory: Activity Log tab not found or not in collection. " +
+                                    "Tab exists: {TabExists}, In collection: {InCollection}",
+                                    activityLogTab != null,
+                                    activityLogTab != null && tabControl.TabPages.Contains(activityLogTab));
                             }
                             break;
 
                         case RightPanelMode.JarvisChat:
                             var jarvisTab = tabControl.TabPages.Cast<TabPage>()
                                 .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
-                            if (jarvisTab != null)
+                            if (jarvisTab != null && tabControl.TabPages.Contains(jarvisTab))
                             {
-                                tabControl.SelectedTab = jarvisTab;
-                                jarvisTab.Visible = true;
-                                logger?.LogDebug("RightDockPanelFactory: JARVIS Chat tab selected and visible");
+                                try
+                                {
+                                    tabControl.SelectedTab = jarvisTab;
+                                    jarvisTab.Visible = true;
+                                    logger?.LogDebug("RightDockPanelFactory: JARVIS Chat tab selected and visible");
+                                }
+                                catch (ArgumentOutOfRangeException ex)
+                                {
+                                    logger?.LogError(ex,
+                                        "RightDockPanelFactory: ArgumentOutOfRangeException setting JARVIS tab. " +
+                                        "TabPages.Count={Count}, SelectedIndex={SelectedIndex}, TabDisposed={TabDisposed}",
+                                        tabControl.TabPages.Count, tabControl.SelectedIndex, jarvisTab.IsDisposed);
+                                    // Fallback: select first available tab
+                                    if (tabControl.TabPages.Count > 0)
+                                        tabControl.SelectedIndex = 0;
+                                }
                             }
                             else
                             {
-                                logger?.LogWarning("RightDockPanelFactory: JARVIS Chat tab not found in TabControl");
+                                logger?.LogWarning("RightDockPanelFactory: JARVIS Chat tab not found or not in collection. " +
+                                    "Tab exists: {TabExists}, In collection: {InCollection}, TabPages.Count={TabCount}",
+                                    jarvisTab != null,
+                                    jarvisTab != null && tabControl.TabPages.Contains(jarvisTab),
+                                    tabControl.TabPages.Count);
                             }
                             break;
                     }
@@ -204,7 +255,7 @@ public static class RightDockPanelFactory
                 logger?.LogWarning("RightDockPanelFactory: Right panel first control is not a TabControl - cannot switch");
             }
 
-            // Update tracked mode
+            // Update stored mode
             rightDockPanel.Tag = targetMode;
         }
         catch (Exception ex)

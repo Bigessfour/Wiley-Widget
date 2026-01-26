@@ -273,6 +273,8 @@ public static class RibbonFactory
         var dashboardBtn = CreateLargeNavButton(
             "Nav_Dashboard", "Dashboard", "dashboard", theme,
             () => form.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Fill), logger);
+        dashboardBtn.Tag = "Nav:Dashboard";
+        dashboardBtn.Enabled = false;
 
         strip.Items.Add(dashboardBtn);
         return (strip, dashboardBtn);
@@ -286,14 +288,20 @@ public static class RibbonFactory
         var accountsBtn = CreateLargeNavButton(
             "Nav_Accounts", "Accounts", "accounts", theme,
             () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right), logger);
+        accountsBtn.Tag = "Nav:Accounts";
+        accountsBtn.Enabled = false;
 
         var budgetsBtn = CreateLargeNavButton(
             "Nav_Budgets", "Budgets", "budgets", theme,
             () => form.ShowPanel<BudgetPanel>("Municipal Budgets", DockingStyle.Right), logger);
+        budgetsBtn.Tag = "Nav:Budgets";
+        budgetsBtn.Enabled = false;
 
         var analyticsBtn = CreateLargeNavButton(
             "Nav_Analytics", "Analytics", "analytics", theme,
             () => form.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right), logger);
+        analyticsBtn.Tag = "Nav:Analytics";
+        analyticsBtn.Enabled = false;
 
         strip.Items.Add(accountsBtn);
         strip.Items.Add(budgetsBtn);
@@ -310,6 +318,8 @@ public static class RibbonFactory
         var reportsBtn = CreateLargeNavButton(
             "Nav_Reports", "Reports", "reports", theme,
             () => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right), logger);
+        reportsBtn.Tag = "Nav:Reports";
+        reportsBtn.Enabled = false;
 
         strip.Items.Add(reportsBtn);
         return strip;

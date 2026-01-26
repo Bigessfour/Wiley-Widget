@@ -349,4 +349,24 @@ public partial class MainForm
         _windowStateService.ClearMru();
         UpdateMruMenu(_recentFilesMenu!);
     }
+
+    /// <summary>
+    /// Recursively collects all controls from a parent control.
+    /// Used to find ribbon buttons for gating/enabling navigation.
+    /// </summary>
+    private void CollectAllControls(Control parent, List<Control> collected)
+    {
+        try
+        {
+            foreach (Control child in parent.Controls)
+            {
+                collected.Add(child);
+                CollectAllControls(child, collected);
+            }
+        }
+        catch
+        {
+            // Safe to ignore - collection errors don't block initialization
+        }
+    }
 }

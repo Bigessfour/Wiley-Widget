@@ -318,6 +318,24 @@ public class DockingLayoutManager : IDisposable
                                 {
                                     _logger?.LogDebug(ex, "Deferred right panel visibility handling failed");
                                 }
+
+                                // SAFETY: Force visibility recovery if right panel is still hidden after layout load
+                                // This prevents the silent-failure case where layout deserialization errors
+                                // leave the panel hidden without user awareness
+                                try
+                                {
+                                    if (_rightDockPanel != null && !_rightDockPanel.Visible)
+                                    {
+                                        _logger?.LogWarning("[DOCKING.LAYOUT] Right panel is still hidden after layout load - forcing visibility for safety");
+                                        dockingManager.SetDockVisibility(_rightDockPanel, true);
+                                        dockingManager.ActivateControl(_rightDockPanel);
+                                        _logger?.LogInformation("[DOCKING.LAYOUT] Right panel visibility recovered and activated");
+                                    }
+                                }
+                                catch (Exception visRecoveryEx)
+                                {
+                                    _logger?.LogWarning(visRecoveryEx, "[DOCKING.LAYOUT] Failed to recover right panel visibility (non-critical)");
+                                }
                             }
                             finally
                             {
