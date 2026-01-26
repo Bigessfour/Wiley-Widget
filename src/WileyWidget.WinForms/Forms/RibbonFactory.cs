@@ -150,6 +150,16 @@ public static class RibbonFactory
 
         ribbon.Header.AddMainItem(homeTab);
 
+        // === RIBBON HEADER VALIDATION (Prevent Paint Crashes) ===
+        // CRITICAL: Syncfusion DockHost.GetPaintInfo() crashes with ArgumentOutOfRangeException
+        // if ribbon header has zero items when paint fires. Guard by ensuring at least one item.
+        if (ribbon.Header.MainItems.Count == 0)
+        {
+            logger?.LogWarning("[RIBBON_FACTORY] Ribbon header had 0 items - adding fallback Home tab to prevent paint crash");
+            var fallbackTab = new ToolStripTabItem { Text = "Home", Name = "FallbackHomeTab" };
+            ribbon.Header.AddMainItem(fallbackTab);
+        }
+
         // ===== QUICK ACCESS TOOLBAR (QAT) =====
         try
         {
@@ -160,7 +170,7 @@ public static class RibbonFactory
             logger?.LogWarning(ex, "[RIBBON_FACTORY] QAT initialization failed");
         }
 
-        logger?.LogDebug("[RIBBON_FACTORY] Ribbon initialized with Office 2019 Demo styling");
+        logger?.LogDebug("[RIBBON_FACTORY] Ribbon initialized with Office 2019 Demo styling (header items={ItemCount})", ribbon.Header.MainItems.Count);
 
         return (ribbon, homeTab);
     }
@@ -321,7 +331,26 @@ public static class RibbonFactory
         var jarvisBtn = CreateLargeNavButton(
             "Nav_JARVIS", "JARVIS AI", "jarvis", theme,
             () => {
-                if (form is MainForm mainForm) mainForm.SwitchRightPanel(RightDockPanelFactory.RightPanelMode.JarvisChat);
+                if (form is MainForm mainForm)
+                {
+                    // Defer slightly to allow ribbon paint to complete before docking layout changes
+                    form.BeginInvoke(new System.Action(() =>
+                    {
+                        try
+                        {
+                            mainForm.SwitchRightPanel(RightDockPanelFactory.RightPanelMode.JarvisChat);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger?.LogError(ex, "Failed to switch to JARVIS Chat panel");
+                            System.Windows.Forms.MessageBox.Show(
+                                $"Failed to open JARVIS Chat: {ex.Message}",
+                                "Panel Error",
+                                System.Windows.Forms.MessageBoxButtons.OK,
+                                System.Windows.Forms.MessageBoxIcon.Warning);
+                        }
+                    }));
+                }
             }, logger);
 
         strip.Items.Add(settingsBtn);

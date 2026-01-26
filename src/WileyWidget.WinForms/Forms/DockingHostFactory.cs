@@ -174,14 +174,45 @@ public static class DockingHostFactory
             // No need to manually create a dashboard panel here - it will be shown on demand via ShowPanel
             logger?.LogDebug("Central space configured to auto-fill between left (300px) and right (350px) docking panels");
 
+            // === DOCKING MANAGER CONTROLS VALIDATION (Prevent Paint Crashes) ===
+            // CRITICAL: Syncfusion DockHost crashes with ArgumentOutOfRangeException if DockingManager
+            // has zero child controls when paint fires (e.g., during layout restore or panel visibility toggles).
+            // Guard by ensuring at least one panel exists before returning.
+            try
+            {
+                if (dockingManager?.Controls != null && dockingManager.Controls is System.Collections.ICollection controlCollection)
+                {
+                    if (controlCollection.Count == 0)
+                    {
+                        logger?.LogWarning(
+                            "[DOCKING_FACTORY] DockingManager has 0 controls - adding fallback panel to prevent paint crash");
+                        // Create a minimal fallback panel to prevent paint crashes
+                        var fallbackPanel = new Panel
+                        {
+                            Dock = DockStyle.Fill,
+                            BackColor = Color.LightGray,
+                            Name = "FallbackDockPanel",
+                            AccessibleName = "Fallback Dock Panel",
+                            AccessibleDescription = "Fallback panel added to prevent paint crashes"
+                        };
+                        mainForm.Controls.Add(fallbackPanel);
+                        dockingManager.DockControl(fallbackPanel, mainForm, DockingStyle.Fill, 100);
+                    }
+                }
+            }
+            catch (Exception guardEx)
+            {
+                logger?.LogDebug(guardEx, "[DOCKING_FACTORY] Error checking/fixing empty controls collection");
+            }
+
             // ActivityLogPanel is now created and managed by RightDockPanelFactory
             // No need for external timer - panel manages its own refresh cycle (5 seconds)
             System.Windows.Forms.Timer? activityRefreshTimer = null;
 
-            // Create Layout Manager
+            // Create Layout Manager (dockingManager is guaranteed non-null at this point in the try block)
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
-            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath, mainForm, dockingManager, leftDockPanel, rightDockPanel, activityLogPanel);
+            var layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath, mainForm, dockingManager!, leftDockPanel, rightDockPanel, activityLogPanel);
 
             logger?.LogInformation("Docking layout complete - Dashboard fills remaining central space (Left=300px, Right=350px)");
 
