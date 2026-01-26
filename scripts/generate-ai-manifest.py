@@ -167,18 +167,55 @@ class AIManifestGenerator:
         language_map = {
             ".cs": "C#",
             ".xaml": "XAML",
+            ".razor": "Razor",
+            ".razorjs": "Razor JS",
             ".csproj": "C# Project",
             ".sln": "Visual Studio Solution",
             ".py": "Python",
             ".js": "JavaScript",
             ".ts": "TypeScript",
+            ".tsx": "TypeScript JSX",
             ".json": "JSON",
             ".xml": "XML",
             ".md": "Markdown",
             ".txt": "Text",
             ".ps1": "PowerShell",
+            ".config": "Configuration",
+            ".html": "HTML",
+            ".css": "CSS",
+            ".scss": "SCSS",
         }
         return language_map.get(ext, "Unknown")
+
+    def _should_include_file(self, path: Path) -> bool:
+        """
+        Determine if a file should be included.
+        Respects global exclusions, but prioritizes src/ files.
+        """
+        relative_path = path.relative_to(self.repo_root)
+        path_str = str(relative_path)
+
+        # Src files always included unless explicitly excluded by pattern
+        if path_str.startswith("src/"):
+            # Still check exclude patterns (e.g., bin/, obj/, .generated)
+            for pattern in self.exclude_patterns:
+                if pattern.search(path_str):
+                    return False
+            return True
+
+        # Non-src files follow normal exclusion rules
+        for pattern in self.exclude_patterns:
+            if pattern.search(path_str):
+                return False
+
+        # Focus mode only applies to non-src files (don't filter src files)
+        if self.config.get("focus_mode", False):
+            if self.focus_extensions:
+                ext = path.suffix.lower()
+                if ext not in self.focus_extensions:
+                    return False
+
+        return True
 
     def _scan_files(self) -> List[Dict[str, Any]]:
         """Scan repository files and collect metadata."""
@@ -194,7 +231,8 @@ class AIManifestGenerator:
             if not file_path.is_file():
                 continue
 
-            if not self._should_include_path(file_path):
+            # Use new method that prioritizes src/ files
+            if not self._should_include_file(file_path):
                 continue
 
             if self.max_files and len(files) >= self.max_files:
@@ -213,8 +251,8 @@ class AIManifestGenerator:
                 sha256 = self._calculate_sha256(file_path)
                 language = self._detect_language(file_path)
 
-                # Categorize
-                if file_path.suffix in [".cs", ".xaml", ".py", ".js", ".ts"]:
+                # Categorize - expanded to include more source file types
+                if file_path.suffix in [".cs", ".xaml", ".razor", ".razorjs", ".py", ".js", ".ts", ".tsx", ".json", ".xml", ".ps1"]:
                     category = "source_code"
                 elif "test" in str(relative_path).lower():
                     category = "test"
