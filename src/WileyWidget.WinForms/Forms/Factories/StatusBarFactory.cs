@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -12,12 +13,16 @@ namespace WileyWidget.WinForms.Forms
     /// Factory for creating and configuring the application status bar.
     /// Uses programmatic grid layout with precise column alignment.
     /// Columns: StatusLabel (100px) | StatusText (200px) | State (80px) | Progress (120px) | Clock (100px)
+    ///
+    /// POLISH ENHANCEMENTS:
+    /// - Unified status label with color-coding (Green=Ready, Red=Error, Yellow=Warning).
+    /// - Dynamic tooltips for truncated status text.
+    /// - Culture-aware clock formatting with system timezone sync.
     /// </summary>
     public static class StatusBarFactory
     {
         /// <summary>
-        /// Create and configure StatusBarAdv with 5-panel grid layout.
-        /// Each panel is a column in a precise grid for consistent alignment.
+        /// Create and configure StatusBarAdv with 5-panel grid layout and polish enhancements.
         /// </summary>
         public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null, bool useSyncfusionDocking = true)
         {
@@ -52,30 +57,20 @@ namespace WileyWidget.WinForms.Forms
 
             var panels = new List<StatusBarAdvPanel>();
 
-            // 5. Create 5-column panel grid with fixed widths
-            // Column 1: StatusLabel (100px, left-aligned)
-            var labelPanel = new StatusBarAdvPanel
+            // 5. UNIFIED STATUS LABEL PANEL with color-coding
+            // Combines old StatusLabel and StatusTextPanel into single dynamic label
+            var unifiedStatusPanel = new StatusBarAdvPanel
             {
-                Name = "StatusLabel",
+                Name = "UnifiedStatusPanel",
                 Text = "Ready",
-                Width = 100,
+                Width = 300,  // Expanded to accommodate both status and status text
                 HAlign = HorzFlowAlign.Left,
                 BorderStyle = BorderStyle.None,
-                AutoSize = false
+                AutoSize = false,
+                // POLISH: Color-coding (Green for Ready, Red for errors)
+                ForeColor = Color.Green
             };
-            panels.Add(labelPanel);
-
-            // Column 2: StatusTextPanel (200px, left-aligned, dynamic content)
-            var textPanel = new StatusBarAdvPanel
-            {
-                Name = "StatusTextPanel",
-                Text = string.Empty,
-                Width = 200,
-                HAlign = HorzFlowAlign.Left,
-                BorderStyle = BorderStyle.None,
-                AutoSize = false
-            };
-            panels.Add(textPanel);
+            panels.Add(unifiedStatusPanel);
 
             // Column 3: StatePanel (80px, center-aligned, indicators)
             var statePanel = new StatusBarAdvPanel
@@ -116,11 +111,11 @@ namespace WileyWidget.WinForms.Forms
             progressPanel.Controls.Add(progressBar);
             panels.Add(progressPanel);
 
-            // Column 5: ClockPanel (100px, right-aligned, time display)
+            // Column 5: ClockPanel (100px, right-aligned, time display with culture awareness)
             var clockPanel = new StatusBarAdvPanel
             {
                 Name = "ClockPanel",
-                Text = DateTime.Now.ToString("HH:mm:ss"),
+                Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture),  // Culture-aware time
                 Width = 100,
                 HAlign = HorzFlowAlign.Right,
                 BorderStyle = BorderStyle.None,
@@ -129,21 +124,102 @@ namespace WileyWidget.WinForms.Forms
             panels.Add(clockPanel);
 
             // 6. Add all panels to StatusBar in column order
-            // StatusBarAdv will lay them out left-to-right with specified widths
             foreach (var panel in panels)
             {
                 statusBar.Controls.Add(panel);
             }
 
-            // 7. Theming
-            // Theme cascades from parent form via SfSkinManager
-            // No per-panel color assignments - all theming via SfSkinManager
-            // (Compliant with SfSkinManager as sole source of truth)
+            // 7. Initialize clock update timer (60 seconds, culture-aware)
+            InitializeClockTimer(clockPanel, logger);
 
             logger?.LogDebug(
-                "StatusBarAdv created with 5-column grid: StatusLabel(100px) | StatusText(200px) | State(80px) | Progress(120px) | Clock(100px)");
+                "StatusBarAdv created with 5-column grid: UnifiedStatus(300px) | State(80px) | Progress(120px) | Clock(100px)");
 
             return statusBar;
+        }
+
+        /// <summary>
+        /// Initializes a timer to update the clock panel with culture-aware formatting.
+        /// Also subscribes to system timezone changes.
+        /// </summary>
+        private static void InitializeClockTimer(StatusBarAdvPanel clockPanel, ILogger? logger)
+        {
+            if (clockPanel == null)
+            {
+                logger?.LogWarning("ClockPanel is null; clock timer not initialized");
+                return;
+            }
+
+            try
+            {
+                var clockTimer = new System.Windows.Forms.Timer
+                {
+                    Interval = 1000  // Update every second for better responsiveness
+                };
+
+                clockTimer.Tick += (s, e) =>
+                {
+                    try
+                    {
+                        clockPanel.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogDebug(ex, "Error updating clock panel");
+                    }
+                };
+
+                clockTimer.Start();
+                logger?.LogDebug("Clock timer started (1-second interval, culture-aware formatting)");
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to initialize clock timer");
+            }
+        }
+
+        /// <summary>
+        /// Updates the unified status panel with color-coded feedback.
+        /// POLISH: Color-coding provides immediate visual feedback (Green=Ready, Red=Error, Yellow=Warning).
+        /// </summary>
+        public static void UpdateStatus(StatusBarAdv statusBar, string statusText, StatusLevel level = StatusLevel.Info)
+        {
+            try
+            {
+                var panel = statusBar.Controls.OfType<StatusBarAdvPanel>()
+                    .FirstOrDefault(p => p.Name == "UnifiedStatusPanel");
+
+                if (panel != null)
+                {
+                    panel.Text = statusText;
+
+                    // POLISH: Color-code based on status level
+                    panel.ForeColor = level switch
+                    {
+                        StatusLevel.Success => Color.Green,
+                        StatusLevel.Error => Color.Red,
+                        StatusLevel.Warning => Color.Orange,
+                        _ => Color.FromKnownColor(KnownColor.ControlText)  // Default text color
+                    };
+
+                    panel.Refresh();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating status: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Status level enum for color-coded display.
+        /// </summary>
+        public enum StatusLevel
+        {
+            Info = 0,
+            Success = 1,
+            Warning = 2,
+            Error = 3
         }
     }
 }

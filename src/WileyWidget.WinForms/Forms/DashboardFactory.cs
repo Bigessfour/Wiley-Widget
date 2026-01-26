@@ -73,12 +73,13 @@ public static class DashboardFactory
                 AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
 
-            // Create cards with fixed width for centering
-            const int cardWidth = 280;
+            // POLISH: Calculate responsive card widths based on DPI and available space
+            var dpi = GetDpiScaling();
+            var responsiveCardWidth = CalculateResponsiveCardWidth(dashboardPanel, dpi);
             const int cardHeight = 80;
 
             // Card 1: Accounts
-            var accountsTuple = CreateDashboardCard("Accounts", viewModel != null ? viewModel.AccountsSummary : "Error: Dashboard ViewModel not available", cardWidth, cardHeight);
+            var accountsTuple = CreateDashboardCard("Accounts", viewModel != null ? viewModel.AccountsSummary : "Error: Dashboard ViewModel not available", responsiveCardWidth, cardHeight);
             var accountsCard = accountsTuple.Panel;
             var accountsDesc = accountsTuple.DescriptionLabel;
             SetupCardClickHandler(accountsCard, () =>
@@ -92,28 +93,28 @@ public static class DashboardFactory
             }
 
             // Card 2: Charts
-            var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", cardWidth, cardHeight).Panel;
+            var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(chartsCard, () =>
             {
                 panelNavigator?.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
-            var settingsCard = CreateDashboardCard("Settings", "System Config", cardWidth, cardHeight).Panel;
+            var settingsCard = CreateDashboardCard("Settings", "System Config", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(settingsCard, () =>
             {
                 panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right);
             });
 
             // Card 4: Reports
-            var reportsCard = CreateDashboardCard("Reports", "Generate Now", cardWidth, cardHeight).Panel;
+            var reportsCard = CreateDashboardCard("Reports", "Generate Now", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(reportsCard, () =>
             {
                 panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right);
             });
 
             // Card 5: Budget Status (Static/Status Display)
-            var infoTuple = CreateDashboardCard("Budget Status", viewModel != null ? viewModel.BudgetStatus : "Error: Dashboard ViewModel not available", cardWidth, cardHeight);
+            var infoTuple = CreateDashboardCard("Budget Status", viewModel != null ? viewModel.BudgetStatus : "Error: Dashboard ViewModel not available", responsiveCardWidth, cardHeight);
             var infoCard = infoTuple.Panel;
             var infoDesc = infoTuple.DescriptionLabel;
             SetupCardClickHandler(infoCard, () =>
@@ -211,5 +212,57 @@ public static class DashboardFactory
             }
         }
         Wire(card);
+    }
+
+    /// <summary>
+    /// POLISH: Calculate responsive card width based on parent container and DPI scaling.
+    /// Cards will be ~30% of parent width for responsive layout, with minimum width constraint.
+    /// Adjusts padding for DPI > 100% for consistent spacing across displays.
+    /// </summary>
+    private static int CalculateResponsiveCardWidth(FlowLayoutPanel dashboardPanel, float dpiScale)
+    {
+        const int minWidth = 200;  // Minimum width for card readability
+        const int maxWidth = 400;  // Maximum width to prevent excessive stretching
+        const float responsivePercent = 0.30f;  // Cards occupy ~30% of parent width
+
+        // Calculate responsive width based on parent container width
+        int containerWidth = dashboardPanel.ClientSize.Width;
+        if (containerWidth <= 0)
+        {
+            containerWidth = 800;  // Fallback to reasonable default
+        }
+
+        int responsiveWidth = (int)(containerWidth * responsivePercent);
+        responsiveWidth = Math.Clamp(responsiveWidth, minWidth, maxWidth);
+
+        // Adjust for DPI scaling (add padding for DPI > 100%)
+        if (dpiScale > 1.0f)
+        {
+            responsiveWidth = (int)(responsiveWidth * (1 + (dpiScale - 1.0f) * 0.1f));  // 10% padding per 25% DPI increase
+        }
+
+        return responsiveWidth;
+    }
+
+    /// <summary>
+    /// POLISH: Get DPI scaling factor for responsive layout adjustments.
+    /// Used to adjust padding and spacing on high-DPI displays (125%, 150%, 200%).
+    /// </summary>
+    private static float GetDpiScaling()
+    {
+        // Detect DPI using Graphics object
+        // DpiAwareImageService handles scaling internally; we detect DPI for layout sizing
+        try
+        {
+            using (var bmp = new Bitmap(1, 1))
+            using (var g = Graphics.FromImage(bmp))
+            {
+                return g.DpiX / 96f;  // 96 DPI = 100% scaling (125% = 1.25, 150% = 1.5, etc.)
+            }
+        }
+        catch
+        {
+            return 1.0f;  // Default to 100% scaling if detection fails
+        }
     }
 }

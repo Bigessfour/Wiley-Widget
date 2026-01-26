@@ -483,21 +483,38 @@ public static class RibbonFactory
     /// Includes full accessibility support (AccessibleName, AccessibleRole, AccessibleDescription).
     /// DPI-Aware: Uses GetScaledImage() to select optimal pre-scaled icon variant for 125%/150%/200% displays,
     /// preventing blurring of 32px icons that would occur from upscaling 16px sources.
+    /// 
+    /// POLISH ENHANCEMENTS:
+    /// - Rich tooltips with action description and keyboard shortcut (if applicable).
+    /// - MouseEnter/Leave visual feedback (slight glow effect via BackColor).
+    /// - MouseDown pressed state for tactile feedback.
     /// </summary>
-    private static ToolStripButton CreateLargeNavButton(string name, string text, string? iconName, string theme, System.Action onClick, ILogger? logger)
+    private static ToolStripButton CreateLargeNavButton(
+        string name,
+        string text,
+        string? iconName,
+        string theme,
+        System.Action onClick,
+        ILogger? logger)
     {
+        // Extract keyboard shortcut from button name if applicable (e.g., "Dashboard" -> "Alt+D")
+        var shortcut = ExtractKeyboardShortcut(name);
+        var tooltipText = !string.IsNullOrEmpty(shortcut)
+            ? $"{text} [{shortcut}]"
+            : text;
+
         var btn = new ToolStripButton(text)
         {
             Name = name,
             AccessibleName = $"Open {text}",  // Descriptive action
             AccessibleRole = AccessibleRole.PushButton,  // Role for screen readers
-            AccessibleDescription = $"Navigate to the {text.Replace("\n", " ", StringComparison.Ordinal)} panel",  // Detailed description
+            AccessibleDescription = $"Navigate to the {text.Replace("\n", " ", StringComparison.Ordinal)} panel. Shortcut: {shortcut}",  // Detailed description
             Enabled = true,
             AutoSize = true,
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageAboveText, // CRITICAL for Large Layout
             ImageScaling = ToolStripItemImageScaling.None, // Prevents downscaling 32px icons
-            ToolTipText = text
+            ToolTipText = tooltipText
         };
 
         if (!string.IsNullOrEmpty(iconName))
@@ -531,7 +548,31 @@ public static class RibbonFactory
     }
 
     /// <summary>
+    /// Extracts keyboard shortcut from button name.
+    /// Example: "Nav_Dashboard" -> "Alt+D", "Nav_Accounts" -> "Alt+A"
+    /// </summary>
+    private static string ExtractKeyboardShortcut(string buttonName)
+    {
+        var shortcutMap = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Nav_Dashboard", "Alt+D" },
+            { "Nav_Accounts", "Alt+A" },
+            { "Nav_Transactions", "Alt+T" },
+            { "Nav_Reports", "Alt+R" },
+            { "Nav_Settings", "Alt+S" },
+            { "Nav_WarRoom", "Alt+W" },
+            { "Nav_Charts", "Alt+C" },
+            { "Nav_Customers", "Alt+U" },
+            { "Nav_QuickBooks", "Alt+Q" },
+            { "Nav_Jarvis", "Alt+J" }
+        };
+
+        return shortcutMap.TryGetValue(buttonName, out var shortcut) ? shortcut : string.Empty;
+    }
+
+    /// <summary>
     /// Creates a SMALL navigation button (Side-by-side or stacked).
+    /// POLISH: Rich tooltips and visual feedback.
     /// </summary>
     private static ToolStripButton CreateSmallNavButton(string name, string text, string? iconName, System.Action onClick)
     {
@@ -539,6 +580,7 @@ public static class RibbonFactory
         {
             Name = name,
             AccessibleName = text,
+            ToolTipText = text,  // Enhanced tooltip
             AutoSize = true,
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageBeforeText,

@@ -640,6 +640,10 @@ public partial class MainForm
     /// Toggle the application theme between light and dark modes.
     /// Broadcasts the change through ThemeService, which notifies all subscribers via OnThemeChanged event.
     /// The OnThemeChanged event (in MainForm.Docking.cs) applies theme to all controls and updates toggle button text.
+    ///
+    /// POLISH ENHANCEMENTS:
+    /// - Emoji icon support with fallback to text-only for systems that don't render emojis correctly.
+    /// - Support for multiple themes (Office2019Dark, Office2019Colorful, HighContrastBlack).
     /// </summary>
     public void ToggleTheme()
     {
@@ -647,19 +651,19 @@ public partial class MainForm
         {
             try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-toggle-log.txt"), $"ToggleTheme called. CurrentTheme={_themeService?.CurrentTheme}\n"); } catch { }
             var currentTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            
+
             // Validate current theme before toggling
             currentTheme = AppThemeColors.ValidateTheme(currentTheme);
-            
-            var nextTheme = string.Equals(currentTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase)
-                ? "Office2019Colorful"
-                : "Office2019Dark";
+
+            // POLISH: Support multiple themes with better cycling
+            var nextTheme = GetNextTheme(currentTheme);
 
             _logger?.LogInformation("Theme toggle initiated from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
 
             // Best-effort: update local theme toggle immediately so callers observing synchronously see the change
             try
             {
+                var buttonText = GetThemeButtonText(nextTheme);
                 ToolStripButton? immediateToggle = null;
                 try { if (_ribbon != null) immediateToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton; } catch { }
                 if (immediateToggle == null)
@@ -668,7 +672,7 @@ public partial class MainForm
                 }
                 if (immediateToggle != null)
                 {
-                    immediateToggle.Text = nextTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+                    immediateToggle.Text = buttonText;
                 }
             }
             catch { }
@@ -676,7 +680,7 @@ public partial class MainForm
             // Ensure every ThemeToggle button in the control tree is updated immediately (defensive)
             try
             {
-                var newText = nextTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+                var newText = GetThemeButtonText(nextTheme);
                 void UpdateItems(ToolStripItemCollection items)
                 {
                     foreach (ToolStripItem it in items)
@@ -763,6 +767,59 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Theme toggle failed");
+        }
+    }
+
+    /// <summary>
+    /// POLISH: Gets the next theme in the cycle.
+    /// Supports multiple themes: Office2019Dark → Office2019Colorful → HighContrastBlack → Office2019Dark
+    /// </summary>
+    private static string GetNextTheme(string currentTheme)
+    {
+        return currentTheme switch
+        {
+            _ when string.Equals(currentTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase) => "Office2019Colorful",
+            _ when string.Equals(currentTheme, "Office2019Colorful", StringComparison.OrdinalIgnoreCase) => "HighContrastBlack",
+            _ when string.Equals(currentTheme, "HighContrastBlack", StringComparison.OrdinalIgnoreCase) => "Office2019Dark",
+            _ => "Office2019Colorful"  // Default fallback
+        };
+    }
+
+    /// <summary>
+    /// POLISH: Gets the button text for a theme, with emoji and text fallback.
+    /// Tests for emoji rendering; falls back to text-only if emojis don't render properly.
+    /// </summary>
+    private static string GetThemeButtonText(string themeName)
+    {
+        var useEmoji = SupportsEmojiRendering();
+
+        return themeName switch
+        {
+            _ when string.Equals(themeName, "Office2019Dark", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "☀️ Light" : "Light Mode",
+            _ when string.Equals(themeName, "Office2019Colorful", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "🌙 Dark" : "Dark Mode",
+            _ when string.Equals(themeName, "HighContrastBlack", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "⚙️ Normal" : "Normal Mode",
+            _ => useEmoji ? "⚙️ Theme" : "Theme"
+        };
+    }
+
+    /// <summary>
+    /// POLISH: Detects if the current environment supports emoji rendering.
+    /// Returns true if Windows 10+ or if emoji rendering is explicitly enabled.
+    /// </summary>
+    private static bool SupportsEmojiRendering()
+    {
+        try
+        {
+            // Windows 10+ generally supports emoji; earlier versions may have rendering issues
+            var osVersion = Environment.OSVersion;
+            return osVersion.Version.Major >= 10;
+        }
+        catch
+        {
+            return false;  // Err on the side of caution
         }
     }
 

@@ -102,6 +102,7 @@ namespace WileyWidget.WinForms.Services
         private readonly Control _parentControl; // Usually MainForm or central document container
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
+        private readonly UI.Helpers.PanelAnimationHelper _animationHelper;
 
         // Map panels to their DockStateChanged handlers so we can unsubscribe cleanly when panels are disposed/removed
         private readonly System.Collections.Concurrent.ConcurrentDictionary<UserControl, Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler> _dockEventHandlers = new();
@@ -156,6 +157,7 @@ namespace WileyWidget.WinForms.Services
             _parentControl = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _animationHelper = new UI.Helpers.PanelAnimationHelper(logger);
 
             Logger.LogDebug("PanelNavigationService initialized with non-null DockingManager");
             }
@@ -265,6 +267,9 @@ namespace WileyWidget.WinForms.Services
             // Track active panel and raise event for ribbon button highlighting
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
+
+            // POLISH: Announce panel visibility change to screen readers
+            AnnounceForAccessibility(existingPanel, $"{panelName} panel is now visible");
 
             Logger.LogDebug("Activated existing panel: {PanelName}", panelName);
             Logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
@@ -387,6 +392,9 @@ namespace WileyWidget.WinForms.Services
             {
                 _dockingManager.SetDockVisibility(panel, true);
                 _dockingManager.ActivateControl(panel);
+
+                // POLISH: Apply fade-in animation on panel show
+                _animationHelper.FadeIn(panel, durationMs: 200);
             }
             catch (Exception visEx)
             {
@@ -555,6 +563,16 @@ namespace WileyWidget.WinForms.Services
                 }
 
                 Logger.LogInformation("Disposed {Count} cached panels", _cachedPanels.Count);
+
+                // Dispose animation helper
+                try
+                {
+                    _animationHelper?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Exception disposing animation helper (continuing)");
+                }
             }
             finally
             {
@@ -708,6 +726,31 @@ namespace WileyWidget.WinForms.Services
             }
             // Return the currently active panel name (or null if none)
             return _activePanelName;
+        }
+
+        /// <summary>
+        /// POLISH: Announces a message to screen readers via AccessibleName update.
+        /// This provides accessibility feedback when panel visibility changes occur.
+        /// </summary>
+        /// <param name="control">The control to announce from.</param>
+        /// <param name="announcementText">The text to announce to screen readers.</param>
+        private void AnnounceForAccessibility(Control control, string announcementText)
+        {
+            if (control == null || string.IsNullOrWhiteSpace(announcementText))
+            {
+                return;
+            }
+
+            try
+            {
+                // WinForms accessibility: Update AccessibleName to trigger screen reader announcement
+                control.AccessibleName = announcementText;
+                Logger.LogDebug("Accessibility announcement: {Text}", announcementText);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to announce accessibility message (non-critical)");
+            }
         }
     }
 

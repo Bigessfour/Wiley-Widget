@@ -145,13 +145,13 @@ public partial class MainForm
         {
             if (this.IsHandleCreated && this.InvokeRequired)
             {
-                try 
-                { 
+                try
+                {
                     if (!IsDisposed)
                     {
-                        this.SafeInvoke(() => ApplyStatus(text)); 
+                        this.SafeInvoke(() => ApplyStatus(text));
                     }
-                } 
+                }
                 catch (InvalidOperationException)
                 {
                     // Handle destroyed or disposed during BeginInvoke
@@ -181,28 +181,34 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Shows an error dialog to the user.
-    /// Thread-safe: delegates to UIHelper for UI marshaling.
+    /// Shows an error dialog to the user using themed SfMessageBox (if available) or standard MessageBox.
+    /// Thread-safe: delegates to SfDialogHelper for UI marshaling and theme consistency.
     /// </summary>
     private void ShowErrorDialog(string title, string message)
     {
-        UIHelper.ShowErrorOnUI(this, message, title, _logger);
+        UI.Helpers.SfDialogHelper.ShowErrorDialog(this, title, message, logger: _logger);
     }
 
     /// <summary>
-    /// Shows an error dialog with exception details.
+    /// Shows an error dialog with exception details and collapsible stack trace.
     /// Logs the exception before displaying.
+    /// Uses SfDialogHelper for themed dialog and optional exception details display.
     /// </summary>
     private void ShowErrorDialog(string title, string message, Exception ex)
     {
         _logger?.LogError(ex, "Error: {Message}", message);
-        UIHelper.ShowErrorOnUI(this, message, title, _logger);
+        UI.Helpers.SfDialogHelper.ShowErrorDialog(this, title, message, exception: ex, logger: _logger);
     }
 
     /// <summary>
     /// Updates the MRU menu with the current MRU list.
     /// Each menu item opens the file when clicked.
     /// Validates file paths before adding to prevent orphaned entries.
+    ///
+    /// POLISH ENHANCEMENTS:
+    /// - Displays short filename instead of full path to prevent truncation.
+    /// - Full path shown in tooltip for reference without taking menu space.
+    /// - Ellipsis handling for very long filenames.
     /// </summary>
     private void UpdateMruMenu(ToolStripMenuItem menu)
     {
@@ -213,7 +219,7 @@ public partial class MainForm
         }
 
         menu.DropDownItems.Clear();
-        
+
         // Validate and filter MRU list before adding to menu
         var validFiles = new System.Collections.Generic.List<string>();
         foreach (var file in _mruList)
@@ -229,8 +235,14 @@ public partial class MainForm
             }
 
             validFiles.Add(file);
-            
-            var item = new ToolStripMenuItem(file);
+
+            // POLISH: Use short filename for display instead of full path
+            var displayName = ShortenPathForDisplay(file, maxLength: 60);
+            var item = new ToolStripMenuItem(displayName)
+            {
+                ToolTipText = file  // POLISH: Full path in tooltip
+            };
+
             item.Click += async (s, e) =>
             {
                 try
@@ -270,6 +282,61 @@ public partial class MainForm
             _mruList.Clear();
             _mruList.AddRange(validFiles);
             _logger?.LogDebug("MRU list cleaned: {Removed} invalid entries removed", _mruList.Count - validFiles.Count);
+        }
+    }
+
+    /// <summary>
+    /// POLISH: Shortens a file path for menu display, showing filename and optionally parent directory.
+    /// Falls back to ellipsis if filename exceeds max length.
+    /// </summary>
+    /// <param name="filePath">Full file path.</param>
+    /// <param name="maxLength">Maximum characters for display (default 60).</param>
+    /// <returns>Shortened path suitable for menu display.</returns>
+    private static string ShortenPathForDisplay(string filePath, int maxLength = 60)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return filePath;
+        }
+
+        try
+        {
+            var fileName = System.IO.Path.GetFileName(filePath);
+
+            // If filename alone fits, return it
+            if (fileName.Length <= maxLength)
+            {
+                return fileName;
+            }
+
+            // If filename is very long, use ellipsis
+            if (fileName.Length > maxLength - 3)
+            {
+                return fileName.Substring(0, maxLength - 3) + "...";
+            }
+
+            // Try to include parent directory
+            var directory = System.IO.Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                var parentDir = System.IO.Path.GetFileName(directory);
+                var combined = $"{parentDir}\\{fileName}";
+
+                if (combined.Length <= maxLength)
+                {
+                    return combined;
+                }
+            }
+
+            // Fallback to truncated filename
+            return fileName.Length > maxLength
+                ? fileName.Substring(0, maxLength - 3) + "..."
+                : fileName;
+        }
+        catch
+        {
+            // If any path operation fails, return the original
+            return filePath;
         }
     }
 
