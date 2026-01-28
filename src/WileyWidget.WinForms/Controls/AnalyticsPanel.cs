@@ -16,6 +16,7 @@ using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
 using SfListView = Syncfusion.WinForms.ListView.SfListView;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
+using TabControlAdv = Syncfusion.Windows.Forms.Tools.TabControlAdv;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using Syncfusion.Drawing;
@@ -35,8 +36,14 @@ namespace WileyWidget.WinForms.Controls;
 /// Features exploratory analysis, rate scenarios, trend visualization, and predictive modeling.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
+public partial class AnalyticsPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new AnalyticsViewModel? ViewModel
+    {
+        get => (AnalyticsViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
 
     // UI Controls
     private SfDataGrid? _metricsGrid;
@@ -47,6 +54,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private SfButton? _runScenarioButton;
     private SfButton? _generateForecastButton;
     private SfButton? _refreshButton;
+    private SfButton? _exportButton;
     private TextBoxExt? _rateIncreaseTextBox;
     private TextBoxExt? _expenseIncreaseTextBox;
     private TextBoxExt? _revenueTargetTextBox;
@@ -55,16 +63,10 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private TextBoxExt? _variancesSearchTextBox;
     private SfListView? _insightsListBox;
     private SfListView? _recommendationsListBox;
-    private Label? _totalBudgetedLabel;
-    private Label? _totalActualLabel;
-    private Label? _totalVarianceLabel;
-    private Label? _averageVarianceLabel;
-    private Label? _recommendationExplanationLabel;
     private GradientPanelExt? _scenarioPanel;
-    private GradientPanelExt? _resultsPanel;
-    private GradientPanelExt? _chartsPanel;
     private GradientPanelExt? _buttonPanel;
-    private SplitContainer? _mainSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
+    private TabControlAdv? _mainTabControl;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -78,6 +80,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private EventHandler? _runScenarioButtonClickHandler;
     private EventHandler? _generateForecastButtonClickHandler;
     private EventHandler? _refreshButtonClickHandler;
+    private EventHandler? _exportButtonClickHandler;
     private EventHandler? _panelHeaderRefreshHandler;
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler? _entityComboBoxSelectedIndexChangedHandler;
@@ -96,7 +99,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <param name="logger">The logger instance.</param>
     public AnalyticsPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<AnalyticsViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         // Call the actual initialization method (theme applied inside InitializeControls)
@@ -122,7 +125,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("AnalyticsPanel load cancelled");
+            _logger?.LogDebug("AnalyticsPanel load cancelled");
         }
         catch (Exception ex)
         {
@@ -144,7 +147,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("AnalyticsPanel save cancelled");
+            _logger?.LogDebug("AnalyticsPanel save cancelled");
         }
         catch (Exception ex)
         {
@@ -231,7 +234,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("AnalyticsPanel validation cancelled");
+            _logger?.LogDebug("AnalyticsPanel validation cancelled");
             return ValidationResult.Failed(new ValidationItem("Cancelled", "Validation was cancelled", ValidationSeverity.Info));
         }
         catch (Exception ex)
@@ -302,7 +305,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         // Main split container - proportional sizing per Syncfusion demos (Option B)
         // Ensures top controls panel ≥300px, bottom results panel ≥400px
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -313,7 +316,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         // Top panel - Controls and scenario input
         InitializeTopPanel();
 
-        // Bottom panel - Results and charts
+        // Bottom panel - Tabbed results
         InitializeBottomPanel();
 
         // Status strip for operation feedback
@@ -345,7 +348,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
 
-        Controls.Add(_mainSplitContainer);
+        Controls.Add(_mainTabControl);
         Controls.Add(_statusStrip);
 
         // Error provider for validation
@@ -449,10 +452,15 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _refreshButtonClickHandler = async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
         _refreshButton.Click += _refreshButtonClickHandler;
 
-        buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
-        buttonTable.Controls.Add(_runScenarioButton, 1, 0);
-        buttonTable.Controls.Add(_generateForecastButton, 2, 0);
-        buttonTable.Controls.Add(_refreshButton, 3, 0);
+        _exportButton = new SfButton
+        {
+            Text = "&Export",
+            TabIndex = 5,
+            AccessibleName = "Export",
+            AccessibleDescription = "Export analytics data"
+        };
+        _exportButtonClickHandler = ExportButton_Click;
+        _exportButton.Click += _exportButtonClickHandler;
 
         var entityLabel = new Label
         {
@@ -464,7 +472,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _entityComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
-            TabIndex = 5,
+            TabIndex = 7,
             AccessibleName = "Entity Selector",
             AccessibleDescription = "Filter analytics by entity or fund",
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
@@ -473,8 +481,13 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _entityComboBoxSelectedIndexChangedHandler = EntityComboBox_SelectedIndexChanged;
         _entityComboBox.SelectedIndexChanged += _entityComboBoxSelectedIndexChangedHandler;
 
-        buttonTable.Controls.Add(entityLabel, 4, 0);
-        buttonTable.Controls.Add(_entityComboBox, 5, 0);
+        buttonTable.Controls.Add(_performAnalysisButton, 0, 0);
+        buttonTable.Controls.Add(_runScenarioButton, 1, 0);
+        buttonTable.Controls.Add(_generateForecastButton, 2, 0);
+        buttonTable.Controls.Add(_refreshButton, 3, 0);
+        buttonTable.Controls.Add(_exportButton, 4, 0);
+        buttonTable.Controls.Add(entityLabel, 5, 0);
+        buttonTable.Controls.Add(_entityComboBox, 6, 0);
 
         // Navigation buttons removed from UI design per updated UX flow.
         // Pragma suppression is safe here: null checks are defensive for potential future restoration of navigation buttons.
@@ -634,39 +647,70 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         };
         SfSkinManager.SetVisualStyle(bottomPanel, currentTheme);
 
-        // Results panel with grids and insights
-        _resultsPanel = new GradientPanelExt
+        // Tab control for results
+        _mainTabControl = new TabControlAdv
         {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(10),
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-            MinimumSize = new Size(600, 300)
+            Dock = DockStyle.Fill
         };
-        SfSkinManager.SetVisualStyle(_resultsPanel, currentTheme);
 
-        var resultsSplit = new SplitContainer
-        {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical
-        };
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(resultsSplit, 200);
+        // Create tab pages
+        InitializeTabPages();
 
-        // Top results - Grids
+        bottomPanel.Controls.Add(_mainTabControl);
+        _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
+    }
+
+    /// <summary>
+    /// Initializes the tab pages for the tabbed interface.
+    /// </summary>
+    private void InitializeTabPages()
+    {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+
+        // Overview Tab - Metrics and Variances grids
+        var overviewTab = new TabPage("Overview");
+        InitializeOverviewTab(overviewTab, currentTheme);
+        _mainTabControl.TabPages.Add(overviewTab);
+
+        // Scenarios Tab - Scenario inputs and results
+        var scenariosTab = new TabPage("Scenarios");
+        InitializeScenariosTab(scenariosTab, currentTheme);
+        _mainTabControl.TabPages.Add(scenariosTab);
+
+        // Forecasting Tab - Forecast charts
+        var forecastingTab = new TabPage("Forecasting");
+        InitializeForecastingTab(forecastingTab, currentTheme);
+        _mainTabControl.TabPages.Add(forecastingTab);
+
+        // Insights Tab - Insights and recommendations
+        var insightsTab = new TabPage("Insights");
+        InitializeInsightsTab(insightsTab, currentTheme);
+        _mainTabControl.TabPages.Add(insightsTab);
+
+        // Departments Tab - Department-specific views (placeholder)
+        var departmentsTab = new TabPage("Departments");
+        InitializeDepartmentsTab(departmentsTab, currentTheme);
+        _mainTabControl.TabPages.Add(departmentsTab);
+    }
+
+    /// <summary>
+    /// Initializes the Overview tab with metrics and variances grids.
+    /// </summary>
+    private void InitializeOverviewTab(TabPage tab, string theme)
+    {
         var gridsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(gridsPanel, currentTheme);
+        SfSkinManager.SetVisualStyle(gridsPanel, theme);
 
         var gridsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal
         };
-        // Enforce safe minimum sizes on grids split (Option B): metrics ≥350px, variances ≥200px
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(gridsSplit, 350, 200, 850);
 
         // Metrics grid
@@ -678,23 +722,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             MinimumSize = new Size(300, 150)
         };
-        SfSkinManager.SetVisualStyle(metricsPanel, currentTheme);
+        SfSkinManager.SetVisualStyle(metricsPanel, theme);
 
-        // Metrics search (deduplicated, always use TextBoxExt and GradientPanelExt)
-        var metricsSearchPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Top,
-            Height = 30,
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-        };
-        SfSkinManager.SetVisualStyle(metricsSearchPanel, currentTheme);
-        var metricsSearchLabel = new Label { Text = "Search Metrics:", Dock = DockStyle.Left, Width = 100 };
-        _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 9, MaxLength = 100 };
+        _metricsSearchTextBox = new TextBoxExt { Dock = DockStyle.Top, TabIndex = 9, MaxLength = 100 };
         _metricsSearchTextBoxTextChangedHandler = MetricsSearchTextBox_TextChanged;
         _metricsSearchTextBox.TextChanged += _metricsSearchTextBoxTextChangedHandler;
-        metricsSearchPanel.Controls.Add(_metricsSearchTextBox);
-        metricsSearchPanel.Controls.Add(metricsSearchLabel);
 
         _metricsGrid = new SfDataGrid
         {
@@ -713,7 +745,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _metricsGrid.Columns.Add(new GridTextColumn { MappingName = "Unit", HeaderText = "Unit" });
 
         metricsPanel.Controls.Add(_metricsGrid);
-        metricsPanel.Controls.Add(metricsSearchPanel);
+        metricsPanel.Controls.Add(_metricsSearchTextBox);
         gridsSplit.Panel1.Controls.Add(metricsPanel);
 
         // Variances grid
@@ -725,23 +757,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             MinimumSize = new Size(300, 150)
         };
-        SfSkinManager.SetVisualStyle(variancesPanel, currentTheme);
+        SfSkinManager.SetVisualStyle(variancesPanel, theme);
 
-        // Variances search (deduplicated, always use TextBoxExt and GradientPanelExt)
-        var variancesSearchPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Top,
-            Height = 30,
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-        };
-        SfSkinManager.SetVisualStyle(variancesSearchPanel, currentTheme);
-        var variancesSearchLabel = new Label { Text = "Search Variances:", Dock = DockStyle.Left, Width = 120 };
-        _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Fill, TabIndex = 11, MaxLength = 100 };
+        _variancesSearchTextBox = new TextBoxExt { Dock = DockStyle.Top, TabIndex = 11, MaxLength = 100 };
         _variancesSearchTextBoxTextChangedHandler = VariancesSearchTextBox_TextChanged;
         _variancesSearchTextBox.TextChanged += _variancesSearchTextBoxTextChangedHandler;
-        variancesSearchPanel.Controls.Add(_variancesSearchTextBox);
-        variancesSearchPanel.Controls.Add(variancesSearchLabel);
 
         _variancesGrid = new SfDataGrid
         {
@@ -763,26 +783,121 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         _variancesGrid.Columns.Add(new GridNumericColumn { MappingName = "VariancePercentage", HeaderText = "Variance %", Format = "P2" });
 
         variancesPanel.Controls.Add(_variancesGrid);
-        variancesPanel.Controls.Add(variancesSearchPanel);
+        variancesPanel.Controls.Add(_variancesSearchTextBox);
         gridsSplit.Panel2.Controls.Add(variancesPanel);
 
-        resultsSplit.Panel1.Controls.Add(gridsSplit);
+        gridsPanel.Controls.Add(gridsSplit);
+        tab.Controls.Add(gridsPanel);
+    }
 
-        // Bottom results - Insights and recommendations
+    /// <summary>
+    /// Initializes the Scenarios tab with scenario inputs and results.
+    /// </summary>
+    private void InitializeScenariosTab(TabPage tab, string theme)
+    {
+        // Move scenario inputs from top panel here
+        var label = new Label { Text = "Scenarios: Inputs and Results", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        tab.Controls.Add(label);
+    }
+
+    /// <summary>
+    /// Initializes the Forecasting tab with forecast charts.
+    /// </summary>
+    private void InitializeForecastingTab(TabPage tab, string theme)
+    {
+        var chartsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(12),
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+            MinimumSize = new Size(600, 250)
+        };
+        SfSkinManager.SetVisualStyle(chartsPanel, theme);
+
+        var chartsSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical
+        };
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(chartsSplit, 300, 300, 400);
+
+        // Trends chart
+        var trendsPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(trendsPanel, theme);
+
+        _trendsChart = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            TabIndex = 14,
+            AccessibleName = "Trends Chart"
+        };
+
+        ChartControlDefaults.Apply(_trendsChart!, logger: _logger);
+
+        _trendsChart.Title.Text = "Monthly Budget Trends";
+        _trendsChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+        _trendsChart.Legend.Visible = true;
+        _trendsChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;
+        _trendsChart.ShowToolTips = true;
+
+        trendsPanel.Controls.Add(_trendsChart);
+        chartsSplit.Panel1.Controls.Add(trendsPanel);
+
+        // Forecast chart
+        var forecastPanel = new GradientPanelExt
+        {
+            Dock = DockStyle.Fill,
+            BorderStyle = BorderStyle.None,
+            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
+        };
+        SfSkinManager.SetVisualStyle(forecastPanel, theme);
+
+        _forecastChart = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            TabIndex = 16,
+            AccessibleName = "Forecast Chart"
+        };
+
+        ChartControlDefaults.Apply(_forecastChart!, logger: _logger);
+
+        _forecastChart.Title.Text = "Reserve Forecast";
+        _forecastChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+        _forecastChart.Legend.Visible = true;
+        _forecastChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;
+        _forecastChart.ShowToolTips = true;
+
+        forecastPanel.Controls.Add(_forecastChart);
+        chartsSplit.Panel2.Controls.Add(forecastPanel);
+
+        chartsPanel.Controls.Add(chartsSplit);
+        tab.Controls.Add(chartsPanel);
+    }
+
+    /// <summary>
+    /// Initializes the Insights tab with insights and recommendations.
+    /// </summary>
+    private void InitializeInsightsTab(TabPage tab, string theme)
+    {
         var insightsPanel = new GradientPanelExt
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(insightsPanel, currentTheme);
+        SfSkinManager.SetVisualStyle(insightsPanel, theme);
 
         var insightsSplit = new SplitContainer
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal
         };
-        // Enforce safe minimum sizes on insights split (Option B): insights ≥150px, recommendations ≥150px
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(insightsSplit, 150, 150, 300);
 
         // Insights list
@@ -793,7 +908,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(insightsGroup, currentTheme);
+        SfSkinManager.SetVisualStyle(insightsGroup, theme);
 
         _insightsListBox = new SfListView
         {
@@ -814,7 +929,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             BorderStyle = BorderStyle.None,
             BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
-        SfSkinManager.SetVisualStyle(recommendationsGroup, currentTheme);
+        SfSkinManager.SetVisualStyle(recommendationsGroup, theme);
 
         _recommendationsListBox = new SfListView
         {
@@ -827,170 +942,18 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         recommendationsGroup.Controls.Add(_recommendationsListBox);
         insightsSplit.Panel2.Controls.Add(recommendationsGroup);
 
-        resultsSplit.Panel2.Controls.Add(insightsSplit);
-        _resultsPanel.Controls.Add(resultsSplit);
-        bottomPanel.Controls.Add(_resultsPanel);
+        insightsPanel.Controls.Add(insightsSplit);
+        tab.Controls.Add(insightsPanel);
+    }
 
-        // Summary panel - increased padding with label truncation (Option A: AutoEllipsis)
-        var summaryPanel = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 60,
-            Padding = new Padding(15),  // Increased from 10px
-            MinimumSize = new Size(500, 60)
-        };
-
-        var summaryTable = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 5,
-            RowCount = 1
-        };
-
-        for (int i = 0; i < 5; i++)
-            summaryTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
-
-        // Create shared tooltip for truncated labels
-        var summaryTooltip = new ToolTip
-        {
-            AutoPopDelay = 5000,
-            InitialDelay = 500,
-            ReshowDelay = 100
-        };
-
-        // Labels with AutoEllipsis for clean truncation + tooltip for full text (Option A)
-        _totalBudgetedLabel = new Label
-        {
-            Text = "Total Budgeted: $0.00",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            AutoEllipsis = true
-        };
-        summaryTooltip.SetToolTip(_totalBudgetedLabel, "Total Budgeted Amount");
-
-        _totalActualLabel = new Label
-        {
-            Text = "Total Actual: $0.00",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            AutoEllipsis = true
-        };
-        summaryTooltip.SetToolTip(_totalActualLabel, "Total Actual Amount");
-
-        _totalVarianceLabel = new Label
-        {
-            Text = "Total Variance: $0.00",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            AutoEllipsis = true
-        };
-        summaryTooltip.SetToolTip(_totalVarianceLabel, "Total Variance");
-
-        _averageVarianceLabel = new Label
-        {
-            Text = "Avg Variance: 0.00%",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            AutoEllipsis = true
-        };
-        summaryTooltip.SetToolTip(_averageVarianceLabel, "Average Variance Percentage");
-
-        _recommendationExplanationLabel = new Label
-        {
-            Text = "",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            AutoEllipsis = true
-        };
-        summaryTooltip.SetToolTip(_recommendationExplanationLabel, "Recommendation Details");
-
-        summaryTable.Controls.Add(_totalBudgetedLabel, 0, 0);
-        summaryTable.Controls.Add(_totalActualLabel, 1, 0);
-        summaryTable.Controls.Add(_totalVarianceLabel, 2, 0);
-        summaryTable.Controls.Add(_averageVarianceLabel, 3, 0);
-        summaryTable.Controls.Add(_recommendationExplanationLabel, 4, 0);
-
-        summaryPanel.Controls.Add(summaryTable);
-        bottomPanel.Controls.Add(summaryPanel);
-
-        // Charts panel - increased padding and explicit MinimumSize
-        _chartsPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Bottom,
-            Height = 300,
-            Padding = new Padding(12),  // Increased from 10px
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-            MinimumSize = new Size(600, 250)
-        };
-        SfSkinManager.SetVisualStyle(_chartsPanel, currentTheme);
-
-        var chartsSplit = new SplitContainer
-        {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical
-        };
-        // Enforce safe minimum sizes on chart split (Option B): trends ≥300px, forecast ≥300px
-        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(chartsSplit, 300, 300, 400);
-
-        // Trends chart
-        var trendsPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-        };
-        SfSkinManager.SetVisualStyle(trendsPanel, currentTheme);
-
-        _trendsChart = new ChartControl
-        {
-            Dock = DockStyle.Fill,
-            TabIndex = 14,
-            AccessibleName = "Trends Chart"
-        };
-
-        ChartControlDefaults.Apply(_trendsChart!, logger: _logger);
-
-        _trendsChart.Title.Text = "Monthly Budget Trends";
-        _trendsChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-        _trendsChart.Legend.Visible = true;
-        _trendsChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;  // Explicit legend positioning per Syncfusion standards
-        _trendsChart.ShowToolTips = true;  // Enable tooltips for data point inspection
-
-        trendsPanel.Controls.Add(_trendsChart);
-        chartsSplit.Panel1.Controls.Add(trendsPanel);
-
-        // Forecast chart
-        var forecastPanel = new GradientPanelExt
-        {
-            Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
-        };
-        SfSkinManager.SetVisualStyle(forecastPanel, currentTheme);
-
-        _forecastChart = new ChartControl
-        {
-            Dock = DockStyle.Fill,
-            TabIndex = 16,
-            AccessibleName = "Forecast Chart"
-        };
-
-        ChartControlDefaults.Apply(_forecastChart!, logger: _logger);
-
-        _forecastChart.Title.Text = "Reserve Forecast";
-        _forecastChart.Title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-        _forecastChart.Legend.Visible = true;
-        _forecastChart.Legend.Position = Syncfusion.Windows.Forms.Chart.ChartDock.Bottom;  // Explicit legend positioning per Syncfusion standards
-        _forecastChart.ShowToolTips = true;  // Enable tooltips for data point inspection
-
-        forecastPanel.Controls.Add(_forecastChart);
-        chartsSplit.Panel2.Controls.Add(forecastPanel);
-
-        _chartsPanel.Controls.Add(chartsSplit);
-        bottomPanel.Controls.Add(_chartsPanel);
-
-        _mainSplitContainer.Panel2.Controls.Add(bottomPanel);
+    /// <summary>
+    /// Initializes the Departments tab with department-specific views.
+    /// </summary>
+    private void InitializeDepartmentsTab(TabPage tab, string theme)
+    {
+        // Placeholder for department-specific views
+        var label = new Label { Text = "Departments: Department-specific Analytics", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
+        tab.Controls.Add(label);
     }
 
     /// <summary>
@@ -1242,26 +1205,6 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             case nameof(ViewModel.StatusText):
                 _statusLabel?.Text = ViewModel.StatusText;
                 break;
-
-            case nameof(ViewModel.TotalBudgetedAmount):
-                if (_totalBudgetedLabel != null) _totalBudgetedLabel.Text = $"Total Budgeted: {ViewModel.TotalBudgetedAmount:C}";
-                break;
-
-            case nameof(ViewModel.TotalActualAmount):
-                if (_totalActualLabel != null) _totalActualLabel.Text = $"Total Actual: {ViewModel.TotalActualAmount:C}";
-                break;
-
-            case nameof(ViewModel.TotalVarianceAmount):
-                if (_totalVarianceLabel != null) _totalVarianceLabel.Text = $"Total Variance: {ViewModel.TotalVarianceAmount:C}";
-                break;
-
-            case nameof(ViewModel.AverageVariancePercentage):
-                if (_averageVarianceLabel != null) _averageVarianceLabel.Text = $"Avg Variance: {ViewModel.AverageVariancePercentage:P}";
-                break;
-
-            case nameof(ViewModel.RecommendationExplanation):
-                if (_recommendationExplanationLabel != null) _recommendationExplanationLabel.Text = ViewModel.RecommendationExplanation;
-                break;
         }
     }
 
@@ -1423,7 +1366,21 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         HandleCreated += handleCreatedHandler;
     }
 
-
+    /// <summary>
+    /// Handles the export button click event.
+    /// </summary>
+    private async void ExportButton_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            // For now, show a message. In future, implement actual export.
+            System.Windows.Forms.MessageBox.Show("Export functionality will be implemented here.", "Export", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in export");
+        }
+    }
 
     /// <summary>
     /// Clean up any resources being used.
@@ -1446,6 +1403,8 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
                 _generateForecastButton.Click -= _generateForecastButtonClickHandler;
             if (_refreshButton != null && _refreshButtonClickHandler != null)
                 _refreshButton.Click -= _refreshButtonClickHandler;
+            if (_exportButton != null && _exportButtonClickHandler != null)
+                _exportButton.Click -= _exportButtonClickHandler;
 
             // Panel header event handlers
             if (_panelHeader != null)
@@ -1485,7 +1444,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             _insightsListBox.SafeDispose();
             _recommendationsListBox.SafeClearDataSource();
             _recommendationsListBox.SafeDispose();
-            _mainSplitContainer.SafeDispose();
+            _mainTabControl.SafeDispose();
             _statusStrip.SafeDispose();
             _panelHeader.SafeDispose();
             _entityComboBox.SafeDispose();

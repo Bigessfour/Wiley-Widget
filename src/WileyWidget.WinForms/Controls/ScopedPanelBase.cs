@@ -21,45 +21,20 @@ using WileyWidget.WinForms.Services;
 namespace WileyWidget.WinForms.Controls;
 
 /// <summary>
-/// Abstract base class for panels that require scoped ViewModels with dependencies on scoped services (e.g., DbContext, repositories).
-/// Handles proper scope creation, ViewModel resolution, and disposal to prevent DI lifetime violations.
+/// Non-generic base class for panels that require scoped ViewModels.
+/// This class is designed to be instantiable by the WinForms designer.
 /// </summary>
-/// <remarks>
-/// <para>
-/// This class manages the complete lifecycle of a scoped DI container for each panel instance:
-/// 1. <strong>Scope Creation:</strong> Created in OnHandleCreated (when WinForms handle is created) to tie lifecycle to control's lifetime.
-/// 2. <strong>ViewModel Resolution:</strong> TViewModel is resolved from the scoped provider; if not manually assigned, resolution is automatic.
-/// 3. <strong>Initialization Hook:</strong> OnViewModelResolved is called for derived classes to perform custom initialization.
-/// 4. <strong>Async Initialization:</strong> OnHandleCreatedAsync allows heavy operations (DB queries, network calls) without blocking the UI thread.
-/// 5. <strong>Theme Management:</strong> Automatically applies SfSkinManager theme cascade to this panel and all children.
-/// 6. <strong>Disposal:</strong> Scope is disposed in Dispose, releasing all scoped services including DbContext.
-/// </para>
-/// <para>
-/// Implements ICompletablePanel to support state tracking (IsLoaded, IsBusy, HasUnsavedChanges, IsValid, ValidationErrors).
-/// Integrates with IThemeService for runtime theme switching without requiring panel reload.
-/// Uses reflection caching to optimize DataContext property lookups per derived type.
-/// </para>
-/// <para>
-/// Best Practices:
-/// - Keep constructors lightweight; defer heavy initialization to OnHandleCreatedAsync.
-/// - Use AddValidationError, ClearValidationErrors, and similar helpers for consistent validation management.
-/// - Subscribe to ViewModel events in OnViewModelResolved; unsubscribe in Dispose to prevent leaks.
-/// - Use InvokeOnUiThread when updating UI from background threads to ensure thread safety.
-/// - Use RegisterOperation to manage concurrent async operations; only one operation can run at a time.
-/// </para>
-/// </remarks>
-/// <typeparam name="TViewModel">The ViewModel type to resolve from the scoped service provider.</typeparam>
-public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePanel, INotifyPropertyChanged
-    where TViewModel : class
+public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyPropertyChanged
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    protected readonly ILogger<ScopedPanelBase<TViewModel>> _logger;
-    private IServiceScope? _scope;
-    protected TViewModel? _viewModel;
+    // Note: not readonly to allow a lightweight design-time fallback factory when the designer instantiates controls.
+    private IServiceScopeFactory _scopeFactory;
+    protected readonly ILogger _logger;
+    protected object? _viewModel;
     private object? _dataContext;
     private bool _disposed;
     private bool _isBusy;
     private IThemeService? _themeService;
+    private IServiceScope? _scope;
 
     // ICompletablePanel backing fields
     protected bool _isLoaded;
@@ -80,7 +55,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// </summary>
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    public TViewModel? ViewModel
+    public object? ViewModel
     {
         get => _viewModel;
         set => _viewModel = value;
@@ -169,16 +144,45 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     protected IServiceProvider? ServiceProvider => _scope?.ServiceProvider;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="ScopedPanelBase{TViewModel}"/> class.
+    /// Initializes a new instance of the <see cref="ScopedPanelBase"/> class.
     /// </summary>
     /// <param name="scopeFactory">The service scope factory for creating scopes to resolve scoped dependencies.</param>
     /// <param name="logger">The logger instance for diagnostic logging.</param>
     protected ScopedPanelBase(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<TViewModel>>? logger = null)
+        ILogger logger)
     {
+        if (GetType() == typeof(ScopedPanelBase))
+        {
+            throw new InvalidOperationException("ScopedPanelBase is not intended to be instantiated directly. Use a derived class instead.");
+        }
+
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
-        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ScopedPanelBase<TViewModel>>.Instance;
+        _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+    }
+
+    /// <summary>
+    /// Lightweight parameterless constructor intended for design-time (Visual Studio designer) instantiation.
+    /// It provides a minimal, no-op IServiceScopeFactory and a null logger so the designer can create an instance
+    /// without triggering runtime DI resolution. Heavy initialization is deferred to OnHandleCreated / OnHandleCreatedAsync.
+    /// </summary>
+    protected ScopedPanelBase()
+    {
+        _scopeFactory = new DesignTimeServiceScopeFactory();
+        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+    }
+
+    // Minimal IServiceScopeFactory implementation for design-time to avoid requiring runtime DI in the designer.
+    private sealed class DesignTimeServiceScopeFactory : IServiceScopeFactory
+    {
+        public IServiceScope CreateScope() => new DesignTimeServiceScope();
+
+        private sealed class DesignTimeServiceScope : IServiceScope
+        {
+            // Provide an empty service provider to avoid null references; resolution will fail if attempted at design-time.
+            public IServiceProvider ServiceProvider { get; } = new ServiceCollection().BuildServiceProvider();
+            public void Dispose() { }
+        }
     }
 
     /// <summary>
@@ -187,7 +191,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// </summary>
     /// <remarks>
     /// In designer mode, calls CreateDesignerViewModel() instead of using DI.
-    /// On handle recreation, disposes the old scope before creating a new one.
+    /// On handle recreation, disposes of the old scope before creating a new one.
     /// </remarks>
     /// <exception cref="ObjectDisposedException">Caught and logged if the service provider is disposed during initialization.</exception>
     protected override void OnHandleCreated(EventArgs e)
@@ -238,12 +242,12 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
             // Resolve ViewModel from scoped provider if not already set
             if (_viewModel == null)
             {
-                _viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TViewModel>(_scope.ServiceProvider);
-                _logger.LogDebug("Resolved {ViewModelType} from scoped provider", typeof(TViewModel).Name);
+                _viewModel = ResolveViewModel(_scope.ServiceProvider);
+                _logger.LogDebug("Resolved ViewModel from scoped provider", GetType().Name);
             }
             else
             {
-                _logger.LogDebug("Using manually assigned {ViewModelType} for {PanelType}", typeof(TViewModel).Name, GetType().Name);
+                _logger.LogDebug("Using manually assigned ViewModel for {PanelType}", GetType().Name);
             }
 
             // Populate DataContext (base + derived new DataContext via reflection)
@@ -252,7 +256,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
             // Ensure theme cascade reaches dynamically created panel and children
             ApplyThemeCascade();
 
-            // Allow derived classes to perform additional initialization with the resolved ViewModel
+            // Allow derived classes to perform additional initialization with the ViewModel
             OnViewModelResolved(_viewModel);
 
             // Subscribe to theme changes for runtime theme switching
@@ -285,8 +289,8 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create scope or resolve {ViewModelType} for {PanelType}",
-                typeof(TViewModel).Name, GetType().Name);
+            _logger.LogError(ex, "Failed to create scope or resolve ViewModel for {PanelType}",
+                GetType().Name);
 
             // Dispose partially created scope
             _scope?.Dispose();
@@ -295,6 +299,14 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
 
             throw;
         }
+    }
+
+    /// <summary>
+    /// Resolves the ViewModel from the service provider. Override in generic derived class.
+    /// </summary>
+    protected virtual object? ResolveViewModel(IServiceProvider serviceProvider)
+    {
+        return null;
     }
 
     /// <summary>
@@ -310,7 +322,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// the designer may call it repeatedly, and it should return quickly.
     /// Example:
     /// <code>
-    /// protected override MyViewModel? CreateDesignerViewModel()
+    /// protected override object? CreateDesignerViewModel()
     /// {
     ///     return new MyViewModel
     ///     {
@@ -320,7 +332,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// }
     /// </code>
     /// </remarks>
-    protected virtual TViewModel? CreateDesignerViewModel()
+    protected virtual object? CreateDesignerViewModel()
     {
         return null;
     }
@@ -330,7 +342,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// Override this method to perform additional initialization logic with the ViewModel.
     /// </summary>
     /// <param name="viewModel">The resolved ViewModel instance.</param>
-    protected virtual void OnViewModelResolved(TViewModel viewModel)
+    protected virtual void OnViewModelResolved(object? viewModel)
     {
         // Default: no additional initialization
         // Derived classes can override to bind data, subscribe to events, etc.
@@ -415,7 +427,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// Save hook with progress reporting - derived panels can override to persist data with progress updates.
     /// </summary>
     /// <param name="ct">Cancellation token to cancel the save operation.</param>
-    /// <param name="progress">Optional progress reporter for tracking save stages (e.g., "Saving account...", "Updating ledger...").</param>
+    /// <param name="progress">Optional progress reporter for tracking save stages (e.g., "Saving account...", "Updating ledger...").param>
     /// <remarks>
     /// Override this method to report save progress to the UI (e.g., via a progress bar).
     /// If progress is null, report calls are safely ignored.
@@ -438,7 +450,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// Load hook with progress reporting - derived panels can override to fetch data with progress updates.
     /// </summary>
     /// <param name="ct">Cancellation token to cancel the load operation.</param>
-    /// <param name="progress">Optional progress reporter for tracking load stages (e.g., "Loading accounts...", "Loading transactions...").</param>
+    /// <param name="progress">Optional progress reporter for tracking load stages (e.g., "Loading accounts...", "Loading transactions...").param>
     /// <remarks>
     /// Override this method to report load progress to the UI (e.g., via a progress bar or spinner).
     /// If progress is null, report calls are safely ignored.
@@ -486,7 +498,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// <remarks>
     /// If the current thread is already the UI thread (InvokeRequired is false), the action is executed directly.
     /// If a different thread, the action is marshaled to the UI thread using Invoke().
-    /// ObjectDisposedException is silently handled if the control has been disposed.
+    /// ObjectDisposedException is silently handled if the control handle has been disposed.
     /// </remarks>
     /// <exception cref="ObjectDisposedException">Thrown if the control handle is invalid or disposed during marshaling.</exception>
     protected void InvokeOnUiThread(Action action)
@@ -663,7 +675,7 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
     /// If no DataContext property exists or is read-only, this method is silently skipped (no exception thrown).
     /// This enables XAML or binding scenarios where panels expose a typed DataContext property.
     /// </remarks>
-    private void TrySetDataContext(TViewModel? viewModel)
+    private void TrySetDataContext(object? viewModel)
     {
         _dataContext = viewModel;
 
@@ -755,5 +767,137 @@ public abstract class ScopedPanelBase<TViewModel> : UserControl, ICompletablePan
         {
             ApplyThemeRecursively(child, themeName);
         }
+    }
+}
+
+/// <summary>
+/// Generic base class for panels that require scoped ViewModels with dependencies on scoped services (e.g., DbContext, repositories).
+/// Handles proper scope creation, ViewModel resolution, and disposal to prevent DI lifetime violations.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This class manages the complete lifecycle of a scoped DI container for each panel instance:
+/// 1. <strong>Scope Creation:</strong> Created in OnHandleCreated (when WinForms handle is created) to tie lifecycle to control's lifetime.
+/// 2. <strong>ViewModel Resolution:</strong> TViewModel is resolved from the scoped provider; if not manually assigned, resolution is automatic.
+/// 3. <strong>Initialization Hook:</strong> OnViewModelResolved is called for derived classes to perform custom initialization.
+/// 4. <strong>Async Initialization:</strong> OnHandleCreatedAsync allows heavy operations (DB queries, network calls) without blocking the UI thread.
+/// 5. <strong>Theme Management:</strong> Automatically applies SfSkinManager theme cascade to this panel and all children.
+/// 6. <strong>Disposal:</strong> Scope is disposed in Dispose, releasing all scoped services including DbContext.
+/// </para>
+/// <para>
+/// Implements ICompletablePanel to support state tracking (IsLoaded, IsBusy, HasUnsavedChanges, IsValid, ValidationErrors).
+/// Integrates with IThemeService for runtime theme switching without requiring panel reload.
+/// Uses reflection caching to optimize DataContext property lookups per derived type.
+/// </para>
+/// <para>
+/// Best Practices:
+/// - Keep constructors lightweight; defer heavy initialization to OnHandleCreatedAsync.
+/// - Use AddValidationError, ClearValidationErrors, and similar helpers for consistent validation management.
+/// - Subscribe to ViewModel events in OnViewModelResolved; unsubscribe in Dispose to prevent leaks.
+/// - Use InvokeOnUiThread when updating UI from background threads to ensure thread safety.
+/// - Use RegisterOperation to manage concurrent async operations; only one operation can run at a time.
+/// </para>
+/// </remarks>
+/// <typeparam name="TViewModel">The ViewModel type to resolve from the scoped service provider.</typeparam>
+public class ScopedPanelBase<TViewModel> : ScopedPanelBase
+    where TViewModel : class
+{
+    /// <summary>
+    /// Gets or sets the ViewModel instance.
+    /// If not set manually, it is resolved from the scoped service provider after the panel handle is created.
+    /// </summary>
+    [System.ComponentModel.Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public new TViewModel? ViewModel
+    {
+        get => (TViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ScopedPanelBase{TViewModel}"/> class.
+    /// </summary>
+    /// <param name="scopeFactory">The service scope factory for creating scopes to resolve scoped dependencies.</param>
+    /// <param name="logger">The logger instance for diagnostic logging.</param>
+    protected ScopedPanelBase(
+        IServiceScopeFactory scopeFactory,
+        ILogger<ScopedPanelBase<TViewModel>>? logger = null)
+        : base(scopeFactory, logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ScopedPanelBase<TViewModel>>.Instance)
+    {
+        if (GetType() == typeof(ScopedPanelBase<TViewModel>))
+        {
+            throw new InvalidOperationException("ScopedPanelBase<TViewModel> is not intended to be instantiated directly. Use a derived class instead.");
+        }
+    }
+
+    /// <summary>
+    /// Lightweight parameterless constructor intended for design-time (Visual Studio designer) instantiation.
+    /// It provides a minimal, no-op IServiceScopeFactory and a null logger so the designer can create an instance
+    /// without triggering runtime DI resolution. Heavy initialization is deferred to OnHandleCreated / OnHandleCreatedAsync.
+    /// </summary>
+    protected ScopedPanelBase()
+        : base()
+    {
+    }
+
+    /// <summary>
+    /// Resolves the ViewModel from the service provider.
+    /// </summary>
+    protected override object? ResolveViewModel(IServiceProvider serviceProvider)
+    {
+        return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TViewModel>(serviceProvider);
+    }
+
+    /// <summary>
+    /// Called to create a mock ViewModel for Visual Studio designer support.
+    /// Override this method to provide design-time data for the designer.
+    /// </summary>
+    /// <returns>A mock ViewModel instance, or null if no designer support is needed.</returns>
+    /// <remarks>
+    /// This method is only called when DesignMode is true (i.e., in Visual Studio designer).
+    /// Default implementation returns null, which skips ViewModel setup in the designer.
+    /// Override to provide a lightweight mock ViewModel that displays sample data in the designer.
+    /// Do NOT perform expensive operations (database queries, network calls) in this method;
+    /// the designer may call it repeatedly, and it should return quickly.
+    /// Example:
+    /// <code>
+    /// protected override TViewModel? CreateDesignerViewModel()
+    /// {
+    ///     return new MyViewModel
+    ///     {
+    ///         Items = new() { new Item { Id = 1, Name = "Sample Item" } },
+    ///         IsLoading = false
+    ///     };
+    /// }
+    /// </code>
+    /// </remarks>
+    protected virtual new TViewModel? CreateDesignerViewModel()
+    {
+        return null;
+    }
+
+    /// <summary>
+    /// Called after the ViewModel has been successfully resolved from the scoped service provider.
+    /// Override this method to perform additional initialization logic with the ViewModel.
+    /// </summary>
+    /// <param name="viewModel">The resolved ViewModel instance.</param>
+    protected override void OnViewModelResolved(object? viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+        if (viewModel is TViewModel typedViewModel)
+        {
+            OnViewModelResolved(typedViewModel);
+        }
+    }
+
+    /// <summary>
+    /// Called after the ViewModel has been successfully resolved from the scoped service provider.
+    /// Override this method to perform additional initialization logic with the ViewModel.
+    /// </summary>
+    /// <param name="viewModel">The resolved ViewModel instance.</param>
+    protected virtual void OnViewModelResolved(TViewModel viewModel)
+    {
+        // Default: no additional initialization
+        // Derived classes can override to bind data, subscribe to events, etc.
     }
 }

@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 
@@ -31,7 +32,7 @@ public static class RibbonFactory
     /// <summary>
     /// Safely invokes a method on the form via reflection.
     /// </summary>
-    private static bool TryInvokeFormMethod(System.Windows.Forms.Form form, string methodName, object?[]? parameters, out object? result)
+    private static bool TryInvokeFormMethod(System.Windows.Forms.Form form, string methodName, object?[]? parameters, out object? result, ILogger? logger = null)
     {
         result = null;
         try
@@ -48,7 +49,7 @@ public static class RibbonFactory
         }
         catch (Exception ex)
         {
-            Serilog.Log.Debug(ex, "[RIBBON_FACTORY] Form method '{MethodName}' invocation failed", methodName);
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Form method '{MethodName}' invocation failed", methodName);
             return false;
         }
     }
@@ -76,16 +77,12 @@ public static class RibbonFactory
             Dock = (DockStyleEx)DockStyle.Top,
             Location = new Point(0, 0),
             // Let Syncfusion theme control the visual style for Office2019 compatibility
-            LauncherStyle = LauncherStyle.Metro,
-            MenuButtonText = "File",
-            MenuButtonWidth = 54,
-            MenuButtonVisible = true,
-            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-            TitleColor = Color.Black
+            LauncherStyle = LauncherStyle.Metro
+            // Removed: TitleColor = Color.Black (let theme control)
+            // Removed: Font = new Font("Segoe UI", 9F, FontStyle.Regular) (let theme control fonts)
         };
 
-        // Force height to prevent auto-size collapse in some legacy styles
-        ribbon.Height = 150;
+        // Removed: ribbon.Height = 150 (let theme control height)
 
         // Apply current application theme to the ribbon (prefer Office2019)
         try
@@ -104,6 +101,8 @@ public static class RibbonFactory
             ribbon.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         }
 
+        ConfigureRibbonAppearance(ribbon, logger);
+
         // === BACKSTAGE VIEW (The "File" Menu) ===
         // Replaces standard MenuButtonText
         ribbon.BackStageView = CreateBackStage(form, logger);
@@ -121,7 +120,7 @@ public static class RibbonFactory
         var (dashboardStrip, dashboardBtn) = CreateDashboardGroup(form, currentThemeString, logger);
 
         // 2. Financials Group
-        var (financialsStrip, accountsBtn, budgetsBtn) = CreateFinancialsGroup(form, currentThemeString, logger);
+        var (financialsStrip, accountsBtn) = CreateFinancialsGroup(form, currentThemeString, logger);
 
         // 3. Reporting Group
         var reportingStrip = CreateReportingGroup(form, currentThemeString, logger);
@@ -184,6 +183,13 @@ public static class RibbonFactory
         // 1. Create the control (Holds the UI)
         var backstage = new Syncfusion.Windows.Forms.BackStageView(new System.ComponentModel.Container());
 
+        // Apply theme to BackStageView
+        try
+        {
+            SfSkinManager.SetVisualStyle(backstage, SfSkinManager.ApplicationVisualTheme);
+        }
+        catch { }
+
         try
         {
             // --- TAB: INFO ---
@@ -218,6 +224,11 @@ public static class RibbonFactory
 
             // --- BUTTON: EXIT ---
             var exitBtn = new BackStageButton { Text = "Exit", Name = "BackStage_Exit" };
+            try
+            {
+                exitBtn.Placement = BackStageItemPlacement.Bottom;
+            }
+            catch { }
             exitBtn.Click += (s, e) => Application.Exit();
 
             // 3. Add items to the BackStage control safely
@@ -225,8 +236,15 @@ public static class RibbonFactory
             {
                 try
                 {
+                    try
+                    {
+                        backstage.BackStage.BackStagePanelWidth = 200;
+                    }
+                    catch { }
+
                     backstage.BackStage.Controls.Add(infoTab);
                     backstage.BackStage.Controls.Add(exitBtn);
+                    backstage.BackStage.SelectedTab = infoTab;
                 }
                 catch (Exception ex)
                 {
@@ -250,17 +268,59 @@ public static class RibbonFactory
     }
 
     /// <summary>
-    private static ToolStripEx CreateRibbonGroup(string title, string name)
+    /// Applies Syncfusion Ribbon appearance defaults from the docs (style, QAT).
+    /// </summary>
+    private static void ConfigureRibbonAppearance(RibbonControlAdv ribbon, ILogger? logger)
     {
+        if (ribbon == null) return;
+
+        try
+        {
+            ribbon.RibbonStyle = RibbonStyle.Office2016;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set RibbonStyle");
+        }
+
+        try
+        {
+            ribbon.MenuButtonText = "File";
+            ribbon.MenuButtonVisible = true;
+            ribbon.MenuButtonWidth = 54;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set MenuButton configuration");
+        }
+
+        try
+        {
+            ribbon.QuickPanelVisible = true;
+            ribbon.ShowQuickItemsDropDownButton = true;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set Quick Access Toolbar configuration");
+        }
+    }
+
+    /// <summary>
+    /// Creates a ToolStripEx group with Office-style layout and theming.
+    /// </summary>
+    private static ToolStripEx CreateRibbonGroup(string title, string name, string theme)
+    {
+        var safeTitle = string.IsNullOrWhiteSpace(title) ? " " : title;
         var strip = new ToolStripEx
         {
             Name = name,
-            Text = title,
+            Text = safeTitle,
             GripStyle = ToolStripGripStyle.Hidden,
             AutoSize = true,
             LauncherStyle = LauncherStyle.Metro,
             ShowLauncher = false, // Set true if you have a dialog launcher event
-            ImageScalingSize = new Size(32, 32) // Standardize on 32px for Large buttons
+            ImageScalingSize = new Size(32, 32), // Standardize on 32px for Large buttons
+            ThemeName = theme // Ensure theme application for Office2019 styling
         };
         return strip;
     }
@@ -268,67 +328,55 @@ public static class RibbonFactory
     private static (ToolStripEx Strip, ToolStripButton DashboardBtn) CreateDashboardGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Dashboard", "DashboardGroup");
+        var strip = CreateRibbonGroup("Dashboard", "DashboardGroup", theme);
 
         var dashboardBtn = CreateLargeNavButton(
             "Nav_Dashboard", "Dashboard", "dashboard", theme,
             () => form.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Fill), logger);
         dashboardBtn.Tag = "Nav:Dashboard";
-        dashboardBtn.Enabled = false;
+        dashboardBtn.Enabled = true;  // Changed from false to true
 
         strip.Items.Add(dashboardBtn);
         return (strip, dashboardBtn);
     }
 
-    private static (ToolStripEx Strip, ToolStripButton AccountsBtn, ToolStripButton BudgetsBtn) CreateFinancialsGroup(
+    private static (ToolStripEx Strip, ToolStripButton AccountsBtn) CreateFinancialsGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Financials", "FinancialsGroup");
+        var strip = CreateRibbonGroup("Financials", "FinancialsGroup", theme);
 
         var accountsBtn = CreateLargeNavButton(
             "Nav_Accounts", "Accounts", "accounts", theme,
             () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right), logger);
         accountsBtn.Tag = "Nav:Accounts";
-        accountsBtn.Enabled = false;
-
-        var budgetsBtn = CreateLargeNavButton(
-            "Nav_Budgets", "Budgets", "budgets", theme,
-            () => form.ShowPanel<BudgetPanel>("Municipal Budgets", DockingStyle.Right), logger);
-        budgetsBtn.Tag = "Nav:Budgets";
-        budgetsBtn.Enabled = false;
+        accountsBtn.Enabled = true;
 
         var analyticsBtn = CreateLargeNavButton(
             "Nav_Analytics", "Analytics", "analytics", theme,
-            () => form.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right), logger);
+            () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right), logger);
         analyticsBtn.Tag = "Nav:Analytics";
-        analyticsBtn.Enabled = false;
+        analyticsBtn.Enabled = true;
 
         strip.Items.Add(accountsBtn);
-        strip.Items.Add(budgetsBtn);
         strip.Items.Add(analyticsBtn);
 
-        return (strip, accountsBtn, budgetsBtn);
+        return (strip, accountsBtn);
     }
 
     private static ToolStripEx CreateReportingGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Reporting", "ReportingGroup");
+        var strip = CreateRibbonGroup("Reporting", "ReportingGroup", theme);
 
-        var reportsBtn = CreateLargeNavButton(
-            "Nav_Reports", "Reports", "reports", theme,
-            () => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right), logger);
-        reportsBtn.Tag = "Nav:Reports";
-        reportsBtn.Enabled = false;
+        // Reporting group is currently empty - can add reporting-specific panels here later
 
-        strip.Items.Add(reportsBtn);
         return strip;
     }
 
     private static (ToolStripEx Strip, ToolStripButton QuickBooksBtn, ToolStripButton SettingsBtn) CreateToolsGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Tools", "ToolsGroup");
+        var strip = CreateRibbonGroup("Tools", "ToolsGroup", theme);
 
         var settingsBtn = CreateLargeNavButton(
             "Nav_Settings", "Settings", "settings", theme,
@@ -373,7 +421,7 @@ public static class RibbonFactory
     private static ToolStripEx CreateLayoutGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Layout", "LayoutGroup");
+        var strip = CreateRibbonGroup("Layout", "LayoutGroup", theme);
 
         // Stack these small buttons vertically
         var panelItem = new ToolStripPanelItem { RowCount = 2, AutoSize = true, Transparent = true };
@@ -394,7 +442,7 @@ public static class RibbonFactory
     private static ToolStripEx CreateMoreGroup(
          WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Views", "MorePanelsGroup");
+        var strip = CreateRibbonGroup("Views", "MorePanelsGroup", theme);
 
         // Featured items (Large)
         var warRoomBtn = CreateLargeNavButton("Nav_WarRoom", "War Room", "warroom", theme,
@@ -426,7 +474,7 @@ public static class RibbonFactory
     private static ToolStripEx CreateSearchAndGridGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
-        var strip = CreateRibbonGroup("Actions", "ActionGroup");
+        var strip = CreateRibbonGroup("Actions", "ActionGroup", theme);
 
         // 1. Grid Tools Stack
         var gridStack = new ToolStripPanelItem { RowCount = 2, AutoSize = true, Transparent = true };
@@ -493,7 +541,7 @@ public static class RibbonFactory
     /// Includes full accessibility support (AccessibleName, AccessibleRole, AccessibleDescription).
     /// DPI-Aware: Uses GetScaledImage() to select optimal pre-scaled icon variant for 125%/150%/200% displays,
     /// preventing blurring of 32px icons that would occur from upscaling 16px sources.
-    /// 
+    ///
     /// POLISH ENHANCEMENTS:
     /// - Rich tooltips with action description and keyboard shortcut (if applicable).
     /// - MouseEnter/Leave visual feedback (slight glow effect via BackColor).
@@ -524,7 +572,8 @@ public static class RibbonFactory
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageAboveText, // CRITICAL for Large Layout
             ImageScaling = ToolStripItemImageScaling.None, // Prevents downscaling 32px icons
-            ToolTipText = tooltipText
+            ToolTipText = tooltipText,
+            Padding = new Padding(4) // Add padding for better visual spacing
         };
 
         if (!string.IsNullOrEmpty(iconName))
@@ -594,7 +643,8 @@ public static class RibbonFactory
             AutoSize = true,
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageBeforeText,
-            ImageScaling = ToolStripItemImageScaling.None // 16x16 standard
+            ImageScaling = ToolStripItemImageScaling.None, // 16x16 standard
+            Padding = new Padding(2) // Add padding for better visual spacing
         };
 
         if (!string.IsNullOrEmpty(iconName))
@@ -620,14 +670,21 @@ public static class RibbonFactory
             Serilog.Log.Information("[NAV] {Action} -> {Panel}", actionName, panelName);
             if (Program.Services != null)
             {
-                var service = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<IActivityLogService>(Program.Services);
-                if (service != null)
+                // Create a scope to resolve scoped services
+                var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(Program.Services);
+                if (scopeFactory != null)
                 {
-                    await service.LogNavigationAsync(
-                        actionName: $"Navigated to {actionName}",
-                        details: $"Opened {panelName} panel",
-                        status: "Success");
+                    using var scope = scopeFactory.CreateScope();
+                    var service = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetService<IActivityLogService>(scope.ServiceProvider);
+                    if (service != null)
+                    {
+                        await service.LogNavigationAsync(
+                            actionName: $"Navigated to {actionName}",
+                            details: $"Opened {panelName} panel",
+                            status: "Success");
+                    }
                 }
             }
         }

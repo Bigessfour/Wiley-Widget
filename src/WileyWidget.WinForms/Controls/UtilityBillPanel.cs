@@ -32,8 +32,14 @@ namespace WileyWidget.WinForms.Controls;
 /// Implements MVVM pattern with full CRUD operations, theme integration, and accessibility.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
+public partial class UtilityBillPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new UtilityBillViewModel? ViewModel
+    {
+        get => (UtilityBillViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
     #region Fields
 
     private SfDataGrid? _billsGrid;
@@ -55,7 +61,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private GradientPanelExt? _summaryPanel;
     private GradientPanelExt? _gridPanel;
     private GradientPanelExt? _buttonPanel;
-    private SplitContainer? _mainSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -89,7 +95,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     public UtilityBillPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<UtilityBillViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
     }
@@ -98,9 +104,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Initialization
 
-    protected override void OnViewModelResolved(UtilityBillViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not UtilityBillViewModel)
+        {
+            return;
+        }
 
         try
         {
@@ -165,7 +175,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Controls.Add(_panelHeader);
 
         // Main split container (bills top, customers bottom)
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,

@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Action = System.Action;
+using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -36,7 +37,7 @@ namespace WileyWidget.WinForms.Forms
 
         private Form? _form;
         private Label? _messageLabel;
-        private ProgressBar? _progressBar;
+        private ProgressBarAdv? _progressBar;
 
         public event EventHandler<SplashProgressChangedEventArgs>? ProgressChanged;
 
@@ -148,12 +149,11 @@ namespace WileyWidget.WinForms.Forms
                     {
                         if (isIndeterminate)
                         {
-                            _progressBar.Style = ProgressBarStyle.Marquee;
-                            _progressBar.MarqueeAnimationSpeed = 30;
+                            // ProgressBarAdv doesn't support marquee, set to 50% for indeterminate
+                            _progressBar.Value = 50;
                         }
                         else
                         {
-                            _progressBar.Style = ProgressBarStyle.Continuous;
                             var percent = Math.Max(0, Math.Min(100, (int)Math.Round(progress * 100.0)));
                             _progressBar.Value = percent;
                         }
@@ -237,7 +237,6 @@ namespace WileyWidget.WinForms.Forms
 
                     if (_progressBar != null && !_progressBar.IsDisposed)
                     {
-                        _progressBar.Style = ProgressBarStyle.Continuous;
                         _progressBar.Value = _progressBar.Maximum;
                     }
                 }
@@ -287,13 +286,12 @@ namespace WileyWidget.WinForms.Forms
                     TextAlign = System.Drawing.ContentAlignment.MiddleLeft
                 };
 
-                _progressBar = new ProgressBar
+                _progressBar = new ProgressBarAdv
                 {
                     Dock = DockStyle.Fill,
                     Minimum = 0,
                     Maximum = 100,
-                    Value = 0,
-                    Style = ProgressBarStyle.Continuous
+                    Value = 0
                 };
 
                 layout.Controls.Add(_messageLabel, 0, 0);

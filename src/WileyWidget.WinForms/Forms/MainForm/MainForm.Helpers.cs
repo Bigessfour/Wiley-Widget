@@ -55,6 +55,13 @@ public partial class MainForm
                 try
                 {
                     SfSkinManager.SetVisualStyle(control, themeName);
+                    // Refresh for certain Syncfusion controls after theme applied
+                    if (control is Syncfusion.WinForms.DataGrid.SfDataGrid ||
+                        control.GetType().Name == "ChartControl" ||
+                        control.GetType().Name == "RadialGauge")
+                    {
+                        control.Refresh();
+                    }
                     appliedCount++;
 
                     // Log debug info for Syncfusion controls and custom panels

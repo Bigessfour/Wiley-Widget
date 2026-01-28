@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Specialized;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
@@ -17,6 +18,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
 using WileyWidget.WinForms.Themes;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Abstractions;
@@ -34,111 +36,108 @@ namespace WileyWidget.WinForms.Controls
     /// - Prominent "Required Rate Increase" display
     /// Production-Ready: Full validation, databinding, error handling, sizing, accessibility.
     /// </summary>
-    public partial class WarRoomPanel : ScopedPanelBase<WarRoomViewModel>, WileyWidget.Abstractions.ILazyLoadViewModel, IAsyncInitializable
+    public partial class WarRoomPanel : ScopedPanelBase
     {
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
         /// </summary>
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public new object? DataContext { get; private set; }
+
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new WarRoomViewModel? ViewModel
+        {
+            get => (WarRoomViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
 
         // Event handler storage for proper cleanup in Dispose
         private EventHandler? _btnRunScenarioClickHandler;
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         private EventHandler? _scenarioInputTextChangedHandler;
 
-        private GradientPanelExt _topPanel = null!;
-        private PanelHeader? _panelHeader;
-        private LoadingOverlay? _loadingOverlay;
-        private Label _lblStatus = null!;
+        // Collection change handlers to react to ViewModel ObservableCollection updates
+        private NotifyCollectionChangedEventHandler? _projectionsCollectionChangedHandler;
+        private NotifyCollectionChangedEventHandler? _departmentImpCollectionChangedHandler;
+        private INotifyCollectionChanged? _projectionsCollection;
+        private INotifyCollectionChanged? _departmentImpCollection;
 
-        // Input controls
-        private TextBox _scenarioInput = null!;
-        private Syncfusion.WinForms.Controls.SfButton _btnRunScenario = null!;
-        private Label _lblVoiceHint = null!;
-        private Label _lblInputError = null!;
+        private readonly ErrorProvider? _errorProvider;
+        private readonly string _activeThemeName = ThemeColors.DefaultTheme;
 
-        // Results panels
-        private Panel _resultsPanel = null!;
-        private Label _lblNoResults = null!;
-
-        // Top-left: Big headline
-        private Label _lblRateIncreaseHeadline = null!;
-        private Label _lblRateIncreaseValue = null!;
-
-        // Top-right: Risk gauge
-        private RadialGauge? _riskGauge;
-
-        // Middle: Charts
-        private ChartControl _revenueChart = null!;
-        private ChartControl _departmentChart = null!;
-
-        // Bottom: Results grid
-        private SfDataGrid _projectionsGrid = null!;
-        private SfDataGrid _departmentImpactGrid = null!;
-
-        private Panel _contentPanel = null!;
-        private ErrorProvider? _errorProvider;
+        // Minimum size for content panel to ensure proper layout
+        private static readonly Size ContentPanelMinSize = new(800, 600);
 
         // Obsolete parameterless constructor for designer compatibility
+        // Design-time constructor MUST NOT rely on runtime DI (Program.Services may be null in designer).
         [Obsolete("Use DI constructor with IServiceScopeFactory and ILogger", false)]
         public WarRoomPanel()
-            : this(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services!),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<WarRoomViewModel>>>(Program.Services!))
+            : base()
         {
+            // Lightweight initialization for Visual Studio designer
+            _logger?.LogDebug("WarRoomPanel (design-time) initializing");
+
+            _errorProvider = new ErrorProvider();
+
+            InitializeComponent();
+
+            try
+            {
+                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+                try { SfSkinManager.SetVisualStyle(this, theme); } catch { }
+            }
+            catch { }
+
+            // Ensure minimum size for content panel
+            if (_contentPanel != null)
+                _contentPanel.MinimumSize = ContentPanelMinSize;
+
+            DeferSizeValidation();
+
+            this.Load += (s, e) => this.Invalidate(true);
         }
 
         // Primary DI constructor
         public WarRoomPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase<WarRoomViewModel>> logger)
+            ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
-            _logger?.LogInformation("WarRoomPanel initializing");
+            _logger?.LogDebug("WarRoomPanel initializing");
+
+            _errorProvider = new ErrorProvider();
 
             InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try
-            {
-                SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
-            }
-            catch { }
+            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
 
-            BindViewModel();
+            _activeThemeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            try { SfSkinManager.SetVisualStyle(this, _activeThemeName); } catch { }
 
-            // Defer sizing validation for complex WarRoom layouts with charts and grids
+            // Ensure minimum size for content panel
+            if (_contentPanel != null)
+                _contentPanel.MinimumSize = ContentPanelMinSize;
+
             DeferSizeValidation();
 
-            _logger?.LogInformation("WarRoomPanel initialized successfully");
+            _logger?.LogDebug("WarRoomPanel initialized successfully");
+
+            this.Load += (s, e) => this.Invalidate(true);
         }
 
         /// <summary>
-        /// Initializes all UI controls with proper layout and databinding.
+        /// Called when the ViewModel is resolved from the scoped provider.
         /// </summary>
-        private void InitializeComponent()
+        protected override void OnViewModelResolved(object? viewModel)
         {
-            try
+            base.OnViewModelResolved(viewModel);
+            if (viewModel is not WarRoomViewModel)
             {
-                // Initialize ErrorProvider first (used in input validation)
-                _errorProvider = new ErrorProvider
-                {
-                    BlinkStyle = ErrorBlinkStyle.NeverBlink,
-                    BlinkRate = 0,
-                    ContainerControl = this
-                };
-
-                BuildTopInputPanel();
-                BuildContentArea();
-                PerformLayout();
-                Refresh();
-                _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+                return;
             }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error initializing WarRoomPanel UI");
-                throw;
-            }
+            BindViewModel();
+            ScheduleUpdateUIFromViewModel();
         }
 
         private void DeferSizeValidation()
@@ -171,575 +170,6 @@ namespace WileyWidget.WinForms.Controls
             HandleCreated += handleCreatedHandler;
         }
 
-        private void BuildTopInputPanel()
-        {
-            _topPanel = new GradientPanelExt
-            {
-                MinimumSize = new Size(0, 160),
-                Height = 160,
-                Dock = DockStyle.Top,
-                Padding = new Padding(12),
-                Name = "WarRoomTopPanel",
-                AccessibleName = "War Room Input Panel",
-                AccessibleDescription = "Contains the scenario input field and run button",
-                AccessibleRole = AccessibleRole.Pane
-            };
-            Controls.Add(_topPanel);
-
-            _panelHeader = new PanelHeader
-            {
-                Dock = DockStyle.Top,
-                Name = "WarRoomPanelHeader",
-                AccessibleName = "War Room Header",
-                AccessibleDescription = "Panel title and quick actions"
-            };
-            _panelHeader.Title = "War Room";
-            _topPanel.Controls.Add(_panelHeader);
-
-            var topBodyLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1,
-                Margin = new Padding(0),
-                Padding = new Padding(0),
-                Name = "TopInputBodyLayout"
-            };
-            topBodyLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
-            topBodyLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            _topPanel.Controls.Add(topBodyLayout);
-
-            var inputGroupBox = new GroupBox
-            {
-                Text = "Scenario Input",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10),
-                Margin = new Padding(0),
-                Name = "ScenarioInputGroup",
-                AccessibleName = "Scenario Input Group",
-                AccessibleDescription = "Enter scenarios and run the analysis"
-            };
-            topBodyLayout.Controls.Add(inputGroupBox, 0, 0);
-
-            var scenarioLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 3,
-                AutoSize = true,
-                Margin = new Padding(0),
-                Padding = new Padding(0)
-            };
-            scenarioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            scenarioLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            scenarioLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            scenarioLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            scenarioLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            inputGroupBox.Controls.Add(scenarioLayout);
-
-            _scenarioInput = new TextBox
-            {
-                Text = "Raise water rates 12% and inflation is 4% for 5 years",
-                Multiline = false,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 8, 0),
-                Name = "ScenarioInput",
-                AccessibleName = "Scenario Input",
-                AccessibleDescription = "Enter your scenario in natural language (e.g., 'Raise rates 10% for 3 years')",
-                MaxLength = 500
-            };
-            scenarioLayout.Controls.Add(_scenarioInput, 0, 0);
-
-            _btnRunScenario = new Syncfusion.WinForms.Controls.SfButton
-            {
-                Text = "Run Scenario",
-                AutoSize = false,
-                Anchor = AnchorStyles.Right,
-                Margin = new Padding(0),
-                Name = "RunScenarioButton",
-                AccessibleName = "Run Scenario",
-                AccessibleDescription = "Click to analyze the scenario with AI"
-            };
-            scenarioLayout.Controls.Add(_btnRunScenario, 1, 0);
-
-            _lblInputError = new Label
-            {
-                Text = string.Empty,
-                AutoSize = false,
-                Margin = new Padding(0, 4, 0, 0),
-                Name = "InputErrorLabel",
-                AccessibleName = "Input Error",
-                AccessibleDescription = "Displays validation errors for scenario input",
-                ForeColor = Color.Red,
-                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
-                Visible = false
-            };
-            scenarioLayout.Controls.Add(_lblInputError, 0, 1);
-            scenarioLayout.SetColumnSpan(_lblInputError, 2);
-
-            _lblVoiceHint = new Label
-            {
-                Text = "💬 Or ask JARVIS aloud using voice input (if available in your installation)",
-                AutoSize = false,
-                Margin = new Padding(0, 4, 0, 0),
-                Font = new Font("Segoe UI", 9F, FontStyle.Italic),
-                Name = "VoiceHint",
-                AccessibleName = "Voice Hint",
-                AccessibleDescription = "Hint to use voice input with JARVIS assistant (Alt+V)"
-            };
-            scenarioLayout.Controls.Add(_lblVoiceHint, 0, 2);
-            scenarioLayout.SetColumnSpan(_lblVoiceHint, 2);
-
-            var statusHostPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(8, 4, 8, 4),
-                Margin = new Padding(12, 0, 0, 0),
-                Name = "StatusHostPanel",
-                AccessibleName = "War Room Status Panel",
-                AccessibleDescription = "Shows whether the panel is ready or analyzing"
-            };
-            topBodyLayout.Controls.Add(statusHostPanel, 1, 0);
-
-            _lblStatus = new Label
-            {
-                Text = "Ready",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleRight,
-                AutoSize = false,
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Name = "StatusLabel",
-                AccessibleName = "Status",
-                AccessibleDescription = "Current processing status (Ready, Analyzing)"
-            };
-            statusHostPanel.Controls.Add(_lblStatus);
-        }
-
-        private void BuildContentArea()
-        {
-            _contentPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Name = "ContentPanel",
-                Padding = new Padding(0),
-                AccessibleName = "War Room Content",
-                AccessibleDescription = "Hosts the results layout and placeholders"
-            };
-            Controls.Add(_contentPanel);
-
-            _resultsPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                AutoScroll = true,
-                Name = "ResultsPanel",
-                Visible = false,
-                AccessibleName = "Results Panel",
-                AccessibleDescription = "Displays charts and grids after a scenario completes"
-            };
-            _contentPanel.Controls.Add(_resultsPanel);
-
-            _lblNoResults = new Label
-            {
-                Text = "Run a scenario to see results...",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 12F, FontStyle.Italic),
-                Name = "NoResultsLabel",
-                AccessibleName = "No Results",
-                AccessibleDescription = "Prompt displayed when there are no scenario results",
-                Margin = new Padding(12)
-            };
-            _contentPanel.Controls.Add(_lblNoResults);
-            _lblNoResults.BringToFront();
-
-            _loadingOverlay = new LoadingOverlay
-            {
-                Dock = DockStyle.Fill,
-                Visible = false,
-                Name = "WarRoomLoadingOverlay",
-                AccessibleName = "War Room Loading Overlay",
-                AccessibleDescription = "Indicates that a scenario is currently being analyzed"
-            };
-            Controls.Add(_loadingOverlay);
-            _loadingOverlay.BringToFront();
-
-            BuildResultsLayout();
-        }
-
-        private void BuildResultsLayout()
-        {
-            var resultsLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 3,
-                Padding = new Padding(12),
-                Margin = new Padding(0),
-                Name = "ResultsLayout",
-                AccessibleName = "Results Layout",
-                AccessibleDescription = "Shows headline, charts, and grids for scenario results"
-            };
-            resultsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            resultsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 60F));
-            resultsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 40F));
-            _resultsPanel.Controls.Add(resultsLayout);
-
-            var headlineLayout = new TableLayoutPanel
-            {
-                ColumnCount = 2,
-                RowCount = 1,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 0, 12),
-                Padding = new Padding(0)
-            };
-            headlineLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
-            headlineLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            resultsLayout.Controls.Add(headlineLayout, 0, 0);
-
-            var headlineGroup = new GroupBox
-            {
-                Text = "Scenario Result",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10),
-                Margin = new Padding(0, 0, 8, 0),
-                AccessibleName = "Rate Increase Summary",
-                AccessibleDescription = "Displays the required rate increase headline"
-            };
-            headlineLayout.Controls.Add(headlineGroup, 0, 0);
-
-            var headlineStack = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2,
-                Margin = new Padding(0),
-                Padding = new Padding(0)
-            };
-            headlineStack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            headlineStack.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            headlineGroup.Controls.Add(headlineStack);
-
-            _lblRateIncreaseHeadline = new Label
-            {
-                Text = "Required Rate Increase:",
-                Dock = DockStyle.Top,
-                TextAlign = ContentAlignment.MiddleLeft,
-                AutoSize = true,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Name = "RateIncreaseLabel",
-                AccessibleName = "Rate Increase Label",
-                AccessibleDescription = "Intro text for the required rate increase value"
-            };
-            headlineStack.Controls.Add(_lblRateIncreaseHeadline, 0, 0);
-
-            _lblRateIncreaseValue = new Label
-            {
-                Text = "—",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 48F, FontStyle.Bold),
-                Name = "RateIncreaseValue",
-                AccessibleName = "Required Rate Increase Value",
-                AccessibleDescription = "Displays the required percentage increase for the scenario"
-            };
-            headlineStack.Controls.Add(_lblRateIncreaseValue, 0, 1);
-
-            var gaugeGroup = new GroupBox
-            {
-                Text = "Risk Assessment",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10),
-                AccessibleName = "Risk Assessment",
-                AccessibleDescription = "Radial gauge showing the scenario risk level"
-            };
-            headlineLayout.Controls.Add(gaugeGroup, 1, 0);
-
-            _riskGauge = new RadialGauge
-            {
-                Dock = DockStyle.Fill,
-                Name = "RiskGauge",
-                MinimumValue = 0,
-                MaximumValue = 100,
-                Value = 0,
-                AccessibleName = "Risk Level Gauge",
-                AccessibleDescription = "Risk level from 0 (safe) to 100 (critical)"
-            };
-            gaugeGroup.Controls.Add(_riskGauge);
-
-            var chartSplit = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                SplitterWidth = 6,
-                Margin = new Padding(0, 0, 0, 12),
-                Name = "ChartSplitContainer",
-                AccessibleName = "Chart Splitter",
-                AccessibleDescription = "Adjusts space between revenue and department charts"
-            };
-
-            SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
-                chartSplit,
-                panel1MinSize: 220,
-                panel2MinSize: 220,
-                desiredDistance: 520,
-                splitterWidth: 6);
-
-            resultsLayout.Controls.Add(chartSplit, 0, 1);
-
-            var revenueChartGroup = new GroupBox
-            {
-                Text = "Revenue & Expenses Projection",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(8),
-                Margin = new Padding(0, 0, 8, 0),
-                AccessibleName = "Revenue chart",
-                AccessibleDescription = "Displays projected revenue and expense trends"
-            };
-            revenueChartGroup.MinimumSize = new Size(260, 220);
-            chartSplit.Panel1.Controls.Add(revenueChartGroup);
-
-            _revenueChart = new ChartControl
-            {
-                Dock = DockStyle.Fill,
-                Name = "RevenueChart",
-                Palette = ChartColorPalette.GrayScale,
-                AccessibleName = "Revenue & Expense Chart",
-                AccessibleDescription = "Line chart showing revenue and expense projections"
-            };
-            revenueChartGroup.Controls.Add(_revenueChart);
-
-            var departmentChartGroup = new GroupBox
-            {
-                Text = "Department Budget Impact",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(8),
-                AccessibleName = "Department chart",
-                AccessibleDescription = "Shows the budget impact per department"
-            };
-            departmentChartGroup.MinimumSize = new Size(260, 220);
-            chartSplit.Panel2.Controls.Add(departmentChartGroup);
-
-            _departmentChart = new ChartControl
-            {
-                Dock = DockStyle.Fill,
-                Name = "DepartmentChart",
-                Palette = ChartColorPalette.GrayScale,
-                AccessibleName = "Department Impact Chart",
-                AccessibleDescription = "Column chart showing department impacts"
-            };
-            departmentChartGroup.Controls.Add(_departmentChart);
-
-            var gridsSplit = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterWidth = 6,
-                AccessibleName = "Grids Splitter",
-                AccessibleDescription = "Adjusts space between projections and department grids"
-            };
-            SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
-                gridsSplit,
-                panel1MinSize: 180,
-                panel2MinSize: 180,
-                desiredDistance: 220,
-                splitterWidth: 6);
-            resultsLayout.Controls.Add(gridsSplit, 0, 2);
-
-            var projectionsGroup = new GroupBox
-            {
-                Text = "Year-by-Year Projections",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(8),
-                Margin = new Padding(0, 0, 0, 6),
-                AccessibleName = "Projections Grid Group",
-                AccessibleDescription = "Shows the year-by-year projection table"
-            };
-            projectionsGroup.MinimumSize = new Size(0, 180);
-            gridsSplit.Panel1.Controls.Add(projectionsGroup);
-
-            _projectionsGrid = new SfDataGrid
-            {
-                Dock = DockStyle.Fill,
-                AllowFiltering = true,
-                AllowSorting = true,
-                AllowEditing = false,
-                RowHeight = 24,
-                AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-                ShowRowHeader = false,
-                Name = "ProjectionsGrid",
-                AutoGenerateColumns = false,
-                SelectionMode = GridSelectionMode.Single,
-                AccessibleName = "Projections Grid",
-                AccessibleDescription = "Year-by-year financial projections table"
-            };
-            projectionsGroup.Controls.Add(_projectionsGrid);
-
-            var departmentGroup = new GroupBox
-            {
-                Text = "Department Impact Analysis",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(8),
-                AccessibleName = "Department Impact Grid Group",
-                AccessibleDescription = "Shows department impact values"
-            };
-            departmentGroup.MinimumSize = new Size(0, 180);
-            gridsSplit.Panel2.Controls.Add(departmentGroup);
-
-            _departmentImpactGrid = new SfDataGrid
-            {
-                Dock = DockStyle.Fill,
-                AllowFiltering = true,
-                AllowSorting = true,
-                AllowEditing = false,
-                RowHeight = 24,
-                AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-                ShowRowHeader = false,
-                Name = "DepartmentImpactGrid",
-                AutoGenerateColumns = false,
-                SelectionMode = GridSelectionMode.Single,
-                AccessibleName = "Department Impact Grid",
-                AccessibleDescription = "Impact analysis by department"
-            };
-            departmentGroup.Controls.Add(_departmentImpactGrid);
-
-            ConfigureProjectionsGrid();
-            ConfigureDepartmentImpactGrid();
-
-            this.PerformLayout();
-            this.Refresh();
-
-            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
-        }
-
-        /// <summary>
-        /// Configures the projections grid columns with proper formatting and alignment.
-        /// </summary>
-        private void ConfigureProjectionsGrid()
-        {
-            try
-            {
-                if (_projectionsGrid == null)
-                {
-                    _logger?.LogWarning("ProjectionsGrid is null - cannot configure");
-                    return;
-                }
-
-                _projectionsGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(ScenarioProjection.Year),
-                    HeaderText = "Year",
-                    Width = 60,
-                    Format = "0"
-                });
-
-                _projectionsGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(ScenarioProjection.ProjectedRate),
-                    HeaderText = "Rate ($/mo)",
-                    Width = 100,
-                    Format = "C2"
-                });
-
-                _projectionsGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(ScenarioProjection.ProjectedRevenue),
-                    HeaderText = "Revenue",
-                    Width = 100,
-                    Format = "C0"
-                });
-
-                _projectionsGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(ScenarioProjection.ProjectedExpenses),
-                    HeaderText = "Expenses",
-                    Width = 100,
-                    Format = "C0"
-                });
-
-                _projectionsGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(ScenarioProjection.ProjectedBalance),
-                    HeaderText = "Balance",
-                    Width = 100,
-                    Format = "C0"
-                });
-
-                _projectionsGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(ScenarioProjection.ReserveLevel),
-                    HeaderText = "Reserve (3mo)",
-                    Width = 120,
-                    Format = "C0"
-                });
-
-                _logger?.LogDebug("Projections grid configured with {ColumnCount} columns", _projectionsGrid.Columns.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error configuring projections grid");
-            }
-        }
-
-        /// <summary>
-        /// Configures the department impact grid columns with proper formatting and alignment.
-        /// </summary>
-        private void ConfigureDepartmentImpactGrid()
-        {
-            try
-            {
-                if (_departmentImpactGrid == null)
-                {
-                    _logger?.LogWarning("DepartmentImpactGrid is null - cannot configure");
-                    return;
-                }
-
-                _departmentImpactGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(DepartmentImpact.DepartmentName),
-                    HeaderText = "Department",
-                    Width = 150
-                });
-
-                _departmentImpactGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(DepartmentImpact.CurrentBudget),
-                    HeaderText = "Current Budget",
-                    Width = 120,
-                    Format = "C0"
-                });
-
-                _departmentImpactGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(DepartmentImpact.ProjectedBudget),
-                    HeaderText = "Projected Budget",
-                    Width = 130,
-                    Format = "C0"
-                });
-
-                _departmentImpactGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(DepartmentImpact.ImpactAmount),
-                    HeaderText = "Impact Amount",
-                    Width = 120,
-                    Format = "C0"
-                });
-
-                _departmentImpactGrid.Columns.Add(new GridTextColumn
-                {
-                    MappingName = nameof(DepartmentImpact.ImpactPercentage),
-                    HeaderText = "Impact %",
-                    Width = 100,
-                    Format = "0.00%"
-                });
-
-                _logger?.LogDebug("Department impact grid configured with {ColumnCount} columns", _departmentImpactGrid.Columns.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error configuring department impact grid");
-            }
-        }
-
         /// <summary>
         /// Binds the ViewModel to UI controls with event handler storage for proper cleanup.
         /// </summary>
@@ -757,6 +187,7 @@ namespace WileyWidget.WinForms.Controls
                 if (_projectionsGrid != null && ViewModel.Projections != null)
                 {
                     _projectionsGrid.DataSource = ViewModel.Projections;
+                    _projectionsGrid.Refresh();
                 }
                 else
                 {
@@ -766,6 +197,8 @@ namespace WileyWidget.WinForms.Controls
                 if (_departmentImpactGrid != null && ViewModel.DepartmentImpacts != null)
                 {
                     _departmentImpactGrid.DataSource = ViewModel.DepartmentImpacts;
+                    _departmentImpactGrid.Refresh();
+                    _departmentImpactGrid.Invalidate(true);
                 }
                 else
                 {
@@ -784,29 +217,14 @@ namespace WileyWidget.WinForms.Controls
                 _scenarioInputTextChangedHandler = (s, e) => OnScenarioInputTextChanged();
                 _scenarioInput.TextChanged += _scenarioInputTextChangedHandler;
 
-                _logger?.LogInformation("ViewModel bound successfully");
+                // Attach to collection change events and ensure UI updates if data already exists
+                AttachCollectionHandlers();
+
+                _logger?.LogDebug("ViewModel bound successfully");
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error binding ViewModel");
-            }
-        }
-
-        /// <summary>
-        /// Called after the ViewModel has been resolved from the scoped provider.
-        /// Ensures UI bindings are applied when the ViewModel becomes available.
-        /// </summary>
-        protected override void OnViewModelResolved(WarRoomViewModel viewModel)
-        {
-            if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
-            base.OnViewModelResolved(viewModel);
-            try
-            {
-                BindViewModel();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error binding ViewModel in OnViewModelResolved for WarRoomPanel");
             }
         }
 
@@ -823,7 +241,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogInformation("WarRoomPanel async handle creation cancelled");
+                _logger?.LogDebug("WarRoomPanel async handle creation cancelled");
             }
             catch (Exception ex)
             {
@@ -833,27 +251,45 @@ namespace WileyWidget.WinForms.Controls
 
         /// <summary>
         /// ILazyLoadViewModel implementation: called when the panel's visibility changes.
-        /// Delegates to the ViewModel if it supports lazy loading, otherwise triggers panel-level LoadAsync.
+        /// Ensures controls are visible and triggers data binding/UI updates.
         /// </summary>
         public async Task OnVisibilityChangedAsync(bool isVisible)
         {
             try
             {
-                if (isVisible)
+                if (isVisible && !DesignMode)
                 {
+                    // Ensure all controls are visible
+                    _revenueChart.Visible = true;
+                    _riskGauge.Visible = true;
+                    _projectionsGrid.Visible = true;
+                    _departmentImpactGrid.Visible = true;
+
+                    // Force invalidate to ensure rendering
+                    this.Invalidate(true);
+
+                    // Force refresh on Syncfusion controls
+                    _revenueChart?.Refresh();
+                    _departmentChart?.Refresh();
+                    _riskGauge?.Refresh();
+                    _projectionsGrid?.Refresh();
+                    _departmentImpactGrid?.Refresh();
+
+                    // Lazy load data if ViewModel supports it and data not loaded
                     if (ViewModel is WileyWidget.Abstractions.ILazyLoadViewModel lazyVm)
                     {
                         await lazyVm.OnVisibilityChangedAsync(true).ConfigureAwait(false);
                         return;
                     }
 
+                    // Otherwise, trigger panel-level load
                     var ct = RegisterOperation();
                     await LoadAsync(ct).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Error during OnVisibilityChangedAsync for WarRoomPanel");
+                _logger?.LogError(ex, "Error during OnVisibilityChangedAsync for WarRoomPanel");
             }
         }
 
@@ -874,7 +310,7 @@ namespace WileyWidget.WinForms.Controls
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogInformation("WarRoomPanel InitializeAsync cancelled");
+                _logger?.LogDebug("WarRoomPanel InitializeAsync cancelled");
             }
             catch (Exception ex)
             {
@@ -922,7 +358,7 @@ namespace WileyWidget.WinForms.Controls
                 try
                 {
                     await ViewModel.RunScenarioCommand.ExecuteAsync(token);
-                    _logger?.LogInformation("Scenario analysis completed successfully");
+                    _logger?.LogDebug("Scenario analysis completed successfully");
                 }
                 finally
                 {
@@ -949,6 +385,35 @@ namespace WileyWidget.WinForms.Controls
                 ViewModel.ScenarioInput = _scenarioInput.Text;
                 SetHasUnsavedChanges(true); // Mark as dirty on user edit
                 _lblInputError.Visible = false; // Clear error on input change
+            }
+        }
+
+        private void ClosePanel()
+        {
+            try
+            {
+                var form = FindForm();
+                if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
+                {
+                    mainForm.PanelNavigator.HidePanel("War Room");
+                    return;
+                }
+
+                var dockingManagerField = form?.GetType()
+                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
+                {
+                    dockingManager.SetDockVisibility(this, false);
+                }
+                else
+                {
+                    Visible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Failed to close WarRoomPanel via docking manager");
+                Visible = false;
             }
         }
 
@@ -1024,6 +489,9 @@ namespace WileyWidget.WinForms.Controls
                         break;
 
                     case nameof(WarRoomViewModel.Projections):
+                        // Re-attach handlers in case the observable collection instance changed
+                        AttachCollectionHandlers();
+
                         // Validate before rendering
                         if (ViewModel.Projections != null && ViewModel.Projections.Count > 0)
                         {
@@ -1032,6 +500,9 @@ namespace WileyWidget.WinForms.Controls
                         break;
 
                     case nameof(WarRoomViewModel.DepartmentImpacts):
+                        // Re-attach handlers in case the observable collection instance changed
+                        AttachCollectionHandlers();
+
                         // Validate before rendering
                         if (ViewModel.DepartmentImpacts != null && ViewModel.DepartmentImpacts.Count > 0)
                         {
@@ -1043,6 +514,256 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error handling ViewModel property change: {PropertyName}", e?.PropertyName);
+            }
+        }
+
+        /// <summary>
+        /// Updates the UI from the current ViewModel state, ensuring controls are visible based on data availability.
+        /// </summary>
+        private async Task UpdateUIFromViewModel()
+        {
+            if (ViewModel == null) return;
+
+            try
+            {
+                // Bind chart data
+                if (ViewModel.Projections != null && ViewModel.Projections.Any())
+                {
+                    RenderRevenueChart();
+                    _revenueChart.Visible = true;
+                    _revenueChart.Refresh();
+                    _logger?.LogDebug("Revenue chart bound with {Count} data points", ViewModel.Projections.Count);
+                }
+                else
+                {
+                    _revenueChart.Visible = false;
+                    _logger?.LogWarning("No revenue projection data available");
+                }
+
+                // Bind gauge
+                if (ViewModel.RiskLevel > 0)
+                {
+                    _riskGauge.Value = (float)ViewModel.RiskLevel;
+                    _riskGauge.Visible = true;
+                    _riskGauge.Refresh();
+                    _logger?.LogDebug("Risk gauge set to {Value}", ViewModel.RiskLevel);
+                }
+                else
+                {
+                    _riskGauge.Visible = false;
+                    _logger?.LogWarning("Risk level not available");
+                }
+
+                // Bind grids - assuming _scenarioGrid and _projectionGrid are the grids
+                // Note: The code has _projectionsGrid and _departmentImpactGrid
+                _projectionsGrid.DataSource = ViewModel.Projections;
+                _departmentImpactGrid.DataSource = ViewModel.DepartmentImpacts;
+                _projectionsGrid.Visible = ViewModel.Projections?.Any() == true;
+                _departmentImpactGrid.Visible = ViewModel.DepartmentImpacts?.Any() == true;
+                _projectionsGrid.Refresh();
+                _departmentImpactGrid.Refresh();
+
+                // Update results panel visibility
+                _resultsPanel.Visible = ViewModel.HasResults;
+                _lblNoResults.Visible = !ViewModel.HasResults;
+
+                _logger?.LogDebug("UI updated from ViewModel");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error updating UI from ViewModel");
+            }
+        }
+
+        private void ScheduleUpdateUIFromViewModel()
+        {
+            if (IsDisposed) return;
+
+            if (IsHandleCreated)
+            {
+                try
+                {
+                    BeginInvoke(new Action(() => { _ = UpdateUIFromViewModel(); }));
+                }
+                catch { }
+                return;
+            }
+
+            EventHandler? handleCreatedHandler = null;
+            handleCreatedHandler = (s, e) =>
+            {
+                HandleCreated -= handleCreatedHandler;
+                if (IsDisposed) return;
+                try
+                {
+                    BeginInvoke(new Action(() => { _ = UpdateUIFromViewModel(); }));
+                }
+                catch { }
+            };
+
+            HandleCreated += handleCreatedHandler;
+        }
+
+        private void AttachCollectionHandlers()
+        {
+            if (ViewModel == null) return;
+
+            try
+            {
+                // Projections collection
+                var projectionsNotify = ViewModel.Projections as INotifyCollectionChanged;
+                if (!ReferenceEquals(_projectionsCollection, projectionsNotify))
+                {
+                    if (_projectionsCollection != null && _projectionsCollectionChangedHandler != null)
+                    {
+                        try { _projectionsCollection.CollectionChanged -= _projectionsCollectionChangedHandler; }
+                        catch { }
+                    }
+
+                    _projectionsCollection = projectionsNotify;
+
+                    if (_projectionsCollection != null)
+                    {
+                        _projectionsCollectionChangedHandler = (s, e) =>
+                        {
+                            if (IsDisposed) return;
+                            try
+                            {
+                                if (this.InvokeRequired)
+                                {
+                                    try { BeginInvoke(new Action(OnProjectionsCollectionChanged)); } catch { }
+                                }
+                                else
+                                {
+                                    OnProjectionsCollectionChanged();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.LogError(ex, "Error handling projections collection changed");
+                            }
+                        };
+                        _projectionsCollection.CollectionChanged += _projectionsCollectionChangedHandler;
+                    }
+                }
+
+                // Department impacts collection
+                var deptNotify = ViewModel.DepartmentImpacts as INotifyCollectionChanged;
+                if (!ReferenceEquals(_departmentImpCollection, deptNotify))
+                {
+                    if (_departmentImpCollection != null && _departmentImpCollectionChangedHandler != null)
+                    {
+                        try { _departmentImpCollection.CollectionChanged -= _departmentImpCollectionChangedHandler; }
+                        catch { }
+                    }
+
+                    _departmentImpCollection = deptNotify;
+
+                    if (_departmentImpCollection != null)
+                    {
+                        _departmentImpCollectionChangedHandler = (s, e) =>
+                        {
+                            if (IsDisposed) return;
+                            try
+                            {
+                                if (this.InvokeRequired)
+                                {
+                                    try { BeginInvoke(new Action(OnDepartmentImpactsCollectionChanged)); } catch { }
+                                }
+                                else
+                                {
+                                    OnDepartmentImpactsCollectionChanged();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.LogError(ex, "Error handling department impacts collection changed");
+                            }
+                        };
+                        _departmentImpCollection.CollectionChanged += _departmentImpCollectionChangedHandler;
+                    }
+                }
+
+                // Ensure grids use current collections
+                if (_projectionsGrid != null && ViewModel.Projections != null)
+                {
+                    _projectionsGrid.DataSource = ViewModel.Projections;
+                }
+
+                if (_departmentImpactGrid != null && ViewModel.DepartmentImpacts != null)
+                {
+                    _departmentImpactGrid.DataSource = ViewModel.DepartmentImpacts;
+                }
+
+                ScheduleUpdateUIFromViewModel();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error attaching collection handlers");
+            }
+        }
+
+        private void OnProjectionsCollectionChanged()
+        {
+            try
+            {
+                if (ViewModel?.Projections != null && ViewModel.Projections.Count > 0)
+                {
+                    RenderRevenueChart();
+                    if (_revenueChart != null) _revenueChart.Visible = true;
+                    if (_projectionsGrid != null) _projectionsGrid.Visible = true;
+                    _projectionsGrid.Refresh();
+                }
+                else
+                {
+                    if (_revenueChart != null) _revenueChart.Visible = false;
+                    if (_projectionsGrid != null) _projectionsGrid.Visible = false;
+                }
+
+                bool hasResults = ViewModel?.HasResults ?? false;
+                if (!hasResults)
+                {
+                    hasResults = (ViewModel?.Projections?.Any() == true) || (ViewModel?.DepartmentImpacts?.Any() == true);
+                }
+
+                if (_resultsPanel != null) _resultsPanel.Visible = hasResults;
+                if (_lblNoResults != null) _lblNoResults.Visible = !hasResults;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error updating UI on projections collection change");
+            }
+        }
+
+        private void OnDepartmentImpactsCollectionChanged()
+        {
+            try
+            {
+                if (ViewModel?.DepartmentImpacts != null && ViewModel.DepartmentImpacts.Count > 0)
+                {
+                    RenderDepartmentChart();
+                    if (_departmentChart != null) _departmentChart.Visible = true;
+                    if (_departmentImpactGrid != null) _departmentImpactGrid.Visible = true;
+                    _departmentImpactGrid.Refresh();
+                }
+                else
+                {
+                    if (_departmentChart != null) _departmentChart.Visible = false;
+                    if (_departmentImpactGrid != null) _departmentImpactGrid.Visible = false;
+                }
+
+                bool hasResults = ViewModel?.HasResults ?? false;
+                if (!hasResults)
+                {
+                    hasResults = (ViewModel?.Projections?.Any() == true) || (ViewModel?.DepartmentImpacts?.Any() == true);
+                }
+
+                if (_resultsPanel != null) _resultsPanel.Visible = hasResults;
+                if (_lblNoResults != null) _lblNoResults.Visible = !hasResults;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error updating UI on department impacts collection change");
             }
         }
 
@@ -1168,17 +889,17 @@ namespace WileyWidget.WinForms.Controls
                 // Pre-load any cached scenarios or default data
                 if (ViewModel != null && !DesignMode)
                 {
-                    _logger?.LogInformation("Loading WarRoom scenario data");
+                    _logger?.LogDebug("Loading WarRoom scenario data");
                     // Initialize ViewModel with any default scenarios from database if available
                     await Task.CompletedTask;
                 }
 
                 SetHasUnsavedChanges(false);
-                _logger?.LogInformation("WarRoomPanel loaded successfully");
+                _logger?.LogDebug("WarRoomPanel loaded successfully");
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogInformation("WarRoomPanel load cancelled");
+                _logger?.LogDebug("WarRoomPanel load cancelled");
             }
             catch (Exception ex)
             {
@@ -1215,15 +936,15 @@ namespace WileyWidget.WinForms.Controls
                 }
 
                 // Persist any scenario state if needed
-                _logger?.LogInformation("Saving WarRoom scenario data");
+                _logger?.LogDebug("Saving WarRoom scenario data");
                 await Task.CompletedTask;
 
                 SetHasUnsavedChanges(false);
-                _logger?.LogInformation("WarRoomPanel saved successfully");
+                _logger?.LogDebug("WarRoomPanel saved successfully");
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogInformation("WarRoomPanel save cancelled");
+                _logger?.LogDebug("WarRoomPanel save cancelled");
             }
             catch (Exception ex)
             {
@@ -1356,6 +1077,17 @@ namespace WileyWidget.WinForms.Controls
                     if (_scenarioInput != null && _scenarioInputTextChangedHandler != null)
                     {
                         _scenarioInput.TextChanged -= _scenarioInputTextChangedHandler;
+                    }
+
+                    // Unsubscribe from collection changed handlers
+                    if (_projectionsCollection != null && _projectionsCollectionChangedHandler != null)
+                    {
+                        try { _projectionsCollection.CollectionChanged -= _projectionsCollectionChangedHandler; } catch { }
+                    }
+
+                    if (_departmentImpCollection != null && _departmentImpCollectionChangedHandler != null)
+                    {
+                        try { _departmentImpCollection.CollectionChanged -= _departmentImpCollectionChangedHandler; } catch { }
                     }
 
                     // Dispose Syncfusion controls

@@ -76,9 +76,9 @@ namespace WileyWidget.Services
                 if (containedMatch != null) return containedMatch;
             }
 
-            // No configured model: prefer grok-4 family, then grok-4-1, then grok-beta, then grok-3
+            // No configured model: prefer grok-4.1 family, then grok-4-1, then grok-4, then grok-3
             var preferredFamilies = _configuration.GetValue<string>("XAI:ModelDiscovery:PreferredFamilies")
-                                   ?? "grok-4,grok-4-1,grok-4-1-fast,grok-4-0709,grok-4-latest,grok-3";
+                                   ?? "grok-4.1,grok-4-1,grok-4-1-fast,grok-4,grok-4-latest,grok-3";
             var families = preferredFamilies.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             foreach (var fam in families)

@@ -431,6 +431,25 @@
         "group": "diagnostics",
         "order": 2
       }
+    },
+    {
+      "name": "🎨 Preview WarRoomPanel (Isolated)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "🔨 Debug Build",
+      "program": "${workspaceFolder}/src/WileyWidget.WinForms/bin/Debug/net10.0-windows/WileyWidget.WinForms.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "presentation": {
+        "group": "preview",
+        "order": 1
+      }
     }
   ]
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -142,24 +143,14 @@ public partial class MainForm
             return TryShowPanel<Controls.AccountsPanel>("Accounts", DockingStyle.Right);
         }
 
-        if (keyData == (Keys.Alt | Keys.B))
-        {
-            return TryShowPanel<Controls.BudgetPanel>("Budget", DockingStyle.Right);
-        }
-
         if (keyData == (Keys.Alt | Keys.C))
         {
-            return TryShowPanel<Controls.BudgetAnalyticsPanel>("Charts", DockingStyle.Right);
+            return TryShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.D))
         {
             return TryShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top);
-        }
-
-        if (keyData == (Keys.Alt | Keys.R))
-        {
-            return TryShowPanel<Controls.ReportsPanel>("Reports", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.S))

@@ -33,8 +33,14 @@ namespace WileyWidget.WinForms.Controls;
 /// Audit Log viewer panel displaying audit entries with filtering and export capabilities.
 /// Inherits from ScopedPanelBase to ensure proper DI lifetime management for scoped dependencies.
 /// </summary>
-public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
+public partial class AuditLogPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new AuditLogViewModel? ViewModel
+    {
+        get => (AuditLogViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
     // UI Controls
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
@@ -92,7 +98,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     /// </summary>
     public AuditLogPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<AuditLogViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         // InitializeComponent(); // replaced by BuildProgrammaticLayout
@@ -981,7 +987,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("AuditLogPanel load cancelled");
+            _logger?.LogDebug("AuditLogPanel load cancelled");
         }
         catch (Exception ex)
         {
@@ -1003,7 +1009,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("AuditLogPanel save cancelled");
+            _logger?.LogDebug("AuditLogPanel save cancelled");
         }
         catch (Exception ex)
         {
@@ -1040,7 +1046,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("AuditLogPanel validation cancelled");
+            _logger?.LogDebug("AuditLogPanel validation cancelled");
             return ValidationResult.Failed(new ValidationItem("Cancelled", "Validation was cancelled", ValidationSeverity.Info));
         }
         catch (Exception ex)

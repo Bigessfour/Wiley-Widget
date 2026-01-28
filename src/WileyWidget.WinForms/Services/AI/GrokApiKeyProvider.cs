@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.UserSecrets;
 using Microsoft.Extensions.Logging;
 
 namespace WileyWidget.WinForms.Services.AI
@@ -142,16 +143,17 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         private bool IsKeyFromUserSecrets(string configKey)
         {
-            // In development, user secrets are loaded via IConfiguration["Key"]
-            // Check if the key exists in configuration (Microsoft.Extensions.Configuration.UserSecrets adds it)
             try
             {
-                var value = _configuration[configKey];
-                if (!string.IsNullOrWhiteSpace(value))
+                if (_configuration is IConfigurationRoot root)
                 {
-                    // If we got a value from configuration (not env), it's likely from user secrets
-                    // User secrets are loaded first in the configuration hierarchy (highest priority)
-                    return true;
+                    foreach (var provider in root.Providers)
+                    {
+                        if (provider.TryGet(configKey, out var value) && !string.IsNullOrWhiteSpace(value))
+                        {
+                            return provider.GetType().FullName == "Microsoft.Extensions.Configuration.UserSecrets.UserSecretsConfigurationProvider";
+                        }
+                    }
                 }
             }
             catch
@@ -182,8 +184,8 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 _logger?.LogInformation("[Grok] Validating API key via /models endpoint...");
 
-                var httpClient = _httpClientFactory?.CreateClient("WileyWidgetDefault") ?? new HttpClient();
-                var endpoint = new Uri("https://api.x.ai/v1/models");
+                var httpClient = _httpClientFactory?.CreateClient("GrokClient") ?? new HttpClient();
+                var endpoint = new Uri(GetBaseEndpoint(), "models");
 
                 using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
@@ -238,6 +240,22 @@ namespace WileyWidget.WinForms.Services.AI
         public string GetConfigurationSource()
         {
             return $"API Key: {_configurationSource} | Validated: {_isValidated} | Source: {(IsFromUserSecrets ? "User Secrets (Secure)" : "Configuration/Environment")}";
+        }
+
+        private Uri GetBaseEndpoint()
+        {
+            var endpointStr = (_configuration["Grok:Endpoint"] ?? _configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1").Trim().TrimEnd('/');
+            if (endpointStr.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
+            {
+                endpointStr = endpointStr.Substring(0, endpointStr.Length - "/responses".Length);
+            }
+
+            if (endpointStr.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                endpointStr = endpointStr.Substring(0, endpointStr.Length - "/chat/completions".Length);
+            }
+
+            return new Uri(endpointStr + '/', UriKind.Absolute);
         }
 
         /// <summary>

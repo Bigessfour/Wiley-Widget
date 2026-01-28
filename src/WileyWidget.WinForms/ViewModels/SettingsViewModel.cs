@@ -118,7 +118,7 @@ namespace WileyWidget.WinForms.ViewModels
         private string xaiApiKey = string.Empty;
 
         [ObservableProperty]
-        private string xaiModel = "grok-4-0709";
+        private string xaiModel = "grok-4.1";
 
         [ObservableProperty]
         private string xaiApiEndpoint = "https://api.x.ai/v1";
@@ -339,7 +339,7 @@ namespace WileyWidget.WinForms.ViewModels
         {
             _logger.LogInformation("Resetting XAI settings to defaults");
             XaiApiKey = string.Empty;
-            XaiModel = "grok-4-0709";
+            XaiModel = "grok-4.1";
             XaiApiEndpoint = "https://api.x.ai/v1";
             XaiTimeout = 30;
             XaiMaxTokens = 2000;
@@ -354,6 +354,12 @@ namespace WileyWidget.WinForms.ViewModels
         {
             _logger.LogDebug("Validating settings");
             _validationMessages.Clear();
+
+            if (string.IsNullOrWhiteSpace(AppTitle))
+            {
+                _validationMessages.Add("Application title cannot be empty.");
+                _logger.LogWarning("Validation failed: AppTitle is empty");
+            }
 
             if (string.IsNullOrWhiteSpace(DateFormat))
             {
@@ -415,4 +421,3 @@ namespace WileyWidget.WinForms.ViewModels
         public List<string> GetValidationSummary() => new(_validationMessages);
     }
 }
-

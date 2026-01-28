@@ -47,6 +47,7 @@ public class DockingLayoutManager : IDisposable
     private readonly DockingManager _dockingManager;
     private readonly GradientPanelExt _leftDockPanel;
     private readonly GradientPanelExt _rightDockPanel;
+    private readonly GradientPanelExt _centralDocumentPanel;
     private readonly ActivityLogPanel? _activityLogPanel;
 
     private const string LayoutVersionAttributeName = "LayoutVersion";
@@ -70,7 +71,7 @@ public class DockingLayoutManager : IDisposable
     // Dynamic panels tracking
     private Dictionary<string, GradientPanelExt>? _dynamicDockPanels = new();  // Instance-safe
 
-    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, GradientPanelExt leftDockPanel, GradientPanelExt rightDockPanel, ActivityLogPanel? activityLogPanel)
+    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, GradientPanelExt leftDockPanel, GradientPanelExt rightDockPanel, GradientPanelExt centralDocumentPanel, ActivityLogPanel? activityLogPanel)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
@@ -80,6 +81,7 @@ public class DockingLayoutManager : IDisposable
         _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
         _leftDockPanel = leftDockPanel ?? throw new ArgumentNullException(nameof(leftDockPanel));
         _rightDockPanel = rightDockPanel ?? throw new ArgumentNullException(nameof(rightDockPanel));
+        _centralDocumentPanel = centralDocumentPanel ?? throw new ArgumentNullException(nameof(centralDocumentPanel));
         _activityLogPanel = activityLogPanel;
 
         // Setup save timer with tick handler

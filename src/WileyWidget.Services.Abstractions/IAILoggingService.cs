@@ -16,7 +16,7 @@ namespace WileyWidget.Services.Abstractions
         /// </summary>
         /// <param name="query">The query text sent to AI</param>
         /// <param name="context">Context information provided with the query</param>
-        /// <param name="model">AI model used (e.g., grok-4-0709)</param>
+        /// <param name="model">AI model used (e.g., grok-4.1)</param>
         void LogQuery(string query, string context, string model);
 
         /// <summary>

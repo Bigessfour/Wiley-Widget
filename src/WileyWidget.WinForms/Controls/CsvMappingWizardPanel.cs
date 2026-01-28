@@ -335,7 +335,7 @@ namespace WileyWidget.WinForms.Controls
                 var validation = await ValidateAsync(CancellationToken.None);
                 if (!validation.IsValid)
                 {
-                    _logger?.LogInformation("CSV mapping validation failed");
+                    _logger?.LogDebug("CSV mapping validation failed");
                     return;
                 }
 

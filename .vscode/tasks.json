@@ -484,9 +484,8 @@
 			"args": [
 				"test",
 				"--no-build",
-				"${workspaceFolder}/tests",
-				"-k",
-				"UI"
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj"
 			],
 			"type": "shell",
 			"group": "test",
@@ -755,6 +754,90 @@
 			},
 			"problemMatcher": [],
 			"group": "none"
+		},
+		{
+			"label": "👁️ Preview WarRoom Panel",
+			"dependsOn": ["build: fast"],
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidget.Paneltest/WileyWidget.Paneltest.csproj",
+				"--",
+				"warroom",
+				"--show"
+			],
+			"isBackground": false,
+			"problemMatcher": ["$msCompile"],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new",
+				"showReuseMessage": true
+			},
+			"group": "test"
+		},
+		{
+			"label": "📋 WarRoom Panel Test (Headless + Logs)",
+			"dependsOn": ["build: fast"],
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidget.Paneltest/WileyWidget.Paneltest.csproj",
+				"--",
+				"warroom"
+			],
+			"isBackground": false,
+			"problemMatcher": ["$msCompile"],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"group": "test"
+		},
+		{
+			"label": "📂 Open WarRoom Test Logs",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$logDir = '${workspaceFolder}/tools/WileyWidget.Paneltest/Logs'; if (Test-Path $logDir) { explorer $logDir; Write-Host 'Opened: ' $logDir } else { Write-Host 'Log directory not found: ' $logDir }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "📊 Open WarRoom Test Results",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$resultsFile = '${workspaceFolder}/tools/WileyWidget.Paneltest/Results/test-results.json'; if (Test-Path $resultsFile) { code $resultsFile } else { Write-Host 'Results file not found: ' $resultsFile }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }

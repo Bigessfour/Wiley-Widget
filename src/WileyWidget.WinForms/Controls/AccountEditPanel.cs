@@ -36,12 +36,28 @@ namespace WileyWidget.WinForms.Controls
     /// - Validation: ErrorProvider with field mapping, cross-thread safe
     /// - Lifecycle: Proper Dispose cleanup, event handler tracking, IsBusy/HasUnsavedChanges
     /// </summary>
-    public partial class AccountEditPanel : ScopedPanelBase<AccountsViewModel>
+    public partial class AccountEditPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new AccountsViewModel? ViewModel
+        {
+            get => (AccountsViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         /// <summary>
         /// Gets the dialog result after save/cancel operations.
         /// </summary>
         public DialogResult SaveDialogResult { get; private set; } = DialogResult.None;
+
+        /// <summary>
+        /// Event raised when the save operation completes successfully.
+        /// </summary>
+        public event EventHandler? SaveCompleted;
+
+        /// <summary>
+        /// Event raised when the cancel operation is requested.
+        /// </summary>
+        public event EventHandler? CancelRequested;
 
         // === UI CONTROLS ===
         private Label? lblTitle = null;
@@ -98,7 +114,7 @@ namespace WileyWidget.WinForms.Controls
         /// For new account creation, use the DI constructor.
         /// For editing, create via DI and call SetExistingAccount() to configure.
         /// </summary>
-        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<AccountsViewModel>> logger)
+        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
             _existingAccount = null;
@@ -867,13 +883,8 @@ namespace WileyWidget.WinForms.Controls
                 SetHasUnsavedChanges(false);
                 SaveDialogResult = DialogResult.OK;
 
-                // Set parent form result and close
-                var parent = this.FindForm();
-                if (parent != null)
-                {
-                    parent.DialogResult = DialogResult.OK;
-                    parent.Close();
-                }
+                // Raise save completed event instead of directly closing form
+                SaveCompleted?.Invoke(this, EventArgs.Empty);
 
                 Logger?.LogInformation("AccountEditPanel: Account saved successfully - {AccountNumber}", _editModel.AccountNumber);
             }
@@ -911,12 +922,8 @@ namespace WileyWidget.WinForms.Controls
         private void Cancel()
         {
             SaveDialogResult = DialogResult.Cancel;
-            var parent = this.FindForm();
-            if (parent != null)
-            {
-                parent.DialogResult = DialogResult.Cancel;
-                parent.Close();
-            }
+            // Raise cancel requested event instead of directly closing form
+            CancelRequested?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>

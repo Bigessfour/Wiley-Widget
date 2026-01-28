@@ -20,6 +20,13 @@ namespace WileyWidget.Services
             // User preference persistence
             services.AddSingleton<UserPreferencesService>();
 
+            // Analytics services
+            services.AddTransient<IAnalyticsService, AnalyticsService>();
+            services.AddTransient<IAnalyticsRepository, AnalyticsRepository>();
+
+            // Circuit breaker for analytics operations
+            services.AddSingleton<ICircuitBreakerService, CircuitBreakerService>();
+
             return services;
         }
     }

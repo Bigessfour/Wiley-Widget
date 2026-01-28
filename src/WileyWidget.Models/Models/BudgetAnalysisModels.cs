@@ -309,3 +309,19 @@ public class BudgetVarianceAnalysis
     /// </summary>
     public List<string> Warnings { get; set; } = new();
 }
+
+/// <summary>
+/// Represents a data point for reserves.
+/// </summary>
+public class ReserveDataPoint
+{
+    /// <summary>
+    /// Gets or sets the date.
+    /// </summary>
+    public DateTime Date { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reserves amount.
+    /// </summary>
+    public decimal Reserves { get; set; }
+}

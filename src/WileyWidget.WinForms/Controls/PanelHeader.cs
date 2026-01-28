@@ -18,7 +18,7 @@ namespace WileyWidget.WinForms.Controls
     /// </summary>
     public partial class PanelHeader : UserControl
     {
-        private const int HEADER_HEIGHT = 44;
+        private const int HEADER_HEIGHT = 52;
         private const int BUTTON_MARGIN_H = 6;
         private const int BUTTON_MARGIN_V = 6;
 
@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.Controls
         private SfButton? _btnPin;
         private SfButton? _btnHelp;
         private SfButton? _btnClose;
-        private ProgressBar? _loadingSpinner;
+        private ProgressBarAdv? _loadingSpinner;
         private ToolTip? _toolTip;
         private DpiAwareImageService? _imageService;
 
@@ -197,6 +197,11 @@ namespace WileyWidget.WinForms.Controls
             Padding = new Padding(8);
             Dock = DockStyle.Top;
 
+            // Compute button sizing based on header height and padding
+            var innerHeight = HEADER_HEIGHT - Padding.Vertical;
+            var buttonHeight = Math.Max(20, innerHeight - (BUTTON_MARGIN_V * 2));
+            var buttonWidth = 80; // reasonable width for text buttons
+
             _toolTip = new ToolTip();
 
             // Title label (use system font for theme consistency)
@@ -227,10 +232,12 @@ namespace WileyWidget.WinForms.Controls
             _btnRefresh = new SfButton
             {
                 Text = "Refresh",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Refresh",
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
             if (_imageService != null)
             {
@@ -252,13 +259,13 @@ namespace WileyWidget.WinForms.Controls
             };
             _toolTip.SetToolTip(_btnRefresh, "Refresh data (Alt+R)");
 
-            // Loading spinner (ProgressBar in marquee style, instead of text label)
-            _loadingSpinner = new ProgressBar
+            // Loading spinner (ProgressBarAdv, set to 50% for indeterminate appearance)
+            _loadingSpinner = new ProgressBarAdv
             {
-                Style = ProgressBarStyle.Marquee,
-                AutoSize = true,
+                Value = 50, // Indeterminate-like appearance
+                AutoSize = false,
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                Size = new Size(24, 20),
+                Size = new Size(24, Math.Max(12, buttonHeight - 8)),
                 Visible = false
             };
             _loadingSpinner.AccessibleName = "Loading";
@@ -267,10 +274,12 @@ namespace WileyWidget.WinForms.Controls
             _btnPin = new SfButton
             {
                 Text = "Pin",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Pin",
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
             _btnPin.Click += PinButton_Click;
             _btnPin.KeyDown += (s, e) =>
@@ -287,11 +296,13 @@ namespace WileyWidget.WinForms.Controls
             _btnHelp = new SfButton
             {
                 Text = "Help",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Help",
                 Visible = _helpButtonVisible,
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
             if (_imageService != null)
             {
@@ -317,10 +328,12 @@ namespace WileyWidget.WinForms.Controls
             _btnClose = new SfButton
             {
                 Text = "Close",
-                AutoSize = true,
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Close",
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
             _btnClose.Click += (s, e) => CloseClicked?.Invoke(this, EventArgs.Empty);
             _btnClose.KeyDown += (s, e) =>

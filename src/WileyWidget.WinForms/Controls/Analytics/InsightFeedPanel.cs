@@ -22,15 +22,21 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
-namespace WileyWidget.WinForms.Controls
+namespace WileyWidget.WinForms.Controls.Analytics
 {
     /// <summary>
     /// Panel for displaying proactive AI insights in a grid with priority highlighting.
     /// Uses Syncfusion SfDataGrid with SfSkinManager theme styling.
     /// Cards display priority badges with color coding and "Ask JARVIS" action buttons.
     /// </summary>
-    public partial class InsightFeedPanel : ScopedPanelBase<IInsightFeedViewModel>
+    public partial class InsightFeedPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new IInsightFeedViewModel? ViewModel
+        {
+            get => (IInsightFeedViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         private GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -47,7 +53,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
-        public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase<IInsightFeedViewModel>>? logger = null)
+        public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase>? logger = null)
             : base(scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory)), logger)
         {
             InitializeComponent();
@@ -170,6 +176,12 @@ namespace WileyWidget.WinForms.Controls
                     AccessibleDescription = "Title area for the insights feed"
                 };
                 _topPanel.Controls.Add(_panelHeader);
+
+                // Wire PanelHeader events
+                _panelHeader.RefreshClicked += RefreshButton_Click;
+                _panelHeader.CloseClicked += (s, e) => ClosePanel();
+                _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Insight Feed Help: Real-time AI insights for your data.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+                _panelHeader.PinToggled += (s, e) => { /* Pin logic */ };
 
                 // Insights grid - configured for Office2019Colorful theme with full Syncfusion support
                 _insightsGrid = new SfDataGrid
@@ -380,6 +392,35 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        private void ClosePanel()
+        {
+            try
+            {
+                var form = FindForm();
+                if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
+                {
+                    mainForm.PanelNavigator.HidePanel("AI Chat");
+                    return;
+                }
+
+                var dockingManagerField = form?.GetType()
+                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
+                {
+                    dockingManager.SetDockVisibility(this, false);
+                }
+                else
+                {
+                    Visible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Failed to close InsightFeedPanel via docking manager");
+                Visible = false;
+            }
+        }
+
         /// <summary>
         /// Handles row selection in the grid and executes Ask Jarvis command.
         /// The selected insight is passed to the chat ViewModel for context.
@@ -501,4 +542,3 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
-

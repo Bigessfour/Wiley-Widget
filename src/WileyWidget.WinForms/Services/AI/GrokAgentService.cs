@@ -32,6 +32,12 @@ namespace WileyWidget.WinForms.Services.AI
     /// </summary>
     public sealed class GrokAgentService : IAsyncInitializable, IDisposable, IAIService
     {
+        // High-performance LoggerMessage delegates (CA1848 fix)
+        private static readonly Action<ILogger, string, Exception?> LogApiKeyValidationFailed =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(1001, nameof(LogApiKeyValidationFailed)),
+                "[XAI] API key validation failed: {Message}");
         private Kernel? _kernel;
         private readonly IXaiModelDiscoveryService? _modelDiscoveryService;
         private readonly IGrokApiKeyProvider? _apiKeyProvider;  // ✅ NEW: Inject the centralized provider
@@ -58,7 +64,7 @@ namespace WileyWidget.WinForms.Services.AI
         private const string ChatHistoryCacheKeyPrefix = "grok_chat_history_";
         private const int ChatHistoryCacheDurationMinutes = 30;
 
-        private const string ResponsesEndpointSuffix = "/responses";
+        private const string ResponsesEndpointSuffix = "responses";
         private const string ChatCompletionSuffix = "/chat/completions"; // Legacy, deprecated
         private const string ApiKeyEnvironmentVariable = "XAI_API_KEY";
         private static readonly (EnvironmentVariableTarget Target, string Source)[] ApiKeyEnvironmentTargets =
@@ -88,7 +94,7 @@ namespace WileyWidget.WinForms.Services.AI
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
             if (apiKeyProvider == null) throw new ArgumentNullException(nameof(apiKeyProvider));
-            
+
             _apiKeyProvider = apiKeyProvider;  // ✅ Store provider reference
             _logger = logger;
             _config = config;
@@ -116,7 +122,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _apiKey?.Length ?? 0,
                 apiKeyProvider.IsValidated);
 
-            _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4";
+            _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4.1";
 
             // Read default penalties from configuration (XAI/Grok keys). Reasoning models may not support these penalties.
             var presenceStr = config["XAI:DefaultPresencePenalty"] ?? config["Grok:DefaultPresencePenalty"];
@@ -144,6 +150,10 @@ namespace WileyWidget.WinForms.Services.AI
             }
 
             var baseEndpointCandidate = endpointStr.TrimEnd('/');
+            if (baseEndpointCandidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
+            {
+                baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - "/responses".Length);
+            }
             if (baseEndpointCandidate.EndsWith(ChatCompletionSuffix, StringComparison.OrdinalIgnoreCase))
             {
                 baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - ChatCompletionSuffix.Length);
@@ -174,7 +184,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             // Initialize HttpClient early (lightweight, non-blocking)
             _ownsHttpClient = httpClientFactory == null;
-            _httpClient = httpClientFactory?.CreateClient("WileyWidgetDefault") ?? new HttpClient();
+            _httpClient = httpClientFactory?.CreateClient("GrokClient") ?? new HttpClient();
             _httpClient.BaseAddress = _baseEndpoint;
             if (!string.IsNullOrWhiteSpace(_apiKey))
             {
@@ -209,6 +219,19 @@ namespace WileyWidget.WinForms.Services.AI
             try
             {
                 _logger?.LogDebug("[XAI] Beginning async initialization of Grok service");
+
+                // Add API key validation before Semantic Kernel setup
+                if (_apiKeyProvider != null)
+                {
+                    var (success, message) = await _apiKeyProvider.ValidateAsync();
+                    if (!success)
+                    {
+                        _logger?.LogWarning("[XAI] API key validation failed: {Message}", message);
+                        _initializationFailed = true;
+                        return;
+                    }
+                    _logger?.LogInformation("[XAI] API key validated successfully");
+                }
 
                 // Optionally auto-select a model (short timeout) before building the kernel so the kernel uses the selected model
                 if (_autoSelectModelOnStartup && !string.IsNullOrWhiteSpace(_apiKey))
@@ -392,7 +415,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return "No API key configured for Grok";
             }
 
-            var model = modelOverride ?? _model ?? "grok-4";
+            var model = modelOverride ?? _model ?? "grok-4.1";
             var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
 
             return await SendStreamingResponseAsync(model, sysPrompt, userMessage, onChunk, ct).ConfigureAwait(false);
@@ -562,7 +585,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return "No API key configured for Grok";
             }
 
-            var model = modelOverride ?? _model ?? "grok-4";
+            var model = modelOverride ?? _model ?? "grok-4.1";
             var sysPrompt = systemPrompt ?? "You are a test assistant.";
 
             // Use new /v1/responses endpoint with input array format
@@ -593,7 +616,7 @@ namespace WileyWidget.WinForms.Services.AI
                             errMsg.IndexOf("model", StringComparison.OrdinalIgnoreCase) >= 0 &&
                             errMsg.IndexOf("does not exist", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            var fallback = "grok-4";
+                            var fallback = "grok-4.1";
                             if (!string.Equals(model, fallback, StringComparison.OrdinalIgnoreCase))
                             {
                                 _logger?.LogWarning("Model '{Model}' not found; retrying GetSimpleResponse with fallback '{FallbackModel}'", model, fallback);
@@ -637,7 +660,7 @@ namespace WileyWidget.WinForms.Services.AI
                     return respStr;
                 }
             }
-            catch (OperationCanceledException)
+            catch (TaskCanceledException)
             {
                 _logger?.LogWarning("GetSimpleResponse canceled by token");
                 throw;
@@ -663,7 +686,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return (false, "No API key configured");
             }
 
-            var model = modelOverride ?? _model ?? "grok-4";
+            var model = modelOverride ?? _model ?? "grok-4.1";
             var requestObj = new
             {
                 input = new object[]
@@ -699,7 +722,7 @@ namespace WileyWidget.WinForms.Services.AI
                                 errMsg.IndexOf("model", StringComparison.OrdinalIgnoreCase) >= 0 &&
                                 errMsg.IndexOf("does not exist", StringComparison.OrdinalIgnoreCase) >= 0)
                             {
-                                var fallback = "grok-4";
+                                var fallback = "grok-4.1";
                                 if (!string.Equals(model, fallback, StringComparison.OrdinalIgnoreCase))
                                 {
                                     _logger?.LogWarning("Model '{Model}' not found; retrying validation with fallback '{FallbackModel}'", model, fallback);
@@ -852,7 +875,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                var responseEndpoint = new Uri(_endpoint!, $"/{responseId}");
+                var responseEndpoint = new Uri(_endpoint!, responseId);
                 _logger?.LogDebug("[XAI] Retrieving response {ResponseId} via {Url}", responseId, responseEndpoint);
 
                 using var resp = await _httpClient.GetAsync(responseEndpoint, ct).ConfigureAwait(false);
@@ -906,7 +929,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                var responseEndpoint = new Uri(_endpoint!, $"/{responseId}");
+                var responseEndpoint = new Uri(_endpoint!, responseId);
                 _logger?.LogDebug("[XAI] Deleting response {ResponseId} via {Url}", responseId, responseEndpoint);
 
                 using var resp = await _httpClient.DeleteAsync(responseEndpoint, ct).ConfigureAwait(false);
@@ -950,7 +973,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return "No API key configured for Grok";
             }
 
-            var model = modelOverride ?? _model ?? "grok-4";
+            var model = modelOverride ?? _model ?? "grok-4.1";
             var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
 
             try
@@ -1048,7 +1071,7 @@ namespace WileyWidget.WinForms.Services.AI
             // Fallback: enumerate models directly from the /models endpoint and pick preferred families (no grok-beta).
             var models = await ListAvailableModelsAsync(ct);
             if (!models.Any()) return null;
-            var preferred = new[] { "grok-4", "grok-4-1-fast", "grok-4-1-fast-reasoning", "grok-4-1-fast-non-reasoning", "grok-4-1" };
+            var preferred = new[] { "grok-4.1", "grok-4-1-fast", "grok-4-1-fast-reasoning", "grok-4-1-fast-non-reasoning", "grok-4-1" };
             foreach (var p in preferred)
             {
                 var found = models.FirstOrDefault(m => string.Equals(m, p, StringComparison.OrdinalIgnoreCase));
@@ -1737,6 +1760,25 @@ namespace WileyWidget.WinForms.Services.AI
             catch (Exception ex)
             {
                 return new AIResponseResult("", 500, "Error", ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Return a single, non-streaming chat completion suitable for UI components
+        /// such as Syncfusion's SfAIAssistView which expect a single response string.
+        /// </summary>
+        public async Task<string> GetChatCompletionAsync(string prompt, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var systemPrompt = _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt;
+                // Delegate to existing simple responses helper which calls the /v1/responses endpoint
+                return await GetSimpleResponse(prompt, systemPrompt, _model, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "GetChatCompletionAsync failed");
+                return $"Error: {ex.Message}";
             }
         }
 

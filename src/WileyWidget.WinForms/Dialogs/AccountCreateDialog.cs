@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Themes;
 
@@ -184,7 +185,7 @@ namespace WileyWidget.WinForms.Dialogs
 
         private NumericUpDown AddNumericUpDown(TableLayoutPanel panel, int row, int col)
         {
-            var numeric = new NumericUpDown
+            var numeric = new NumericUpDownExt
             {
                 Dock = DockStyle.Fill,
                 Minimum = 0,

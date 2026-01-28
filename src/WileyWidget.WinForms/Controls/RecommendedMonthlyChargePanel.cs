@@ -30,8 +30,14 @@ namespace WileyWidget.WinForms.Controls;
 /// Fully integrated with ICompletablePanel lifecycle for proper async validation and save workflows.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<RecommendedMonthlyChargeViewModel>
+public partial class RecommendedMonthlyChargePanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new RecommendedMonthlyChargeViewModel? ViewModel
+    {
+        get => (RecommendedMonthlyChargeViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
     // UI Controls
     private SfDataGrid? _departmentsGrid;
     private SfDataGrid? _benchmarksGrid;
@@ -48,8 +54,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     private Panel? _summaryPanel;
     private Panel? _chartPanel;
     private Panel? _buttonPanel;
-    private SplitContainer? _mainSplitContainer;
-    private SplitContainer? _leftSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
+    private SplitContainerAdv? _leftSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -69,7 +75,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     public RecommendedMonthlyChargePanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<RecommendedMonthlyChargeViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         InitializeControls();
@@ -95,7 +101,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("RecommendedMonthlyChargePanel load cancelled");
+            _logger?.LogDebug("RecommendedMonthlyChargePanel load cancelled");
         }
         catch (Exception ex)
         {
@@ -121,7 +127,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("RecommendedMonthlyChargePanel save cancelled");
+            _logger?.LogDebug("RecommendedMonthlyChargePanel save cancelled");
         }
         catch (Exception ex)
         {
@@ -167,7 +173,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("RecommendedMonthlyChargePanel validation cancelled");
+            _logger?.LogDebug("RecommendedMonthlyChargePanel validation cancelled");
             return WileyWidget.WinForms.Controls.ValidationResult.Failed(new WileyWidget.WinForms.Controls.ValidationItem("Cancelled", "Validation was cancelled", WileyWidget.WinForms.Controls.ValidationSeverity.Info));
         }
         catch (Exception ex)
@@ -194,9 +200,13 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider.
     /// </summary>
-    protected override void OnViewModelResolved(RecommendedMonthlyChargeViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not RecommendedMonthlyChargeViewModel)
+        {
+            return;
+        }
         BindViewModel();
         ApplyCurrentTheme();
     }
@@ -412,7 +422,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Main Split Container - Left (Grids) | Right (Chart)
         // ============================================================================
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
@@ -423,7 +433,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Left Split Container - Top (Departments) | Bottom (Benchmarks)
         // ============================================================================
-        _leftSplitContainer = new SplitContainer
+        _leftSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -964,7 +974,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            Logger?.LogInformation("Data refresh cancelled");
+            Logger?.LogDebug("Data refresh cancelled");
             UpdateStatus("Refresh cancelled");
         }
         catch (Exception ex)
@@ -996,7 +1006,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            Logger?.LogInformation("AI query cancelled");
+            Logger?.LogDebug("AI query cancelled");
             UpdateStatus("AI query cancelled");
         }
         catch (Exception ex)

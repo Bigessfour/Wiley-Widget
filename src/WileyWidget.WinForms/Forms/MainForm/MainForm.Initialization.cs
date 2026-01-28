@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
+using WileyWidget.Services.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using System;
@@ -51,6 +52,18 @@ public partial class MainForm
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(_themeService.CurrentTheme);
+
+                // Explicitly set ThemeName on key Syncfusion controls for robustness
+                try
+                {
+                    var currentTheme = _themeService.CurrentTheme;
+                    if (_ribbon != null) _ribbon.ThemeName = currentTheme;
+                    if (_navigationStrip != null) _navigationStrip.ThemeName = currentTheme;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to set explicit ThemeName on Syncfusion controls");
+                }
             }
             else
             {
@@ -101,7 +114,7 @@ public partial class MainForm
                 foreach (Control control in this.Controls)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    
+
                     if (_dockingManager.GetEnableDocking(control))
                     {
                         await NotifyPanelVisibilityChangedAsync(control);
@@ -112,36 +125,30 @@ public partial class MainForm
             // ============================================================================
             // NAVIGATION HARDENING: Enable ribbon buttons once docking system is confirmed ready
             // This prevents clicks on navigation buttons before the docking system has initialized
-            // NOTE: Disabled - ToolStripButton is not a Control, can't iterate via Controls collection
             // ============================================================================
-            // try
-            // {
-            //     if (_ribbon != null && IsHandleCreated && !IsDisposed)
-            //     {
-            //         _ribbon.InvokeIfRequired(() =>
-            //         {
-            //             try
-            //             {
-            //                 var allControls = new List<Control>();
-            //                 CollectAllControls(_ribbon, allControls);
-            //
-            //                 int enabledCount = 0;
-            //                 foreach (var ctrl in allControls)
-            //                 {
-            //                     // Can't check ToolStripButton here - not a Control
-            //                 }
-            //             }
-            //             catch (Exception ex)
-            //             {
-            //                 _logger?.LogWarning(ex, "[RIBBON] Failed to enable navigation buttons (non-critical)");
-            //             }
-            //         });
-            //     }
-            // }
-            // catch (Exception ex)
-            // {
-            //     _logger?.LogWarning(ex, "[RIBBON] Unexpected error enabling navigation buttons (non-critical)");
-            // }
+            try
+            {
+                if (_navigationStrip != null && IsHandleCreated && !IsDisposed)
+                {
+                    this.InvokeIfRequired(() =>
+                    {
+                        int enabledCount = 0;
+                        foreach (ToolStripItem item in _navigationStrip.Items)
+                        {
+                            if (item is ToolStripButton button && !button.Enabled)
+                            {
+                                button.Enabled = true;
+                                enabledCount++;
+                            }
+                        }
+                        _logger?.LogDebug("[NAVIGATION] Enabled {Count} navigation buttons", enabledCount);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[NAVIGATION] Unexpected error enabling navigation buttons (non-critical)");
+            }
 
             _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
         }
@@ -425,9 +432,7 @@ public partial class MainForm
     {
         try
         {
-            var projectRoot = Directory.GetCurrentDirectory();
-            var logsDirectory = Path.Combine(projectRoot, "logs");
-            Directory.CreateDirectory(logsDirectory);
+            var logsDirectory = LogPathResolver.GetLogsDirectory();
             var asyncLogPath = Path.Combine(logsDirectory, "mainform-diagnostics-.log");
             _asyncLogger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
@@ -461,7 +466,7 @@ public partial class MainForm
         {
             _mruList.Clear();
             var loadedMru = _windowStateService.LoadMru();
-            
+
             // Validate each path before adding to MRU list
             foreach (var file in loadedMru)
             {
@@ -478,9 +483,8 @@ public partial class MainForm
                     _logger?.LogDebug("MRU file no longer exists, skipping: {File}", file);
                 }
             }
-            
-            _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", 
-                _mruList.Count, loadedMru.Count(), loadedMru.Count() - _mruList.Count);
+
+            _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", _mruList.Count, loadedMru.Count(), loadedMru.Count() - _mruList.Count);
         }
         catch (Exception ex)
         {
@@ -520,29 +524,29 @@ public partial class MainForm
 
         try
         {
-            ShowReportsPanel(reportPath);
+            ShowAnalyticsHubPanel(reportPath);
             _reportViewerLaunched = true;
-            _logger?.LogInformation("Report viewer opened for CLI path: {ReportPath}", reportPath);
+            _logger?.LogInformation("Analytics Hub opened for CLI path: {ReportPath}", reportPath);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to open report viewer for {ReportPath}", reportPath);
+            _logger?.LogError(ex, "Failed to open Analytics Hub for {ReportPath}", reportPath);
         }
     }
 
     /// <summary>
-    /// Shows the Reports panel with optional auto-load path for CLI-launched reports.
+    /// Shows the Analytics Hub panel with optional auto-load path for CLI-launched reports.
     /// </summary>
-    private void ShowReportsPanel(string reportPath)
+    private void ShowAnalyticsHubPanel(string reportPath)
     {
         try
         {
-            _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Right, allowFloating: true);
-            _logger?.LogInformation("Reports panel shown with auto-load path: {ReportPath}", reportPath);
+            _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", reportPath, DockingStyle.Right, allowFloating: true);
+            _logger?.LogInformation("Analytics Hub panel shown with auto-load path: {ReportPath}", reportPath);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to show reports panel");
+            _logger?.LogError(ex, "Failed to show Analytics Hub panel");
         }
     }
 
@@ -599,12 +603,16 @@ public partial class MainForm
                 _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
                 _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
 
-                // Add to MRU with error handling for storage directory issues
+                // Add to MRU with optimized in-memory update
                 try
                 {
                     _windowStateService.AddToMru(file);
-                    _mruList.Clear();
-                    _mruList.AddRange(_windowStateService.LoadMru());
+                    // Update in-memory list directly instead of reloading
+                    if (!_mruList.Contains(file))
+                    {
+                        _mruList.Insert(0, file); // Add to front for MRU behavior
+                        if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1); // Limit to 10 items
+                    }
                 }
                 catch (DirectoryNotFoundException dnfEx)
                 {
@@ -678,9 +686,31 @@ public partial class MainForm
 
         if (result.IsSuccess && result.Data != null)
         {
-            var count = (result.Data as System.Collections.IDictionary)?.Count ?? 0;
-            _logger?.LogInformation("Successfully imported {File}: {Count} properties", Path.GetFileName(file), count);
-            try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data properties",
+            // Enhanced: Type-safe counting with fallback
+            int count = 0;
+            try
+            {
+                if (result.Data is System.Collections.IDictionary dict)
+                {
+                    count = dict.Count;
+                }
+                else if (result.Data is System.Collections.ICollection coll)
+                {
+                    count = coll.Count;
+                }
+                else
+                {
+                    count = 1; // Fallback for single objects
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to count imported data for {File}", Path.GetFileName(file));
+                count = 0;
+            }
+
+            _logger?.LogInformation("Successfully imported {File}: {Count} items", Path.GetFileName(file), count);
+            try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data items",
                 "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger); } catch { }
         }
         else if (result.IsSuccess && result.Data == null)

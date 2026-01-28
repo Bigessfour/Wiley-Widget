@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
+using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
@@ -73,8 +74,8 @@ public static class RightDockPanelFactory
                 Name = "RightDockPanel"
             };
 
-            // Create TabControl for Activity Log and JARVIS Chat
-            var tabControl = new TabControl
+            // Create TabControlAdv for Activity Log and JARVIS Chat
+            var tabControl = new TabControlAdv
             {
                 Dock = DockStyle.Fill,
                 Name = "RightPanelTabControl"
@@ -86,11 +87,13 @@ public static class RightDockPanelFactory
             var activityLogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ActivityLogPanel>>(serviceProvider)
                 ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>)
                 ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
+            logger?.LogDebug("Creating ActivityLogPanel...");
             var activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger)
             {
                 Dock = DockStyle.Fill,
                 Name = "ActivityLogPanel"
             };
+            logger?.LogDebug("ActivityLogPanel created successfully");
             activityLogTab.Controls.Add(activityLogPanel);
             tabControl.TabPages.Add(activityLogTab);
 

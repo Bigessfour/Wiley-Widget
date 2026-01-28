@@ -31,6 +31,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
@@ -41,8 +42,15 @@ namespace WileyWidget.WinForms.Controls;
 /// Uses Syncfusion API properly: Dock layout and SfSkinManager theming per Syncfusion documentation.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
+public partial class QuickBooksPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new QuickBooksViewModel? ViewModel
+    {
+        get => (QuickBooksViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
+
     #region UI Controls
 
     private PanelHeader? _panelHeader;
@@ -271,7 +279,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     public QuickBooksPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         InitializeComponent();
@@ -281,9 +289,13 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// Called after the ViewModel has been resolved. Initializes UI and bindings.
     /// Sets initial splitter distances to ensure proper panel layout and prevent button blocking.
     /// </summary>
-    protected override void OnViewModelResolved(QuickBooksViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not QuickBooksViewModel)
+        {
+            return;
+        }
 
         CreateConnectionPanel();
         CreateOperationsPanel();
@@ -1207,11 +1219,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         SfSkinManager.SetVisualStyle(topPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Vertical split: left = connection, right = operations (safe deferred sizing)
-        var splitTop = new SplitContainer
+        var splitTop = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            FixedPanel = FixedPanel.None
+            FixedPanel = Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.None
         };
 
         // Defer min sizes and splitter distance until the control has real dimensions
@@ -1418,6 +1430,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _operationsPanel.Padding = new Padding(12, 8, 12, 8);
         _operationsPanel.BorderStyle = BorderStyle.FixedSingle;
         _operationsPanel.AutoSize = false; // Explicit false: parent sets height
+        _operationsPanel.Margin = new Padding(0, 5, 0, 5);  // Added margin to prevent top clipping
 
         // Operations header with improved typography
         var operationsHeader = new Label
@@ -1456,7 +1469,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(0, 0, 0, 0)
+            Padding = new Padding(0, 0, 0, 0),
+            Margin = new Padding(0, 10, 0, 0)  // Added top margin for button spacing
         };
 
         _syncDataButton = new SfButton
@@ -2441,7 +2455,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(
             _splitContainerTop,
             panel1MinSize: DpiHeight(240f),
-            panel2MinSize: DpiHeight(280f),
+            panel2MinSize: DpiHeight(320f),  // Increased from 280f to ensure operations buttons fit with padding
             desiredDistance: 0,                  // Ignored – proportion handler will set it
             splitterWidth: 6);
 

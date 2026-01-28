@@ -35,10 +35,17 @@ namespace WileyWidget.WinForms.Controls
 
     /// <summary>
     /// Dashboard panel with KPIs, charts, and details grid.
-    /// Migrated to ScopedPanelBase<FormsMainViewModel> for proper DI scoping and lifecycle management.
+    /// Migrated to ScopedPanelBase for proper DI scoping and lifecycle management.
     /// </summary>
-    public partial class DashboardPanel : ScopedPanelBase<FormsMainViewModel>
+    public partial class DashboardPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new FormsMainViewModel? ViewModel
+        {
+            get => (FormsMainViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
+
         private FormsMainViewModel? _vm => ViewModel;
 
         // controls
@@ -48,15 +55,13 @@ namespace WileyWidget.WinForms.Controls
         private NoDataOverlay? _noDataOverlay;
         private ToolStrip _toolStrip = null!;
         private ToolStripButton _btnRefresh = null!;
-        private ToolStripButton _btnLoadDashboard = null!;
-        private ToolStripButton _btnExportExcel = null!;
         private Label _lblLastRefreshed = null!;
 
         private SfListView? _kpiList = null;
         private ChartControl _mainChart = null!;
         private ChartControlRegionEventWiring? _mainChartRegionEventWiring;
         private SfDataGrid _detailsGrid = null!;
-        private SplitContainer _mainSplitContainer = null!;
+        private SplitContainerAdv _mainSplitContainer = null!;
         private StatusStrip _statusStrip = null!;
         private ErrorProvider? _errorProvider;
         private ToolStripStatusLabel _statusLabel = null!;
@@ -65,16 +70,6 @@ namespace WileyWidget.WinForms.Controls
         // Named event handlers for PanelHeader (stored for proper unsubscription)
         private EventHandler? _panelHeaderRefreshHandler;
         private EventHandler? _panelHeaderCloseHandler;
-        // per-tile sparkline references
-        private readonly ChartControl? _sparkBudget;
-        private readonly ChartControlRegionEventWiring? _sparkBudgetRegionEventWiring;
-        private readonly ChartControl? _sparkExpenditure;
-        private readonly ChartControlRegionEventWiring? _sparkExpenditureRegionEventWiring;
-        private readonly ChartControl? _sparkRemaining;
-        private readonly ChartControlRegionEventWiring? _sparkRemainingRegionEventWiring;
-        private readonly Label? _tileBudgetValueLabel;
-        private readonly Label? _tileExpenditureValueLabel;
-        private readonly Label? _tileRemainingValueLabel;
         // Gauge controls for dashboard metrics
         private RadialGauge? _budgetUtilizationGauge;
         private RadialGauge? _revenueGauge;
@@ -91,7 +86,7 @@ namespace WileyWidget.WinForms.Controls
         // ViewModel is resolved from scoped provider after handle creation.
         public DashboardPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase<FormsMainViewModel>> logger,
+            ILogger<ScopedPanelBase> logger,
             WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
             : base(scopeFactory, logger)
         {
@@ -130,14 +125,18 @@ namespace WileyWidget.WinForms.Controls
         /// Called after the ViewModel has been resolved from the scoped service provider.
         /// Wires up event handlers but defers heavy binding work to async task.
         /// </summary>
-        protected override void OnViewModelResolved(FormsMainViewModel viewModel)
+        protected override void OnViewModelResolved(object? viewModel)
         {
             base.OnViewModelResolved(viewModel);
+            if (viewModel is not FormsMainViewModel typedViewModel)
+            {
+                return;
+            }
 
             try
             {
                 // Subscribe to ViewModel property changes - lightweight, synchronous only
-                if (viewModel is INotifyPropertyChanged npc && _viewModelPropertyChangedHandler == null)
+                if (typedViewModel is INotifyPropertyChanged npc && _viewModelPropertyChangedHandler == null)
                 {
                     _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
                     npc.PropertyChanged += _viewModelPropertyChangedHandler;
@@ -271,8 +270,8 @@ namespace WileyWidget.WinForms.Controls
 
             rootTable.Controls.Add(kpiPanel, 0, 1);
 
-            // --- Row 3: Content Area (SplitContainer with Chart and Grid) ---
-            _mainSplitContainer = new SplitContainer
+            // --- Row 3: Content Area (SplitContainerAdv with Chart and Grid) ---
+            _mainSplitContainer = new SplitContainerAdv
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal,
@@ -662,44 +661,7 @@ namespace WileyWidget.WinForms.Controls
                         _mainChart.Series.Add(revenueSeries);
                     }
 
-                    // Fill the sparkline mini-charts attached to each summary tile and update their value labels
-                    try
-                    {
-                        void FillSpark(ChartControl? c, string seriesName)
-                        {
-                            if (c == null) return;
-                            c.Series.Clear();
-
-                            // Use real MonthlyRevenueData from ViewModel if available (last 6 months)
-                            var sparkSnapshot = monthlyRevenueSnapshot;
-                            if (sparkSnapshot != null && sparkSnapshot.Any())
-                            {
-                                var s = new ChartSeries(seriesName, ChartSeriesType.Line);
-                                var recentMonths = sparkSnapshot.TakeLast(6).ToList();
-                                foreach (var month in recentMonths)
-                                {
-                                    if (month == null) continue;
-                                    s.Points.Add(month.Month, (double)month.Amount);
-                                }
-                                s.Style.DisplayText = false;
-                                // Let SfSkinManager apply theme colors automatically per Syncfusion best practices.
-                                // ChartControl series use theme-aware default colors when Interior is not explicitly set.
-                                c.Series.Add(s);
-                            }
-                        }
-
-                        // NOTE: Sparkline data binding - Now using real MonthlyRevenueData from ViewModel.
-                        // This provides actual revenue trend data instead of synthetic values.
-                        // Production version should populate MonthlyRevenueData from repository queries.
-                        FillSpark(_sparkBudget, "Budget");
-                        FillSpark(_sparkExpenditure, "Expenditure");
-                        FillSpark(_sparkRemaining, "Remaining");
-
-                        if (_tileBudgetValueLabel != null) _tileBudgetValueLabel.Text = _vm.TotalBudget.ToString("C0", CultureInfo.CurrentCulture);
-                        if (_tileExpenditureValueLabel != null) _tileExpenditureValueLabel.Text = _vm.TotalExpenditure.ToString("C0", CultureInfo.CurrentCulture);
-                        if (_tileRemainingValueLabel != null) _tileRemainingValueLabel.Text = _vm.RemainingBudget.ToString("C0", CultureInfo.CurrentCulture);
-                    }
-                    catch { }
+                    // Note: Sparkline charts removed - current UI uses gauge panels instead
                 }
 
                 // Wire status and labels
@@ -1260,13 +1222,6 @@ namespace WileyWidget.WinForms.Controls
                 try { _loadingOverlay?.Dispose(); } catch { }
                 try { _noDataOverlay?.Dispose(); } catch { }
 
-                // Dispose per-tile sparks
-                try { _sparkBudgetRegionEventWiring?.Dispose(); } catch { }
-                try { _sparkExpenditureRegionEventWiring?.Dispose(); } catch { }
-                try { _sparkRemainingRegionEventWiring?.Dispose(); } catch { }
-                try { _sparkBudget?.Dispose(); } catch { }
-                try { _sparkExpenditure?.Dispose(); } catch { }
-                try { _sparkRemaining?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
 
                 // Dispose gauge controls

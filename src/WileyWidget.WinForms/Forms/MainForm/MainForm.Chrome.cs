@@ -10,6 +10,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
@@ -340,16 +341,13 @@ public partial class MainForm
             chartsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true); };
 
              var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
-            analyticsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true); };
+            analyticsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true); };
 
             var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Audit Log" };
             auditLogBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true); };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
             customersBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true); };
-
-            var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
-            reportsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true); };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "QuickBooks" };
             quickBooksBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true); };
@@ -384,7 +382,7 @@ public partial class MainForm
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
-                dashboardBtn, new ToolStripSeparator(), accountsBtn, budgetBtn, chartsBtn, analyticsBtn, auditLogBtn, customersBtn, reportsBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
+                dashboardBtn, new ToolStripSeparator(), accountsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
             });
 
             Controls.Add(_navigationStrip);
@@ -534,13 +532,8 @@ public partial class MainForm
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true); }) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
 
             // View > Budget
-            var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true); }) { Name = "Menu_View_Budget", ShortcutKeys = Keys.Control | Keys.B };
-
              // View > Charts
-            var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_Charts", ShortcutKeys = Keys.Control | Keys.H };
-
-             // View > Reports
-            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_Reports", ShortcutKeys = Keys.Control | Keys.R };
+            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
 
              // View > QuickBooks
             var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
@@ -550,7 +543,7 @@ public partial class MainForm
 
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
 
-            viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, budgetMenuItem, chartsMenuItem, reportsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
+            viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, chartsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
 
             // Tools Menu
             var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools" };

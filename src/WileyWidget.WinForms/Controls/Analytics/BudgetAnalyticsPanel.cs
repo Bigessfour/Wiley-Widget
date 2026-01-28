@@ -24,7 +24,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Controls;
 
-namespace WileyWidget.WinForms.Controls
+namespace WileyWidget.WinForms.Controls.Analytics
 {
     /// <summary>
     /// Budget analytics panel displaying budget variance trends, department performance,
@@ -32,8 +32,14 @@ namespace WileyWidget.WinForms.Controls
     /// Implements ICompletablePanel for proper async lifecycle management.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class BudgetAnalyticsPanel : ScopedPanelBase<BudgetAnalyticsViewModel>
+    public partial class BudgetAnalyticsPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new BudgetAnalyticsViewModel? ViewModel
+        {
+            get => (BudgetAnalyticsViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         // Controls
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -76,7 +82,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public BudgetAnalyticsPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase<BudgetAnalyticsViewModel>> logger)
+            ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
             // No need to assign _scopeFactory; handled by base class

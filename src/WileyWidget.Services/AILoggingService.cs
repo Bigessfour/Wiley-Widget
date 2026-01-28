@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Core;
+using WileyWidget.Services.Logging;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
@@ -54,11 +55,8 @@ namespace WileyWidget.Services
             _logEntries = new ConcurrentBag<AILogEntry>();
             _lastResetDate = DateTime.UtcNow.Date;
 
-            // Create dedicated Serilog logger for AI usage
-            // Use root logs folder for centralized logging
-            var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
-            var logsDirectory = Path.Combine(projectRoot, "logs");
-            Directory.CreateDirectory(logsDirectory);
+            // Create dedicated Serilog logger for AI usage (workspace logs folder)
+            var logsDirectory = LogPathResolver.GetLogsDirectory();
 
             _aiUsageLogger = new LoggerConfiguration()
                 .WriteTo.File(

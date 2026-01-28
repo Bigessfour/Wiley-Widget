@@ -12,6 +12,7 @@ using Syncfusion.Drawing;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
@@ -96,7 +97,7 @@ public static class DashboardFactory
             var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(chartsCard, () =>
             {
-                panelNavigator?.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
@@ -106,11 +107,11 @@ public static class DashboardFactory
                 panelNavigator?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right);
             });
 
-            // Card 4: Reports
-            var reportsCard = CreateDashboardCard("Reports", "Generate Now", responsiveCardWidth, cardHeight).Panel;
+            // Card 4: Analytics Hub
+            var reportsCard = CreateDashboardCard("Analytics Hub", "Open Hub", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(reportsCard, () =>
             {
-                panelNavigator?.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
             });
 
             // Card 5: Budget Status (Static/Status Display)

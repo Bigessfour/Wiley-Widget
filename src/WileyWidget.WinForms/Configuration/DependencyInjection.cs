@@ -31,6 +31,7 @@ using Syncfusion.Blazor;
 using Serilog;
 using Serilog.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -387,7 +388,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
 
             // AI Services (Scoped - may hold request-specific context)
-            services.AddScoped<IAIService>(static sp => (GrokAgentService)sp.GetService(typeof(GrokAgentService))!);
+            services.AddScoped<IAIService, GrokAgentService>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
@@ -408,8 +409,8 @@ namespace WileyWidget.WinForms.Configuration
             // Audit Service (Scoped - depends on repositories and logging which are scoped)
             services.AddScoped<IAuditService, AuditService>();
 
-            // Global Search Service (Singleton - stateless search aggregation across modules)
-            services.AddSingleton<IGlobalSearchService, GlobalSearchService>();
+            // Global Search Service (Scoped - stateless search aggregation across modules)
+            services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 
             // =====================================================================
             // REPORTING & EXPORT SERVICES
@@ -430,6 +431,7 @@ namespace WileyWidget.WinForms.Configuration
             services.TryAddScoped<IDataAnonymizerService, DataAnonymizerService>();
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
             services.AddTransient<IAnalyticsService, AnalyticsService>();
+            services.AddTransient<IBudgetAnalyticsRepository, BudgetAnalyticsRepository>();
 
             // Analytics Pipeline (Scoped - may aggregate data across request)
             services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
@@ -467,8 +469,8 @@ namespace WileyWidget.WinForms.Configuration
             // Theme Service (Singleton - manages global theme state and notifications)
             services.AddSingleton<IThemeService, ThemeService>();
 
-            // Activity Log Service (Singleton - tracks navigation and application events for audit trail)
-            services.AddSingleton<IActivityLogService, ActivityLogService>();
+            // Activity Log Service (Scoped - tracks navigation and application events for audit trail)
+            services.AddScoped<IActivityLogService, ActivityLogService>();
 
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
@@ -559,6 +561,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<AccountsViewModel>();
             services.AddScoped<DashboardViewModel>();
             services.AddScoped<AnalyticsViewModel>();
+            services.AddScoped<IAnalyticsHubViewModel, AnalyticsHubViewModel>();
+            services.AddScoped<AnalyticsHubViewModel>();
             services.AddScoped<ChartViewModel>();
             services.AddScoped<BudgetOverviewViewModel>();
             services.AddScoped<BudgetViewModel>();
@@ -573,7 +577,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<QuickBooksViewModel>();
             services.AddScoped<IInsightFeedViewModel, InsightFeedViewModel>();
             services.AddScoped<InsightFeedViewModel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
+            services.AddScoped<WileyWidget.WinForms.ViewModels.ActivityLogViewModel>();
             // Example panels' ViewModels - sometimes omitted during refactor
             services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
             // JARVIS Chat ViewModel for docked chat control
@@ -584,14 +588,12 @@ namespace WileyWidget.WinForms.Configuration
             // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
             // =====================================================================
 
-            services.AddScoped<WileyWidget.WinForms.Controls.DashboardPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.BudgetAnalyticsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.BudgetPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ReportsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.SettingsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.BudgetOverviewPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.DepartmentSummaryPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RevenueTrendsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogPanel>();
@@ -599,7 +601,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AnalyticsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ProactiveInsightsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.CsvMappingWizardPanel>();

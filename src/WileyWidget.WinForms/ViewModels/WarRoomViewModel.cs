@@ -42,12 +42,15 @@ namespace WileyWidget.WinForms.ViewModels
     /// Integrates GrokAgentService to analyze rate scenarios and financial projections.
     /// Supports multi-year "what-if" planning with voice input hints and visual analytics.
     /// </summary>
-    public partial class WarRoomViewModel : ViewModelBase, IWarRoomViewModel
+    public partial class WarRoomViewModel : ViewModelBase, IWarRoomViewModel, ILazyLoadViewModel
     {
         private readonly GrokAgentService? _grokService;
         private readonly RateScenarioTools? _rateScenarioTools;
 
         #region Observable Properties
+
+        [ObservableProperty]
+        private bool isDataLoaded;
 
         [ObservableProperty]
         private string scenarioInput = "Raise water rates 12% and inflation is 4% for 5 years";
@@ -115,6 +118,19 @@ namespace WileyWidget.WinForms.ViewModels
             ResetCommand = new RelayCommand(Reset);
 
             Logger.LogInformation("WarRoomViewModel initialized");
+        }
+
+        /// <summary>
+        /// ILazyLoadViewModel implementation: called when the panel becomes visible.
+        /// For WarRoom, we just mark data as loaded since it's interactive.
+        /// </summary>
+        public async Task OnVisibilityChangedAsync(bool isVisible)
+        {
+            if (isVisible && !IsDataLoaded)
+            {
+                IsDataLoaded = true;
+                Logger.LogInformation("WarRoomViewModel data loaded on visibility change");
+            }
         }
 
         /// <summary>

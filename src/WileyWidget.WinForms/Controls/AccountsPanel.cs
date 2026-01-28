@@ -22,8 +22,14 @@ namespace WileyWidget.WinForms.Controls;
 /// Provides a data grid with CRUD toolbar for managing municipal accounts.
 /// Implements ICompletablePanel to track load state and validation status.
 /// </summary>
-public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
+public partial class AccountsPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new AccountsViewModel? ViewModel
+    {
+        get => (AccountsViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
     private PanelHeader? _header;
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _accountsGrid;
     private TableLayoutPanel? _layout;
@@ -48,7 +54,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// <summary>
     /// Initializes a new instance with DI-resolved ViewModel and logger.
     /// </summary>
-    public AccountsPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<AccountsViewModel>> logger)
+    public AccountsPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         InitializeControls();
@@ -78,10 +84,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// <summary>
     /// Called after the ViewModel is resolved from DI. Bind controls to the ViewModel.
     /// </summary>
-    protected override void OnViewModelResolved(AccountsViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
-        BindViewModel();
+        if (viewModel is AccountsViewModel)
+        {
+            BindViewModel();
+        }
     }
 
     private void InitializeControls()
@@ -100,6 +109,12 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         _header = new PanelHeader { Dock = DockStyle.Fill, Title = "Chart of Accounts" };
         _layout.Controls.Add(_header, 0, 0);
+
+        // Wire PanelHeader events
+        _header.RefreshClicked += RefreshButton_Click;
+        _header.CloseClicked += (s, e) => ClosePanel();
+        _header.HelpClicked += (s, e) => { MessageBox.Show("Chart of Accounts Help: Manage your municipal accounts.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+        _header.PinToggled += (s, e) => { /* Pin logic */ };
 
         _toolbarPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
         _createButton = new SfButton { Text = "New Account", AutoSize = true };
@@ -160,15 +175,15 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             return;
         }
 
-        _logger.LogInformation("[BINDING] Starting AccountsPanel ViewModel binding. Accounts count: {Count}",
+        _logger.LogDebug("[BINDING] Starting AccountsPanel ViewModel binding. Accounts count: {Count}",
             ViewModel.Accounts?.Count ?? 0);
 
         // Bind grid directly to Accounts collection (not through BindingSource DataMember)
         if (_accountsGrid != null)
         {
-            _logger.LogInformation("[BINDING] Binding grid directly to Accounts collection");
+            _logger.LogDebug("[BINDING] Binding grid directly to Accounts collection");
             _accountsGrid.DataSource = ViewModel.Accounts;
-            _logger.LogInformation("[BINDING] Grid bound. DataSource type: {Type}, RowCount: {RowCount}",
+            _logger.LogDebug("[BINDING] Grid bound. DataSource type: {Type}, RowCount: {RowCount}",
                 _accountsGrid.DataSource?.GetType().Name ?? "null",
                 _accountsGrid.RowCount);
         }
@@ -189,10 +204,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         if (ViewModel is INotifyPropertyChanged observable)
         {
             observable.PropertyChanged += ViewModel_PropertyChanged;
-            _logger.LogInformation("[BINDING] Subscribed to ViewModel PropertyChanged events");
+            _logger.LogDebug("[BINDING] Subscribed to ViewModel PropertyChanged events");
         }
 
-        _logger.LogInformation("[BINDING] AccountsPanel ViewModel bound successfully. Final grid row count: {RowCount}",
+        _logger.LogDebug("[BINDING] AccountsPanel ViewModel bound successfully. Final grid row count: {RowCount}",
             _accountsGrid?.RowCount ?? -1);
     }
 
@@ -256,7 +271,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 var result = dialog.ShowDialog(this);
                 if (result == DialogResult.OK && dialog.CreatedAccount != null)
                 {
-                    _logger.LogInformation("Create dialog returned OK with new account: {AccountNumber}",
+                    _logger.LogDebug("Create dialog returned OK with new account: {AccountNumber}",
                         dialog.CreatedAccount.AccountNumber?.Value);
 
                     // Execute the ViewModel's CreateAccountCommand
@@ -313,7 +328,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 var result = dialog.ShowDialog(this);
                 if (result == DialogResult.OK && dialog.IsSaved)
                 {
-                    _logger.LogInformation("Edit dialog returned OK with updated account: {AccountNumber}",
+                    _logger.LogDebug("Edit dialog returned OK with updated account: {AccountNumber}",
                         accountToEdit.AccountNumber?.Value);
 
                     // Execute the ViewModel's UpdateAccountCommand
@@ -348,7 +363,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
             if (confirmed)
             {
-                _logger.LogInformation("Delete confirmed for account: {AccountNumber}", selectedDisplay.AccountNumber);
+                _logger.LogDebug("Delete confirmed for account: {AccountNumber}", selectedDisplay.AccountNumber);
 
                 // Execute the ViewModel's DeleteAccountCommand
                 if (ViewModel?.DeleteAccountCommand.CanExecute(null) ?? false)
@@ -358,7 +373,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             }
             else
             {
-                _logger.LogInformation("Delete cancelled for account: {AccountNumber}", selectedDisplay.AccountNumber);
+                _logger.LogDebug("Delete cancelled for account: {AccountNumber}", selectedDisplay.AccountNumber);
             }
         }
     }
@@ -370,7 +385,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         try
         {
-            _logger.LogInformation("Refresh button clicked");
+            _logger.LogDebug("Refresh button clicked");
             if (ViewModel?.FilterAccountsCommand.CanExecute(null) ?? false)
             {
                 ViewModel.FilterAccountsCommand.Execute(null);
@@ -528,7 +543,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                         _accountsGrid);
                     errors.Add(item);
 
-                    Logger?.LogInformation("ValidateAsync: Grid has 0 rows (may be normal)");
+                    Logger?.LogDebug("ValidateAsync: Grid has 0 rows (may be normal)");
                 }
                 else if (rowCount > MaxGridRowsThreshold)
                 {
@@ -689,6 +704,35 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private void Grid_SelectionChanged(object? sender, Syncfusion.WinForms.DataGrid.Events.SelectionChangedEventArgs e)
     {
         UpdateButtonState();
+    }
+
+    private void ClosePanel()
+    {
+        try
+        {
+            var form = FindForm();
+            if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
+            {
+                mainForm.PanelNavigator.HidePanel("Municipal Accounts");
+                return;
+            }
+
+            var dockingManagerField = form?.GetType()
+                .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
+            {
+                dockingManager.SetDockVisibility(this, false);
+            }
+            else
+            {
+                Visible = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to close AccountsPanel via docking manager");
+            Visible = false;
+        }
     }
 
     protected override void Dispose(bool disposing)

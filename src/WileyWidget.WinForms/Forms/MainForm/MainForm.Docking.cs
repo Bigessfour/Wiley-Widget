@@ -79,7 +79,7 @@ public partial class MainForm
             {
                 throw new InvalidOperationException("ServiceProvider cannot be null when creating DockingHost.");
             }
-            var (dockingManager, leftPanel, rightPanel, activityLogPanel, activityTimer, layoutManager) =
+            var (dockingManager, leftPanel, rightPanel, centralPanel, activityLogPanel, activityTimer, layoutManager) =
                 DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
             dockingHostStopwatch.Stop();
             StartupInstrumentation.RecordPhaseTime("DockingManager Creation", dockingHostStopwatch.ElapsedMilliseconds);
@@ -87,6 +87,7 @@ public partial class MainForm
             _dockingManager = dockingManager;
             _leftDockPanel = leftPanel;
             _rightDockPanel = rightPanel;
+            _centralDocumentPanel = centralPanel;
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
             _dynamicDockPanels ??= new Dictionary<string, Control>();
@@ -108,6 +109,7 @@ public partial class MainForm
                 {
                     _leftDockPanel.Visible = true;
                     _dockingManager.SetDockVisibility(_leftDockPanel, true);
+                    _leftDockPanel.Refresh();
                     _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(300, 360));
                 }
 
@@ -592,6 +594,7 @@ public partial class MainForm
                             await Task.Delay(50).ConfigureAwait(true);
                             RightDockPanelFactory.SwitchRightPanelContent(rightPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
                             _dockingManager.SetDockVisibility(rightPanel, true);
+                            rightPanel.Refresh();
                         }
                     }
                     catch (Exception rpEx)
@@ -930,7 +933,7 @@ public partial class MainForm
                 _dockingManager.DockControl(panel, this, dockStyle, height);
             }
 
-            _dockingManager.SetAutoHideMode(panel, true);
+            _dockingManager.SetAutoHideMode(panel, false);
             _dockingManager.SetDockLabel(panel, displayLabel);
             _dockingManager.SetAllowFloating(panel, true);
             _logger?.LogDebug("Dynamic panel '{PanelName}' configured with auto-hide; floating mode available via UI", panelName);
@@ -984,6 +987,7 @@ public partial class MainForm
                     if (item is Control control)
                     {
                         _dockingManager.SetDockVisibility(control, true);
+                        control.Refresh();
                     }
                 }
             }
@@ -1369,8 +1373,9 @@ public partial class MainForm
                 try
                 {
                     _dockingManager.SetDockVisibility(rightPanel, true);
+                    rightPanel.Refresh();
                     _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Ensured right panel is docked");
-                    
+
                     // Verify dock state after visibility set - reset if needed
                     var currentState = _dockingManager.GetDockState(rightPanel);
                     if (currentState != DockState.Dock)

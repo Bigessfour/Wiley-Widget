@@ -19,10 +19,11 @@ using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Serilog;
+using WileyWidget.Services.Logging;
 
 namespace WileyWidget.WinForms
 {
-    static class Program
+    class Program
     {
         private static IServiceProvider? _services;
         private static MainForm? _mainFormInstance;
@@ -72,6 +73,14 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main(string[] args)
         {
+            // Set working directory to repo root for consistent logging paths
+            var currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            var repoRoot = FindRepoRoot(currentDir) ?? FindRepoRoot(new DirectoryInfo(AppContext.BaseDirectory));
+            if (repoRoot != null)
+            {
+                Directory.SetCurrentDirectory(repoRoot.FullName);
+            }
+
             // Ensure log directory exists before Serilog initialization
             EnsureLogDirectoryExists();
 
@@ -197,9 +206,12 @@ namespace WileyWidget.WinForms
                 }
 
                 // Async startup orchestration with a configurable timeout (Startup.TimeoutSeconds)
-                // Wraps RunApplicationAsync with Task.WhenAny to enforce timeout
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application orchestration with configured startup timeout...");
-                ExecuteWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
+                // Only timebox startup initialization, not the full app lifetime.
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application initialization with configured startup timeout...");
+                ExecuteStartupWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
+
+                // Run the WinForms message loop without a timeout (normal app lifetime).
+                orchestrator.RunApplicationAsync(host.Services).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
@@ -223,10 +235,10 @@ namespace WileyWidget.WinForms
         }
 
         /// <summary>
-        /// Executes orchestrator initialization with configurable timeout protection.
+        /// Executes startup initialization with configurable timeout protection.
         /// Uses Task.WhenAny to enforce timeout and logs detailed phase budgets so diagnostics can point to the slowest phases.
         /// </summary>
-        static async Task ExecuteWithTimeoutAsync(IStartupOrchestrator orchestrator, IServiceProvider serviceProvider)
+        static async Task ExecuteStartupWithTimeoutAsync(IStartupOrchestrator orchestrator, IServiceProvider serviceProvider)
         {
             var startupOptions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IOptions<StartupOptions>>(serviceProvider)?.Value ?? new StartupOptions();
             var timeoutSeconds = Math.Max(startupOptions.TimeoutSeconds, 120);
@@ -238,16 +250,16 @@ namespace WileyWidget.WinForms
             {
                 var startupStopwatch = Stopwatch.StartNew();
                 Log.Information(
-                    "Application startup beginning with {TimeoutSeconds}s timeout (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms)",
+                    "Application startup initialization beginning with {TimeoutSeconds}s timeout (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms)",
                     timeoutSeconds,
                     phaseTimeouts.DockingInitMs,
                     phaseTimeouts.ViewModelInitMs,
                     phaseTimeouts.DataLoadMs);
 
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 🚀 Starting application initialization with {timeoutSeconds}s timeout (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 🚀 Starting startup initialization with {timeoutSeconds}s timeout (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
 
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-                var initTask = orchestrator.RunApplicationAsync(serviceProvider);
+                var initTask = orchestrator.InitializeAsync();
                 var delayTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cts.Token);
 
                 var completedTask = await Task.WhenAny(initTask, delayTask);
@@ -256,32 +268,14 @@ namespace WileyWidget.WinForms
                 if (completedTask == delayTask)
                 {
                     Log.Warning(
-                        "⚠️ Application startup exceeded {TimeoutSeconds}s after {ElapsedMs:F0}ms (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms). Consider increasing Startup.TimeoutSeconds or reviewing the slowest phases.",
+                        "⚠️ Startup initialization exceeded {TimeoutSeconds}s after {ElapsedMs:F0}ms (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms). Consider increasing Startup.TimeoutSeconds or reviewing the slowest phases.",
                         timeoutSeconds,
                         elapsedMs,
                         phaseTimeouts.DockingInitMs,
                         phaseTimeouts.ViewModelInitMs,
                         phaseTimeouts.DataLoadMs);
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Startup timeout ({timeoutSeconds}s) exceeded after {elapsedMs:F0}ms (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Startup initialization timeout ({timeoutSeconds}s) exceeded after {elapsedMs:F0}ms (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 📋 Diagnostic: Check logs for slow phases (Docking, ViewModel, Data Load)");
-
-                    // Flush logs before cancelling to avoid OperationCanceledException in async sinks
-                    Log.CloseAndFlush();
-
-                    cts.Cancel();
-
-                    try
-                    {
-                        await Task.WhenAny(initTask, Task.Delay(2000));
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log.Information("Initialization task cancelled after timeout");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "Exception while cancelling initialization task");
-                    }
                 }
                 else
                 {
@@ -289,12 +283,12 @@ namespace WileyWidget.WinForms
                     try
                     {
                         await initTask; // Ensure any exceptions are propagated
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Application initialization completed in {elapsedMs:F0}ms (within {timeoutSeconds}s timeout)");
-                        Log.Information("Application initialization completed successfully in {ElapsedMs}ms (timeout {TimeoutSeconds}s)", elapsedMs, timeoutSeconds);
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Startup initialization completed in {elapsedMs:F0}ms (within {timeoutSeconds}s timeout)");
+                        Log.Information("Startup initialization completed successfully in {ElapsedMs}ms (timeout {TimeoutSeconds}s)", elapsedMs, timeoutSeconds);
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "Initialization completed within timeout but raised exception");
+                        Log.Error(ex, "Startup initialization completed within timeout but raised exception");
                         throw;
                     }
                 }
@@ -308,6 +302,11 @@ namespace WileyWidget.WinForms
 
         static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .ConfigureAppConfiguration((context, config) =>
+                {
+                    // Ensure user-secrets are available even in non-standard host environments.
+                    config.AddUserSecrets<Program>(optional: true);
+                })
                 .ConfigureServices((hostContext, services) =>
                 {
                     // Ensure core services are registered (moved into WileyWidget.Services)
@@ -319,8 +318,7 @@ namespace WileyWidget.WinForms
                 .UseSerilog((context, services, configuration) => configuration
                     .ReadFrom.Configuration(context.Configuration)
                     .ReadFrom.Services(services)
-                    .Enrich.FromLogContext()
-                    .WriteTo.Console());
+                    .Enrich.FromLogContext());
 
         static void InitializeTheme(IServiceProvider serviceProvider)
         {
@@ -333,6 +331,7 @@ namespace WileyWidget.WinForms
                 // Primary theme: Office2019 (required for Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray)
                 SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
                 Log.Information("✅ Loaded Office2019Theme assembly successfully - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray");
+                Log.Debug("Debug test log from Program.cs");
             }
             catch (Exception ex)
             {
@@ -355,25 +354,38 @@ namespace WileyWidget.WinForms
 
         /// <summary>
         /// Ensures log directory exists before Serilog attempts to write.
-        /// Prevents silent failures when %APPDATA%\WileyWidget\logs doesn't exist.
+        /// Uses the workspace logs directory when available.
         /// </summary>
         static void EnsureLogDirectoryExists()
         {
             try
             {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                var logDirectory = Path.Combine(appDataPath, "WileyWidget", "logs");
-
-                if (!Directory.Exists(logDirectory))
-                {
-                    Directory.CreateDirectory(logDirectory);
-                }
+                _ = LogPathResolver.GetLogsDirectory();
             }
             catch (Exception ex)
             {
                 // Fallback: write to console if directory creation fails
                 Console.WriteLine($"Warning: Failed to create log directory: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Finds the repository root by looking for WileyWidget.sln.
+        /// </summary>
+        private static DirectoryInfo? FindRepoRoot(DirectoryInfo? start)
+        {
+            while (start != null)
+            {
+                var solutionPath = Path.Combine(start.FullName, "WileyWidget.sln");
+                if (File.Exists(solutionPath))
+                {
+                    return start;
+                }
+
+                start = start.Parent;
+            }
+
+            return null;
         }
 
         /// <summary>

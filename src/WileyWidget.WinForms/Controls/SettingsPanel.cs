@@ -42,8 +42,14 @@ namespace WileyWidget.WinForms.Controls
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class SettingsPanel : ScopedPanelBase<SettingsViewModel>
+    public partial class SettingsPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new SettingsViewModel? ViewModel
+        {
+            get => (SettingsViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         #region Constants
         private const int GROUP_PADDING = 16;
         private const int CONTROL_SPACING = 12;
@@ -79,8 +85,8 @@ namespace WileyWidget.WinForms.Controls
         // AI/xAI group
         private GradientPanelExt? _aiGroup;
         private CheckBoxAdv? _chkEnableAi;
-        private TextBox? _txtXaiApiEndpoint;
-        private TextBox? _txtXaiApiKey;
+        private TextBoxExt? _txtXaiApiEndpoint;
+        private TextBoxExt? _txtXaiApiKey;
         private Syncfusion.WinForms.Controls.SfButton? _btnShowApiKey;
         private Syncfusion.WinForms.ListView.SfComboBox? _cmbXaiModel;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numXaiTimeout;
@@ -136,7 +142,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public SettingsPanel(
             IServiceScopeFactory scopeFactory,
-            Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> logger)
+            Microsoft.Extensions.Logging.ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
         }
@@ -169,7 +175,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private static Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> ResolveLogger()
+        private static Microsoft.Extensions.Logging.ILogger<ScopedPanelBase> ResolveLogger()
         {
             if (Program.Services == null)
             {
@@ -178,7 +184,7 @@ namespace WileyWidget.WinForms.Controls
             }
             try
             {
-                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<SettingsViewModel>>>(Program.Services);
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase>>(Program.Services);
                 Serilog.Log.Debug("SettingsPanel: ILogger resolved from DI container");
                 return logger;
             }
@@ -193,11 +199,15 @@ namespace WileyWidget.WinForms.Controls
         /// Called after ViewModel is resolved from scoped provider.
         /// Performs UI setup and initial data binding.
         /// </summary>
-        protected override void OnViewModelResolved(SettingsViewModel viewModel)
+        protected override void OnViewModelResolved(object? viewModel)
         {
             base.OnViewModelResolved(viewModel);
+            if (viewModel is not SettingsViewModel typedViewModel)
+            {
+                return;
+            }
 
-            DataContext = viewModel;
+            DataContext = typedViewModel;
 
             InitializeComponent();
             SetupBindings();
@@ -263,6 +273,15 @@ namespace WileyWidget.WinForms.Controls
             // Validate required fields
             if (string.IsNullOrWhiteSpace(_txtAppTitle?.Text))
                 errors.Add(new ValidationItem("AppTitle", "Application title is required", ValidationSeverity.Error, _txtAppTitle));
+
+            // AI-specific validation
+            if (_chkEnableAi?.Checked == true)
+            {
+                if (string.IsNullOrWhiteSpace(_txtXaiApiKey?.Text))
+                    errors.Add(new ValidationItem("XaiApiKey", "xAI API key is required when AI is enabled", ValidationSeverity.Error, _txtXaiApiKey));
+                if (!Uri.TryCreate(_txtXaiApiEndpoint?.Text, UriKind.Absolute, out _))
+                    errors.Add(new ValidationItem("XaiApiEndpoint", "Valid xAI API endpoint is required when AI is enabled", ValidationSeverity.Error, _txtXaiApiEndpoint));
+            }
 
             // Validate ViewModel properties via ErrorProviderBinding
             if (_errorBinding != null)
@@ -503,7 +522,7 @@ namespace WileyWidget.WinForms.Controls
             }, 1, 0);
             _aiToolTip?.SetToolTip(_chkEnableAi, "Enable or disable AI features.");
             aiTable.Controls.Add(new Label { Text = "Endpoint:", Anchor = AnchorStyles.Left }, 0, 1);
-            aiTable.Controls.Add(_txtXaiApiEndpoint = new TextBox
+            aiTable.Controls.Add(_txtXaiApiEndpoint = new TextBoxExt
             {
                 Name = "txtXaiApiEndpoint",
                 Width = 250,
@@ -521,14 +540,14 @@ namespace WileyWidget.WinForms.Controls
             }, 1, 2);
             try
             {
-                _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList();
-                _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4-0709";
+                _cmbXaiModel.DataSource = new[] { "grok-4.1", "grok-4-1-fast", "grok-4-1-fast-reasoning", "grok-4-1-fast-non-reasoning", "grok-3-2024" }.ToList();
+                _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4.1";
             }
             catch { }
             _aiToolTip?.SetToolTip(_cmbXaiModel, "Select model used for recommendations.");
             aiTable.Controls.Add(new Label { Text = "API Key:", Anchor = AnchorStyles.Left }, 0, 3);
             var apiKeyPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-            apiKeyPanel.Controls.Add(_txtXaiApiKey = new TextBox
+            apiKeyPanel.Controls.Add(_txtXaiApiKey = new TextBoxExt
             {
                 Name = "txtXaiApiKey",
                 Width = 180,
@@ -739,7 +758,7 @@ namespace WileyWidget.WinForms.Controls
             };
 
             var lblEndpoint = new Label { Text = "Endpoint:", AutoSize = true, Location = new Point(GROUP_PADDING, 78), Font = new Font("Segoe UI", 9) };
-            _txtXaiApiEndpoint = new TextBox
+            _txtXaiApiEndpoint = new TextBoxExt
             {
                 Name = "txtXaiApiEndpoint",
                 Location = new Point(GROUP_PADDING + LABEL_WIDTH, 75),
@@ -759,13 +778,13 @@ namespace WileyWidget.WinForms.Controls
             };
             try
             {
-                _cmbXaiModel.DataSource = new[] { "grok-4-0709", "grok-beta", "grok-3-2024" }.ToList();
-                _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4-0709";
+                _cmbXaiModel.DataSource = new[] { "grok-4.1", "grok-4-1-fast", "grok-4-1-fast-reasoning", "grok-4-1-fast-non-reasoning", "grok-3-2024" }.ToList();
+                _cmbXaiModel.SelectedItem = ViewModel?.XaiModel ?? "grok-4.1";
             }
             catch { }
 
             var lblApiKey = new Label { Text = "API Key:", AutoSize = true, Location = new Point(GROUP_PADDING, 134), Font = new Font("Segoe UI", 9) };
-            _txtXaiApiKey = new TextBox
+            _txtXaiApiKey = new TextBoxExt
             {
                 Name = "txtXaiApiKey",
                 Location = new Point(GROUP_PADDING + LABEL_WIDTH, 131),
@@ -1284,7 +1303,30 @@ namespace WileyWidget.WinForms.Controls
             _chkEnableAiHandler = (s, e) => { if (IsLoaded) SetHasUnsavedChanges(true); };
             if (_chkEnableAi != null) _chkEnableAi.CheckedChanged += _chkEnableAiHandler;
 
-            _themeComboSelectedHandler = (s, e) => { if (IsLoaded) SetHasUnsavedChanges(true); };
+            _themeComboSelectedHandler = (s, e) =>
+            {
+                try
+                {
+                    if (!IsLoaded) return;
+
+                    // Ensure ViewModel.SelectedTheme is updated immediately when user picks a theme
+                    // Some versions of Syncfusion SfComboBox do not push SelectedItem bindings reliably
+                    // on selection changes, so set the ViewModel explicitly to trigger theme application.
+                    if (_themeCombo?.SelectedItem is string sel && ViewModel != null)
+                    {
+                        if (!string.Equals(ViewModel.SelectedTheme, sel, StringComparison.Ordinal))
+                        {
+                            ViewModel.SelectedTheme = sel; // triggers SettingsViewModel.OnSelectedThemeChanged -> ThemeService.ApplyTheme
+                        }
+                    }
+
+                    SetHasUnsavedChanges(true);
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Debug(ex, "SettingsPanel: theme selection handler error");
+                }
+            };
             if (_themeCombo != null) _themeCombo.SelectedIndexChanged += _themeComboSelectedHandler;
 
             _txtXaiApiEndpointChangedHandler = (s, e) => { if (IsLoaded) SetHasUnsavedChanges(true); };

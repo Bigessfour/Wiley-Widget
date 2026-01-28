@@ -14,7 +14,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
-namespace WileyWidget.WinForms.Controls
+namespace WileyWidget.WinForms.Controls.Analytics
 {
     /// <summary>
     /// Panel for displaying proactive AI insights with gradient header and data grid.
@@ -111,6 +111,12 @@ namespace WileyWidget.WinForms.Controls
             };
             headerLayout.Controls.Add(_panelHeader, 0, 0);
 
+            // Wire PanelHeader events
+            _panelHeader.RefreshClicked += (s, e) => BtnRefresh_Click(s, e);
+            _panelHeader.CloseClicked += (s, e) => ClosePanel();
+            _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Proactive Insights Help: AI-generated insights for budget optimization.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+            _panelHeader.PinToggled += (s, e) => { /* Pin logic */ };
+
             // Right-side flow to keep toolbar items right-aligned and spaced
             var rightFlow = new FlowLayoutPanel
             {
@@ -196,6 +202,41 @@ namespace WileyWidget.WinForms.Controls
             _btnClearClickHandler = (s, e) => BtnClear_Click(s, e);
             _btnRefresh.Click += _btnRefreshClickHandler;
             _btnClear.Click += _btnClearClickHandler;
+        }
+
+        private void ClosePanel()
+        {
+            try
+            {
+                var form = FindForm();
+                if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
+                {
+                    if (mainForm.PanelNavigator.HidePanel("Proactive Insights"))
+                    {
+                        return;
+                    }
+                    if (mainForm.PanelNavigator.HidePanel("Proactive AI Insights"))
+                    {
+                        return;
+                    }
+                }
+
+                var dockingManagerField = form?.GetType()
+                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
+                {
+                    dockingManager.SetDockVisibility(this, false);
+                }
+                else
+                {
+                    Visible = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Failed to close ProactiveInsightsPanel via docking manager");
+                Visible = false;
+            }
         }
 
         /// <summary>
@@ -308,4 +349,3 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
-

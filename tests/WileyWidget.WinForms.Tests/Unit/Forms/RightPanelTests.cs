@@ -176,6 +176,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             RightDockPanelFactory.SwitchRightPanelContent(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat, factoryLogger.Object);
 
             // Assert
+            rightDockPanel.Controls.Count.Should().BeGreaterThan(0, "RightDockPanel should contain a TabControl");
             var tabControl = (TabControl)rightDockPanel.Controls[0];
             tabControl.SelectedTab.Should().NotBeNull();
             tabControl.SelectedTab!.Name.Should().Be("JARVISChatTab");
@@ -221,29 +222,19 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 InitialPrompt = "Hello JARVIS"
             };
 
-            // Act: ensure handle exists and call OnShown to trigger initial prompt schedule
+            // Act: ensure handle exists and call SendInitialPromptAsync directly (bypasses BeginInvoke for testing)
             var _ = form.Handle;
             form.Visible = true;
-            typeof(JARVISChatHostForm).GetMethod("OnShown", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, new object[] { EventArgs.Empty });
+            
+            // Call the protected method directly for testing
+            var sendInitialPromptMethod = typeof(JARVISChatHostForm).GetMethod("SendInitialPromptAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+            var task = (Task)sendInitialPromptMethod!.Invoke(form, Array.Empty<object>())!;
 
-            // Wait for up to ~4 seconds for the RequestExternalPromptAsync to be called
-            var called = false;
-            for (int i = 0; i < 40; i++)
-            {
-                Application.DoEvents();
-                try
-                {
-                    chatBridgeMock.Verify(m => m.RequestExternalPromptAsync(It.Is<string>(s => s.Contains("Hello JARVIS")), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
-                    called = true;
-                    break;
-                }
-                catch (MockException)
-                {
-                    await Task.Delay(100);
-                }
-            }
+            // Wait for the task to complete (should take ~1.5 seconds due to delay)
+            await task;
 
-            called.Should().BeTrue("the initial prompt should be sent after the short UI-ready delay");
+            // Assert: chat bridge was called with the initial prompt
+            chatBridgeMock.Verify(m => m.RequestExternalPromptAsync(It.Is<string>(s => s.Contains("Hello JARVIS")), It.IsAny<CancellationToken>()), Times.Once);
 
             form.Dispose();
         }

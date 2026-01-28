@@ -598,6 +598,16 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Dispose: Clean up managed resources.
+
+        /// <summary>
+        /// Handles DPI change events to re-apply theme recursively.
+        /// </summary>
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+            ApplyThemeRecursive(this, _themeService.CurrentTheme);  // Re-apply on DPI change
+        }
+
         /// </summary>
         protected override void Dispose(bool disposing)
         {

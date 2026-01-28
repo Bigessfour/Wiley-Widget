@@ -8,6 +8,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Services
@@ -121,18 +122,14 @@ namespace WileyWidget.WinForms.Services
         {
             { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
             { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
-            { typeof(BudgetAnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 460), new Size(480, 420)) },
-            { typeof(BudgetOverviewPanel), new PanelSizing(new Size(540, 0), new Size(0, 420), new Size(480, 360)) },
-            { typeof(AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
+            { typeof(WileyWidget.WinForms.Controls.Analytics.AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
+            { typeof(AnalyticsHubPanel), new PanelSizing(new Size(600, 0), new Size(0, 500), new Size(500, 450)) },
             { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
-            { typeof(ReportsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
-            { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(WarRoomPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(460, 380)) },
             { typeof(QuickBooksPanel), new PanelSizing(new Size(620, 0), new Size(0, 400), new Size(540, 360)) },
-            { typeof(BudgetPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(DepartmentSummaryPanel), new PanelSizing(new Size(540, 0), new Size(0, 400), new Size(440, 360)) },
             { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
-            { typeof(RevenueTrendsPanel), new PanelSizing(new Size(560, 0), new Size(0, 440), new Size(460, 380)) },
+            { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(CustomersPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
         };
@@ -181,15 +178,36 @@ namespace WileyWidget.WinForms.Services
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            // If called from a non-UI thread, marshal the ShowPanel call to the UI thread without blocking.
-            if (_parentControl != null && _parentControl.InvokeRequired)
+            // If called from a non-UI thread or before the handle exists, marshal the call to the UI thread.
+            if (_parentControl.InvokeRequired || !_parentControl.IsHandleCreated)
             {
                 try
                 {
                     // Use BeginInvoke only when parent control is valid and not disposed
-                    if (!_parentControl.IsDisposed && _parentControl.IsHandleCreated)
+                    if (!_parentControl.IsDisposed)
                     {
-                        _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                        if (_parentControl.IsHandleCreated)
+                        {
+                            _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                            return;
+                        }
+
+                        // If no handle yet, defer until handle creation to avoid cross-thread access.
+                        EventHandler? handleCreatedHandler = null;
+                        handleCreatedHandler = (s, e) =>
+                        {
+                            _parentControl.HandleCreated -= handleCreatedHandler;
+                            try
+                            {
+                                ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogWarning(ex, "Deferred ShowPanel failed after handle creation for panel {PanelName}", panelName);
+                            }
+                        };
+                        _parentControl.HandleCreated += handleCreatedHandler;
+                        Logger.LogDebug("ShowPanel deferred until parent handle is created for panel {PanelName}", panelName);
                         return;
                     }
                 }
@@ -260,8 +278,19 @@ namespace WileyWidget.WinForms.Services
             // which have already marshalled execution via InvokeAsync
             ApplyCaptionSettings(existingPanel, panelName, allowFloating);
             _dockingManager.SetDockVisibility(existingPanel, true);
-            try { existingPanel.BringToFront(); } catch { }
-            _dockingManager.ActivateControl(existingPanel);
+            try
+            {
+                // Ensure the control is visible and rendered immediately
+                existingPanel.Visible = true;
+                try { existingPanel.BringToFront(); } catch { }
+                _dockingManager.ActivateControl(existingPanel);
+                existingPanel.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to force existing panel visibility/refresh (non-critical)");
+            }
+
             ApplyPanelTheme(existingPanel);
 
             // Track active panel and raise event for ribbon button highlighting
@@ -401,6 +430,18 @@ namespace WileyWidget.WinForms.Services
                 Logger.LogDebug(visEx, "Failed to set visibility/activation (non-critical)");
             }
 
+            // Ensure the panel is visible and refreshed after docking
+            try
+            {
+                panel.Visible = true;
+                try { panel.BringToFront(); } catch { }
+                panel.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to force panel visibility/refresh (non-critical)");
+            }
+
             // Subscribe to DockStateChanged event to verify panel rendering
             // This replaces the Thread.Sleep(250) hack with proper event-driven synchronization
             try
@@ -533,6 +574,24 @@ namespace WileyWidget.WinForms.Services
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "SetCloseButtonVisibility failed (non-critical)");
+            }
+
+            try
+            {
+                _dockingManager.SetAutoHideButtonVisibility(panel, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetAutoHideButtonVisibility failed (non-critical)");
+            }
+
+            try
+            {
+                _dockingManager.SetMenuButtonVisibility(panel, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetMenuButtonVisibility failed (non-critical)");
             }
         }
 
@@ -695,8 +754,7 @@ namespace WileyWidget.WinForms.Services
 
             if (_parentControl.InvokeRequired)
             {
-                _parentControl.Invoke(new System.Action(() => HidePanel(panelName)));
-                return false;
+                return (bool)_parentControl.Invoke(new Func<bool>(() => HidePanel(panelName)));
             }
 
             if (_cachedPanels.TryGetValue(panelName, out var existingPanel))

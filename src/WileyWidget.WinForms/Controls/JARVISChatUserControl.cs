@@ -17,8 +17,15 @@ namespace WileyWidget.WinForms.Controls
     /// Inherits from ScopedPanelBase for automatic ViewModel resolution, theme cascade, and resource disposal.
     /// Designed to be docked as a TabPage in the right panel alongside Activity Log.
     /// </summary>
-    public partial class JARVISChatUserControl : ScopedPanelBase<JARVISChatViewModel>
+    public partial class JARVISChatUserControl : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new JARVISChatViewModel? ViewModel
+        {
+            get => (JARVISChatViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
+
         private readonly IServiceProvider _serviceProvider;
         private BlazorWebView? _blazorWebView;
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
-using WileyWidget.WinForms.Services;
+using WileyWidget.Business.Interfaces;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -19,7 +20,7 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class ActivityLogViewModel : ObservableRecipient
     {
         private readonly ILogger<ActivityLogViewModel> _logger;
-        private readonly IActivityLogService? _activityLogService;
+        private readonly IActivityLogRepository? _activityLogRepository;
 
         #region Observable Properties
 
@@ -60,13 +61,13 @@ namespace WileyWidget.WinForms.ViewModels
         /// Initializes a new instance of the <see cref="ActivityLogViewModel"/> class.
         /// </summary>
         /// <param name="logger">Logger instance.</param>
-        /// <param name="activityLogService">Optional activity log service for data operations.</param>
+        /// <param name="activityLogRepository">Optional activity log repository for data operations.</param>
         public ActivityLogViewModel(
             ILogger<ActivityLogViewModel> logger,
-            IActivityLogService? activityLogService = null)
+            IActivityLogRepository? activityLogRepository = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _activityLogService = activityLogService;
+            _activityLogRepository = activityLogRepository;
 
             // Initialize commands
             LoadActivityCommand = new AsyncRelayCommand(LoadActivityAsync);
@@ -94,7 +95,7 @@ namespace WileyWidget.WinForms.ViewModels
         #region Data Loading
 
         /// <summary>
-        /// Loads activity entries from the service or generates sample data.
+        /// Loads activity entries from the repository or generates sample data.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         public async Task LoadActivityAsync(CancellationToken cancellationToken = default)
@@ -109,25 +110,37 @@ namespace WileyWidget.WinForms.ViewModels
 
                 ObservableCollection<ActivityLog> entries;
 
-                if (_activityLogService != null)
+                if (_activityLogRepository != null)
                 {
                     try
                     {
-                        // Try to load from service - get in-memory collection
-                        var recentActivities = _activityLogService.GetRecentActivities();
-                        entries = new ObservableCollection<ActivityLog>(recentActivities);
-                        _logger.LogInformation("Loaded {Count} activity entries from service", entries.Count);
+                        // Try to load from repository
+                        var activityItems = await _activityLogRepository.GetRecentActivitiesAsync(take: 500, cancellationToken: cancellationToken);
+                        entries = new ObservableCollection<ActivityLog>(
+                            activityItems.Select(item => new ActivityLog
+                            {
+                                Timestamp = item.Timestamp,
+                                Activity = item.Activity,
+                                Details = item.Details,
+                                Status = item.ActivityType,
+                                User = item.User,
+                                Category = item.Category,
+                                Icon = item.Icon,
+                                ActivityType = item.ActivityType,
+                                Severity = ""
+                            }));
+                        _logger.LogInformation("Loaded {Count} activity entries from repository", entries.Count);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to load activity from service, using sample data");
+                        _logger.LogWarning(ex, "Failed to load activity from repository, using sample data");
                         entries = GenerateSampleActivityData();
                     }
                 }
                 else
                 {
-                    // No service available, generate sample data for demo
-                    _logger.LogInformation("No activity log service configured, generating sample data");
+                    // No repository available, generate sample data for demo
+                    _logger.LogInformation("No activity log repository configured, generating sample data");
                     entries = GenerateSampleActivityData();
                 }
 

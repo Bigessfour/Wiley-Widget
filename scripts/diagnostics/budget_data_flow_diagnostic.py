@@ -439,7 +439,7 @@ class BudgetDataFlowDiagnostic:
             self.add_result(
                 "Data Distribution (Top 5 Departments)",
                 DiagnosticStatus.PASS,
-                f"Top 5 departments identified",
+                "Top 5 departments identified",
                 {'departments': dist_dict}
             )
         except Exception as e:
@@ -611,7 +611,7 @@ class BudgetDataFlowDiagnostic:
             self.add_result(
                 "UI Panel Binding",
                 DiagnosticStatus.SKIP,
-                f"DashboardPanel.cs not found - skipping UI tests",
+                "DashboardPanel.cs not found - skipping UI tests",
                 {'path': str(panel_path)}
             )
 
@@ -656,7 +656,7 @@ class BudgetDataFlowDiagnostic:
             self.add_result(
                 "Cache Configuration",
                 DiagnosticStatus.SKIP,
-                f"BudgetRepository.cs not found",
+                "BudgetRepository.cs not found",
                 {'path': str(repo_path)}
             )
 

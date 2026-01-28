@@ -18,6 +18,7 @@ using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using Syncfusion.Drawing;
+using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Styles;
@@ -38,8 +39,14 @@ namespace WileyWidget.WinForms.Controls;
 /// Features budget entry management, variance analysis, fiscal year management, and reporting.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
+public partial class BudgetPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new BudgetViewModel? ViewModel
+    {
+        get => (BudgetViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
 
     // UI Controls
     private SfDataGrid? _budgetGrid;
@@ -70,7 +77,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private GradientPanelExt? _gridPanel;
     private GradientPanelExt? _filterPanel;
     private GradientPanelExt? _buttonPanel;
-    private SplitContainer? _mainSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -101,7 +108,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// <param name="logger">Logger instance for diagnostic logging.</param>
     public BudgetPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<BudgetViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         InitializeComponent();
@@ -150,7 +157,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// </summary>
     internal BudgetPanel() : this(
         Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services),
-        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<BudgetViewModel>>>(Program.Services))
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase>>(Program.Services))
     {
     }
 
@@ -179,7 +186,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Main split container - proportional sizing with SafeSplitterDistanceHelper
         // Ensures filter panel (Panel1) stays ≥120px while grid (Panel2) stays ≥50% of remaining height
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
@@ -2225,8 +2232,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             try { _budgetBindingSource?.Dispose(); } catch { }
 
             // SafeDispose for Syncfusion controls
-            try { _budgetGrid?.SafeClearDataSource(); } catch { }
-            try { _budgetGrid?.SafeDispose(); } catch { }
+            _budgetGrid?.SafeClearDataSource();
+            _budgetGrid?.SafeDispose();
 
             // Dispose other controls
             _mainSplitContainer?.Dispose();

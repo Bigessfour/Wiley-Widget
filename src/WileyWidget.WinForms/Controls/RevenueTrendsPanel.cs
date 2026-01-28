@@ -17,10 +17,10 @@ using ChartValueType = Syncfusion.Windows.Forms.Chart.ChartValueType;
 using CategoryAxisDataBindModel = Syncfusion.Windows.Forms.Chart.CategoryAxisDataBindModel;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
+using Syncfusion.Windows.Forms.Tools;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using Syncfusion.WinForms.DataGrid.Enums;
-using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
@@ -50,8 +50,14 @@ namespace WileyWidget.WinForms.Controls;
 /// │ Last Updated (Dock.Bottom)      │ ← Fixed height, bottom
 /// └─────────────────────────────────┘
 /// </summary>
-public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel>
+public partial class RevenueTrendsPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    public new RevenueTrendsViewModel? ViewModel
+    {
+        get => (RevenueTrendsViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
     // UI Controls
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
@@ -59,7 +65,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     private Panel? _summaryPanel;
     private ChartControl? _chartControl;
     private SfDataGrid? _metricsGrid;
-    private SplitContainer? _mainSplit;
+    private SplitContainerAdv? _mainSplit;
     private TableLayoutPanel? _summaryCardsPanel;
 
     // Chart binding state (Syncfusion-recommended: bind model + batched updates)
@@ -99,14 +105,15 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// </summary>
     public RevenueTrendsPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<RevenueTrendsViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
+        // Initialize UI once, then apply theme and subscribe to changes
         InitializeComponent();
 
         // Apply theme via SfSkinManager (single source of truth)
         try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
-        InitializeComponent();
+
         SubscribeToThemeChanges();
     }
 
@@ -184,7 +191,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // SPLIT CONTAINER FOR CHART AND GRID (Dock.Fill, proportional)
         // ══════════════════════════════════════════════════════════════
         // CHANGE 8: Split container configured for proportional resizing
-        _mainSplit = new SplitContainer
+        _mainSplit = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -194,7 +201,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             AccessibleDescription = "Resizable container splitting chart visualization above and data grid below. Drag splitter to adjust proportions."
         };
         // Defer setting min sizes and splitter distance until control is sized
-        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplit, 200, 150, 350);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(_mainSplit, 200, 150, 350);
 
         // CHART CONTROL (Panel1, Dock.Fill)
         // ══════════════════════════════════════════════════════════════
@@ -870,8 +877,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
             // Dispose controls using SafeDispose pattern
             try { _chartControl?.Dispose(); } catch { }
-            try { _metricsGrid?.SafeClearDataSource(); } catch { }
-            try { _metricsGrid?.SafeDispose(); } catch { }
+            _metricsGrid?.SafeClearDataSource();
+            _metricsGrid?.SafeDispose();
             try { _panelHeader?.Dispose(); } catch { }
             try { _loadingOverlay?.Dispose(); } catch { }
             try { _noDataOverlay?.Dispose(); } catch { }

@@ -16,14 +16,20 @@ using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 
-namespace WileyWidget.WinForms.Controls
+namespace WileyWidget.WinForms.Controls.Analytics
 {
     /// <summary>
     /// Docked panel displaying Department Summary with key metrics and drill-down grid.
     /// Inherits from ScopedPanelBase to ensure proper DI lifetime management for scoped dependencies.
     /// </summary>
-    public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryViewModel>
+    public partial class DepartmentSummaryPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        public new DepartmentSummaryViewModel? ViewModel
+        {
+            get => (DepartmentSummaryViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         // UI Controls
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -56,7 +62,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public DepartmentSummaryPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase<DepartmentSummaryViewModel>> logger)
+            ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
             // Apply theme via SfSkinManager (single source of truth)
