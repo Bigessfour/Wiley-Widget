@@ -30,14 +30,8 @@ namespace WileyWidget.WinForms.Controls.Analytics;
 /// Consolidates functionality from AnalyticsPanel, BudgetAnalyticsPanel, and BudgetOverviewPanel.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class AnalyticsHubPanel : ScopedPanelBase
+public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new AnalyticsHubViewModel? ViewModel
-    {
-        get => (AnalyticsHubViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
     // UI Controls
     private PanelHeader? _panelHeader;
     private TabControlAdv? _tabControl;
@@ -78,7 +72,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase
     /// </summary>
     public AnalyticsHubPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<AnalyticsHubViewModel>> logger)
         : base(scopeFactory, logger)
     {
         InitializeControls();
@@ -504,3 +498,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase
         base.Dispose(disposing);
     }
 }
+
+
+

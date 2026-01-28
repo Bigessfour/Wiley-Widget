@@ -23,6 +23,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Initialization;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
@@ -116,6 +117,9 @@ namespace WileyWidget.WinForms.Forms
 
         // [PERF] MRU List (persisted across sessions)
         private readonly List<string> _mruList = new List<string>();
+
+        // [PERF] Theme tracking for dynamically added controls
+        private readonly HashSet<Control> _themeTrackedControls = new HashSet<Control>();
 
         /// <summary>
         /// Global MainViewModel for the application.
@@ -242,6 +246,23 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Initialize UI configuration early
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
 
+            // [PERF] Set base form properties before any rendering
+            AutoScaleMode = AutoScaleMode.Dpi;
+            KeyPreview = true;
+
+            // [PERF] Set form size constraints
+            MinimumSize = _uiConfig.MinimumFormSize;
+            if (_uiConfig.IsUiTestHarness)
+            {
+                MaximumSize = new Size(1920, 1080);
+            }
+            else
+            {
+                var screenWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
+                var screenHeight = Screen.PrimaryScreen?.WorkingArea.Height ?? 1080;
+                MaximumSize = new Size(screenWidth, screenHeight);
+            }
+
             // [PERF] Apply global theme before any child controls are created
             // Theme is inherited from Program.InitializeTheme() via SfSkinManager.ApplicationVisualTheme
             // This call ensures cascade to form and early controls
@@ -288,19 +309,6 @@ namespace WileyWidget.WinForms.Forms
             DragEnter += MainForm_DragEnter;
             DragDrop += MainForm_DragDrop;
 
-            // [PERF] Set form size constraints
-            this.MinimumSize = _uiConfig.MinimumFormSize;
-            if (_uiConfig.IsUiTestHarness)
-            {
-                this.MaximumSize = new Size(1920, 1080);
-            }
-            else
-            {
-                var screenWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
-                var screenHeight = Screen.PrimaryScreen?.WorkingArea.Height ?? 1080;
-                this.MaximumSize = new Size(screenWidth, screenHeight);
-            }
-
             // [PERF] Add exception handlers
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
             System.Windows.Forms.Application.ThreadException += (s, e) =>
@@ -311,6 +319,8 @@ namespace WileyWidget.WinForms.Forms
 
             // [PERF] Subscribe to font changes
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
+
+            SuspendLayout();
 
             Log.Debug("[DIAGNOSTIC] MainForm constructor: COMPLETED");
         }
@@ -355,6 +365,8 @@ namespace WileyWidget.WinForms.Forms
 
             _initialized = true;
 
+            ApplyThemeForFutureControls();
+
             // [PERF] Load MRU and restore window state (once, in OnLoad)
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Loading MRU list");
             LoadMruList();
@@ -365,7 +377,43 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting UI chrome initialization");
             try
             {
+                using var chromePhase = StartupMetrics.TimerScope("Chrome Initialization");
                 InitializeChrome();
+
+                SuspendLayout();
+                try
+                {
+                    if (_menuStrip != null)
+                    {
+                        _menuStrip.Dock = DockStyle.Top;
+                        Controls.Add(_menuStrip);
+                    }
+
+                    if (_ribbon != null)
+                    {
+                        _ribbon.Dock = (DockStyleEx)DockStyle.Top;
+                        _ribbon.BorderStyle = (ToolStripBorderStyle)BorderStyle.None;
+                        _ribbon.ThemeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                        Controls.Add(_ribbon);
+                    }
+
+                    if (_navigationStrip != null)
+                    {
+                        Controls.Add(_navigationStrip);
+                    }
+
+                    if (_statusBar != null)
+                    {
+                        _statusBar.Dock = DockStyle.Bottom;
+                        _statusBar.BorderStyle = BorderStyle.None;
+                        Controls.Add(_statusBar);
+                    }
+                }
+                finally
+                {
+                    ResumeLayout(false);
+                }
+
                 _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI chrome initialization completed");
             }
             catch (Exception chromeEx)
@@ -379,6 +427,7 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 if (_ribbon != null) _ribbon.BringToFront();
+                if (_menuStrip != null) _menuStrip.BringToFront();
                 if (_statusBar != null) _statusBar.BringToFront();
                 Refresh();
                 Invalidate();
@@ -474,6 +523,7 @@ namespace WileyWidget.WinForms.Forms
                 {
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting Syncfusion docking initialization");
                     InitializeSyncfusionDocking();
+                    ConfigureDockingManagerChromeLayout();
                     _syncfusionDockingInitialized = true;
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
                     this.Refresh();

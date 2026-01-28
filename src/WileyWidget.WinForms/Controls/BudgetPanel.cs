@@ -39,15 +39,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Features budget entry management, variance analysis, fiscal year management, and reporting.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class BudgetPanel : ScopedPanelBase
+public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new BudgetViewModel? ViewModel
-    {
-        get => (BudgetViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
-
     // UI Controls
     private SfDataGrid? _budgetGrid;
     private SfButton? _loadBudgetsButton;
@@ -108,7 +101,7 @@ public partial class BudgetPanel : ScopedPanelBase
     /// <param name="logger">Logger instance for diagnostic logging.</param>
     public BudgetPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<BudgetViewModel>> logger)
         : base(scopeFactory, logger)
     {
         InitializeComponent();
@@ -157,7 +150,7 @@ public partial class BudgetPanel : ScopedPanelBase
     /// </summary>
     internal BudgetPanel() : this(
         Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services),
-        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase>>(Program.Services))
+        Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<BudgetViewModel>>>(Program.Services))
     {
     }
 
@@ -1181,9 +1174,13 @@ public partial class BudgetPanel : ScopedPanelBase
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider so this panel can bind safely.
     /// </summary>
-    protected override void OnViewModelResolved(BudgetViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not BudgetViewModel)
+        {
+            return;
+        }
         BindViewModel();
     }
 
@@ -2271,4 +2268,7 @@ public partial class BudgetPanel : ScopedPanelBase
 
     #endregion
 }
+
+
+
 

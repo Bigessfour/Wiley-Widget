@@ -291,7 +291,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Analytics & Forecasting" };
-        _panelHeaderRefreshHandler = async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _panelHeaderRefreshHandler = async (s, e) => await ViewModel.RefreshCommand.ExecuteAsync(null);
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
@@ -443,7 +443,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
             AccessibleName = "Refresh",
             AccessibleDescription = "Refresh analytics data"
         };
-        _refreshButtonClickHandler = async (s, e) => await _viewModel.RefreshCommand.ExecuteAsync(null);
+        _refreshButtonClickHandler = async (s, e) => await ViewModel.RefreshCommand.ExecuteAsync(null);
         _refreshButton.Click += _refreshButtonClickHandler;
 
         _exportButton = new SfButton
@@ -968,31 +968,31 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         // Subscribe to property changed for UI updates and live preview (store handler for cleanup)
         _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-        viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+        ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
         // Initial binding for grids and lists
-        if (_metricsGrid != null) _metricsGrid.DataSource = viewModel.FilteredMetrics;
-        if (_variancesGrid != null) _variancesGrid.DataSource = viewModel.FilteredTopVariances;
-        if (_insightsListBox != null) _insightsListBox.DataSource = viewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
-        if (_recommendationsListBox != null) _recommendationsListBox.DataSource = viewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+        if (_metricsGrid != null) _metricsGrid.DataSource = ViewModel.FilteredMetrics;
+        if (_variancesGrid != null) _variancesGrid.DataSource = ViewModel.FilteredTopVariances;
+        if (_insightsListBox != null) _insightsListBox.DataSource = ViewModel.Insights ?? new System.Collections.ObjectModel.ObservableCollection<string>();
+        if (_recommendationsListBox != null) _recommendationsListBox.DataSource = ViewModel.Recommendations ?? new System.Collections.ObjectModel.ObservableCollection<string>();
 
         // Two-way binding for scenario parameters (live preview)
         // TextBox -> ViewModel: handled by TextChanged handlers
         // ViewModel -> TextBox: handled by PropertyChanged handler below
         if (_rateIncreaseTextBox != null)
-            _rateIncreaseTextBox.Text = viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _rateIncreaseTextBox.Text = ViewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
         if (_expenseIncreaseTextBox != null)
-            _expenseIncreaseTextBox.Text = viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _expenseIncreaseTextBox.Text = ViewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
         if (_revenueTargetTextBox != null)
-            _revenueTargetTextBox.Text = viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+            _revenueTargetTextBox.Text = ViewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
         if (_projectionYearsTextBox != null)
-            _projectionYearsTextBox.Text = viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+            _projectionYearsTextBox.Text = ViewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
 
         // Bind entity combo if present
         if (_entityComboBox != null)
         {
-            _entityComboBox.DataSource = viewModel.AvailableEntities ?? new System.Collections.ObjectModel.ObservableCollection<string>(new[] { "All Entities" });
-            _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(viewModel.SelectedEntity) ? "All Entities" : viewModel.SelectedEntity;
+            _entityComboBox.DataSource = ViewModel.AvailableEntities ?? new System.Collections.ObjectModel.ObservableCollection<string>(new[] { "All Entities" });
+            _entityComboBox.SelectedItem = string.IsNullOrWhiteSpace(ViewModel.SelectedEntity) ? "All Entities" : ViewModel.SelectedEntity;
             _entityComboBox.SelectedIndexChanged -= EntityComboBox_SelectedIndexChanged;
             _entityComboBox.SelectedIndexChanged += EntityComboBox_SelectedIndexChanged;
         }
@@ -1037,7 +1037,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         if (_rateIncreaseTextBox == null) return;
         SetHasUnsavedChanges(true);
-        ValidateScenarioParameter(_rateIncreaseTextBox, v => _viewModel.RateIncreasePercentage = v, 0, 100, "Rate increase");
+        ValidateScenarioParameter(_rateIncreaseTextBox, v => ViewModel.RateIncreasePercentage = v, 0, 100, "Rate increase");
     }
 
     /// <summary>
@@ -1047,7 +1047,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         if (_expenseIncreaseTextBox == null) return;
         SetHasUnsavedChanges(true);
-        ValidateScenarioParameter(_expenseIncreaseTextBox, v => _viewModel.ExpenseIncreasePercentage = v, 0, 100, "Expense increase");
+        ValidateScenarioParameter(_expenseIncreaseTextBox, v => ViewModel.ExpenseIncreasePercentage = v, 0, 100, "Expense increase");
     }
 
     /// <summary>
@@ -1057,7 +1057,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         if (_revenueTargetTextBox == null) return;
         SetHasUnsavedChanges(true);
-        ValidateScenarioParameter(_revenueTargetTextBox, v => _viewModel.RevenueTargetPercentage = v, 0, 100, "Revenue target");
+        ValidateScenarioParameter(_revenueTargetTextBox, v => ViewModel.RevenueTargetPercentage = v, 0, 100, "Revenue target");
     }
 
     /// <summary>
@@ -1067,7 +1067,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     {
         if (_projectionYearsTextBox == null) return;
         SetHasUnsavedChanges(true);
-        ValidateScenarioParameterInt(_projectionYearsTextBox, v => _viewModel.ProjectionYears = v, 1, 10, "Projection years");
+        ValidateScenarioParameterInt(_projectionYearsTextBox, v => ViewModel.ProjectionYears = v, 1, 10, "Projection years");
     }
 
     /// <summary>
@@ -1076,7 +1076,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private void MetricsSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         SetHasUnsavedChanges(true);
-        _viewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
+        ViewModel.MetricsSearchText = _metricsSearchTextBox?.Text ?? string.Empty;
     }
 
     /// <summary>
@@ -1085,7 +1085,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private void VariancesSearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         SetHasUnsavedChanges(true);
-        _viewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
+        ViewModel.VariancesSearchText = _variancesSearchTextBox?.Text ?? string.Empty;
     }
 
     private void EntityComboBox_SelectedIndexChanged(object? sender, EventArgs e)
@@ -1120,36 +1120,36 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
         switch (e.PropertyName)
         {
-            case nameof(_viewModel.RateIncreasePercentage):
+            case nameof(ViewModel.RateIncreasePercentage):
                 // Live preview: update TextBox when ViewModel property changes
                 if (_rateIncreaseTextBox != null && _rateIncreaseTextBox.Focused == false)
-                    _rateIncreaseTextBox.Text = _viewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+                    _rateIncreaseTextBox.Text = ViewModel.RateIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
                 break;
 
-            case nameof(_viewModel.ExpenseIncreasePercentage):
+            case nameof(ViewModel.ExpenseIncreasePercentage):
                 // Live preview: update TextBox when ViewModel property changes
                 if (_expenseIncreaseTextBox != null && _expenseIncreaseTextBox.Focused == false)
-                    _expenseIncreaseTextBox.Text = _viewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
+                    _expenseIncreaseTextBox.Text = ViewModel.ExpenseIncreasePercentage.ToString("F1", CultureInfo.InvariantCulture);
                 break;
 
-            case nameof(_viewModel.RevenueTargetPercentage):
+            case nameof(ViewModel.RevenueTargetPercentage):
                 // Live preview: update TextBox when ViewModel property changes
                 if (_revenueTargetTextBox != null && _revenueTargetTextBox.Focused == false)
-                    _revenueTargetTextBox.Text = _viewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
+                    _revenueTargetTextBox.Text = ViewModel.RevenueTargetPercentage.ToString("F1", CultureInfo.InvariantCulture);
                 break;
 
-            case nameof(_viewModel.ProjectionYears):
+            case nameof(ViewModel.ProjectionYears):
                 // Live preview: update TextBox when ViewModel property changes
                 if (_projectionYearsTextBox != null && _projectionYearsTextBox.Focused == false)
-                    _projectionYearsTextBox.Text = _viewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
+                    _projectionYearsTextBox.Text = ViewModel.ProjectionYears.ToString(CultureInfo.InvariantCulture);
                 break;
 
-            case nameof(_viewModel.FilteredMetrics):
-                if (_metricsGrid != null) _metricsGrid.DataSource = _viewModel.FilteredMetrics;
+            case nameof(ViewModel.FilteredMetrics):
+                if (_metricsGrid != null) _metricsGrid.DataSource = ViewModel.FilteredMetrics;
                 break;
 
-            case nameof(_viewModel.FilteredTopVariances):
-                if (_variancesGrid != null) _variancesGrid.DataSource = _viewModel.FilteredTopVariances;
+            case nameof(ViewModel.FilteredTopVariances):
+                if (_variancesGrid != null) _variancesGrid.DataSource = ViewModel.FilteredTopVariances;
                 break;
 
             case nameof(ViewModel.AvailableEntities):
@@ -1457,3 +1457,5 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
 
 
 }
+
+

@@ -29,6 +29,9 @@ namespace WileyWidget.WinForms.Controls
     public partial class ActivityLogPanel : ScopedPanelBase
     {
         // Strongly-typed ViewModel (this is what you use in your code)
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        [System.ComponentModel.DefaultValue(null)]
         public new ActivityLogViewModel? ViewModel
         {
             get => (ActivityLogViewModel?)base.ViewModel;

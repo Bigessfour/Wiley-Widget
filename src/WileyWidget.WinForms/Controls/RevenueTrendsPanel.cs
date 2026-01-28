@@ -50,14 +50,8 @@ namespace WileyWidget.WinForms.Controls;
 /// │ Last Updated (Dock.Bottom)      │ ← Fixed height, bottom
 /// └─────────────────────────────────┘
 /// </summary>
-public partial class RevenueTrendsPanel : ScopedPanelBase
+public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel>
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new RevenueTrendsViewModel? ViewModel
-    {
-        get => (RevenueTrendsViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
     // UI Controls
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
@@ -105,7 +99,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase
     /// </summary>
     public RevenueTrendsPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<RevenueTrendsViewModel>> logger)
         : base(scopeFactory, logger)
     {
         // Initialize UI once, then apply theme and subscribe to changes
@@ -484,18 +478,21 @@ public partial class RevenueTrendsPanel : ScopedPanelBase
     /// Called after ViewModel is resolved from scoped service provider.
     /// Binds ViewModel data and initiates data load.
     /// </summary>
-    protected override void OnViewModelResolved(RevenueTrendsViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
-        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not RevenueTrendsViewModel typedViewModel)
+        {
+            return;
+        }
 
         // Subscribe to ViewModel property changes
         _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-        viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+        typedViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
         // Subscribe to MonthlyData collection changes
         _monthlyDataCollectionChangedHandler = (s, e) => UpdateUI();
-        viewModel.MonthlyData.CollectionChanged += _monthlyDataCollectionChangedHandler;
+        typedViewModel.MonthlyData.CollectionChanged += _monthlyDataCollectionChangedHandler;
 
         // Initial UI update
         UpdateUI();
@@ -890,3 +887,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase
         base.Dispose(disposing);
     }
 }
+
+
+

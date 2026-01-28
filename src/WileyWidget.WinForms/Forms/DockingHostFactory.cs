@@ -99,110 +99,60 @@ public static class DockingHostFactory
 
             logger?.LogDebug("DockingManager created with Office2019 theme and HostControl set to dedicated container");
 
-            // 1. Create central document panel FIRST to fill remaining space inside host container
+            // 1. Create left dock panel (empty container)
+            var leftDockPanel = new GradientPanelExt
+            {
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                Name = "LeftDockPanel",
+                AccessibleName = "Left Dock Panel",
+                AccessibleDescription = "Left dock panel container"
+            };
+
+            // 2. Create central document panel (empty container)
             centralDocumentPanel = new GradientPanelExt
             {
-                // Do NOT set Dock here; let Dock.Fill be set after addition
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(Color.WhiteSmoke),
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
                 Name = "CentralDocumentPanel",
                 Visible = true,
                 AccessibleName = "Central Document Area",
-                AccessibleDescription = "Main content area for documents and panels"
+                AccessibleDescription = "Main content area container"
             };
-            
-            // Add a welcome label or placeholder content
-            var welcomeLabel = new Label
-            {
-                Text = "Welcome to Wiley Widget\n\nSelect a panel from the navigation to get started.",
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 12, FontStyle.Regular),
-                ForeColor = SystemColors.GrayText,
-                Name = "WelcomeLabel"
-            };
-            centralDocumentPanel.Controls.Add(welcomeLabel);
-            
-            // CRITICAL: Add centralPanel to the host container and set Dock.Fill (not docked via manager)
-            hostContainer.Controls.Add(centralDocumentPanel);
-            centralDocumentPanel.Dock = DockStyle.Fill;
-            centralDocumentPanel.BringToFront(); // Ensure it's on top within container
 
-            // 2. Create left sidebar with navigation (generous width)
-            var leftDockPanel = new GradientPanelExt
+            // 3. Create right dock panel (empty container)
+            var rightDockPanel = new GradientPanelExt
             {
-                // Do NOT set Dock here; let DockControl() handle it
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(Color.WhiteSmoke),
-                Name = "LeftDockPanel"
+                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                Name = "RightDockPanel",
+                AccessibleName = "Right Dock Panel",
+                AccessibleDescription = "Right dock panel container"
             };
 
-            // Add header with accessibility attributes
-            var navHeader = new Label
-            {
-                Text = "Navigation",
-                Dock = DockStyle.Top,
-                Height = 32,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                BackColor = SystemColors.Control,
-                BorderStyle = BorderStyle.FixedSingle,
-                Name = "NavHeader",
-                AccessibleName = "Navigation Panel Header",
-                AccessibleRole = AccessibleRole.Grouping,
-                AccessibleDescription = "Quick access buttons for main application views and panels"
-            };
-            leftDockPanel.Controls.Add(navHeader);
-
-            // Add navigation buttons panel with scrolling
-            var navButtonsPanel = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                AutoScroll = true,
-                Padding = new Padding(8),
-                BackColor = Color.Transparent,
-                Name = "NavButtonsPanel"
-            };
-            leftDockPanel.Controls.Add(navButtonsPanel);
-
-            // Add primary navigation buttons
-            navButtonsPanel.Controls.Add(CreateNavButton("📊 Dashboard", () => mainForm.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Fill)));
-            navButtonsPanel.Controls.Add(CreateNavButton("💰 Accounts", () => mainForm.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right)));
-            navButtonsPanel.Controls.Add(CreateNavButton("📈 Analytics Hub", () => mainForm.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right)));
-            navButtonsPanel.Controls.Add(CreateNavButton("⚙️ Settings", () => mainForm.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right)));
-
-            // Dock the left panel via manager (size 300)
-            dockingManager.DockControl(leftDockPanel, hostContainer, DockingStyle.Left, 300);
             dockingManager.SetEnableDocking(leftDockPanel, true);
-            dockingManager.SetDockLabel(leftDockPanel, "Navigation");
-            dockingManager.SetAllowFloating(leftDockPanel, true);
-            dockingManager.SetCloseButtonVisibility(leftDockPanel, true);
-            dockingManager.SetAutoHideButtonVisibility(leftDockPanel, true);
-            dockingManager.SetMenuButtonVisibility(leftDockPanel, true);
-
-            // 3. Create right dock panel using RightDockPanelFactory (manages Activity Log + JARVIS Chat tabs)
-            var (rightDockPanel, activityLogPanelTemp, _) = RightDockPanelFactory.CreateRightDockPanel(
-                mainForm,
-                serviceProvider,
-                logger);
-
-            activityLogPanel = activityLogPanelTemp;
-
-            // Dock the right panel via manager (size 350)
-            dockingManager.DockControl(rightDockPanel, hostContainer, DockingStyle.Right, 350);
+            dockingManager.SetEnableDocking(centralDocumentPanel, true);
             dockingManager.SetEnableDocking(rightDockPanel, true);
-            dockingManager.SetDockLabel(rightDockPanel, "Activity");
-            dockingManager.SetAllowFloating(rightDockPanel, true);
-            dockingManager.SetCloseButtonVisibility(rightDockPanel, true);
-            dockingManager.SetAutoHideButtonVisibility(rightDockPanel, true);
-            dockingManager.SetMenuButtonVisibility(rightDockPanel, true);
 
-            logger?.LogDebug("Central document panel created and docked to fill remaining space");
+            dockingManager.DockControl(leftDockPanel, hostContainer, DockingStyle.Left, 300);
+            dockingManager.DockControl(rightDockPanel, hostContainer, DockingStyle.Right, 350);
+            dockingManager.DockControl(centralDocumentPanel, hostContainer, DockingStyle.Fill, 0);
 
-            // ActivityLogPanel is now created and managed by RightDockPanelFactory
-            // No need for external timer - panel manages its own refresh cycle (5 seconds)
+            dockingManager.SetControlMinimumSize(leftDockPanel, new Size(250, 0));
+            dockingManager.SetControlMinimumSize(rightDockPanel, new Size(320, 0));
+
+            dockingManager.SetAutoHideMode(leftDockPanel, true);
+            dockingManager.SetAutoHideMode(rightDockPanel, true);
+
+            dockingManager.SetDockVisibility(leftDockPanel, true);
+            dockingManager.SetDockVisibility(centralDocumentPanel, true);
+            dockingManager.SetDockVisibility(rightDockPanel, true);
+
+            leftDockPanel.Refresh();
+            centralDocumentPanel.Refresh();
+            rightDockPanel.Refresh();
+
+            logger?.LogDebug("Docking panels created and docked (left, center, right) with empty containers");
             activityRefreshTimer = null;
 
             // Create Layout Manager (dockingManager is guaranteed non-null at this point in the try block)

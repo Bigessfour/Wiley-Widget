@@ -29,14 +29,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
     /// Uses Syncfusion SfDataGrid with SfSkinManager theme styling.
     /// Cards display priority badges with color coding and "Ask JARVIS" action buttons.
     /// </summary>
-    public partial class InsightFeedPanel : ScopedPanelBase
+    public partial class InsightFeedPanel : ScopedPanelBase<InsightFeedViewModel>
     {
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new IInsightFeedViewModel? ViewModel
-        {
-            get => (IInsightFeedViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
         private GradientPanelExt _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -47,13 +41,13 @@ namespace WileyWidget.WinForms.Controls.Analytics
         private ToolTip? _sharedTooltip;
 
         private EventHandler? _refreshButtonClickHandler;
-        private PropertyChangedEventHandler _viewModelPropertyChangedHandler;
+        private PropertyChangedEventHandler ViewModelPropertyChangedHandler;
         private SelectionChangingEventHandler? _insightsGridSelectionChangingHandler;
 
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
-        public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase>? logger = null)
+        public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase<InsightFeedViewModel>>? logger = null)
             : base(scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory)), logger)
         {
             InitializeComponent();
@@ -297,7 +291,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         /// </summary>
         private void BindViewModel()
         {
-            if (_viewModel == null)
+            if (ViewModel == null)
             {
                 _logger?.LogWarning("ViewModel is null - cannot bind");
                 return;
@@ -306,12 +300,12 @@ namespace WileyWidget.WinForms.Controls.Analytics
             try
             {
                 // Bind insights collection to grid (ObservableCollection handles updates automatically)
-                _insightsGrid.DataSource = _viewModel.InsightCards;
+                _insightsGrid.DataSource = ViewModel.InsightCards;
                 _logger?.LogDebug("ViewModel InsightCards collection bound to SfDataGrid");
 
                 // Subscribe to ViewModel property changes for UI updates
-                _viewModelPropertyChangedHandler = new System.ComponentModel.PropertyChangedEventHandler(ViewModel_PropertyChanged);
-                _viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+                ViewModelPropertyChangedHandler = new System.ComponentModel.PropertyChangedEventHandler(ViewModel_PropertyChanged);
+                ViewModel.PropertyChanged += ViewModelPropertyChangedHandler;
 
                 // Wire up refresh command (manual refresh button in toolbar)
                 _refreshButtonClickHandler = RefreshButton_Click;
@@ -340,19 +334,19 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 switch (e?.PropertyName)
                 {
                     case nameof(InsightFeedViewModel.StatusMessage):
-                        if (_viewModel?.StatusMessage != null)
+                        if (ViewModel?.StatusMessage != null)
                         {
-                            _lblStatus.Text = _viewModel.StatusMessage;
+                            _lblStatus.Text = ViewModel.StatusMessage;
                             _lblStatus.Refresh();
-                            _logger?.LogDebug("Status updated: {Status}", _viewModel.StatusMessage);
+                            _logger?.LogDebug("Status updated: {Status}", ViewModel.StatusMessage);
                         }
                         break;
 
                     case nameof(InsightFeedViewModel.IsLoading):
                         if (_loadingOverlay != null)
                         {
-                            _loadingOverlay.Visible = _viewModel?.IsLoading ?? false;
-                            _logger?.LogDebug("Loading state changed: {IsLoading}", _viewModel?.IsLoading);
+                            _loadingOverlay.Visible = ViewModel?.IsLoading ?? false;
+                            _logger?.LogDebug("Loading state changed: {IsLoading}", ViewModel?.IsLoading);
                         }
                         break;
 
@@ -361,9 +355,9 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     case nameof(InsightFeedViewModel.LowPriorityCount):
                         _logger?.LogDebug(
                             "Priority counts updated: High={High}, Medium={Medium}, Low={Low}",
-                            _viewModel?.HighPriorityCount,
-                            _viewModel?.MediumPriorityCount,
-                            _viewModel?.LowPriorityCount);
+                            ViewModel?.HighPriorityCount,
+                            ViewModel?.MediumPriorityCount,
+                            ViewModel?.LowPriorityCount);
                         break;
                 }
             }
@@ -381,7 +375,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
             try
             {
                 _logger?.LogInformation("User requested manual refresh of insights");
-                if (_viewModel is InsightFeedViewModel concreteVm)
+                if (ViewModel is InsightFeedViewModel concreteVm)
                 {
                     concreteVm.RefreshInsightsCommand.Execute(null);
                 }
@@ -435,7 +429,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
                         "User selected insight: Category={Category}, Priority={Priority}",
                         card.Category,
                         card.Priority);
-                    if (_viewModel is InsightFeedViewModel concreteVm)
+                    if (ViewModel is InsightFeedViewModel concreteVm)
                     {
                         concreteVm.AskJarvisCommand.Execute(card);
                     }
@@ -506,9 +500,9 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 try
                 {
                     // Unsubscribe from events to prevent leaks
-                    if (_viewModel != null && _viewModelPropertyChangedHandler != null)
+                    if (ViewModel != null && ViewModelPropertyChangedHandler != null)
                     {
-                        _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+                        ViewModel.PropertyChanged -= ViewModelPropertyChangedHandler;
                     }
 
                     if (_btnRefresh != null && _refreshButtonClickHandler != null)
@@ -542,3 +536,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
         }
     }
 }
+
+
+
+
+

@@ -36,20 +36,13 @@ namespace WileyWidget.WinForms.Controls
     /// - Prominent "Required Rate Increase" display
     /// Production-Ready: Full validation, databinding, error handling, sizing, accessibility.
     /// </summary>
-    public partial class WarRoomPanel : ScopedPanelBase
+    public partial class WarRoomPanel : ScopedPanelBase<WarRoomViewModel>
     {
         /// <summary>
         /// Simple DataContext wrapper for host compatibility.
         /// </summary>
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public new object? DataContext { get; private set; }
-
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new WarRoomViewModel? ViewModel
-        {
-            get => (WarRoomViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
 
         // Event handler storage for proper cleanup in Dispose
         private EventHandler? _btnRunScenarioClickHandler;
@@ -101,7 +94,7 @@ namespace WileyWidget.WinForms.Controls
         // Primary DI constructor
         public WarRoomPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase> logger)
+            ILogger<ScopedPanelBase<WarRoomViewModel>> logger)
             : base(scopeFactory, logger)
         {
             _logger?.LogDebug("WarRoomPanel initializing");
@@ -1116,3 +1109,6 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+
+
+

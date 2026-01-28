@@ -55,8 +55,6 @@ public partial class MainForm
 
         try
         {
-            SuspendLayout();
-
             // Enable Per-Monitor V2 DPI Awareness (syncs with app.manifest)
             AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -81,6 +79,10 @@ public partial class MainForm
             // Establish default Escape key behavior
             EnsureDefaultActionButtons();
 
+            // Initialize Menu Bar
+            InitializeMenuBar();
+            _logger?.LogInformation("Menu bar initialized");
+
             // Initialize Ribbon
             // Always initialize the ribbon - it's required for proper UI chrome
             InitializeRibbon();
@@ -92,13 +94,6 @@ public partial class MainForm
             else
             {
                 _logger?.LogInformation("Ribbon initialized");
-            }
-
-            // Initialize Menu Bar (optional fallback for test harness)
-            if (_uiConfig.IsUiTestHarness)
-            {
-                InitializeMenuBar();
-                _logger?.LogInformation("Menu bar initialized (Test Harness mode)");
             }
 
             // Initialize Status Bar
@@ -118,18 +113,6 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize UI chrome");
-        }
-        finally
-        {
-            try
-            {
-                ResumeLayout(false);
-                PerformLayout();
-            }
-            catch
-            {
-                // Best-effort layout restoration
-            }
         }
     }
 
@@ -171,26 +154,6 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Wiring theme toggle failed");
-        }
-
-        try
-        {
-            Controls.Add(_ribbon);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Adding ribbon to Controls failed");
-        }
-
-        try
-        {
-            // Re-assert dock and z-order to ensure Ribbon sits above other docked controls
-            _ribbon.Dock = (DockStyleEx)DockStyle.Top;
-            _ribbon.BringToFront();
-        }
-        catch (Exception zEx)
-        {
-            _logger?.LogDebug(zEx, "Failed to re-assert ribbon z-order after add");
         }
 
         try
@@ -287,7 +250,6 @@ public partial class MainForm
 
             statusBar.TabStop = false;
             statusBar.TabIndex = 99;
-            Controls.Add(statusBar);
             _logger?.LogDebug("Status bar initialized via StatusBarFactory");
         }
         catch (Exception ex)
@@ -385,7 +347,6 @@ public partial class MainForm
                 dashboardBtn, new ToolStripSeparator(), accountsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
             });
 
-            Controls.Add(_navigationStrip);
         }
         catch (Exception ex)
         {
@@ -470,7 +431,6 @@ public partial class MainForm
             _ribbon = ribbon;
             _homeTab = homeTab;
 
-            try { Controls.Add(_ribbon); } catch { }
         }
         catch (Exception ex)
         {
@@ -570,7 +530,6 @@ public partial class MainForm
             ApplyMenuTheme(helpMenu);
 
             this.MainMenuStrip = _menuStrip;
-            Controls.Add(_menuStrip);
             if (_menuStrip != null)
             {
                 _menuStrip.ValidateAndConvertImages(_logger);

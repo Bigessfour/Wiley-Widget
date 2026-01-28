@@ -22,14 +22,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
     /// Docked panel displaying Department Summary with key metrics and drill-down grid.
     /// Inherits from ScopedPanelBase to ensure proper DI lifetime management for scoped dependencies.
     /// </summary>
-    public partial class DepartmentSummaryPanel : ScopedPanelBase
+    public partial class DepartmentSummaryPanel : ScopedPanelBase<DepartmentSummaryViewModel>
     {
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new DepartmentSummaryViewModel? ViewModel
-        {
-            get => (DepartmentSummaryViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
         // UI Controls
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -62,7 +56,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         /// </summary>
         public DepartmentSummaryPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase> logger)
+            ILogger<ScopedPanelBase<DepartmentSummaryViewModel>> logger)
             : base(scopeFactory, logger)
         {
             // Apply theme via SfSkinManager (single source of truth)
@@ -314,18 +308,21 @@ namespace WileyWidget.WinForms.Controls.Analytics
         /// Called after ViewModel is resolved from scoped service provider.
         /// Binds ViewModel data and initiates data load.
         /// </summary>
-        protected override void OnViewModelResolved(DepartmentSummaryViewModel viewModel)
+        protected override void OnViewModelResolved(object? viewModel)
         {
-            if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
             base.OnViewModelResolved(viewModel);
+            if (viewModel is not DepartmentSummaryViewModel typedViewModel)
+            {
+                return;
+            }
 
             // Subscribe to ViewModel property changes
             _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-            viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+            typedViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
             // Subscribe to Metrics collection changes
             _metricsCollectionChangedHandler = (s, e) => UpdateGridData();
-            viewModel.Metrics.CollectionChanged += _metricsCollectionChangedHandler;
+            typedViewModel.Metrics.CollectionChanged += _metricsCollectionChangedHandler;
 
             // Initial UI update
             UpdateUI();
@@ -705,4 +702,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
     }
 
 }
+
+
+
+
 

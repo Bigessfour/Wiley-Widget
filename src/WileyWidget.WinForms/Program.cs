@@ -142,21 +142,6 @@ namespace WileyWidget.WinForms
 
             try
             {
-                // Set up Syncfusion license (must be valid or commented out for trials)
-                var licenseKey = System.Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-                if (!string.IsNullOrEmpty(licenseKey))
-                {
-                    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to register Syncfusion license");
-                // Continue without license for trial/development
-            }
-
-            try
-            {
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Creating host builder...");
                 var host = CreateHostBuilder(args).Build();
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Host built successfully");
@@ -323,7 +308,18 @@ namespace WileyWidget.WinForms
         static void InitializeTheme(IServiceProvider serviceProvider)
         {
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IThemeService>(serviceProvider);
-            var themeName = themeService?.CurrentTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            var themeName = themeService?.CurrentTheme;
+
+            if (string.IsNullOrWhiteSpace(themeName))
+            {
+                themeName = "Office2019Colorful";
+            }
+
+            if (!ThemeApplicationHelper.ValidateTheme(themeName))
+            {
+                Log.Warning("Theme '{Theme}' failed validation. Falling back to Default.", themeName);
+                themeName = "Default";
+            }
 
             // Load all required theme assemblies for Office2019Colorful and fallback themes
             try
@@ -348,7 +344,8 @@ namespace WileyWidget.WinForms
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to set ApplicationVisualTheme - theme may not apply correctly");
+                Log.Error(ex, "Failed to set ApplicationVisualTheme - falling back to Default theme");
+                SfSkinManager.ApplicationVisualTheme = "Default";
             }
         }
 

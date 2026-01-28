@@ -141,6 +141,34 @@ public partial class MainForm
                 return;
             }
 
+            // CRITICAL: Ensure ribbon and status bar are on top of docking panels after DockingManager creation
+            // This prevents docking panels from covering the ribbon UI chrome
+            if (_ribbon != null)
+            {
+                try
+                {
+                    _ribbon.BringToFront();
+                    _logger?.LogDebug("Ribbon z-order corrected after DockingManager initialization");
+                }
+                catch (Exception zEx)
+                {
+                    _logger?.LogDebug(zEx, "Failed to bring ribbon to front after docking initialization");
+                }
+            }
+
+            if (_statusBar != null)
+            {
+                try
+                {
+                    _statusBar.BringToFront();
+                    _logger?.LogDebug("Status bar z-order corrected after DockingManager initialization");
+                }
+                catch (Exception zEx)
+                {
+                    _logger?.LogDebug(zEx, "Failed to bring status bar to front after docking initialization");
+                }
+            }
+
             // Ensure panel navigation is available before layout load so dynamic panels recreate with real controls
             EnsurePanelNavigatorInitialized();
 
@@ -302,6 +330,20 @@ public partial class MainForm
                 _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityLogPanel={HasActivityPanel}",
                 _activityLogPanel != null);
 
+                // FINAL Z-order correction: Ensure ribbon stays on top of all docking content
+                if (_ribbon != null)
+                {
+                    try
+                    {
+                        _ribbon.BringToFront();
+                        _logger?.LogDebug("Ribbon z-order finalized before layout resume");
+                    }
+                    catch (Exception zEx)
+                    {
+                        _logger?.LogDebug(zEx, "Failed to finalize ribbon z-order");
+                    }
+                }
+
                 globalStopwatch.Stop();
                 StartupInstrumentation.RecordPhaseTime("Total DockingManager Initialization", globalStopwatch.ElapsedMilliseconds);
                 StartupInstrumentation.LogInitializationState(_logger);
@@ -366,6 +408,91 @@ public partial class MainForm
                 // Docking initialization failure is non-critical - system can still function
                 // but without docking capabilities
             }
+    }
+
+    private void ConfigureDockingManagerChromeLayout()
+    {
+        if (_dockingManager == null)
+        {
+            _logger?.LogWarning("ConfigureDockingManagerChromeLayout skipped: DockingManager is null");
+            return;
+        }
+
+        var hostControl = _dockingManager.HostControl as Control;
+        if (hostControl == null)
+        {
+            _logger?.LogWarning("ConfigureDockingManagerChromeLayout skipped: HostControl not available");
+            return;
+        }
+
+        SuspendLayout();
+        try
+        {
+            if (!Controls.Contains(hostControl))
+            {
+                Controls.Add(hostControl);
+            }
+
+            hostControl.Dock = DockStyle.Fill;
+            hostControl.SendToBack();
+
+            if (_statusBar != null)
+            {
+                _statusBar.BringToFront();
+            }
+
+            if (_navigationStrip != null)
+            {
+                _navigationStrip.BringToFront();
+            }
+
+            if (_ribbon != null)
+            {
+                _ribbon.BringToFront();
+            }
+
+            if (_menuStrip != null)
+            {
+                _menuStrip.BringToFront();
+            }
+
+            TrySetDockingManagerBoolProperty(_dockingManager, "MDIEnabled", false);
+            TrySetDockingManagerBoolProperty(_dockingManager, "CloseButton", false);
+        }
+        finally
+        {
+            ResumeLayout(false);
+        }
+
+        LogDockingManagerMetrics(_dockingManager, hostControl);
+    }
+
+    private void TrySetDockingManagerBoolProperty(DockingManager dockingManager, string propertyName, bool value)
+    {
+        try
+        {
+            var property = dockingManager.GetType().GetProperty(propertyName);
+            if (property != null && property.CanWrite && property.PropertyType == typeof(bool))
+            {
+                property.SetValue(dockingManager, value);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to set DockingManager property {PropertyName}", propertyName);
+        }
+    }
+
+    private void LogDockingManagerMetrics(DockingManager dockingManager, Control hostControl)
+    {
+        try
+        {
+            _logger?.LogInformation("DockingManager host bounds: {Bounds}, client: {Client}", hostControl.Bounds, hostControl.ClientRectangle);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to log DockingManager metrics");
+        }
     }
 
     /// <summary>
@@ -584,22 +711,55 @@ public partial class MainForm
 
                     _asyncLogger?.Information("LoadAndApplyDockingLayout: LoadDockingLayoutAsync completed");
 
-                    // Ensure right panel starts hidden until its content is switched and ready
                     try
                     {
-                        GradientPanelExt? rightPanel = GetRightDockPanel();
-                        if (rightPanel != null && _dockingManager != null)
+                        var rightPanel = GetRightDockPanel();
+                        var leftPanel = _leftDockPanel;
+                        var centralPanel = _centralDocumentPanel;
+
+                        if (rightPanel != null)
                         {
-                            _dockingManager.SetDockVisibility(rightPanel, false);
-                            await Task.Delay(50).ConfigureAwait(true);
                             RightDockPanelFactory.SwitchRightPanelContent(rightPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
-                            _dockingManager.SetDockVisibility(rightPanel, true);
-                            rightPanel.Refresh();
                         }
+
+                        if (_dockingManager != null)
+                        {
+                            if (leftPanel != null)
+                            {
+                                _dockingManager.SetDockVisibility(leftPanel, true);
+                                leftPanel.Refresh();
+                            }
+
+                            if (centralPanel != null)
+                            {
+                                _dockingManager.SetDockVisibility(centralPanel, true);
+                                centralPanel.Refresh();
+                            }
+
+                            if (rightPanel != null)
+                            {
+                                _dockingManager.SetDockVisibility(rightPanel, true);
+                                rightPanel.Refresh();
+                            }
+                        }
+
+                        ActivateDockingControl(centralPanel);
+
+                        var requiresReset = (leftPanel != null && !leftPanel.Visible)
+                            || (centralPanel != null && !centralPanel.Visible)
+                            || (rightPanel != null && !rightPanel.Visible);
+
+                        if (requiresReset)
+                        {
+                            _logger?.LogWarning("Docking layout restore left panels hidden; falling back to defaults");
+                            ResetToDefaultLayout();
+                        }
+
+                        RefreshFormLayout();
                     }
                     catch (Exception rpEx)
                     {
-                        _logger?.LogDebug(rpEx, "Failed to set right panel visibility/content after layout load");
+                        _logger?.LogDebug(rpEx, "Failed to finalize docking layout restore state");
                     }
                 }
                 finally
@@ -631,6 +791,33 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "Unexpected error during layout restoration - using default layout");
             _asyncLogger?.Error(ex, "Unexpected error during layout restoration - using default layout");
+        }
+    }
+
+    private void ActivateDockingControl(Control? control)
+    {
+        if (control == null || _dockingManager == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var method = _dockingManager.GetType().GetMethod("ActivateControl", new[] { typeof(Control) });
+            if (method != null)
+            {
+                method.Invoke(_dockingManager, new object[] { control });
+                return;
+            }
+
+            if (control.CanSelect)
+            {
+                control.Select();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to activate docking control {ControlName}", control.Name);
         }
     }
 

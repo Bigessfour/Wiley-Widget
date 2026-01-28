@@ -42,14 +42,8 @@ namespace WileyWidget.WinForms.Controls
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class SettingsPanel : ScopedPanelBase
+    public partial class SettingsPanel : ScopedPanelBase<SettingsViewModel>
     {
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new SettingsViewModel? ViewModel
-        {
-            get => (SettingsViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
         #region Constants
         private const int GROUP_PADDING = 16;
         private const int CONTROL_SPACING = 12;
@@ -142,7 +136,7 @@ namespace WileyWidget.WinForms.Controls
         /// </summary>
         public SettingsPanel(
             IServiceScopeFactory scopeFactory,
-            Microsoft.Extensions.Logging.ILogger<ScopedPanelBase> logger)
+            Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> logger)
             : base(scopeFactory, logger)
         {
         }
@@ -175,7 +169,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        private static Microsoft.Extensions.Logging.ILogger<ScopedPanelBase> ResolveLogger()
+        private static Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> ResolveLogger()
         {
             if (Program.Services == null)
             {
@@ -184,7 +178,7 @@ namespace WileyWidget.WinForms.Controls
             }
             try
             {
-                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase>>(Program.Services);
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<SettingsViewModel>>>(Program.Services);
                 Serilog.Log.Debug("SettingsPanel: ILogger resolved from DI container");
                 return logger;
             }
@@ -218,13 +212,13 @@ namespace WileyWidget.WinForms.Controls
             SetInitialFontSelection();
 
             // Watch for unsaved changes - enable/disable Save button
-            viewModel.PropertyChanged += (s, e) =>
+            ViewModel.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(SettingsViewModel.HasUnsavedChanges) && _btnSave != null)
                 {
-                    _btnSave.Enabled = viewModel.HasUnsavedChanges;
+                    _btnSave.Enabled = ViewModel.HasUnsavedChanges;
                     UpdateStatus(
-                        viewModel.HasUnsavedChanges
+                        ViewModel.HasUnsavedChanges
                             ? "You have unsaved changes"
                             : "All changes saved",
                         isError: false);
@@ -234,7 +228,7 @@ namespace WileyWidget.WinForms.Controls
             // Set initial Save button state
             if (_btnSave != null)
             {
-                _btnSave.Enabled = viewModel.HasUnsavedChanges;
+                _btnSave.Enabled = ViewModel.HasUnsavedChanges;
             }
 
             // Start async load - fire-and-forget with error handling
@@ -1729,3 +1723,8 @@ namespace WileyWidget.WinForms.Controls
         #endregion
     }
 }
+
+
+
+
+

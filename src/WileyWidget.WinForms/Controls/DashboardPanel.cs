@@ -37,15 +37,8 @@ namespace WileyWidget.WinForms.Controls
     /// Dashboard panel with KPIs, charts, and details grid.
     /// Migrated to ScopedPanelBase for proper DI scoping and lifecycle management.
     /// </summary>
-    public partial class DashboardPanel : ScopedPanelBase
+    public partial class DashboardPanel : ScopedPanelBase<FormsMainViewModel>
     {
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new FormsMainViewModel? ViewModel
-        {
-            get => (FormsMainViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
-
         private FormsMainViewModel? _vm => ViewModel;
 
         // controls
@@ -86,7 +79,7 @@ namespace WileyWidget.WinForms.Controls
         // ViewModel is resolved from scoped provider after handle creation.
         public DashboardPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase> logger,
+            ILogger<ScopedPanelBase<FormsMainViewModel>> logger,
             WileyWidget.Services.Threading.IDispatcherHelper? dispatcherHelper = null)
             : base(scopeFactory, logger)
         {
@@ -1237,3 +1230,6 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+
+
+

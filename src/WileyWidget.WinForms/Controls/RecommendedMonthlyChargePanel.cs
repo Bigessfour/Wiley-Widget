@@ -30,14 +30,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Fully integrated with ICompletablePanel lifecycle for proper async validation and save workflows.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class RecommendedMonthlyChargePanel : ScopedPanelBase
+public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<RecommendedMonthlyChargeViewModel>
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new RecommendedMonthlyChargeViewModel? ViewModel
-    {
-        get => (RecommendedMonthlyChargeViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
     // UI Controls
     private SfDataGrid? _departmentsGrid;
     private SfDataGrid? _benchmarksGrid;
@@ -75,7 +69,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase
 
     public RecommendedMonthlyChargePanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<RecommendedMonthlyChargeViewModel>> logger)
         : base(scopeFactory, logger)
     {
         InitializeControls();
@@ -1179,3 +1173,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase
 
     #endregion
 }
+
+
+

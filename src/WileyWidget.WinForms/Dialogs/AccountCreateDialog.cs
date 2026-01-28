@@ -269,6 +269,11 @@ namespace WileyWidget.WinForms.Dialogs
             }
         }
 
+        private void InitializeComponent()
+        {
+
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

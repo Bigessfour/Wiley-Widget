@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms;
+using Syncfusion.WinForms.Controls;
 using System;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Themes;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms;
@@ -65,35 +66,55 @@ public partial class MainForm
                     appliedCount++;
 
                     // Log debug info for Syncfusion controls and custom panels
-                    if (control is Syncfusion.WinForms.DataGrid.SfDataGrid or
-                        Syncfusion.Windows.Forms.Tools.RibbonControlAdv or
-                        WileyWidget.WinForms.Controls.GradientPanelExt)
+                    if (control is Syncfusion.WinForms.DataGrid.SfDataGrid ||
+                        control is Syncfusion.Windows.Forms.Tools.RibbonControlAdv ||
+                        control is WileyWidget.WinForms.Controls.GradientPanelExt)
                     {
                         _logger?.LogDebug("Applied theme '{Theme}' to {ControlType}: {ControlName}",
-                            themeName, control.GetType().Name, control.Name ?? "<unnamed>");
+                            themeName, control.GetType().Name, control.Name ?? "&lt;unnamed&gt;");
+
                     }
+
                 }
+
                 catch (Exception ex)
+
                 {
+
                     // Best-effort: log but continue with other controls
+
                     _logger?.LogDebug(ex, "Failed to apply theme to {ControlType} {ControlName} (non-fatal)",
-                        control.GetType().Name, control.Name ?? "<unnamed>");
+
+                        control.GetType().Name, control.Name ?? "&lt;unnamed&gt;");
+
                 }
 
                 // Enqueue all non-null, non-disposed children for processing
+
                 if (control.Controls != null && control.Controls.Count > 0)
+
                 {
+
                     foreach (Control child in control.Controls)
+
                     {
+
                         if (child != null && !child.IsDisposed)
+
                         {
+
                             queue.Enqueue(child);
+
                         }
+
                     }
+
                 }
+
             }
 
             _logger?.LogInformation("Applied theme '{Theme}' recursively to {ControlCount} controls",
+
                 themeName, appliedCount);
         }
         catch (Exception ex)
@@ -375,5 +396,80 @@ public partial class MainForm
         {
             // Safe to ignore - collection errors don't block initialization
         }
+    }
+
+    /// <summary>
+    /// Applies the validated theme to the form and ensures future dynamic controls receive it.
+    /// </summary>
+    private void ApplyThemeForFutureControls()
+    {
+        var themeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+
+        if (!ThemeApplicationHelper.ValidateTheme(themeName, _logger))
+        {
+            _logger?.LogWarning("Theme '{Theme}' failed validation. Falling back to Default.", themeName);
+            themeName = "Default";
+        }
+
+        try
+        {
+            SfSkinManager.SetVisualStyle(this, themeName);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to apply theme '{Theme}'. Falling back to Default.", themeName);
+            themeName = "Default";
+            SfSkinManager.SetVisualStyle(this, themeName);
+        }
+
+        ApplyThemeRecursive(this, themeName);
+        RegisterThemeTracking(this, themeName);
+    }
+
+    private void RegisterThemeTracking(Control rootControl, string themeName)
+    {
+        if (rootControl == null || rootControl.IsDisposed)
+        {
+            return;
+        }
+
+        if (_themeTrackedControls.Contains(rootControl))
+        {
+            return;
+        }
+
+        _themeTrackedControls.Add(rootControl);
+        rootControl.ControlAdded += OnThemedControlAdded;
+
+        if (rootControl.Controls == null || rootControl.Controls.Count == 0)
+        {
+            return;
+        }
+
+        foreach (Control child in rootControl.Controls)
+        {
+            if (child != null && !child.IsDisposed)
+            {
+                RegisterThemeTracking(child, themeName);
+            }
+        }
+    }
+
+    private void OnThemedControlAdded(object? sender, ControlEventArgs e)
+    {
+        if (e.Control == null || e.Control.IsDisposed)
+        {
+            return;
+        }
+
+        var themeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+
+        if (!ThemeApplicationHelper.ValidateTheme(themeName, _logger))
+        {
+            themeName = "Default";
+        }
+
+        ApplyThemeRecursive(e.Control, themeName);
+        RegisterThemeTracking(e.Control, themeName);
     }
 }

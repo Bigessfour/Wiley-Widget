@@ -32,14 +32,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
     /// Implements ICompletablePanel for proper async lifecycle management.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class BudgetAnalyticsPanel : ScopedPanelBase
+    public partial class BudgetAnalyticsPanel : ScopedPanelBase<BudgetAnalyticsViewModel>
     {
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new BudgetAnalyticsViewModel? ViewModel
-        {
-            get => (BudgetAnalyticsViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
         // Controls
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -82,7 +76,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         /// </summary>
         public BudgetAnalyticsPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase> logger)
+            ILogger<ScopedPanelBase<BudgetAnalyticsViewModel>> logger)
             : base(scopeFactory, logger)
         {
             // No need to assign _scopeFactory; handled by base class
@@ -219,9 +213,13 @@ namespace WileyWidget.WinForms.Controls.Analytics
         /// <summary>
         /// Called after the ViewModel has been resolved. Initializes UI and bindings.
         /// </summary>
-        protected override void OnViewModelResolved(BudgetAnalyticsViewModel viewModel)
+        protected override void OnViewModelResolved(object? viewModel)
         {
             base.OnViewModelResolved(viewModel);
+            if (viewModel is not BudgetAnalyticsViewModel)
+            {
+                return;
+            }
 
             SetupUI();
             BindViewModel();
@@ -1171,3 +1169,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         #endregion
     }
 }
+
+
+
+

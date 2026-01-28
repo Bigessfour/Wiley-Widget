@@ -25,6 +25,9 @@ namespace WileyWidget.WinForms.Controls;
 public partial class AccountsPanel : ScopedPanelBase
 {
     // Strongly-typed ViewModel (this is what you use in your code)
+    [System.ComponentModel.Browsable(false)]
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    [System.ComponentModel.DefaultValue(null)]
     public new AccountsViewModel? ViewModel
     {
         get => (AccountsViewModel?)base.ViewModel;

@@ -42,15 +42,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Uses Syncfusion API properly: Dock layout and SfSkinManager theming per Syncfusion documentation.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class QuickBooksPanel : ScopedPanelBase
+public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new QuickBooksViewModel? ViewModel
-    {
-        get => (QuickBooksViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
-
     #region UI Controls
 
     private PanelHeader? _panelHeader;
@@ -279,7 +272,7 @@ public partial class QuickBooksPanel : ScopedPanelBase
     /// </summary>
     public QuickBooksPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
         : base(scopeFactory, logger)
     {
         InitializeComponent();
@@ -3150,3 +3143,6 @@ public partial class QuickBooksPanel : ScopedPanelBase
 
     #endregion
 }
+
+
+

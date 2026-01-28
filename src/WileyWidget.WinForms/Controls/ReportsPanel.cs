@@ -34,14 +34,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Implements ScopedPanelBase pattern for proper DI scoping and lifecycle management.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class ReportsPanel : ScopedPanelBase, IParameterizedPanel
+public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParameterizedPanel
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new ReportsViewModel? ViewModel
-    {
-        get => (ReportsViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
     private string? _initialReportPath;
 
     // UI Controls
@@ -95,7 +89,7 @@ public partial class ReportsPanel : ScopedPanelBase, IParameterizedPanel
     /// <param name="logger">Logger instance for diagnostic logging.</param>
     public ReportsPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<ReportsViewModel>> logger)
         : base(scopeFactory, logger)
     {
     }
@@ -1237,3 +1231,6 @@ public class ReportParameter
     public string Value { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
 }
+
+
+

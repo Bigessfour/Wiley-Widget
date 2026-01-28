@@ -55,6 +55,7 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
     /// </summary>
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    [System.ComponentModel.DefaultValue(null)]
     public object? ViewModel
     {
         get => _viewModel;
@@ -808,6 +809,7 @@ public class ScopedPanelBase<TViewModel> : ScopedPanelBase
     /// </summary>
     [System.ComponentModel.Browsable(false)]
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    [System.ComponentModel.DefaultValue(null)]
     public new TViewModel? ViewModel
     {
         get => (TViewModel?)base.ViewModel;

@@ -33,14 +33,8 @@ namespace WileyWidget.WinForms.Controls;
 /// Audit Log viewer panel displaying audit entries with filtering and export capabilities.
 /// Inherits from ScopedPanelBase to ensure proper DI lifetime management for scoped dependencies.
 /// </summary>
-public partial class AuditLogPanel : ScopedPanelBase
+public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 {
-    // Strongly-typed ViewModel (this is what you use in your code)
-    public new AuditLogViewModel? ViewModel
-    {
-        get => (AuditLogViewModel?)base.ViewModel;
-        set => base.ViewModel = value;
-    }
     // UI Controls
     private PanelHeader? _panelHeader;
     private LoadingOverlay? _loadingOverlay;
@@ -98,7 +92,7 @@ public partial class AuditLogPanel : ScopedPanelBase
     /// </summary>
     public AuditLogPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<AuditLogViewModel>> logger)
         : base(scopeFactory, logger)
     {
         // InitializeComponent(); // replaced by BuildProgrammaticLayout
@@ -629,18 +623,21 @@ public partial class AuditLogPanel : ScopedPanelBase
     /// Called after ViewModel is resolved from scoped service provider.
     /// Binds ViewModel data and initiates data load.
     /// </summary>
-    protected override void OnViewModelResolved(AuditLogViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
-        if (viewModel == null) throw new ArgumentNullException(nameof(viewModel));
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not AuditLogViewModel typedViewModel)
+        {
+            return;
+        }
 
         // Subscribe to ViewModel property changes
         _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-        viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+        typedViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
         // Subscribe to Entries collection changes
         _entriesCollectionChangedHandler = (s, e) => UpdateGridData();
-        viewModel.Entries.CollectionChanged += _entriesCollectionChangedHandler;
+        typedViewModel.Entries.CollectionChanged += _entriesCollectionChangedHandler;
 
         // Initialize filters
         InitializeFilters();
@@ -650,12 +647,12 @@ public partial class AuditLogPanel : ScopedPanelBase
 
         // Subscribe to ChartData collection changes
         _chartDataCollectionChangedHandler = (s, e) => UpdateChart();
-        viewModel.ChartData.CollectionChanged += _chartDataCollectionChangedHandler;
+        typedViewModel.ChartData.CollectionChanged += _chartDataCollectionChangedHandler;
 
         // Initialize chart grouping selection
         if (_cmbChartGroupBy != null)
         {
-            try { _cmbChartGroupBy.SelectedItem = viewModel.ChartGrouping.ToString(); } catch { }
+            try { _cmbChartGroupBy.SelectedItem = typedViewModel.ChartGrouping.ToString(); } catch { }
         }
 
         // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
@@ -1301,3 +1298,6 @@ public partial class AuditLogPanel : ScopedPanelBase
         base.Dispose(disposing);
     }
 }
+
+
+

@@ -48,14 +48,8 @@ namespace WileyWidget.WinForms.Controls
     /// Designed for embedding in DockingManager with DI-scoped lifecycle.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class BudgetOverviewPanel : ScopedPanelBase
+    public partial class BudgetOverviewPanel : ScopedPanelBase<BudgetOverviewViewModel>
     {
-        // Strongly-typed ViewModel (this is what you use in your code)
-        public new BudgetOverviewViewModel? ViewModel
-        {
-            get => (BudgetOverviewViewModel?)base.ViewModel;
-            set => base.ViewModel = value;
-        }
         private readonly WileyWidget.Services.Threading.IDispatcherHelper? _dispatcherHelper = null;
 
         /// <summary>
@@ -100,7 +94,7 @@ namespace WileyWidget.WinForms.Controls
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
-        public BudgetOverviewPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase>? logger)
+        public BudgetOverviewPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<BudgetOverviewViewModel>>? logger)
             : base(scopeFactory, logger)
         {
             // Dispatcher helper resolved from scope if available
@@ -923,4 +917,7 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+
+
+
 
