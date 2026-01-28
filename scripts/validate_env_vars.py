@@ -15,7 +15,7 @@ Exit Codes:
 import argparse
 import os
 import sys
-from typing import List, Tuple
+from typing import List
 
 
 def validate_env_vars(required: List[str], optional: List[str]) -> int:

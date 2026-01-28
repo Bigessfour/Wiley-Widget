@@ -4,7 +4,6 @@ ViewModel Interface Generator
 Generates IXxxViewModel interfaces from XXXViewModel classes for improved testability.
 """
 
-import re
 import sys
 from pathlib import Path
 

@@ -53,6 +53,12 @@ namespace WileyWidget.Services.Abstractions
         Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Get a single non-streaming chat completion for a user prompt.
+        /// Designed for UI components that expect a single combined response string.
+        /// </summary>
+        Task<string> GetChatCompletionAsync(string prompt, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Sends a raw prompt to the AI provider and returns an asynchronous stream of response chunks.
         /// </summary>
         System.Collections.Generic.IAsyncEnumerable<string> StreamResponseAsync(string prompt, string? systemMessage = null, System.Threading.CancellationToken cancellationToken = default);

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -52,23 +53,61 @@ public partial class MainForm
         // [PERF] Ctrl+F: Focus global search box
         if (keyData == (Keys.Control | Keys.F))
         {
+            if (_ribbon == null)
+            {
+                _logger?.LogDebug("Ctrl+F pressed but ribbon is null - chrome may not be initialized");
+                return false;
+            }
+
             try
             {
-                if (_ribbon != null)
+                // Robust ribbon search: search each tab/panel and recursively inspect ToolStrip items
+                ToolStripTextBox? searchBox = null;
+                foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
                 {
-                    var searchBox = FindToolStripItem(_ribbon, "GlobalSearch") as ToolStripTextBox;
-                    if (searchBox != null)
+                    if (tab.Panel == null) continue;
+                    foreach (var panel in tab.Panel.Controls.OfType<ToolStripEx>())
                     {
-                        searchBox.Focus();
-                        searchBox.SelectAll();
-                        return true;
+                        searchBox = FindToolStripTextBoxRecursive(panel.Items, "GlobalSearch");
+                        if (searchBox != null) break;
                     }
+                    if (searchBox != null) break;
+                }
+
+                if (searchBox != null)
+                {
+                    try
+                    {
+                        if (!searchBox.IsDisposed)
+                        {
+                            searchBox.Focus();
+                            searchBox.SelectAll();
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        _logger?.LogDebug("Search box disposed during focus attempt");
+                    }
+                    return true;
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error focusing search box");
             }
+
+            // Fallback: search whole form for named ToolStripTextBox (helps test harness or minimal ribbon)
+            try
+            {
+                var fb = FindToolStripItem(this, "GlobalSearch") as ToolStripTextBox;
+                if (fb != null && !fb.IsDisposed)
+                {
+                    fb.Focus();
+                    fb.SelectAll();
+                    return true;
+                }
+            }
+            catch { }
         }
 
         // [PERF] Ctrl+Shift+T: Toggle theme
@@ -104,24 +143,14 @@ public partial class MainForm
             return TryShowPanel<Controls.AccountsPanel>("Accounts", DockingStyle.Right);
         }
 
-        if (keyData == (Keys.Alt | Keys.B))
-        {
-            return TryShowPanel<Controls.BudgetPanel>("Budget", DockingStyle.Right);
-        }
-
         if (keyData == (Keys.Alt | Keys.C))
         {
-            return TryShowPanel<Controls.BudgetAnalyticsPanel>("Charts", DockingStyle.Right);
+            return TryShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.D))
         {
             return TryShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top);
-        }
-
-        if (keyData == (Keys.Alt | Keys.R))
-        {
-            return TryShowPanel<Controls.ReportsPanel>("Reports", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.S))
@@ -194,10 +223,26 @@ public partial class MainForm
 
         if (FindToolStripItem(_ribbon, "GlobalSearch") is ToolStripTextBox searchBox)
         {
-            searchBox.Focus();
-            if (selectAll)
+            try
             {
-                searchBox.SelectAll();
+                if (!searchBox.IsDisposed)
+                {
+                    searchBox.Focus();
+                    if (selectAll)
+                    {
+                        searchBox.SelectAll();
+                    }
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogDebug("Search box disposed during focus");
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                _logger?.LogDebug("Search box not available for focus (disposed or invalid state)");
+                return false;
             }
             return true;
         }
@@ -264,10 +309,61 @@ public partial class MainForm
             {
                 foreach (var panel in tab.Panel.Controls.OfType<ToolStripEx>())
                 {
-                    var item = panel.Items.Find(name, searchAllChildren: true).FirstOrDefault();
+                    var item = FindToolStripItemRecursive(panel.Items, name);
                     if (item != null) return item;
                 }
             }
+        }
+        return null;
+    }
+
+    private ToolStripItem? FindToolStripItemRecursive(ToolStripItemCollection items, string name)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            try
+            {
+                if (string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase)) return item;
+
+                if (item is ToolStripPanelItem panelItem)
+                {
+                    var found = FindToolStripItemRecursive(panelItem.Items, name);
+                    if (found != null) return found;
+                }
+
+                if (item is ToolStripDropDownItem dropDown)
+                {
+                    var found = FindToolStripItemRecursive(dropDown.DropDownItems, name);
+                    if (found != null) return found;
+                }
+            }
+            catch { }
+        }
+        return null;
+    }
+
+    private ToolStripTextBox? FindToolStripTextBoxRecursive(ToolStripItemCollection items, string name)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            try
+            {
+                if (item is ToolStripTextBox tb)
+                {
+                    if (string.Equals(tb.Name, name, StringComparison.OrdinalIgnoreCase)) return tb;
+                }
+                else if (item is ToolStripPanelItem panelItem)
+                {
+                    var found = FindToolStripTextBoxRecursive(panelItem.Items, name);
+                    if (found != null) return found;
+                }
+                else if (item is ToolStripDropDownItem dropDown)
+                {
+                    var found = FindToolStripTextBoxRecursive(dropDown.DropDownItems, name);
+                    if (found != null) return found;
+                }
+            }
+            catch { }
         }
         return null;
     }

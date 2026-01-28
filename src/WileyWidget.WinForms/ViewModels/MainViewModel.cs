@@ -55,6 +55,30 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private string? errorMessage;
 
+        [ObservableProperty]
+        private ObservableCollection<DashboardMetric> metrics = new();
+
+        [ObservableProperty]
+        private ObservableCollection<MonthlyRevenue> monthlyRevenueData = new();
+
+        [ObservableProperty]
+        private decimal totalBudgetGauge;
+
+        [ObservableProperty]
+        private decimal revenueGauge;
+
+        [ObservableProperty]
+        private decimal expensesGauge;
+
+        [ObservableProperty]
+        private decimal netPositionGauge;
+
+        [ObservableProperty]
+        private ObservableCollection<DepartmentSummary> departmentSummaries = new();
+
+        [ObservableProperty]
+        private ObservableCollection<FundSummary> fundSummaries = new();
+
         /// <summary>
         /// Collection of recent activity items for the dashboard.
         /// Bound to data grids in the MainForm.
@@ -385,7 +409,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 // Update UI with results
                 LastUpdateTime = DateTime.Now.ToString("g");
-                ErrorMessage = results.TotalResults == 0 
+                ErrorMessage = results.TotalResults == 0
                     ? $"No results found for '{query}'. Try a different search term."
                     : $"Found {results.TotalResults} results for '{query}'.";
             }

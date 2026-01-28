@@ -55,7 +55,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private GradientPanelExt? _summaryPanel;
     private GradientPanelExt? _gridPanel;
     private GradientPanelExt? _buttonPanel;
-    private SplitContainer? _mainSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -65,7 +65,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private GradientPanelExt? topPanel;
     private GradientPanelExt? bottomPanel;
 
-    private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
+    private PropertyChangedEventHandler? ViewModelPropertyChangedHandler;
     private NotifyCollectionChangedEventHandler? _billsCollectionChangedHandler;
     private NotifyCollectionChangedEventHandler? _customersCollectionChangedHandler;
 
@@ -81,6 +81,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private EventHandler? _panelHeaderCloseHandler;
 
     private ErrorProvider? _errorProvider;
+    private System.Threading.SynchronizationContext? _uiSyncContext;
 
     #endregion
 
@@ -97,12 +98,19 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Initialization
 
-    protected override void OnViewModelResolved(UtilityBillViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not UtilityBillViewModel)
+        {
+            return;
+        }
 
         try
         {
+            // Capture the current SynchronizationContext (should be the WinForms UI context)
+            _uiSyncContext = System.Threading.SynchronizationContext.Current;
+
             InitializeControls();
             BindViewModel();
 
@@ -161,7 +169,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Controls.Add(_panelHeader);
 
         // Main split container (bills top, customers bottom)
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -512,7 +520,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AccessibleName = "Create Bill",
             AccessibleDescription = "Create a new utility bill for the selected customer"
         };
-        _createBillButton.Click += async (s, e) => await _viewModel.CreateBillCommand.ExecuteAsync(null);
+        _createBillButton.Click += async (s, e) => await ViewModel.CreateBillCommand.ExecuteAsync(null);
 
         _saveBillButton = new SfButton
         {
@@ -521,7 +529,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AccessibleName = "Save Bill",
             AccessibleDescription = "Save changes to the selected bill"
         };
-        _saveBillButton.Click += async (s, e) => await _viewModel.SaveBillCommand.ExecuteAsync(null);
+        _saveBillButton.Click += async (s, e) => await ViewModel.SaveBillCommand.ExecuteAsync(null);
 
         _deleteBillButton = new SfButton
         {
@@ -530,7 +538,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AccessibleName = "Delete Bill",
             AccessibleDescription = "Delete the selected bill"
         };
-        _deleteBillButton.Click += async (s, e) => await _viewModel.DeleteBillCommand.ExecuteAsync(null);
+        _deleteBillButton.Click += async (s, e) => await ViewModel.DeleteBillCommand.ExecuteAsync(null);
 
         _markPaidButton = new SfButton
         {
@@ -539,7 +547,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AccessibleName = "Mark Paid",
             AccessibleDescription = "Mark the selected bill as paid"
         };
-        _markPaidButton.Click += async (s, e) => await _viewModel.MarkAsPaidCommand.ExecuteAsync(null);
+        _markPaidButton.Click += async (s, e) => await ViewModel.MarkAsPaidCommand.ExecuteAsync(null);
 
         _generateReportButton = new SfButton
         {
@@ -548,7 +556,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             AccessibleName = "Generate Report",
             AccessibleDescription = "Generate a report of utility bills"
         };
-        _generateReportButton.Click += async (s, e) => await _viewModel.GenerateReportCommand.ExecuteAsync(null);
+        _generateReportButton.Click += async (s, e) => await ViewModel.GenerateReportCommand.ExecuteAsync(null);
 
         _refreshButton = new SfButton
         {
@@ -761,14 +769,58 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         if (ViewModel == null) return;
 
         // Subscribe to ViewModel property changes
-        _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-        ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+        ViewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+        ViewModel.PropertyChanged += ViewModelPropertyChangedHandler;
 
-        // Subscribe to collection changes
-        _billsCollectionChangedHandler = (s, e) => UpdateBillsGrid();
+        // Subscribe to collection changes. Post updates to the captured UI SynchronizationContext
+        // to avoid creating control handles from background threads (which can throw).
+        _billsCollectionChangedHandler = (s, e) =>
+        {
+            if (_uiSyncContext != null)
+            {
+                try
+                {
+                    _uiSyncContext.Post(_ =>
+                    {
+                        try { UpdateBillsGrid(); }
+                        catch (Exception ex) { Logger.LogError(ex, "Error updating bills grid from UI sync context"); }
+                    }, null);
+                }
+                catch (Exception)
+                {
+                    // Fallback to control-based invoke if posting fails
+                    this.InvokeIfRequired(UpdateBillsGrid);
+                }
+            }
+            else
+            {
+                this.InvokeIfRequired(UpdateBillsGrid);
+            }
+        };
         ViewModel.FilteredBills.CollectionChanged += _billsCollectionChangedHandler;
 
-        _customersCollectionChangedHandler = (s, e) => UpdateCustomersGrid();
+        _customersCollectionChangedHandler = (s, e) =>
+        {
+            if (_uiSyncContext != null)
+            {
+                try
+                {
+                    _uiSyncContext.Post(_ =>
+                    {
+                        try { UpdateCustomersGrid(); }
+                        catch (Exception ex) { Logger.LogError(ex, "Error updating customers grid from UI sync context"); }
+                    }, null);
+                }
+                catch (Exception)
+                {
+                    this.InvokeIfRequired(UpdateCustomersGrid);
+                }
+            }
+            else
+            {
+                this.InvokeIfRequired(UpdateCustomersGrid);
+            }
+        };
         ViewModel.Customers.CollectionChanged += _customersCollectionChangedHandler;
 
         // Initial data binding
@@ -956,27 +1008,51 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Ensure all UI updates happen on the UI thread to avoid cross-thread exceptions.
+        void PostToUi(System.Action a)
+        {
+            if (_uiSyncContext != null)
+            {
+                try { _uiSyncContext.Post(_ => { try { a(); } catch { } }, null); }
+                catch
+                {
+                    // fallback to control-based invoke if posting fails
+                    try { this.InvokeIfRequired(a); } catch { }
+                }
+            }
+            else
+            {
+                try { this.InvokeIfRequired(a); } catch { }
+            }
+        }
+
         if (e.PropertyName == nameof(ViewModel.IsLoading))
         {
-            if (_loadingOverlay != null)
-                _loadingOverlay.Visible = ViewModel.IsLoading;
-            UpdateNoDataOverlay();
+            PostToUi(() =>
+            {
+                if (_loadingOverlay != null)
+                    _loadingOverlay.Visible = ViewModel.IsLoading;
+                UpdateNoDataOverlay();
+            });
         }
         else if (e.PropertyName == nameof(ViewModel.StatusText))
         {
-            if (_statusLabel != null)
-                _statusLabel.Text = ViewModel.StatusText;
+            PostToUi(() =>
+            {
+                if (_statusLabel != null)
+                    _statusLabel.Text = ViewModel.StatusText;
+            });
         }
         else if (e.PropertyName == nameof(ViewModel.SelectedBill) || e.PropertyName == nameof(ViewModel.SelectedCustomer))
         {
-            UpdateButtonStates();
+            PostToUi(UpdateButtonStates);
         }
         else if (e.PropertyName == nameof(ViewModel.TotalOutstanding) ||
                  e.PropertyName == nameof(ViewModel.OverdueCount) ||
                  e.PropertyName == nameof(ViewModel.TotalRevenue) ||
                  e.PropertyName == nameof(ViewModel.BillsThisMonth))
         {
-            UpdateSummaryLabels();
+            PostToUi(UpdateSummaryLabels);
         }
     }
 
@@ -1146,9 +1222,15 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        if (_uiSyncContext != null)
         {
-            _statusLabel.Text = message;
+            try { _uiSyncContext.Post(_ => { try { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; } catch { } }, null); }
+            catch { this.InvokeIfRequired(() => { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; }); }
+        }
+        else
+        {
+            try { this.InvokeIfRequired(() => { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; }); }
+            catch { }
         }
     }
 
@@ -1226,8 +1308,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             try
             {
                 // Unsubscribe events
-                if (ViewModel != null && _viewModelPropertyChangedHandler != null)
-                    ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+                if (ViewModel != null && ViewModelPropertyChangedHandler != null)
+                    ViewModel.PropertyChanged -= ViewModelPropertyChangedHandler;
 
                 if (ViewModel?.FilteredBills != null && _billsCollectionChangedHandler != null)
                     ViewModel.FilteredBills.CollectionChanged -= _billsCollectionChangedHandler;
@@ -1298,4 +1380,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #endregion
 }
+
+
+
+
 

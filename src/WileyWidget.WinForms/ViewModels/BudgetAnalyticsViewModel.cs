@@ -57,17 +57,14 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
     /// </summary>
     public BudgetAnalyticsViewModel()
     {
-        // Initialize available options
-        AvailableDepartments.Add("All");
-        AvailableDepartments.Add("Administration");
-        AvailableDepartments.Add("Operations");
-        AvailableDepartments.Add("Marketing");
-        AvailableDepartments.Add("Sales");
-
+        // Initialize available date ranges
         AvailableDateRanges.Add("Current Year");
         AvailableDateRanges.Add("Last 12 Months");
         AvailableDateRanges.Add("Last Quarter");
         AvailableDateRanges.Add("Last Month");
+
+        // Departments will be loaded from data (see LoadData method)
+        AvailableDepartments.Add("All"); // Always add 'All' as first option
     }
 
     [RelayCommand(CanExecute = nameof(CanLoadData))]
@@ -81,7 +78,28 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
 
             // Load sample data (replace with actual service call)
             var sampleData = GenerateSampleAnalyticsData();
-            foreach (var item in sampleData)
+
+            // Extract unique departments from data and populate dropdown
+            var allDepartments = sampleData
+                .Select(x => x.DepartmentName)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+
+            // Update available departments list (preserving 'All' at the start)
+            if (AvailableDepartments.Count == 0 || (AvailableDepartments.Count == 1 && AvailableDepartments[0] == "All"))
+            {
+                // First load - populate from data
+                foreach (var dept in allDepartments)
+                {
+                    if (!AvailableDepartments.Contains(dept))
+                        AvailableDepartments.Add(dept);
+                }
+            }
+
+            // Apply filters and add to view
+            var filteredData = ApplyFilters(sampleData);
+            foreach (var item in filteredData)
             {
                 AnalyticsData.Add(item);
             }
@@ -96,6 +114,31 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
         {
             IsLoading = false;
         }
+    }
+
+    /// <summary>
+    /// Applies department and date range filters to the analytics data.
+    /// </summary>
+    private List<BudgetAnalyticsData> ApplyFilters(List<BudgetAnalyticsData> allData)
+    {
+        var filtered = allData.AsEnumerable();
+
+        // Apply department filter (unless 'All' is selected)
+        if (SelectedDepartment != "All")
+        {
+            filtered = filtered.Where(x => x.DepartmentName == SelectedDepartment);
+        }
+
+        // Apply date range filter (periods)
+        filtered = SelectedDateRange switch
+        {
+            "Last Month" => filtered.Where(x => x.PeriodName == "Dec"),
+            "Last Quarter" => filtered.Where(x => new[] { "Oct", "Nov", "Dec" }.Contains(x.PeriodName)),
+            "Last 12 Months" => filtered, // All 12 months
+            _ => filtered  // "Current Year" - show all
+        };
+
+        return filtered.ToList();
     }
 
     [RelayCommand(CanExecute = nameof(CanRefresh))]

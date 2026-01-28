@@ -66,20 +66,6 @@ public class UtilityCustomerSummary
 }
 
 /// <summary>
-/// DTO for Department hierarchy.
-/// Uses init-only properties for immutable initialization pattern.
-/// </summary>
-public class DepartmentSummary
-{
-    public int Id { get; init; }
-    public required string Code { get; init; }
-    public required string Name { get; init; }
-    public required string Fund { get; init; }
-    public int? ParentDepartmentId { get; init; }
-    public string? ParentDepartmentName { get; init; }
-}
-
-/// <summary>
 /// DTO for Budget Period with account count.
 /// Uses init-only properties for immutable initialization pattern.
 /// </summary>

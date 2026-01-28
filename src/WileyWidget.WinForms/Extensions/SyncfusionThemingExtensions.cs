@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 
 namespace WileyWidget.WinForms.Extensions;
 
@@ -28,18 +29,14 @@ public static class SyncfusionThemingExtensions
     {
         DashboardPanel => new Size(560, 420),
         AccountsPanel => new Size(620, 380),
-        BudgetAnalyticsPanel => new Size(560, 460),
-        BudgetOverviewPanel => new Size(540, 420),
-        AnalyticsPanel => new Size(560, 400),
+        WileyWidget.WinForms.Controls.Analytics.AnalyticsPanel => new Size(560, 400),
+        AnalyticsHubPanel => new Size(600, 500),
         AuditLogPanel => new Size(520, 380),
-        ReportsPanel => new Size(560, 400),
         ProactiveInsightsPanel => new Size(560, 400),
         WarRoomPanel => new Size(560, 420),
         QuickBooksPanel => new Size(620, 400),
-        BudgetPanel => new Size(560, 400),
         DepartmentSummaryPanel => new Size(540, 400),
         SettingsPanel => new Size(500, 360),
-        RevenueTrendsPanel => new Size(560, 440),
         UtilityBillPanel => new Size(560, 400),
         CustomersPanel => new Size(560, 400),
         _ => new Size(540, 400) // Default fallback
@@ -77,7 +74,7 @@ public static class SyncfusionThemingExtensions
             // Extension method encapsulates the safe pattern.
             // Per Syncfusion documentation: SetVisualStyle automatically cascades to all child controls.
             SfSkinManager.SetVisualStyle(control, themeName);
-            
+
             // Invalidate to force clean rendering
             if (!control.IsDisposed)
             {
@@ -150,9 +147,9 @@ public static class SyncfusionThemingExtensions
         {
             // Safely attempt to retrieve docking label via reflection
             // DockingManager doesn't expose a public getter for labels
-            var field = typeof(DockingManager).GetField("_dockLabels", 
+            var field = typeof(DockingManager).GetField("_dockLabels",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
+
             if (field?.GetValue(dockingManager) is System.Collections.IDictionary labels)
             {
                 return labels[control] as string;
@@ -171,17 +168,17 @@ public static class SyncfusionThemingExtensions
     /// Extension property (C# 14) for safe dock resize calculation.
     /// Ensures panels don't exceed container bounds.
     /// </summary>
-    public static Size SafeDockSize(this UserControl panel, DockingStyle style, Size containerSize) => 
+    public static Size SafeDockSize(this UserControl panel, DockingStyle style, Size containerSize) =>
         (style, containerSize.Width, containerSize.Height) switch
     {
         // Vertical docking: width-aware sizing
-        (DockingStyle.Left or DockingStyle.Right, > 300, > 0) => 
+        (DockingStyle.Left or DockingStyle.Right, > 300, > 0) =>
             new Size(Math.Min(panel.Width, containerSize.Width / 3), containerSize.Height),
-        
+
         // Horizontal docking: height-aware sizing
-        (DockingStyle.Top or DockingStyle.Bottom, > 0, > 200) => 
+        (DockingStyle.Top or DockingStyle.Bottom, > 0, > 200) =>
             new Size(containerSize.Width, Math.Min(panel.Height, containerSize.Height / 3)),
-        
+
         // Fallback: sensible defaults
         _ => new Size(400, 300)
     };
@@ -233,7 +230,7 @@ public static class SyncfusionThemingExtensions
             while (queue.Count > 0)
             {
                 var current = queue.Dequeue();
-                
+
                 // C# 14: Using foreach with pattern matching
                 foreach (Control child in current.Controls)
                 {

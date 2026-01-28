@@ -472,10 +472,11 @@ public class BudgetRepository : IBudgetRepository
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // Filter by budget period dates (StartPeriod/EndPeriod), not creation date
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
             .ToListAsync(cancellationToken);
 
         var analysis = new BudgetVarianceAnalysis
@@ -537,7 +538,7 @@ public class BudgetRepository : IBudgetRepository
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
             .ToListAsync(cancellationToken);
 
         return budgetEntries
@@ -565,7 +566,7 @@ public class BudgetRepository : IBudgetRepository
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate)
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
             .ToListAsync(cancellationToken);
 
         return budgetEntries
@@ -602,7 +603,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
 
         // Dynamic enterprise filter if present on Department or Fund
         // Note: Model does not currently expose EnterpriseId on Department/Fund.
@@ -657,7 +658,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
 
         var budgetEntries = await query.ToListAsync(cancellationToken);
         return budgetEntries
@@ -682,7 +683,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
-            .Where(be => be.CreatedAt >= startDate && be.CreatedAt <= endDate);
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
 
         var budgetEntries = await query.ToListAsync(cancellationToken);
         return budgetEntries
@@ -846,6 +847,68 @@ public class BudgetRepository : IBudgetRepository
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _telemetryService?.RecordException(ex, ("fiscal_year", fiscalYear));
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets all Town of Wiley 2026 budget data from imported CSV and Sanitation PDF sources
+    /// </summary>
+    public async Task<IReadOnlyList<TownOfWileyBudget2026>> GetTownOfWileyBudgetDataAsync(CancellationToken cancellationToken = default)
+    {
+        using var activity = ActivitySource.StartActivity("BudgetRepository.GetTownOfWileyBudgetData");
+        activity?.SetTag("operation.type", "query");
+        activity?.SetTag("cache.enabled", true);
+
+        const string cacheKey = "TownOfWileyBudget2026_All";
+
+        // Attempt to read from cache
+        if (TryGetFromCache(cacheKey, out IReadOnlyList<TownOfWileyBudget2026>? cachedData))
+        {
+            activity?.SetTag("cache.hit", true);
+            activity?.SetTag("result.count", cachedData?.Count ?? 0);
+            Console.WriteLine($"[TEST] Repository: Retrieved {cachedData?.Count ?? 0} rows from CACHE");
+            return cachedData ?? Array.Empty<TownOfWileyBudget2026>();
+        }
+
+        // Cache miss, fetch from database
+        activity?.SetTag("cache.hit", false);
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            // DEBUG: Check if DbSet exists
+            var dbSet = context.Set<TownOfWileyBudget2026>();
+            Console.WriteLine($"[TEST] Repository: DbSet<TownOfWileyBudget2026> exists");
+
+            var result = await dbSet
+                .AsNoTracking()
+                .ToListAsync(cancellationToken) ?? new List<TownOfWileyBudget2026>();
+
+            Console.WriteLine($"[TEST] Repository: Fetched {result.Count} rows from DB");
+            Console.WriteLine($"[TEST] Repository: Query completed successfully, result is not null={result != null}");
+
+            // No more debug injection - if DB is empty, results are empty
+            // Data must be populated via SQL import script
+
+            // Cache the result for 1 hour
+            var readOnlyResult = result!.AsReadOnly();
+            SetInCache(cacheKey, readOnlyResult, TimeSpan.FromHours(1));
+
+            activity?.SetTag("result.count", result.Count);
+            if (activity != null)
+            {
+                activity.SetStatus(ActivityStatusCode.Ok);
+            }
+
+            return readOnlyResult;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TEST] Repository: ERROR fetching TownOfWileyBudget2026: {ex.Message}");
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _telemetryService?.RecordException(ex);
             throw;
         }
     }

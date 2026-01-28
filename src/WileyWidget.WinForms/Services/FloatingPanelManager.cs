@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.Windows.Forms.Tools;
@@ -47,7 +48,7 @@ namespace WileyWidget.WinForms.Services
             if (_floatingWindows.ContainsKey(panelName))
             {
                 _logger.LogWarning("Floating panel '{PanelName}' already exists, bringing to front", panelName);
-                _floatingWindows[panelName].BringToFront();
+                _floatingWindows[panelName].SafeInvoke(() => { _floatingWindows[panelName].BringToFront(); });
                 return _floatingWindows[panelName];
             }
 

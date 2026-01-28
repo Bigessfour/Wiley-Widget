@@ -27,11 +27,11 @@
   // ============================================================================
   "github.copilot.chat.mcpServers": {
     "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-      "roots": ["C:\\Users\\biges\\Desktop\\Wiley-Widget"],
+      "command": "node_modules/.bin/mcp-server-filesystem.cmd",
+      "args": [],
+      "roots": ["."],
       "env": {
-        "MCP_FILESYSTEM_ALLOWED_PATHS": "C:\\Users\\biges\\Desktop\\Wiley-Widget"
+        "MCP_FILESYSTEM_ALLOWED_PATHS": "."
       }
     },
     "microsoft-learn": {
@@ -68,6 +68,10 @@
       "env": {
         "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
       }
+    },
+    "mcp-debugger": {
+      "command": "npx",
+      "args": ["-y", "@debugmcp/mcp-debugger@0.17.0", "stdio", "--log-level", "info", "--log-file", "${workspaceFolder}\\logs\\mcp-debugger.log"]
     }
   },
 

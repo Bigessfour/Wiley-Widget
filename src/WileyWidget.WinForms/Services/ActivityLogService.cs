@@ -31,6 +31,11 @@ namespace WileyWidget.WinForms.Services
         ObservableCollection<ActivityLog> GetRecentActivities();
 
         /// <summary>
+        /// Gets the list of activity entries asynchronously.
+        /// </summary>
+        Task<System.Collections.Generic.List<ActivityLog>> GetActivityEntriesAsync();
+
+        /// <summary>
         /// Clears all logged activities.
         /// </summary>
         void ClearActivities();
@@ -38,17 +43,21 @@ namespace WileyWidget.WinForms.Services
 
     /// <summary>
     /// Default implementation of IActivityLogService.
-    /// Stores activities in-memory and logs via Serilog.
+    /// Stores activities in-memory and persists to database.
     /// </summary>
     public class ActivityLogService : IActivityLogService
     {
         private readonly ILogger<ActivityLogService>? _logger;
+        private readonly WileyWidget.Business.Interfaces.IActivityLogRepository? _repository;
         private readonly ObservableCollection<ActivityLog> _activities = new();
         private const int MaxActivities = 500; // Keep only last 500 activities in memory
 
-        public ActivityLogService(ILogger<ActivityLogService>? logger = null)
+        public ActivityLogService(
+            ILogger<ActivityLogService>? logger = null,
+            WileyWidget.Business.Interfaces.IActivityLogRepository? repository = null)
         {
             _logger = logger;
+            _repository = repository;
         }
 
         /// <summary>
@@ -96,6 +105,21 @@ namespace WileyWidget.WinForms.Services
                     "[ACTIVITY_LOG] {Activity} | {Details} | Category: {Category} | Status: {Status}",
                     activity, details, category, status);
 
+                // Persist to database if repository available
+                if (_repository != null)
+                {
+                    try
+                    {
+                        await _repository.LogActivityAsync(entry);
+                        _logger?.LogDebug("Activity persisted to database: {Activity}", activity);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to persist activity to database: {Activity}", activity);
+                        // Continue - in-memory logging still works
+                    }
+                }
+
                 await Task.CompletedTask;
             }
             catch (Exception ex)
@@ -111,6 +135,22 @@ namespace WileyWidget.WinForms.Services
         public ObservableCollection<ActivityLog> GetRecentActivities()
         {
             return _activities;
+        }
+
+        /// <summary>
+        /// Gets the list of activity entries asynchronously.
+        /// </summary>
+        public async Task<System.Collections.Generic.List<ActivityLog>> GetActivityEntriesAsync()
+        {
+            try
+            {
+                return await Task.FromResult(new System.Collections.Generic.List<ActivityLog>(_activities));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to retrieve activity entries");
+                return new System.Collections.Generic.List<ActivityLog>(); // Return empty list instead of throwing
+            }
         }
 
         /// <summary>

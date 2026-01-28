@@ -84,8 +84,8 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
 
         // Load xAI configuration
         _apiKey = _configuration["XAI:ApiKey"];
-        _apiEndpoint = _configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1/chat/completions";
-        _model = _configuration["XAI:Model"] ?? "grok-beta";
+        _apiEndpoint = NormalizeChatCompletionsEndpoint(_configuration["XAI:Endpoint"]);
+        _model = _configuration["XAI:Model"] ?? "grok-4.1";
         _useGrokApi = !string.IsNullOrWhiteSpace(_apiKey) &&
                       _configuration.GetValue<bool>("XAI:Enabled", false);
 
@@ -473,7 +473,7 @@ The tool will return factors as multipliers (e.g., 1.15 for 15% increase) and a 
         try
         {
             // Quick health check with a simple request
-            var client = _httpClientFactory.CreateClient();
+            var client = _httpClientFactory.CreateClient("GrokClient");
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
             var testRequest = new
@@ -507,6 +507,22 @@ The tool will return factors as multipliers (e.g., 1.15 for 15% increase) and a 
 
         public void AddError(string error) => Errors.Add(error);
         public void AddWarning(string warning) => Warnings.Add(warning);
+    }
+
+    private static string NormalizeChatCompletionsEndpoint(string? endpoint)
+    {
+        var candidate = (endpoint ?? "https://api.x.ai/v1").Trim().TrimEnd('/');
+        if (candidate.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+        {
+            return candidate;
+        }
+
+        if (candidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate.Substring(0, candidate.Length - "/responses".Length);
+        }
+
+        return $"{candidate}/chat/completions";
     }
 
     /// <summary>

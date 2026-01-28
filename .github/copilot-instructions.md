@@ -624,8 +624,7 @@ Only ask for human input when:
 
 ## 📋 Workflow Pattern
 
-````
-
+```text
 1. Understand Request
    ↓
 2. Gather Context (read files, search, explore) - NO asking permission
@@ -635,8 +634,7 @@ Only ask for human input when:
 4. Execute (implement, test, validate) - All in one flow
    ↓
 5. Present Complete Result - Show what you did, not what you'll do
-
-```text
+```
 
 ## 🎯 Quality Standards (Still Apply)
 

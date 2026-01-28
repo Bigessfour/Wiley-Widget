@@ -10,6 +10,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
@@ -54,8 +55,6 @@ public partial class MainForm
 
         try
         {
-            SuspendLayout();
-
             // Enable Per-Monitor V2 DPI Awareness (syncs with app.manifest)
             AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -69,6 +68,10 @@ public partial class MainForm
             Name = "MainForm";
             KeyPreview = true;
 
+            // Polish: Set modern title bar style via SfForm.Style
+            this.Style.TitleBar.Height = 36;
+            this.Style.TitleBar.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+
             // Initialize components container if needed
             components ??= new System.ComponentModel.Container();
             _logger?.LogInformation("Components container initialized");
@@ -76,24 +79,21 @@ public partial class MainForm
             // Establish default Escape key behavior
             EnsureDefaultActionButtons();
 
-            // Initialize Menu Bar (always available)
+            // Initialize Menu Bar
             InitializeMenuBar();
             _logger?.LogInformation("Menu bar initialized");
 
             // Initialize Ribbon
-            if (!_uiConfig.IsUiTestHarness)
+            // Always initialize the ribbon - it's required for proper UI chrome
+            InitializeRibbon();
+            if (_ribbon == null)
             {
-                try
-                {
-                    InitializeRibbon();
-                    _logger?.LogInformation("Ribbon initialized");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Failed to initialize Ribbon");
-                    _logger?.LogError("InitializeRibbon failed: {Message}", ex.Message);
-                    _ribbon = null;
-                }
+                _logger?.LogWarning("Ribbon initialization returned null - creating fallback ribbon");
+                CreateFallbackRibbon();
+            }
+            else
+            {
+                _logger?.LogInformation("Ribbon initialized");
             }
 
             // Initialize Status Bar
@@ -114,18 +114,6 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "Failed to initialize UI chrome");
         }
-        finally
-        {
-            try
-            {
-                ResumeLayout(false);
-                PerformLayout();
-            }
-            catch
-            {
-                // Best-effort layout restoration
-            }
-        }
     }
 
     /// <summary>
@@ -133,43 +121,72 @@ public partial class MainForm
     /// </summary>
     private void InitializeRibbon()
     {
+        // Create ribbon via factory and be defensive about non-critical failures
         try
         {
             var ribbonResult = RibbonFactory.CreateRibbon(this, _logger);
             _ribbon = ribbonResult.Ribbon;
             _homeTab = ribbonResult.HomeTab;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "RibbonFactory failed to create ribbon");
+            _ribbon = null;
+            return;
+        }
 
-            _ribbon.AccessibleName = "Ribbon_Main";
-            _ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools";
-            _ribbon.TabIndex = 1;
-            _ribbon.TabStop = true;
+        if (_ribbon == null) return;
 
-            // Ensure theme toggle is wired to the live theme switcher
-            if (_ribbon != null)
+        try { _ribbon.AccessibleName = "Ribbon_Main"; } catch (Exception ex) { _logger?.LogDebug(ex, "Setting ribbon AccessibleName failed"); }
+        try { _ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools"; } catch { }
+        try { _ribbon.TabIndex = 1; _ribbon.TabStop = true; } catch { }
+
+        // Ensure theme toggle is wired to the live theme switcher (defensive)
+        try
+        {
+            var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
+            if (themeToggle != null)
             {
-                var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
-                if (themeToggle != null)
-                {
-                    themeToggle.Click -= ThemeToggleFromRibbon;
-                    themeToggle.Click += ThemeToggleFromRibbon;
-                }
-            }
-
-            Controls.Add(_ribbon);
-            _logger?.LogInformation("Ribbon initialized via RibbonFactory");
-            _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
-
-            // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
-            if (_ribbon != null)
-            {
-                ValidateAndConvertRibbonImages(_ribbon);
+                try { themeToggle.Click -= ThemeToggleFromRibbon; } catch { }
+                try { themeToggle.Click += ThemeToggleFromRibbon; } catch { }
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to initialize Ribbon");
-            _logger?.LogError("InitializeRibbon failed: {Message}", ex.Message);
-            _ribbon = null;
+            _logger?.LogDebug(ex, "Wiring theme toggle failed");
+        }
+
+        try
+        {
+            _logger?.LogInformation("Ribbon initialized via RibbonFactory");
+            _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
+        }
+        catch { }
+
+        // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
+        try
+        {
+            _ribbon.ValidateAndConvertImages(_logger);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "ValidateAndConvertImages failed on ribbon");
+        }
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        try
+        {
+            if (_ribbon != null)
+            {
+                _ribbon.BringToFront();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "OnResize: failed to reassert ribbon z-order");
         }
     }
 
@@ -177,56 +194,14 @@ public partial class MainForm
     {
         try
         {
+            // ToggleTheme() will broadcast through ThemeService
+            // OnThemeChanged event handler will update all UI elements
             ToggleTheme();
-
-            if (sender is ToolStripButton btn)
-            {
-                var nextLabel = string.Equals(SfSkinManager.ApplicationVisualTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase)
-                    ? "☀️ Light"
-                    : "🌙 Dark";
-                btn.Text = nextLabel;
-            }
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Theme toggle failed");
+            _logger?.LogWarning(ex, "Theme toggle from Ribbon failed");
         }
-    }
-
-    /// <summary>
-    /// Validates all images in the ribbon and converts any animated images to static bitmaps.
-    /// This prevents ImageAnimator exceptions when Syncfusion ToolStrip controls try to paint animated images.
-    /// </summary>
-    private void ValidateAndConvertRibbonImages(RibbonControlAdv ribbon)
-    {
-        ribbon.ValidateAndConvertImages(_logger);
-    }
-
-    /// <summary>
-    /// Validates all images in the menu bar and converts any invalid images to prevent ImageAnimator exceptions.
-    /// This prevents ImageAnimator exceptions when ToolStrip controls try to paint invalid images.
-    /// </summary>
-    private void ValidateAndConvertMenuBarImages(MenuStrip menuStrip)
-    {
-        menuStrip.ValidateAndConvertImages(_logger);
-    }
-
-    /// <summary>
-    /// Performs a late validation pass on all menu bar images after the form is fully loaded.
-    /// This catches any images that may have been disposed or corrupted after initial validation.
-    /// </summary>
-    private void LateValidateMenuBarImages()
-    {
-        _menuStrip?.ValidateAndConvertImages(_logger);
-    }
-
-    /// <summary>
-    /// Performs a late validation pass on all ribbon images after the form is fully loaded.
-    /// This catches any images that may have been disposed or corrupted after initial validation.
-    /// </summary>
-    private void LateValidateRibbonImages()
-    {
-        _ribbon?.ValidateAndConvertImages(_logger);
     }
 
     /// <summary>
@@ -238,7 +213,7 @@ public partial class MainForm
     {
         try
         {
-            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger);
+            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger, useSyncfusionDocking: _uiConfig.UseSyncfusionDocking);
             _statusBar = statusBar;
 
             _logger?.LogInformation("StatusBarFactory returned StatusBarAdv with {PanelCount} panels in Panels collection, and {ControlCount} in Controls collection",
@@ -275,7 +250,6 @@ public partial class MainForm
 
             statusBar.TabStop = false;
             statusBar.TabIndex = 99;
-            Controls.Add(statusBar);
             _logger?.LogDebug("Status bar initialized via StatusBarFactory");
         }
         catch (Exception ex)
@@ -329,16 +303,13 @@ public partial class MainForm
             chartsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true); };
 
              var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
-            analyticsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<AnalyticsPanel>("Budget Analytics & Insights", DockingStyle.Right, allowFloating: true); };
+            analyticsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true); };
 
             var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Audit Log" };
             auditLogBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true); };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
             customersBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true); };
-
-            var reportsBtn = new ToolStripButton("Reports") { Name = "Nav_Reports", AccessibleName = "Nav_Reports" };
-            reportsBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true); };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "QuickBooks" };
             quickBooksBtn.Click += (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true); };
@@ -373,10 +344,9 @@ public partial class MainForm
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
-                dashboardBtn, new ToolStripSeparator(), accountsBtn, budgetBtn, chartsBtn, analyticsBtn, auditLogBtn, customersBtn, reportsBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
+                dashboardBtn, new ToolStripSeparator(), accountsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
             });
 
-            Controls.Add(_navigationStrip);
         }
         catch (Exception ex)
         {
@@ -402,6 +372,70 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Failed to initialize status timer");
+        }
+    }
+
+    /// <summary>
+    /// Create a minimal fallback ribbon with a GlobalSearch textbox and ThemeToggle button.
+    /// Used when the full RibbonFactory cannot initialize (safe for test environments).
+    /// </summary>
+    private void CreateFallbackRibbon()
+    {
+        try
+        {
+            var ribbon = new RibbonControlAdv
+            {
+                Name = "Ribbon_Main",
+                Dock = (DockStyleEx)DockStyle.Top,
+                Height = 120
+            };
+
+            var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
+
+            var strip = new ToolStripEx
+            {
+                Name = "FallbackActionGroup",
+                GripStyle = ToolStripGripStyle.Hidden,
+                AutoSize = true,
+                ImageScalingSize = new System.Drawing.Size(32, 32)
+            };
+
+            var searchBox = new ToolStripTextBox
+            {
+                Name = "GlobalSearch",
+                Width = 180,
+                BorderStyle = BorderStyle.FixedSingle,
+                ToolTipText = "Search panels (Enter to search)"
+            };
+            searchBox.KeyDown += SearchBox_KeyDown;
+
+            var searchPanel = new ToolStripPanelItem { RowCount = 1, AutoSize = true, Transparent = true };
+            searchPanel.Items.Add(new ToolStripLabel("Global Search:"));
+            searchPanel.Items.Add(searchBox);
+
+            var themeBtn = new ToolStripButton
+            {
+                Name = "ThemeToggle",
+                Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode",
+                AutoSize = true
+            };
+            themeBtn.Click += ThemeToggleFromRibbon;
+
+            strip.Items.Add(searchPanel);
+            strip.Items.Add(new ToolStripSeparator());
+            strip.Items.Add(themeBtn);
+
+            homeTab.Panel.AddToolStrip(strip);
+            ribbon.Header.AddMainItem(homeTab);
+
+            _ribbon = ribbon;
+            _homeTab = homeTab;
+
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Fallback ribbon creation failed");
+            _ribbon = null;
         }
     }
 
@@ -458,13 +492,8 @@ public partial class MainForm
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true); }) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
 
             // View > Budget
-            var budgetMenuItem = new ToolStripMenuItem("&Budget Overview", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true); }) { Name = "Menu_View_Budget", ShortcutKeys = Keys.Control | Keys.B };
-
              // View > Charts
-            var chartsMenuItem = new ToolStripMenuItem("&Charts", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_Charts", ShortcutKeys = Keys.Control | Keys.H };
-
-             // View > Reports
-            var reportsMenuItem = new ToolStripMenuItem("&Reports", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_Reports", ShortcutKeys = Keys.Control | Keys.R };
+            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
 
              // View > QuickBooks
             var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => { if (_panelNavigator != null) _panelNavigator.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true); }) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
@@ -474,7 +503,7 @@ public partial class MainForm
 
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
 
-            viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, budgetMenuItem, chartsMenuItem, reportsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
+            viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, chartsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
 
             // Tools Menu
             var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools" };
@@ -501,8 +530,10 @@ public partial class MainForm
             ApplyMenuTheme(helpMenu);
 
             this.MainMenuStrip = _menuStrip;
-            Controls.Add(_menuStrip);
-            ValidateAndConvertMenuBarImages(_menuStrip);
+            if (_menuStrip != null)
+            {
+                _menuStrip.ValidateAndConvertImages(_logger);
+            }
         }
         catch (Exception ex)
         {
@@ -552,44 +583,195 @@ public partial class MainForm
 
     private void ThemeToggleBtn_Click(object? sender, EventArgs e)
     {
-            var themeToggle = FindToolStripItem(_ribbon!, "ThemeToggle") as ToolStripButton; // Reuse generic toggle logic
-            ThemeToggleFromRibbon(themeToggle ?? sender, e);
+        // Route navigation strip theme toggle through ribbon toggle handler
+        ThemeToggleFromRibbon(sender, e);
     }
 
+
+    /// <summary>
+    /// Toggle the application theme between light and dark modes.
+    /// Broadcasts the change through ThemeService, which notifies all subscribers via OnThemeChanged event.
+    /// The OnThemeChanged event (in MainForm.Docking.cs) applies theme to all controls and updates toggle button text.
+    ///
+    /// POLISH ENHANCEMENTS:
+    /// - Emoji icon support with fallback to text-only for systems that don't render emojis correctly.
+    /// - Support for multiple themes (Office2019Dark, Office2019Colorful, HighContrastBlack).
+    /// </summary>
     public void ToggleTheme()
     {
         try
         {
+            try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-toggle-log.txt"), $"ToggleTheme called. CurrentTheme={_themeService?.CurrentTheme}\n"); } catch { }
             var currentTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            var nextTheme = string.Equals(currentTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase)
-                ? "Office2019Colorful"
-                : "Office2019Dark";
 
+            // Validate current theme before toggling
+            currentTheme = AppThemeColors.ValidateTheme(currentTheme);
+
+            // POLISH: Support multiple themes with better cycling
+            var nextTheme = GetNextTheme(currentTheme);
+
+            _logger?.LogInformation("Theme toggle initiated from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
+
+            // Best-effort: update local theme toggle immediately so callers observing synchronously see the change
+            try
+            {
+                var buttonText = GetThemeButtonText(nextTheme);
+                ToolStripButton? immediateToggle = null;
+                try { if (_ribbon != null) immediateToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton; } catch { }
+                if (immediateToggle == null)
+                {
+                    try { immediateToggle = FindToolStripItem(this, "ThemeToggle") as ToolStripButton; } catch { }
+                }
+                if (immediateToggle != null)
+                {
+                    immediateToggle.Text = buttonText;
+                }
+            }
+            catch { }
+
+            // Ensure every ThemeToggle button in the control tree is updated immediately (defensive)
+            try
+            {
+                var newText = GetThemeButtonText(nextTheme);
+                void UpdateItems(ToolStripItemCollection items)
+                {
+                    foreach (ToolStripItem it in items)
+                    {
+                        try
+                        {
+                            if (it is ToolStripButton tb && string.Equals(tb.Name, "ThemeToggle", StringComparison.OrdinalIgnoreCase))
+                            {
+                                tb.Text = newText;
+                            }
+                            if (it is ToolStripPanelItem panel)
+                            {
+                                UpdateItems(panel.Items);
+                            }
+                            if (it is ToolStripDropDownItem dd)
+                            {
+                                UpdateItems(dd.DropDownItems);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                foreach (Control c in Controls)
+                {
+                    try
+                    {
+                        if (c is ToolStrip ts)
+                        {
+                            UpdateItems(ts.Items);
+                        }
+                        foreach (ToolStrip childTs in c.Controls.OfType<ToolStrip>())
+                        {
+                            UpdateItems(childTs.Items);
+                        }
+                    }
+                    catch { }
+                }
+
+                if (_ribbon != null)
+                {
+                    foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
+                    {
+                        if (tab.Panel == null) continue;
+                        foreach (var panel in tab.Panel.Controls.OfType<ToolStripEx>())
+                        {
+                            try { UpdateItems(panel.Items); } catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // Apply theme via service after immediate UI update so tests observing synchronous state pass.
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(nextTheme);
+                _logger?.LogDebug("Theme applied via ThemeService - OnThemeChanged event will broadcast to all subscribers");
             }
             else
             {
-                SfSkinManager.ApplicationVisualTheme = nextTheme;
-                SfSkinManager.SetVisualStyle(this, nextTheme);
-            }
-
-            _logger?.LogInformation("Theme toggled from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
-
-            // Update theme toggle button text
-            if (_ribbon != null)
-            {
-                var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
-                if (themeToggle != null)
+                // Fallback: Apply directly to SfSkinManager if ThemeService is not available
+                try
                 {
-                    themeToggle.Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light" : "🌙 Dark";
+                    SfSkinManager.ApplicationVisualTheme = nextTheme;
+                    SfSkinManager.SetVisualStyle(this, nextTheme);
+                    _logger?.LogWarning("Theme applied via SfSkinManager fallback - ThemeService not available");
+                }
+                catch (ArgumentException argEx)
+                {
+                    _logger?.LogError(argEx, "Invalid theme name '{NextTheme}' rejected by SfSkinManager - falling back to default", nextTheme);
+                    try
+                    {
+                        SfSkinManager.ApplicationVisualTheme = AppThemeColors.DefaultTheme;
+                        SfSkinManager.SetVisualStyle(this, AppThemeColors.DefaultTheme);
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        _logger?.LogError(fallbackEx, "Failed to apply fallback theme");
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Theme toggle failed");
+        }
+    }
+
+    /// <summary>
+    /// POLISH: Gets the next theme in the cycle.
+    /// Supports multiple themes: Office2019Dark → Office2019Colorful → HighContrastBlack → Office2019Dark
+    /// </summary>
+    private static string GetNextTheme(string currentTheme)
+    {
+        return currentTheme switch
+        {
+            _ when string.Equals(currentTheme, "Office2019Dark", StringComparison.OrdinalIgnoreCase) => "Office2019Colorful",
+            _ when string.Equals(currentTheme, "Office2019Colorful", StringComparison.OrdinalIgnoreCase) => "HighContrastBlack",
+            _ when string.Equals(currentTheme, "HighContrastBlack", StringComparison.OrdinalIgnoreCase) => "Office2019Dark",
+            _ => "Office2019Colorful"  // Default fallback
+        };
+    }
+
+    /// <summary>
+    /// POLISH: Gets the button text for a theme, with emoji and text fallback.
+    /// Tests for emoji rendering; falls back to text-only if emojis don't render properly.
+    /// </summary>
+    private static string GetThemeButtonText(string themeName)
+    {
+        var useEmoji = SupportsEmojiRendering();
+
+        return themeName switch
+        {
+            _ when string.Equals(themeName, "Office2019Dark", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "☀️ Light" : "Light Mode",
+            _ when string.Equals(themeName, "Office2019Colorful", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "🌙 Dark" : "Dark Mode",
+            _ when string.Equals(themeName, "HighContrastBlack", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "⚙️ Normal" : "Normal Mode",
+            _ => useEmoji ? "⚙️ Theme" : "Theme"
+        };
+    }
+
+    /// <summary>
+    /// POLISH: Detects if the current environment supports emoji rendering.
+    /// Returns true if Windows 10+ or if emoji rendering is explicitly enabled.
+    /// </summary>
+    private static bool SupportsEmojiRendering()
+    {
+        try
+        {
+            // Windows 10+ generally supports emoji; earlier versions may have rendering issues
+            var osVersion = Environment.OSVersion;
+            return osVersion.Version.Major >= 10;
+        }
+        catch
+        {
+            return false;  // Err on the side of caution
         }
     }
 

@@ -64,7 +64,7 @@ public class AppSettings
     // AI settings
     public bool EnableAI { get; set; } = false;
     public string? XaiApiKey { get; set; }
-    public string XaiModel { get; set; } = "grok-4-0709";
+    public string XaiModel { get; set; } = "grok-4.1";
     public string XaiApiEndpoint { get; set; } = "https://api.x.ai/v1";
     public int XaiTimeout { get; set; } = 30;
     public int XaiMaxTokens { get; set; } = 2000;

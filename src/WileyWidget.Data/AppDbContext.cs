@@ -49,6 +49,7 @@ namespace WileyWidget.Data
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
         public DbSet<TelemetryLog> TelemetryLogs { get; set; } = null!;
         public DbSet<global::WileyWidget.Services.Abstractions.ConversationHistory> ConversationHistories { get; set; } = null!;
+        public DbSet<TownOfWileyBudget2026> TownOfWileyBudgetData { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -58,6 +59,11 @@ namespace WileyWidget.Data
             }
 
             base.OnModelCreating(modelBuilder);
+
+            // Constants for seed data dates to reduce repetition
+            var fy2026Start = new DateTime(2025, 7, 1);
+            var fy2026End = new DateTime(2026, 6, 30);
+            var seedTimestamp = DateTime.UtcNow; // Use current time for CreatedAt/UpdatedAt instead of future dates
 
             // EF Core 10: Enable named default constraints for better migration control
             // modelBuilder.UseNamedDefaultConstraints(); // Commented out - requires EF Core 10+
@@ -239,6 +245,21 @@ namespace WileyWidget.Data
                 entity.Property(e => e.BudgetYearAmount).HasPrecision(19, 4);
                 entity.Property(e => e.IncDecLevy).HasPrecision(19, 4);
                 entity.Property(e => e.IncDecAmount).HasPrecision(19, 4);
+            });
+
+            // TownOfWileyBudget2026 configuration
+            modelBuilder.Entity<TownOfWileyBudget2026>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SourceFile).HasMaxLength(500);
+                entity.Property(e => e.FundOrDepartment).HasMaxLength(100);
+                entity.Property(e => e.AccountCode).HasMaxLength(20);
+                entity.Property(e => e.Description).HasMaxLength(200);
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.MappedDepartment).HasMaxLength(50);
+                entity.HasIndex(e => e.AccountCode);
+                entity.HasIndex(e => e.FundOrDepartment);
+                entity.HasIndex(e => e.MappedDepartment);
             });
 
             // New: BudgetInteraction relationships
@@ -424,29 +445,30 @@ namespace WileyWidget.Data
             );
 
             // Seed: FY 26 Proposed Budget - General Fund Revenues
+            // Note: FY 2026 runs from July 1, 2025 to June 30, 2026
             modelBuilder.Entity<BudgetEntry>().HasData(
                 // Intergovernmental Revenue
-                new BudgetEntry { Id = 1, AccountNumber = "332.1", Description = "Federal: Mineral Lease", FiscalYear = 2026, BudgetedAmount = 360m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 2, AccountNumber = "333.00", Description = "State: Cigarette Taxes", FiscalYear = 2026, BudgetedAmount = 240m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 3, AccountNumber = "334.31", Description = "Highways Users", FiscalYear = 2026, BudgetedAmount = 18153m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 4, AccountNumber = "313.00", Description = "Additional MV", FiscalYear = 2026, BudgetedAmount = 1775m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 5, AccountNumber = "337.17", Description = "County Road & Bridge", FiscalYear = 2026, BudgetedAmount = 1460m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
+                new BudgetEntry { Id = 1, AccountNumber = "332.1", Description = "Federal: Mineral Lease", FiscalYear = 2026, BudgetedAmount = 360m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = seedTimestamp, UpdatedAt = seedTimestamp, MunicipalAccountId = null, StartPeriod = fy2026Start, EndPeriod = fy2026End },
+                new BudgetEntry { Id = 2, AccountNumber = "333.00", Description = "State: Cigarette Taxes", FiscalYear = 2026, BudgetedAmount = 240m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 3, AccountNumber = "334.31", Description = "Highways Users", FiscalYear = 2026, BudgetedAmount = 18153m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 4, AccountNumber = "313.00", Description = "Additional MV", FiscalYear = 2026, BudgetedAmount = 1775m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 5, AccountNumber = "337.17", Description = "County Road & Bridge", FiscalYear = 2026, BudgetedAmount = 1460m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
                 // Other Revenue
-                new BudgetEntry { Id = 6, AccountNumber = "311.20", Description = "Senior Homestead Exemption", FiscalYear = 2026, BudgetedAmount = 1500m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 7, AccountNumber = "312.00", Description = "Specific Ownership Taxes", FiscalYear = 2026, BudgetedAmount = 5100m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 8, AccountNumber = "314.00", Description = "Tax A", FiscalYear = 2026, BudgetedAmount = 2500m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 9, AccountNumber = "319.00", Description = "Penalties & Interest on Delinquent Taxes", FiscalYear = 2026, BudgetedAmount = 35m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 10, AccountNumber = "336.00", Description = "Sales Tax", FiscalYear = 2026, BudgetedAmount = 120000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 11, AccountNumber = "318.20", Description = "Franchise Fee", FiscalYear = 2026, BudgetedAmount = 7058m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 12, AccountNumber = "322.70", Description = "Animal Licenses", FiscalYear = 2026, BudgetedAmount = 50m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 13, AccountNumber = "310.00", Description = "Charges for Services: WSD Collection Fee", FiscalYear = 2026, BudgetedAmount = 6000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 14, AccountNumber = "370.00", Description = "Housing Authority Mgt Fee", FiscalYear = 2026, BudgetedAmount = 12000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 15, AccountNumber = "373.00", Description = "Pickup Usage Fee", FiscalYear = 2026, BudgetedAmount = 2400m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 16, AccountNumber = "361.00", Description = "Miscellaneous Receipts: Interest Earnings", FiscalYear = 2026, BudgetedAmount = 325m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 17, AccountNumber = "365.00", Description = "Dividends", FiscalYear = 2026, BudgetedAmount = 100m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 18, AccountNumber = "363.00", Description = "Lease", FiscalYear = 2026, BudgetedAmount = 1100m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 19, AccountNumber = "350.00", Description = "Wiley Hay Days Donations", FiscalYear = 2026, BudgetedAmount = 10000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null },
-                new BudgetEntry { Id = 20, AccountNumber = "362.00", Description = "Donations", FiscalYear = 2026, BudgetedAmount = 2500m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null }
+                new BudgetEntry { Id = 6, AccountNumber = "311.20", Description = "Senior Homestead Exemption", FiscalYear = 2026, BudgetedAmount = 1500m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 7, AccountNumber = "312.00", Description = "Specific Ownership Taxes", FiscalYear = 2026, BudgetedAmount = 5100m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 8, AccountNumber = "314.00", Description = "Tax A", FiscalYear = 2026, BudgetedAmount = 2500m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 9, AccountNumber = "319.00", Description = "Penalties & Interest on Delinquent Taxes", FiscalYear = 2026, BudgetedAmount = 35m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 10, AccountNumber = "336.00", Description = "Sales Tax", FiscalYear = 2026, BudgetedAmount = 120000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 11, AccountNumber = "318.20", Description = "Franchise Fee", FiscalYear = 2026, BudgetedAmount = 7058m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 12, AccountNumber = "322.70", Description = "Animal Licenses", FiscalYear = 2026, BudgetedAmount = 50m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 13, AccountNumber = "310.00", Description = "Charges for Services: WSD Collection Fee", FiscalYear = 2026, BudgetedAmount = 6000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 14, AccountNumber = "370.00", Description = "Housing Authority Mgt Fee", FiscalYear = 2026, BudgetedAmount = 12000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 15, AccountNumber = "373.00", Description = "Pickup Usage Fee", FiscalYear = 2026, BudgetedAmount = 2400m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 16, AccountNumber = "361.00", Description = "Miscellaneous Receipts: Interest Earnings", FiscalYear = 2026, BudgetedAmount = 325m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 17, AccountNumber = "365.00", Description = "Dividends", FiscalYear = 2026, BudgetedAmount = 100m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 18, AccountNumber = "363.00", Description = "Lease", FiscalYear = 2026, BudgetedAmount = 1100m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 19, AccountNumber = "350.00", Description = "Wiley Hay Days Donations", FiscalYear = 2026, BudgetedAmount = 10000m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) },
+                new BudgetEntry { Id = 20, AccountNumber = "362.00", Description = "Donations", FiscalYear = 2026, BudgetedAmount = 2500m, DepartmentId = 1, FundId = 1, FundType = FundType.GeneralFund, IsGASBCompliant = true, CreatedAt = new DateTime(2025, 10, 28), UpdatedAt = new DateTime(2025, 10, 28), MunicipalAccountId = null, StartPeriod = new DateTime(2025, 7, 1), EndPeriod = new DateTime(2026, 6, 30) }
             );
 
             // Seed: Default AppSettings row so code that expects Id=1 has a baseline

@@ -2276,86 +2276,140 @@ pwsh ./scripts/setup-license.ps1
 
 WileyWidget implements a **comprehensive multi-layer testing strategy**:
 
-#### **Unit Tests** (`WileyWidget.Tests/`)
+#### **Unit Tests** (`WileyWidget.Tests/` & `WileyWidget.WinForms.Tests/`)
 
-- Framework: xUnit 2.9.2 + Moq 4.20.70
-- Coverage: Business logic, ViewModels, Services
-- Execution: <100ms per test
-- Target: 80% line coverage
+- **Framework**: xUnit 2.9.2 + Moq 4.20.70 + FluentAssertions 7.0.0
+- **Coverage**: Business logic, ViewModels, Services, UI components
+- **Execution**: <100ms per test
+- **Target**: >80% code coverage for Windows Forms layer
 
-**Key Test Files:**
+**Test Files by Category:**
 
-- `MainViewModelTests.cs` - Main application logic
-- `AIAssistViewModelTests.cs` - AI features
-- `EnterpriseRepositoryTests.cs` - Data access
+| Category          | Files                                                          | Target Coverage |
+| ----------------- | -------------------------------------------------------------- | --------------- |
+| **Forms**         | `DockingTests.cs`, `MainFormTests.cs`, `RibbonFactoryTests.cs` | 85%             |
+| **ViewModels**    | `MainViewModelTests.cs`, `DashboardViewModelTests.cs`          | 80%             |
+| **Services**      | `ThemeServiceTests.cs`, `ChatBridgeServiceTests.cs`            | 80%             |
+| **UI Components** | `GradientPanelExtTests.cs`, `ScopedPanelBaseTests.cs`          | 75%             |
+| **Docking**       | `DockingTests.cs` (NEW: Paint bug regression tests)            | 85%             |
 
-#### **Integration Tests** (`WileyWidget.IntegrationTests/`)
+**UI Testing Focus (NEW on Polish Branch):**
 
-- Framework: xUnit + TestContainers 4.2.0
-- Coverage: Database operations, EF Core relationships
-- Execution: <30 seconds with isolated SQL Server instances
-- Target: All critical database paths
+- ✅ `DockingManager_MaintainsNonEmptyChildCollection_PreventsPaintException()` - Paint race condition
+- ✅ `DockingInitializer_CreatesControlsBeforeSuspendingLayout_AvoidsPaintRaceCondition()` - Layout initialization
+- ✅ `RibbonFactory_EnsuresNonEmptyHeaderItems_PreventsPaintException()` - Ribbon paint safety
+- ✅ `DockingManager_HandlesVisibilityToggle_MaintainsNonEmptyState()` - State preservation
+
+#### **Integration Tests** (`WileyWidget.WinForms.Tests/Integration/`)
+
+- **Framework**: xUnit + TestContainers 4.2.0
+- **Coverage**: Database operations, EF Core relationships, external API mocking
+- **Execution**: <30 seconds with isolated SQL Server instances
+- **Target**: 100% critical database paths
 
 **Test Categories:**
 
 - Relationship tests (foreign keys, cascades)
-- Performance tests (query optimization)
+- Performance benchmarks (query optimization)
 - Concurrency tests (multi-user scenarios)
 - Migration tests (schema changes)
 
-#### **UI Tests** (`WileyWidget.UiTests/`)
+#### **End-to-End Tests** (`WileyWidget.WinForms.E2ETests/`)
 
-- Framework: xUnit + FlaUI 4.0.0
-- Coverage: Form interactions, DataGrid operations, dialogs
-- Execution: 3-8 minutes with automated cleanup
-- Target: Critical user workflows
+- **Framework**: xUnit + Playwright/Selenium
+- **Coverage**: Full user workflows: Budget import → QuickBooks sync → Dashboard view
+- **Execution**: 5-15 minutes with screenshot capture on failure
+- **Target**: 100% critical user paths
 
-**Test Types:**
+**E2E Test Scenarios:**
 
-- Component tests (individual controls)
-- Workflow tests (multi-step scenarios)
-- Accessibility tests (keyboard navigation)
-- Theme tests (UI consistency)
+- User login → Budget data import → QBO sync → Report generation
+- Theme switching → Responsive resize → Docking layout persistence
+- JARVIS chat interaction → Message history → Real-time updates
+
+### Test Coverage Goals & Metrics
+
+#### **Coverage Targets (by Layer)**
+
+| Layer                   | Current | Target | Owner          | Status                               |
+| ----------------------- | ------- | ------ | -------------- | ------------------------------------ |
+| **Windows Forms Core**  | 0%      | 85%    | @UI Team       | 🟡 In Progress (Docking tests added) |
+| **Syncfusion Controls** | 0%      | 75%    | @UI Team       | 🟡 In Progress                       |
+| **Blazor Integration**  | 0%      | 80%    | @Chat Team     | 🔴 TODO                              |
+| **ViewModels**          | ~60%    | 85%    | @Logic Team    | 🟢 On Track                          |
+| **Services**            | ~70%    | 85%    | @Services Team | 🟢 On Track                          |
+| **Repositories**        | ~80%    | 90%    | @Data Team     | 🟢 On Track                          |
+| **Overall Codebase**    | 62%     | >80%   | All Teams      | 🟡 In Progress                       |
+
+#### **Computation of Metrics**
+
+Coverage is computed and reported in `ai-fetchable-manifest.json`:
+
+```json
+{
+  "metrics": {
+    "total_lines_of_code": 50342,
+    "total_code_lines": 38521,
+    "total_comment_lines": 7234,
+    "total_blank_lines": 4587,
+    "average_complexity": 4.2,
+    "test_coverage_percent": 62.0,
+    "test_count": 427,
+    "project_metrics": {
+      "windows_forms_complexity": 4.2,
+      "docking_factories_analyzed": true,
+      "estimated_code_to_test_ratio": 90.2
+    }
+  }
+}
+```
+
+**Generation**: Run `python scripts/generate-ai-manifest.py` after tests to update metrics.
 
 ### Running Tests
 
-````powershell
-# Run all tests
+```powershell
+# Run ALL tests (unit, integration, E2E)
 dotnet test WileyWidget.sln
 
-```text
-WileyWidget/            # App
-WileyWidget.Tests/      # Unit tests
-WileyWidget.UiTests/    # Placeholder UI harness
-scripts/                # build.ps1
-.github/workflows/      # ci.yml, release.yml
-CHANGELOG.md / RELEASE_NOTES.md
+# Run only unit tests (fast, <5 seconds)
+dotnet test tests/WileyWidget.Tests/ tests/WileyWidget.WinForms.Tests/Unit/
+
+# Run UI-specific tests (DockingTests, FormTests, etc.)
+dotnet test tests/WileyWidget.WinForms.Tests/Unit/Forms/ --verbosity normal
+
+# Run with coverage collection
+dotnet test WileyWidget.sln `
+  /p:CollectCoverage=true `
+  /p:CoverageFormat=opencover `
+  /p:Exclude="[*Tests]*,[*Test*]*"
+
+# Generate HTML coverage report
+reportgenerator `
+  -reports:"**/coverage.opencover.xml" `
+  -targetdir:"CoverageReport" `
+  -reporttypes:"Html;HtmlSummary"
+
+# Run filtered tests (by category/namespace)
+dotnet test --filter "FullyQualifiedName~DockingTests"
+
+# Run E2E tests only (requires WebDriver, slow)
+RUN_E2E_TESTS=1 dotnet test tests/WileyWidget.WinForms.E2ETests/
+
+# Watch mode (re-run on save)
+dotnet watch test tests/WileyWidget.WinForms.Tests/Unit/Forms/DockingTests.cs
 ```
-
-# Run with coverage
-
-dotnet test WileyWidget.sln --collect:"XPlat Code Coverage"
-
-# Run filtered tests
-
-dotnet test --filter "Category=Unit"
-
-# Run UI tests only
-
-RUN_UI_TESTS=1 dotnet test WileyWidget.UiTests/
-
-# Generate coverage report
-
-dotnet test WileyWidget.sln --collect:"XPlat Code Coverage"
-reportgenerator -reports:\*\*/coverage.cobertura.xml -targetdir:CoverageReport -reporttypes:Html
-
-````
 
 ### Coverage Target
 
-**Minimum Coverage:** 70% (enforced in CI/CD)
-**Target Coverage:** 85% for business-critical code
-**Measurement:** Code coverage collected via XPlat Code Coverage
+| Metric               | Minimum | Target | Owner            |
+| -------------------- | ------- | ------ | ---------------- |
+| **Line Coverage**    | 70%     | >80%   | CI/CD (enforced) |
+| **Branch Coverage**  | 60%     | >75%   | Code Review      |
+| **Windows Forms UI** | 50%     | 85%    | UI Team (NEW)    |
+| **Critical Paths**   | 100%    | 100%   | Feature Owner    |
+
+**Enforcement**: CI/CD pipeline fails if overall coverage drops below 70% or critical path coverage < 100%.
 
 ### Continuous Integration
 

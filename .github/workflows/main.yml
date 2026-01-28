@@ -10,17 +10,21 @@ on:
 
 permissions:
   contents: read
-  pull-requests:  write
+  pull-requests: write
+
+concurrency:
+  group: grok-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   grok-review:
-    name:  Grok-powered PR Review
+    name: Grok-powered PR Review
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: github.event_name == 'pull_request'
 
     steps:
-      - name:  Checkout PR
+      - name: Checkout PR
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Full history for proper diff
@@ -29,10 +33,10 @@ jobs:
         id: diff
         run: |
           BASE_SHA=${{ github.event.pull_request.base.sha }}
-          HEAD_SHA=${{ github.event. pull_request.head.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
 
           DIFF=$(git diff $BASE_SHA..$HEAD_SHA -- \
-            'src/**/*. cs' 'tests/**/*.cs' \
+            'src/**/*.cs' 'tests/**/*.cs' \
             --unified=3 \
             --diff-filter=ACMTU 2>/dev/null | head -20000)
 
@@ -59,13 +63,13 @@ jobs:
             echo "✓ XAI_API_KEY found"
           fi
 
-      - name:  Notify if API key missing
+      - name: Notify if API key missing
         if: steps.check_key.outputs.has_key == 'false'
         uses: actions/github-script@v7
         with:
           script: |
             github.rest.issues.createComment({
-              issue_number: context. issue.number,
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '⚠️ **Grok review skipped**: `XAI_API_KEY` secret not configured in repository settings.\n\nTo enable Grok reviews, add your xAI API key at: Settings → Secrets and variables → Actions → New repository secret'
@@ -76,7 +80,7 @@ jobs:
         id: prompt
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github. event.pull_request.body }}"
+          PR_BODY="${{ github.event.pull_request.body }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
 
           DIFF=$(cat /tmp/pr.diff)
@@ -88,18 +92,18 @@ jobs:
 
           # Full static prompt - tailored for Wiley-Widget (Syncfusion WinForms)
           PROMPT=$(cat << 'EOF'
-You are a senior code reviewer for the Wiley-Widget project: a . NET 10 Windows Forms municipal dashboard using Syncfusion controls (v30+), SfSkinManager as the single source of truth for theming (Office2019Colorful default), and strict MCP filesystem rules.
+You are a senior code reviewer for the Wiley-Widget project: a .NET 10 Windows Forms municipal dashboard using Syncfusion controls (v32.1.19), SfSkinManager as the single source of truth for theming (Office2019Colorful default), and strict MCP filesystem rules.
 
 Review ONLY the changed code in the provided diff. Focus on:
-- Theme consistency: NO manual Color.FromArgb, BrushInfo, or per-control styling.  All colors/theme must come from SfSkinManager or IThemeService.
-- Syncfusion API usage: Correct properties, events, and docking (SetDockLabel, ThemeName inheritance).
-- Testability: ViewModels should expose interfaces for mocking; avoid parameterless ctor issues in Moq.
-- WinForms best practices: Proper disposal, no blocking calls, STA-friendly.
-- Security/secrets: No hard-coded keys or paths. 
-- Performance: Avoid heavy ops in UI thread.
-- General: Clean, modern C# (.NET 10 features encouraged).
+- **Theme consistency**: NO manual Color.FromArgb, BrushInfo, or per-control styling. All colors/theme must come from SfSkinManager or IThemeService.
+- **Syncfusion API usage**: Correct properties, events, and docking (SetDockLabel, ThemeName inheritance).
+- **Testability**: ViewModels should expose interfaces for mocking; avoid parameterless ctor issues in Moq.
+- **WinForms best practices**: Proper disposal, no blocking calls, STA-friendly.
+- **Security/secrets**: No hard-coded keys or paths.
+- **Performance**: Avoid heavy ops in UI thread.
+- **General**: Clean, modern C# (.NET 10 features encouraged).
 
-Be concise but specific. Use markdown. Start with overall verdict (LGTM / Needs work), then bullet points.  End with approval status.
+Be concise but specific. Use markdown. Start with overall verdict (LGTM / Needs work), then bullet points. End with approval status.
 EOF
 )
 
@@ -117,18 +121,18 @@ EOF
       "content": $ESCAPED_PROMPT
     },
     {
-      "role":  "user",
-      "content":  "PR Title: $PR_TITLE\nAuthor:  @$PR_AUTHOR\n\nDiff:\n$ESCAPED_DIFF"
+      "role": "user",
+      "content": "PR Title: $PR_TITLE\nAuthor: @$PR_AUTHOR\n\nDiff:\n$ESCAPED_DIFF"
     }
   ],
-  "temperature":  0.5,
+  "temperature": 0.5,
   "max_tokens": 2048
 }
 EOF
 
           echo "prompt_prepared=true" >> $GITHUB_OUTPUT
 
-      - name:  Call Grok API
+      - name: Call Grok API
         if: steps.check_key.outputs.has_key == 'true'
         id: grok
         env:
@@ -150,7 +154,7 @@ EOF
             ERROR_MSG=$(echo "$BODY" | jq -r '.error.message // "Unknown API error"')
             echo "grok_error=true" >> $GITHUB_OUTPUT
             echo "grok_error_msg=$ERROR_MSG" >> $GITHUB_OUTPUT
-            echo ":: error:: Grok API error: $ERROR_MSG"
+            echo "::error::Grok API error: $ERROR_MSG"
             exit 1
           fi
 
@@ -159,7 +163,7 @@ EOF
           echo "grok_success=true" >> $GITHUB_OUTPUT
 
       - name: Post review as PR comment
-        if:  steps.grok.outputs.grok_success == 'true'
+        if: steps.grok.outputs.grok_success == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -170,7 +174,7 @@ EOF
 ${review}
 
 ---
-*Generated by Grok (xAI) • Model: grok-beta • Workflow: \`grok-code-review.yml\`*`;
+*Generated by Grok (xAI) • Model: grok-beta • Workflow: \`main.yml\`*`;
             
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -184,8 +188,8 @@ ${review}
         uses: actions/github-script@v7
         with: 
           script: |
-            const errMsg = '${{ steps.grok.outputs.grok_error_msg || 'Unknown error during Grok review' }}';
-            await github.rest.issues. createComment({
+            const errMsg = '${{ steps.grok.outputs.grok_error_msg || "Unknown error during Grok review" }}';
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,

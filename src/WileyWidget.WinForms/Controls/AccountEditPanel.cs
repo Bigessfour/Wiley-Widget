@@ -36,12 +36,31 @@ namespace WileyWidget.WinForms.Controls
     /// - Validation: ErrorProvider with field mapping, cross-thread safe
     /// - Lifecycle: Proper Dispose cleanup, event handler tracking, IsBusy/HasUnsavedChanges
     /// </summary>
-    public partial class AccountEditPanel : ScopedPanelBase<AccountsViewModel>
+    public partial class AccountEditPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        [System.ComponentModel.DefaultValue(null)]
+        public new AccountsViewModel? ViewModel
+        {
+            get => (AccountsViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         /// <summary>
         /// Gets the dialog result after save/cancel operations.
         /// </summary>
         public DialogResult SaveDialogResult { get; private set; } = DialogResult.None;
+
+        /// <summary>
+        /// Event raised when the save operation completes successfully.
+        /// </summary>
+        public event EventHandler? SaveCompleted;
+
+        /// <summary>
+        /// Event raised when the cancel operation is requested.
+        /// </summary>
+        public event EventHandler? CancelRequested;
 
         // === UI CONTROLS ===
         private Label? lblTitle = null;
@@ -98,7 +117,7 @@ namespace WileyWidget.WinForms.Controls
         /// For new account creation, use the DI constructor.
         /// For editing, create via DI and call SetExistingAccount() to configure.
         /// </summary>
-        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<AccountsViewModel>> logger)
+        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
             _existingAccount = null;
@@ -346,6 +365,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
+                RowCount = 11, // Title + 9 fields + button panel
                 AutoSize = false,
                 Padding = new Padding(16)
             };
@@ -354,9 +374,20 @@ namespace WileyWidget.WinForms.Controls
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            int rowIndex = 0;
+            // Set row styles: Absolute for fixed heights, Percent for button panel
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // Title
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Account Number
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Name
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 85)); // Description
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Department
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Fund
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Type
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Balance
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Budget
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Active
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50)); // Button Panel
 
-            // === TITLE ROW ===
+            // === TITLE ROW (Row 0) ===
             lblTitle = new Label
             {
                 Text = _isNew ? "Create New Account" : "Edit Account",
@@ -367,12 +398,10 @@ namespace WileyWidget.WinForms.Controls
                 Margin = new Padding(0, 0, 0, 10),
                 // Theme cascade handles Font/Color - do NOT override
             };
-            _mainLayout.Controls.Add(lblTitle, 0, rowIndex);
+            _mainLayout.Controls.Add(lblTitle, 0, 0);
             _mainLayout.SetColumnSpan(lblTitle, 2);
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-            rowIndex++;
 
-            // === ACCOUNT NUMBER ===
+            // === ACCOUNT NUMBER (Row 1) ===
             lblAccountNumber = new Label
             {
                 Text = "Account Number:",
@@ -381,7 +410,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblAccountNumber, 0, rowIndex);
+            _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
 
             txtAccountNumber = new TextBoxExt
             {
@@ -395,12 +424,10 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 1,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(txtAccountNumber, 1, rowIndex);
+            _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
             _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === NAME ===
+            // === NAME (Row 2) ===
             lblName = new Label
             {
                 Text = "Account Name:",
@@ -409,7 +436,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblName, 0, rowIndex);
+            _mainLayout.Controls.Add(lblName, 0, 2);
 
             txtName = new TextBoxExt
             {
@@ -422,12 +449,10 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 2,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(txtName, 1, rowIndex);
+            _mainLayout.Controls.Add(txtName, 1, 2);
             _toolTip.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === DESCRIPTION (multiline) ===
+            // === DESCRIPTION (Row 3) ===
             lblDescription = new Label
             {
                 Text = "Description:",
@@ -436,7 +461,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblDescription, 0, rowIndex);
+            _mainLayout.Controls.Add(lblDescription, 0, 3);
 
             txtDescription = new TextBoxExt
             {
@@ -452,12 +477,10 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 3,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(txtDescription, 1, rowIndex);
+            _mainLayout.Controls.Add(txtDescription, 1, 3);
             _toolTip.SetToolTip(txtDescription, "Optional detailed description");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 85));
-            rowIndex++;
 
-            // === DEPARTMENT ===
+            // === DEPARTMENT (Row 4) ===
             lblDepartment = new Label
             {
                 Text = "Department:",
@@ -466,7 +489,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblDepartment, 0, rowIndex);
+            _mainLayout.Controls.Add(lblDepartment, 0, 4);
 
             cmbDepartment = new SfComboBox
             {
@@ -479,12 +502,10 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 4,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(cmbDepartment, 1, rowIndex);
+            _mainLayout.Controls.Add(cmbDepartment, 1, 4);
             _toolTip.SetToolTip(cmbDepartment, "Select owning department");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === FUND ===
+            // === FUND (Row 5) ===
             lblFund = new Label
             {
                 Text = "Fund:",
@@ -493,7 +514,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblFund, 0, rowIndex);
+            _mainLayout.Controls.Add(lblFund, 0, 5);
 
             cmbFund = new SfComboBox
             {
@@ -506,12 +527,10 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 5,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(cmbFund, 1, rowIndex);
+            _mainLayout.Controls.Add(cmbFund, 1, 5);
             _toolTip.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === TYPE ===
+            // === TYPE (Row 6) ===
             lblType = new Label
             {
                 Text = "Type:",
@@ -520,7 +539,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblType, 0, rowIndex);
+            _mainLayout.Controls.Add(lblType, 0, 6);
 
             cmbType = new SfComboBox
             {
@@ -533,12 +552,10 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 6,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(cmbType, 1, rowIndex);
+            _mainLayout.Controls.Add(cmbType, 1, 6);
             _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === BALANCE (Currency) ===
+            // === BALANCE (Row 7) ===
             lblBalance = new Label
             {
                 Text = "Current Balance:",
@@ -547,7 +564,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblBalance, 0, rowIndex);
+            _mainLayout.Controls.Add(lblBalance, 0, 7);
 
             numBalance = new SfNumericTextBox
             {
@@ -564,12 +581,10 @@ namespace WileyWidget.WinForms.Controls
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat
             };
-            _mainLayout.Controls.Add(numBalance, 1, rowIndex);
+            _mainLayout.Controls.Add(numBalance, 1, 7);
             _toolTip.SetToolTip(numBalance, "Current account balance");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === BUDGET (Currency) ===
+            // === BUDGET (Row 8) ===
             lblBudget = new Label
             {
                 Text = "Budget Amount:",
@@ -578,7 +593,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 10, 5)
             };
-            _mainLayout.Controls.Add(lblBudget, 0, rowIndex);
+            _mainLayout.Controls.Add(lblBudget, 0, 8);
 
             numBudget = new SfNumericTextBox
             {
@@ -595,12 +610,10 @@ namespace WileyWidget.WinForms.Controls
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat
             };
-            _mainLayout.Controls.Add(numBudget, 1, rowIndex);
+            _mainLayout.Controls.Add(numBudget, 1, 8);
             _toolTip.SetToolTip(numBudget, "Budgeted amount for this account");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === ACTIVE CHECKBOX ===
+            // === ACTIVE (Row 9) ===
             lblActive = new Label
             {
                 Text = " ",
@@ -608,7 +621,7 @@ namespace WileyWidget.WinForms.Controls
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0)
             };
-            _mainLayout.Controls.Add(lblActive, 0, rowIndex);
+            _mainLayout.Controls.Add(lblActive, 0, 9);
 
             chkActive = new CheckBoxAdv
             {
@@ -622,17 +635,13 @@ namespace WileyWidget.WinForms.Controls
                 TabIndex = 9,
                 ThemeName = themeName
             };
-            _mainLayout.Controls.Add(chkActive, 1, rowIndex);
+            _mainLayout.Controls.Add(chkActive, 1, 9);
             _toolTip.SetToolTip(chkActive, "Indicates whether this account is currently active");
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
-            rowIndex++;
 
-            // === BUTTON PANEL (stretches to bottom) ===
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            // === BUTTON PANEL (Row 10) ===
             _buttonPanel = new Panel
             {
-                Dock = DockStyle.Bottom,
-                Height = 50,
+                Dock = DockStyle.Fill,
                 Padding = new Padding(0, 10, 0, 0)
             };
 
@@ -670,8 +679,10 @@ namespace WileyWidget.WinForms.Controls
             btnCancel.Click += _cancelHandler;
             _buttonPanel.Controls.Add(btnCancel);
 
+            _mainLayout.Controls.Add(_buttonPanel, 0, 10);
+            _mainLayout.SetColumnSpan(_buttonPanel, 2);
+
             Controls.Add(_mainLayout);
-            Controls.Add(_buttonPanel);
 
             ResumeLayout(false);
             PerformLayout();
@@ -875,13 +886,8 @@ namespace WileyWidget.WinForms.Controls
                 SetHasUnsavedChanges(false);
                 SaveDialogResult = DialogResult.OK;
 
-                // Set parent form result and close
-                var parent = this.FindForm();
-                if (parent != null)
-                {
-                    parent.DialogResult = DialogResult.OK;
-                    parent.Close();
-                }
+                // Raise save completed event instead of directly closing form
+                SaveCompleted?.Invoke(this, EventArgs.Empty);
 
                 Logger?.LogInformation("AccountEditPanel: Account saved successfully - {AccountNumber}", _editModel.AccountNumber);
             }
@@ -919,12 +925,8 @@ namespace WileyWidget.WinForms.Controls
         private void Cancel()
         {
             SaveDialogResult = DialogResult.Cancel;
-            var parent = this.FindForm();
-            if (parent != null)
-            {
-                parent.DialogResult = DialogResult.Cancel;
-                parent.Close();
-            }
+            // Raise cancel requested event instead of directly closing form
+            CancelRequested?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>

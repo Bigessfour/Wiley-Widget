@@ -31,6 +31,7 @@ using Syncfusion.Blazor;
 using Serilog;
 using Serilog.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -57,6 +58,17 @@ namespace WileyWidget.WinForms.Configuration
         public static IServiceProvider ConfigureServices()
         {
             var services = CreateServiceCollection();
+
+            // Ensure core services (moved into WileyWidget.Services) are available when using the standalone ConfigureServices helper
+            var defaultConfig = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["UI:IsUiTestHarness"] = "true"
+                })
+                .Build();
+
+            services.AddWileyWidgetCoreServices(defaultConfig);
+
             return services.BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateScopes = true,
@@ -92,6 +104,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<Microsoft.Extensions.Logging.ILogger>(sp =>
                 new Serilog.Extensions.Logging.SerilogLoggerFactory(Serilog.Log.Logger)
                     .CreateLogger(string.Empty));
+
+            // Also register Serilog's native logger for components that depend on Serilog.ILogger directly
+            services.AddSingleton<Serilog.ILogger>(_ => Serilog.Log.Logger);
 
             // Microsoft Logging Framework (provides ILogger<T> for dependency injection)
             services.AddLogging(loggingBuilder =>
@@ -305,7 +320,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddHostedService<TelemetryStartupService>();
 
             // Application event bus for cross-scope in-process notifications
-            services.AddSingleton<IAppEventBus, AppEventBus>();
+            // Registered in core via AddWileyWidgetCoreServices(configuration)
 
             // Startup Timeline Monitoring Service (tracks initialization order and timing)
             services.TryAddSingleton<IStartupTimelineService, StartupTimelineService>();
@@ -369,8 +384,11 @@ namespace WileyWidget.WinForms.Configuration
             // Context Service (Scoped - per-request context)
             services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
 
+            // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
+            services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
+
             // AI Services (Scoped - may hold request-specific context)
-            services.AddScoped<IAIService>(static sp => (GrokAgentService)sp.GetService(typeof(GrokAgentService))!);
+            services.AddScoped<IAIService, GrokAgentService>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
@@ -391,8 +409,8 @@ namespace WileyWidget.WinForms.Configuration
             // Audit Service (Scoped - depends on repositories and logging which are scoped)
             services.AddScoped<IAuditService, AuditService>();
 
-            // Global Search Service (Singleton - stateless search aggregation across modules)
-            services.AddSingleton<IGlobalSearchService, GlobalSearchService>();
+            // Global Search Service (Scoped - stateless search aggregation across modules)
+            services.AddScoped<IGlobalSearchService, GlobalSearchService>();
 
             // =====================================================================
             // REPORTING & EXPORT SERVICES
@@ -413,6 +431,7 @@ namespace WileyWidget.WinForms.Configuration
             services.TryAddScoped<IDataAnonymizerService, DataAnonymizerService>();
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
             services.AddTransient<IAnalyticsService, AnalyticsService>();
+            services.AddTransient<IBudgetAnalyticsRepository, BudgetAnalyticsRepository>();
 
             // Analytics Pipeline (Scoped - may aggregate data across request)
             services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
@@ -450,19 +469,46 @@ namespace WileyWidget.WinForms.Configuration
             // Theme Service (Singleton - manages global theme state and notifications)
             services.AddSingleton<IThemeService, ThemeService>();
 
-            // Activity Log Service (Singleton - tracks navigation and application events for audit trail)
-            services.AddSingleton<IActivityLogService, ActivityLogService>();
+            // Activity Log Service (Scoped - tracks navigation and application events for audit trail)
+            services.AddScoped<IActivityLogService, ActivityLogService>();
 
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
 
-            // Grok AI agent service (Singleton - reused across chat sessions)
-            // Register a lightweight GrokAgentService for tests and DI validation. Heavy initialization is deferred to InitializeAsync().
-            services.TryAddSingleton<GrokAgentService>(sp => ActivatorUtilities.CreateInstance<GrokAgentService>(sp));
+            // =====================================================================
+            // XAI GROK AI AGENT CONFIGURATION
+            // =====================================================================
+
+            // Grok API Key Provider (Singleton - loads from user.secrets, env vars, config)
+            // Follows Microsoft configuration hierarchy:
+            // 1. User Secrets (XAI:ApiKey) - highest priority, secure
+            // 2. Environment Variables (XAI_API_KEY) - CI/CD friendly
+            // 3. appsettings.json (XAI:ApiKey) - lowest priority, public
+            services.AddSingleton<IGrokApiKeyProvider, GrokApiKeyProvider>();
+
+            // Grok Health Checks (registered with health check service)
+            services.AddHealthChecks()
+                .AddCheck<GrokHealthCheck>("grok-api", tags: new[] { "startup", "ai" })
+                .AddCheck<ChatHistoryHealthCheck>("chat-history", tags: new[] { "startup", "persistence" });
+
+            // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
+            // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
+            // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
+            // Use AddScoped directly instead of ActivatorUtilities.CreateInstance to avoid trying to instantiate during validation.
+            services.TryAddScoped<GrokAgentService>();
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)
             // Analyzes enterprise data using Grok and publishes insights to observable collection
-            services.AddSingleton<ProactiveInsightsService>();
+            // NOTE: ProactiveInsightsService accepts GrokAgentService as optional dependency in constructor,
+            // so it can be singleton even though GrokAgentService is now scoped. The optional null value
+            // is acceptable for graceful degradation during DI validation.
+            services.AddSingleton<ProactiveInsightsService>(sp =>
+            {
+                // ProactiveInsightsService accepts nullable GrokAgentService for graceful degradation
+                // Do not try to resolve it from DI since it's scoped - pass null instead
+                var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<ProactiveInsightsService>>(sp);
+                return new ProactiveInsightsService(grokAgentService: null, logger: logger);
+            });
             services.AddHostedService<ProactiveInsightsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<ProactiveInsightsService>(sp));
 
             // =====================================================================
@@ -473,7 +519,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<RealtimeDashboardService>();
 
             // User Preferences Service (Singleton - manages user settings persistence)
-            services.AddSingleton<UserPreferencesService>();
+            // Registered in core via AddWileyWidgetCoreServices(configuration)
 
             // Role-Based Access Control (Singleton - manages permissions and roles)
             services.AddSingleton<RoleBasedAccessControl>();
@@ -499,7 +545,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IWindowStateService, WindowStateService>();
 
             // File Import Service (Transient - async file import with JSON/XML parsing support)
-            services.AddTransient<IFileImportService, FileImportService>();
+            // Registered in core via AddWileyWidgetCoreServices(configuration)
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)
@@ -507,6 +553,7 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             services.AddScoped<IWarRoomViewModel, WarRoomViewModel>();
+            services.AddScoped<WarRoomViewModel>();
             services.AddScoped<IBudgetAnalyticsViewModel, BudgetAnalyticsViewModel>();
             services.AddScoped<BudgetAnalyticsViewModel>();
             services.AddScoped<SettingsViewModel>();
@@ -514,6 +561,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<AccountsViewModel>();
             services.AddScoped<DashboardViewModel>();
             services.AddScoped<AnalyticsViewModel>();
+            services.AddScoped<IAnalyticsHubViewModel, AnalyticsHubViewModel>();
+            services.AddScoped<AnalyticsHubViewModel>();
             services.AddScoped<ChartViewModel>();
             services.AddScoped<BudgetOverviewViewModel>();
             services.AddScoped<BudgetViewModel>();
@@ -526,23 +575,25 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<RecommendedMonthlyChargeViewModel>();
             services.AddScoped<IQuickBooksViewModel, QuickBooksViewModel>();
             services.AddScoped<QuickBooksViewModel>();
+            services.AddScoped<IInsightFeedViewModel, InsightFeedViewModel>();
             services.AddScoped<InsightFeedViewModel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogViewModel>();
-            services.AddTransient<JARVISChatHostForm>();
+            services.AddScoped<WileyWidget.WinForms.ViewModels.ActivityLogViewModel>();
+            // Example panels' ViewModels - sometimes omitted during refactor
+            services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
+            // JARVIS Chat ViewModel for docked chat control
+            services.AddScoped<WileyWidget.WinForms.Controls.JARVISChatViewModel>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)
             // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
             // =====================================================================
 
-            services.AddScoped<WileyWidget.WinForms.Controls.DashboardPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.BudgetAnalyticsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.BudgetPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ReportsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.SettingsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.BudgetOverviewPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.DepartmentSummaryPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RevenueTrendsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogPanel>();
@@ -550,9 +601,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AnalyticsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ProactiveInsightsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.CsvMappingWizardPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)

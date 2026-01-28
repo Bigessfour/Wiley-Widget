@@ -8,6 +8,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Services
@@ -102,6 +103,10 @@ namespace WileyWidget.WinForms.Services
         private readonly Control _parentControl; // Usually MainForm or central document container
         private readonly IServiceProvider _serviceProvider;
         private readonly Dictionary<string, UserControl> _cachedPanels = new();
+        private readonly UI.Helpers.PanelAnimationHelper _animationHelper;
+
+        // Map panels to their DockStateChanged handlers so we can unsubscribe cleanly when panels are disposed/removed
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<UserControl, Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler> _dockEventHandlers = new();
 
         /// <summary>
         /// Tracks the currently active panel name for ribbon button highlighting.
@@ -117,18 +122,14 @@ namespace WileyWidget.WinForms.Services
         {
             { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
             { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
-            { typeof(BudgetAnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 460), new Size(480, 420)) },
-            { typeof(BudgetOverviewPanel), new PanelSizing(new Size(540, 0), new Size(0, 420), new Size(480, 360)) },
-            { typeof(AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
+            { typeof(WileyWidget.WinForms.Controls.Analytics.AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
+            { typeof(AnalyticsHubPanel), new PanelSizing(new Size(600, 0), new Size(0, 500), new Size(500, 450)) },
             { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
-            { typeof(ReportsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
-            { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(WarRoomPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(460, 380)) },
             { typeof(QuickBooksPanel), new PanelSizing(new Size(620, 0), new Size(0, 400), new Size(540, 360)) },
-            { typeof(BudgetPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(DepartmentSummaryPanel), new PanelSizing(new Size(540, 0), new Size(0, 400), new Size(440, 360)) },
             { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
-            { typeof(RevenueTrendsPanel), new PanelSizing(new Size(560, 0), new Size(0, 440), new Size(460, 380)) },
+            { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
             { typeof(CustomersPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
         };
@@ -149,9 +150,11 @@ namespace WileyWidget.WinForms.Services
             ILogger<PanelNavigationService> logger)
         {
             _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager), "DockingManager must be initialized before PanelNavigationService construction.");
+            // No global subscription here; per-panel subscriptions are added when the panel is docked. (Keep handler registration localized.)
             _parentControl = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _animationHelper = new UI.Helpers.PanelAnimationHelper(logger);
 
             Logger.LogDebug("PanelNavigationService initialized with non-null DockingManager");
             }
@@ -174,6 +177,46 @@ namespace WileyWidget.WinForms.Services
         {
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            // If called from a non-UI thread or before the handle exists, marshal the call to the UI thread.
+            if (_parentControl.InvokeRequired || !_parentControl.IsHandleCreated)
+            {
+                try
+                {
+                    // Use BeginInvoke only when parent control is valid and not disposed
+                    if (!_parentControl.IsDisposed)
+                    {
+                        if (_parentControl.IsHandleCreated)
+                        {
+                            _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                            return;
+                        }
+
+                        // If no handle yet, defer until handle creation to avoid cross-thread access.
+                        EventHandler? handleCreatedHandler = null;
+                        handleCreatedHandler = (s, e) =>
+                        {
+                            _parentControl.HandleCreated -= handleCreatedHandler;
+                            try
+                            {
+                                ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogWarning(ex, "Deferred ShowPanel failed after handle creation for panel {PanelName}", panelName);
+                            }
+                        };
+                        _parentControl.HandleCreated += handleCreatedHandler;
+                        Logger.LogDebug("ShowPanel deferred until parent handle is created for panel {PanelName}", panelName);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log and continue on current thread if marshalling fails for any reason
+                    Logger.LogWarning(ex, "Failed to marshal ShowPanel to UI thread for panel {PanelName}", panelName);
+                }
+            }
 
             try
             {
@@ -235,13 +278,27 @@ namespace WileyWidget.WinForms.Services
             // which have already marshalled execution via InvokeAsync
             ApplyCaptionSettings(existingPanel, panelName, allowFloating);
             _dockingManager.SetDockVisibility(existingPanel, true);
-            try { existingPanel.BringToFront(); } catch { }
-            _dockingManager.ActivateControl(existingPanel);
+            try
+            {
+                // Ensure the control is visible and rendered immediately
+                existingPanel.Visible = true;
+                try { existingPanel.BringToFront(); } catch { }
+                _dockingManager.ActivateControl(existingPanel);
+                existingPanel.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to force existing panel visibility/refresh (non-critical)");
+            }
+
             ApplyPanelTheme(existingPanel);
 
             // Track active panel and raise event for ribbon button highlighting
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
+
+            // POLISH: Announce panel visibility change to screen readers
+            AnnounceForAccessibility(existingPanel, $"{panelName} panel is now visible");
 
             Logger.LogDebug("Activated existing panel: {PanelName}", panelName);
             Logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
@@ -364,17 +421,44 @@ namespace WileyWidget.WinForms.Services
             {
                 _dockingManager.SetDockVisibility(panel, true);
                 _dockingManager.ActivateControl(panel);
+
+                // POLISH: Apply fade-in animation on panel show
+                _animationHelper.FadeIn(panel, durationMs: 200);
             }
             catch (Exception visEx)
             {
                 Logger.LogDebug(visEx, "Failed to set visibility/activation (non-critical)");
             }
 
+            // Ensure the panel is visible and refreshed after docking
+            try
+            {
+                panel.Visible = true;
+                try { panel.BringToFront(); } catch { }
+                panel.Refresh();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to force panel visibility/refresh (non-critical)");
+            }
+
             // Subscribe to DockStateChanged event to verify panel rendering
             // This replaces the Thread.Sleep(250) hack with proper event-driven synchronization
             try
             {
-                _dockingManager.DockStateChanged += (sender, e) => OnDockStateChanged(panel, panelName);
+                // Create a typed handler and store it so we can unsubscribe later
+                Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler handler = (sender, e) => OnDockStateChanged(panel, panelName);
+                _dockEventHandlers[panel] = handler;
+                _dockingManager.DockStateChanged += handler;
+
+                // Ensure we remove the handler if the panel is disposed
+                panel.Disposed += (s, e) =>
+                {
+                    if (_dockEventHandlers.TryRemove(panel, out var existing))
+                    {
+                        try { _dockingManager.DockStateChanged -= existing; } catch { }
+                    }
+                };
             }
             catch (Exception eventEx)
             {
@@ -491,6 +575,24 @@ namespace WileyWidget.WinForms.Services
             {
                 Logger.LogDebug(ex, "SetCloseButtonVisibility failed (non-critical)");
             }
+
+            try
+            {
+                _dockingManager.SetAutoHideButtonVisibility(panel, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetAutoHideButtonVisibility failed (non-critical)");
+            }
+
+            try
+            {
+                _dockingManager.SetMenuButtonVisibility(panel, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetMenuButtonVisibility failed (non-critical)");
+            }
         }
 
         public void Dispose()
@@ -520,6 +622,16 @@ namespace WileyWidget.WinForms.Services
                 }
 
                 Logger.LogInformation("Disposed {Count} cached panels", _cachedPanels.Count);
+
+                // Dispose animation helper
+                try
+                {
+                    _animationHelper?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Exception disposing animation helper (continuing)");
+                }
             }
             finally
             {
@@ -642,8 +754,7 @@ namespace WileyWidget.WinForms.Services
 
             if (_parentControl.InvokeRequired)
             {
-                _parentControl.Invoke(new System.Action(() => HidePanel(panelName)));
-                return false;
+                return (bool)_parentControl.Invoke(new Func<bool>(() => HidePanel(panelName)));
             }
 
             if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
@@ -673,6 +784,31 @@ namespace WileyWidget.WinForms.Services
             }
             // Return the currently active panel name (or null if none)
             return _activePanelName;
+        }
+
+        /// <summary>
+        /// POLISH: Announces a message to screen readers via AccessibleName update.
+        /// This provides accessibility feedback when panel visibility changes occur.
+        /// </summary>
+        /// <param name="control">The control to announce from.</param>
+        /// <param name="announcementText">The text to announce to screen readers.</param>
+        private void AnnounceForAccessibility(Control control, string announcementText)
+        {
+            if (control == null || string.IsNullOrWhiteSpace(announcementText))
+            {
+                return;
+            }
+
+            try
+            {
+                // WinForms accessibility: Update AccessibleName to trigger screen reader announcement
+                control.AccessibleName = announcementText;
+                Logger.LogDebug("Accessibility announcement: {Text}", announcementText);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to announce accessibility message (non-critical)");
+            }
         }
     }
 

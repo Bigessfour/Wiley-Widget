@@ -20,6 +20,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls;
 
@@ -47,8 +48,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     private Panel? _summaryPanel;
     private Panel? _chartPanel;
     private Panel? _buttonPanel;
-    private SplitContainer? _mainSplitContainer;
-    private SplitContainer? _leftSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
+    private SplitContainerAdv? _leftSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -94,7 +95,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("RecommendedMonthlyChargePanel load cancelled");
+            _logger?.LogDebug("RecommendedMonthlyChargePanel load cancelled");
         }
         catch (Exception ex)
         {
@@ -120,7 +121,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("RecommendedMonthlyChargePanel save cancelled");
+            _logger?.LogDebug("RecommendedMonthlyChargePanel save cancelled");
         }
         catch (Exception ex)
         {
@@ -166,7 +167,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("RecommendedMonthlyChargePanel validation cancelled");
+            _logger?.LogDebug("RecommendedMonthlyChargePanel validation cancelled");
             return WileyWidget.WinForms.Controls.ValidationResult.Failed(new WileyWidget.WinForms.Controls.ValidationItem("Cancelled", "Validation was cancelled", WileyWidget.WinForms.Controls.ValidationSeverity.Info));
         }
         catch (Exception ex)
@@ -193,9 +194,13 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider.
     /// </summary>
-    protected override void OnViewModelResolved(RecommendedMonthlyChargeViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not RecommendedMonthlyChargeViewModel)
+        {
+            return;
+        }
         BindViewModel();
         ApplyCurrentTheme();
     }
@@ -411,7 +416,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Main Split Container - Left (Grids) | Right (Chart)
         // ============================================================================
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
@@ -422,7 +427,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Left Split Container - Top (Departments) | Bottom (Benchmarks)
         // ============================================================================
-        _leftSplitContainer = new SplitContainer
+        _leftSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -831,13 +836,13 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             case nameof(ViewModel.Departments):
                 UpdateChart();
                 if (_departmentsGrid != null)
-                    _departmentsGrid.Refresh();
+                    _departmentsGrid.SafeInvoke(() => _departmentsGrid.Refresh());
                 UpdateNoDataOverlay();
                 break;
 
             case nameof(ViewModel.Benchmarks):
                 if (_benchmarksGrid != null)
-                    _benchmarksGrid.Refresh();
+                    _benchmarksGrid.SafeInvoke(() => _benchmarksGrid.Refresh());
                 break;
 
             case nameof(ViewModel.RecommendationExplanation):
@@ -862,7 +867,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     {
         if (_noDataOverlay == null || ViewModel == null) return;
         var hasData = ViewModel.Departments.Any();
-        _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading;
+        if (!_noDataOverlay.IsDisposed)
+            _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading);
     }
 
     private void UpdateChart()
@@ -874,6 +880,12 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
                 _chartControl.Series.Clear();
                 _chartControl.Refresh();
             }
+            return;
+        }
+
+        if (_chartControl.InvokeRequired)
+        {
+            _chartControl.SafeInvoke(() => UpdateChart());
             return;
         }
 
@@ -956,7 +968,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            Logger?.LogInformation("Data refresh cancelled");
+            Logger?.LogDebug("Data refresh cancelled");
             UpdateStatus("Refresh cancelled");
         }
         catch (Exception ex)
@@ -988,7 +1000,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
         catch (OperationCanceledException)
         {
-            Logger?.LogInformation("AI query cancelled");
+            Logger?.LogDebug("AI query cancelled");
             UpdateStatus("AI query cancelled");
         }
         catch (Exception ex)
@@ -1002,10 +1014,15 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        this.InvokeIfRequired(() =>
         {
-            _statusLabel.Text = message ?? "Ready";
-        }
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    _statusLabel.Text = message ?? "Ready";
+            }
+            catch { }
+        });
     }
 
     private void EnableControls(bool enabled)
@@ -1156,3 +1173,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     #endregion
 }
+
+
+

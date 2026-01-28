@@ -20,14 +20,44 @@ namespace WileyWidget.WinForms.Themes
     {
         // Theme name for Syncfusion v31.2.15+ (configurable via appsettings.json UI:Theme)
         // Per Syncfusion documentation, use SfSkinManager.ApplicationVisualTheme for global theming
-        // Available themes: "Office2019White", "Office2019Black", "Office2019DarkGray", "FluentLight", "FluentDark", "MaterialLight", "MaterialDark"
+        // Available themes: "Office2019White", "Office2019Black", "Office2019DarkGray"
+        // Note: "Fluent" and "Material" themes require additional NuGet packages (Syncfusion.FluentTheme.WinForms, etc.)
+        // which are not currently installed. To use them, install the packages and update this list.
         // To change theme: Edit appsettings.json UI:Theme property OR set BEFORE InitializeComponent() in Program.Main()
         public const string DefaultTheme = "Office2019White";
+
+        /// <summary>
+        /// Valid theme names for validation.
+        /// </summary>
+        private static readonly string[] ValidThemes = new[]
+        {
+            "Office2019Colorful",
+            "Office2019White",
+            "Office2019Black",
+            "Office2019DarkGray",
+            "Office2019Dark",
+            "Default"
+        };
 
         /// <summary>
         /// Gets the currently active theme name, falling back to DefaultTheme when not set.
         /// </summary>
         public static string CurrentTheme => SfSkinManager.ApplicationVisualTheme ?? DefaultTheme;
+
+        /// <summary>
+        /// Validates a theme name against the list of supported themes.
+        /// Returns the input theme if valid, otherwise returns DefaultTheme.
+        /// </summary>
+        public static string ValidateTheme(string themeName)
+        {
+            if (string.IsNullOrWhiteSpace(themeName))
+                return DefaultTheme;
+
+            if (System.Array.Exists(ValidThemes, t => string.Equals(t, themeName, System.StringComparison.OrdinalIgnoreCase)))
+                return themeName;
+
+            return DefaultTheme;
+        }
 
         /// <summary>
         /// DEPRECATED: Custom color properties removed. Use SFSkinManager themes exclusively.
@@ -90,7 +120,7 @@ namespace WileyWidget.WinForms.Themes
         {
             if (form == null) return;
 
-            var theme = themeName ?? DefaultTheme;
+            var theme = ValidateTheme(themeName ?? DefaultTheme);
 
             try
             {
@@ -101,13 +131,29 @@ namespace WileyWidget.WinForms.Themes
                 // Per Syncfusion: "SetVisualStyle on window applies theme to ALL controls inside it"
                 // Theme cascade - form already has SetVisualStyle applied in Program.cs
 
-                Serilog.Log.Debug("SfSkinManager applied '{Theme}' to form '{FormName}' (auto-cascade to all children)",
-                    theme, form.Name);
+                try
+                {
+                    Serilog.Log.Debug("SfSkinManager applied '{Theme}' to form '{FormName}' (auto-cascade to all children)",
+                        theme, form.Name);
+                }
+                catch (Exception logEx)
+                {
+                    // Suppress logging errors - don't fail theme application
+                    System.Diagnostics.Debug.WriteLine($"ThemeColors.ApplyTheme: Logging failed: {logEx.Message}");
+                }
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "SfSkinManager failed to apply {Theme} theme to form {FormName}",
-                    theme, form.Name);
+                try
+                {
+                    Serilog.Log.Error(ex, "SfSkinManager failed to apply {Theme} theme to form {FormName}",
+                        theme, form.Name);
+                }
+                catch (Exception logEx)
+                {
+                    // Suppress logging errors
+                    System.Diagnostics.Debug.WriteLine($"ThemeColors.ApplyTheme: Error logging failed: {logEx.Message}");
+                }
 
                 // Minimal fallback - let form use default rendering
                 try
@@ -135,7 +181,14 @@ namespace WileyWidget.WinForms.Themes
             catch (Exception ex)
             {
                 // Assembly may already be loaded (not an error)
-                Serilog.Log.Debug(ex, "Office2019Theme assembly load skipped (may already be loaded)");
+                try
+                {
+                    Serilog.Log.Debug(ex, "Office2019Theme assembly load skipped (may already be loaded)");
+                }
+                catch
+                {
+                    System.Diagnostics.Debug.WriteLine($"ThemeColors.EnsureThemeAssemblyLoaded: Logging failed: {ex.Message}");
+                }
             }
         }
 

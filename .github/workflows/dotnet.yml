@@ -2,33 +2,115 @@ name: .NET Build & Test
 
 on:
   push:
-    branches: [main, upgrade-to-NET10]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 permissions:
   contents: read
   checks: write
 
+concurrency:
+  group: dotnet-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test:
+    name: Build & Test Suite
     runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 45
 
-      - name: Setup .NET
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x # Or your target
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore WileyWidget.sln --verbosity minimal
 
-      - name: Build
-        run: dotnet build --no-restore -c Release
+      - name: Build (Release)
+        run: dotnet build WileyWidget.sln --no-restore --configuration Release --verbosity minimal
 
-      - name: Test
-        run: dotnet test --no-build -c Release --verbosity normal --collect:"XPlat Code Coverage" # Since 600+ tests
+      - name: Run all tests with code coverage
+        shell: pwsh
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+        run: |
+          dotnet test WileyWidget.sln `
+            --no-build `
+            --configuration Release `
+            --verbosity normal `
+            --collect:"XPlat Code Coverage" `
+            --logger "trx;LogFileName=test-results.trx" `
+            --results-directory ./TestResults
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Tests failed" -ForegroundColor Red
+            exit 1
+          }
 
-      - name: Upload coverage (optional)
-        uses: codecov/codecov-action@v4
+      - name: Generate coverage report
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          # Install coverage report generator
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+
+          # Generate HTML report from coverage data
+          reportgenerator `
+            -reports:"./TestResults/**/coverage.cobertura.xml" `
+            -targetdir:"./coverage" `
+            -reporttypes:"Html" `
+            -assemblyfilters:"+WileyWidget*"
+
+          Write-Host "✅ Coverage report generated" -ForegroundColor Green
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_id }}
+          path: ./TestResults
+          retention-days: 7
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_id }}
+          path: ./coverage
+          retention-days: 7
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: ./TestResults/**/*.trx
+          check_name: Test Results
+          comment_mode: always
+
+      - name: Report build status
+        shell: pwsh
+        if: success()
+        run: |
+          Write-Host "✅ Build & test suite passed" -ForegroundColor Green
+          Write-Host "📊 Coverage report: ./coverage/index.html" -ForegroundColor Cyan
+
+      - name: Report build failure
+        shell: pwsh
+        if: failure()
+        run: |
+          Write-Host "❌ Build or tests failed" -ForegroundColor Red
+          exit 1

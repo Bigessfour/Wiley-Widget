@@ -33,6 +33,9 @@ public class NullAIService : IAIService
     public Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
         => Task.FromResult(new AIResponseResult("Sent prompt failed: AI unavailable.", 503, "Unavailable"));
 
+    public Task<string> GetChatCompletionAsync(string prompt, CancellationToken cancellationToken = default)
+        => Task.FromResult("AI services are currently unavailable.");
+
     public async IAsyncEnumerable<string> StreamResponseAsync(string prompt, string? systemMessage = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         yield return "AI ";

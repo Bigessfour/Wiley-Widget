@@ -76,8 +76,8 @@ public class XAIService : IAIService, IDisposable
         Console.WriteLine($"[XAISERVICE DEBUG] Config type = {configuration.GetType().FullName}");
 
         _enabled = bool.Parse(configuration["XAI:Enabled"] ?? "false");
-        _endpoint = configuration["XAI:Endpoint"] ?? "https://api.x.ai/v1/responses";
-        _model = configuration["XAI:Model"] ?? "grok-4";
+        _endpoint = NormalizeResponsesEndpoint(configuration["XAI:Endpoint"]);
+        _model = configuration["XAI:Model"] ?? "grok-4.1";
         _temperature = double.Parse(configuration["XAI:Temperature"] ?? "0.3", CultureInfo.InvariantCulture);
         _maxTokens = int.Parse(configuration["XAI:MaxTokens"] ?? "800", CultureInfo.InvariantCulture);
 
@@ -177,6 +177,22 @@ public class XAIService : IAIService, IDisposable
         question = SanitizeInput(question);
     }
 
+    private static string NormalizeResponsesEndpoint(string? endpoint)
+    {
+        var candidate = (endpoint ?? "https://api.x.ai/v1").Trim().TrimEnd('/');
+        if (candidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
+        {
+            return candidate;
+        }
+
+        if (candidate.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate.Substring(0, candidate.Length - "/chat/completions".Length);
+        }
+
+        return $"{candidate}/responses";
+    }
+
     /// <summary>
     /// Get AI insights for the provided context and question
     /// </summary>
@@ -231,7 +247,7 @@ public class XAIService : IAIService, IDisposable
             _aiLoggingService.LogQuery(question, $"{context} | {systemContext}", _model);
 
             // Get JARVIS system prompt and append context
-            var baseSystemPrompt = _jarvisPersonality?.GetSystemPrompt() 
+            var baseSystemPrompt = _jarvisPersonality?.GetSystemPrompt()
                 ?? "You are a helpful AI assistant for a municipal utility management application called Wiley Widget.";
             var finalSystemPrompt = $"{baseSystemPrompt} System Context: {systemContext}. Context: {context}";
 
@@ -407,6 +423,24 @@ public class XAIService : IAIService, IDisposable
             {
                 _concurrencySemaphore.Release();
             }
+        }
+    }
+
+    /// <summary>
+    /// Return a single non-streaming chat completion. Delegates to GetInsightsAsync for now.
+    /// </summary>
+    public async Task<string> GetChatCompletionAsync(string prompt, CancellationToken cancellationToken = default)
+    {
+        // Use a short context for chat-style completions
+        try
+        {
+            return await GetInsightsAsync("ChatCompletion", prompt, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _aiLoggingService.LogError(prompt, ex);
+            _logger.LogError(ex, "GetChatCompletionAsync failed");
+            return $"Error: {ex.Message}";
         }
     }
 
@@ -938,7 +972,7 @@ public class XAIService : IAIService, IDisposable
         }
 
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, _endpoint);
-        
+
         var messages = new System.Collections.Generic.List<object>();
         if (!string.IsNullOrEmpty(systemMessage))
         {
@@ -959,7 +993,7 @@ public class XAIService : IAIService, IDisposable
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
         using var response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             yield return $"Error: {response.StatusCode}";

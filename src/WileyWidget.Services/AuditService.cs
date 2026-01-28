@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Logging;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
@@ -24,11 +25,9 @@ namespace WileyWidget.Services
         public AuditService(ILogger<AuditService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            // Use root logs folder for centralized logging
-            var projectRoot = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)?.Parent?.Parent?.Parent?.FullName ?? AppDomain.CurrentDomain.BaseDirectory;
-            var logs = Path.Combine(projectRoot, "logs");
-            Directory.CreateDirectory(logs);
-            _auditPath = Path.Combine(logs, "audit.log");
+            // Use workspace logs folder for centralized logging
+            var logsDirectory = LogPathResolver.GetLogsDirectory();
+            _auditPath = Path.Combine(logsDirectory, "audit.log");
         }
 
         public Task AuditAsync(string eventName, object details, CancellationToken cancellationToken = default)

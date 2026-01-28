@@ -345,6 +345,13 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
+                // Validate data before export
+                if (grid.View?.Records?.Count == 0)
+                {
+                    MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
                 using var save = new SaveFileDialog
                 {
                     Filter = filter,
@@ -543,7 +550,7 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Notifies a panel's ViewModel of visibility changes to trigger lazy data loading.
-        /// If the panel's ViewModel implements ILazyLoadViewModel, calls OnVisibilityChangedAsync.
+        /// If the panel or its ViewModel implements ILazyLoadViewModel, calls OnVisibilityChangedAsync.
         /// </summary>
         /// <param name="control">The panel control to notify.</param>
         private async Task NotifyPanelVisibilityChangedAsync(Control control)
@@ -552,6 +559,16 @@ namespace WileyWidget.WinForms.Forms
             {
                 if (control == null || control.IsDisposed)
                 {
+                    return;
+                }
+
+                var isVisible = _dockingManager?.GetDockVisibility(control) ?? control.Visible;
+
+                // First check if the control itself implements ILazyLoadViewModel (e.g., WarRoomPanel)
+                if (control is WileyWidget.Abstractions.ILazyLoadViewModel controlLazyViewModel)
+                {
+                    _logger?.LogDebug("Notifying {PanelType} (control) visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
+                    await controlLazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(false);
                     return;
                 }
 
@@ -566,9 +583,8 @@ namespace WileyWidget.WinForms.Forms
                 // Check if ViewModel implements ILazyLoadViewModel
                 if (dataContext is WileyWidget.Abstractions.ILazyLoadViewModel lazyViewModel)
                 {
-                    var isVisible = _dockingManager?.GetDockVisibility(control) ?? control.Visible;
-                    _logger?.LogDebug("Notifying {PanelType} visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
-                    await lazyViewModel.OnVisibilityChangedAsync(isVisible);
+                    _logger?.LogDebug("Notifying {PanelType} (ViewModel) visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
+                    await lazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(false);
                 }
             }
             catch (Exception ex)

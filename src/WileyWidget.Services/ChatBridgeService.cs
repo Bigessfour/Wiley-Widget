@@ -71,22 +71,30 @@ public class ChatBridgeService : IChatBridgeService
     /// </summary>
     public Task SubmitPromptAsync(string prompt, string? conversationId = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(prompt))
+        try
         {
-            _logger.LogWarning("Attempted to submit empty prompt");
+            if (string.IsNullOrWhiteSpace(prompt))
+            {
+                _logger.LogWarning("Attempted to submit empty prompt");
+                return Task.CompletedTask;
+            }
+
+            _logger.LogInformation("Prompt submitted: {PromptLength} characters (ConversationId: {ConversationId})", prompt.Length, conversationId ?? "N/A");
+
+            var args = new ChatPromptSubmittedEventArgs
+            {
+                Prompt = prompt,
+                ConversationId = conversationId
+            };
+            PromptSubmitted?.Invoke(this, args);
+
             return Task.CompletedTask;
         }
-
-        _logger.LogInformation("Prompt submitted: {PromptLength} characters (ConversationId: {ConversationId})", prompt.Length, conversationId ?? "N/A");
-
-        var args = new ChatPromptSubmittedEventArgs
+        catch (Exception ex)
         {
-            Prompt = prompt,
-            ConversationId = conversationId
-        };
-        PromptSubmitted?.Invoke(this, args);
-
-        return Task.CompletedTask;
+            _logger.LogError(ex, "Failed to submit prompt");
+            throw;
+        }
     }
 
     /// <summary>

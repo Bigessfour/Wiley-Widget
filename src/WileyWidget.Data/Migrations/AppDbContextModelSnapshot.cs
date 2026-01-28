@@ -17,7 +17,7 @@ namespace WileyWidget.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "10.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -95,6 +95,10 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationFont")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("AutoSaveIntervalMinutes")
                         .HasColumnType("int");
@@ -290,6 +294,7 @@ namespace WileyWidget.Data.Migrations
                         new
                         {
                             Id = 1,
+                            ApplicationFont = "Segoe UI, 9pt",
                             AutoSaveIntervalMinutes = 5,
                             CacheExpirationMinutes = 30,
                             CurrencyFormat = "USD",
@@ -485,12 +490,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Federal: Mineral Lease",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -504,12 +509,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "State: Cigarette Taxes",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -523,12 +528,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Highways Users",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -542,12 +547,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Additional MV",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -561,12 +566,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "County Road & Bridge",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -580,12 +585,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Senior Homestead Exemption",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -599,12 +604,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Specific Ownership Taxes",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -618,12 +623,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Tax A",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -637,12 +642,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Penalties & Interest on Delinquent Taxes",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -656,12 +661,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Sales Tax",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -675,12 +680,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Franchise Fee",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -694,12 +699,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Animal Licenses",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -713,12 +718,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Charges for Services: WSD Collection Fee",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -732,12 +737,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Housing Authority Mgt Fee",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -751,12 +756,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Pickup Usage Fee",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -770,12 +775,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Miscellaneous Receipts: Interest Earnings",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -789,12 +794,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Dividends",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -808,12 +813,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Lease",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -827,12 +832,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Wiley Hay Days Donations",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         },
@@ -846,12 +851,12 @@ namespace WileyWidget.Data.Migrations
                             DepartmentId = 1,
                             Description = "Donations",
                             EncumbranceAmount = 0m,
-                            EndPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            EndPeriod = new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             FiscalYear = 2026,
                             FundId = 1,
                             FundType = 1,
                             IsGASBCompliant = true,
-                            StartPeriod = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Variance = 0m
                         });
@@ -2185,40 +2190,62 @@ namespace WileyWidget.Data.Migrations
                     b.ToTable("TelemetryLogs");
                 });
 
-            modelBuilder.Entity("WileyWidget.Services.Abstractions.ConversationHistory", b =>
+            modelBuilder.Entity("WileyWidget.Models.TownOfWileyBudget2026", b =>
                 {
-                    b.Property<string>("ConversationId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("MessageCount")
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("MessagesJson")
-                        .IsRequired()
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AccountCode")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<decimal?>("ActualYTD")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
 
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                    b.Property<decimal?>("BudgetYear")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
 
-                    b.HasKey("ConversationId");
+                    b.Property<string>("Category")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.HasIndex("UpdatedAt");
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.ToTable("ConversationHistories", (string)null);
+                    b.Property<decimal?>("EstimateCurrentYr")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("FundOrDepartment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MappedDepartment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PercentOfBudget")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PriorYearActual")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal?>("Remaining")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal?>("SevenMonthActual")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("SourceFile")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TownOfWileyBudgetData");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Transaction", b =>
@@ -2577,6 +2604,41 @@ namespace WileyWidget.Data.Migrations
                             IsActive = true,
                             Name = "Trail Builders LLC"
                         });
+                });
+
+            modelBuilder.Entity("WileyWidget.Services.Abstractions.ConversationHistory", b =>
+                {
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MessageCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MessagesJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("ConversationHistories", (string)null);
                 });
 
             modelBuilder.Entity("WileyWidget.Models.BudgetEntry", b =>

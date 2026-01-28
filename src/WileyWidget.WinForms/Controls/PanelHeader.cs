@@ -6,24 +6,34 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Controls
 {
     /// <summary>
     /// Shared header used by docked panels.
-    /// Provides a consistent title bar with actions: Refresh, Pin and Close.
+    /// Provides a consistent title bar with actions: Refresh, Pin, Help, and Close.
     /// Fixed height (44px) and padding (8px) to match UI guidelines.
+    /// Features: Loading spinner, keyboard shortcuts (Alt+key, Esc to close), tooltips, theme-aware styling.
     /// </summary>
     public partial class PanelHeader : UserControl
     {
-        private Label _titleLabel = null!;
-        private SfButton _btnRefresh = null!;
-        private SfButton _btnPin = null!;
-        private SfButton _btnHelp = null!;
-        private SfButton _btnClose = null!;
-        private Label? _loadingLabel;
-        private bool _isPinned; // Track toggle state for pin button
-        private bool _isLoading; // Loading state
+        private const int HEADER_HEIGHT = 52;
+        private const int BUTTON_MARGIN_H = 6;
+        private const int BUTTON_MARGIN_V = 6;
+
+        private Label? _titleLabel;
+        private SfButton? _btnRefresh;
+        private SfButton? _btnPin;
+        private SfButton? _btnHelp;
+        private SfButton? _btnClose;
+        private ProgressBarAdv? _loadingSpinner;
+        private ToolTip? _toolTip;
+        private DpiAwareImageService? _imageService;
+
+        private bool _isPinned;
+        private bool _isLoading;
+        private bool _refreshInProgress;
         private bool _helpButtonVisible = true;
         private bool _refreshButtonVisible = true;
 
@@ -44,12 +54,14 @@ namespace WileyWidget.WinForms.Controls
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string Title
         {
-            get => _titleLabel.Text;
+            get => _titleLabel?.Text ?? string.Empty;
             set
             {
-                _titleLabel.Text = value ?? string.Empty;
-                try { _titleLabel.AccessibleName = value ?? string.Empty; } catch { }
-                try { _titleLabel.Name = "headerLabel"; } catch { }
+                if (_titleLabel != null)
+                {
+                    _titleLabel.Text = value ?? string.Empty;
+                    _titleLabel.AccessibleName = value ?? string.Empty;
+                }
             }
         }
 
@@ -66,7 +78,7 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
-        /// <summary>Get/set loading state. Disables Refresh button and shows loading indicator.</summary>
+        /// <summary>Get/set loading state. Disables all action buttons except Close and shows loading spinner.</summary>
         [Browsable(true)]
         [DefaultValue(false)]
         public bool IsLoading
@@ -76,17 +88,34 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_isLoading == value) return;
                 _isLoading = value;
-                try
+
+                // Disable all action buttons except Close during loading
+                if (_btnRefresh != null)
                 {
                     _btnRefresh.Enabled = !value;
-                    if (_loadingLabel != null)
-                    {
-                        _loadingLabel.Visible = value;
-                        _loadingLabel.Text = value ? "Loading..." : "";
-                    }
                     _btnRefresh.Text = value ? "Refreshing..." : "Refresh";
                 }
-                catch { /* best effort */ }
+
+                if (_btnPin != null)
+                {
+                    _btnPin.Enabled = !value;
+                }
+
+                if (_btnHelp != null)
+                {
+                    _btnHelp.Enabled = !value;
+                }
+
+                // Close button remains enabled to allow user to dismiss panel during loading
+                if (_btnClose != null)
+                {
+                    _btnClose.Enabled = true;
+                }
+
+                if (_loadingSpinner != null)
+                {
+                    _loadingSpinner.Visible = value;
+                }
             }
         }
 
@@ -100,7 +129,10 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_helpButtonVisible == value) return;
                 _helpButtonVisible = value;
-                try { _btnHelp.Visible = value; } catch { }
+                if (_btnHelp != null)
+                {
+                    _btnHelp.Visible = value;
+                }
             }
         }
 
@@ -114,15 +146,26 @@ namespace WileyWidget.WinForms.Controls
             {
                 if (_refreshButtonVisible == value) return;
                 _refreshButtonVisible = value;
-                try { _btnRefresh.Visible = value; } catch { }
+                if (_btnRefresh != null)
+                {
+                    _btnRefresh.Visible = value;
+                }
             }
         }
 
-        public PanelHeader()
+        public PanelHeader() : this(null)
         {
+        }
+
+        /// <summary>
+        /// Initialize PanelHeader with optional icon service for modern button icons.
+        /// If no service is provided, buttons display text labels only.
+        /// </summary>
+        public PanelHeader(DpiAwareImageService? imageService)
+        {
+            _imageService = imageService;
             InitializeComponent();
             UpdatePinButtonAppearance();
-
             // Theme is applied by SfSkinManager cascade from parent form
         }
 
@@ -130,31 +173,46 @@ namespace WileyWidget.WinForms.Controls
         {
             if (disposing)
             {
-                try { _titleLabel?.Dispose(); } catch { }
-                try { _btnRefresh?.Dispose(); } catch { }
-                try { _btnPin?.Dispose(); } catch { }
-                try { _btnHelp?.Dispose(); } catch { }
-                try { _btnClose?.Dispose(); } catch { }
-                try { _loadingLabel?.Dispose(); } catch { }
+                _toolTip?.Dispose();
+                // Note: Individual controls are disposed by parent container automatically
             }
 
             base.Dispose(disposing);
         }
 
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            // Support Esc key to close panel (common UX pattern)
+            if (keyData == Keys.Escape)
+            {
+                CloseClicked?.Invoke(this, EventArgs.Empty);
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         private void InitializeComponent()
         {
-            Height = 44;
+            Height = HEADER_HEIGHT;
             Padding = new Padding(8);
             Dock = DockStyle.Top;
 
-            // Title label
+            // Compute button sizing based on header height and padding
+            var innerHeight = HEADER_HEIGHT - Padding.Vertical;
+            var buttonHeight = Math.Max(20, innerHeight - (BUTTON_MARGIN_V * 2));
+            var buttonWidth = 80; // reasonable width for text buttons
+
+            _toolTip = new ToolTip();
+
+            // Title label (use system font for theme consistency)
+            var titleFont = new Font("Segoe UI", 11F, FontStyle.Bold);
             _titleLabel = new Label
             {
                 Name = "headerLabel",
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font = titleFont,
                 Margin = new Padding(0),
                 AccessibleName = "Header title"
             };
@@ -170,97 +228,198 @@ namespace WileyWidget.WinForms.Controls
                 Margin = new Padding(0)
             };
 
-            // Refresh
+            // Refresh button (with optional icon)
             _btnRefresh = new SfButton
             {
                 Text = "Refresh",
-                AutoSize = true,
-                Margin = new Padding(4, 6, 4, 6),
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
+                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Refresh",
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
-            _btnRefresh.Click += (s, e) => RefreshClicked?.Invoke(this, EventArgs.Empty);
-            _btnRefresh.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.R) { _btnRefresh.PerformClick(); e.Handled = true; } };
-
-            // Loading indicator
-            _loadingLabel = new Label
+            if (_imageService != null)
             {
-                Text = "",
-                AutoSize = true,
-                Margin = new Padding(4, 6, 4, 6),
-                Visible = false,
-                Font = new Font("Segoe UI", 9F, FontStyle.Italic)
+                var refreshIcon = _imageService.GetImage("refresh");
+                if (refreshIcon != null)
+                {
+                    _btnRefresh.Image = refreshIcon;
+                    _btnRefresh.Text = string.Empty; // Icon-only for cleaner look
+                }
+            }
+            _btnRefresh.Click += RefreshButton_Click;
+            _btnRefresh.KeyDown += (s, e) =>
+            {
+                if (e.Alt && e.KeyCode == Keys.R)
+                {
+                    _btnRefresh.PerformClick();
+                    e.Handled = true;
+                }
             };
+            _toolTip.SetToolTip(_btnRefresh, "Refresh data (Alt+R)");
 
-            // Pin
+            // Loading spinner (ProgressBarAdv, set to 50% for indeterminate appearance)
+            _loadingSpinner = new ProgressBarAdv
+            {
+                Value = 50, // Indeterminate-like appearance
+                AutoSize = false,
+                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
+                Size = new Size(24, Math.Max(12, buttonHeight - 8)),
+                Visible = false
+            };
+            _loadingSpinner.AccessibleName = "Loading";
+
+            // Pin button (with optional icon)
             _btnPin = new SfButton
             {
                 Text = "Pin",
-                AutoSize = true,
-                Margin = new Padding(4, 6, 4, 6),
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
+                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Pin",
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
             _btnPin.Click += PinButton_Click;
-            _btnPin.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.P) { _btnPin.PerformClick(); e.Handled = true; } };
+            _btnPin.KeyDown += (s, e) =>
+            {
+                if (e.Alt && e.KeyCode == Keys.P)
+                {
+                    _btnPin.PerformClick();
+                    e.Handled = true;
+                }
+            };
+            UpdatePinButtonIcon(); // Apply icon after initialization
 
-            // Help
+            // Help button (with optional icon)
             _btnHelp = new SfButton
             {
                 Text = "Help",
-                AutoSize = true,
-                Margin = new Padding(4, 6, 4, 6),
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
+                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Help",
                 Visible = _helpButtonVisible,
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
+            if (_imageService != null)
+            {
+                var helpIcon = _imageService.GetImage("help");
+                if (helpIcon != null)
+                {
+                    _btnHelp.Image = helpIcon;
+                    _btnHelp.Text = string.Empty; // Icon-only for cleaner look
+                }
+            }
             _btnHelp.Click += (s, e) => HelpClicked?.Invoke(this, EventArgs.Empty);
-            _btnHelp.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.H) { _btnHelp.PerformClick(); e.Handled = true; } };
+            _btnHelp.KeyDown += (s, e) =>
+            {
+                if (e.Alt && e.KeyCode == Keys.H)
+                {
+                    _btnHelp.PerformClick();
+                    e.Handled = true;
+                }
+            };
+            _toolTip.SetToolTip(_btnHelp, "Show help (Alt+H)");
 
-            // Close
+            // Close button (with optional icon)
             _btnClose = new SfButton
             {
                 Text = "Close",
-                AutoSize = true,
-                Margin = new Padding(4, 6, 4, 6),
+                AutoSize = false,
+                Size = new Size(buttonWidth, buttonHeight),
+                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Close",
-                TabStop = true
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText
             };
             _btnClose.Click += (s, e) => CloseClicked?.Invoke(this, EventArgs.Empty);
-            _btnClose.KeyDown += (s, e) => { if (e.Alt && e.KeyCode == Keys.C) { _btnClose.PerformClick(); e.Handled = true; } };
+            _btnClose.KeyDown += (s, e) =>
+            {
+                if (e.Alt && e.KeyCode == Keys.C)
+                {
+                    _btnClose.PerformClick();
+                    e.Handled = true;
+                }
+            };
+            _toolTip.SetToolTip(_btnClose, "Close panel (Alt+C or Esc)");
 
+            // Build actions panel layout
             actionsPanel.Controls.Add(_btnRefresh);
-            actionsPanel.Controls.Add(_loadingLabel);
+            actionsPanel.Controls.Add(_loadingSpinner);
             actionsPanel.Controls.Add(_btnPin);
             actionsPanel.Controls.Add(_btnHelp);
             actionsPanel.Controls.Add(_btnClose);
 
+            // Add to control hierarchy (order matters: actionsPanel on top, title label behind)
             Controls.Add(actionsPanel);
             Controls.Add(_titleLabel);
 
             // Accessibility
-            AccessibleName = "Header";
-            AccessibleDescription = "Contains the title and actions for the header";
+            AccessibleName = "Panel Header";
+            AccessibleDescription = "Contains the title and action buttons for the panel";
+        }
+
+        private void RefreshButton_Click(object? sender, EventArgs e)
+        {
+            // Prevent multiple rapid clicks
+            if (_refreshInProgress) return;
+
+            _refreshInProgress = true;
+            try
+            {
+                RefreshClicked?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _refreshInProgress = false;
+            }
         }
 
         private void PinButton_Click(object? sender, EventArgs e)
         {
             IsPinned = !IsPinned;
+            UpdatePinButtonIcon(); // Update icon when pin state changes
             PinToggled?.Invoke(this, EventArgs.Empty);
         }
 
         private void UpdatePinButtonAppearance()
         {
+            if (_btnPin == null) return;
+
             // Update button appearance based on pinned state
             // SfButton styling is managed by SfSkinManager theme cascade from parent form
             // Avoid manual BackColor/ForeColor assignments - theme system handles this
-            try
+            if (string.IsNullOrEmpty(_btnPin.Image?.ToString()))
             {
+                // Text-only mode (no icon service)
                 _btnPin.Text = _isPinned ? "Unpin" : "Pin";
-                _btnPin.AccessibleName = _isPinned ? "Unpin panel" : "Pin panel";
-                // Theme colors are inherited from SfSkinManager - no manual override
             }
-            catch { /* best effort */ }
+            // If using icons, keep icon; don't change text
+
+            _btnPin.AccessibleName = _isPinned ? "Unpin panel" : "Pin panel";
+
+            if (_toolTip != null)
+            {
+                var tooltip = _isPinned ? "Unpin panel (keep it unlocked)" : "Pin panel (keep it open)";
+                _toolTip.SetToolTip(_btnPin, tooltip);
+            }
+        }
+
+        private void UpdatePinButtonIcon()
+        {
+            if (_btnPin == null || _imageService == null) return;
+
+            // Update pin icon based on pinned state (filled vs outline)
+            var iconName = _isPinned ? "pin_filled" : "pin";
+            var icon = _imageService.GetImage(iconName);
+            if (icon != null)
+            {
+                _btnPin.Image = icon;
+                _btnPin.Text = string.Empty; // Icon-only
+            }
         }
 
         /// <summary>
@@ -270,7 +429,7 @@ namespace WileyWidget.WinForms.Controls
 
         /// <summary>
         /// Set the loading state temporarily for an async operation.
-        /// Usage: SetLoadingAsync(async () => await MyLongOperationAsync());
+        /// Usage: await SetLoadingAsync(async () => await MyLongOperationAsync());
         /// </summary>
         public async System.Threading.Tasks.Task SetLoadingAsync(Func<System.Threading.Tasks.Task> operation)
         {

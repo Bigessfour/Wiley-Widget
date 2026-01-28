@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.ObjectModel;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.Services.Abstractions;
 using Microsoft.Extensions.Configuration;
 using WileyWidget.WinForms.Logging;
 using WileyWidget.WinForms.Forms;
@@ -32,9 +33,10 @@ namespace WileyWidget.WinForms.ViewModels
 
     public partial class DashboardViewModel : ObservableObject, IDashboardViewModel, IDisposable
     {
-        private readonly IBudgetRepository? _budgetRepository;
-        private readonly IMunicipalAccountRepository? _accountRepository;
-        private readonly ILogger<DashboardViewModel> _logger;
+    private readonly IBudgetRepository? _budgetRepository;
+    private readonly IMunicipalAccountRepository? _accountRepository;
+    private readonly IDashboardService? _dashboardService;
+            private readonly ILogger<DashboardViewModel> _logger;
         private CancellationTokenSource? _loadCancellationTokenSource;
         private readonly SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;
@@ -145,8 +147,8 @@ namespace WileyWidget.WinForms.ViewModels
         public ObservableCollection<DepartmentSummary> DepartmentMetrics => DepartmentSummaries;
 
         // Computed summary properties for DashboardFactory navigation cards
-        public string AccountsSummary => AccountCount > 0 ? $"{AccountCount:N0} Municipal Accounts" : MainFormResources.LoadingText;
-        public string BudgetStatus => TotalBudgeted > 0 ? $"Variance: {TotalVariance:C} ({VariancePercentage:F1}%)" : StatusText;
+        public string AccountsSummary => HasError ? (ErrorMessage ?? "Load failed") : (AccountCount > 0 ? $"{AccountCount:N0} Municipal Accounts" : MainFormResources.LoadingText);
+        public string BudgetStatus => HasError ? (ErrorMessage ?? "Load failed") : (TotalBudgeted > 0 ? $"Variance: {TotalVariance:C} ({VariancePercentage:F1}%)" : StatusText);
 
         #endregion
 
@@ -166,6 +168,7 @@ namespace WileyWidget.WinForms.ViewModels
             IBudgetRepository? budgetRepository,
             IMunicipalAccountRepository? accountRepository,
             ILogger<DashboardViewModel>? logger,
+            IDashboardService? dashboardService = null,
             IConfiguration? configuration = null)
         {
             // CRITICAL: Use NullLogger fallback to prevent null reference in error handlers
@@ -177,9 +180,10 @@ namespace WileyWidget.WinForms.ViewModels
                 Console.WriteLine("[WARNING] DashboardViewModel: ILogger<DashboardViewModel> is null - using NullLogger fallback");
             }
 
-            // Store repositories (will validate in LoadDashboardDataAsync)
+            // Store repositories and services (will validate in LoadDashboardDataAsync)
             _budgetRepository = budgetRepository;
             _accountRepository = accountRepository;
+            _dashboardService = dashboardService;
             _configuration = configuration;
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
@@ -191,6 +195,12 @@ namespace WileyWidget.WinForms.ViewModels
             if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime)
             {
                 InitializeSampleData();
+            }
+            else
+            {
+                // Immediate sample data so dashboard never starts blank
+                // Async real load will overwrite if available (triggered by panel visibility/refresh)
+                LoadSampleDashboardData();
             }
 
             _logger.LogDebug("DashboardViewModel initialized");
@@ -346,7 +356,30 @@ namespace WileyWidget.WinForms.ViewModels
                         // Check for cancellation before expensive operations
                         localCancellationToken.ThrowIfCancellationRequested();
 
-                        // Load budget analysis from repository
+                        // Prefer real Wiley data if available
+                        if (_dashboardService != null)
+                        {
+                            try
+                            {
+                                _logger.LogInformation("Attempting to load Town of Wiley 2026 budget data from dashboard service...");
+                                await _dashboardService.PopulateDashboardMetricsFromWileyDataAsync(localCancellationToken);
+
+                                // Also populate department summaries from the mapped data
+                                await _dashboardService.PopulateDepartmentSummariesFromSanitationAsync(localCancellationToken);
+
+                                _logger.LogInformation("Town of Wiley 2026 budget data loaded successfully");
+                                LastUpdated = DateTime.Now;
+                                StatusText = "Wiley 2026 Budget Loaded";
+                                ErrorMessage = null;
+                                break; // Successfully loaded—exit retry loop
+                            }
+                            catch (Exception wileyEx)
+                            {
+                                _logger.LogWarning(wileyEx, "Failed to load Wiley 2026 budget data from dashboard service - falling back to repository");
+                            }
+                        }
+
+                        // Fallback: Load budget analysis from repository
                         var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, localCancellationToken);
 
                         if (analysis != null)
@@ -383,6 +416,12 @@ namespace WileyWidget.WinForms.ViewModels
                             {
                                 TopVariances.Add(variance);
                             }
+                        }
+                        else
+                        {
+                            // No analysis data available - fall back to sample data
+                            _logger.LogInformation("Budget analysis returned null - falling back to sample dashboard data");
+                            LoadSampleDashboardData();
                         }
 
                         // Load account count
@@ -449,6 +488,7 @@ namespace WileyWidget.WinForms.ViewModels
                             FundSummaries.Count, DepartmentSummaries.Count, TopVariances.Count);
                         _logger.LogInformation("=== Dashboard load COMPLETED SUCCESSFULLY ===");
                         ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: COMPLETED SUCCESSFULLY");
+                        HasError = false;
                         // Successfully loaded—exit retry loop
                         break;
                     }
@@ -473,8 +513,19 @@ namespace WileyWidget.WinForms.ViewModels
                     {
                         _logger.LogError(ex, "Error loading dashboard data");
                         ErrorMessage = $"Failed to load dashboard: {ex.Message}";
+                        HasError = true;
                         // Increment retry count so we don't loop infinitely
                         retryCount++;
+
+                        // If this is the final attempt, fall back to sample data instead of showing error
+                        if (retryCount >= MaxRetryAttempts)
+                        {
+                            _logger.LogError("Dashboard load failed after {Attempts} attempts - falling back to sample data", MaxRetryAttempts);
+                            LoadSampleDashboardData();
+                            ErrorMessage = "Failed to load data, showing sample";
+                            HasError = true;
+                            break; // Exit retry loop
+                        }
                     }
                     finally
                     {
@@ -768,6 +819,146 @@ namespace WileyWidget.WinForms.ViewModels
             UpdateMetricsCollection();
             // Use fallback for design-time (no repository available)
             PopulateMonthlyRevenueDataFallback(2026);
+        }
+
+        /// <summary>
+        /// Loads comprehensive sample dashboard data (municipal utilities focus).
+        /// Used as fallback when repositories are unavailable or empty.
+        /// </summary>
+        private void LoadSampleDashboardData()
+        {
+            _logger.LogInformation("Loading sample dashboard data (municipal utilities focus)");
+
+            // Clear any partial/failed real data
+            Metrics.Clear();
+            FundSummaries.Clear();
+            DepartmentSummaries.Clear();
+            TopVariances.Clear();
+            MonthlyRevenueData.Clear();
+
+            MunicipalityName = "Town of Wiley";
+            FiscalYear = "FY 2025-2026";
+            LastUpdated = DateTime.Now;
+
+            // === KPI Metrics (for SfListView or tiles) ===
+            Metrics.Add(new DashboardMetric
+            {
+                Name = "Total Budget",
+                Value = 12_450_000,
+                Unit = "$",
+                Trend = "up",
+                ChangePercent = 4.2,
+                Description = "Approved annual budget"
+            });
+            Metrics.Add(new DashboardMetric
+            {
+                Name = "YTD Actual Spending",
+                Value = 6_820_000,
+                Unit = "$",
+                Trend = "down",
+                ChangePercent = -2.1,
+                Description = "Year-to-date expenditures"
+            });
+            Metrics.Add(new DashboardMetric
+            {
+                Name = "Budget Variance",
+                Value = 630_000,
+                Unit = "$",
+                Trend = "up",
+                ChangePercent = 5.3,
+                Description = "Remaining budget (positive = under spent)"
+            });
+            Metrics.Add(new DashboardMetric
+            {
+                Name = "Active Accounts",
+                Value = 48,
+                Unit = "",
+                Trend = "neutral",
+                ChangePercent = 0,
+                Description = "Municipal GL accounts"
+            });
+
+            // === Gauges ===
+            TotalBudgetGauge = 100f;                    // Base reference
+            RevenueGauge = 78.5f;                       // % of projected revenue collected
+            ExpensesGauge = 54.8f;                      // % of budget spent
+            NetPositionGauge = 68.2f;                   // Overall financial health %
+
+            // === Budget Analysis Summary ===
+            TotalBudgeted = 12_450_000m;
+            TotalActual = 6_820_000m;
+            TotalVariance = TotalBudgeted - TotalActual; // Positive = under budget
+            VariancePercentage = Math.Round((TotalVariance / TotalBudgeted) * 100m, 1);
+
+            TotalRevenue = 7_920_000m;
+            TotalExpenses = 6_820_000m;
+            NetIncome = TotalRevenue - TotalExpenses;
+
+            AccountCount = 48;
+            ActiveDepartments = 8;
+
+            // === Fund Breakdown ===
+            FundSummaries.Add(new FundSummary { FundName = "General", Budgeted = 4_200_000m, Actual = 2_150_000m });
+            FundSummaries.Add(new FundSummary { FundName = "Enterprise (Utilities)", Budgeted = 6_800_000m, Actual = 3_780_000m });
+            FundSummaries.Add(new FundSummary { FundName = "Capital Projects", Budgeted = 1_000_000m, Actual = 650_000m });
+            FundSummaries.Add(new FundSummary { FundName = "Debt Service", Budgeted = 450_000m, Actual = 240_000m });
+
+            // === Department Breakdown (Utilities focus) ===
+            var depts = new[]
+            {
+                ("Water", 2_800_000m, 1_520_000m),
+                ("Sewer", 2_200_000m, 1_280_000m),
+                ("Trash", 1_200_000m, 680_000m),
+                ("Apartments", 600_000m, 300_000m),
+                ("Administration", 1_800_000m, 980_000m),
+                ("Public Works", 1_650_000m, 860_000m),
+                ("Finance", 900_000m, 480_000m),
+                ("Parks & Recreation", 300_000m, 170_000m)
+            };
+
+            foreach (var (dept, budgeted, actual) in depts)
+            {
+                var variance = actual - budgeted; // Positive = over budget
+                var variancePct = budgeted != 0 ? Math.Round((variance / budgeted) * 100m, 1) : 0m;
+                DepartmentSummaries.Add(new DepartmentSummary
+                {
+                    DepartmentName = dept,
+                    TotalBudgeted = budgeted,
+                    TotalActual = actual,
+                    Variance = variance,
+                    VariancePercentage = variancePct
+                });
+            }
+
+            // === Top Variances (worst offenders) ===
+            TopVariances.Add(new AccountVariance { AccountName = "Water Treatment Chemicals", VarianceAmount = 125_000m, VariancePercentage = 18.2m });
+            TopVariances.Add(new AccountVariance { AccountName = "Sewer Line Repairs", VarianceAmount = 98_000m, VariancePercentage = 14.7m });
+            TopVariances.Add(new AccountVariance { AccountName = "Trash Hauling Contract", VarianceAmount = 72_000m, VariancePercentage = 11.3m });
+            TopVariances.Add(new AccountVariance { AccountName = "Apartment Maintenance", VarianceAmount = -45_000m, VariancePercentage = -8.1m }); // Under
+
+            // === Monthly Trend Data (for main chart/sparklines) ===
+            var months = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
+            decimal baseRevenue = 1_100_000m;
+            decimal baseExpense = 950_000m;
+            var random = new Random(42);
+
+            for (int i = 0; i < months.Length; i++)
+            {
+                decimal revenue = baseRevenue + random.Next(-80_000, 120_000);
+                decimal expense = baseExpense + random.Next(-50_000, 100_000);
+
+                MonthlyRevenueData.Add(new MonthlyRevenue
+                {
+                    Month = months[i],
+                    Amount = Math.Round(revenue - expense, 0),
+                    MonthNumber = i + 1
+                });
+            }
+
+            // Set status
+            ErrorMessage = null;
+            HasError = false;
+            StatusText = $"Sample data loaded – {DepartmentSummaries.Count} departments, FY 2025-2026";
         }
 
     }

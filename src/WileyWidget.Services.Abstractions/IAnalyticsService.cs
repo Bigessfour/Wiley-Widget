@@ -26,6 +26,36 @@ namespace WileyWidget.Services.Abstractions
         /// Generates predictive forecast for budget reserves
         /// </summary>
         Task<ReserveForecastResult> GenerateReserveForecastAsync(int yearsAhead, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets budget overview data for the specified fiscal year
+        /// </summary>
+        Task<BudgetOverviewData> GetBudgetOverviewAsync(int? fiscalYear = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets budget metrics for grid display
+        /// </summary>
+        Task<List<BudgetMetric>> GetBudgetMetricsAsync(int? fiscalYear = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets summary KPIs for dashboard display
+        /// </summary>
+        Task<List<SummaryKpi>> GetSummaryKpisAsync(int? fiscalYear = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets trend data for forecasting
+        /// </summary>
+        Task<List<TrendSeries>> GetTrendDataAsync(int projectionYears = 3, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Runs a scenario analysis
+        /// </summary>
+        Task<ScenarioResult> RunScenarioAsync(decimal rateIncreasePercent, decimal expenseIncreasePercent, decimal revenueTarget, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets detailed variance records
+        /// </summary>
+        Task<List<VarianceRecord>> GetVarianceDetailsAsync(int? fiscalYear = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -130,4 +160,54 @@ namespace WileyWidget.Services.Abstractions
         public decimal PredictedReserves { get; set; }
         public decimal ConfidenceInterval { get; set; }
     }
+
+    /// <summary>
+    /// Budget overview data
+    /// </summary>
+    public class BudgetOverviewData
+    {
+        public decimal TotalBudget { get; set; }
+        public decimal TotalActual { get; set; }
+        public decimal TotalVariance { get; set; }
+        public int OverBudgetCount { get; set; }
+        public int UnderBudgetCount { get; set; }
+    }
+
+    /// <summary>
+    /// Budget metric for display
+    /// </summary>
+    public readonly record struct BudgetMetric(
+        string Name,
+        decimal Value,
+        string DepartmentName = "",
+        decimal BudgetedAmount = 0m,
+        decimal Amount = 0m,
+        decimal Variance = 0m,
+        decimal VariancePercent = 0m,
+        bool IsOverBudget = false);
+
+    /// <summary>
+    /// Summary KPI
+    /// </summary>
+    public record SummaryKpi(string Title, decimal Value, string Format, bool IsPositive);
+
+    /// <summary>
+    /// Trend series
+    /// </summary>
+    public record TrendSeries(string Name, List<TrendPoint> Points);
+
+    /// <summary>
+    /// Trend point
+    /// </summary>
+    public record TrendPoint(DateTime Date, decimal Value);
+
+    /// <summary>
+    /// Scenario result
+    /// </summary>
+    public record ScenarioResult(string Description, decimal ProjectedValue, decimal Variance);
+
+    /// <summary>
+    /// Variance record
+    /// </summary>
+    public record VarianceRecord(string Department, string Account, decimal Budget, decimal Actual, decimal Variance, decimal VariancePercent);
 }

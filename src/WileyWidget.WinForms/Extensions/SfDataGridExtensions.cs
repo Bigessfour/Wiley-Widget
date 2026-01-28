@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using WileyWidget.WinForms.Helpers;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.Data;
@@ -32,7 +33,7 @@ namespace WileyWidget.WinForms.Extensions
             if (grid == null) throw new ArgumentNullException(nameof(grid));
             if (_originalSources.TryGetValue(grid, out var original))
             {
-                try { grid.DataSource = original; } catch { }
+                try { grid.SafeInvoke(() => grid.DataSource = original); } catch { }
             }
         }
 
