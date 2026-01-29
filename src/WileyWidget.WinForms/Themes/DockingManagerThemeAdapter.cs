@@ -48,8 +48,8 @@ namespace WileyWidget.WinForms.Themes
             ["HighContrastBlack"] = VisualStyle.Office2010,
             ["HighContrastWhite"] = VisualStyle.Office2007,
 
-            // Fallback for unknown or unspecified themes
-            ["Default"] = VisualStyle.Office2010,
+            // Fallback for unknown or unspecified themes (use ThemeColors.DefaultTheme)
+            [ThemeColors.DefaultTheme] = VisualStyle.Office2007,
         };
 
         /// <summary>
@@ -69,12 +69,12 @@ namespace WileyWidget.WinForms.Themes
         ///
         /// Theme names are case-insensitive.
         /// </summary>
-        /// <param name="themeName">Modern theme name (e.g., "Office2019Colorful"). If null or empty, uses "Default".</param>
+        /// <param name="themeName">Modern theme name (e.g., "Office2019Colorful"). If null or empty, uses ThemeColors.DefaultTheme.</param>
         public void ApplyTheme(string? themeName)
         {
             if (string.IsNullOrWhiteSpace(themeName))
             {
-                themeName = "Default";
+                themeName = ThemeColors.DefaultTheme;
             }
 
             if (ThemeMap.TryGetValue(themeName, out var visualStyle))
@@ -103,7 +103,7 @@ namespace WileyWidget.WinForms.Themes
         /// Gets the DockingManager's current visual style as a string.
         /// Returns the closest matching modern theme name based on current VisualStyle.
         /// </summary>
-        /// <returns>The theme name (e.g., "Office2019Colorful"), or "Default" if unknown.</returns>
+        /// <returns>The theme name (e.g., "Office2019Colorful"), or ThemeColors.DefaultTheme if unknown.</returns>
         public string GetCurrentThemeName()
         {
             var style = _dockingManager.VisualStyle;
@@ -118,7 +118,7 @@ namespace WileyWidget.WinForms.Themes
             }
 
             // Unknown style - return default
-            return "Default";
+            return ThemeColors.DefaultTheme;
         }
 
         /// <summary>
