@@ -15,6 +15,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms;
@@ -30,46 +31,142 @@ public partial class MainForm
     /// <summary>
     /// Shows or activates a docked panel. Creates it if not already present.
     /// Delegates to PanelNavigationService for centralized panel management.
+    /// Enforces Z-order and validates panel hosting after showing.
     /// </summary>
     /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
     /// <param name="panelName">Optional panel name. If null, uses type name.</param>
     /// <param name="preferredStyle">Preferred docking position (default: Right).</param>
     /// <param name="allowFloating">If true, panel can be floated by user (default: true).</param>
+    /// <summary>
+    /// Validates that the docking system is ready for navigation operations.
+    /// Checks both DockingManager and PanelNavigator; logs and shows user feedback if not ready.
+    /// </summary>
+    private bool ValidateDockingState(string operation)
+    {
+        if (_dockingManager == null)
+        {
+            _logger?.LogWarning("[DOCKING.VALIDATE] {Operation}: DockingManager is null", operation);
+            ApplyStatus("Docking system not ready — please wait a moment");
+
+            if (!IsDisposed && IsHandleCreated && Visible)
+            {
+                try
+                {
+                    UIHelper.ShowMessageOnUI(this,
+                        "The docking system is still initializing.\nPlease wait 2–3 seconds and try again.",
+                        "Navigation Initializing",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information,
+                        _logger);
+                }
+                catch (Exception ex) { _logger?.LogDebug(ex, "Failed to show message"); }
+            }
+            return false;
+        }
+
+        if (_panelNavigator == null)
+        {
+            _logger?.LogDebug("[DOCKING.VALIDATE] {Operation}: PanelNavigator is null - attempting initialization", operation);
+            EnsurePanelNavigatorInitialized();
+
+            if (_panelNavigator == null)
+            {
+                _logger?.LogError("[DOCKING.VALIDATE] {Operation}: PanelNavigator initialization failed", operation);
+                ApplyStatus("Panel navigation unavailable");
+
+                if (!IsDisposed && IsHandleCreated && Visible)
+                {
+                    try
+                    {
+                        UIHelper.ShowMessageOnUI(this,
+                            "Panel navigation service failed to initialize.",
+                            "Navigation Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning,
+                            _logger);
+                    }
+                    catch (Exception ex) { _logger?.LogDebug(ex, "Failed to show error dialog"); }
+                }
+                return false;
+            }
+            _logger?.LogInformation("[DOCKING.VALIDATE] {Operation}: PanelNavigator initialized successfully", operation);
+        }
+
+        return true;
+    }
+
     public void ShowPanel<TPanel>(
         string? panelName = null,
         DockingStyle preferredStyle = DockingStyle.Right,
         bool allowFloating = true)
         where TPanel : UserControl
     {
-        if (_panelNavigator == null)
+        var displayName = panelName ?? typeof(TPanel).Name;
+
+        if (!ValidateDockingState($"ShowPanel<{typeof(TPanel).Name}>"))
         {
-            _logger?.LogWarning("Cannot show panel - PanelNavigationService not initialized");
             return;
         }
-
-        var displayName = panelName ?? typeof(TPanel).Name;
         if (string.IsNullOrWhiteSpace(displayName))
         {
-            _logger?.LogWarning("ShowPanel called with invalid panel name");
+            _logger?.LogWarning("[PANEL] ShowPanel called with invalid/empty panel name for type {Type}", typeof(TPanel).Name);
+            ApplyStatus("Cannot open panel — invalid name");
             return;
         }
 
-        _panelNavigator.ShowPanel<TPanel>(displayName, preferredStyle, allowFloating);
+        try
+        {
+            _logger?.LogInformation("[PANEL] Showing {PanelName} ({Type})", displayName, typeof(TPanel).Name);
+            _panelNavigator!.ShowPanel<TPanel>(displayName, preferredStyle, allowFloating);
 
-        // Force z-order after showing panel to prevent layout issues
-        try { EnsureDockingZOrder(); }
-        catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after ShowPanel"); }
+            try { EnsureDockingZOrder(); }
+            catch (Exception ex) { _logger?.LogDebug(ex, "[PANEL] Failed to ensure z-order (non-critical)"); }
+
+            // NOTE: GetControl() doesn't exist on DockingManager. Panel visibility is managed by PanelNavigationService.
+            // Removing manual visibility check as PanelNavigationService already handles activation.
+
+            ApplyStatus($"Opened: {displayName}");
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("DockingManager"))
+        {
+            _logger?.LogError(ex, "[PANEL] DockingManager issue while showing panel {PanelType}", typeof(TPanel).Name);
+            ApplyStatus("Docking system error — please try again");
+            if (!IsDisposed && IsHandleCreated && Visible)
+            {
+                try
+                {
+                    UIHelper.ShowMessageOnUI(this,
+                        "Docking system encountered an error. Please try again.",
+                        "Docking Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning,
+                        _logger);
+                }
+                catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to show docking error dialog"); }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[PANEL] Failed to show panel {PanelName} of type {Type}", displayName, typeof(TPanel).Name);
+            ApplyStatus("Error opening panel — check logs for details");
+            if (!IsDisposed && IsHandleCreated && Visible)
+            {
+                try
+                {
+                    UIHelper.ShowErrorOnUI(this,
+                        $"Failed to open '{displayName}':\n{ex.Message}",
+                        "Panel Error",
+                        _logger);
+                }
+                catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to show panel error dialog"); }
+            }
+        }
     }
 
     /// <summary>
     /// Shows or activates a docked panel with initialization parameters. Creates it if not already present.
     /// Delegates to PanelNavigationService for centralized panel management.
     /// </summary>
-    /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
-    /// <param name="panelName">Optional panel name. If null, uses type name.</param>
-    /// <param name="parameters">Parameters to pass to panel constructor or initialization.</param>
-    /// <param name="preferredStyle">Preferred docking position (default: Right).</param>
-    /// <param name="allowFloating">If true, panel can be floated by user (default: true).</param>
     public void ShowPanel<TPanel>(
         string? panelName,
         object? parameters,
@@ -77,43 +174,76 @@ public partial class MainForm
         bool allowFloating = true)
         where TPanel : UserControl
     {
-        if (_panelNavigator == null)
+        var displayName = panelName ?? typeof(TPanel).Name;
+
+        if (!ValidateDockingState($"ShowPanel<{typeof(TPanel).Name}>(params)"))
         {
-            _logger?.LogWarning("Cannot show panel - PanelNavigationService not initialized");
             return;
         }
 
-        var displayName = panelName ?? typeof(TPanel).Name;
         if (string.IsNullOrWhiteSpace(displayName))
         {
-            _logger?.LogWarning("ShowPanel called with invalid panel name");
+            _logger?.LogWarning("[PANEL] ShowPanel with parameters called with invalid/empty panel name for type {Type}", typeof(TPanel).Name);
+            ApplyStatus("Cannot open panel — invalid name");
             return;
         }
 
         try
         {
-            _panelNavigator.ShowPanel<TPanel>(displayName, parameters, preferredStyle, allowFloating);
+            _logger?.LogInformation("[PANEL] Showing {PanelName} ({Type}) with parameters", displayName, typeof(TPanel).Name);
+            _panelNavigator!.ShowPanel<TPanel>(displayName, parameters, preferredStyle, allowFloating);
 
-            // Force z-order after showing panel to prevent layout issues
             try { EnsureDockingZOrder(); }
-            catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after ShowPanel"); }
+            catch (Exception ex) { _logger?.LogDebug(ex, "[PANEL] Failed to ensure z-order (non-critical)"); }
+
+            // NOTE: GetControl() doesn't exist on DockingManager. Panel visibility is managed by PanelNavigationService.
+            // Removing manual visibility check as PanelNavigationService already handles activation.
+
+            ApplyStatus($"Opened: {displayName}");
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No service for type") || ex.Message.Contains("not registered"))
         {
-            _logger?.LogError(ex, "Panel {PanelType} not registered in DI container", typeof(TPanel).Name);
-            if (!IsDisposed && IsHandleCreated)
+            _logger?.LogError(ex, "[PANEL] Panel {PanelType} not registered in DI container", typeof(TPanel).Name);
+            ApplyStatus("Panel type not registered — check configuration");
+            if (!IsDisposed && IsHandleCreated && Visible)
             {
-                UIHelper.ShowErrorOnUI(this, $"Panel '{displayName}' ({typeof(TPanel).Name}) is not registered in the service container. Please verify DependencyInjection.cs.",
+                UIHelper.ShowErrorOnUI(this,
+                    $"Panel '{displayName}' ({typeof(TPanel).Name}) is not registered in the service container.\nPlease verify DependencyInjection.cs.",
                     "DI Registration Error", _logger);
+            }
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("DockingManager"))
+        {
+            _logger?.LogError(ex, "[PANEL] DockingManager issue while showing panel {PanelType} with parameters", typeof(TPanel).Name);
+            ApplyStatus("Docking system error — please try again");
+            if (!IsDisposed && IsHandleCreated && Visible)
+            {
+                try
+                {
+                    UIHelper.ShowMessageOnUI(this,
+                        "Docking system encountered an error. Please try again.",
+                        "Docking Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning,
+                        _logger);
+                }
+                catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to show docking error dialog"); }
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to show panel {PanelName} with parameters in MainForm", displayName);
-            // Safe fall-through - PanelNavigationService also has error handling/logging
-            if (!IsDisposed && IsHandleCreated)
+            _logger?.LogError(ex, "[PANEL] Failed to show panel {PanelName} with parameters ({Type})", displayName, typeof(TPanel).Name);
+            ApplyStatus("Error opening panel — check logs for details");
+            if (!IsDisposed && IsHandleCreated && Visible)
             {
-                try { UIHelper.ShowMessageOnUI(this, "Failed to open panel: " + ex.Message, "Panel Error", MessageBoxButtons.OK, MessageBoxIcon.Warning, _logger); } catch { }
+                try
+                {
+                    UIHelper.ShowErrorOnUI(this,
+                        $"Failed to open '{displayName}':\n{ex.Message}",
+                        "Panel Error",
+                        _logger);
+                }
+                catch (Exception ex2) { _logger?.LogDebug(ex2, "Failed to show panel error dialog"); }
             }
         }
     }
@@ -180,9 +310,42 @@ public partial class MainForm
         string panelName,
         DockingStyle preferredStyle = DockingStyle.Right)
     {
+        // Ensure panel navigator is initialized before proceeding
         if (_panelNavigator == null)
         {
-            _logger?.LogWarning("Cannot add panel - PanelNavigationService not initialized");
+            _logger?.LogDebug("PanelNavigator is null - attempting to initialize");
+            EnsurePanelNavigatorInitialized();
+
+            // Re-check after initialization attempt
+            if (_panelNavigator == null)
+            {
+                _logger?.LogWarning("Cannot add panel async - PanelNavigationService initialization failed");
+                if (!IsDisposed && IsHandleCreated)
+                {
+                    try
+                    {
+                        UIHelper.ShowMessageOnUI(this,
+                            "Panel navigation is not available. The docking system may not be initialized.",
+                            "Navigation Error",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning,
+                            _logger);
+                    }
+                    catch { }
+                }
+                return;
+            }
+        }
+
+        if (panel == null)
+        {
+            _logger?.LogWarning("AddPanelAsync called with null panel");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(panelName))
+        {
+            _logger?.LogWarning("AddPanelAsync called with invalid panel name");
             return;
         }
 
@@ -193,6 +356,23 @@ public partial class MainForm
             // Force z-order after showing panel to prevent layout issues
             try { EnsureDockingZOrder(); }
             catch (Exception ex) { _logger?.LogDebug(ex, "Failed to ensure docking z-order after AddPanelAsync"); }
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("DockingManager"))
+        {
+            _logger?.LogError(ex, "DockingManager issue while adding panel {PanelName} async", panelName);
+            if (!IsDisposed && IsHandleCreated)
+            {
+                try
+                {
+                    UIHelper.ShowMessageOnUI(this,
+                        "Docking system is not ready. Please try again.",
+                        "Docking Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning,
+                        _logger);
+                }
+                catch { }
+            }
         }
         catch (Exception ex)
         {

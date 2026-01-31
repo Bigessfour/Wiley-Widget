@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
+using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
@@ -27,8 +28,17 @@ namespace WileyWidget.WinForms.Controls;
 /// Provides customer search, add, edit, delete, and QuickBooks synchronization capabilities.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
+public partial class CustomersPanel : ScopedPanelBase
 {
+    // Strongly-typed ViewModel (this is what you use in your code)
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public new CustomersViewModel? ViewModel
+    {
+        get => (CustomersViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
+
     #region UI Controls
 
     private PanelHeader? _panelHeader;
@@ -91,14 +101,37 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// <param name="logger">Logger instance.</param>
     public CustomersPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<CustomersViewModel>> logger)
+        ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
         InitializeControls();
-        BindViewModel();
         ApplySyncfusionTheme();
 
         _logger?.LogDebug("CustomersPanel initialized");
+    }
+
+
+    /// <summary>
+    /// Wires up toolbar event handlers that depend on the ViewModel.
+    /// Must be called after ViewModel is resolved.
+    /// </summary>
+    private void WireupToolbarEventHandlers()
+    {
+        if (_clearFiltersButton != null)
+        {
+            _clearFiltersClickHandler = (s, e) => ViewModel?.ClearFiltersCommand.Execute(null);
+            _clearFiltersButton.Click += _clearFiltersClickHandler;
+        }
+
+        if (_showActiveOnlyCheckBox != null)
+        {
+            _showActiveOnlyChangedHandler = (s, e) =>
+            {
+                if (ViewModel != null)
+                    ViewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
+            };
+            _showActiveOnlyCheckBox.CheckedChanged += _showActiveOnlyChangedHandler;
+        }
     }
 
     public override async Task LoadAsync(CancellationToken ct = default)
@@ -358,8 +391,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _clearFiltersButton.AccessibleName = "Clear Filters";
         _clearFiltersButton.TabIndex = 12;
         _toolTip?.SetToolTip(_clearFiltersButton, "Clear all filters");
-        _clearFiltersClickHandler = (s, e) => _viewModel.ClearFiltersCommand.Execute(null);
-        _clearFiltersButton.Click += _clearFiltersClickHandler;
+        // NOTE: Event handler will be wired up in WireupToolbarEventHandlers() after ViewModel is resolved
         searchFilterRow.Controls.Add(_clearFiltersButton);
 
         // Separator
@@ -397,7 +429,6 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _filterTypeComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
         searchFilterRow.Controls.Add(_filterTypeComboBox);
 
-        // Filter: Location
         var locationLabel = new Label
         {
             Text = "Location:",
@@ -434,8 +465,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _showActiveOnlyCheckBox.AccessibleName = "Show active only";
         _showActiveOnlyCheckBox.TabIndex = 15;
         _toolTip?.SetToolTip(_showActiveOnlyCheckBox, "Toggle to show only active customers");
-        _showActiveOnlyChangedHandler = (s, e) => _viewModel.ShowActiveOnly = _showActiveOnlyCheckBox.Checked;
-        _showActiveOnlyCheckBox.CheckedChanged += _showActiveOnlyChangedHandler;
+        // NOTE: Event handler will be wired up in WireupToolbarEventHandlers() after ViewModel is resolved
         searchFilterRow.Controls.Add(_showActiveOnlyCheckBox);
 
         toolbarLayout.Controls.Add(searchFilterRow, 0, 0);
@@ -767,19 +797,34 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
     /// <summary>
     /// Binds the view model to UI controls using DataBindings for two-way binding.
+    /// Called after ViewModel is resolved and toolbar event handlers are wired up.
     /// </summary>
     private void BindViewModel()
     {
+        // ViewModel is guaranteed non-null at this point because OnViewModelResolved only calls this after resolution
+        // ViewModel property is set in base class and never null after OnViewModelResolved
+
+        if (ViewModel == null)
+        {
+            _logger?.LogWarning("BindViewModel called with null ViewModel");
+            return;
+        }
+
         // Create BindingSource for the ViewModel
         var viewModelBinding = new BindingSource
         {
-            DataSource = _viewModel
+            DataSource = ViewModel
         };
 
         // Bind grid to filtered customers collection
-        if (_customersGrid != null)
+        if (_customersGrid != null && ViewModel?.FilteredCustomers != null)
         {
-            _customersGrid.DataSource = _viewModel.FilteredCustomers;
+            _customersGrid.DataSource = ViewModel.FilteredCustomers;
+        }
+        else if (_customersGrid != null)
+        {
+            _logger?.LogWarning("CustomersPanel: FilteredCustomers is null, initializing with empty collection");
+            _customersGrid.DataSource = new List<UtilityCustomer>();
         }
 
         // Bind search text box to ViewModel.SearchText with two-way binding
@@ -788,7 +833,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _searchTextBox.DataBindings.Add(
                 nameof(_searchTextBox.Text),
                 viewModelBinding,
-                nameof(_viewModel.SearchText),
+                nameof(CustomersViewModel.SearchText),
                 false,
                 DataSourceUpdateMode.OnPropertyChanged);
         }
@@ -799,7 +844,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _showActiveOnlyCheckBox.DataBindings.Add(
                 nameof(_showActiveOnlyCheckBox.Checked),
                 viewModelBinding,
-                nameof(_viewModel.ShowActiveOnly),
+                nameof(CustomersViewModel.ShowActiveOnly),
                 false,
                 DataSourceUpdateMode.OnPropertyChanged);
         }
@@ -810,7 +855,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _totalCustomersLabel.DataBindings.Add(
                 nameof(_totalCustomersLabel.Text),
                 viewModelBinding,
-                nameof(_viewModel.TotalCustomers),
+                nameof(CustomersViewModel.TotalCustomers),
                 true,
                 DataSourceUpdateMode.OnPropertyChanged,
                 null,
@@ -822,7 +867,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _activeCustomersLabel.DataBindings.Add(
                 nameof(_activeCustomersLabel.Text),
                 viewModelBinding,
-                nameof(_viewModel.ActiveCustomers),
+                nameof(CustomersViewModel.ActiveCustomers),
                 true,
                 DataSourceUpdateMode.OnPropertyChanged,
                 null,
@@ -834,7 +879,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _balanceSummaryLabel.DataBindings.Add(
                 nameof(_balanceSummaryLabel.Text),
                 viewModelBinding,
-                nameof(_viewModel.TotalOutstandingBalance),
+                nameof(CustomersViewModel.TotalOutstandingBalance),
                 true,
                 DataSourceUpdateMode.OnPropertyChanged,
                 null,
@@ -847,7 +892,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _statusLabel.DataBindings.Add(
                 nameof(_statusLabel.Text),
                 viewModelBinding,
-                nameof(_viewModel.StatusText),
+                nameof(CustomersViewModel.StatusText),
                 false,
                 DataSourceUpdateMode.OnPropertyChanged);
         }
@@ -857,15 +902,16 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             _countLabel.DataBindings.Add(
                 nameof(_countLabel.Text),
                 viewModelBinding,
-                nameof(_viewModel.TotalCustomers),
+                nameof(CustomersViewModel.TotalCustomers),
                 true,
                 DataSourceUpdateMode.OnPropertyChanged,
                 null,
                 "{0} customers");
         }
 
-        // Subscribe to property changes for complex UI updates
-        _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+        // Subscribe to property changes for complex UI updates (only once)
+        // ViewModel is guaranteed non-null at this point
+        ViewModel!.PropertyChanged += ViewModel_PropertyChanged;
 
         _logger?.LogDebug("CustomersPanel ViewModel bound with DataBindings");
 
@@ -949,7 +995,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     }
 
     /// <summary>
-
+    /// Handles ViewModel property changes to update UI state.
     /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -961,33 +1007,33 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
         switch (e.PropertyName)
         {
-            case nameof(_viewModel.IsLoading):
+            case nameof(CustomersViewModel.IsLoading):
                 UpdateLoadingState();
                 break;
 
-            case nameof(_viewModel.StatusText):
-                UpdateStatus(_viewModel.StatusText ?? "Ready");
+            case nameof(CustomersViewModel.StatusText):
+                UpdateStatus(ViewModel?.StatusText ?? "Ready");
                 break;
 
-            case nameof(_viewModel.ErrorMessage):
-                if (!string.IsNullOrEmpty(_viewModel.ErrorMessage))
+            case nameof(CustomersViewModel.ErrorMessage):
+                if (!string.IsNullOrEmpty(ViewModel?.ErrorMessage))
                 {
-                    MessageBox.Show(_viewModel.ErrorMessage, "Error",
+                    MessageBox.Show(ViewModel.ErrorMessage, "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 break;
 
-            case nameof(_viewModel.TotalCustomers):
-            case nameof(_viewModel.ActiveCustomers):
-            case nameof(_viewModel.TotalOutstandingBalance):
+            case nameof(CustomersViewModel.TotalCustomers):
+            case nameof(CustomersViewModel.ActiveCustomers):
+            case nameof(CustomersViewModel.TotalOutstandingBalance):
                 UpdateSummaryDisplay();
                 break;
 
-            case nameof(_viewModel.FilteredCustomers):
+            case nameof(CustomersViewModel.FilteredCustomers):
                 UpdateNoDataOverlay();
                 break;
 
-            case nameof(_viewModel.SelectedCustomer):
+            case nameof(CustomersViewModel.SelectedCustomer):
                 UpdateButtonStates();
                 break;
         }
@@ -1000,7 +1046,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         if (_loadingOverlay != null)
         {
-            _loadingOverlay.Visible = _viewModel.IsLoading;
+            _loadingOverlay.Visible = ViewModel?.IsLoading ?? false;
         }
 
         UpdateNoDataOverlay();
@@ -1013,7 +1059,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         if (_noDataOverlay != null)
         {
-            bool hasNoData = !_viewModel.IsLoading && _viewModel.FilteredCustomers.Count == 0;
+            var hasNoData = (ViewModel?.IsLoading == false) && (ViewModel?.FilteredCustomers.Count == 0);
             _noDataOverlay.Visible = hasNoData;
 
             if (hasNoData)
@@ -1036,28 +1082,28 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         if (_totalCustomersLabel != null)
         {
-            _totalCustomersLabel.Text = $"Total: {_viewModel.TotalCustomers}";
+            _totalCustomersLabel.Text = $"Total: {ViewModel?.TotalCustomers ?? 0}";
         }
 
         if (_activeCustomersLabel != null)
         {
-            _activeCustomersLabel.Text = $"Active: {_viewModel.ActiveCustomers}";
+            _activeCustomersLabel.Text = $"Active: {ViewModel?.ActiveCustomers ?? 0}";
         }
 
         if (_balanceSummaryLabel != null)
         {
-            _balanceSummaryLabel.Text = $"Balance: {_viewModel.TotalOutstandingBalance:C2}";
+            _balanceSummaryLabel.Text = $"Balance: {ViewModel?.TotalOutstandingBalance ?? 0:C2}";
         }
 
         if (_countLabel != null)
         {
-            var displayCount = _viewModel.FilteredCustomers.Count;
+            var displayCount = ViewModel?.FilteredCustomers.Count ?? 0;
             _countLabel.Text = $"{displayCount} customer{(displayCount != 1 ? "s" : "")}";
         }
 
         if (_balanceLabel != null)
         {
-            _balanceLabel.Text = $"Total Balance: {_viewModel.TotalOutstandingBalance:C2}";
+            _balanceLabel.Text = $"Total Balance: {ViewModel?.TotalOutstandingBalance ?? 0:C2}";
         }
     }
 
@@ -1066,13 +1112,13 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void UpdateButtonStates()
     {
-        var hasSelection = _viewModel.SelectedCustomer != null;
+        var hasSelection = ViewModel?.SelectedCustomer != null;
 
         if (_editCustomerButton != null)
             _editCustomerButton.Enabled = hasSelection;
 
         if (_deleteCustomerButton != null)
-            _deleteCustomerButton.Enabled = hasSelection && _viewModel.SelectedCustomer?.Id > 0;
+            _deleteCustomerButton.Enabled = hasSelection && ViewModel?.SelectedCustomer?.Id > 0;
     }
 
     #endregion
@@ -1085,7 +1131,10 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private void SearchTextBox_TextChanged(object? sender, EventArgs e)
     {
         // Update viewmodel property
-        _viewModel.SearchText = _searchTextBox?.Text;
+        if (ViewModel != null)
+        {
+            ViewModel.SearchText = _searchTextBox?.Text;
+        }
     }
 
     /// <summary>
@@ -1108,24 +1157,30 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         // Update customer type filter
         if (sender == _filterTypeComboBox && _filterTypeComboBox != null)
         {
-            _viewModel.FilterCustomerType = _filterTypeComboBox.SelectedIndex switch
+            if (ViewModel != null)
             {
-                1 => CustomerType.Residential,
-                2 => CustomerType.Commercial,
-                3 => CustomerType.Industrial,
-                _ => null
-            };
+                ViewModel.FilterCustomerType = _filterTypeComboBox.SelectedIndex switch
+                {
+                    1 => CustomerType.Residential,
+                    2 => CustomerType.Commercial,
+                    3 => CustomerType.Industrial,
+                    _ => null
+                };
+            }
         }
 
         // Update location filter
         if (sender == _filterLocationComboBox && _filterLocationComboBox != null)
         {
-            _viewModel.FilterServiceLocation = _filterLocationComboBox.SelectedIndex switch
+            if (ViewModel != null)
             {
-                1 => ServiceLocation.InsideCityLimits,
-                2 => ServiceLocation.OutsideCityLimits,
-                _ => null
-            };
+                ViewModel.FilterServiceLocation = _filterLocationComboBox.SelectedIndex switch
+                {
+                    1 => ServiceLocation.InsideCityLimits,
+                    2 => ServiceLocation.OutsideCityLimits,
+                    _ => null
+                };
+            }
         }
     }
 
@@ -1134,9 +1189,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void CustomersGrid_SelectionChanged(object? sender, EventArgs e)
     {
-        if (_customersGrid?.SelectedItem is UtilityCustomer customer)
+        if (_customersGrid?.SelectedItem is UtilityCustomer customer && ViewModel != null)
         {
-            _viewModel.SelectedCustomer = customer;
+            ViewModel.SelectedCustomer = customer;
             _logger.LogDebug("Selected customer: {Account} - {Name}",
                 customer.AccountNumber, customer.DisplayName);
         }
@@ -1147,7 +1202,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void CustomersGrid_CellDoubleClick(object? sender, Syncfusion.WinForms.DataGrid.Events.CellClickEventArgs e)
     {
-        if (e.DataRow != null && _viewModel.SelectedCustomer != null)
+        if (e.DataRow != null && ViewModel?.SelectedCustomer != null)
         {
             EditSelectedCustomer();
         }
@@ -1165,7 +1220,10 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         try
         {
             _logger.LogDebug("Loading customers");
-            await _viewModel.LoadCustomersCommand.ExecuteAsync(null);
+            if (ViewModel != null)
+            {
+                await ViewModel.LoadCustomersCommand.ExecuteAsync(null);
+            }
         }
         catch (Exception ex)
         {
@@ -1191,7 +1249,10 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         try
         {
             _logger.LogDebug("Searching customers");
-            await _viewModel.SearchCommand.ExecuteAsync(null);
+            if (ViewModel != null)
+            {
+                await ViewModel.SearchCommand.ExecuteAsync(null);
+            }
         }
         catch (Exception ex)
         {
@@ -1209,12 +1270,15 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         try
         {
             _logger.LogDebug("Adding new customer");
-            await _viewModel.AddCustomerCommand.ExecuteAsync(null);
-
-            // Open edit dialog for the new customer
-            if (_viewModel.SelectedCustomer != null)
+            if (ViewModel != null)
             {
-                EditSelectedCustomer();
+                await ViewModel.AddCustomerCommand.ExecuteAsync(null);
+
+                // Open edit dialog for the new customer
+                if (ViewModel.SelectedCustomer != null)
+                {
+                    EditSelectedCustomer();
+                }
             }
         }
         catch (Exception ex)
@@ -1230,20 +1294,20 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void EditSelectedCustomer()
     {
-        if (_viewModel.SelectedCustomer == null) return;
+        if (ViewModel?.SelectedCustomer == null) return;
 
         BeginInvoke(new Func<Task>(async () =>
         {
             try
             {
-                _logger.LogDebug("Editing customer {Account}", _viewModel.SelectedCustomer.AccountNumber);
+                _logger.LogDebug("Editing customer {Account}", ViewModel.SelectedCustomer.AccountNumber);
 
-                using var dialog = new CustomerEditDialog(_viewModel.SelectedCustomer, _logger);
+                using var dialog = new CustomerEditDialog(ViewModel.SelectedCustomer, _logger);
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
                     // Save the changes to the database
-                    await _viewModel.SaveCustomerAsync(_viewModel.SelectedCustomer);
-                    _logger.LogInformation("Customer {Account} updated successfully", _viewModel.SelectedCustomer.AccountNumber);
+                    await ViewModel.SaveCustomerAsync(ViewModel.SelectedCustomer);
+                    _logger.LogDebug("Customer {Account} updated successfully", ViewModel.SelectedCustomer.AccountNumber);
                 }
             }
             catch (Exception ex)
@@ -1260,11 +1324,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private async Task DeleteSelectedCustomerAsync(CancellationToken cancellationToken = default)
     {
-        if (_viewModel.SelectedCustomer == null) return;
+        if (ViewModel?.SelectedCustomer == null) return;
 
         try
         {
-            var customer = _viewModel.SelectedCustomer;
+            var customer = ViewModel.SelectedCustomer;
             var message = $"Are you sure you want to delete customer:\n\n{customer.DisplayName}\nAccount: {customer.AccountNumber}?";
             var detail = "This action cannot be undone. All associated data will be permanently removed.";
 
@@ -1276,10 +1340,10 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                _logger.LogInformation("Deleting customer {Id} - {Account}",
+                _logger.LogDebug("Deleting customer {Id} - {Account}",
                     customer.Id, customer.AccountNumber);
 
-                var success = await _viewModel.DeleteCustomerAsync(customer.Id);
+                var success = await ViewModel.DeleteCustomerAsync(customer.Id);
 
                 if (success)
                 {
@@ -1311,14 +1375,17 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
             if (result == DialogResult.Yes)
             {
-                _logger.LogInformation("Starting QuickBooks sync");
-                await _viewModel.SyncWithQuickBooksCommand.ExecuteAsync(null);
+                _logger.LogDebug("Starting QuickBooks sync");
+                if (ViewModel != null)
+                {
+                    await ViewModel.SyncWithQuickBooksCommand.ExecuteAsync(null);
 
-                MessageBox.Show(
-                    _viewModel.SyncStatusMessage ?? "Sync completed successfully",
-                    "QuickBooks Sync",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    MessageBox.Show(
+                        ViewModel.SyncStatusMessage ?? "Sync completed successfully",
+                        "QuickBooks Sync",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
             }
         }
         catch (Exception ex)
@@ -1346,8 +1413,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                _logger.LogInformation("Exporting customers to {File}", dialog.FileName);
-                await _viewModel.ExportToCsvCommand.ExecuteAsync(dialog.FileName);
+                _logger.LogDebug("Exporting customers to {File}", dialog.FileName);
+                if (ViewModel != null)
+                {
+                    await ViewModel.ExportToCsvCommand.ExecuteAsync(dialog.FileName);
+                }
             }
         }
         catch (Exception ex)
@@ -1402,10 +1472,15 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        this.InvokeIfRequired(() =>
         {
-            _statusLabel.Text = message;
-        }
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    _statusLabel.Text = message ?? string.Empty;
+            }
+            catch { }
+        });
         _logger.LogDebug("Status: {Message}", message);
     }
 
@@ -1423,11 +1498,16 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         if (!DesignMode)
         {
             ConfigureToolbarFonts();
+            WireupToolbarEventHandlers();
+
+            if (ViewModel != null)
+            {
+                BindViewModel();
+            }
 
             // Defer sizing validation until layout is complete
             this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
-            _ = LoadCustomersAsync();
         }
     }
 
@@ -1469,7 +1549,10 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
                     _customersGrid.CellDoubleClick -= CustomersGrid_CellDoubleClick;
                 }
 
-                _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                if (ViewModel != null)
+                {
+                    ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+                }
             }
             catch
             {

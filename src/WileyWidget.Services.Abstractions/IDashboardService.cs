@@ -29,6 +29,16 @@ namespace WileyWidget.Services.Abstractions
         /// Gets data statistics for diagnostic purposes
         /// </summary>
         Task<(int TotalRecords, DateTime? OldestRecord, DateTime? NewestRecord)> GetDataStatisticsAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Populates dashboard collections from the full Town of Wiley 2026 budget dataset
+        /// </summary>
+        Task PopulateDashboardMetricsFromWileyDataAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Populates department summaries from Town of Wiley 2026 budget data using mapped departments
+        /// </summary>
+        Task PopulateDepartmentSummariesFromSanitationAsync(CancellationToken ct = default);
     }
 
     /// <summary>

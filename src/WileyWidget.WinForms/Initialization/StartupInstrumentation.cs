@@ -151,6 +151,15 @@ namespace WileyWidget.WinForms.Initialization
         }
     }
 
+    public static class StartupMetrics
+    {
+        public static void RecordPhase(string phaseName, long elapsedMilliseconds)
+            => StartupInstrumentation.RecordPhase(phaseName, elapsedMilliseconds);
+
+        public static IDisposable TimerScope(string phaseName)
+            => StartupInstrumentation.TimerScope(phaseName);
+    }
+
     /// <summary>
     /// Provides production-ready validation and initialization helpers for UI components.
     /// </summary>

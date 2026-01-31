@@ -4,6 +4,7 @@ using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
+using Serilog;
 
 namespace WileyWidget.WinForms.Extensions
 {
@@ -44,15 +45,19 @@ namespace WileyWidget.WinForms.Extensions
         {
             if (grid == null || grid.IsDisposed) return;
 
+            if (grid.InvokeRequired)
+            {
+                grid.Invoke(new Action(() => SafeDispose(grid)));
+                return;
+            }
+
             try
             {
                 grid.Dispose();
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for SfDataGrid: {ex.Message}");
-#endif
+                Serilog.Log.Warning(ex, "[SafeDispose] Swallowed exception for SfDataGrid");
                 _ = ex;
                 // Silently ignore - these are non-fatal Syncfusion dispose quirks
             }
@@ -66,15 +71,19 @@ namespace WileyWidget.WinForms.Extensions
         {
             if (combo == null || combo.IsDisposed) return;
 
+            if (combo.InvokeRequired)
+            {
+                combo.Invoke(new Action(() => SafeDispose(combo)));
+                return;
+            }
+
             try
             {
                 combo.Dispose();
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for SfComboBox: {ex.Message}");
-#endif
+                Serilog.Log.Warning(ex, "[SafeDispose] Swallowed exception for SfComboBox");
                 _ = ex;
                 // Silently ignore - these are non-fatal Syncfusion dispose quirks
             }
@@ -87,15 +96,19 @@ namespace WileyWidget.WinForms.Extensions
         {
             if (list == null || list.IsDisposed) return;
 
+            if (list.InvokeRequired)
+            {
+                list.Invoke(new Action(() => SafeDispose(list)));
+                return;
+            }
+
             try
             {
                 list.Dispose();
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for SfListView: {ex.Message}");
-#endif
+                Serilog.Log.Warning(ex, "[SafeDispose] Swallowed exception for SfListView");
                 _ = ex;
                 // Silently ignore - these are non-fatal Syncfusion dispose quirks
             }
@@ -107,10 +120,17 @@ namespace WileyWidget.WinForms.Extensions
 
         /// <summary>
         /// Safely disposes any Control, swallowing exceptions (useful for Syncfusion controls during shutdown).
+        /// Ensures disposal occurs on the UI thread to prevent cross-thread exceptions.
         /// </summary>
         public static void SafeDispose(this Control? control)
         {
             if (control == null || control.IsDisposed) return;
+
+            if (control.InvokeRequired)
+            {
+                control.Invoke(new Action(() => SafeDispose(control)));
+                return;
+            }
 
             try
             {
@@ -118,9 +138,7 @@ namespace WileyWidget.WinForms.Extensions
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for {control.GetType().Name}: {ex.Message}");
-#endif
+                Serilog.Log.Warning(ex, "[SafeDispose] Swallowed exception for {ControlType}", control.GetType().Name);
                 _ = ex;
                 // Silently ignore - these are non-fatal dispose quirks
             }
@@ -143,9 +161,7 @@ namespace WileyWidget.WinForms.Extensions
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for {component.GetType().Name}: {ex.Message}");
-#endif
+                Serilog.Log.Warning(ex, "[SafeDispose] Swallowed exception for {ComponentType}", component.GetType().Name);
                 _ = ex;
                 // Silently ignore
             }
@@ -165,9 +181,7 @@ namespace WileyWidget.WinForms.Extensions
             }
             catch (Exception ex)
             {
-#if DEBUG
-                System.Diagnostics.Debug.WriteLine($"[SafeDispose] Swallowed exception for {container.GetType().Name}: {ex.Message}");
-#endif
+                Serilog.Log.Warning(ex, "[SafeDispose] Swallowed exception for {ContainerType}", container.GetType().Name);
                 _ = ex;
                 // Silently ignore - Syncfusion controls in container may have disposal quirks
             }
@@ -202,6 +216,31 @@ namespace WileyWidget.WinForms.Extensions
         }
 
         /// <summary>
+        /// Applies a timeout to an async Task operation with cancellation support.
+        /// Throws TimeoutException if the task doesn't complete within the specified timeout.
+        /// The underlying task is cancelled if it supports cancellation.
+        /// </summary>
+        public static async System.Threading.Tasks.Task<T> WithTimeout<T>(
+            this System.Threading.Tasks.Task<T> task,
+            TimeSpan timeout,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            if (task == null) throw new ArgumentNullException(nameof(task));
+
+            using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(timeout);
+
+            try
+            {
+                return await task.WaitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (System.Threading.Tasks.TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Task did not complete within {timeout.TotalSeconds} seconds");
+            }
+        }
+
+        /// <summary>
         /// Applies a timeout to an async Task operation (non-generic) using Task.WhenAny pattern.
         /// Throws TimeoutException if the task doesn't complete within the specified timeout.
         /// Note: Does not cancel the underlying task—only prevents waiting beyond timeout.
@@ -222,6 +261,31 @@ namespace WileyWidget.WinForms.Extensions
 
             // Task completed first, await it to propagate any exceptions
             await task.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Applies a timeout to an async Task operation (non-generic) with cancellation support.
+        /// Throws TimeoutException if the task doesn't complete within the specified timeout.
+        /// The underlying task is cancelled if it supports cancellation.
+        /// </summary>
+        public static async System.Threading.Tasks.Task WithTimeout(
+            this System.Threading.Tasks.Task task,
+            TimeSpan timeout,
+            System.Threading.CancellationToken cancellationToken)
+        {
+            if (task == null) throw new ArgumentNullException(nameof(task));
+
+            using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(timeout);
+
+            try
+            {
+                await task.WaitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (System.Threading.Tasks.TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Task did not complete within {timeout.TotalSeconds} seconds");
+            }
         }
 
         #endregion

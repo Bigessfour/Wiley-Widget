@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using WileyWidget.WinForms.Services;
+using WileyWidget.Services;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Services
 {
-    public class FileImportServiceTests : IDisposable
+    public sealed class FileImportServiceTests : IDisposable
     {
         private readonly Mock<ILogger<FileImportService>> _loggerMock;
         private readonly FileImportService _service;
@@ -31,6 +31,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services
             {
                 Directory.Delete(_testTempDir, true);
             }
+            GC.SuppressFinalize(this);
         }
 
         [Fact]

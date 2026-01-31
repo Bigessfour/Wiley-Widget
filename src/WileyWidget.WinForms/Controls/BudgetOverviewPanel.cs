@@ -303,7 +303,7 @@ namespace WileyWidget.WinForms.Controls
             Controls.Add(_summaryPanel);
 
             // Main content area - split between chart and grid
-            var mainSplit = new SplitContainer
+            var mainSplit = new SplitContainerAdv
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal
@@ -917,4 +917,7 @@ namespace WileyWidget.WinForms.Controls
         }
     }
 }
+
+
+
 

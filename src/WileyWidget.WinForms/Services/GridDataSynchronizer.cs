@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Helpers;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.Windows.Forms.Chart;
@@ -220,7 +221,7 @@ namespace WileyWidget.WinForms.Services
                     }
                 }
 
-                _chart.Refresh();
+                _chart.SafeInvoke(() => { _chart.Refresh(); });
                 _logger.LogDebug("✓ Chart highlighted - selected index: {SelectedIndex}", _grid.SelectedIndex);
             }
             catch (Exception ex)

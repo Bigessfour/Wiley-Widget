@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
@@ -219,6 +220,31 @@ namespace WileyWidget.Tests.WinForms
         {
             var method = typeof(QuickBooksPanel).GetMethod("OnResize", BindingFlags.NonPublic | BindingFlags.Instance);
             method?.Invoke(panel, new object[] { e });
+        }
+
+        [Fact]
+        [STAThread]
+        public void OperationsPanel_ButtonsNotClipped_AfterResize()
+        {
+            // Arrange
+            var (panel, _) = CreatePanelWithMocks();
+            panel.Size = new Size(800, 600);  // Standard size
+
+            using var form = new Form { Controls = { panel }, Size = new Size(900, 700) };
+            form.Show();
+            Application.DoEvents();
+
+            // Act: Resize to trigger layout
+            panel.Size = new Size(600, 400);
+            Application.DoEvents();
+            panel.PerformLayout();
+
+            // Assert: Check if operations buttons are fully visible
+            var operationsPanel = GetPrivateField(panel, "_operationsPanel") as Panel;
+            var buttonPanel = operationsPanel?.Controls.OfType<FlowLayoutPanel>().FirstOrDefault();
+            Assert.NotNull(buttonPanel);
+            Assert.True(buttonPanel.Bottom <= operationsPanel.Bottom, "Operations buttons are clipped at bottom");
+            Assert.True(buttonPanel.Top >= operationsPanel.Top, "Operations buttons are clipped at top");
         }
     }
 

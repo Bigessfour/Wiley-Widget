@@ -1,16 +1,18 @@
-using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
 using System.Drawing;
+using Microsoft.Extensions.Configuration;
 
 namespace WileyWidget.WinForms.Configuration;
 
 /// <summary>
 /// Centralized UI configuration for the WinForms application.
-/// Phase 1 Simplification: Hard-coded architecture with const-like values.
+/// Phase 1: Defaults to hard-coded values; can be overridden via IConfiguration (e.g., appsettings.json).
 /// </summary>
 public sealed record UIConfiguration
 {
     /// <summary>
-    /// Always use Syncfusion DockingManager (Phase 1: const true).
+    /// Whether to use Syncfusion DockingManager. Defaults to true but can be overridden via config.
     /// </summary>
     public bool UseSyncfusionDocking { get; init; } = true;
 
@@ -21,22 +23,21 @@ public sealed record UIConfiguration
 
     /// <summary>
     /// Default theme to apply on startup.
-    /// Phase 1: Hard-coded to Office2019Colorful.
     /// </summary>
     public string DefaultTheme { get; init; } = "Office2019Colorful";
 
     /// <summary>
-    /// Whether to show the Ribbon control (disabled in test harness mode).
+    /// Whether to show the Ribbon control (disabled in test harness mode by default).
     /// </summary>
     public bool ShowRibbon { get; init; } = true;
 
     /// <summary>
-    /// Whether to show the menu bar (always enabled).
+    /// Whether to show the menu bar.
     /// </summary>
     public bool ShowMenuBar { get; init; } = true;
 
     /// <summary>
-    /// Whether to show the status bar (always enabled).
+    /// Whether to show the status bar.
     /// </summary>
     public bool ShowStatusBar { get; init; } = true;
 
@@ -51,56 +52,61 @@ public sealed record UIConfiguration
     public Size MinimumFormSize { get; init; } = new(1024, 768);
 
     /// <summary>
-    /// Whether to auto-show dashboard on startup.
+    /// Whether to auto-show the dashboard on startup.
     /// </summary>
     public bool AutoShowDashboard { get; init; } = false;
 
     /// <summary>
-    /// Default fiscal year for charts and reports.
+    /// Default fiscal year for financial views.
     /// </summary>
     public int DefaultFiscalYear { get; init; } = DateTime.UtcNow.Year;
 
     /// <summary>
-    /// Creates UIConfiguration from IConfiguration.
-    /// Phase 1: Most values are hard-coded, only test harness and theme are read from config.
+    /// Enable locking during docking load to reduce flicker (default: true).
     /// </summary>
-    public static UIConfiguration FromConfiguration(IConfiguration configuration)
+    public bool EnableDockingLockDuringLoad { get; init; } = true;
+
+    /// <summary>
+    /// Creates UIConfiguration from IConfiguration. Values in configuration override defaults where present.
+    /// </summary>
+    public static UIConfiguration FromConfiguration(IConfiguration? configuration)
     {
-        var isTestHarness = configuration.GetValue("UI:IsUiTestHarness", false);
+        if (configuration == null)
+        {
+            return new UIConfiguration();
+        }
+
+        var isTestHarness = configuration.GetValue<bool>("UI:IsUiTestHarness", false);
+
+        // Read form size pieces (allow Width/Height keys under UI:DefaultFormSize and UI:MinimumFormSize)
+        int defaultWidth = configuration.GetValue<int?>("UI:DefaultFormSize:Width") ?? 1400;
+        int defaultHeight = configuration.GetValue<int?>("UI:DefaultFormSize:Height") ?? 900;
+        int minWidth = configuration.GetValue<int?>("UI:MinimumFormSize:Width") ?? 1024;
+        int minHeight = configuration.GetValue<int?>("UI:MinimumFormSize:Height") ?? 768;
 
         return new UIConfiguration
         {
-            // Phase 1: Hard-coded architecture, but configurable for tests
-            UseSyncfusionDocking = true,
-
-            // Read from config
+            UseSyncfusionDocking = configuration.GetValue<bool?>("UI:UseSyncfusionDocking") ?? true,
             IsUiTestHarness = isTestHarness,
-            DefaultTheme = "Office2019Colorful", // Phase 1: Hard-coded
-
-            // Chrome configuration
-            ShowRibbon = !isTestHarness, // Ribbon disabled in test harness
-            ShowMenuBar = true,
-            ShowStatusBar = true,
-
-            // Form defaults
-            DefaultFormSize = new Size(1400, 900),
-            MinimumFormSize = new Size(1024, 768),
-
-            // Feature flags
-            AutoShowDashboard = configuration.GetValue("UI:AutoShowDashboard", false),
-            DefaultFiscalYear = configuration.GetValue("UI:DefaultFiscalYear", DateTime.UtcNow.Year)
+            DefaultTheme = configuration.GetValue<string?>("UI:DefaultTheme") ?? "Office2019Colorful",
+            ShowRibbon = configuration.GetValue<bool?>("UI:ShowRibbon") ?? !isTestHarness,
+            ShowMenuBar = configuration.GetValue<bool?>("UI:ShowMenuBar") ?? true,
+            ShowStatusBar = configuration.GetValue<bool?>("UI:ShowStatusBar") ?? true,
+            DefaultFormSize = new Size(defaultWidth, defaultHeight),
+            MinimumFormSize = new Size(minWidth, minHeight),
+            AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? false,
+            DefaultFiscalYear = configuration.GetValue<int?>("UI:DefaultFiscalYear") ?? DateTime.UtcNow.Year,
+            EnableDockingLockDuringLoad = configuration.GetValue<bool?>("UI:EnableDockingLockDuringLoad") ?? true
         };
     }
 
     /// <summary>
-    /// Validates the UI configuration and returns validation errors.
+    /// Validates the configuration and returns a list of validation errors.
     /// </summary>
-    /// <returns>List of validation errors, empty if valid.</returns>
     public List<string> Validate()
     {
         var errors = new List<string>();
 
-        // Validate form sizes
         if (DefaultFormSize.Width < MinimumFormSize.Width || DefaultFormSize.Height < MinimumFormSize.Height)
         {
             errors.Add($"DefaultFormSize ({DefaultFormSize}) must be >= MinimumFormSize ({MinimumFormSize})");
@@ -111,17 +117,22 @@ public sealed record UIConfiguration
             errors.Add($"MinimumFormSize ({MinimumFormSize}) is too small (minimum 800x600)");
         }
 
-        // Validate fiscal year
         var currentYear = DateTime.UtcNow.Year;
         if (DefaultFiscalYear < 2000 || DefaultFiscalYear > currentYear + 10)
         {
             errors.Add($"DefaultFiscalYear ({DefaultFiscalYear}) is out of valid range (2000 to {currentYear + 10})");
         }
 
-        // Validate theme
         if (string.IsNullOrWhiteSpace(DefaultTheme))
         {
             errors.Add("DefaultTheme cannot be empty");
+        }
+
+        // Basic theme compatibility check - keep a small whitelist of common Syncfusion themes
+        var validThemes = new[] { "Office2019Colorful", "Office2019Black", "Office2019White", "Office2019DarkGray", "Office2016" };
+        if (!Array.Exists(validThemes, t => string.Equals(t, DefaultTheme, StringComparison.OrdinalIgnoreCase)))
+        {
+            errors.Add($"DefaultTheme '{DefaultTheme}' is not a commonly supported theme. Examples: {string.Join(", ", validThemes)}");
         }
 
         return errors;
@@ -132,6 +143,6 @@ public sealed record UIConfiguration
     /// </summary>
     public string GetArchitectureDescription()
     {
-        return $"Docking={UseSyncfusionDocking}, TestHarness={IsUiTestHarness}";
+        return $"Docking={UseSyncfusionDocking}, TestHarness={IsUiTestHarness}, Theme={DefaultTheme}, DockingLock={EnableDockingLockDuringLoad}";
     }
 }

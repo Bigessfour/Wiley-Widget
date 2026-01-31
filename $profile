@@ -1,0 +1,38 @@
+# Unix-like aliases for PowerShell
+Set-Alias -Name la -Value Get-ChildItemWithAttributes -Force
+Set-Alias -Name grep -Value Select-String -Force
+Set-Alias -Name head -Value Get-Content -Force
+Set-Alias -Name tail -Value Get-Content -Force
+Set-Alias -Name cat -Value Get-Content -Force
+Set-Alias -Name touch -Value New-ItemTouchFile -Force
+Set-Alias -Name which -Value Get-Command -Force
+
+# Function: la (ls with attributes)
+function Get-ChildItemWithAttributes {
+    Get-ChildItem -Force @args | Format-Table -AutoSize
+}
+
+# Function: head (first N lines)
+function Get-ContentHead {
+    param([int]$Lines = 10)
+    Get-Content @args -Head $Lines
+}
+
+# Function: tail (last N lines)  
+function Get-ContentTail {
+    param([int]$Lines = 10)
+    Get-Content @args -Tail $Lines
+}
+
+# Function: touch (create empty file)
+function New-ItemTouchFile {
+    param([string]$Path)
+    if (Test-Path $Path) {
+        (Get-Item $Path).LastWriteTime = Get-Date
+    } else {
+        New-Item -ItemType File -Path $Path -Force | Out-Null
+    }
+}
+
+# Ensure ls is aliased to Get-ChildItem (usually default)
+Set-Alias -Name ls -Value Get-ChildItem -Force

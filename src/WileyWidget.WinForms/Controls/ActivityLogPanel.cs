@@ -6,6 +6,7 @@ using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,6 +16,8 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utilities;
+using WileyWidget.WinForms.ViewModels;
+using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
 
 namespace WileyWidget.WinForms.Controls
 {
@@ -23,8 +26,17 @@ namespace WileyWidget.WinForms.Controls
     /// Replaces left dock navigation buttons, providing activity audit trail.
     /// Uses SfDataGrid to show recent actions in a user-friendly interface.
     /// </summary>
-    public partial class ActivityLogPanel : ScopedPanelBase<ActivityLogViewModel>
+    public partial class ActivityLogPanel : ScopedPanelBase
     {
+        // Strongly-typed ViewModel (this is what you use in your code)
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        [System.ComponentModel.DefaultValue(null)]
+        public new ActivityLogViewModel? ViewModel
+        {
+            get => (ActivityLogViewModel?)base.ViewModel;
+            set => base.ViewModel = value;
+        }
         private SfDataGrid? _activityGrid;
         private PanelHeader? _panelHeader;
         private System.Windows.Forms.Timer? _autoRefreshTimer;
@@ -34,43 +46,79 @@ namespace WileyWidget.WinForms.Controls
         private CheckBoxAdv? _chkAutoRefresh;
         private BindingSource? _bindingSource;
         private CancellationTokenSource? _autoRefreshCancellationTokenSource;
+        private readonly SemaphoreSlim _refreshSemaphore = new SemaphoreSlim(1, 1);
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
         /// </summary>
         public ActivityLogPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase<ActivityLogViewModel>> logger)
+            ILogger<ScopedPanelBase> logger)
             : base(scopeFactory, logger)
         {
-            InitializeComponent();
+            // Create controls programmatically instead of using InitializeComponent
+            CreateControls();
             ApplyTheme();
             SetupUI();
             InitializeAutoRefresh();
+            // LoadInitialData() moved to OnViewModelResolved to ensure ViewModel is available
         }
 
-        private void InitializeComponent()
+        protected override void OnViewModelResolved(object? viewModel)
+        {
+            base.OnViewModelResolved(viewModel);
+            if (viewModel is not ActivityLogViewModel typedViewModel)
+            {
+                return;
+            }
+            LoadInitialData();
+        }
+
+        protected async void LoadInitialData()
+        {
+            try
+            {
+                if (ViewModel != null)
+                {
+                    await ViewModel.LoadActivityAsync();
+                }
+                else
+                {
+                    Logger?.LogWarning("ViewModel is null in LoadInitialData - skipping refresh");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Failed to load initial activity data");
+            }
+        }
+
+        private void CreateControls()
         {
             this.SuspendLayout();
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
 
-            // Main horizontal split for header (top) + grid (bottom)
-            var mainSplit = new SplitContainer
+            // Main TableLayoutPanel root
+            var mainTable = new TableLayoutPanel
             {
-                Name = "MainSplit",
+                Name = "MainTable",
                 Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 60
+                RowCount = 2,
+                ColumnCount = 1
             };
 
-            // Header panel (top section)
+            // Row 0: Header panel with _panelHeader and buttons
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            // Header panel (Row 0)
             var headerPanel = new Panel
             {
                 Name = "HeaderPanel",
                 Dock = DockStyle.Fill,
-                Height = 60,
+                Height = 65,
                 Padding = new Padding(8)
             };
 
@@ -85,7 +133,6 @@ namespace WileyWidget.WinForms.Controls
             _btnExport.Click += OnExportClicked;
             _btnExport.AccessibleName = "Export Activity Log";
             _btnExport.AccessibleDescription = "Export activity log entries to CSV file";
-
             _btnExport.TabIndex = 2;
             headerPanel.Controls.Add(_btnExport);
 
@@ -99,7 +146,6 @@ namespace WileyWidget.WinForms.Controls
             _btnClearLog.Click += OnClearLogClicked;
             _btnClearLog.AccessibleName = "Clear Activity Log";
             _btnClearLog.AccessibleDescription = "Clears all activity log entries";
-
             _btnClearLog.TabIndex = 3;
             headerPanel.Controls.Add(_btnClearLog);
 
@@ -114,7 +160,6 @@ namespace WileyWidget.WinForms.Controls
             _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
             _chkAutoRefresh.AccessibleName = "Auto Refresh";
             _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
-
             _chkAutoRefresh.TabIndex = 4;
             headerPanel.Controls.Add(_chkAutoRefresh);
 
@@ -128,9 +173,24 @@ namespace WileyWidget.WinForms.Controls
             _panelHeader.TabIndex = 0;
             headerPanel.Controls.Add(_panelHeader);
 
-            mainSplit.Panel1.Controls.Add(headerPanel);
+            // Wire PanelHeader events
+            _panelHeader.RefreshClicked += (s, e) => { Logger?.LogDebug("Refresh clicked on ActivityLogPanel"); /* Refresh logic if needed */ };
+            _panelHeader.CloseClicked += (s, e) => ClosePanel();
+            _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Activity Log Help: This panel shows recent navigation and system activities.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+            _panelHeader.PinToggled += (s, e) => { Logger?.LogDebug("Pin toggled on ActivityLogPanel"); /* Pin logic */ };
 
-            // Data grid (bottom section)
+            mainTable.Controls.Add(headerPanel, 0, 0);
+
+            // Row 1: SplitContainer with _activityGrid
+            var gridSplit = new SplitContainerAdv
+            {
+                Name = "GridSplit",
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                SplitterDistance = 0 // No header in split, just the grid
+            };
+
+            // Data grid in the split container
             _activityGrid = new SfDataGrid
             {
                 Name = "ActivityGrid",
@@ -178,9 +238,10 @@ namespace WileyWidget.WinForms.Controls
                 Width = 80
             });
 
-            mainSplit.Panel2.Controls.Add(_activityGrid);
+            gridSplit.Panel1.Controls.Add(_activityGrid);
+            mainTable.Controls.Add(gridSplit, 0, 1);
 
-            Controls.Add(mainSplit);
+            Controls.Add(mainTable);
 
             this.ResumeLayout(false);
         }
@@ -358,19 +419,67 @@ namespace WileyWidget.WinForms.Controls
             }
         }
 
+        private void ClosePanel()
+        {
+            try
+            {
+                var form = FindForm();
+                var dockingManagerField = form?.GetType()
+                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
+                {
+                    var dockedHost = FindDockedHost(dockingManager);
+                    dockingManager.SetDockVisibility(dockedHost ?? this, false);
+                    Logger?.LogDebug("ActivityLogPanel closed via DockingManager");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogDebug(ex, "Failed to close ActivityLogPanel via docking manager");
+            }
+
+            Visible = false;
+        }
+
+        private Control? FindDockedHost(Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
+        {
+            Control? current = this;
+            while (current != null)
+            {
+                try
+                {
+                    if (dockingManager.GetEnableDocking(current))
+                    {
+                        return current;
+                    }
+                }
+                catch { }
+                current = current.Parent;
+            }
+            return null;
+        }
+
         /// <summary>
         /// Performs async activity log refresh on the UI thread.
         /// Accepts CancellationToken to allow cancellation during panel disposal.
         /// </summary>
         private async Task RefreshActivityLogsAsync(CancellationToken cancellationToken = default)
         {
+            // Prevent concurrent refreshes
+            if (!await _refreshSemaphore.WaitAsync(0, cancellationToken))
+            {
+                Logger?.LogDebug("Refresh already in progress, skipping");
+                return;
+            }
+
             try
             {
                 if (IsDisposed || ViewModel == null || _chkAutoRefresh?.Checked != true)
                     return;
 
                 // Refresh data on UI thread context (no ConfigureAwait needed)
-                await ViewModel.RefreshActivityEntriesAsync();
+                await ViewModel.LoadActivityAsync();
 
                 // Update grid binding on UI thread
                 if (!IsDisposed)
@@ -385,6 +494,10 @@ namespace WileyWidget.WinForms.Controls
             catch (Exception ex)
             {
                 Logger?.LogWarning(ex, "Auto-refresh failed");
+            }
+            finally
+            {
+                _refreshSemaphore.Release();
             }
         }
 
@@ -427,7 +540,7 @@ namespace WileyWidget.WinForms.Controls
             {
                 var ct_op = RegisterOperation();
                 IsBusy = true;
-                await ViewModel.RefreshActivityEntriesAsync();
+                await ViewModel.LoadActivityAsync();
                 SetHasUnsavedChanges(false);
             }
             catch (OperationCanceledException)
@@ -500,102 +613,14 @@ namespace WileyWidget.WinForms.Controls
 
                 try { _panelHeader?.Dispose(); } catch { }
                 _panelHeader = null;
+
+                // Dispose semaphore
+                try { _refreshSemaphore?.Dispose(); } catch { }
             }
             base.Dispose(disposing);
         }
     }
 
     /// <summary>
-    /// ViewModel for ActivityLogPanel.
-    /// Manages activity entry collection and refresh operations.
-    /// </summary>
-    public class ActivityLogViewModel
-    {
-        private readonly ILogger<ActivityLogViewModel>? _logger;
-        private readonly IActivityLogRepository? _repository;
 
-        /// <summary>
-        /// Observable collection of activity entries.
-        /// </summary>
-        public ObservableCollection<ActivityLog> ActivityEntries { get; } = new();
-
-        /// <summary>
-        /// Initialize ViewModel with optional repository and logger.
-        /// Repository is optional to support testing and fallback scenarios.
-        /// </summary>
-        public ActivityLogViewModel(
-            IActivityLogRepository? repository = null,
-            ILogger<ActivityLogViewModel>? logger = null)
-        {
-            _repository = repository;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Refresh activity entries from data source (repository or in-memory).
-        /// </summary>
-        public async System.Threading.Tasks.Task RefreshActivityEntriesAsync()
-        {
-            try
-            {
-                if (_repository != null)
-                {
-                    // Load from repository/database
-                    var activities = await _repository.GetRecentActivitiesAsync(skip: 0, take: 500);
-                    ActivityEntries.Clear();
-
-                    // Convert ActivityItem to ActivityLog for display in grid
-                    foreach (var activity in activities.OrderByDescending(a => a.Timestamp))
-                    {
-                        ActivityEntries.Add(new ActivityLog
-                        {
-                            Timestamp = activity.Timestamp,
-                            Activity = activity.Activity,
-                            Details = activity.Details,
-                            Status = activity.ActivityType,
-                            User = activity.User,
-                            Category = activity.Category,
-                            Icon = activity.Icon,
-                            ActivityType = activity.ActivityType,
-                            Severity = ""
-                        });
-                    }
-                    _logger?.LogDebug("Activity entries refreshed from database; {EntryCount} entries loaded", ActivityEntries.Count);
-                }
-                else
-                {
-                    // Fallback: maintain current in-memory entries
-                    _logger?.LogDebug("Activity entries maintained in-memory; {EntryCount} entries current", ActivityEntries.Count);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to refresh activity entries from database");
-            }
-        }
-
-        /// <summary>
-        /// Add a new activity entry.
-        /// </summary>
-        public void AddActivity(ActivityLog activity)
-        {
-            if (activity != null)
-            {
-                ActivityEntries.Insert(0, activity); // Add to top of list
-                // Keep only last 500 entries
-                while (ActivityEntries.Count > 500)
-                {
-                    ActivityEntries.RemoveAt(ActivityEntries.Count - 1);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Clear all activity log entries.
-        /// </summary>
-        public void ClearActivityLog()
-        {
-            ActivityEntries.Clear();
-        }
-    }
 }

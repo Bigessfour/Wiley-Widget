@@ -23,8 +23,10 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Initialization;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 
 #pragma warning disable CS8604 // Possible null reference argument
@@ -115,6 +117,9 @@ namespace WileyWidget.WinForms.Forms
 
         // [PERF] MRU List (persisted across sessions)
         private readonly List<string> _mruList = new List<string>();
+
+        // [PERF] Theme tracking for dynamically added controls
+        private readonly HashSet<Control> _themeTrackedControls = new HashSet<Control>();
 
         /// <summary>
         /// Global MainViewModel for the application.
@@ -227,8 +232,10 @@ namespace WileyWidget.WinForms.Forms
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
 
             // [PERF] Initialize DI container first, before creating any services
-            // This ensures all dependencies are available for resolution
-            _serviceProvider = serviceProvider;
+            // This ensures all dependencies are available for resolution. If caller did not provide
+            // a service provider, prefer Program.Services when available; otherwise create a
+            // minimal fallback provider so first-run UX does not crash.
+            _serviceProvider = serviceProvider ?? WileyWidget.WinForms.Program.ServicesOrNull ?? WileyWidget.WinForms.Program.CreateFallbackServiceProvider();
             _configuration = configuration;
             _logger = logger;
             _reportViewerLaunchOptions = reportViewerLaunchOptions;
@@ -239,13 +246,45 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Initialize UI configuration early
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
 
+            // [PERF] Set base form properties before any rendering
+            AutoScaleMode = AutoScaleMode.Dpi;
+            KeyPreview = true;
+
+            // [PERF] Set form size constraints
+            MinimumSize = _uiConfig.MinimumFormSize;
+            if (_uiConfig.IsUiTestHarness)
+            {
+                MaximumSize = new Size(1920, 1080);
+            }
+            else
+            {
+                var screenWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
+                var screenHeight = Screen.PrimaryScreen?.WorkingArea.Height ?? 1080;
+                MaximumSize = new Size(screenWidth, screenHeight);
+            }
+
             // [PERF] Apply global theme before any child controls are created
             // Theme is inherited from Program.InitializeTheme() via SfSkinManager.ApplicationVisualTheme
             // This call ensures cascade to form and early controls
-            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+            try
+            {
+                WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to apply theme in MainForm constructor");
+                // Continue without theme - form will use default styling
+            }
 
             // [PERF] Subscribe to theme switching
-            _themeService.ThemeChanged += OnThemeChanged;
+            try
+            {
+                _themeService.ThemeChanged += OnThemeChanged;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to subscribe to theme changes in MainForm constructor");
+            }
 
             // [PERF] Optimize painting for heavy Syncfusion UI (non-test-harness only)
             if (!_uiConfig.IsUiTestHarness)
@@ -270,19 +309,6 @@ namespace WileyWidget.WinForms.Forms
             DragEnter += MainForm_DragEnter;
             DragDrop += MainForm_DragDrop;
 
-            // [PERF] Set form size constraints
-            this.MinimumSize = _uiConfig.MinimumFormSize;
-            if (_uiConfig.IsUiTestHarness)
-            {
-                this.MaximumSize = new Size(1920, 1080);
-            }
-            else
-            {
-                var screenWidth = Screen.PrimaryScreen?.WorkingArea.Width ?? 1920;
-                var screenHeight = Screen.PrimaryScreen?.WorkingArea.Height ?? 1080;
-                this.MaximumSize = new Size(screenWidth, screenHeight);
-            }
-
             // [PERF] Add exception handlers
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
             System.Windows.Forms.Application.ThreadException += (s, e) =>
@@ -294,6 +320,8 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Subscribe to font changes
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
 
+            SuspendLayout();
+
             Log.Debug("[DIAGNOSTIC] MainForm constructor: COMPLETED");
         }
 
@@ -303,7 +331,22 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         protected override void OnLoad(EventArgs e)
         {
+            if (IsDisposed)
+            {
+                _logger?.LogWarning("OnLoad called on disposed form - ignoring");
+                return;
+            }
+
+            if (!IsHandleCreated)
+            {
+                _logger?.LogWarning("OnLoad called before handle creation - deferring");
+                base.OnLoad(e);
+                return;
+            }
+
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnLoad START");
             base.OnLoad(e);
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnLoad base.OnLoad completed");
 
             // [PERF] Track lifecycle event
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -322,30 +365,81 @@ namespace WileyWidget.WinForms.Forms
 
             _initialized = true;
 
+            ApplyThemeForFutureControls();
+
             // [PERF] Load MRU and restore window state (once, in OnLoad)
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Loading MRU list");
             LoadMruList();
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Restoring window state");
             _windowStateService.RestoreWindowState(this);
 
             // [PERF] Initialize UI chrome (Ribbon/StatusBar/MenuBar)
-            _logger?.LogDebug("OnLoad: Starting UI chrome initialization");
-            InitializeChrome();
-
-            // [PERF] Z-order management
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting UI chrome initialization");
             try
             {
-                if (_ribbon != null) _ribbon.BringToFront();
-                if (_statusBar != null) _statusBar.BringToFront();
-                Refresh();
-                Invalidate();
-                _logger?.LogDebug("Z-order management completed");
+                using var chromePhase = StartupMetrics.TimerScope("Chrome Initialization");
+                InitializeChrome();
+
+                SuspendLayout();
+                try
+                {
+                    if (_menuStrip != null)
+                    {
+                        _menuStrip.Dock = DockStyle.Top;
+                        Controls.Add(_menuStrip);
+                    }
+
+                    if (_ribbon != null)
+                    {
+                        _ribbon.Dock = (DockStyleEx)DockStyle.Top;
+                        _ribbon.BorderStyle = (ToolStripBorderStyle)BorderStyle.None;
+                        _ribbon.ThemeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                        Controls.Add(_ribbon);
+                    }
+
+                    if (_navigationStrip != null)
+                    {
+                        Controls.Add(_navigationStrip);
+                    }
+
+                    if (_statusBar != null)
+                    {
+                        _statusBar.Dock = DockStyle.Bottom;
+                        _statusBar.BorderStyle = BorderStyle.None;
+                        Controls.Add(_statusBar);
+                    }
+                }
+                finally
+                {
+                    ResumeLayout(false);
+                }
+
+                _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI chrome initialization completed");
             }
-            catch (Exception ex)
+            catch (Exception chromeEx)
             {
-                _logger?.LogError(ex, "OnLoad failed during z-order configuration");
+                _logger?.LogError(chromeEx, "[DIAGNOSTIC] OnLoad: InitializeChrome FAILED - {Type}: {Message}", chromeEx.GetType().Name, chromeEx.Message);
                 throw;
             }
 
-            _logger?.LogInformation("OnLoad: UI initialization completed");
+            // [PERF] Z-order management
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting Z-order management");
+            try
+            {
+                if (_ribbon != null) _ribbon.BringToFront();
+                if (_menuStrip != null) _menuStrip.BringToFront();
+                if (_statusBar != null) _statusBar.BringToFront();
+                Refresh();
+                Invalidate();
+                _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Z-order management completed");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "[DIAGNOSTIC] OnLoad failed during z-order configuration - {Type}: {Message}", ex.GetType().Name, ex.Message);
+                throw;
+            }
+
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI initialization COMPLETED SUCCESSFULLY");
         }
 
         /// <summary>
@@ -354,34 +448,70 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
+            if (IsDisposed)
+            {
+                _logger?.LogWarning("OnShown called on disposed form - ignoring");
+                return;
+            }
+
+            if (!IsHandleCreated)
+            {
+                _logger?.LogWarning("OnShown called before handle creation - deferring");
+                base.OnShown(e);
+                return;
+            }
+
             if (DesignMode)
             {
                 base.OnShown(e);
                 return;
             }
 
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnShown START");
+
             // [PERF] Guard against multiple OnShown calls
             if (Interlocked.Exchange(ref _onShownExecuted, 1) != 0)
             {
-                _logger?.LogWarning("OnShown called multiple times - ignoring duplicate");
+                _logger?.LogWarning("[DIAGNOSTIC] OnShown called multiple times - ignoring duplicate");
                 return;
             }
 
             // [PERF] Create cancellation token for 30-second initialization timeout
-            _initializationCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                _initializationCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogWarning("Form disposed during initialization token creation");
+                return;
+            }
             var cancellationToken = _initializationCts.Token;
+
+            // Initialize async diagnostics logger early so we capture all OnShown lifecycle events
+            // (moved earlier to ensure docking and layout restore logs are recorded)
+            try
+            {
+                InitializeAsyncDiagnosticsLogger();
+            }
+            catch (Exception ex)
+            {
+                // Ensure diagnostics logger failures do not block startup
+                _logger?.LogWarning(ex, "InitializeAsyncDiagnosticsLogger failed during OnShown startup - continuing");
+            }
 
             // [PERF] Phase 1: Initialize Syncfusion docking
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
                 try
                 {
-                    _logger?.LogInformation("OnShown: Validating initialization state");
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validating initialization state");
                     ValidateInitializationState();
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validation state check PASSED");
                 }
                 catch (InvalidOperationException valEx)
                 {
-                    _logger?.LogError(valEx, "OnShown: Initialization state validation failed");
+                    _logger?.LogError(valEx, "[DIAGNOSTIC] OnShown: Initialization state validation FAILED - {Message}", valEx.Message);
                     UIHelper.ShowErrorOnUI(this,
                         $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.",
                         "Initialization Error", _logger);
@@ -391,38 +521,44 @@ namespace WileyWidget.WinForms.Forms
 
                 try
                 {
-                    _logger?.LogInformation("OnShown: Initializing Syncfusion docking");
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting Syncfusion docking initialization");
                     InitializeSyncfusionDocking();
+                    ConfigureDockingManagerChromeLayout();
                     _syncfusionDockingInitialized = true;
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
                     this.Refresh();
 
                     // Defer docking layout loading to OnShown for better timing
                     if (_uiConfig?.UseSyncfusionDocking == true)
                     {
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Loading docking layout");
                         var layoutPath = GetDockingLayoutPath();
                         _ = LoadAndApplyDockingLayout(layoutPath, cancellationToken);
-                        _dockingManager?.EnsureZOrder();
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Applying theme to docking panels");
                         ApplyThemeToDockingPanels();
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Docking layout and theme applied");
+                        // Z-order adjustment is now handled by debounced handler in DockStateChanged
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "OnShown: Syncfusion docking initialization failed - {Type}: {Message}",
-                        ex.GetType().Name, ex.Message);
+                    _logger?.LogError(ex, "[DIAGNOSTIC] OnShown: Syncfusion docking initialization FAILED - {Type}: {Message}\nStack: {Stack}",
+                        ex.GetType().Name, ex.Message, ex.StackTrace);
                 }
             }
 
+            _logger?.LogInformation("[DIAGNOSTIC] OnShown: Calling base.OnShown");
             base.OnShown(e);
+            _logger?.LogInformation("[DIAGNOSTIC] OnShown: base.OnShown completed");
 
-            _logger?.LogInformation("[UI] OnShown: Starting deferred initialization");
+            _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting deferred initialization");
 
             // [PERF] Track lifecycle event
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
             timelineService?.RecordFormLifecycleEvent("MainForm", "Shown");
 
-            // [PERF] Initialize async diagnostics logger
-            InitializeAsyncDiagnosticsLogger();
+            // Async diagnostics logger already initialized earlier in OnShown
 
             // [PERF] Subscribe to activation event (unsubscribes after first activation)
             Activated += MainForm_Activated;
@@ -512,6 +648,16 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Dispose: Clean up managed resources.
+
+        /// <summary>
+        /// Handles DPI change events to re-apply theme recursively.
+        /// </summary>
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+            ApplyThemeRecursive(this, _themeService.CurrentTheme);  // Re-apply on DPI change
+        }
+
         /// </summary>
         protected override void Dispose(bool disposing)
         {
@@ -520,8 +666,19 @@ namespace WileyWidget.WinForms.Forms
                 components?.Dispose();
                 (_logger as IDisposable)?.Dispose();
 
-                // [PERF] Cancel pending initialization
-                try { _initializationCts?.Cancel(); } catch { }
+                // [PERF] Cancel pending initialization (safe if already disposed)
+                try
+                {
+                    if (_initializationCts != null && !_initializationCts.IsCancellationRequested)
+                    {
+                        _initializationCts.Cancel();
+                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Token source already disposed - this is fine during cleanup
+                }
+                catch { }
 
                 // [PERF] Dispose async logger before token source
                 if (_asyncLogger is IDisposable asyncDisposable)
@@ -596,6 +753,11 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void MainForm_Activated(object? sender, EventArgs e)
         {
+            if (IsDisposed)
+            {
+                return;
+            }
+
             _asyncLogger?.Debug("MainForm activated - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
             var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider);
@@ -608,17 +770,24 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Helper: First-chance exception handler with re-entry guard.
-        /// Logs theme and docking exceptions at Debug level.
+        /// Logs all exceptions with full diagnostic information including stack trace.
+        /// Special handling for theme and docking exceptions at Debug level.
         /// </summary>
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
         {
             var ex = e.Exception;
             if (ex == null) return;
 
-            if (ex is NullReferenceException && ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
+            // Filter common Syncfusion noise patterns
+            if (ex is NullReferenceException)
             {
-                _logger?.LogDebug("Ignored theme NullReferenceException during initialization");
-                return;
+                if (ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase) ||
+                    ex.StackTrace?.Contains("Syncfusion.Windows.Forms.Tools", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _logger?.LogDebug("Ignored Syncfusion NullReferenceException during initialization: {Message}", ex.Message);
+                    return;
+                }
             }
 
             // [PERF] Prevent recursive re-entry
@@ -630,17 +799,28 @@ namespace WileyWidget.WinForms.Forms
                 var logger = _logger;
                 try
                 {
+                    // Enhanced logging with stack trace for better debugging
                     if (ex.Source?.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase) == true ||
                         ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
                     {
-                        logger?.LogDebug(ex, "First-chance theme exception detected");
+                        logger?.LogDebug(ex, "First-chance theme exception detected - Stack Trace: {StackTrace}", ex.StackTrace);
                     }
 
                     if (ex.Source?.Contains("DockingManager", StringComparison.OrdinalIgnoreCase) == true ||
                         ex.Message.Contains("dock", StringComparison.OrdinalIgnoreCase))
                     {
-                        logger?.LogDebug(ex, "First-chance docking exception detected");
+                        logger?.LogDebug(ex, "First-chance docking exception detected - Stack Trace: {StackTrace}", ex.StackTrace);
                     }
+
+                    // Log all other first-chance exceptions for diagnostics
+                    if (ex.InnerException != null)
+                    {
+                        logger?.LogTrace("First-chance exception has inner exception - Type: {InnerExceptionType}, Message: {InnerMessage}, Stack: {InnerStack}",
+                            ex.InnerException.GetType().Name, ex.InnerException.Message, ex.InnerException.StackTrace);
+                    }
+
+                    // Log error for non-theme/docking exceptions
+                    logger?.LogError(ex, "First-chance exception detected");
                 }
                 catch { }
             }

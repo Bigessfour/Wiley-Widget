@@ -18,6 +18,7 @@ using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls.Styles;
+using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
@@ -63,8 +64,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private SfButton? _closeParametersButton;
 
     // Layout containers
-    private SplitContainer? _mainSplitContainer;
-    private SplitContainer? _parametersSplitContainer;
+    private SplitContainerAdv? _mainSplitContainer;
+    private SplitContainerAdv? _parametersSplitContainer;
 
     // Event handlers for proper cleanup (Pattern A & K)
     private EventHandler? _panelHeaderRefreshClickedHandler;
@@ -98,9 +99,13 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     /// Initializes controls and binds to the ViewModel.
     /// </summary>
     /// <param name="viewModel">The resolved ViewModel instance.</param>
-    protected override void OnViewModelResolved(ReportsViewModel viewModel)
+    protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
+        if (viewModel is not ReportsViewModel)
+        {
+            return;
+        }
         InitializeControls();
         BindViewModel();
 
@@ -220,7 +225,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         Controls.Add(_panelHeader);
 
         // Main layout container with parameters panel support
-        _parametersSplitContainer = new SplitContainer
+        _parametersSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
@@ -353,7 +358,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _parametersSplitContainer.Panel1.Controls.Add(_parametersPanel);
 
         // Main content split container (toolbar + report viewer)
-        _mainSplitContainer = new SplitContainer
+        _mainSplitContainer = new SplitContainerAdv
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal
@@ -1055,8 +1060,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 var dockingManager = FindDockingManager(form);
                 if (dockingManager != null)
                 {
-                    dockingManager.SetEnableDocking(this, false);
-                    Logger.LogDebug("Panel closed via DockingManager");
+                    dockingManager.SetDockVisibility(this, false);
+                    Logger.LogDebug("Panel hidden via DockingManager");
                 }
                 else
                 {
@@ -1104,10 +1109,15 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
     private void UpdateStatus(string message)
     {
-        if (_statusLabel != null)
+        this.InvokeIfRequired(() =>
         {
-            _statusLabel.Text = message;
-        }
+            try
+            {
+                if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    _statusLabel.Text = message ?? string.Empty;
+            }
+            catch { }
+        });
     }
 
     /// <summary>
@@ -1177,8 +1187,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 catch { }
 
                 // SafeDispose Syncfusion controls
-                try { _parametersGrid?.SafeClearDataSource(); } catch { }
-                try { _parametersGrid?.SafeDispose(); } catch { }
+                _parametersGrid?.SafeClearDataSource();
+                _parametersGrid?.SafeDispose();
 
                 // Dispose other controls with SafeDispose
                 _panelHeader?.SafeDispose();
@@ -1221,4 +1231,6 @@ public class ReportParameter
     public string Value { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
 }
+
+
 

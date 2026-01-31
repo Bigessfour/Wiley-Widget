@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
+using WileyWidget.Services.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using System;
@@ -14,7 +15,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms;
@@ -42,10 +45,25 @@ public partial class MainForm
         // [PERF] Theme and panel initialization from OnShown - deferred after docking is ready
         try
         {
+            // Check for cancellation early
+            cancellationToken.ThrowIfCancellationRequested();
+
             // Align UI with persisted theme from service
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(_themeService.CurrentTheme);
+
+                // Explicitly set ThemeName on key Syncfusion controls for robustness
+                try
+                {
+                    var currentTheme = _themeService.CurrentTheme;
+                    if (_ribbon != null) _ribbon.ThemeName = currentTheme;
+                    if (_navigationStrip != null) _navigationStrip.ThemeName = currentTheme;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to set explicit ThemeName on Syncfusion controls");
+                }
             }
             else
             {
@@ -74,7 +92,9 @@ public partial class MainForm
                 {
                     // Priority panels: Dashboard only to reduce clutter
                     _logger?.LogInformation("[PANEL] Showing Dashboard");
-                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
+                    // Ensure UI handle is available; small delay helps controls create handles on slower machines
+                    try { await Task.Delay(100, cancellationToken); } catch (OperationCanceledException) { return; }
+                    this.InvokeIfRequired(() => _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true));
                     _logger?.LogInformation("Priority panels shown successfully");
                 }
                 catch (NullReferenceException nrex)
@@ -93,6 +113,8 @@ public partial class MainForm
                 _logger?.LogInformation("Triggering initial visibility notifications for all docked panels");
                 foreach (Control control in this.Controls)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (_dockingManager.GetEnableDocking(control))
                     {
                         await NotifyPanelVisibilityChangedAsync(control);
@@ -100,7 +122,40 @@ public partial class MainForm
                 }
             }
 
+            // ============================================================================
+            // NAVIGATION HARDENING: Enable ribbon buttons once docking system is confirmed ready
+            // This prevents clicks on navigation buttons before the docking system has initialized
+            // ============================================================================
+            try
+            {
+                if (_navigationStrip != null && IsHandleCreated && !IsDisposed)
+                {
+                    this.InvokeIfRequired(() =>
+                    {
+                        int enabledCount = 0;
+                        foreach (ToolStripItem item in _navigationStrip.Items)
+                        {
+                            if (item is ToolStripButton button && !button.Enabled)
+                            {
+                                button.Enabled = true;
+                                enabledCount++;
+                            }
+                        }
+                        _logger?.LogDebug("[NAVIGATION] Enabled {Count} navigation buttons", enabledCount);
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[NAVIGATION] Unexpected error enabling navigation buttons (non-critical)");
+            }
+
             _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("InitializeAsync canceled");
+            _asyncLogger?.Information("InitializeAsync canceled");
         }
         catch (Exception ex)
         {
@@ -298,8 +353,14 @@ public partial class MainForm
             try
             {
                 _logger?.LogDebug("OnShown: Running late image validation pass");
-                LateValidateMenuBarImages();
-                LateValidateRibbonImages();
+                if (_ribbon != null)
+                {
+                    _ribbon.ValidateAndConvertImages(_logger);
+                }
+                if (_menuStrip != null)
+                {
+                    _menuStrip.ValidateAndConvertImages(_logger);
+                }
                 _logger?.LogDebug("OnShown: Late image validation completed");
             }
             catch (Exception validationEx)
@@ -371,9 +432,7 @@ public partial class MainForm
     {
         try
         {
-            var projectRoot = Directory.GetCurrentDirectory();
-            var logsDirectory = Path.Combine(projectRoot, "logs");
-            Directory.CreateDirectory(logsDirectory);
+            var logsDirectory = LogPathResolver.GetLogsDirectory();
             var asyncLogPath = Path.Combine(logsDirectory, "mainform-diagnostics-.log");
             _asyncLogger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
@@ -406,8 +465,26 @@ public partial class MainForm
         try
         {
             _mruList.Clear();
-            _mruList.AddRange(_windowStateService.LoadMru());
-            _logger?.LogDebug("MRU list loaded: {Count} items", _mruList.Count);
+            var loadedMru = _windowStateService.LoadMru();
+
+            // Validate each path before adding to MRU list
+            foreach (var file in loadedMru)
+            {
+                if (string.IsNullOrWhiteSpace(file))
+                    continue;
+
+                // Only add files that still exist
+                if (System.IO.File.Exists(file))
+                {
+                    _mruList.Add(file);
+                }
+                else
+                {
+                    _logger?.LogDebug("MRU file no longer exists, skipping: {File}", file);
+                }
+            }
+
+            _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", _mruList.Count, loadedMru.Count(), loadedMru.Count() - _mruList.Count);
         }
         catch (Exception ex)
         {
@@ -447,29 +524,29 @@ public partial class MainForm
 
         try
         {
-            ShowReportsPanel(reportPath);
+            ShowAnalyticsHubPanel(reportPath);
             _reportViewerLaunched = true;
-            _logger?.LogInformation("Report viewer opened for CLI path: {ReportPath}", reportPath);
+            _logger?.LogInformation("Analytics Hub opened for CLI path: {ReportPath}", reportPath);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to open report viewer for {ReportPath}", reportPath);
+            _logger?.LogError(ex, "Failed to open Analytics Hub for {ReportPath}", reportPath);
         }
     }
 
     /// <summary>
-    /// Shows the Reports panel with optional auto-load path for CLI-launched reports.
+    /// Shows the Analytics Hub panel with optional auto-load path for CLI-launched reports.
     /// </summary>
-    private void ShowReportsPanel(string reportPath)
+    private void ShowAnalyticsHubPanel(string reportPath)
     {
         try
         {
-            _panelNavigator.ShowPanel<Controls.ReportsPanel>("Reports", reportPath, DockingStyle.Right, allowFloating: true);
-            _logger?.LogInformation("Reports panel shown with auto-load path: {ReportPath}", reportPath);
+            _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", reportPath, DockingStyle.Right, allowFloating: true);
+            _logger?.LogInformation("Analytics Hub panel shown with auto-load path: {ReportPath}", reportPath);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to show reports panel");
+            _logger?.LogError(ex, "Failed to show Analytics Hub panel");
         }
     }
 
@@ -511,19 +588,74 @@ public partial class MainForm
                     continue;
                 }
 
-                var ext = Path.GetExtension(file).ToLowerInvariant();
+                string ext;
+                try
+                {
+                    ext = Path.GetExtension(file)?.ToLowerInvariant() ?? string.Empty;
+                }
+                catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException)
+                {
+                    _logger?.LogWarning(ex, "Skipping dropped file due to malformed path: {File}", file);
+                    try { ShowErrorDialog("Invalid File Path", $"The file path '{file}' is invalid and will be skipped."); } catch { }
+                    continue;
+                }
+
                 _asyncLogger?.Debug("Processing dropped file: {File} (ext: {Ext})", file, ext);
                 _logger?.LogInformation("Processing dropped file: {File} (ext: {Ext})", file, ext);
 
-                // Add to MRU
-                _windowStateService.AddToMru(file);
-                _mruList.Clear();
-                _mruList.AddRange(_windowStateService.LoadMru());
+                // Add to MRU with optimized in-memory update
+                try
+                {
+                    _windowStateService.AddToMru(file);
+                    // Update in-memory list directly instead of reloading
+                    if (!_mruList.Contains(file))
+                    {
+                        _mruList.Insert(0, file); // Add to front for MRU behavior
+                        if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1); // Limit to 10 items
+                    }
+                }
+                catch (DirectoryNotFoundException dnfEx)
+                {
+                    _logger?.LogWarning(dnfEx, "MRU storage directory not found - creating it");
+                    // Storage service should handle directory creation, but log for diagnostics
+                }
+                catch (IOException ioEx)
+                {
+                    _logger?.LogWarning(ioEx, "Failed to add file to MRU (non-fatal): {File}", file);
+                    // Continue with import even if MRU update fails
+                }
+                catch (Exception mruEx)
+                {
+                    _logger?.LogWarning(mruEx, "Unexpected error updating MRU (non-fatal): {File}", file);
+                    // Continue with import even if MRU update fails
+                }
+
+                // Validate _fileImportService before attempting import
+                if (_fileImportService == null)
+                {
+                    _logger?.LogError("FileImportService is null - DI may have failed");
+                    ShowErrorDialog("Service Error", "File import service is not available. Please restart the application.");
+                    continue;
+                }
 
                 if (ext == ".csv" || ext == ".xlsx" || ext == ".xls" || ext == ".json" || ext == ".xml")
                 {
-                    var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file, cancellationToken);
-                    HandleImportResult(file, result);
+                    try
+                    {
+                        var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file, cancellationToken);
+                        HandleImportResult(file, result);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogInformation("File import canceled for {File}", Path.GetFileName(file));
+                        ShowErrorDialog("Import Canceled", $"Import was canceled for '{Path.GetFileName(file)}'");
+                        break; // Exit loop on cancellation
+                    }
+                    catch (IOException ioEx)
+                    {
+                        _logger?.LogError(ioEx, "IO error importing file: {File}", file);
+                        ShowErrorDialog("Import Error", $"Failed to read file:\n{Path.GetFileName(file)}\n\nError: {ioEx.Message}");
+                    }
                 }
                 else
                 {
@@ -541,15 +673,51 @@ public partial class MainForm
     /// <summary>
     /// Handles import result from file import service.
     /// Displays success or error message to user.
+    /// Validates result.Data is not null before processing.
     /// </summary>
     private void HandleImportResult<T>(string file, Result<T> result) where T : class
     {
+        if (result == null)
+        {
+            _logger?.LogWarning("HandleImportResult called with null result for {File}", Path.GetFileName(file));
+            ShowErrorDialog("Import Error", "Import result was null");
+            return;
+        }
+
         if (result.IsSuccess && result.Data != null)
         {
-            var count = (result.Data as System.Collections.IDictionary)?.Count ?? 0;
-            _logger?.LogInformation("Successfully imported {File}: {Count} properties", Path.GetFileName(file), count);
-            try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data properties",
+            // Enhanced: Type-safe counting with fallback
+            int count = 0;
+            try
+            {
+                if (result.Data is System.Collections.IDictionary dict)
+                {
+                    count = dict.Count;
+                }
+                else if (result.Data is System.Collections.ICollection coll)
+                {
+                    count = coll.Count;
+                }
+                else
+                {
+                    count = 1; // Fallback for single objects
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to count imported data for {File}", Path.GetFileName(file));
+                count = 0;
+            }
+
+            _logger?.LogInformation("Successfully imported {File}: {Count} items", Path.GetFileName(file), count);
+            try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data items",
                 "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger); } catch { }
+        }
+        else if (result.IsSuccess && result.Data == null)
+        {
+            // Edge case: IsSuccess but Data is null
+            _logger?.LogWarning("Import reported success but returned null data for {File}", Path.GetFileName(file));
+            ShowErrorDialog("Import Warning", $"File imported but no data was returned:\n{Path.GetFileName(file)}");
         }
         else
         {

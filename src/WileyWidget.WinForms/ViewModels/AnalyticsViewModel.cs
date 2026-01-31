@@ -32,6 +32,7 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         private readonly IAnalyticsService _analyticsService;
+        private readonly ICircuitBreakerService _circuitBreaker;
         private readonly ILogger<AnalyticsViewModel> _logger;
         private readonly CancellationTokenSource _lifecycleCts = new();
         private readonly PropertyChangedEventHandler _propertyChangedHandler;
@@ -177,9 +178,10 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public IAsyncRelayCommand RefreshCommand { get; }
 
-        public AnalyticsViewModel(IAnalyticsService analyticsService, ILogger<AnalyticsViewModel> logger)
+        public AnalyticsViewModel(IAnalyticsService analyticsService, ICircuitBreakerService circuitBreaker, ILogger<AnalyticsViewModel> logger)
         {
             _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
+            _circuitBreaker = circuitBreaker ?? throw new ArgumentNullException(nameof(circuitBreaker));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             PerformAnalysisCommand = new AsyncRelayCommand(() => PerformExploratoryAnalysisAsync(_lifecycleCts.Token));
@@ -218,7 +220,9 @@ namespace WileyWidget.WinForms.ViewModels
                 var startDate = new DateTime(DateTime.Now.Year - 1, 7, 1);
                 var endDate = new DateTime(DateTime.Now.Year, 6, 30);
 
-                var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate, SelectedEntity, cancellationToken);
+                var result = await _circuitBreaker.ExecuteAsync(async (ct) =>
+                    await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate, SelectedEntity, ct), cancellationToken);
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Update metrics
@@ -262,17 +266,22 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Analysis complete";
                 _logger.LogInformation("Exploratory analysis completed successfully");
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
+            {
+                // Circuit breaker is open - show error
+                StatusText = "Service unavailable - contact support. No data available.";
+                _logger.LogWarning(ex, "Analytics service unavailable");
+                // Do not load sample data
+            }
             catch (OperationCanceledException)
             {
                 StatusText = "Analysis cancelled";
             }
             catch (Exception ex)
             {
-                StatusText = $"Analysis failed: {ex.Message}";
+                StatusText = "Analysis failed - contact support. No real data available.";
                 _logger.LogError(ex, "Error performing exploratory analysis");
-
-                // Fallback to sample data
-                await LoadSampleDataAsync(cancellationToken);
+                // Do not load sample data - never show fake data in production
             }
             finally
             {
@@ -303,7 +312,9 @@ namespace WileyWidget.WinForms.ViewModels
                     ProjectionYears = ProjectionYears
                 };
 
-                var result = await _analyticsService.RunRateScenarioAsync(parameters, cancellationToken);
+                var result = await _circuitBreaker.ExecuteAsync(async (ct) =>
+                    await _analyticsService.RunRateScenarioAsync(parameters, ct), cancellationToken);
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Update projections
@@ -325,6 +336,13 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Scenario analysis complete";
                 _logger.LogInformation("Rate scenario analysis completed successfully");
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
+            {
+                // Circuit breaker is open - use fallback data
+                StatusText = "Service unavailable - using sample scenario";
+                _logger.LogWarning(ex, "Analytics service unavailable, using sample scenario data");
+                await LoadSampleScenarioDataAsync(cancellationToken);
+            }
             catch (OperationCanceledException)
             {
                 StatusText = "Scenario cancelled";
@@ -334,8 +352,11 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = $"Scenario failed: {ex.Message}";
                 _logger.LogError(ex, "Error running rate scenario");
 
-                // Fallback to sample data
-                await LoadSampleScenarioDataAsync(cancellationToken);
+                // Fallback to sample data only if circuit breaker allows it
+                if (_circuitBreaker.CircuitState != Polly.CircuitBreaker.CircuitState.Open)
+                {
+                    await LoadSampleScenarioDataAsync(cancellationToken);
+                }
             }
             finally
             {
@@ -358,7 +379,9 @@ namespace WileyWidget.WinForms.ViewModels
                 IsLoading = true;
                 StatusText = "Generating forecast...";
 
-                var result = await _analyticsService.GenerateReserveForecastAsync(ProjectionYears, cancellationToken);
+                var result = await _circuitBreaker.ExecuteAsync(async (ct) =>
+                    await _analyticsService.GenerateReserveForecastAsync(ProjectionYears, ct), cancellationToken);
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Update forecast data
@@ -373,6 +396,13 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Forecast generated";
                 _logger.LogInformation("Reserve forecast generated successfully");
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
+            {
+                // Circuit breaker is open - use fallback data
+                StatusText = "Service unavailable - using sample forecast";
+                _logger.LogWarning(ex, "Analytics service unavailable, using sample forecast data");
+                await LoadSampleForecastDataAsync(cancellationToken);
+            }
             catch (OperationCanceledException)
             {
                 StatusText = "Forecast cancelled";
@@ -382,8 +412,11 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = $"Forecast failed: {ex.Message}";
                 _logger.LogError(ex, "Error generating reserve forecast");
 
-                // Fallback to sample data
-                await LoadSampleForecastDataAsync(cancellationToken);
+                // Fallback to sample data only if circuit breaker allows it
+                if (_circuitBreaker.CircuitState != Polly.CircuitBreaker.CircuitState.Open)
+                {
+                    await LoadSampleForecastDataAsync(cancellationToken);
+                }
             }
             finally
             {

@@ -237,11 +237,20 @@
 		},
 		{
 			"label": "test",
-			"command": "dotnet test WileyWidget.sln",
+			"dependsOn": [
+				"build: fast"
+			],
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--no-build",
+				"WileyWidget.sln"
+			],
 			"type": "shell",
 			"group": "test",
 			"problemMatcher": "$msCompile"
 		},
+
 		{
 			"label": "🛑 Kill All Dotnet Processes",
 			"command": "powershell",
@@ -468,12 +477,15 @@
 		},
 		{
 			"label": "🧪 Run UI Tests (Isolated)",
+			"dependsOn": [
+				"build: fast"
+			],
 			"command": "dotnet",
 			"args": [
 				"test",
-				"${workspaceFolder}/tests",
-				"-k",
-				"UI"
+				"--no-build",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj"
 			],
 			"type": "shell",
 			"group": "test",
@@ -487,9 +499,13 @@
 		},
 		{
 			"label": "🔧 Run Tests with Mock Services",
+			"dependsOn": [
+				"build: fast"
+			],
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"${workspaceFolder}/tests",
 				"-k",
 				"Mock"
@@ -544,10 +560,14 @@
 		},
 		{
 			"label": "test: mcp",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -558,10 +578,14 @@
 		},
 		{
 			"label": "test: mcp",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -572,10 +596,14 @@
 		},
 		{
 			"label": "test: mcp",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -584,12 +612,17 @@
 			],
 			"group": "test"
 		},
+
 		{
 			"label": "test: mcp-tests",
+			"dependsOn": [
+				"build: fast"
+			],
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
 				"tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer.Tests/WileyWidgetMcpServer.Tests.csproj"
 			],
 			"isBackground": false,
@@ -615,6 +648,195 @@
 			"problemMatcher": [
 				"$msCompile"
 			],
+			"group": "test"
+		},
+		{
+			"label": "🔌 Setup MSSQL MCP (Windows Auth)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/setup-mssql-mcp.ps1",
+				"-AuthType",
+				"windows",
+				"-Server",
+				"localhost",
+				"-Database",
+				"WileyWidget"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "🔌 Setup MSSQL MCP (SQL Auth)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/setup-mssql-mcp.ps1",
+				"-AuthType",
+				"sql",
+				"-UserId",
+				"sa"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "🧪 Test MSSQL Connection",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-Command",
+				"$cs = $env:MSSQL_CONNECTION_STRING; if (-not $cs) { Write-Host '❌ MSSQL_CONNECTION_STRING not set. Run setup task first.' -ForegroundColor Red; exit 1 } else { Write-Host '✅ MSSQL_CONNECTION_STRING is set' -ForegroundColor Green; Write-Host \"Connection: $cs\" -ForegroundColor Gray }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "📊 View MSSQL MCP Setup Guide",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"code -g docs/MSSQL_MCP_SETUP_GUIDE.md"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "maintenance: Kill Test Processes",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-File",
+				"scripts/maintenance/kill-test-processes.ps1"
+			],
+			"presentation": {
+				"panel": "new",
+				"reveal": "always",
+				"echo": true
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "👁️ Preview WarRoom Panel",
+			"dependsOn": ["build: fast"],
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidget.Paneltest/WileyWidget.Paneltest.csproj",
+				"--",
+				"warroom",
+				"--show"
+			],
+			"isBackground": false,
+			"problemMatcher": ["$msCompile"],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new",
+				"showReuseMessage": true
+			},
+			"group": "test"
+		},
+		{
+			"label": "📋 WarRoom Panel Test (Headless + Logs)",
+			"dependsOn": ["build: fast"],
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--project",
+				"${workspaceFolder}/tools/WileyWidget.Paneltest/WileyWidget.Paneltest.csproj",
+				"--",
+				"warroom"
+			],
+			"isBackground": false,
+			"problemMatcher": ["$msCompile"],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			},
+			"group": "test"
+		},
+		{
+			"label": "📂 Open WarRoom Test Logs",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$logDir = '${workspaceFolder}/tools/WileyWidget.Paneltest/Logs'; if (Test-Path $logDir) { explorer $logDir; Write-Host 'Opened: ' $logDir } else { Write-Host 'Log directory not found: ' $logDir }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "📊 Open WarRoom Test Results",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$resultsFile = '${workspaceFolder}/tools/WileyWidget.Paneltest/Results/test-results.json'; if (Test-Path $resultsFile) { code $resultsFile } else { Write-Host 'Results file not found: ' $resultsFile }"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "silent",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": [],
 			"group": "test"
 		}
 	]
