@@ -793,11 +793,6 @@
           "System.Memory.Data": "8.0.1"
         }
       },
-      "System.CodeDom": {
-        "type": "Transitive",
-        "resolved": "6.0.0",
-        "contentHash": "CPc6tWO1LAer3IzfZufDBRL+UZQcj5uS207NHALQzP84Vp/z6wF0Aa0YZImOQY8iStY0A2zI/e3ihKNPfUm8XA=="
-      },
       "System.Composition": {
         "type": "Transitive",
         "resolved": "9.0.0",
@@ -853,19 +848,6 @@
         "dependencies": {
           "System.Diagnostics.EventLog": "10.0.2",
           "System.Security.Cryptography.ProtectedData": "10.0.2"
-        }
-      },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "10.0.2",
-        "contentHash": "TJPpTLF5MFPobq09c9BQ5X8QuviQfsKvH0Jbm7MkGylGvfIdRqJQLZDPC5sMRFkk9aZhmgir1NJKekip2NxfaA=="
-      },
-      "System.Diagnostics.PerformanceCounter": {
-        "type": "Transitive",
-        "resolved": "10.0.2",
-        "contentHash": "aUW7WlSpuagd0rea9LSgMJ9c73aZ2FlzS3Mk4Aqfjz43sWBu0xcVfaBNoV0KOEWhrpk6tv1PV3xqSq82vsDfRA==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "10.0.2"
         }
       },
       "System.IdentityModel.Tokens.Jwt": {
@@ -1184,6 +1166,27 @@
         "contentHash": "Y6g3OBJ4JzTyyw16fDqtFcQ41qQAydnEvEqmXjhwhgjsnG/FaJ8GUqF5ldsC/bVkK8KYmqrPhDO+tm4dF6xx4A==",
         "dependencies": {
           "Serilog": "2.10.0"
+        }
+      },
+      "System.CodeDom": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.2, )",
+        "resolved": "6.0.0",
+        "contentHash": "CPc6tWO1LAer3IzfZufDBRL+UZQcj5uS207NHALQzP84Vp/z6wF0Aa0YZImOQY8iStY0A2zI/e3ihKNPfUm8XA=="
+      },
+      "System.Diagnostics.EventLog": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "TJPpTLF5MFPobq09c9BQ5X8QuviQfsKvH0Jbm7MkGylGvfIdRqJQLZDPC5sMRFkk9aZhmgir1NJKekip2NxfaA=="
+      },
+      "System.Diagnostics.PerformanceCounter": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "aUW7WlSpuagd0rea9LSgMJ9c73aZ2FlzS3Mk4Aqfjz43sWBu0xcVfaBNoV0KOEWhrpk6tv1PV3xqSq82vsDfRA==",
+        "dependencies": {
+          "System.Configuration.ConfigurationManager": "10.0.2"
         }
       },
       "System.Numerics.Tensors": {

@@ -81,6 +81,9 @@
     <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="9.0.1-preview.1.24570.5" />
     <!-- System.* packages removed where functionality is provided by .NET 10 framework -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.0" />
+    <PackageVersion Include="System.CodeDom" Version="10.0.2" />
+    <PackageVersion Include="System.Diagnostics.EventLog" Version="10.0.2" />
+    <PackageVersion Include="System.Diagnostics.PerformanceCounter" Version="10.0.2" />
     <PackageVersion Include="Serilog.Sinks.Email" Version="4.1.0" />
     <PackageVersion Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.2.0" />

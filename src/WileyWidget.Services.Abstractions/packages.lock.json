@@ -456,19 +456,6 @@
           "System.Security.Cryptography.ProtectedData": "10.0.2"
         }
       },
-      "System.Diagnostics.EventLog": {
-        "type": "Transitive",
-        "resolved": "10.0.2",
-        "contentHash": "TJPpTLF5MFPobq09c9BQ5X8QuviQfsKvH0Jbm7MkGylGvfIdRqJQLZDPC5sMRFkk9aZhmgir1NJKekip2NxfaA=="
-      },
-      "System.Diagnostics.PerformanceCounter": {
-        "type": "Transitive",
-        "resolved": "10.0.2",
-        "contentHash": "aUW7WlSpuagd0rea9LSgMJ9c73aZ2FlzS3Mk4Aqfjz43sWBu0xcVfaBNoV0KOEWhrpk6tv1PV3xqSq82vsDfRA==",
-        "dependencies": {
-          "System.Configuration.ConfigurationManager": "10.0.2"
-        }
-      },
       "System.IdentityModel.Tokens.Jwt": {
         "type": "Transitive",
         "resolved": "7.7.1",
@@ -855,6 +842,21 @@
         "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
         "dependencies": {
           "Serilog": "4.2.0"
+        }
+      },
+      "System.Diagnostics.EventLog": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "TJPpTLF5MFPobq09c9BQ5X8QuviQfsKvH0Jbm7MkGylGvfIdRqJQLZDPC5sMRFkk9aZhmgir1NJKekip2NxfaA=="
+      },
+      "System.Diagnostics.PerformanceCounter": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "aUW7WlSpuagd0rea9LSgMJ9c73aZ2FlzS3Mk4Aqfjz43sWBu0xcVfaBNoV0KOEWhrpk6tv1PV3xqSq82vsDfRA==",
+        "dependencies": {
+          "System.Configuration.ConfigurationManager": "10.0.2"
         }
       },
       "System.Security.Cryptography.Xml": {
