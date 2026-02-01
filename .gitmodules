@@ -1,3 +1,6 @@
 [submodule "tools/SyncfusionMcpServer"]
 	path = tools/SyncfusionMcpServer
 	url = https://github.com/Bigessfour/syncfusion-winforms-mcp.git
+[submodule "tests/syncfusion-winforms-mcp"]
+	path = tests/syncfusion-winforms-mcp
+	url = https://github.com/Bigessfour/syncfusion-winforms-mcp
