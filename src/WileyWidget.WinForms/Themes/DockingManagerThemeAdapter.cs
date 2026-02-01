@@ -48,8 +48,8 @@ namespace WileyWidget.WinForms.Themes
             ["HighContrastBlack"] = VisualStyle.Office2010,
             ["HighContrastWhite"] = VisualStyle.Office2007,
 
-            // Fallback for unknown or unspecified themes
-            [ThemeColors.DefaultTheme] = VisualStyle.Office2010,
+            // Fallback for unknown or unspecified themes (use ThemeColors.DefaultTheme)
+            [ThemeColors.DefaultTheme] = VisualStyle.Office2007,
         };
 
         /// <summary>
