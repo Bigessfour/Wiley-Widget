@@ -3,7 +3,9 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Themes
@@ -12,7 +14,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
     /// Tests for DockingManagerThemeAdapter to ensure it uses ThemeColors.DefaultTheme
     /// instead of hardcoded "Default" string.
     /// </summary>
-    public class DockingManagerThemeAdapterTests : IDisposable
+    [Collection("SyncfusionTheme")]
+    public sealed class DockingManagerThemeAdapterTests : IDisposable
     {
         private readonly Mock<ILogger> _loggerMock;
         private readonly DockingManager _dockingManager;
@@ -20,6 +23,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
 
         public DockingManagerThemeAdapterTests()
         {
+            TestThemeHelper.EnsureOffice2019Colorful();
+
             _loggerMock = new Mock<ILogger>();
             _dockingManager = new DockingManager();
             _adapter = new DockingManagerThemeAdapter(_dockingManager, _loggerMock.Object);
@@ -32,10 +37,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
             _adapter.ApplyTheme(null);
 
             // Assert
-            // The adapter should have attempted to apply ThemeColors.DefaultTheme ("Office2019White")
-            // which maps to VisualStyle.Office2007 based on the ThemeMap
-            _dockingManager.VisualStyle.Should().Be(Syncfusion.Windows.Forms.VisualStyle.Office2007,
-                "because null theme should fallback to ThemeColors.DefaultTheme which is Office2019White");
+            // The adapter should have attempted to apply ThemeColors.DefaultTheme ("Office2019Colorful")
+            // which maps to VisualStyle.Office2010 based on the ThemeMap
+            _dockingManager.VisualStyle.Should().Be(Syncfusion.Windows.Forms.VisualStyle.Office2010,
+                "because null theme should fallback to ThemeColors.DefaultTheme which is Office2019Colorful");
         }
 
         [Fact]
@@ -45,8 +50,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
             _adapter.ApplyTheme("");
 
             // Assert
-            _dockingManager.VisualStyle.Should().Be(Syncfusion.Windows.Forms.VisualStyle.Office2007,
-                "because empty theme should fallback to ThemeColors.DefaultTheme which is Office2019White");
+            _dockingManager.VisualStyle.Should().Be(Syncfusion.Windows.Forms.VisualStyle.Office2010,
+                "because empty theme should fallback to ThemeColors.DefaultTheme which is Office2019Colorful");
         }
 
         [Fact]
@@ -56,8 +61,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
             _adapter.ApplyTheme("   ");
 
             // Assert
-            _dockingManager.VisualStyle.Should().Be(Syncfusion.Windows.Forms.VisualStyle.Office2007,
-                "because whitespace theme should fallback to ThemeColors.DefaultTheme which is Office2019White");
+            _dockingManager.VisualStyle.Should().Be(Syncfusion.Windows.Forms.VisualStyle.Office2010,
+                "because whitespace theme should fallback to ThemeColors.DefaultTheme which is Office2019Colorful");
         }
 
         [Fact]
@@ -114,25 +119,34 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
         [Fact]
         public void Constructor_WhenDockingManagerIsNull_ShouldThrowArgumentNullException()
         {
-            // Act
-            Action act = () => new DockingManagerThemeAdapter(null!, _loggerMock.Object);
-
-            // Assert
+            // Act & Assert
+#pragma warning disable CA1806
+            System.Action act = () => new DockingManagerThemeAdapter(null!, _loggerMock.Object);
+#pragma warning restore CA1806
             act.Should().Throw<ArgumentNullException>()
                 .WithParameterName("dockingManager");
         }
 
         [Fact]
-        public void ThemeColorsDefaultTheme_ShouldBeOffice2019White()
+        public void ThemeColorsDefaultTheme_ShouldBeOffice2019Colorful()
         {
             // This test validates the expected default theme value
-            ThemeColors.DefaultTheme.Should().Be("Office2019White",
-                "because the default theme should be Office2019White as defined in ThemeColors");
+            ThemeColors.DefaultTheme.Should().Be("Office2019Colorful",
+                "because the default theme should be Office2019Colorful as defined in ThemeColors");
         }
 
         public void Dispose()
         {
-            _dockingManager?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _dockingManager?.Dispose();
+            }
         }
     }
 }

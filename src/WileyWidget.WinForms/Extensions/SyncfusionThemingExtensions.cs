@@ -8,6 +8,8 @@ using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Themes;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Extensions;
 
@@ -70,6 +72,7 @@ public static class SyncfusionThemingExtensions
 
         try
         {
+            AppThemeColors.EnsureThemeAssemblyLoaded(logger);
             // SfSkinManager is the single source of truth for theming (Syncfusion API).
             // Extension method encapsulates the safe pattern.
             // Per Syncfusion documentation: SetVisualStyle automatically cascades to all child controls.
@@ -216,7 +219,12 @@ public static class SyncfusionThemingExtensions
     public static void ApplyThemeRecursive(this Control rootControl, string themeName, ILogger? logger = null)
     {
         if (rootControl is null || string.IsNullOrWhiteSpace(themeName))
+        {
+            logger?.LogWarning("ApplyThemeRecursive: Invalid parameters - rootControl={Root}, themeName='{Theme}'", rootControl?.GetType().Name ?? "null", themeName);
             return;
+        }
+
+        logger?.LogDebug("ApplyThemeRecursive: Starting theme application for {ControlType} with theme '{Theme}'", rootControl.GetType().Name, themeName);
 
         try
         {
@@ -226,6 +234,7 @@ public static class SyncfusionThemingExtensions
             // Recursively apply to all children using C# 14 features
             var queue = new Queue<Control>();
             queue.Enqueue(rootControl);
+            int syncfusionControlsProcessed = 0;
 
             while (queue.Count > 0)
             {
@@ -240,6 +249,7 @@ public static class SyncfusionThemingExtensions
                         if (IsSyncfusionControl(child))
                         {
                             child.ApplySyncfusionTheme(themeName, logger);
+                            syncfusionControlsProcessed++;
                         }
 
                         queue.Enqueue(child);
@@ -247,7 +257,7 @@ public static class SyncfusionThemingExtensions
                 }
             }
 
-            logger?.LogDebug("Applied theme '{Theme}' recursively to all child controls", themeName);
+            logger?.LogDebug("Applied theme '{Theme}' recursively to {Count} Syncfusion controls", themeName, syncfusionControlsProcessed);
         }
         catch (Exception ex)
         {

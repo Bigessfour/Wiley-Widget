@@ -20,7 +20,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var qbMock = new Mock<IQuickBooksService>();
             var searchMock = new Mock<IGlobalSearchService>();
 
-            Action act = () => new MainViewModel(null!, dashboardMock.Object, aiLoggingMock.Object, qbMock.Object, searchMock.Object);
+            var act = () => new MainViewModel(null!, dashboardMock.Object, aiLoggingMock.Object, qbMock.Object, searchMock.Object);
             act.Should().Throw<ArgumentNullException>();
         }
 
@@ -33,7 +33,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             var qbMock = new Mock<IQuickBooksService>();
             var searchMock = new Mock<IGlobalSearchService>();
 
-            var vm = new MainViewModel(loggerMock.Object, dashboardMock.Object, aiLoggingMock.Object, qbMock.Object, searchMock.Object);
+            var vm = new MainViewModel(loggerMock.Object, dashboardMock.Object, aiLoggingMock.Object, qbMock.Object, searchMock.Object, Mock.Of<IStatusProgressService>());
 
             var items = new List<DashboardItem>
             {
@@ -41,7 +41,8 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 new DashboardItem { Category = "actual", Value = "800", Title = "Actual" },
                 new DashboardItem { Category = "variance", Value = "200", Title = "Variance" },
                 new DashboardItem { Category = "accounts", Value = "3", Title = "Accounts" },
-                new DashboardItem { Category = "departments", Value = "4", Title = "Departments" }
+                new DashboardItem { Category = "departments", Value = "5", Title = "Departments" },
+                new DashboardItem { Category = "activity", Value = "Opened", Title = "Dashboard" }
             };
 
             vm.ProcessDashboard(items);
@@ -50,8 +51,8 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
             vm.TotalActual.Should().Be(800m);
             vm.Variance.Should().Be(200m);
             vm.ActiveAccountCount.Should().Be(3);
-            vm.TotalDepartments.Should().Be(4);
-            vm.ActivityItems.Should().HaveCount(5);
+            vm.TotalDepartments.Should().Be(5);
+            vm.ActivityItems.Should().HaveCount(1);
             vm.LastUpdateTime.Should().NotBeNullOrWhiteSpace();
         }
     }

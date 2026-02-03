@@ -20,8 +20,10 @@ namespace WileyWidget.WinForms.ViewModels
     public class DashboardMetric
     {
         public required string Name { get; init; }
+        public string? Title { get; init; }
         public required double Value { get; init; }
         public required string Unit { get; init; }
+        public string Category { get; init; } = "General";
         public required string Trend { get; init; }
         public required double ChangePercent { get; init; }
         public required string Description { get; init; }
@@ -971,6 +973,8 @@ namespace WileyWidget.WinForms.ViewModels
         public required string Month { get; init; }
         public required decimal Amount { get; init; }
         public required int MonthNumber { get; init; }
+        public decimal PreviousMonthAmount { get; init; }
+        public int Year { get; init; }
     }
 }
 
@@ -1084,4 +1088,3 @@ namespace WileyWidget.WinForms.ViewModels
         #endregion
     }
 }
-

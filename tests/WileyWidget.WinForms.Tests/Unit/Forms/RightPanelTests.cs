@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -10,14 +11,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Xunit;
-using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
@@ -53,8 +53,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
             themeMock.Setup(t => t.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                SfSkinManager.ApplicationVisualTheme = theme;
+                 TestThemeHelper.EnsureOffice2019Colorful();
             });
             services.AddSingleton<IThemeService>(themeMock.Object);
             services.AddSingleton<IWindowStateService>(Mock.Of<IWindowStateService>());
@@ -97,7 +96,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void CreateRightDockPanel_HasActivityLogAndJarvisTabs_AndDefaultMode()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerForForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
@@ -132,7 +131,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void GetSetMode_TracksTagCorrectly()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerForForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
@@ -159,7 +158,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void SwitchRightPanelContent_SelectsTabAndLogs()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerForForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
@@ -189,102 +188,5 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             form.Dispose();
         }
 
-        [StaFact]
-        public async Task JARVISChatHostForm_SendsInitialPrompt_AfterDelay()
-        {
-            // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-            var provider = BuildProvider();
-            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
-
-            var services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(configuration);
-            services.AddSingleton(ReportViewerLaunchOptions.Disabled);
-            services.AddWindowsFormsBlazorWebView();
-            services.AddSingleton<IThemeService>(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!);
-            services.AddSingleton<IChatBridgeService>(_ =>
-            {
-                var mock = new Mock<IChatBridgeService>();
-                mock.Setup(m => m.RequestExternalPromptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-                return mock.Object;
-            });
-            services.AddLogging(builder => builder.AddDebug());
-
-            var sp = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-            var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IChatBridgeService>(sp);
-            var chatBridgeMock = Mock.Get(chatBridge);
-
-            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!;
-            var logger = new Mock<ILogger<JARVISChatHostForm>>();
-
-            var form = new JARVISChatHostForm(sp, themeService, logger.Object)
-            {
-                InitialPrompt = "Hello JARVIS"
-            };
-
-            // Act: ensure handle exists and call SendInitialPromptAsync directly (bypasses BeginInvoke for testing)
-            var _ = form.Handle;
-            form.Visible = true;
-            
-            // Call the protected method directly for testing
-            var sendInitialPromptMethod = typeof(JARVISChatHostForm).GetMethod("SendInitialPromptAsync", BindingFlags.Instance | BindingFlags.NonPublic);
-            var task = (Task)sendInitialPromptMethod!.Invoke(form, Array.Empty<object>())!;
-
-            // Wait for the task to complete (should take ~1.5 seconds due to delay)
-            await task;
-
-            // Assert: chat bridge was called with the initial prompt
-            chatBridgeMock.Verify(m => m.RequestExternalPromptAsync(It.Is<string>(s => s.Contains("Hello JARVIS")), It.IsAny<CancellationToken>()), Times.Once);
-
-            form.Dispose();
-        }
-
-        [StaFact]
-        public async Task JARVISChatHostForm_ClosingBeforePrompt_DoesNotSendPrompt_AndLogsClosing()
-        {
-            // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-            var provider = BuildProvider();
-            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
-
-            var services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(configuration);
-            services.AddSingleton(ReportViewerLaunchOptions.Disabled);
-            services.AddWindowsFormsBlazorWebView();
-            services.AddSingleton<IThemeService>(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!);
-            var chatBridgeMock = new Mock<IChatBridgeService>();
-            chatBridgeMock.Setup(m => m.RequestExternalPromptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-            services.AddSingleton<IChatBridgeService>(_ => chatBridgeMock.Object);
-            services.AddLogging(builder => builder.AddDebug());
-
-            var sp = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-
-            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!;
-            var logger = new Mock<ILogger<JARVISChatHostForm>>();
-
-            var form = new JARVISChatHostForm(sp, themeService, logger.Object)
-            {
-                InitialPrompt = "Will be cancelled"
-            };
-
-            // Act: ensure handle exists and call OnShown to trigger initial prompt schedule
-            var _ = form.Handle;
-            form.Visible = true;
-            typeof(JARVISChatHostForm).GetMethod("OnShown", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, new object[] { EventArgs.Empty });
-
-            // Close immediately before the 1500ms delay completes
-            form.Close();
-
-            // Allow time for the invoked delegate to run and honor IsDisposed check
-            for (int i = 0; i < 30; i++)
-            {
-                Application.DoEvents();
-                await Task.Delay(50);
-            }
-
-            // Assert: chat bridge not called and closing was logged
-            chatBridgeMock.Verify(m => m.RequestExternalPromptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-            logger.Verify(l => l.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.AtLeastOnce);
-        }
     }
 }

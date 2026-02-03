@@ -17,6 +17,7 @@ using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
@@ -45,8 +46,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
             themeMock.Setup(t => t.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                SfSkinManager.ApplicationVisualTheme = theme;
+                TestThemeHelper.EnsureOffice2019Colorful();
             });
             services.AddSingleton<IThemeService>(themeMock.Object);
 
@@ -172,7 +172,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void CreateDashboardPanel_ApplyTheme_DoesNotThrowAndSetsGlobalTheme()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);

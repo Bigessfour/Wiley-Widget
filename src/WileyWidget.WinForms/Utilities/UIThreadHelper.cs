@@ -18,6 +18,9 @@ namespace WileyWidget.WinForms.Utils;
 /// </summary>
 public static class UIThreadHelper
 {
+    private const int MessagePumpSleepDelayMs = 1;
+    private static readonly TimeSpan MessagePumpTimeout = TimeSpan.FromSeconds(60);
+
     /// <summary>
     /// Safely executes an action on the UI thread if needed.
     /// Uses InvokeRequired to determine if marshalling is necessary.
@@ -139,18 +142,20 @@ public static class UIThreadHelper
 
         try
         {
+            System.Threading.Tasks.Task? task;
+
             if (control.InvokeRequired)
             {
-                // Synchronously get the task, then await it
-                var task = (System.Threading.Tasks.Task)control.Invoke(asyncAction) 
+                task = control.Invoke(asyncAction) as System.Threading.Tasks.Task
                     ?? throw new InvalidOperationException("Async action returned null task");
-                await task;
             }
             else
             {
-                // Already on UI thread, execute directly
-                await asyncAction();
+                task = asyncAction()
+                    ?? throw new InvalidOperationException("Async action returned null task");
             }
+
+            await AwaitWithOptionalMessagePumpAsync(task, logger);
         }
         catch (ObjectDisposedException ex)
         {
@@ -182,18 +187,20 @@ public static class UIThreadHelper
 
         try
         {
+            System.Threading.Tasks.Task<T>? task;
+
             if (control.InvokeRequired)
             {
-                // Synchronously get the task, then await it
-                var task = (System.Threading.Tasks.Task<T>)control.Invoke(asyncFunc)
+                task = control.Invoke(asyncFunc) as System.Threading.Tasks.Task<T>
                     ?? throw new InvalidOperationException("Async function returned null task");
-                return await task;
             }
             else
             {
-                // Already on UI thread
-                return await asyncFunc();
+                task = asyncFunc()
+                    ?? throw new InvalidOperationException("Async function returned null task");
             }
+
+            return await AwaitWithOptionalMessagePumpAsync(task, logger);
         }
         catch (ObjectDisposedException ex)
         {
@@ -516,5 +523,72 @@ public static class UIThreadHelper
         }
 
         return false;
+    }
+
+    private static async System.Threading.Tasks.Task AwaitWithOptionalMessagePumpAsync(
+        System.Threading.Tasks.Task task,
+        ILogger? logger)
+    {
+        if (task == null) throw new ArgumentNullException(nameof(task));
+
+        if (RequiresLocalMessagePump())
+        {
+            logger?.LogTrace("UIThreadHelper engaged a temporary message pump for async Task execution.");
+            PumpMessagesUntilCompleted(task);
+        }
+
+        await task.ConfigureAwait(true);
+    }
+
+    private static async System.Threading.Tasks.Task<T> AwaitWithOptionalMessagePumpAsync<T>(
+        System.Threading.Tasks.Task<T> task,
+        ILogger? logger)
+    {
+        if (task == null) throw new ArgumentNullException(nameof(task));
+
+        if (RequiresLocalMessagePump())
+        {
+            logger?.LogTrace("UIThreadHelper engaged a temporary message pump for async Task<T> execution.");
+            PumpMessagesUntilCompleted(task);
+        }
+
+        return await task.ConfigureAwait(true);
+    }
+
+    private static bool RequiresLocalMessagePump()
+    {
+        if (System.Windows.Forms.Application.MessageLoop)
+        {
+            return false;
+        }
+
+        if (System.Threading.Thread.CurrentThread.GetApartmentState() != System.Threading.ApartmentState.STA)
+        {
+            return false;
+        }
+
+        return System.Threading.SynchronizationContext.Current is System.Windows.Forms.WindowsFormsSynchronizationContext;
+    }
+
+    private static void PumpMessagesUntilCompleted(System.Threading.Tasks.Task task)
+    {
+        var expiration = DateTime.UtcNow + MessagePumpTimeout;
+
+        while (!task.IsCompleted)
+        {
+            System.Windows.Forms.Application.DoEvents();
+
+            if (task.IsCompleted)
+            {
+                break;
+            }
+
+            System.Threading.Thread.Sleep(MessagePumpSleepDelayMs);
+
+            if (DateTime.UtcNow > expiration)
+            {
+                throw new TimeoutException("UIThreadHelper timed out while waiting for async UI work to complete.");
+            }
+        }
     }
 }

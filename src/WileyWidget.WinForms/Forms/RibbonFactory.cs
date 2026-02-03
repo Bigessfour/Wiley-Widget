@@ -3,6 +3,7 @@ using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms;     // Added for potentially missing namespace
 using Syncfusion.Windows.Forms.Tools;
 using System;
+using Action = System.Action;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
@@ -12,6 +13,8 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -24,17 +27,31 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public static class RibbonFactory
 {
-    private static DpiAwareImageService? GetDpiService() =>
-        Program.Services != null
-            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(Program.Services)
-            : null;
+    private static DpiAwareImageService? GetDpiService()
+    {
+        try
+        {
+            var services = Program.ServicesOrNull;
+            return services != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(services)
+                : null;
+        }
+        catch
+        {
+            // Services may not be initialized during tests; return null gracefully
+            return null;
+        }
+    }
 
     /// <summary>
     /// Safely invokes a method on the form via reflection.
+    /// Handles TargetInvocationException to reveal the underlying cause.
     /// </summary>
     private static bool TryInvokeFormMethod(System.Windows.Forms.Form form, string methodName, object?[]? parameters, out object? result, ILogger? logger = null)
     {
         result = null;
+        if (form == null) return false;
+
         try
         {
             var method = form.GetType().GetMethod(
@@ -42,16 +59,70 @@ public static class RibbonFactory
                 System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
             if (method == null)
+            {
+                logger?.LogWarning("[RIBBON_FACTORY] Method '{MethodName}' not found on {FormType}", methodName, form.GetType().Name);
                 return false;
+            }
 
             result = method.Invoke(form, parameters);
             return true;
         }
-        catch (Exception ex)
+        catch (TargetInvocationException tied)
         {
-            logger?.LogDebug(ex, "[RIBBON_FACTORY] Form method '{MethodName}' invocation failed", methodName);
+            // The method was found and called, but threw an exception.
+            var inner = tied.InnerException ?? tied;
+            logger?.LogError(inner, "[RIBBON_FACTORY] Form method '{MethodName}' threw an exception: {Message}", methodName, inner.Message);
             return false;
         }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "[RIBBON_FACTORY] Fatal error invoking form method '{MethodName}'", methodName);
+            return false;
+        }
+    }
+
+    private static void SafeBeginInvoke(Control control, System.Action action, ILogger? logger)
+    {
+        if (control.IsDisposed || control.Disposing)
+        {
+            logger?.LogDebug("[RIBBON_FACTORY] BeginInvoke skipped: control disposed ({ControlName})", control.Name);
+            return;
+        }
+
+        void InvokeAction()
+        {
+            try
+            {
+                control.BeginInvoke(action);
+            }
+            catch (Exception ex) when (ex is ObjectDisposedException || ex is InvalidOperationException)
+            {
+                var message = ex is ObjectDisposedException
+                    ? "[RIBBON_FACTORY] BeginInvoke skipped for disposed control {ControlName}"
+                    : "[RIBBON_FACTORY] BeginInvoke failed for {ControlName}";
+                logger?.LogDebug(ex, message, control.Name);
+            }
+        }
+
+        if (control.IsHandleCreated)
+        {
+            InvokeAction();
+            return;
+        }
+
+        EventHandler? handler = null;
+        handler = (_, __) =>
+        {
+            control.HandleCreated -= handler;
+            if (control.IsDisposed || control.Disposing)
+            {
+                return;
+            }
+
+            InvokeAction();
+        };
+
+        control.HandleCreated += handler;
     }
 
     /// <summary>
@@ -63,18 +134,23 @@ public static class RibbonFactory
     {
         if (form == null) throw new ArgumentNullException(nameof(form));
 
-        // Ensure theme assembly is loaded BEFORE initialization to prevent Enum.Parse crashes
+        logger?.LogInformation("[RIBBON_FACTORY] CreateRibbon: Starting ribbon creation for MainForm");
+
+        // Ensure theme assembly is loaded BEFORE initialization to prevent theme resource errors
         try
         {
-            // Best practice: skin manager loads theme assembly
-            SfSkinManager.LoadAssembly(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);
+            AppThemeColors.EnsureThemeAssemblyLoaded(logger);
+            logger?.LogDebug("[RIBBON_FACTORY] Office2019Theme assembly loaded successfully");
         }
-        catch { /* Ignore if already loaded or not available */ }
+        catch (Exception ex)
+        {
+            logger?.LogWarning(ex, "[RIBBON_FACTORY] Failed to load Office2019Theme assembly");
+        }
 
         var ribbon = new RibbonControlAdv
         {
             Name = "Ribbon_Main",
-            Dock = (DockStyleEx)DockStyle.Top,
+            Dock = DockStyleEx.Top,
             Location = new Point(0, 0),
             // Let Syncfusion theme control the visual style for Office2019 compatibility
             LauncherStyle = LauncherStyle.Metro
@@ -82,72 +158,141 @@ public static class RibbonFactory
             // Removed: Font = new Font("Segoe UI", 9F, FontStyle.Regular) (let theme control fonts)
         };
 
-        // Removed: ribbon.Height = 150 (let theme control height)
+        var ribbonHeight = (int)DpiAware.LogicalToDeviceUnits(150f);
+        ribbon.AutoSize = false;
+        ribbon.Height = ribbonHeight;
+        ribbon.MinimumSize = new Size(0, ribbonHeight);
+        ribbon.Width = form.ClientSize.Width;
+
+        logger?.LogDebug("[RIBBON_FACTORY] RibbonControlAdv created: Name={Name}, Height={Height}, Width={Width}",
+            ribbon.Name, ribbon.Height, ribbon.Width);
 
         // Apply current application theme to the ribbon (prefer Office2019)
         try
         {
-            var appTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            var appTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
             if (appTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase))
             {
                 // Ensure Office2019 theme assembly is available
-                SfSkinManager.LoadAssembly(typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);
+                AppThemeColors.EnsureThemeAssemblyLoaded(logger);
             }
             ribbon.ThemeName = appTheme;
+            logger?.LogDebug("[RIBBON_FACTORY] Theme applied to ribbon: {Theme}", appTheme);
         }
         catch (Exception ex)
         {
             logger?.LogWarning(ex, "[RIBBON_FACTORY] Theme load failed. Falling back to default theme.");
-            ribbon.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            ribbon.ThemeName = AppThemeColors.DefaultTheme;
         }
 
         ConfigureRibbonAppearance(ribbon, logger);
 
         // === BACKSTAGE VIEW (The "File" Menu) ===
         // Replaces standard MenuButtonText
-        ribbon.BackStageView = CreateBackStage(form, logger);
+        var backStageView = CreateBackStage(form, logger);
+        ribbon.BackStageView = backStageView;
         ribbon.MenuButtonEnabled = true;
+        ribbon.MenuButtonVisible = true;
 
+        // Logging for Menu Button click
+        ribbon.MenuButtonClick += (s, e) =>
+        {
+            logger?.LogInformation("[RIBBON_FACTORY] Menu Button (File) Clicked");
+        };
 
+        if (ribbon.BackStageView == null)
+        {
+            logger?.LogWarning("[RIBBON_FACTORY] BackStageView was null after assignment - recreating");
+            ribbon.BackStageView = CreateBackStage(form, logger);
+        }
 
         var currentThemeString = ribbon.ThemeName;
         var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
+
+        logger?.LogDebug("[RIBBON_FACTORY] HomeTab created: Text={Text}, Name={Name}", homeTab.Text, homeTab.Name);
 
         // === CREATE GROUPS (ToolStripEx) ===
         // Per Demo: Each group is a separate ToolStripEx added to the Tab Panel.
 
         // 1. Dashboard Group
         var (dashboardStrip, dashboardBtn) = CreateDashboardGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] Dashboard group created");
 
         // 2. Financials Group
         var (financialsStrip, accountsBtn) = CreateFinancialsGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] Financials group created");
 
         // 3. Reporting Group
         var reportingStrip = CreateReportingGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] Reporting group created");
 
         // 4. Tools Group
         var (toolsStrip, quickBooksBtn, settingsBtn) = CreateToolsGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] Tools group created");
 
         // 5. Layout Group
         var layoutStrip = CreateLayoutGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] Layout group created");
 
         // 6. Secondary/More Group
         var moreStrip = CreateMoreGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] More group created");
 
         // 7. Search & Grid Controls (Combined or separate based on space)
         var searchAndGridStrip = CreateSearchAndGridGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] Search and Grid group created");
 
         // === ASSEMBLE RIBBON ===
         // Add distinct strips to the Home Tab Panel using AddToolStrip (CRITICAL for layout sizing)
-        homeTab.Panel.AddToolStrip(dashboardStrip);
-        homeTab.Panel.AddToolStrip(financialsStrip);
-        homeTab.Panel.AddToolStrip(reportingStrip);
-        homeTab.Panel.AddToolStrip(toolsStrip);
-        homeTab.Panel.AddToolStrip(layoutStrip);
-        homeTab.Panel.AddToolStrip(moreStrip);
-        homeTab.Panel.AddToolStrip(searchAndGridStrip);
+        AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, logger);
+        AddToolStripToTabPanel(homeTab, financialsStrip, currentThemeString, logger);
+        AddToolStripToTabPanel(homeTab, reportingStrip, currentThemeString, logger);
+        AddToolStripToTabPanel(homeTab, toolsStrip, currentThemeString, logger);
+        AddToolStripToTabPanel(homeTab, layoutStrip, currentThemeString, logger);
+        AddToolStripToTabPanel(homeTab, moreStrip, currentThemeString, logger);
+        AddToolStripToTabPanel(homeTab, searchAndGridStrip, currentThemeString, logger);
+
+        logger?.LogDebug("[RIBBON_FACTORY] All tool strips added to HomeTab panel");
+
+        homeTab.Panel.AutoSize = true;
+        homeTab.Panel.Padding = new Padding(6, 4, 6, 4);
 
         ribbon.Header.AddMainItem(homeTab);
+        logger?.LogDebug("[RIBBON_FACTORY] HomeTab added to ribbon header");
+
+        try
+        {
+            ApplyThemeRecursively(ribbon, currentThemeString, logger);
+            logger?.LogDebug("[RIBBON_FACTORY] Theme applied recursively to ribbon");
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Theme recursion failed");
+        }
+
+        try
+        {
+            if (homeTab.Panel != null)
+            {
+                homeTab.Panel.PerformLayout();
+                homeTab.Panel.Refresh();
+            }
+            logger?.LogDebug("[RIBBON_FACTORY] HomeTab panel layout performed and refreshed");
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Home tab panel refresh failed");
+        }
+
+        try
+        {
+            ribbon.PerformLayout();
+            ribbon.Refresh();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Ribbon refresh failed");
+        }
 
         // === RIBBON HEADER VALIDATION (Prevent Paint Crashes) ===
         // CRITICAL: Syncfusion DockHost.GetPaintInfo() crashes with ArgumentOutOfRangeException
@@ -169,7 +314,23 @@ public static class RibbonFactory
             logger?.LogWarning(ex, "[RIBBON_FACTORY] QAT initialization failed");
         }
 
+        try
+        {
+            var groupCount = homeTab.Panel?.Controls.OfType<ToolStripEx>().Count() ?? 0;
+            logger?.LogDebug("[RIBBON_FACTORY] Ribbon HomeTab groups loaded: {GroupCount}", groupCount);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to log ribbon group count");
+        }
+
         logger?.LogDebug("[RIBBON_FACTORY] Ribbon initialized with Office 2019 Demo styling (header items={ItemCount})", ribbon.Header.MainItems.Count);
+
+        // [PERF] Batch UI updates to reduce intermediate paints
+        ribbon.PerformLayout();
+        ribbon.Refresh();
+
+        logger?.LogInformation("[RIBBON_FACTORY] CreateRibbon: Completed successfully");
 
         return (ribbon, homeTab);
     }
@@ -192,8 +353,47 @@ public static class RibbonFactory
 
         try
         {
+            // --- TABS: NEW / OPEN ---
+            var newTab = new BackStageTab { Text = "New", Name = "BackStage_New" };
+            newTab.Click += (s, e) =>
+            {
+                logger?.LogInformation("[BACKSTAGE] New tab clicked");
+                TryInvokeFormMethod(form, "ApplyStatus", new object?[] { "BackStage: New" }, out _, logger);
+            };
+
+            var newContainer = new Panel();
+            newContainer.Controls.Add(new Label
+            {
+                Text = "Create a new workspace or budget",
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular),
+                Location = new Point(20, 20),
+                AutoSize = true
+            });
+            try { newTab.Controls.Add(newContainer); } catch { }
+
+            var openTab = new BackStageTab { Text = "Open", Name = "BackStage_Open" };
+            openTab.Click += (s, e) =>
+            {
+                logger?.LogInformation("[BACKSTAGE] Open tab clicked");
+                TryInvokeFormMethod(form, "ApplyStatus", new object?[] { "BackStage: Open" }, out _, logger);
+            };
+
+            var openContainer = new Panel();
+            openContainer.Controls.Add(new Label
+            {
+                Text = "Open an existing file or project",
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular),
+                Location = new Point(20, 20),
+                AutoSize = true
+            });
+            try { openTab.Controls.Add(openContainer); } catch { }
+
             // --- TAB: INFO ---
             var infoTab = new BackStageTab { Text = "Info", Name = "BackStage_Info" };
+            infoTab.Click += (s, e) =>
+            {
+                logger?.LogInformation("[BACKSTAGE] Info tab clicked");
+            };
 
             // Add info content container
             var infoContainer = new Panel();
@@ -229,7 +429,11 @@ public static class RibbonFactory
                 exitBtn.Placement = BackStageItemPlacement.Bottom;
             }
             catch { }
-            exitBtn.Click += (s, e) => Application.Exit();
+            exitBtn.Click += (s, e) =>
+            {
+                logger?.LogInformation("[BACKSTAGE] Exit button clicked");
+                Application.Exit();
+            };
 
             // 3. Add items to the BackStage control safely
             if (backstage.BackStage != null)
@@ -242,6 +446,8 @@ public static class RibbonFactory
                     }
                     catch { }
 
+                    backstage.BackStage.Controls.Add(newTab);
+                    backstage.BackStage.Controls.Add(openTab);
                     backstage.BackStage.Controls.Add(infoTab);
                     backstage.BackStage.Controls.Add(exitBtn);
                     backstage.BackStage.SelectedTab = infoTab;
@@ -276,7 +482,16 @@ public static class RibbonFactory
 
         try
         {
-            ribbon.RibbonStyle = RibbonStyle.Office2016;
+            // Ensure style compatibility with modern themes
+            var themeName = ribbon.ThemeName ?? string.Empty;
+            if (themeName.Contains("Office2019", StringComparison.OrdinalIgnoreCase))
+            {
+                ribbon.RibbonStyle = RibbonStyle.Office2016;
+            }
+            else
+            {
+                ribbon.RibbonStyle = RibbonStyle.Office2016; // Use modern style as default
+            }
         }
         catch (Exception ex)
         {
@@ -287,6 +502,7 @@ public static class RibbonFactory
         {
             ribbon.MenuButtonText = "File";
             ribbon.MenuButtonVisible = true;
+            ribbon.MenuButtonEnabled = true; // Explicitly set
             ribbon.MenuButtonWidth = 54;
         }
         catch (Exception ex)
@@ -305,24 +521,146 @@ public static class RibbonFactory
         }
     }
 
+    private static void AddToolStripToTabPanel(ToolStripTabItem tab, ToolStripEx strip, string theme, ILogger? logger)
+    {
+        if (tab?.Panel == null || strip == null) return;
+
+        try
+        {
+            tab.Panel.AddToolStrip(strip);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] AddToolStrip failed for {StripName}", strip.Name);
+        }
+
+        try
+        {
+            strip.Visible = true;
+            strip.Enabled = true;
+            strip.ThemeName = theme;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set ToolStripEx visibility/theme for {StripName}", strip.Name);
+        }
+
+        EnsureToolStripItemsVisible(strip, logger);
+
+        try
+        {
+            if (!tab.Panel.Controls.Contains(strip))
+            {
+                tab.Panel.Controls.Add(strip);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to add ToolStripEx to panel controls for {StripName}", strip.Name);
+        }
+    }
+
+    private static void EnsureToolStripItemsVisible(ToolStripEx strip, ILogger? logger)
+    {
+        if (strip == null) return;
+        foreach (ToolStripItem item in strip.Items)
+        {
+            try
+            {
+                item.Visible = true;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set ToolStripItem visible for {ItemName}", item.Name);
+            }
+
+            if (item is ToolStripPanelItem panelItem)
+            {
+                foreach (ToolStripItem nestedItem in panelItem.Items)
+                {
+                    try
+                    {
+                        nestedItem.Visible = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set nested ToolStripItem visible for {ItemName}", nestedItem.Name);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void ApplyThemeRecursively(Control root, string themeName, ILogger? logger)
+    {
+        if (root == null || string.IsNullOrWhiteSpace(themeName)) return;
+
+        try
+        {
+            SfSkinManager.SetVisualStyle(root, themeName);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] SetVisualStyle failed for {ControlName}", root.Name);
+        }
+
+        if (root is ToolStripEx toolStripEx)
+        {
+            try
+            {
+                toolStripEx.ThemeName = themeName;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set ThemeName for {StripName}", toolStripEx.Name);
+            }
+
+            EnsureToolStripItemsVisible(toolStripEx, logger);
+        }
+
+        foreach (Control child in root.Controls)
+        {
+            ApplyThemeRecursively(child, themeName, logger);
+        }
+    }
+
     /// <summary>
     /// Creates a ToolStripEx group with Office-style layout and theming.
     /// </summary>
     private static ToolStripEx CreateRibbonGroup(string title, string name, string theme)
     {
         var safeTitle = string.IsNullOrWhiteSpace(title) ? " " : title;
+        var groupMinHeight = (int)DpiAware.LogicalToDeviceUnits(118f);
+
         var strip = new ToolStripEx
         {
             Name = name,
             Text = safeTitle,
             GripStyle = ToolStripGripStyle.Hidden,
             AutoSize = true,
+            MinimumSize = new Size(0, groupMinHeight),
             LauncherStyle = LauncherStyle.Metro,
-            ShowLauncher = false, // Set true if you have a dialog launcher event
-            ImageScalingSize = new Size(32, 32), // Standardize on 32px for Large buttons
-            ThemeName = theme // Ensure theme application for Office2019 styling
+            ShowLauncher = false,
+            ImageScalingSize = new Size(32, 32),
+            ThemeName = theme,
+            CanOverflow = false,
+            Dock = DockStyle.None,
+            LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow,
+            Padding = new Padding(6, 0, 6, 0),
+            Margin = new Padding(1, 0, 1, 0),
+            Office12Mode = true
         };
         return strip;
+    }
+
+    private static ToolStripSeparator CreateRibbonSeparator()
+    {
+        return new ToolStripSeparator
+        {
+            AutoSize = false,
+            Margin = new Padding(4, 0, 4, 0),
+            Size = new Size(2, (int)DpiAware.LogicalToDeviceUnits(82f))
+        };
     }
 
     private static (ToolStripEx Strip, ToolStripButton DashboardBtn) CreateDashboardGroup(
@@ -358,6 +696,7 @@ public static class RibbonFactory
         analyticsBtn.Enabled = true;
 
         strip.Items.Add(accountsBtn);
+        strip.Items.Add(CreateRibbonSeparator());
         strip.Items.Add(analyticsBtn);
 
         return (strip, accountsBtn);
@@ -368,8 +707,13 @@ public static class RibbonFactory
     {
         var strip = CreateRibbonGroup("Reporting", "ReportingGroup", theme);
 
-        // Reporting group is currently empty - can add reporting-specific panels here later
+        var reportsBtn = CreateLargeNavButton(
+            "Nav_Reports", "Reports", "reports", theme,
+            () => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right), logger);
+        reportsBtn.Tag = "Nav:Reports";
+        reportsBtn.Enabled = true;
 
+        strip.Items.Add(reportsBtn);
         return strip;
     }
 
@@ -388,31 +732,36 @@ public static class RibbonFactory
 
         var jarvisBtn = CreateLargeNavButton(
             "Nav_JARVIS", "JARVIS AI", "jarvis", theme,
-            () => {
-                if (form is MainForm mainForm)
+            () =>
+            {
+                if (form is not MainForm mainForm)
                 {
-                    // Defer slightly to allow ribbon paint to complete before docking layout changes
-                    form.BeginInvoke(new System.Action(() =>
-                    {
-                        try
-                        {
-                            mainForm.SwitchRightPanel(RightDockPanelFactory.RightPanelMode.JarvisChat);
-                        }
-                        catch (Exception ex)
-                        {
-                            logger?.LogError(ex, "Failed to switch to JARVIS Chat panel");
-                            System.Windows.Forms.MessageBox.Show(
-                                $"Failed to open JARVIS Chat: {ex.Message}",
-                                "Panel Error",
-                                System.Windows.Forms.MessageBoxButtons.OK,
-                                System.Windows.Forms.MessageBoxIcon.Warning);
-                        }
-                    }));
+                    return;
                 }
+
+                // Defer slightly to allow ribbon paint to complete before docking layout changes
+                SafeBeginInvoke(form, () =>
+                {
+                    try
+                    {
+                        mainForm.SwitchRightPanel("JarvisChat");
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.LogError(ex, "Failed to switch to JARVIS Chat panel");
+                        System.Windows.Forms.MessageBox.Show(
+                            $"Failed to open JARVIS Chat: {ex.Message}",
+                            "Panel Error",
+                            System.Windows.Forms.MessageBoxButtons.OK,
+                            System.Windows.Forms.MessageBoxIcon.Warning);
+                    }
+                }, logger);
             }, logger);
 
         strip.Items.Add(settingsBtn);
+        strip.Items.Add(CreateRibbonSeparator());
         strip.Items.Add(quickBooksBtn);
+        strip.Items.Add(CreateRibbonSeparator());
         strip.Items.Add(jarvisBtn);
 
         return (strip, quickBooksBtn, settingsBtn);
@@ -427,10 +776,10 @@ public static class RibbonFactory
         var panelItem = new ToolStripPanelItem { RowCount = 2, AutoSize = true, Transparent = true };
 
         var saveLayoutBtn = CreateSmallNavButton("Nav_SaveLayout", "Save Layout", null,
-            () => TryInvokeFormMethod(form, "SaveLayout", null, out _));
+            () => TryInvokeFormMethod(form, "SaveLayout", null, out _), logger);
 
         var resetLayoutBtn = CreateSmallNavButton("Nav_ResetLayout", "Reset Layout", null,
-            () => TryInvokeFormMethod(form, "ResetLayout", null, out _));
+            () => TryInvokeFormMethod(form, "ResetLayout", null, out _), logger);
 
         panelItem.Items.Add(saveLayoutBtn);
         panelItem.Items.Add(resetLayoutBtn);
@@ -447,27 +796,8 @@ public static class RibbonFactory
         // Featured items (Large)
         var warRoomBtn = CreateLargeNavButton("Nav_WarRoom", "War Room", "warroom", theme,
              () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true), logger);
-
-        // Secondary items (Vertical Stack)
-        var stack = new ToolStripPanelItem { RowCount = 3, AutoSize = true, Transparent = true };
-
-        stack.Items.Add(CreateSmallNavButton("Nav_Charts", "Charts", "charts",
-            () => form.ShowPanel<BudgetAnalyticsPanel>("Financial Charts", DockingStyle.Right, allowFloating: true)));
-
-        stack.Items.Add(CreateSmallNavButton("Nav_Customers", "Customers", "customers",
-            () => form.ShowPanel<CustomersPanel>("Customer Management", DockingStyle.Right, allowFloating: true)));
-
-        stack.Items.Add(CreateSmallNavButton("Nav_AuditLog", "Audit Log", "audit",
-            () => form.ShowPanel<AuditLogPanel>("Audit Log", DockingStyle.Bottom, allowFloating: true)));
-
-        stack.Items.Add(CreateSmallNavButton("Nav_Utilites", "Utility Bills", "utilities",
-            () => form.ShowPanel<UtilityBillPanel>("Utility Bills", DockingStyle.Right, allowFloating: true)));
-
-        stack.Items.Add(CreateSmallNavButton("Nav_Import", "CSV Import", "import",
-            () => form.ShowPanel<CsvMappingWizardPanel>("Data Mapper", DockingStyle.Right, allowFloating: true)));
-
         strip.Items.Add(warRoomBtn);
-        strip.Items.Add(stack);
+
         return strip;
     }
 
@@ -477,13 +807,19 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("Actions", "ActionGroup", theme);
 
         // 1. Grid Tools Stack
-        var gridStack = new ToolStripPanelItem { RowCount = 2, AutoSize = true, Transparent = true };
+        var gridStack = new ToolStripPanelItem
+        {
+            Name = "ActionGroup_GridStack",
+            RowCount = 2,
+            AutoSize = true,
+            Transparent = true
+        };
 
         var sortAscBtn = CreateSmallNavButton("Grid_SortAsc", "Sort Asc", null,
-             () => TryInvokeFormMethod(form, "SortActiveGridByFirstSortableColumn", new object[] { false }, out _));
+             () => TryInvokeFormMethod(form, "SortActiveGridByFirstSortableColumn", new object[] { false }, out _), logger);
 
         var sortDescBtn = CreateSmallNavButton("Grid_SortDesc", "Sort Desc", null,
-             () => TryInvokeFormMethod(form, "SortActiveGridByFirstSortableColumn", new object[] { true }, out _));
+             () => TryInvokeFormMethod(form, "SortActiveGridByFirstSortableColumn", new object[] { true }, out _), logger);
 
         gridStack.Items.Add(sortAscBtn);
         gridStack.Items.Add(sortDescBtn);
@@ -500,17 +836,35 @@ public static class RibbonFactory
             BorderStyle = BorderStyle.FixedSingle,
             ToolTipText = "Search panels (Enter to search)"
         };
-        searchBox.KeyDown += async (s, e) => {
-             if (e.KeyCode == Keys.Enter && !string.IsNullOrWhiteSpace(searchBox.Text)) {
-                 form.GlobalIsBusy = true;
-                 try { await form.PerformGlobalSearchAsync(searchBox.Text); }
-                 finally { form.GlobalIsBusy = false; }
-                 e.Handled = true;
-             }
+        searchBox.KeyDown += async (s, e) =>
+        {
+            if (e.KeyCode != Keys.Enter)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            if (string.IsNullOrWhiteSpace(searchBox.Text))
+            {
+                return;
+            }
+
+            logger?.LogInformation("[RIBBON_FACTORY] Global search initiated: '{Query}'", searchBox.Text);
+            form.GlobalIsBusy = true;
+            try { await form.PerformGlobalSearchAsync(searchBox.Text); }
+            finally { form.GlobalIsBusy = false; }
         };
 
-        var searchStack = new ToolStripPanelItem { RowCount = 2, AutoSize = true, Transparent = true };
-        var lbl = new ToolStripLabel("Global Search:");
+        var searchStack = new ToolStripPanelItem
+        {
+            Name = "ActionGroup_SearchStack",
+            RowCount = 2,
+            AutoSize = true,
+            Transparent = true
+        };
+        var lbl = new ToolStripLabel("Global Search:") { Name = "ActionGroup_SearchLabel" };
         searchStack.Items.Add(lbl);
         searchStack.Items.Add(searchBox);
 
@@ -523,10 +877,14 @@ public static class RibbonFactory
         };
         themeBtn.Name = "ThemeToggle";
         // Reuse an icon if available, or just text
-        themeBtn.Click += (s, e) => form.ToggleTheme();
+        themeBtn.Click += (s, e) =>
+        {
+            logger?.LogInformation("[RIBBON_FACTORY] Theme toggle button clicked");
+            form.ToggleTheme();
+        };
 
         strip.Items.Add(searchStack);
-        strip.Items.Add(new ToolStripSeparator());
+        strip.Items.Add(CreateRibbonSeparator());
         strip.Items.Add(gridStack);
         strip.Items.Add(themeBtn);
 
@@ -560,20 +918,27 @@ public static class RibbonFactory
         var tooltipText = !string.IsNullOrEmpty(shortcut)
             ? $"{text} [{shortcut}]"
             : text;
+        var accessibleDescription = string.IsNullOrEmpty(shortcut)
+            ? $"Navigate to the {text.Replace("\n", " ", StringComparison.Ordinal)} panel."
+            : $"Navigate to the {text.Replace("\n", " ", StringComparison.Ordinal)} panel. Shortcut: {shortcut}";
 
         var btn = new ToolStripButton(text)
         {
             Name = name,
             AccessibleName = $"Open {text}",  // Descriptive action
             AccessibleRole = AccessibleRole.PushButton,  // Role for screen readers
-            AccessibleDescription = $"Navigate to the {text.Replace("\n", " ", StringComparison.Ordinal)} panel. Shortcut: {shortcut}",  // Detailed description
+            AccessibleDescription = accessibleDescription,  // Detailed description
             Enabled = true,
-            AutoSize = true,
+            AutoSize = false,
             DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageAboveText, // CRITICAL for Large Layout
             ImageScaling = ToolStripItemImageScaling.None, // Prevents downscaling 32px icons
             ToolTipText = tooltipText,
-            Padding = new Padding(4) // Add padding for better visual spacing
+            Padding = new Padding(4),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(70f), (int)DpiAware.LogicalToDeviceUnits(82f)),
+            TextAlign = ContentAlignment.MiddleCenter,
+            ImageAlign = ContentAlignment.TopCenter,
+            Margin = new Padding(2, 0, 2, 0)
         };
 
         if (!string.IsNullOrEmpty(iconName))
@@ -591,16 +956,38 @@ public static class RibbonFactory
         }
 
         // Fix: Ensure Image is not null to prevent layout collapse
+        Bitmap? placeholderImage = null;
         if (btn.Image == null)
         {
-            btn.Image = new Bitmap(32, 32);
+            placeholderImage = new Bitmap(32, 32);
+            btn.Image = placeholderImage;
             // Optional: Draw a placeholder box if desired, but transparent 32x32 ensures correct height
+        }
+
+        if (placeholderImage != null)
+        {
+            btn.Disposed += (_, __) =>
+            {
+                if (ReferenceEquals(btn.Image, placeholderImage))
+                {
+                    btn.Image = null;
+                }
+
+                placeholderImage.Dispose();
+            };
         }
 
         btn.Click += (s, e) =>
         {
-            LogNavigationActivity(null, text, text, logger);
-            onClick();
+            try
+            {
+                LogNavigationActivity(null, text, text, logger);
+                onClick();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[RIBBON_FACTORY] Navigation button '{ButtonName}' click failed: {Message}", name, ex.Message);
+            }
         };
 
         return btn;
@@ -623,7 +1010,7 @@ public static class RibbonFactory
             { "Nav_Charts", "Alt+C" },
             { "Nav_Customers", "Alt+U" },
             { "Nav_QuickBooks", "Alt+Q" },
-            { "Nav_Jarvis", "Alt+J" }
+            { "Nav_JARVIS", "Alt+J" }
         };
 
         return shortcutMap.TryGetValue(buttonName, out var shortcut) ? shortcut : string.Empty;
@@ -633,7 +1020,7 @@ public static class RibbonFactory
     /// Creates a SMALL navigation button (Side-by-side or stacked).
     /// POLISH: Rich tooltips and visual feedback.
     /// </summary>
-    private static ToolStripButton CreateSmallNavButton(string name, string text, string? iconName, System.Action onClick)
+    private static ToolStripButton CreateSmallNavButton(string name, string text, string? iconName, System.Action onClick, ILogger? logger = null)
     {
         var btn = new ToolStripButton(text)
         {
@@ -654,7 +1041,18 @@ public static class RibbonFactory
              if (img != null) btn.Image = new Bitmap(img, new Size(16, 16));
         }
 
-        btn.Click += (s, e) => onClick();
+        btn.Click += (s, e) =>
+        {
+            try
+            {
+                LogNavigationActivity(null, text, text, logger);
+                onClick();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[RIBBON_FACTORY] Small navigation button '{ButtonName}' click failed: {Message}", name, ex.Message);
+            }
+        };
         return btn;
     }
 
@@ -668,11 +1066,12 @@ public static class RibbonFactory
         try
         {
             Serilog.Log.Information("[NAV] {Action} -> {Panel}", actionName, panelName);
-            if (Program.Services != null)
+            var services = Program.ServicesOrNull;
+            if (services != null)
             {
                 // Create a scope to resolve scoped services
                 var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(Program.Services);
+                    .GetService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(services);
                 if (scopeFactory != null)
                 {
                     using var scope = scopeFactory.CreateScope();

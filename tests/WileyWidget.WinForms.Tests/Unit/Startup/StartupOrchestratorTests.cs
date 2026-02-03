@@ -23,7 +23,7 @@ public sealed class StartupOrchestratorTests
     public void ValidateServices_Succeeds()
     {
         using var provider = BuildProvider();
-        var orchestrator = provider.GetRequiredService<IStartupOrchestrator>();
+        var orchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>();
 
         _ui.Run(() => orchestrator.ValidateServicesAsync(provider).GetAwaiter().GetResult());
     }
@@ -33,7 +33,7 @@ public sealed class StartupOrchestratorTests
     public void InitializeTheme_DoesNotThrow()
     {
         using var provider = BuildProvider();
-        var orchestrator = provider.GetRequiredService<IStartupOrchestrator>();
+        var orchestrator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IStartupOrchestrator>();
 
         _ui.Run(() => orchestrator.InitializeThemeAsync().GetAwaiter().GetResult());
     }

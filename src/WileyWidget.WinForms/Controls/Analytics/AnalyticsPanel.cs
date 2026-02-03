@@ -16,6 +16,8 @@ using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
 using SfListView = Syncfusion.WinForms.ListView.SfListView;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
+using TabPageAdv = Syncfusion.Windows.Forms.Tools.TabPageAdv;
+using TabControlAdv = Syncfusion.Windows.Forms.Tools.TabControlAdv;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
@@ -60,7 +62,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     private GradientPanelExt? _scenarioPanel;
     private GradientPanelExt? _buttonPanel;
     private SplitContainerAdv? _mainSplitContainer;
-    private TabControl? _mainTabControl;
+    private TabControlAdv? _mainTabControl;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -642,11 +644,11 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         SfSkinManager.SetVisualStyle(bottomPanel, currentTheme);
 
         // Tab control for results
-        _mainTabControl = new TabControl
+        _mainTabControl = new TabControlAdv
         {
-            Dock = DockStyle.Fill,
-            Appearance = TabAppearance.Normal
+            Dock = DockStyle.Fill
         };
+        SfSkinManager.SetVisualStyle(_mainTabControl, currentTheme);
 
         // Create tab pages
         InitializeTabPages();
@@ -663,27 +665,27 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
 
         // Overview Tab - Metrics and Variances grids
-        var overviewTab = new TabPage("Overview");
+        var overviewTab = new TabPageAdv("Overview");
         InitializeOverviewTab(overviewTab, currentTheme);
         _mainTabControl.TabPages.Add(overviewTab);
 
         // Scenarios Tab - Scenario inputs and results
-        var scenariosTab = new TabPage("Scenarios");
+        var scenariosTab = new TabPageAdv("Scenarios");
         InitializeScenariosTab(scenariosTab, currentTheme);
         _mainTabControl.TabPages.Add(scenariosTab);
 
         // Forecasting Tab - Forecast charts
-        var forecastingTab = new TabPage("Forecasting");
+        var forecastingTab = new TabPageAdv("Forecasting");
         InitializeForecastingTab(forecastingTab, currentTheme);
         _mainTabControl.TabPages.Add(forecastingTab);
 
         // Insights Tab - Insights and recommendations
-        var insightsTab = new TabPage("Insights");
+        var insightsTab = new TabPageAdv("Insights");
         InitializeInsightsTab(insightsTab, currentTheme);
         _mainTabControl.TabPages.Add(insightsTab);
 
         // Departments Tab - Department-specific views (placeholder)
-        var departmentsTab = new TabPage("Departments");
+        var departmentsTab = new TabPageAdv("Departments");
         InitializeDepartmentsTab(departmentsTab, currentTheme);
         _mainTabControl.TabPages.Add(departmentsTab);
     }
@@ -691,7 +693,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes the Overview tab with metrics and variances grids.
     /// </summary>
-    private void InitializeOverviewTab(TabPage tab, string theme)
+    private void InitializeOverviewTab(TabPageAdv tab, string theme)
     {
         var gridsPanel = new GradientPanelExt
         {
@@ -788,7 +790,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes the Scenarios tab with scenario inputs and results.
     /// </summary>
-    private void InitializeScenariosTab(TabPage tab, string theme)
+    private void InitializeScenariosTab(TabPageAdv tab, string theme)
     {
         // Move scenario inputs from top panel here
         var label = new Label { Text = "Scenarios: Inputs and Results", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };
@@ -798,7 +800,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes the Forecasting tab with forecast charts.
     /// </summary>
-    private void InitializeForecastingTab(TabPage tab, string theme)
+    private void InitializeForecastingTab(TabPageAdv tab, string theme)
     {
         var chartsPanel = new GradientPanelExt
         {
@@ -878,7 +880,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes the Insights tab with insights and recommendations.
     /// </summary>
-    private void InitializeInsightsTab(TabPage tab, string theme)
+    private void InitializeInsightsTab(TabPageAdv tab, string theme)
     {
         var insightsPanel = new GradientPanelExt
         {
@@ -944,7 +946,7 @@ public partial class AnalyticsPanel : ScopedPanelBase<AnalyticsViewModel>
     /// <summary>
     /// Initializes the Departments tab with department-specific views.
     /// </summary>
-    private void InitializeDepartmentsTab(TabPage tab, string theme)
+    private void InitializeDepartmentsTab(TabPageAdv tab, string theme)
     {
         // Placeholder for department-specific views
         var label = new Label { Text = "Departments: Department-specific Analytics", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter };

@@ -11,6 +11,15 @@ namespace WileyWidget.WinForms.UI.Helpers
     /// </summary>
     public static class SfDialogHelper
     {
+        private const string UiTestEnvVar = "WILEYWIDGET_UI_TESTS";
+        private const string TestEnvVar = "WILEYWIDGET_TESTS";
+
+        private static bool IsUiTestMode()
+        {
+            return string.Equals(Environment.GetEnvironmentVariable(UiTestEnvVar), "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Environment.GetEnvironmentVariable(TestEnvVar), "true", StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Shows a themed error dialog with optional collapsible Details panel for exception stack traces.
         /// </summary>
@@ -28,6 +37,12 @@ namespace WileyWidget.WinForms.UI.Helpers
         {
             try
             {
+                if (IsUiTestMode())
+                {
+                    logger?.LogDebug("UI test mode: suppressed error dialog {Title}", title);
+                    return;
+                }
+
                 // Check if SfMessageBox is available in current Syncfusion version
                 var messageText = exception != null
                     ? $"{message}\n\n{GetExceptionSummary(exception)}"
@@ -66,6 +81,12 @@ namespace WileyWidget.WinForms.UI.Helpers
         {
             try
             {
+                if (IsUiTestMode())
+                {
+                    logger?.LogDebug("UI test mode: suppressed warning dialog {Title}", title);
+                    return;
+                }
+
                 if (TrySfMessageBox(owner, message, title, null, MessageBoxIcon.Warning))
                 {
                     return;
@@ -97,6 +118,12 @@ namespace WileyWidget.WinForms.UI.Helpers
         {
             try
             {
+                if (IsUiTestMode())
+                {
+                    logger?.LogDebug("UI test mode: suppressed info dialog {Title}", title);
+                    return;
+                }
+
                 if (TrySfMessageBox(owner, message, title, null, MessageBoxIcon.Information))
                 {
                     return;

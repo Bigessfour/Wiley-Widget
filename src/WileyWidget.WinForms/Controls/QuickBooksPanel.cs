@@ -275,6 +275,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        ThemeColors.EnsureThemeAssemblyLoaded(Logger);
         InitializeComponent();
     }
 

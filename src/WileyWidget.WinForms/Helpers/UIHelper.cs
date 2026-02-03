@@ -14,6 +14,15 @@ namespace WileyWidget.WinForms.Helpers
     /// </summary>
     public static class UIHelper
     {
+        private const string UiTestEnvVar = "WILEYWIDGET_UI_TESTS";
+        private const string TestEnvVar = "WILEYWIDGET_TESTS";
+
+        private static bool IsUiTestMode()
+        {
+            return string.Equals(Environment.GetEnvironmentVariable(UiTestEnvVar), "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Environment.GetEnvironmentVariable(TestEnvVar), "true", StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Shows a message box on the UI thread, with automatic thread marshalling via Invoke.
         /// Safe to call from background threads or async continuations.
@@ -26,6 +35,12 @@ namespace WileyWidget.WinForms.Helpers
             MessageBoxIcon icon = MessageBoxIcon.None,
             ILogger? logger = null)
         {
+            if (IsUiTestMode())
+            {
+                logger?.LogDebug("UI test mode: suppressed message box {Title}", title);
+                return DialogResult.None;
+            }
+
             if (control == null)
                  // If control is null, fallback to non-owned MessageBox
                  return MessageBox.Show(message, title, buttons, icon);

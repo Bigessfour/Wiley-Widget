@@ -1,0 +1,47 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  WileyWidget.Abstractions -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Abstractions\bin\Debug\net10.0\WileyWidget.Abstractions.dll
+  WileyWidget.Models -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Models\bin\Debug\net10.0\WileyWidget.Models.dll
+  WileyWidget.Services.Abstractions -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Services.Abstractions\bin\Debug\net10.0\WileyWidget.Services.Abstractions.dll
+  WileyWidget.Business -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Business\bin\Debug\net10.0\WileyWidget.Business.dll
+  WileyWidget.Data -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Data\bin\Debug\net10.0\WileyWidget.Data.dll
+  WileyWidget.Services -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.Services\bin\Debug\net10.0-windows\WileyWidget.Services.dll
+  WileyWidget.WinForms -> C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\bin\Debug\net10.0-windows\WileyWidget.WinForms.dll
+  WileyWidget.WinForms.Tests -> C:\Users\biges\Desktop\Wiley-Widget\tests\WileyWidget.WinForms.Tests\bin\Debug\net10.0-windows10.0.26100.0\WileyWidget.WinForms.Tests.dll
+Test run for C:\Users\biges\Desktop\Wiley-Widget\tests\WileyWidget.WinForms.Tests\bin\Debug\net10.0-windows10.0.26100.0\WileyWidget.WinForms.Tests.dll (.NETCoreApp,Version=v10.0)
+VSTest version 18.0.1-release-25612-105 (x64)
+
+Starting test execution, please wait...
+Logging Vstest Diagnostics in file: C:\Users\biges\Desktop\Wiley-Widget\tests\WileyWidget.WinForms.Tests\TestResults\TestDiag_WileyWidget.WinForms.Tests_20260203_120624.log
+A total of 1 test files matched the specified pattern.
+  Failed WileyWidget.WinForms.Tests.Integration.ErrorHandlingIntegrationTests.MainFormFactory_WithInvalidConfiguration_HandlesGracefully [238 ms]
+  Error Message:
+   Did not expect any exception, but found System.InvalidOperationException: Failed to convert configuration value 'invalid_boolean' at 'UI:UseSyncfusionDocking' to type 'System.Boolean'.
+ ---> System.FormatException: invalid_boolean is not a valid value for Boolean.
+ ---> System.FormatException: String 'invalid_boolean' was not recognized as a valid Boolean.
+   at System.Boolean.Parse(String value)
+   at System.ComponentModel.BooleanConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+   --- End of inner exception stack trace ---
+   at System.ComponentModel.BooleanConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)
+   at Microsoft.Extensions.Configuration.ConfigurationBinder.TryConvertValue(Type type, String value, String path, Object& result, Exception& error)
+   --- End of inner exception stack trace ---
+   at Microsoft.Extensions.Configuration.ConfigurationBinder.ConvertValue(Type type, String value, String path)
+   at Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue[T](IConfiguration configuration, String key, T defaultValue)
+   at Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue[T](IConfiguration configuration, String key)
+   at WileyWidget.WinForms.Configuration.UIConfiguration.FromConfiguration(IConfiguration configuration) in C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\Configuration\UIConfiguration.cs:line 103
+   at WileyWidget.WinForms.Forms.MainForm..ctor(IServiceProvider serviceProvider, IConfiguration configuration, ILogger`1 logger, ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService, IWindowStateService windowStateService, IFileImportService fileImportService) in C:\Users\biges\Desktop\Wiley-Widget\src\WileyWidget.WinForms\Forms\MainForm\MainForm.cs:line 248
+   at WileyWidget.WinForms.Tests.Integration.IntegrationTestServices.CreateMainForm(IServiceProvider provider) in C:\Users\biges\Desktop\Wiley-Widget\tests\WileyWidget.WinForms.Tests\Integration\IntegrationTestServices.cs:line 76
+   at WileyWidget.WinForms.Tests.Integration.ErrorHandlingIntegrationTests.<>c__DisplayClass0_0.<MainFormFactory_WithInvalidConfiguration_HandlesGracefully>b__2() in C:\Users\biges\Desktop\Wiley-Widget\tests\WileyWidget.WinForms.Tests\Integration\ErrorHandlingIntegrationTests.cs:line 56
+   at FluentAssertions.Specialized.FunctionAssertionHelpers.NotThrow[T](Func`1 subject, String because, Object[] becauseArgs).
+  Stack Trace:
+     at FluentAssertions.Execution.XUnit2TestFramework.Throw(String message)
+   at FluentAssertions.Execution.TestFrameworkProvider.Throw(String message)
+   at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(Func`1 failReasonFunc)
+   at FluentAssertions.Execution.AssertionScope.FailWith(String message, Object[] args)
+   at FluentAssertions.Specialized.FunctionAssertionHelpers.NotThrow[T](Func`1 subject, String because, Object[] becauseArgs)
+   at FluentAssertions.Specialized.FunctionAssertions`1.NotThrow(String because, Object[] becauseArgs)
+   at WileyWidget.WinForms.Tests.Integration.ErrorHandlingIntegrationTests.MainFormFactory_WithInvalidConfiguration_HandlesGracefully() in C:\Users\biges\Desktop\Wiley-Widget\tests\WileyWidget.WinForms.Tests\Integration\ErrorHandlingIntegrationTests.cs:line 56
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)

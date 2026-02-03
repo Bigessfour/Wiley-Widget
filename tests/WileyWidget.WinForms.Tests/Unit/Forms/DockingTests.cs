@@ -20,10 +20,12 @@ using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
+    [Collection("SyncfusionTheme")]
     public class DockingTests
     {
         private static ServiceProvider BuildProvider()
@@ -48,8 +50,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
             themeMock.Setup(t => t.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                SfSkinManager.ApplicationVisualTheme = theme;
+                TestThemeHelper.EnsureOffice2019Colorful();
             });
             services.AddSingleton<IThemeService>(themeMock.Object);
 
@@ -102,14 +103,16 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             // Ensure form handle created for docking operations
             var _ = form.Handle;
 
-            var (dockingManager, left, right, activityLogPanel, activityTimer, layoutManager) = DockingHostFactory.CreateDockingHost(form, provider, panelNav.Object, Mock.Of<ILogger>());
+            var (dockingManager, left, right, central, activityLogPanel, activityTimer, layoutManager) = DockingHostFactory.CreateDockingHost(form, provider, panelNav.Object, Mock.Of<ILogger>());
 
             dockingManager.Should().NotBeNull();
             left.Should().NotBeNull();
             right.Should().NotBeNull();
+            central.Should().NotBeNull();
 
-            left.Dock.Should().Be(System.Windows.Forms.DockStyle.Left);
-            right.Dock.Should().Be(System.Windows.Forms.DockStyle.Right);
+            // Check docking state - use Dock property since DockingManager.GetDockStyle may not be reliable in tests
+            left.Dock.Should().Be(DockStyle.Left);
+            right.Dock.Should().Be(DockStyle.Right);
 
             activityLogPanel.Should().NotBeNull();
 
@@ -151,7 +154,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var centralPanel = new GradientPanelExt { Dock = DockStyle.Fill, Name = "Central" };
             form.Controls.Add(centralPanel);
-            dockingManager.DockControl(centralPanel, form, DockingStyle.Fill, 100);
+            // Note: Central panel uses DockStyle.Fill, not DockingManager docking
 
             var layoutPath = Path.Combine(Path.GetTempPath(), "wiley-docking-" + Guid.NewGuid().ToString("N") + ".bin");
             var layoutManager = new DockingLayoutManager(provider, Mock.Of<IPanelNavigationService>(), Mock.Of<ILogger>(), layoutPath, form, dockingManager, leftPanel, rightPanel, centralPanel, null);
@@ -213,4 +216,3 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         // }
     }
 }
-

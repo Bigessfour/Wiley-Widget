@@ -9,6 +9,7 @@ using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
 using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 
 namespace WileyWidget.WinForms.Forms;
@@ -61,6 +62,8 @@ public static class RightDockPanelFactory
         var sw = Stopwatch.StartNew();
         logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel container (Activity Log + JARVIS Chat) with 6 validations");
 
+        ThemeColors.EnsureThemeAssemblyLoaded(logger);
+
         try
         {
             // Create container panel
@@ -74,8 +77,8 @@ public static class RightDockPanelFactory
                 Name = "RightDockPanel"
             };
 
-            // Create TabControlAdv for Activity Log and JARVIS Chat
-            var tabControl = new TabControlAdv
+            // Create TabControl for Activity Log and JARVIS Chat
+            var tabControl = new TabControl
             {
                 Dock = DockStyle.Fill,
                 Name = "RightPanelTabControl"
@@ -162,8 +165,9 @@ public static class RightDockPanelFactory
             logger?.LogInformation("RightDockPanelFactory: Switching right panel from {CurrentMode} to {TargetMode}",
                 currentMode, targetMode);
 
-            // Switch tabs based on target mode - guard against empty Controls collection
-            if (rightDockPanel.Controls != null && rightDockPanel.Controls.Count > 0 && rightDockPanel.Controls[0] is TabControl tabControl)
+            var tabControl = FindTabControl(rightDockPanel);
+            // Switch tabs based on target mode - guard against missing TabControl wrappers added by DockingManager
+            if (tabControl != null)
             {
                 // Defensive guard: verify TabControl and TabPages are valid
                 if (tabControl.IsDisposed)
@@ -185,65 +189,60 @@ public static class RightDockPanelFactory
                     switch (targetMode)
                     {
                         case RightPanelMode.ActivityLog:
-                            var activityLogTab = tabControl.TabPages.Cast<TabPage>()
-                                .FirstOrDefault(tp => tp.Name == "ActivityLogTab");
-                            if (activityLogTab != null && tabControl.TabPages.Contains(activityLogTab))
+                            var activityLogIndex = FindTabIndex(tabControl, "ActivityLogTab");
+                            if (activityLogIndex >= 0)
                             {
                                 try
                                 {
-                                    tabControl.SelectedTab = activityLogTab;
-                                    activityLogTab.Visible = true;
+                                    tabControl.SelectedIndex = activityLogIndex;
+                                    if (tabControl.TabPages[activityLogIndex] is Control tab)
+                                    {
+                                        tab.Visible = true;
+                                    }
                                     logger?.LogDebug("RightDockPanelFactory: Activity Log tab selected and visible");
                                 }
                                 catch (ArgumentOutOfRangeException ex)
                                 {
                                     logger?.LogError(ex,
                                         "RightDockPanelFactory: ArgumentOutOfRangeException setting ActivityLog tab. " +
-                                        "TabPages.Count={Count}, SelectedIndex={SelectedIndex}, TabDisposed={TabDisposed}",
-                                        tabControl.TabPages.Count, tabControl.SelectedIndex, activityLogTab.IsDisposed);
-                                    // Fallback: select first available tab
+                                        "TabPages.Count={Count}, SelectedIndex={SelectedIndex}",
+                                        tabControl.TabPages.Count, tabControl.SelectedIndex);
                                     if (tabControl.TabPages.Count > 0)
                                         tabControl.SelectedIndex = 0;
                                 }
                             }
                             else
                             {
-                                logger?.LogWarning("RightDockPanelFactory: Activity Log tab not found or not in collection. " +
-                                    "Tab exists: {TabExists}, In collection: {InCollection}",
-                                    activityLogTab != null,
-                                    activityLogTab != null && tabControl.TabPages.Contains(activityLogTab));
+                                logger?.LogWarning("RightDockPanelFactory: Activity Log tab not found in collection.");
                             }
                             break;
 
                         case RightPanelMode.JarvisChat:
-                            var jarvisTab = tabControl.TabPages.Cast<TabPage>()
-                                .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
-                            if (jarvisTab != null && tabControl.TabPages.Contains(jarvisTab))
+                            var jarvisIndex = FindTabIndex(tabControl, "JARVISChatTab");
+                            if (jarvisIndex >= 0)
                             {
                                 try
                                 {
-                                    tabControl.SelectedTab = jarvisTab;
-                                    jarvisTab.Visible = true;
+                                    tabControl.SelectedIndex = jarvisIndex;
+                                    if (tabControl.TabPages[jarvisIndex] is Control tab)
+                                    {
+                                        tab.Visible = true;
+                                    }
                                     logger?.LogDebug("RightDockPanelFactory: JARVIS Chat tab selected and visible");
                                 }
                                 catch (ArgumentOutOfRangeException ex)
                                 {
                                     logger?.LogError(ex,
                                         "RightDockPanelFactory: ArgumentOutOfRangeException setting JARVIS tab. " +
-                                        "TabPages.Count={Count}, SelectedIndex={SelectedIndex}, TabDisposed={TabDisposed}",
-                                        tabControl.TabPages.Count, tabControl.SelectedIndex, jarvisTab.IsDisposed);
-                                    // Fallback: select first available tab
+                                        "TabPages.Count={Count}, SelectedIndex={SelectedIndex}",
+                                        tabControl.TabPages.Count, tabControl.SelectedIndex);
                                     if (tabControl.TabPages.Count > 0)
                                         tabControl.SelectedIndex = 0;
                                 }
                             }
                             else
                             {
-                                logger?.LogWarning("RightDockPanelFactory: JARVIS Chat tab not found or not in collection. " +
-                                    "Tab exists: {TabExists}, In collection: {InCollection}, TabPages.Count={TabCount}",
-                                    jarvisTab != null,
-                                    jarvisTab != null && tabControl.TabPages.Contains(jarvisTab),
-                                    tabControl.TabPages.Count);
+                                logger?.LogWarning("RightDockPanelFactory: JARVIS Chat tab not found in collection.");
                             }
                             break;
                     }
@@ -255,7 +254,7 @@ public static class RightDockPanelFactory
             }
             else
             {
-                logger?.LogWarning("RightDockPanelFactory: Right panel first control is not a TabControl - cannot switch");
+                logger?.LogWarning("RightDockPanelFactory: No TabControl found inside right panel - cannot switch to {TargetMode}", targetMode);
             }
 
             // Update stored mode
@@ -287,5 +286,44 @@ public static class RightDockPanelFactory
     {
         if (rightDockPanel == null) throw new ArgumentNullException(nameof(rightDockPanel));
         rightDockPanel.Tag = mode;
+    }
+
+    private static int FindTabIndex(TabControl tabControl, string tabName)
+    {
+        if (tabControl == null || string.IsNullOrWhiteSpace(tabName))
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < tabControl.TabPages.Count; i++)
+        {
+            var tab = tabControl.TabPages[i];
+            if (tab != null && string.Equals(tab.Name, tabName, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private static TabControl? FindTabControl(Control container)
+    {
+        if (container == null) return null;
+        foreach (Control child in container.Controls)
+        {
+            if (child is TabControl tabControl)
+            {
+                return tabControl;
+            }
+
+            var nested = FindTabControl(child);
+            if (nested != null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 }

@@ -12,7 +12,7 @@ namespace WileyWidget.WinForms.Forms
     /// <summary>
     /// Factory for creating and configuring the application status bar.
     /// Uses programmatic grid layout with precise column alignment.
-    /// Columns: StatusLabel (100px) | StatusText (200px) | State (80px) | Progress (120px) | Clock (100px)
+    /// Columns: StatusLabel (110px) | StatusText (210px) | State (80px) | Progress (120px) | Clock (100px)
     ///
     /// POLISH ENHANCEMENTS:
     /// - Unified status label with color-coding (Green=Ready, Red=Error, Yellow=Warning).
@@ -57,20 +57,34 @@ namespace WileyWidget.WinForms.Forms
 
             var panels = new List<StatusBarAdvPanel>();
 
-            // 5. UNIFIED STATUS LABEL PANEL with color-coding
-            // Combines old StatusLabel and StatusTextPanel into single dynamic label
-            var unifiedStatusPanel = new StatusBarAdvPanel
+            // 5. Status label (short state descriptor) – keeps legacy references happy
+            var statusLabelPanel = new StatusBarAdvPanel
             {
-                Name = "UnifiedStatusPanel",
+                Name = "StatusLabel",
                 Text = "Ready",
-                Width = 300,  // Expanded to accommodate both status and status text
+                Width = 110,
                 HAlign = HorzFlowAlign.Left,
                 BorderStyle = BorderStyle.None,
                 AutoSize = false,
-                // POLISH: Color-coding (Green for Ready, Red for errors)
-                ForeColor = Color.Green
+                ForeColor = Color.Green,
+                AccessibleName = "Status label",
+                AccessibleDescription = "High-level application status"
             };
-            panels.Add(unifiedStatusPanel);
+            panels.Add(statusLabelPanel);
+
+            // 6. Status text panel (detailed description/message)
+            var statusTextPanel = new StatusBarAdvPanel
+            {
+                Name = "StatusTextPanel",
+                Text = "System initialized",
+                Width = 210,
+                HAlign = HorzFlowAlign.Left,
+                BorderStyle = BorderStyle.None,
+                AutoSize = false,
+                AccessibleName = "Status details",
+                AccessibleDescription = "Detailed status message"
+            };
+            panels.Add(statusTextPanel);
 
             // Column 3: StatePanel (80px, center-aligned, indicators)
             var statePanel = new StatusBarAdvPanel
@@ -80,7 +94,9 @@ namespace WileyWidget.WinForms.Forms
                 Width = 80,
                 HAlign = HorzFlowAlign.Center,
                 BorderStyle = BorderStyle.None,
-                AutoSize = false
+                AutoSize = false,
+                AccessibleName = "Activity state",
+                AccessibleDescription = "Indicates whether the application is active or busy"
             };
             panels.Add(statePanel);
 
@@ -92,7 +108,9 @@ namespace WileyWidget.WinForms.Forms
                 HAlign = HorzFlowAlign.Center,
                 BorderStyle = BorderStyle.None,
                 AutoSize = false,
-                Padding = new Padding(2, 2, 2, 2)
+                Padding = new Padding(2, 2, 2, 2),
+                AccessibleName = "Progress",
+                AccessibleDescription = "Shows progress for the current operation"
             };
 
             // Create ProgressBarAdv with proper theming
@@ -104,9 +122,10 @@ namespace WileyWidget.WinForms.Forms
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
-                BorderColor = Color.LightGray,
                 BorderStyle = BorderStyle.FixedSingle,
-                TextVisible = false
+                TextVisible = false,
+                AccessibleName = "Operation progress",
+                AccessibleDescription = "Progress indicator for the current operation"
             };
             progressPanel.Controls.Add(progressBar);
             panels.Add(progressPanel);
@@ -119,21 +138,20 @@ namespace WileyWidget.WinForms.Forms
                 Width = 100,
                 HAlign = HorzFlowAlign.Right,
                 BorderStyle = BorderStyle.None,
-                AutoSize = false
+                AutoSize = false,
+                AccessibleName = "Clock",
+                AccessibleDescription = "Current time"
             };
             panels.Add(clockPanel);
 
             // 6. Add all panels to StatusBar in column order
-            foreach (var panel in panels)
-            {
-                statusBar.Controls.Add(panel);
-            }
+            statusBar.Panels = panels.ToArray();
 
             // 7. Initialize clock update timer (60 seconds, culture-aware)
             InitializeClockTimer(clockPanel, logger);
 
             logger?.LogDebug(
-                "StatusBarAdv created with 5-column grid: UnifiedStatus(300px) | State(80px) | Progress(120px) | Clock(100px)");
+                "StatusBarAdv created with 5-column grid: Status(110px) | Details(210px) | State(80px) | Progress(120px) | Clock(100px)");
 
             return statusBar;
         }
@@ -186,23 +204,36 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                var panel = statusBar.Controls.OfType<StatusBarAdvPanel>()
-                    .FirstOrDefault(p => p.Name == "UnifiedStatusPanel");
+                var panels = statusBar.Controls.OfType<StatusBarAdvPanel>().ToArray();
+                var labelPanel = panels.FirstOrDefault(p => p.Name == "StatusLabelPanel");
+                var textPanel = panels.FirstOrDefault(p => p.Name == "StatusTextPanel");
 
-                if (panel != null)
+                if (labelPanel != null)
                 {
-                    panel.Text = statusText;
+                    labelPanel.Text = level switch
+                    {
+                        StatusLevel.Success => "Ready",
+                        StatusLevel.Error => "Error",
+                        StatusLevel.Warning => "Warning",
+                        _ => "Info"
+                    };
 
-                    // POLISH: Color-code based on status level
-                    panel.ForeColor = level switch
+                    labelPanel.ForeColor = level switch
                     {
                         StatusLevel.Success => Color.Green,
                         StatusLevel.Error => Color.Red,
                         StatusLevel.Warning => Color.Orange,
-                        _ => Color.FromKnownColor(KnownColor.ControlText)  // Default text color
+                        _ => Color.FromKnownColor(KnownColor.ControlText)
                     };
 
-                    panel.Refresh();
+                    labelPanel.Refresh();
+                }
+
+                if (textPanel != null)
+                {
+                    textPanel.Text = statusText;
+                    textPanel.ForeColor = Color.FromKnownColor(KnownColor.ControlText);
+                    textPanel.Refresh();
                 }
             }
             catch (Exception ex)

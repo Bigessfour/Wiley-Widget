@@ -355,6 +355,7 @@
         "copilot/auto"
       ]
     }
-  }
+  },
+  "trunk.addToolsToPath": true
 }
 

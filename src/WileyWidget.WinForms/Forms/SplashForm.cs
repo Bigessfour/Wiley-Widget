@@ -391,8 +391,26 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        if (form.InvokeRequired) form.BeginInvoke((Action)(() => form.Close()));
-                        else form.Close();
+                        if (form.IsHandleCreated)
+                        {
+                            if (form.InvokeRequired)
+                            {
+                                form.Invoke((Action)(() =>
+                                {
+                                    try { form.Close(); } catch { }
+                                    try { Application.ExitThread(); } catch { }
+                                }));
+                            }
+                            else
+                            {
+                                form.Close();
+                                Application.ExitThread();
+                            }
+                        }
+                        else
+                        {
+                            form.Close();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -415,9 +433,12 @@ namespace WileyWidget.WinForms.Forms
                     Log.Debug(ex, "[SPLASH] Failed to dispose CTS");
                 }
 
-                // Background thread cleanup: no blocking join
-                // The CancellationToken callback ensures graceful thread exit
-                // Thread.Join is not called here - eliminates UI thread blocking
+                // Background thread cleanup: join briefly to encourage timely shutdown
+                // Avoid indefinite blocking to keep Dispose responsive.
+                if (_uiThread != null && _uiThread.IsAlive)
+                {
+                    try { _uiThread.Join(TimeSpan.FromSeconds(1)); } catch { }
+                }
                 if (_uiThread != null && _uiThread.IsAlive)
                 {
                     Log.Debug("[SPLASH] Splash thread will exit via CancellationToken callback (non-blocking)");

@@ -15,6 +15,7 @@ namespace WileyWidget.WinForms.Forms;
 ///
 /// Shortcut Summary:
 /// - Ctrl+F: Focus global search box
+/// - Ctrl+Shift+F: Find in active grid
 /// - Ctrl+Shift+T: Toggle theme
 /// - Alt+D: Show Dashboard panel
 /// - Alt+A: Show Accounts panel
@@ -53,27 +54,9 @@ public partial class MainForm
         // [PERF] Ctrl+F: Focus global search box
         if (keyData == (Keys.Control | Keys.F))
         {
-            if (_ribbon == null)
-            {
-                _logger?.LogDebug("Ctrl+F pressed but ribbon is null - chrome may not be initialized");
-                return false;
-            }
-
             try
             {
-                // Robust ribbon search: search each tab/panel and recursively inspect ToolStrip items
-                ToolStripTextBox? searchBox = null;
-                foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
-                {
-                    if (tab.Panel == null) continue;
-                    foreach (var panel in tab.Panel.Controls.OfType<ToolStripEx>())
-                    {
-                        searchBox = FindToolStripTextBoxRecursive(panel.Items, "GlobalSearch");
-                        if (searchBox != null) break;
-                    }
-                    if (searchBox != null) break;
-                }
-
+                var searchBox = GetGlobalSearchTextBox();
                 if (searchBox != null)
                 {
                     try
@@ -95,19 +78,28 @@ public partial class MainForm
             {
                 _logger?.LogError(ex, "Error focusing search box");
             }
+        }
 
-            // Fallback: search whole form for named ToolStripTextBox (helps test harness or minimal ribbon)
+        // [PERF] Ctrl+Shift+F: Find in active grid
+        if (keyData == (Keys.Control | Keys.Shift | Keys.F))
+        {
             try
             {
-                var fb = FindToolStripItem(this, "GlobalSearch") as ToolStripTextBox;
-                if (fb != null && !fb.IsDisposed)
+                var prompt = Microsoft.VisualBasic.Interaction.InputBox(
+                    "Find in active grid:",
+                    "Find in Grid",
+                    string.Empty);
+
+                if (prompt != null)
                 {
-                    fb.Focus();
-                    fb.SelectAll();
+                    SearchActiveGrid(prompt);
                     return true;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Find-in-grid prompt failed");
+            }
         }
 
         // [PERF] Ctrl+Shift+T: Toggle theme
@@ -216,12 +208,8 @@ public partial class MainForm
     /// </summary>
     private bool FocusGlobalSearchTextBox(bool selectAll)
     {
-        if (_ribbon == null)
-        {
-            return false;
-        }
-
-        if (FindToolStripItem(_ribbon, "GlobalSearch") is ToolStripTextBox searchBox)
+        var searchBox = GetGlobalSearchTextBox();
+        if (searchBox != null)
         {
             try
             {
@@ -255,12 +243,8 @@ public partial class MainForm
     /// </summary>
     private bool TryClearSearchText()
     {
-        if (_ribbon == null)
-        {
-            return false;
-        }
-
-        if (FindToolStripItem(_ribbon, "GlobalSearch") is ToolStripTextBox searchBox)
+        var searchBox = GetGlobalSearchTextBox();
+        if (searchBox != null)
         {
             if (!string.IsNullOrEmpty(searchBox.Text))
             {

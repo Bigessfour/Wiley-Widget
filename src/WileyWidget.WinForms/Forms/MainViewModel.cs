@@ -1,3 +1,4 @@
+#if false // Moved to WileyWidget.WinForms.ViewModels.MainViewModel
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -449,3 +450,4 @@ namespace WileyWidget.WinForms.Forms
         public decimal Variance { get; set; }
     }
 }
+#endif

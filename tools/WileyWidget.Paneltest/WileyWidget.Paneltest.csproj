@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);CS8618;CS8602;CS8600;NU1701</NoWarn>
+    <NoWarn>$(NoWarn);CS8618;CS8602;CS8600;NU1701;MSB3277</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Description>Panel Test Harness - Isolated panel rendering and testing for WileyWidget.WinForms</Description>
   </PropertyGroup>
@@ -30,19 +30,19 @@
     <PackageReference Include="Xunit.StaFact" />
     <PackageReference Include="Moq" />
     <PackageReference Include="FluentAssertions" />
-    
+
     <!-- Core Dependencies -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
-    
+
     <!-- Logging -->
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
-    
+
     <!-- Syncfusion -->
     <PackageReference Include="Syncfusion.Core.WinForms" />
     <PackageReference Include="Syncfusion.Licensing" />

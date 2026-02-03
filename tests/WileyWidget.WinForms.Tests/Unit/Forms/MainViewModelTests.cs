@@ -9,6 +9,9 @@ using Moq;
 using Xunit;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
@@ -30,8 +33,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var loggerMock = new Mock<ILogger<MainViewModel>>();
             var aiLoggerMock = new Mock<IAILoggingService>();
+            var quickBooksMock = new Mock<IQuickBooksService>();
+            var globalSearchMock = new Mock<IGlobalSearchService>();
 
-            var vm = new MainViewModel(loggerMock.Object, dashboardMock.Object, aiLoggerMock.Object);
+            var vm = new MainViewModel(loggerMock.Object, dashboardMock.Object, aiLoggerMock.Object, quickBooksMock.Object, globalSearchMock.Object);
 
             // Act - invoke private LoadDataAsync via reflection
             var mi = typeof(MainViewModel).GetMethod("LoadDataAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -62,8 +67,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var loggerMock = new Mock<ILogger<MainViewModel>>();
             var aiLoggerMock = new Mock<IAILoggingService>();
+            var quickBooksMock = new Mock<IQuickBooksService>();
+            var globalSearchMock = new Mock<IGlobalSearchService>();
 
-            var vm = new MainViewModel(loggerMock.Object, dashboardMock.Object, aiLoggerMock.Object);
+            var vm = new MainViewModel(loggerMock.Object, dashboardMock.Object, aiLoggerMock.Object, quickBooksMock.Object, globalSearchMock.Object);
 
             // Act
             var mi = typeof(MainViewModel).GetMethod("LoadDataAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;

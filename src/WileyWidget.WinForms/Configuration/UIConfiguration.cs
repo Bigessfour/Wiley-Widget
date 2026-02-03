@@ -62,9 +62,25 @@ public sealed record UIConfiguration
     public int DefaultFiscalYear { get; init; } = DateTime.UtcNow.Year;
 
     /// <summary>
-    /// Enable locking during docking load to reduce flicker (default: true).
+    /// When true, wraps DockingManager initialization in BeginUpdate/EndUpdate (or Suspend/ResumeLayout) to minimize flicker.
     /// </summary>
     public bool EnableDockingLockDuringLoad { get; init; } = true;
+
+    /// <summary>
+    /// Maximum depth for recursive theme application (higher = deeper traversal).
+    /// </summary>
+    public int ThemeApplyMaxDepth { get; init; } = 32;
+
+    /// <summary>
+    /// Control type names to skip during recursive theme application.
+    /// Supports full type names or simple type names.
+    /// </summary>
+    public string[] ThemeApplySkipControlTypes { get; init; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Enable verbose first-chance exception logging (debug builds only).
+    /// </summary>
+    public bool VerboseFirstChanceExceptions { get; init; } = false;
 
     /// <summary>
     /// Creates UIConfiguration from IConfiguration. Values in configuration override defaults where present.
@@ -96,7 +112,10 @@ public sealed record UIConfiguration
             MinimumFormSize = new Size(minWidth, minHeight),
             AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? false,
             DefaultFiscalYear = configuration.GetValue<int?>("UI:DefaultFiscalYear") ?? DateTime.UtcNow.Year,
-            EnableDockingLockDuringLoad = configuration.GetValue<bool?>("UI:EnableDockingLockDuringLoad") ?? true
+            EnableDockingLockDuringLoad = configuration.GetValue<bool?>("UI:EnableDockingLockDuringLoad") ?? true,
+            ThemeApplyMaxDepth = configuration.GetValue<int?>("UI:ThemeApplyMaxDepth") ?? 32,
+            ThemeApplySkipControlTypes = configuration.GetSection("UI:ThemeApplySkipControlTypes").Get<string[]>() ?? Array.Empty<string>(),
+            VerboseFirstChanceExceptions = configuration.GetValue<bool?>("Diagnostics:VerboseFirstChanceExceptions") ?? false
         };
     }
 
@@ -128,9 +147,27 @@ public sealed record UIConfiguration
             errors.Add("DefaultTheme cannot be empty");
         }
 
-        // Basic theme compatibility check - keep a small whitelist of common Syncfusion themes
-        var validThemes = new[] { "Office2019Colorful", "Office2019Black", "Office2019White", "Office2019DarkGray", "Office2016" };
-        if (!Array.Exists(validThemes, t => string.Equals(t, DefaultTheme, StringComparison.OrdinalIgnoreCase)))
+        if (ThemeApplyMaxDepth < 1)
+        {
+            errors.Add("ThemeApplyMaxDepth must be >= 1");
+        }
+
+        // Basic theme compatibility check - keep a whitelist of common Syncfusion themes (extend as needed)
+        var validThemes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Office2019Colorful",
+            "Office2019Black",
+            "Office2019White",
+            "Office2019DarkGray",
+            "Office2016",
+            "FluentLight",
+            "FluentDark",
+            "ModernColorful",
+            "ModernDark",
+            "HighContrastBlack",
+            "HighContrastWhite"
+        };
+        if (!validThemes.Contains(DefaultTheme))
         {
             errors.Add($"DefaultTheme '{DefaultTheme}' is not a commonly supported theme. Examples: {string.Join(", ", validThemes)}");
         }

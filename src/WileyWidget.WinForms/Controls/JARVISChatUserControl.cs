@@ -50,13 +50,29 @@ namespace WileyWidget.WinForms.Controls
 
         private void InitializeComponent()
         {
-            _blazorWebView = new BlazorWebView();
             this.SuspendLayout();
 
             // UserControl settings
             this.Name = "JARVISChatUserControl";
             this.Dock = DockStyle.Fill;
             this.BackColor = SystemColors.Control;
+
+            if (IsHeadlessTestMode())
+            {
+                var placeholder = new Label
+                {
+                    Name = "JARVISChatPlaceholder",
+                    Text = "JARVIS Chat is disabled in test mode.",
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                this.Controls.Add(placeholder);
+                this.ResumeLayout(false);
+                Logger?.LogInformation("JARVISChatUserControl initialized in headless test mode (BlazorWebView skipped)");
+                return;
+            }
+
+            _blazorWebView = new BlazorWebView();
 
             // BlazorWebView settings
             _blazorWebView.Dock = DockStyle.Fill;
@@ -71,6 +87,13 @@ namespace WileyWidget.WinForms.Controls
             this.ResumeLayout(false);
 
             Logger?.LogDebug("JARVISChatUserControl components initialized");
+        }
+
+        private static bool IsHeadlessTestMode()
+        {
+            return string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase)
+                   || !Environment.UserInteractive;
         }
 
         /// <summary>

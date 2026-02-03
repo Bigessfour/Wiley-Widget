@@ -1,16 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Syncfusion.WinForms;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Xunit;
+using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.WinForms.Services.AI;
+using WileyWidget.WinForms.Tests.Infrastructure;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
@@ -42,8 +48,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
             themeMock.Setup(t => t.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                SfSkinManager.ApplicationVisualTheme = theme;
+                TestThemeHelper.EnsureOffice2019Colorful();
             });
             services.AddSingleton<IThemeService>(themeMock.Object);
 
@@ -60,20 +65,20 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             // Arrange
             var provider = BuildProvider();
-            var chatBridge = provider.GetRequiredService<IChatBridgeService>();
-            var grokService = provider.GetRequiredService<GrokAgentService>();
-            
+            var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IChatBridgeService>(provider);
+            var grokService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(provider);
+
             // Mock or use real API key if configured
-            var apiKeyProvider = provider.GetRequiredService<IGrokApiKeyProvider>();
+            var apiKeyProvider = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IGrokApiKeyProvider>(provider);
             await apiKeyProvider.ValidateAsync();  // Ensure valid key
-            
+
             // Act
             await grokService.InitializeAsync();
             var response = await grokService.GetSimpleResponse("Are you connected?", ct: CancellationToken.None);
-            
+
             // Assert
             Assert.NotNull(response);
-            Assert.DoesNotContain("failed", response.ToLower());  // Basic check for success
+            Assert.DoesNotContain("failed", response.ToLower(CultureInfo.InvariantCulture));  // Basic check for success
         }
     }
 }

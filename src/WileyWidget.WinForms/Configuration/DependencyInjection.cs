@@ -464,13 +464,26 @@ namespace WileyWidget.WinForms.Configuration
 
             // UI Configuration (Singleton)
             services.AddSingleton(static sp =>
-                UIConfiguration.FromConfiguration(DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp)));
+            {
+                var configuration = DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp);
+                var uiConfig = UIConfiguration.FromConfiguration(configuration);
+                var validationErrors = uiConfig.Validate();
+                if (validationErrors.Count > 0)
+                {
+                    throw new InvalidOperationException($"UI configuration invalid: {string.Join("; ", validationErrors)}");
+                }
+
+                return uiConfig;
+            });
 
             // Theme Service (Singleton - manages global theme state and notifications)
             services.AddSingleton<IThemeService, ThemeService>();
 
             // Activity Log Service (Scoped - tracks navigation and application events for audit trail)
             services.AddScoped<IActivityLogService, ActivityLogService>();
+
+            // Unified status/progress service for status bar integration
+            services.AddSingleton<IStatusProgressService, StatusProgressService>();
 
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
@@ -567,7 +580,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<BudgetOverviewViewModel>();
             services.AddScoped<BudgetViewModel>();
             services.AddScoped<CustomersViewModel>();
-            services.AddScoped<WileyWidget.WinForms.Forms.MainViewModel>();
+            services.AddScoped<WileyWidget.WinForms.ViewModels.MainViewModel>();
             services.AddScoped<ReportsViewModel>();
             services.AddScoped<DepartmentSummaryViewModel>();
             services.AddScoped<RevenueTrendsViewModel>();
@@ -598,6 +611,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.CustomersPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.AccountEditPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.AnalyticsPanel>();
@@ -605,6 +620,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.CsvMappingWizardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.DashboardPanel>();
 
             // =====================================================================
             // FORMS (Singleton for MainForm, Transient for child forms)
