@@ -195,6 +195,18 @@ jobs:
           dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter "Category=Chart" --configuration Release --logger trx --results-directory ./TestResults/WinFormsChart
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
+      - name: Test - WinForms MainForm Startup Integration
+        shell: powershell
+        env:
+          WILEYWIDGET_UI_TESTS: "true"  # Matches the env var your test sets
+        run: |
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
+            --filter "FullyQualifiedName~WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests" `
+            --configuration Release `
+            --logger trx `
+            --results-directory ./TestResults/WinFormsStartup
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
       - name: Publish Application
         shell: pwsh
         run: dotnet publish src/WileyWidget.WinForms/WileyWidget.WinForms.csproj --configuration Release --output ./publish --no-restore
