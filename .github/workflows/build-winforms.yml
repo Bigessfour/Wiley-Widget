@@ -1,0 +1,84 @@
+name: Build & WinForms Integration Check
+
+on:
+  push:
+    branches: [main, develop, 'feature/*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: build-winforms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & WinForms Startup Test
+    runs-on: windows-2022
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+          key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: nuget-packages-${{ runner.os }}-
+
+      - name: Restore solution
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Build solution
+        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+
+      - name: Run WinForms startup test
+        run: |
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj \
+            --configuration Release \
+            --no-build \
+            --filter "FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions" \
+            --logger "trx;LogFileName=startup-test.trx" \
+            --results-directory ./TestResults
+
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: WinForms Startup Test
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+          fail-on-error: true
+
+      - name: Upload artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts
+          path: TestResults/
+          retention-days: 7
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-artifacts
+          path: |
+            TestResults/
+            **/*.log
+            **/*-screenshot.png
+          retention-days: 7
