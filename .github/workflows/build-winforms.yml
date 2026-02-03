@@ -5,10 +5,6 @@ name: CI/CD Dashboard Enhanced (95% Success Target)
 # Run locally: dotnet test WileyWidget.sln --configuration Release
 
 on:
-  push:
-    branches: [main, develop, feature/dashboard-production-ready]
-  # PRs use fast-pr-feedback.yml for quick feedback
-  # Full build only runs on push to main/develop or manual trigger
   workflow_dispatch: {}
 
 permissions:

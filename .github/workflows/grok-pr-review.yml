@@ -1,11 +1,7 @@
 name: Grok Code Review
 
 on:
-  pull_request:
-    branches: [main, develop]
-    paths:
-      - src/**/*.cs
-      - tests/**/*.cs
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -50,10 +46,10 @@ jobs:
         run: |
           cat > /tmp/build_request.py << 'EOFSCRIPT'
           import json
-          
+
           with open('/tmp/pr.diff', 'r') as f:
               diff = f.read()[:12000]
-          
+
           request = {
               "model": "grok-4-1-fast-reasoning-latest",
               "messages": [
@@ -63,11 +59,11 @@ jobs:
               "temperature": 0.5,
               "max_tokens": 2048
           }
-          
+
           with open('/tmp/req.json', 'w') as f:
               json.dump(request, f)
           EOFSCRIPT
-          
+
           python3 /tmp/build_request.py
 
       - name: Call Grok API
@@ -80,7 +76,7 @@ jobs:
             -H "Authorization: Bearer $XAI_API_KEY" \
             -H "Content-Type: application/json" \
             -d @/tmp/req.json > /tmp/resp.json
-          
+
           python3 << 'EOFPARSE'
           import json
           try:
