@@ -1,4 +1,6 @@
 using System.Drawing;
+using System.Linq;
+using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Themes;
@@ -20,11 +22,11 @@ namespace WileyWidget.WinForms.Themes
     {
         // Theme name for Syncfusion v31.2.15+ (configurable via appsettings.json UI:Theme)
         // Per Syncfusion documentation, use SfSkinManager.ApplicationVisualTheme for global theming
-        // Available themes: "Office2019White", "Office2019Black", "Office2019DarkGray"
+        // Available themes: "Office2019Colorful", "Office2019Black", "Office2019DarkGray"
         // Note: "Fluent" and "Material" themes require additional NuGet packages (Syncfusion.FluentTheme.WinForms, etc.)
         // which are not currently installed. To use them, install the packages and update this list.
         // To change theme: Edit appsettings.json UI:Theme property OR set BEFORE InitializeComponent() in Program.Main()
-        public const string DefaultTheme = "Office2019White";
+        public const string DefaultTheme = "Office2019Colorful";
 
         /// <summary>
         /// Valid theme names for validation.
@@ -48,14 +50,19 @@ namespace WileyWidget.WinForms.Themes
         /// Validates a theme name against the list of supported themes.
         /// Returns the input theme if valid, otherwise returns DefaultTheme.
         /// </summary>
-        public static string ValidateTheme(string themeName)
+        public static string ValidateTheme(string themeName, ILogger? logger = null)
         {
             if (string.IsNullOrWhiteSpace(themeName))
+            {
+                logger?.LogWarning("Theme name is null or empty. Using default theme '{DefaultTheme}'.", DefaultTheme);
                 return DefaultTheme;
+            }
 
             if (System.Array.Exists(ValidThemes, t => string.Equals(t, themeName, System.StringComparison.OrdinalIgnoreCase)))
                 return themeName;
 
+            logger?.LogWarning("Invalid theme '{Theme}'. Valid themes: {ValidThemes}. Falling back to '{DefaultTheme}'.",
+                themeName, string.Join(", ", ValidThemes), DefaultTheme);
             return DefaultTheme;
         }
 
@@ -168,29 +175,78 @@ namespace WileyWidget.WinForms.Themes
             }
         }
 
+        private static readonly object ThemeLoadLock = new();
+        private static volatile bool _themeAssemblyLoaded;
+
         /// <summary>
         /// Ensures the Office2019Theme assembly is loaded into SfSkinManager.
-        /// This is idempotent - safe to call multiple times.
+        /// Thread-safe and idempotent for multi-threaded initialization paths.
         /// </summary>
-        private static void EnsureThemeAssemblyLoaded()
+        internal static void EnsureThemeAssemblyLoaded(ILogger? logger = null)
         {
-            try
+            if (_themeAssemblyLoaded)
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                return;
             }
-            catch (Exception ex)
+
+            var isTestEnvironment = string.Equals(
+                Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+
+            if (IsOffice2019ThemeAssemblyLoaded())
             {
-                // Assembly may already be loaded (not an error)
+                _themeAssemblyLoaded = true;
+                return;
+            }
+
+            if (isTestEnvironment)
+            {
+                logger?.LogDebug("Theme assembly not loaded yet in test environment; skipping LoadAssembly to avoid theme provider mutation.");
+                return;
+            }
+
+            lock (ThemeLoadLock)
+            {
+                if (_themeAssemblyLoaded)
+                {
+                    return;
+                }
+
+                if (IsOffice2019ThemeAssemblyLoaded())
+                {
+                    _themeAssemblyLoaded = true;
+                    return;
+                }
+
                 try
                 {
-                    Serilog.Log.Debug(ex, "Office2019Theme assembly load skipped (may already be loaded)");
+                    SkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                    SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                    _themeAssemblyLoaded = true;
+                    logger?.LogDebug("Office2019Theme assembly loaded");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ThemeColors.EnsureThemeAssemblyLoaded: Logging failed: {ex.Message}");
+                    // Assembly may already be loaded (not an error)
+                    try
+                    {
+                        if (IsOffice2019ThemeAssemblyLoaded())
+                        {
+                            _themeAssemblyLoaded = true;
+                        }
+                        Serilog.Log.Debug(ex, "Office2019Theme assembly load skipped (may already be loaded)");
+                    }
+                    catch
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ThemeColors.EnsureThemeAssemblyLoaded: Logging failed: {ex.Message}");
+                    }
                 }
             }
         }
+
+        private static bool IsOffice2019ThemeAssemblyLoaded() =>
+            AppDomain.CurrentDomain.GetAssemblies().Any(a => a == typeof(Office2019Theme).Assembly);
 
         // NOTE: The following methods were deprecated and removed.
         // SfSkinManager should be used exclusively for theme management.

@@ -4,8 +4,10 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using WileyWidget.Abstractions;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
@@ -19,14 +21,18 @@ namespace WileyWidget.WinForms.ViewModels
     /// all business logic to services (MVVM pattern).
     /// Implements IDisposable for proper service cleanup.
     /// </summary>
-    public sealed partial class MainViewModel : ObservableObject, IDisposable
+    public sealed partial class MainViewModel : ObservableObject, IDisposable, ILazyLoadViewModel, WileyWidget.Abstractions.ILazyLoadViewModel
     {
         private readonly ILogger<MainViewModel> _logger;
         private readonly IDashboardService _dashboardService;
         private readonly IAILoggingService _aiLoggingService;
         private readonly IQuickBooksService _quickBooksService;
         private readonly IGlobalSearchService _globalSearchService;
+        private readonly IStatusProgressService? _statusProgressService;
         private bool _disposed;
+
+        [ObservableProperty]
+        private bool isDataLoaded;
 
         [ObservableProperty]
         private string title = "Wiley Widget — WinForms + .NET 9";
@@ -54,6 +60,24 @@ namespace WileyWidget.WinForms.ViewModels
 
         [ObservableProperty]
         private string? errorMessage;
+
+        [ObservableProperty]
+        private decimal variancePercentage;
+
+        [ObservableProperty]
+        private decimal budgetUtilizationPercentage;
+
+        [ObservableProperty]
+        private bool isPositiveVariance;
+
+        [ObservableProperty]
+        private decimal totalExpenditure;
+
+        [ObservableProperty]
+        private decimal remainingBudget;
+
+        [ObservableProperty]
+        private string varianceStatusColor = "Green";
 
         [ObservableProperty]
         private ObservableCollection<DashboardMetric> metrics = new();
@@ -85,18 +109,27 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         public ObservableCollection<ActivityItem> ActivityItems { get; } = new();
 
+        public string FormattedTotalBudget => TotalBudget.ToString("C", CultureInfo.CurrentCulture);
+        public string FormattedTotalActual => TotalActual.ToString("C", CultureInfo.CurrentCulture);
+        public string FormattedVariance => Variance >= 0
+            ? $"+{Variance.ToString("C", CultureInfo.CurrentCulture)}"
+            : Variance.ToString("C", CultureInfo.CurrentCulture);
+        public string FormattedVariancePercentage => $"{VariancePercentage:F1}% {(IsPositiveVariance ? "under" : "over")} budget";
+        public string FormattedBudgetUtilization => $"{BudgetUtilizationPercentage:F1}% utilized";
+
         public IAsyncRelayCommand LoadDataCommand { get; }
         public IAsyncRelayCommand RefreshCommand { get; }
         public IAsyncRelayCommand SyncQuickBooksAccountsCommand { get; }
         public IAsyncRelayCommand<string> GlobalSearchCommand { get; }
 
-        public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService, IQuickBooksService quickBooksService, IGlobalSearchService globalSearchService)
+        public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService, IQuickBooksService quickBooksService, IGlobalSearchService globalSearchService, IStatusProgressService? statusProgressService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
             _aiLoggingService = aiLoggingService ?? throw new ArgumentNullException(nameof(aiLoggingService));
             _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
             _globalSearchService = globalSearchService ?? throw new ArgumentNullException(nameof(globalSearchService));
+            _statusProgressService = statusProgressService;
 
             LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDataAsync);
@@ -203,6 +236,8 @@ namespace WileyWidget.WinForms.ViewModels
                 // Process dashboard items into properties
                 ProcessDashboard(dashboardItems!);
 
+                PopulateMonthlyRevenueData();
+
                 LastUpdateTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
 
                 _logger.LogInformation("MainViewModel: Dashboard data loaded successfully. {ItemCount} items processed", ActivityItems.Count);
@@ -245,6 +280,33 @@ namespace WileyWidget.WinForms.ViewModels
             return fallbackData.Cast<DashboardItem>();
         }
 
+        private void PopulateMonthlyRevenueData()
+        {
+            MonthlyRevenueData.Clear();
+
+            var now = DateTime.Now;
+            var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
+            for (int i = 11; i >= 0; i--)
+            {
+                var month = now.AddMonths(-i);
+                var monthName = monthNames[month.Month - 1];
+                var baseAmount = 100000m + (i * 15000m);
+                var previousAmount = Math.Max(baseAmount - 15000m, 0m);
+
+                MonthlyRevenueData.Add(new MonthlyRevenue
+                {
+                    Month = monthName,
+                    Amount = baseAmount,
+                    PreviousMonthAmount = previousAmount,
+                    Year = month.Year,
+                    MonthNumber = month.Month
+                });
+            }
+
+            _logger.LogDebug("PopulateMonthlyRevenueData: {Count} months loaded", MonthlyRevenueData.Count);
+        }
+
         /// <summary>
         /// Initialize the view model by loading data.
         /// Guards against design-time initialization to prevent errors in VS designer.
@@ -262,12 +324,44 @@ namespace WileyWidget.WinForms.ViewModels
 
                 _logger.LogInformation("MainViewModel: InitializeAsync called (runtime mode)");
                 await LoadDataAsync(cancellationToken);
+                IsDataLoaded = true;
                 _logger.LogInformation("MainViewModel: InitializeAsync completed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("MainViewModel initialization canceled");
+                ErrorMessage = null;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "MainViewModel initialization failed");
-                throw;
+                _logger.LogError(ex, "MainViewModel initialization failed - continuing with empty dashboard data");
+                ErrorMessage = "Dashboard data load failed — showing empty dashboard";
+
+                ActivityItems.Clear();
+                Metrics.Clear();
+                MonthlyRevenueData.Clear();
+                DepartmentSummaries.Clear();
+                FundSummaries.Clear();
+
+                TotalBudget = 0;
+                TotalActual = 0;
+                Variance = 0;
+                ActiveAccountCount = 0;
+                TotalDepartments = 0;
+                TotalBudgetGauge = 0;
+                RevenueGauge = 0;
+                ExpensesGauge = 0;
+                NetPositionGauge = 0;
+            }
+        }
+
+        public async Task OnVisibilityChangedAsync(bool isVisible)
+        {
+            if (isVisible && !IsDataLoaded && !IsLoading)
+            {
+                _logger.LogInformation("Panel visible for first time; triggering lazy load");
+                await LoadDataAsync(CancellationToken.None);
+                IsDataLoaded = true;
             }
         }
 
@@ -282,6 +376,7 @@ namespace WileyWidget.WinForms.ViewModels
 
             // Clear existing activity items before processing new data
             ActivityItems.Clear();
+            Metrics.Clear();
 
             foreach (DashboardItem item in dashboardItems)
             {
@@ -292,11 +387,37 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     case "budget":
                         if (decimal.TryParse(item.Value, out var budget))
+                        {
                             TotalBudget = budget;
+                            Metrics.Add(new DashboardMetric
+                            {
+                                Name = item.Title,
+                                Title = item.Title,
+                                Category = item.Category ?? "Budget",
+                                Value = (double)budget,
+                                Unit = "$",
+                                Trend = "Stable",
+                                ChangePercent = 0,
+                                Description = item.Description ?? string.Empty
+                            });
+                        }
                         break;
                     case "actual":
                         if (decimal.TryParse(item.Value, out var actual))
+                        {
                             TotalActual = actual;
+                            Metrics.Add(new DashboardMetric
+                            {
+                                Name = item.Title,
+                                Title = item.Title,
+                                Category = item.Category ?? "Actual",
+                                Value = (double)actual,
+                                Unit = "$",
+                                Trend = "Stable",
+                                ChangePercent = 0,
+                                Description = item.Description ?? string.Empty
+                            });
+                        }
                         break;
                     case "variance":
                         if (decimal.TryParse(item.Value, out var varianceValue))
@@ -313,17 +434,72 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 // Add to activity items for grid display
-                ActivityItems.Add(new ActivityItem
+                var hasTimestampProp = item.GetType().GetProperty("Timestamp");
+                if (item.Category?.ToLowerInvariant() == "activity" || hasTimestampProp != null)
                 {
-                    Timestamp = DateTime.Now,
-                    Activity = $"{item.Title}: {item.Value}",
-                    Category = item.Category ?? "General"
-                });
+                    DateTime ts = DateTime.Now;
+                    if (hasTimestampProp != null && hasTimestampProp.PropertyType == typeof(DateTime))
+                    {
+                        var val = hasTimestampProp.GetValue(item);
+                        if (val is DateTime dt && dt != default) ts = dt;
+                    }
+
+                    ActivityItems.Add(new ActivityItem
+                    {
+                        Timestamp = ts,
+                        Activity = $"{item.Title}: {item.Value}",
+                        Category = item.Category ?? "General",
+                        Details = item.Description ?? string.Empty
+                    });
+                }
             }
+
+            var sorted = ActivityItems.OrderByDescending(a => a.Timestamp).ToList();
+            ActivityItems.Clear();
+            foreach (var item in sorted) ActivityItems.Add(item);
+
+            OnPropertyChanged(nameof(FormattedTotalBudget));
+            OnPropertyChanged(nameof(FormattedTotalActual));
+            OnPropertyChanged(nameof(FormattedVariance));
+            OnPropertyChanged(nameof(FormattedVariancePercentage));
+            OnPropertyChanged(nameof(FormattedBudgetUtilization));
 
             LastUpdateTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
 
             _logger.LogInformation("MainViewModel: ProcessDashboard - Dashboard data processed. {ItemCount} items processed", ActivityItems.Count);
+        }
+
+        partial void OnTotalBudgetChanged(decimal oldValue, decimal newValue) => UpdateDerivedMetrics();
+        partial void OnTotalActualChanged(decimal oldValue, decimal newValue) => UpdateDerivedMetrics();
+        partial void OnVarianceChanged(decimal oldValue, decimal newValue) => UpdateDerivedMetrics();
+
+        private void UpdateDerivedMetrics()
+        {
+            IsPositiveVariance = Variance >= 0;
+
+            VariancePercentage = TotalBudget > 0 ? Math.Abs(Variance / TotalBudget) * 100 : 0;
+            BudgetUtilizationPercentage = TotalBudget > 0 ? (TotalActual / TotalBudget) * 100 : 0;
+
+            TotalExpenditure = TotalActual;
+            RemainingBudget = TotalBudget - TotalActual;
+
+            TotalBudgetGauge = BudgetUtilizationPercentage;
+            RevenueGauge = TotalBudget > 0 ? Math.Min((TotalActual / TotalBudget) * 100, 100) : 0;
+            ExpensesGauge = TotalBudget > 0 ? Math.Min((TotalActual / TotalBudget) * 100, 100) : 0;
+            NetPositionGauge = TotalBudget > 0 ? Math.Min(Math.Max((Variance / TotalBudget) * 100 + 50, 0), 100) : 50;
+
+            if (VariancePercentage >= 10)
+                VarianceStatusColor = "Green";
+            else if (VariancePercentage >= 0)
+                VarianceStatusColor = "Green";
+            else if (VariancePercentage >= -5)
+                VarianceStatusColor = "Orange";
+            else
+                VarianceStatusColor = "Red";
+
+            OnPropertyChanged(nameof(FormattedVariance));
+            OnPropertyChanged(nameof(FormattedVariancePercentage));
+            OnPropertyChanged(nameof(FormattedBudgetUtilization));
         }
 
         /// <summary>
@@ -333,6 +509,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task SyncQuickBooksAccountsAsync(CancellationToken cancellationToken = default)
         {
+            _statusProgressService?.Start("QuickBooks Sync", "Syncing QuickBooks accounts...", isIndeterminate: false);
             try
             {
                 IsLoading = true;
@@ -381,6 +558,7 @@ namespace WileyWidget.WinForms.ViewModels
             finally
             {
                 IsLoading = false;
+                _statusProgressService?.Complete("QuickBooks Sync", "QuickBooks sync complete");
             }
         }
 
@@ -401,6 +579,7 @@ namespace WileyWidget.WinForms.ViewModels
 
             try
             {
+                _statusProgressService?.Start("Global Search", $"Searching for '{query}'...", isIndeterminate: false);
                 _logger.LogInformation("Global search initiated: '{Query}'", query);
                 ErrorMessage = null;
 
@@ -423,6 +602,10 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogError(ex, "Global search failed for query '{Query}'", query);
                 ErrorMessage = $"Search failed: {ex.Message}";
             }
+            finally
+            {
+                _statusProgressService?.Complete("Global Search", "Search complete");
+            }
         }
 
         public void Dispose()
@@ -435,4 +618,3 @@ namespace WileyWidget.WinForms.ViewModels
         }
     }
 }
-

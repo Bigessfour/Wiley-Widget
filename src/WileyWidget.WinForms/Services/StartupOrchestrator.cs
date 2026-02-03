@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,8 @@ using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Initialization;
+using WileyWidget.WinForms.Themes;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -120,7 +123,7 @@ namespace WileyWidget.WinForms.Services
 
                     try
                     {
-                        SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                        AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
                         SfSkinManager.ApplicationVisualTheme = themeName;
                         _logger.LogInformation("Pre-UI theme applied: {ThemeName}", themeName);
                     }
@@ -176,6 +179,39 @@ namespace WileyWidget.WinForms.Services
                 {
                     HandleDiValidationFailure(new InvalidOperationException("DI validation completed with errors."), result);
                 }
+
+                // [PERF] Initialize all IAsyncInitializable services in background to avoid UI blocking
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Allow structures time to develop before initializing services
+                        await Task.Delay(50).ConfigureAwait(false);
+                        _logger.LogInformation("Initializing IAsyncInitializable services in background...");
+                        var asyncInitializables = serviceProvider.GetServices<WileyWidget.Abstractions.IAsyncInitializable>();
+                        var initTasks = asyncInitializables.Select(async service =>
+                        {
+                            try
+                            {
+                                // Small delay per service to stagger initialization
+                                await Task.Delay(10).ConfigureAwait(false);
+                                await service.InitializeAsync();
+                                _logger.LogDebug("Initialized {ServiceType}", service.GetType().Name);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to initialize {ServiceType}", service.GetType().Name);
+                            }
+                        });
+
+                        await Task.WhenAll(initTasks);
+                        _logger.LogInformation("All IAsyncInitializable services initialized successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to initialize IAsyncInitializable services");
+                    }
+                });
             }
             catch (OperationCanceledException oce)
             {
@@ -219,6 +255,8 @@ namespace WileyWidget.WinForms.Services
 
             // Store reference to MainFormInstance for programmatic access
             Program.MainFormInstance = mainForm;
+
+            mainForm.Shown += (_, __) => Program.CompleteSplash("Ready");
 
             // If MainForm implements IAsyncInitializable, initialize it after it's shown
             if (mainForm is IAsyncInitializable asyncInit)

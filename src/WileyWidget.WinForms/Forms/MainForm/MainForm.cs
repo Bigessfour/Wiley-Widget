@@ -85,6 +85,7 @@ namespace WileyWidget.WinForms.Forms
         private IThemeService? _themeService;
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        private IStatusProgressService? _statusProgressService;
 
         // [PERF] UI State
         private UIConfiguration _uiConfig = null!;
@@ -249,6 +250,7 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Set base form properties before any rendering
             AutoScaleMode = AutoScaleMode.Dpi;
             KeyPreview = true;
+            Load += (s, e) => { _logger?.LogInformation("MainForm Load event fired"); };
 
             // [PERF] Set form size constraints
             MinimumSize = _uiConfig.MinimumFormSize;
@@ -373,7 +375,7 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Restoring window state");
             _windowStateService.RestoreWindowState(this);
 
-            // [PERF] Initialize UI chrome (Ribbon/StatusBar/MenuBar)
+            // [PERF] Initialize UI chrome in OnLoad (before form is shown)
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting UI chrome initialization");
             try
             {
@@ -386,27 +388,42 @@ namespace WileyWidget.WinForms.Forms
                     if (_menuStrip != null)
                     {
                         _menuStrip.Dock = DockStyle.Top;
-                        Controls.Add(_menuStrip);
+                        if (!Controls.Contains(_menuStrip))
+                        {
+                            Controls.Add(_menuStrip);
+                        }
                     }
 
                     if (_ribbon != null)
                     {
-                        _ribbon.Dock = (DockStyleEx)DockStyle.Top;
+                        _ribbon.Dock = DockStyleEx.Top;
+                        _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                         _ribbon.BorderStyle = (ToolStripBorderStyle)BorderStyle.None;
                         _ribbon.ThemeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-                        Controls.Add(_ribbon);
+                        _ribbon.Width = ClientSize.Width;
+                        if (!Controls.Contains(_ribbon))
+                        {
+                            Controls.Add(_ribbon);
+                        }
+                        TryRecalculateRibbonHeight("OnLoad");
                     }
 
                     if (_navigationStrip != null)
                     {
-                        Controls.Add(_navigationStrip);
+                        if (!Controls.Contains(_navigationStrip))
+                        {
+                            Controls.Add(_navigationStrip);
+                        }
                     }
 
                     if (_statusBar != null)
                     {
                         _statusBar.Dock = DockStyle.Bottom;
                         _statusBar.BorderStyle = BorderStyle.None;
-                        Controls.Add(_statusBar);
+                        if (!Controls.Contains(_statusBar))
+                        {
+                            Controls.Add(_statusBar);
+                        }
                     }
                 }
                 finally
@@ -414,7 +431,13 @@ namespace WileyWidget.WinForms.Forms
                     ResumeLayout(false);
                 }
 
+                // [PERF] Z-order management
+                if (_ribbon != null) _ribbon.BringToFront();
+                if (_menuStrip != null) _menuStrip.BringToFront();
+                if (_statusBar != null) _statusBar.BringToFront();
+
                 _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI chrome initialization completed");
+                InitializeStatusProgressService();
             }
             catch (Exception chromeEx)
             {
@@ -422,22 +445,8 @@ namespace WileyWidget.WinForms.Forms
                 throw;
             }
 
-            // [PERF] Z-order management
-            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting Z-order management");
-            try
-            {
-                if (_ribbon != null) _ribbon.BringToFront();
-                if (_menuStrip != null) _menuStrip.BringToFront();
-                if (_statusBar != null) _statusBar.BringToFront();
-                Refresh();
-                Invalidate();
-                _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Z-order management completed");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "[DIAGNOSTIC] OnLoad failed during z-order configuration - {Type}: {Message}", ex.GetType().Name, ex.Message);
-                throw;
-            }
+            // [PERF] Z-order management deferred to OnShown
+            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Z-order management deferred to OnShown");
 
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI initialization COMPLETED SUCCESSFULLY");
         }
@@ -526,19 +535,13 @@ namespace WileyWidget.WinForms.Forms
                     ConfigureDockingManagerChromeLayout();
                     _syncfusionDockingInitialized = true;
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
-                    this.Refresh();
+                    TryRecalculateRibbonHeight("OnShown");
+                    AdjustDockingHostBounds();
 
-                    // Defer docking layout loading to OnShown for better timing
-                    if (_uiConfig?.UseSyncfusionDocking == true)
-                    {
-                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Loading docking layout");
-                        var layoutPath = GetDockingLayoutPath();
-                        _ = LoadAndApplyDockingLayout(layoutPath, cancellationToken);
-                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Applying theme to docking panels");
-                        ApplyThemeToDockingPanels();
-                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Docking layout and theme applied");
-                        // Z-order adjustment is now handled by debounced handler in DockStateChanged
-                    }
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI chrome initialization completed in OnLoad");
+                    _ribbon?.BringToFront();
+                    _statusBar?.BringToFront();
+                    this.Refresh();
                 }
                 catch (Exception ex)
                 {
@@ -550,6 +553,12 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: Calling base.OnShown");
             base.OnShown(e);
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: base.OnShown completed");
+            _logger?.LogInformation("MainForm Shown: Visible={Visible}, Bounds={Bounds}", Visible, Bounds);
+            if (!Visible)
+            {
+                Visible = true;
+            }
+            Activate();
 
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting deferred initialization");
 
@@ -569,8 +578,27 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Ensure default action button for keyboard shortcuts
             EnsureDefaultActionButtons();
 
-            // [PERF] Run deferred initialization tasks (health check, ViewModel, dashboard)
-            _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);
+            // [PERF] Allow UI structures time to fully develop and complete before starting background tasks
+            // Use BeginInvoke to defer async initialization until after all synchronous OnShown work completes
+            this.BeginInvoke(new System.Action(async () =>
+            {
+                try
+                {
+                    // Small additional delay to allow UI to settle
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+                    // [PERF] Run deferred initialization tasks (health check, ViewModel, dashboard)
+                    _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogDebug("Deferred initialization scheduling canceled");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to schedule deferred initialization");
+                }
+            }));
         }
 
         /// <summary>
@@ -639,6 +667,11 @@ namespace WileyWidget.WinForms.Forms
                 {
                     _themeService.ThemeChanged -= OnThemeChanged;
                 }
+
+                if (_statusProgressService != null)
+                {
+                    _statusProgressService.ProgressChanged -= OnStatusProgressChanged;
+                }
             }
             catch (Exception ex)
             {
@@ -655,7 +688,14 @@ namespace WileyWidget.WinForms.Forms
         protected override void OnDpiChanged(DpiChangedEventArgs e)
         {
             base.OnDpiChanged(e);
-            ApplyThemeRecursive(this, _themeService.CurrentTheme);  // Re-apply on DPI change
+            if (_themeService != null)
+            {
+                ApplyThemeRecursive(this, _themeService.CurrentTheme);  // Re-apply on DPI change
+            }
+            TryRecalculateRibbonHeight("OnDpiChanged");
+            UpdateChromePadding();
+            AdjustDockingHostBounds();
+            PerformLayout();
         }
 
         /// </summary>
@@ -778,6 +818,14 @@ namespace WileyWidget.WinForms.Forms
             var ex = e.Exception;
             if (ex == null) return;
 
+            // Special logging for target exceptions
+            if (ex is Syncfusion.Windows.Forms.Tools.DockingManagerException ||
+                ex is System.ArgumentException ||
+                ex is System.OperationCanceledException)
+            {
+                _logger?.LogError(ex, "TARGET EXCEPTION: {Type} | Full details: {FullException}", ex.GetType().FullName, ex.ToString());
+            }
+
             // Filter common Syncfusion noise patterns
             if (ex is NullReferenceException)
             {
@@ -799,6 +847,13 @@ namespace WileyWidget.WinForms.Forms
                 var logger = _logger;
                 try
                 {
+#if DEBUG
+                    if (_uiConfig?.VerboseFirstChanceExceptions == true)
+                    {
+                        logger?.LogDebug(ex, "First-chance exception (verbose)");
+                        return;
+                    }
+#endif
                     // Enhanced logging with stack trace for better debugging
                     if (ex.Source?.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase) == true ||
                         ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))

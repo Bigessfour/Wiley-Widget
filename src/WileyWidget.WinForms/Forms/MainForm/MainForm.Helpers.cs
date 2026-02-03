@@ -4,6 +4,7 @@ using Syncfusion.WinForms.Controls;
 using System;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -27,21 +28,31 @@ public partial class MainForm
         if (rootControl == null || rootControl.IsDisposed || string.IsNullOrWhiteSpace(themeName))
             return;
 
+        var maxDepth = _uiConfig?.ThemeApplyMaxDepth ?? 32;
+        var skipTypes = _uiConfig?.ThemeApplySkipControlTypes ?? Array.Empty<string>();
+        var skipSet = new System.Collections.Generic.HashSet<string>(skipTypes, StringComparer.OrdinalIgnoreCase);
+
         // Validate theme name before applying
-        themeName = AppThemeColors.ValidateTheme(themeName);
+        themeName = AppThemeColors.ValidateTheme(themeName, _logger);
 
         try
         {
             // Use breadth-first queue-based traversal to avoid stack overflow on deep hierarchies
-            var queue = new System.Collections.Generic.Queue<Control>();
-            queue.Enqueue(rootControl);
+            var queue = new System.Collections.Generic.Queue<(Control Control, int Depth)>();
+            queue.Enqueue((rootControl, 0));
 
             int appliedCount = 0;
             var processedControls = new System.Collections.Generic.HashSet<Control>();
 
             while (queue.Count > 0)
             {
-                var control = queue.Dequeue();
+                var (control, depth) = queue.Dequeue();
+
+                if (depth > maxDepth)
+                {
+                    _logger?.LogDebug("Theme apply skipped beyond max depth {Depth}", maxDepth);
+                    continue;
+                }
 
                 if (control == null || control.IsDisposed)
                     continue;
@@ -51,6 +62,13 @@ public partial class MainForm
                     continue;
 
                 processedControls.Add(control);
+
+                var controlType = control.GetType();
+                if (skipSet.Contains(controlType.FullName ?? string.Empty) || skipSet.Contains(controlType.Name))
+                {
+                    _logger?.LogDebug("Skipped theme application for {ControlType} due to skip list", controlType.Name);
+                    continue;
+                }
 
                 // Apply theme to current control with per-control error handling
                 try
@@ -103,7 +121,7 @@ public partial class MainForm
 
                         {
 
-                            queue.Enqueue(child);
+                            queue.Enqueue((child, depth + 1));
 
                         }
 
@@ -206,6 +224,96 @@ public partial class MainForm
             }
         }
         catch { }
+    }
+
+    private void InitializeStatusProgressService()
+    {
+        try
+        {
+            if (_serviceProvider == null)
+            {
+                return;
+            }
+
+            _statusProgressService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<IStatusProgressService>(_serviceProvider);
+
+            if (_statusProgressService != null)
+            {
+                _statusProgressService.ProgressChanged -= OnStatusProgressChanged;
+                _statusProgressService.ProgressChanged += OnStatusProgressChanged;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to initialize status progress service");
+        }
+    }
+
+    private void OnStatusProgressChanged(object? sender, StatusProgressUpdate update)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => OnStatusProgressChanged(sender, update)));
+                return;
+            }
+        }
+        catch
+        {
+            return;
+        }
+
+        try
+        {
+            if (_progressBar == null || _progressPanel == null)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(update.Message))
+            {
+                ApplyStatus(update.Message);
+            }
+
+            if (!update.IsActive)
+            {
+                _progressBar.Visible = false;
+                _progressBar.Value = 0;
+                if (_statePanel != null && !_statePanel.IsDisposed)
+                {
+                    _statePanel.Text = "Active";
+                }
+                return;
+            }
+
+            _progressPanel.Visible = true;
+            _progressBar.Visible = true;
+            if (_statePanel != null && !_statePanel.IsDisposed)
+            {
+                _statePanel.Text = "Busy";
+            }
+
+            if (update.IsIndeterminate)
+            {
+                _progressBar.Value = 50;
+            }
+            else if (update.Percent.HasValue)
+            {
+                var percent = Math.Max(0, Math.Min(100, (int)Math.Round(update.Percent.Value)));
+                _progressBar.Value = percent;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to apply status progress update");
+        }
     }
 
     /// <summary>

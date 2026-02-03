@@ -17,6 +17,7 @@ using WileyWidget.Models;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Themes;
 using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
 
 namespace WileyWidget.WinForms.Controls
@@ -96,6 +97,8 @@ namespace WileyWidget.WinForms.Controls
         private void CreateControls()
         {
             this.SuspendLayout();
+
+            ThemeColors.EnsureThemeAssemblyLoaded(Logger);
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;

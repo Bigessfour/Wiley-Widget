@@ -111,6 +111,21 @@ public class DockingLayoutManager : IDisposable
             return;
         }
 
+        var coll = _dockingManager.Controls as System.Collections.ICollection;
+        if (coll == null || coll.Count == 0)
+        {
+            _logger?.LogWarning("No controls registered in DockingManager – proceeding with layout save anyway");
+        }
+
+        var useSynchronousPath = !Application.MessageLoop && !_uiControl.InvokeRequired;
+        if (useSynchronousPath)
+        {
+            _logger?.LogInformation("LoadDockingLayoutAsync: No message loop detected - using synchronous UI path to avoid deadlock");
+            LoadDockingLayoutSync(dockingManager, cancellationToken);
+            return;
+        }
+
+        _logger?.LogInformation("LoadDockingLayoutAsync: Starting layout load for DockingManager");
         var sw = Stopwatch.StartNew();
         int retryAttempt = 0;
 
@@ -135,6 +150,10 @@ public class DockingLayoutManager : IDisposable
                             _logger?.LogWarning(cacheEx, "Failed to decompress cached layout - clearing cache and reloading from disk");
                             _layoutCache = null;  // Clear corrupted cache
                         }
+                    }
+                    else
+                    {
+                        _logger?.LogDebug("No layout in in-memory cache, will load from disk");
                     }
                 }
 
@@ -173,6 +192,8 @@ public class DockingLayoutManager : IDisposable
 
                     var ioSw = Stopwatch.StartNew();
                     byte[] diskData = await File.ReadAllBytesAsync(_layoutPath, cancellationToken).ConfigureAwait(false);
+                    ioSw.Stop();
+                    _logger?.LogDebug("Read layout file from disk: {Path} ({Size} bytes) in {ElapsedMs}ms", _layoutPath, diskData.Length, ioSw.ElapsedMilliseconds);
                     ioSw.Stop();
 
                     try
@@ -252,7 +273,7 @@ public class DockingLayoutManager : IDisposable
                     {
                         // Ensure OS-level window update lock is called on UI thread (Handle access is UI-only)
                         try { LockWindowUpdate(_uiControl.Handle); }
-                        catch (Exception lockWinEx) { _logger?.LogDebug(lockWinEx, "LockWindowUpdate failed - continuing without OS-level lock"); }
+                        catch (Exception lockWinEx) { _logger?.LogWarning(lockWinEx, "LockWindowUpdate failed - continuing without OS-level lock"); }
 
                         try
                         {
@@ -270,7 +291,7 @@ public class DockingLayoutManager : IDisposable
                                 }
                                 catch (Exception lockEx)
                                 {
-                                    _logger?.LogDebug(lockEx, "Failed to lock DockingManager panels for batch update");
+                                    _logger?.LogWarning(lockEx, "Failed to lock DockingManager panels for batch update");
                                 }
 
                                 using var ms = new MemoryStream(layoutData);
@@ -347,14 +368,14 @@ public class DockingLayoutManager : IDisposable
                                 }
                                 catch (Exception unlockEx)
                                 {
-                                    _logger?.LogDebug(unlockEx, "Failed to unlock DockingManager panels after layout apply");
+                                    _logger?.LogWarning(unlockEx, "Failed to unlock DockingManager panels after layout apply");
                                 }
                             }
                         }
                         finally
                         {
                             try { LockWindowUpdate(IntPtr.Zero); }
-                            catch (Exception unlockWinEx) { _logger?.LogDebug(unlockWinEx, "LockWindowUpdate(IntPtr.Zero) failed"); }
+                            catch (Exception unlockWinEx) { _logger?.LogWarning(unlockWinEx, "LockWindowUpdate(IntPtr.Zero) failed"); }
                         }
                     }, _logger);
 
@@ -388,8 +409,7 @@ public class DockingLayoutManager : IDisposable
             }
             catch (OperationCanceledException)
             {
-                _logger?.LogInformation("Layout load canceled by user");
-                throw;
+                _logger?.LogInformation("Docking operation canceled on shutdown");
             }
             catch (Exception ex) when (retryAttempt < MaxRetryAttempts - 1)
             {
@@ -403,6 +423,269 @@ public class DockingLayoutManager : IDisposable
                 _logger?.LogError(ex, "Layout load failed after {MaxAttempts} attempts - resetting to default", MaxRetryAttempts);
                 ResetToDefaultLayout();
                 break;  // Exit retry loop
+            }
+        }
+
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > LayoutLoadWarningMs)
+        {
+            _logger?.LogWarning("Slow docking layout load detected ({ElapsedMs}ms) - consider optimizing serialization or checking disk I/O performance", sw.ElapsedMilliseconds);
+        }
+    }
+
+    private void LoadDockingLayoutSync(DockingManager dockingManager, CancellationToken cancellationToken)
+    {
+        if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
+        if (_uiControl.IsDisposed || !_uiControl.IsHandleCreated)
+        {
+            _logger?.LogWarning("UI control is disposed or handle not created - skipping layout load");
+            return;
+        }
+
+        var coll = _dockingManager.Controls as System.Collections.ICollection;
+        if (coll == null || coll.Count == 0)
+        {
+            _logger?.LogWarning("No controls registered in DockingManager – proceeding with layout save anyway");
+        }
+
+        _logger?.LogInformation("LoadDockingLayoutSync: Starting layout load for DockingManager (no message loop)");
+        var sw = Stopwatch.StartNew();
+        int retryAttempt = 0;
+
+        while (retryAttempt < MaxRetryAttempts)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                // 1. Try in-memory cache first (fast path)
+                byte[]? layoutData = null;
+                lock (_cacheLock)
+                {
+                    if (_layoutCache != null)
+                    {
+                        try
+                        {
+                            layoutData = DecompressLayoutData(_layoutCache);
+                            _logger?.LogDebug("Loaded and decompressed layout from in-memory cache (decompressed size: {Size} bytes, skipped disk I/O)", layoutData.Length);
+                        }
+                        catch (Exception cacheEx)
+                        {
+                            _logger?.LogWarning(cacheEx, "Failed to decompress cached layout - clearing cache and reloading from disk");
+                            _layoutCache = null;
+                        }
+                    }
+                    else
+                    {
+                        _logger?.LogDebug("No layout in in-memory cache, will load from disk");
+                    }
+                }
+
+                // 2. Fallback to disk if cache miss or decompression failed
+                if (layoutData == null)
+                {
+                    var dir = Path.GetDirectoryName(_layoutPath);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(dir);
+                            _logger?.LogDebug("Created layout directory: {Dir}", dir);
+                        }
+                        catch (Exception dirEx)
+                        {
+                            _logger?.LogWarning(dirEx, "Failed to create layout directory {Dir} - will continue and attempt fallback if file missing", dir);
+                        }
+                    }
+
+                    if (!File.Exists(_layoutPath))
+                    {
+                        _logger?.LogInformation("No saved layout found at {Path} - resetting to default docking configuration", _layoutPath);
+                        try
+                        {
+                            ResetToDefaultLayout();
+                        }
+                        catch (Exception resetEx)
+                        {
+                            _logger?.LogWarning(resetEx, "ResetToDefaultLayout() failed during first-run fallback");
+                        }
+                        return;
+                    }
+
+                    var ioSw = Stopwatch.StartNew();
+                    byte[] diskData = File.ReadAllBytes(_layoutPath);
+                    ioSw.Stop();
+                    _logger?.LogDebug("Read layout file from disk: {Path} ({Size} bytes) in {ElapsedMs}ms", _layoutPath, diskData.Length, ioSw.ElapsedMilliseconds);
+
+                    try
+                    {
+                        layoutData = DecompressLayoutData(diskData);
+                        _logger?.LogDebug("Loaded and decompressed layout from disk in {ElapsedMs}ms (compressed size: {CompressedSize} bytes, decompressed: {DecompressedSize} bytes)",
+                            ioSw.ElapsedMilliseconds, diskData.Length, layoutData.Length);
+
+                        lock (_cacheLock)
+                        {
+                            _layoutCache = diskData;
+                        }
+                    }
+                    catch (InvalidOperationException decompressEx) when (decompressEx.InnerException is System.IO.InvalidDataException)
+                    {
+                        _logger?.LogError(decompressEx, "Layout file is corrupted (unsupported compression format or invalid data) - file size: {FileSize} bytes", diskData.Length);
+
+                        try
+                        {
+                            File.Delete(_layoutPath);
+                            lock (_cacheLock)
+                            {
+                                _layoutCache = null;
+                            }
+                            _logger?.LogWarning("Deleted corrupted layout file at {Path}", _layoutPath);
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            _logger?.LogWarning(deleteEx, "Failed to delete corrupted layout file");
+                        }
+
+                        if (retryAttempt >= MaxRetryAttempts - 1)
+                        {
+                            _logger?.LogError("Layout file corruption detected and could not be recovered - resetting to default layout");
+                            throw;
+                        }
+
+                        retryAttempt++;
+                        Thread.Sleep(RetryDelayMs);
+                        continue;
+                    }
+                    catch (Exception decompressEx)
+                    {
+                        _logger?.LogError(decompressEx, "Failed to decompress layout data from disk (attempt {Attempt}/{MaxAttempts}) - error: {ErrorMessage}", retryAttempt + 1, MaxRetryAttempts, decompressEx.Message);
+                        if (retryAttempt < MaxRetryAttempts - 1)
+                        {
+                            retryAttempt++;
+                            Thread.Sleep(RetryDelayMs);
+                            continue;
+                        }
+                        throw;
+                    }
+                }
+
+                try
+                {
+                    try { LockWindowUpdate(_uiControl.Handle); }
+                    catch (Exception lockWinEx) { _logger?.LogWarning(lockWinEx, "LockWindowUpdate failed - continuing without OS-level lock"); }
+
+                    try
+                    {
+                        if (dockingManager.HostControl?.IsDisposed ?? true)
+                        {
+                            _logger?.LogWarning("Host control disposed during layout apply - aborting");
+                            return;
+                        }
+
+                        try
+                        {
+                            dockingManager.LockDockPanelsUpdate();
+                        }
+                        catch (Exception lockEx)
+                        {
+                            _logger?.LogWarning(lockEx, "Failed to lock DockingManager panels for batch update");
+                        }
+
+                        using var ms = new MemoryStream(layoutData);
+                        var serializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, ms);
+                        dockingManager.LoadDockState(serializer);
+                        _logger?.LogInformation("Docking layout applied on UI thread (attempt {Attempt}/{MaxAttempts})", retryAttempt + 1, MaxRetryAttempts);
+
+                        try
+                        {
+                            if (_rightDockPanel != null)
+                            {
+                                try
+                                {
+                                    dockingManager.SetDockVisibility(_rightDockPanel, false);
+                                }
+                                catch (Exception visEx)
+                                {
+                                    _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
+                                }
+
+                                try
+                                {
+                                    RightDockPanelFactory.SwitchRightPanelContent(_rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
+                                }
+                                catch (Exception switchEx)
+                                {
+                                    _logger?.LogDebug(switchEx, "Failed to switch right panel content after layout apply");
+                                }
+
+                                try { Thread.Sleep(50); } catch { /* ignore */ }
+
+                                try
+                                {
+                                    dockingManager.SetDockVisibility(_rightDockPanel, true);
+                                }
+                                catch (Exception visEx)
+                                {
+                                    _logger?.LogDebug(visEx, "Failed to set right panel visibility=true after layout apply");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogDebug(ex, "Deferred right panel visibility handling failed");
+                        }
+
+                        try
+                        {
+                            if (_rightDockPanel != null && !_rightDockPanel.Visible)
+                            {
+                                _logger?.LogWarning("[DOCKING.LAYOUT] Right panel is still hidden after layout load - forcing visibility for safety");
+                                dockingManager.SetDockVisibility(_rightDockPanel, true);
+                                dockingManager.ActivateControl(_rightDockPanel);
+                                _logger?.LogInformation("[DOCKING.LAYOUT] Right panel visibility recovered and activated");
+                            }
+                        }
+                        catch (Exception visRecoveryEx)
+                        {
+                            _logger?.LogWarning(visRecoveryEx, "[DOCKING.LAYOUT] Failed to recover right panel visibility (non-critical)");
+                        }
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            dockingManager.UnlockDockPanelsUpdate();
+                        }
+                        catch (Exception unlockEx)
+                        {
+                            _logger?.LogWarning(unlockEx, "Failed to unlock DockingManager panels after layout apply");
+                        }
+                    }
+                }
+                finally
+                {
+                    try { LockWindowUpdate(IntPtr.Zero); }
+                    catch (Exception unlockWinEx) { _logger?.LogWarning(unlockWinEx, "LockWindowUpdate(IntPtr.Zero) failed"); }
+                }
+
+                break;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogInformation("Docking operation canceled on shutdown");
+                throw;
+            }
+            catch (Exception ex) when (retryAttempt < MaxRetryAttempts - 1)
+            {
+                _logger?.LogWarning(ex, "Layout load failed on attempt {Attempt}/{MaxAttempts} - will retry", retryAttempt + 1, MaxRetryAttempts);
+                retryAttempt++;
+                Thread.Sleep(RetryDelayMs);
+                continue;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Layout load failed after {MaxAttempts} attempts - resetting to default", MaxRetryAttempts);
+                ResetToDefaultLayout();
+                break;
             }
         }
 
@@ -573,9 +856,11 @@ public class DockingLayoutManager : IDisposable
 
                 // Write with atomic operation using temp file for data integrity
                 string tempPath = _layoutPath + ".tmp";
+                bool fileWritten = false;
                 try
                 {
                     File.WriteAllBytes(tempPath, compressedData);
+                    fileWritten = true;
                     // Atomic rename (overwrites existing file)
                     if (File.Exists(_layoutPath))
                     {
@@ -591,6 +876,12 @@ public class DockingLayoutManager : IDisposable
                         try { File.Delete(tempPath); }
                         catch { /* Ignore cleanup errors */ }
                     }
+                }
+
+                if (!fileWritten)
+                {
+                    _logger?.LogWarning("Failed to write layout file to {TempPath}", tempPath);
+                    return;
                 }
 
                 _lastSaveTime = DateTime.Now;
@@ -716,6 +1007,13 @@ public class DockingLayoutManager : IDisposable
     /// </summary>
     private void ResetToDefaultLayout()
     {
+        var coll = _dockingManager.Controls as System.Collections.ICollection;
+        if (coll == null || coll.Count == 0)
+        {
+            _logger?.LogWarning("No controls registered in DockingManager – skipping GetControls operations");
+            return;
+        }
+
         try
         {
             // Clear corrupted cache to prevent re-using bad data
@@ -745,12 +1043,18 @@ public class DockingLayoutManager : IDisposable
             // Reset UI to default configuration
             _logger?.LogInformation("Resetting docking layout to default configuration - recreating panels");
 
+            var hostControl = _dockingManager.HostControl ?? _uiControl;
+            if (hostControl.IsDisposed)
+            {
+                hostControl = _uiControl;
+            }
+
             try
             {
                 // Left panel (Navigation)
                 _dockingManager.SetEnableDocking(_leftDockPanel, true);
                 _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
-                _dockingManager.DockControl(_leftDockPanel, _uiControl, DockingStyle.Left, 300);
+                _dockingManager.DockControl(_leftDockPanel, hostControl, DockingStyle.Left, 300);
                 _dockingManager.SetAutoHideMode(_leftDockPanel, true);
                 _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px auto-hide)");
             }
@@ -764,7 +1068,7 @@ public class DockingLayoutManager : IDisposable
                 // Right panel (Activity)
                 _dockingManager.SetEnableDocking(_rightDockPanel, true);
                 _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
-                _dockingManager.DockControl(_rightDockPanel, _uiControl, DockingStyle.Right, 350);
+                _dockingManager.DockControl(_rightDockPanel, hostControl, DockingStyle.Right, 350);
                 _dockingManager.SetAutoHideMode(_rightDockPanel, true);
                 _logger?.LogDebug("Reset right docking panel to default (Activity, 350px auto-hide)");
             }
@@ -780,7 +1084,7 @@ public class DockingLayoutManager : IDisposable
                 {
                     _dockingManager.SetEnableDocking(_activityLogPanel, true);
                     _dockingManager.SetDockLabel(_activityLogPanel, "Activity Log");
-                    _dockingManager.DockControl(_activityLogPanel, _uiControl, DockingStyle.Right, 350);
+                    _dockingManager.DockControl(_activityLogPanel, hostControl, DockingStyle.Right, 350);
                     _dockingManager.SetAutoHideMode(_activityLogPanel, true);
                     _logger?.LogDebug("Reset activity log docking panel to default (350px auto-hide)");
                 }

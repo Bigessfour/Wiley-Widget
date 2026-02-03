@@ -309,7 +309,7 @@ public class WarRoomPanelTestCase : BasePanelTestCase
     /// Log control states after layout is complete.
     /// Call this method after form layout to get accurate size/visibility info.
     /// </summary>
-    public void LogControlStatesAfterLayout()
+    internal void LogControlStatesAfterLayout()
     {
         if (CurrentPanel is not WarRoomPanel warRoomPanel) return;
 

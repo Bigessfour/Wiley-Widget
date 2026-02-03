@@ -29,6 +29,7 @@ public partial class MainForm
     private DockingManager? _dockingManager;
     private WileyWidget.WinForms.Controls.ActivityLogPanel? _activityLogPanel;
     private DockingLayoutManager? _dockingLayoutManager;
+    private DockingManagerThemeAdapter? _dockingManagerThemeAdapter;
     private Panel? _leftDockPanel;
     #pragma warning disable CS0649
     private Panel? _centralDocumentPanel;
@@ -54,6 +55,134 @@ public partial class MainForm
     // Multiple dock state changes trigger Z-order adjustment via debounced 100ms timer
     private System.Windows.Forms.Timer? _zOrderDebounceTimer;
 
+    private bool TryInitializeBasicDocking()
+    {
+        if (_dockingManager != null)
+        {
+            return true;
+        }
+
+        if (_serviceProvider == null)
+        {
+            _logger?.LogWarning("Basic DockingManager initialization skipped: ServiceProvider is null");
+            return false;
+        }
+
+        try
+        {
+            var (dockingManager, leftPanel, rightPanel, centralPanel, activityLogPanel, _, layoutManager) =
+                DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
+
+            _dockingManager = dockingManager;
+            _leftDockPanel = leftPanel;
+            _rightDockPanel = rightPanel;
+            _centralDocumentPanel = centralPanel;
+            _activityLogPanel = activityLogPanel;
+            _dockingLayoutManager = layoutManager;
+            _dynamicDockPanels ??= new Dictionary<string, Control>();
+
+            if (_leftDockPanel != null)
+            {
+                _leftDockPanel.AccessibleName ??= "Left dock panel";
+                _leftDockPanel.AccessibleDescription ??= "Left-side docking region";
+            }
+
+            if (_rightDockPanel != null)
+            {
+                _rightDockPanel.AccessibleName ??= "Right dock panel";
+                _rightDockPanel.AccessibleDescription ??= "Right-side docking region";
+            }
+
+            if (_centralDocumentPanel != null)
+            {
+                _centralDocumentPanel.AccessibleName ??= "Document panel";
+                _centralDocumentPanel.AccessibleDescription ??= "Main document workspace";
+            }
+
+            if (_activityLogPanel != null)
+            {
+                _activityLogPanel.AccessibleName ??= "Activity log panel";
+                _activityLogPanel.AccessibleDescription ??= "Application activity log";
+            }
+
+            ConfigureDockingManagerSettings();
+
+            var currentTheme = _themeService?.CurrentTheme ?? AppThemeColors.DefaultTheme;
+            ThemeApplicationHelper.ApplyThemeToDockingManager(_dockingManager, currentTheme, _logger);
+
+            if (_themeService != null && _dockingManagerThemeAdapter == null && _dockingManager != null)
+            {
+                _dockingManagerThemeAdapter = new DockingManagerThemeAdapter(_dockingManager, _logger);
+                _dockingManagerThemeAdapter.RegisterThemeListener(_themeService);
+            }
+
+            var panelCount = (_dockingManager.Controls as System.Collections.ICollection)?.Count ?? 0;
+            _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
+
+            if (_leftDockPanel != null)
+            {
+                _leftDockPanel.Visible = true;
+                try
+                {
+                    _dockingManager.SetDockVisibility(_leftDockPanel, true);
+                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _leftDockPanel.Name ?? "null");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "SetDockVisibility failed for {PanelName}",
+                        _leftDockPanel.Name ?? "null");
+                }
+                _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(280, 360));
+            }
+
+            if (_centralDocumentPanel != null)
+            {
+                _centralDocumentPanel.Visible = true;
+                _centralDocumentPanel.Dock = DockStyle.Fill;
+                var hostControl = _dockingManager.HostControl as Control;
+                if (hostControl != null && !ReferenceEquals(_centralDocumentPanel.Parent, hostControl))
+                {
+                    hostControl.Controls.Add(_centralDocumentPanel);
+                }
+                _logger?.LogDebug("Central panel set to Fill parent (no SetDockVisibility needed)");
+            }
+
+            if (_rightDockPanel != null)
+            {
+                _rightDockPanel.Visible = false;
+                try
+                {
+                    _dockingManager.SetDockVisibility(_rightDockPanel, false);
+                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _rightDockPanel.Name ?? "null");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "SetDockVisibility failed for {PanelName}",
+                        _rightDockPanel.Name ?? "null");
+                }
+                _dockingManager.SetControlMinimumSize(_rightDockPanel, new Size(300, 360));
+            }
+
+            if (_activityLogPanel != null)
+            {
+                _activityLogPanel.Visible = true;
+            }
+
+            if (_ribbon != null) _ribbon.BringToFront();
+            if (_statusBar != null) _statusBar.BringToFront();
+
+            Refresh();
+            _logger?.LogInformation("Basic DockingManager initialization complete");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Basic DockingManager initialization failed");
+            _asyncLogger?.Error($"Basic docking initialization failed: {ex.Message}");
+            return false;
+        }
+    }
+
     /// <summary>
     /// Initializes Syncfusion DockingManager with layout management.
     /// Delegates to DockingHostFactory for centralized docking creation logic.
@@ -61,16 +190,22 @@ public partial class MainForm
     /// </summary>
     private void InitializeSyncfusionDocking()
     {
+        if (TryInitializeBasicDocking())
+        {
+            return;
+        }
+
         var globalStopwatch = System.Diagnostics.Stopwatch.StartNew();
         var timelineService = _serviceProvider != null ?
             Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider) : null;
         using var phase = timelineService?.BeginPhaseScope("Syncfusion Docking Initialization");
 
+        _logger?.LogInformation("InitializeSyncfusionDocking START - handleCreated={HandleCreated}, UIThread={ThreadId}",
+            IsHandleCreated, System.Threading.Thread.CurrentThread.ManagedThreadId);
+        _asyncLogger?.Information("InitializeSyncfusionDocking START - handleCreated={HandleCreated}, UIThread={ThreadId}", IsHandleCreated, System.Threading.Thread.CurrentThread.ManagedThreadId);
+
         try
         {
-            _logger?.LogInformation("InitializeSyncfusionDocking START - handleCreated={HandleCreated}, UIThread={ThreadId}",
-                IsHandleCreated, System.Threading.Thread.CurrentThread.ManagedThreadId);
-                _asyncLogger?.Information("InitializeSyncfusionDocking START - handleCreated={HandleCreated}, UIThread={ThreadId}", IsHandleCreated, System.Threading.Thread.CurrentThread.ManagedThreadId);
 
             // Phase: DockingManager Creation
             var dockingHostStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -91,6 +226,10 @@ public partial class MainForm
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
             _dynamicDockPanels ??= new Dictionary<string, Control>();
+            _logger?.LogDebug("Docking panels assigned: Left={Left}, Right={Right}, Central={Central}, Activity={Activity}",
+                _leftDockPanel?.Name, _rightDockPanel?.Name, _centralDocumentPanel?.Name, _activityLogPanel?.Name);
+
+            ConfigureDockingManagerSettings();
 
             var currentTheme = _themeService?.CurrentTheme ?? AppThemeColors.DefaultTheme;
             ThemeApplicationHelper.ApplyThemeToDockingManager(_dockingManager, currentTheme, _logger);
@@ -105,20 +244,42 @@ public partial class MainForm
             // Ensure panels are visible via DockingManager API
             if (_dockingManager != null)
             {
+                var panelCount = (_dockingManager.Controls as System.Collections.ICollection)?.Count ?? 0;
+                _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
                 if (_leftDockPanel != null)
                 {
                     _leftDockPanel.Visible = true;
-                    _dockingManager.SetDockVisibility(_leftDockPanel, true);
+                    try
+                    {
+                        _dockingManager.SetDockVisibility(_leftDockPanel, true);
+                        _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _leftDockPanel.Name ?? "null");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "SetDockVisibility failed for {PanelName}",
+                            _leftDockPanel.Name ?? "null");
+                    }
                     _leftDockPanel.Refresh();
                     _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(300, 360));
+                    _logger?.LogDebug("Left panel configured: Visible=true, MinSize=300x360");
                 }
 
                 if (_rightDockPanel != null)
                 {
                     // Start hidden by default to avoid covering central UI until user opens it
                     _rightDockPanel.Visible = false;
-                    _dockingManager.SetDockVisibility(_rightDockPanel, false);
+                    try
+                    {
+                        _dockingManager.SetDockVisibility(_rightDockPanel, false);
+                        _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _rightDockPanel.Name ?? "null");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "SetDockVisibility failed for {PanelName}",
+                            _rightDockPanel.Name ?? "null");
+                    }
                     _dockingManager.SetControlMinimumSize(_rightDockPanel, new Size(300, 360));
+                    _logger?.LogDebug("Right panel configured: Visible=false, MinSize=300x360");
                 }
             }
 
@@ -138,10 +299,10 @@ public partial class MainForm
                 _asyncLogger?.Error("DockingManager creation failed");
                 _logger?.LogError("DockingManager creation failed - docking will be unavailable");
                 Console.WriteLine("[DIAGNOSTIC ERROR] DockingManager is null after CreateDockingHost");
-                return;
             }
-
-            // CRITICAL: Ensure ribbon and status bar are on top of docking panels after DockingManager creation
+            else
+            {
+                // CRITICAL: Ensure ribbon and status bar are on top of docking panels after DockingManager creation
             // This prevents docking panels from covering the ribbon UI chrome
             if (_ribbon != null)
             {
@@ -203,30 +364,25 @@ public partial class MainForm
             }
 
             // Reduce flicker during layout load + theme application (best-effort).
-            var dockingUpdatesLocked = false;
-            var dockingLayoutSuspended = false;
-
             try
             {
                 try
                 {
                     _dockingManager.LockHostFormUpdate();
                     _dockingManager.LockDockPanelsUpdate();
-                    dockingUpdatesLocked = true;
                 }
                 catch (Exception lockEx)
                 {
-                    _logger?.LogDebug(lockEx, "Failed to lock DockingManager updates - continuing without lock");
+                    _logger?.LogWarning(lockEx, "Failed to lock DockingManager updates - continuing without lock");
                 }
 
                 try
                 {
                     _dockingManager.SuspendLayout();
-                    dockingLayoutSuspended = true;
                 }
                 catch (Exception suspendEx)
                 {
-                    _logger?.LogDebug(suspendEx, "Failed to suspend DockingManager layout - continuing");
+                    _logger?.LogWarning(suspendEx, "Failed to suspend DockingManager layout - continuing");
                 }
 
                 // CRITICAL: Layout loading is now deferred to InitializeAsync() via LoadAndApplyDockingLayout()
@@ -256,55 +412,21 @@ public partial class MainForm
                 if (_dockingManager != null)
                 {
                     var controlsObj = _dockingManager.Controls;
-                    if (controlsObj == null)
+                    if (controlsObj != null)
                     {
-                        return;  // No controls to adjust
-                    }
-
-                    // Prefer ICollection for Count and safe enumeration
-                    if (controlsObj is System.Collections.ICollection coll)
-                    {
-                        if (coll.Count == 0) return;
-
-                        int floatingWindowCount = 0;
-                        foreach (var item in coll)
+                        // Prefer ICollection for Count and safe enumeration
+                        var coll = controlsObj as System.Collections.ICollection;
+                        if (coll != null && coll.Count > 0)
                         {
-                            if (item is Control control && !control.IsDisposed)
+                            int floatingWindowCount = 0;
+                            foreach (var item in coll)
                             {
-                                try
-                                {
-                                    // Refresh floating window by invalidating to trigger repaint
-                                    // This ensures Z-order is respected and no overlap occurs
-                                    control.Invalidate(true);
-                                    floatingWindowCount++;
-                                }
-                                catch (Exception windowEx)
-                                {
-                                    _logger?.LogDebug(windowEx, "Failed to refresh window: {WindowName}", control.Name);
-                                }
-                            }
-                        }
-
-                        if (floatingWindowCount > 0)
-                        {
-                            _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
-                        }
-
-                        return;
-                    }
-
-                    // Fall back to IEnumerator API (older Syncfusion versions expose an IEnumerator)
-                    if (controlsObj is System.Collections.IEnumerator enumerator)
-                    {
-                        int floatingWindowCount = 0;
-                        try
-                        {
-                            while (enumerator.MoveNext())
-                            {
-                                if (enumerator.Current is Control control && !control.IsDisposed)
+                                if (item is Control control && !control.IsDisposed)
                                 {
                                     try
                                     {
+                                        // Refresh floating window by invalidating to trigger repaint
+                                        // This ensures Z-order is respected and no overlap occurs
                                         control.Invalidate(true);
                                         floatingWindowCount++;
                                     }
@@ -314,21 +436,59 @@ public partial class MainForm
                                     }
                                 }
                             }
+
+                            if (floatingWindowCount > 0)
+                            {
+                                _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
+                            }
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            _logger?.LogWarning(ex, "Failed during float window iteration");
+                            _logger?.LogWarning("No controls registered in DockingManager – skipping GetControls operations");
                         }
 
-                        if (floatingWindowCount > 0)
+                        // Fall back to IEnumerator API (older Syncfusion versions expose an IEnumerator)
+                        if (controlsObj is System.Collections.IEnumerator enumerator)
                         {
-                            _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
+                            int floatingWindowCount = 0;
+                            try
+                            {
+                                while (enumerator.MoveNext())
+                                {
+                                    if (enumerator.Current is Control control && !control.IsDisposed)
+                                    {
+                                        try
+                                        {
+                                            control.Invalidate(true);
+                                            floatingWindowCount++;
+                                        }
+                                        catch (Exception windowEx)
+                                        {
+                                            _logger?.LogDebug(windowEx, "Failed to refresh window: {WindowName}", control.Name);
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.LogWarning(ex, "Failed during float window iteration");
+                            }
+
+                            if (floatingWindowCount > 0)
+                            {
+                                _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
+                            }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Exception during docking updates phase");
+            }
 
-                _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityLogPanel={HasActivityPanel}",
-                _activityLogPanel != null);
+            _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityLogPanel={HasActivityPanel}",
+            _activityLogPanel != null);
 
                 // FINAL Z-order correction: Ensure ribbon stays on top of all docking content
                 if (_ribbon != null)
@@ -349,69 +509,17 @@ public partial class MainForm
                 StartupInstrumentation.LogInitializationState(_logger);
                 Console.WriteLine(StartupInstrumentation.GetFormattedMetrics());
             }
-            finally
-            {
-                // Release lock if it was acquired
-                if (dockingUpdatesLocked && _dockingManager != null)
-                {
-                    try { _dockingManager.UnlockHostFormUpdate(); _dockingManager.UnlockDockPanelsUpdate(); }
-                    catch { }
-                }
-
-                // Resume layout if it was suspended
-                if (dockingLayoutSuspended && _dockingManager != null)
-                {
-                    try { _dockingManager.ResumeLayout(); }
-                    catch { }
-                }
-            }
         }
-        catch (Exception ex) when (ex.Message.Contains("theme", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex)
         {
-            // Theme assembly load failure - provide user-friendly message
-            _logger?.LogError(ex, "Theme assembly failed to load during DockingManager initialization");
-            _asyncLogger?.Error($"Theme Assembly Error: {ex.Message}");
-            MessageBox.Show(
-                "Theme assembly missing—please reinstall Syncfusion packages or reset to default theme.",
-                "Theme Loading Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-            // Fall back to default theme
-            try
-            {
-                SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
-                SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
-                _logger?.LogInformation("Fell back to default Office2019Colorful theme after assembly load failure");
-            }
-            catch (Exception fallbackEx)
-            {
-                _logger?.LogError(fallbackEx, "Failed to apply fallback theme");
-            }
+            _logger?.LogError(ex, "Failed to initialize Syncfusion DockingManager: {Message}", ex.Message);
+            _asyncLogger?.Error($"Initialization Error: {ex.GetType().Name}: {ex.Message}");
         }
-        catch (Exception ex) when (ex.GetType().Name.Contains("Syncfusion"))
-        {
-            // Syncfusion-related error - provide diagnostic info
-            _logger?.LogError(ex, "Syncfusion exception during DockingManager initialization: {Message}", ex.Message);
-            _asyncLogger?.Error($"Syncfusion Error: {ex.Message}");
-            MessageBox.Show(
-                $"UI initialization error: {ex.Message}\n\nThe application may be unstable. Please restart.",
-                "Syncfusion Initialization Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-            // Docking initialization failure is non-critical - system can still function
-            // but without docking capabilities
-        }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to initialize Syncfusion DockingManager: {Message}", ex.Message);
-                _asyncLogger?.Error($"Initialization Error: {ex.GetType().Name}: {ex.Message}");
-                // Docking initialization failure is non-critical - system can still function
-                // but without docking capabilities
-            }
     }
 
     private void ConfigureDockingManagerChromeLayout()
     {
+        _logger?.LogInformation("ConfigureDockingManagerChromeLayout: ENTERED");
         if (_dockingManager == null)
         {
             _logger?.LogWarning("ConfigureDockingManagerChromeLayout skipped: DockingManager is null");
@@ -425,16 +533,37 @@ public partial class MainForm
             return;
         }
 
+        var panelCount = (_dockingManager.Controls as System.Collections.ICollection)?.Count ?? 0;
+        _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
+
+        if (_centralDocumentPanel != null)
+        {
+            _centralDocumentPanel.Dock = DockStyle.Fill;
+            if (!ReferenceEquals(_centralDocumentPanel.Parent, hostControl))
+            {
+                hostControl.Controls.Add(_centralDocumentPanel);
+            }
+            _logger?.LogDebug("Central panel set to Fill parent (no DockControl needed)");
+        }
+
         SuspendLayout();
+        _logger?.LogInformation("ConfigureDockingManagerChromeLayout: Starting layout configuration");
         try
         {
-            if (!Controls.Contains(hostControl))
+            if (ReferenceEquals(hostControl, this))
             {
-                Controls.Add(hostControl);
+                UpdateChromePadding();
             }
+            else
+            {
+                if (hostControl.Parent == this)
+                {
+                    hostControl.BringToFront();
+                }
 
-            hostControl.Dock = DockStyle.Fill;
-            hostControl.SendToBack();
+                AdjustDockingHostBounds(hostControl);
+                hostControl.SendToBack();
+            }
 
             if (_statusBar != null)
             {
@@ -465,6 +594,47 @@ public partial class MainForm
         }
 
         LogDockingManagerMetrics(_dockingManager, hostControl);
+    }
+
+    private void AdjustDockingHostBounds(Control? hostControlOverride = null)
+    {
+        UpdateChromePadding();
+
+        var hostControl = hostControlOverride ?? _dockingManager?.HostControl as Control;
+        if (hostControl == null || hostControl.IsDisposed) return;
+        if (ReferenceEquals(hostControl, this)) return;
+
+        var top = 0;
+        if (_menuStrip != null)
+        {
+            top = Math.Max(top, _menuStrip.Bottom);
+        }
+
+        if (_ribbon != null)
+        {
+            top = Math.Max(top, _ribbon.Bottom);
+        }
+
+        var bottom = ClientSize.Height;
+        if (_statusBar != null)
+        {
+            bottom = Math.Min(bottom, _statusBar.Top);
+        }
+
+        var height = Math.Max(0, bottom - top);
+
+        hostControl.SuspendLayout();
+        try
+        {
+            hostControl.Dock = DockStyle.None;
+            hostControl.Location = new Point(0, top);
+            hostControl.Size = new Size(ClientSize.Width, height);
+            hostControl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+        }
+        finally
+        {
+            hostControl.ResumeLayout(true);
+        }
     }
 
     private void TrySetDockingManagerBoolProperty(DockingManager dockingManager, string propertyName, bool value)
@@ -514,7 +684,7 @@ public partial class MainForm
         }
 
         // Validate theme name before applying
-        theme = AppThemeColors.ValidateTheme(theme);
+        theme = AppThemeColors.ValidateTheme(theme, _logger);
 
         if (InvokeRequired)
         {
@@ -622,7 +792,7 @@ public partial class MainForm
         _dockingManager.EnableDocumentMode = false;
         _logger?.LogInformation("DockingManager document mode disabled (using DockingManager for panels only)");
 
-        _dockingManager.PersistState = true;
+        _dockingManager.PersistState = false;
         _dockingManager.AnimateAutoHiddenWindow = true;
         // REMOVED: Hard-coded fonts - SFSkinManager owns all theming
         _dockingManager.ShowCaption = true;
@@ -638,17 +808,7 @@ public partial class MainForm
         }
         catch { }
 
-        // Attach state events to keep navigation & diagnostics up-to-date
-        try
-        {
-            _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
-
-            // Wire consolidated docking change handler to all relevant events
-            // Single handler saves layout, updates visibility state, and notifies ViewModels
-            _dockingManager.DockControlActivated += (sender, args) => HandleDockingChange(args?.Control);
-            _dockingManager.DockVisibilityChanged += (sender, args) => HandleDockingChange(args?.Control);
-        }
-        catch { }
+        // Intentionally skip extra event wiring in basic mode
     }
 
     private async Task LoadAndApplyDockingLayout(string layoutPath, CancellationToken cancellationToken = default)
@@ -699,13 +859,13 @@ public partial class MainForm
             try
             {
                 try { LockWindowUpdate(this.Handle); }
-                catch (Exception lockWinEx) { _logger?.LogDebug(lockWinEx, "LockWindowUpdate failed - continuing without OS-level lock"); }
+                catch (Exception lockWinEx) { _logger?.LogWarning(lockWinEx, "LockWindowUpdate failed - continuing without OS-level lock"); }
 
                 bool panelsLocked = false;
                 try
                 {
                     try { _dockingManager?.LockDockPanelsUpdate(); panelsLocked = true; }
-                    catch (Exception lockEx) { _logger?.LogDebug(lockEx, "Failed to lock DockingManager panel updates - continuing"); }
+                    catch (Exception lockEx) { _logger?.LogWarning(lockEx, "Failed to lock DockingManager panel updates - continuing"); }
 
                     await _dockingLayoutManager.LoadDockingLayoutAsync(_dockingManager!, cancellationToken).ConfigureAwait(true);
 
@@ -724,6 +884,8 @@ public partial class MainForm
 
                         if (_dockingManager != null)
                         {
+                            var panelCount = (_dockingManager.Controls as System.Collections.ICollection)?.Count ?? 0;
+                            _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
                             if (leftPanel != null)
                             {
                                 _dockingManager.SetDockVisibility(leftPanel, true);
@@ -732,8 +894,15 @@ public partial class MainForm
 
                             if (centralPanel != null)
                             {
-                                _dockingManager.SetDockVisibility(centralPanel, true);
+                                centralPanel.Visible = true;
+                                centralPanel.Dock = DockStyle.Fill;
+                                var hostControl = _dockingManager.HostControl as Control;
+                                if (hostControl != null && !ReferenceEquals(centralPanel.Parent, hostControl))
+                                {
+                                    hostControl.Controls.Add(centralPanel);
+                                }
                                 centralPanel.Refresh();
+                                _logger?.LogDebug("Central panel set to Fill parent (no SetDockVisibility needed)");
                             }
 
                             if (rightPanel != null)
@@ -767,14 +936,14 @@ public partial class MainForm
                     if (panelsLocked)
                     {
                         try { _dockingManager?.UnlockDockPanelsUpdate(); }
-                        catch (Exception unlockEx) { _logger?.LogDebug(unlockEx, "Failed to unlock DockingManager panel updates"); }
+                        catch (Exception unlockEx) { _logger?.LogWarning(unlockEx, "Failed to unlock DockingManager panel updates"); }
                     }
                 }
             }
             finally
             {
                 try { LockWindowUpdate(IntPtr.Zero); }
-                catch (Exception unlockWinEx) { _logger?.LogDebug(unlockWinEx, "LockWindowUpdate(IntPtr.Zero) failed"); }
+                catch (Exception unlockWinEx) { _logger?.LogWarning(unlockWinEx, "LockWindowUpdate(IntPtr.Zero) failed"); }
             }
         }
         catch (OperationCanceledException)
@@ -905,38 +1074,23 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Consolidated docking change handler for DockStateChanged, DockControlActivated, and DockVisibilityChanged events.
-    /// Single handler consolidates:
-    /// - Persistence: Notifies DockingLayoutManager to save layout
-    /// - Visibility tracking: Notifies ILazyLoadViewModel subscribers about visibility changes
-    /// - Z-order management: Schedules debounced Z-order adjustment
-    /// - State updates: Updates status bar text with current docking state
-    /// This consolidation reduces event handler redundancy and improves maintainability.
+    /// Basic docking change handler for visibility updates only.
     /// </summary>
     /// <param name="control">The control whose docking state changed (may be null if change is global)</param>
     private void HandleDockingChange(Control? control)
     {
-        if (!_uiConfig.UseSyncfusionDocking || _dockingLayoutManager == null || _dockingManager == null)
+        if (!_uiConfig.UseSyncfusionDocking || _dockingManager == null)
+        {
             return;
+        }
 
         try
         {
-            // 1. Notify ViewModels about visibility change (async, non-blocking)
             if (control != null)
             {
                 BeginInvoke(new Func<Task>(async () => await NotifyPanelVisibilityChangedAsync(control)));
             }
 
-            // 2. Ensure floating window Z-order is correct before persisting
-            EnsureFloatWindowZOrder();
-
-            // 3. Notify docking layout manager about state change for persistence
-            _dockingLayoutManager.OnDockStateChanged();
-
-            // 4. Schedule debounced Z-order adjustment (consolidates redundant EnsureZOrder calls)
-            ScheduleZOrderDebounce();
-
-            // 5. Update status bar with current docking state
             UpdateDockingStateText();
 
             _logger?.LogDebug("Docking change handled: {Control}", control?.Name ?? "<global>");
@@ -1042,8 +1196,13 @@ public partial class MainForm
             }
 
             // Cast to ICollection for enumeration
-            if (!(controlsObj is System.Collections.ICollection coll) || coll.Count == 0)
+            if (!(controlsObj is System.Collections.ICollection coll))
             {
+                return;
+            }
+            if (coll.Count == 0)
+            {
+                _logger?.LogWarning("No controls registered in DockingManager – skipping GetControls operations");
                 return;
             }
 
@@ -1166,13 +1325,25 @@ public partial class MainForm
         // Ensure all panels are visible
         if (_dockingManager != null)
         {
-            var controlsObj = _dockingManager.Controls;
-            if (controlsObj is System.Collections.ICollection coll && coll.Count > 0)
+            if (_dockingManager.Controls is System.Collections.ICollection coll && coll.Count == 0)
             {
-                foreach (var item in coll)
+                _logger?.LogWarning("No controls registered in DockingManager – skipping ResetToDefaultLayout operations");
+                return;
+            }
+            var controlsObj = _dockingManager.Controls;
+            if (controlsObj is System.Collections.ICollection coll2 && coll2.Count > 0)
+            {
+                foreach (var item in coll2)
                 {
                     if (item is Control control)
                     {
+                        if (ReferenceEquals(control, _centralDocumentPanel) || ReferenceEquals(control, _dockingManager.HostControl))
+                        {
+                            _logger?.LogDebug("ResetToDefaultLayout: Skipping dock visibility for central/host control {PanelName}", control.Name ?? "null");
+                            continue;
+                        }
+
+                        _logger?.LogDebug("ResetToDefaultLayout: Applying dock visibility for {PanelName}", control.Name ?? "null");
                         _dockingManager.SetDockVisibility(control, true);
                         control.Refresh();
                     }
@@ -1422,6 +1593,11 @@ public partial class MainForm
             {
                 return;
             }
+            if (coll.Count == 0)
+            {
+                _logger?.LogWarning("No controls registered in DockingManager – skipping ValidatePanelHostingState operations");
+                return;
+            }
 
             int validPanels = 0;
             int hiddenPanels = 0;
@@ -1522,12 +1698,20 @@ public partial class MainForm
     /// Switches the active tab in the right dock panel between Activity Log and JARVIS Chat.
     /// Ensures the right panel is visible and docked before switching tabs.
     /// </summary>
-    /// <param name="targetMode">The target panel mode (ActivityLog or JarvisChat)</param>
-    public void SwitchRightPanel(RightDockPanelFactory.RightPanelMode targetMode)
+    /// <param name="tabName">The name of the tab to switch to (e.g., "JarvisChat", "ActivityLog")</param>
+    public void SwitchRightPanel(string tabName)
     {
         try
         {
-            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] User requested {TargetMode}", targetMode);
+            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] User requested {TabName}", tabName);
+
+            // Map friendly names to actual tab names
+            string actualTabName = tabName switch
+            {
+                "JarvisChat" => "JARVISChatTab",
+                "ActivityLog" => "ActivityLogTab",
+                _ => tabName
+            };
 
             var rightPanel = GetRightDockPanel();
             if (rightPanel == null)
@@ -1560,20 +1744,18 @@ public partial class MainForm
                 try
                 {
                     _dockingManager.SetDockVisibility(rightPanel, true);
+                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", rightPanel.Name ?? "null");
                     rightPanel.Refresh();
                     _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Ensured right panel is docked");
 
-                    // Verify dock state after visibility set - reset if needed
-                    var currentState = _dockingManager.GetDockState(rightPanel);
-                    if (currentState != DockState.Dock)
-                    {
-                        _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Right panel state is {State}, resetting to Dock", currentState);
-                        _dockingManager.SetDockState(rightPanel, DockState.Dock);
-                    }
+                    // Activate the control to bring it to front
+                    _dockingManager.ActivateControl(rightPanel);
+                    _logger?.LogDebug("ActivateControl succeeded for {PanelName}", rightPanel.Name ?? "null");
                 }
-                catch (Exception visEx)
+                catch (Exception ex)
                 {
-                    _logger?.LogDebug(visEx, "[SWITCH_RIGHT_PANEL] Failed to set dock visibility");
+                    _logger?.LogError(ex, "SetDockVisibility/ActivateControl failed for {PanelName}",
+                        rightPanel.Name ?? "null");
                 }
             }
             else
@@ -1587,13 +1769,39 @@ public partial class MainForm
             }
 
             // Now switch the tab content
-            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Switching content to {TargetMode}", targetMode);
-            RightDockPanelFactory.SwitchRightPanelContent(rightPanel, targetMode, _logger);
-            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Successfully switched to {TargetMode}", targetMode);
+            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Switching to tab {ActualTabName}", actualTabName);
+
+            var tabControl = rightPanel.Controls.OfType<TabControlAdv>().FirstOrDefault();
+            if (tabControl == null)
+            {
+                _logger?.LogWarning("[SWITCH_RIGHT_PANEL] No TabControl found in right panel - creating one dynamically.");
+                tabControl = new TabControlAdv { Dock = DockStyle.Fill };
+                // Add tabs as needed - assuming they are created elsewhere
+                rightPanel.Controls.Add(tabControl);
+            }
+
+            TabPageAdv? tab = null;
+            foreach (TabPageAdv page in tabControl.TabPages)
+            {
+                if (page.Name == actualTabName)
+                {
+                    tab = page;
+                    break;
+                }
+            }
+            if (tab != null)
+            {
+                tabControl.SelectedTab = tab;
+                _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Successfully switched to {TabName}", actualTabName);
+            }
+            else
+            {
+                _logger?.LogError("[SWITCH_RIGHT_PANEL] Tab {ActualTabName} not found.", actualTabName);
+            }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "[SWITCH_RIGHT_PANEL] Failed to switch right panel to {TargetMode}", targetMode);
+            _logger?.LogError(ex, "[SWITCH_RIGHT_PANEL] Failed to switch right panel to {TabName}", tabName);
             MessageBox.Show(
                 $"Failed to open panel: {ex.Message}",
                 "Switch Panel Error",

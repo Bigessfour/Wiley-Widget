@@ -282,7 +282,7 @@ namespace WileyWidget.WinForms.ViewModels
                         {
                             // Set initial prompt and switch tab
                             jarvisControl.InitialPrompt = insightContext.ToString();
-                            mainForm.SwitchRightPanel(WileyWidget.WinForms.Forms.RightDockPanelFactory.RightPanelMode.JarvisChat);
+                            mainForm.SwitchRightPanel("JarvisChat");
                             _logger.LogInformation("Switched to JARVIS Chat tab with insight context ({ContextLength} chars)", insightContext.Length);
                         }
                         else

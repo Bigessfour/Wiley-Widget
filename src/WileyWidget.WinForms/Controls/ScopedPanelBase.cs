@@ -24,7 +24,7 @@ namespace WileyWidget.WinForms.Controls;
 /// Non-generic base class for panels that require scoped ViewModels.
 /// This class is designed to be instantiable by the WinForms designer.
 /// </summary>
-public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyPropertyChanged
+public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyPropertyChanged, ISupportInitialize
 {
     // Note: not readonly to allow a lightweight design-time fallback factory when the designer instantiates controls.
     private IServiceScopeFactory _scopeFactory;
@@ -244,7 +244,7 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
             if (_viewModel == null)
             {
                 _viewModel = ResolveViewModel(_scope.ServiceProvider);
-                _logger.LogDebug("Resolved ViewModel from scoped provider", GetType().Name);
+                _logger.LogDebug("Resolved ViewModel from scoped provider for {PanelType}", GetType().Name);
             }
             else
             {
@@ -769,6 +769,24 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
             ApplyThemeRecursively(child, themeName);
         }
     }
+
+    #region ISupportInitialize Implementation
+    /// <summary>
+    /// Signals the object that initialization is starting.
+    /// </summary>
+    public void BeginInit()
+    {
+        // No special initialization needed
+    }
+
+    /// <summary>
+    /// Signals the object that initialization is complete.
+    /// </summary>
+    public void EndInit()
+    {
+        // No special initialization needed
+    }
+    #endregion
 }
 
 /// <summary>

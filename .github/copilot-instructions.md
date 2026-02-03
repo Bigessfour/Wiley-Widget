@@ -30,7 +30,7 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 ## Tooling Rules
 
-- **Filesystem**: Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Avoid terminal I/O for file reads and writes.
+- **Filesystem**: it is preferred to Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Allowed, use at your discretion for small changes to files. Mcp is preferred as it is more effecient, but, you as the code agent have flexability to use whatever tool matches thejob.
 - **Search**: `mcp_filesystem_search_files` for file/code discovery.
 - **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
 - **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
@@ -639,6 +639,7 @@ Only ask for human input when:
 ## 🎯 Quality Standards (Still Apply)
 
 Being agentic doesn't mean being careless:
+
 - **Prefer MCP filesystem tools** when available (provides audit trails, git-style diffs)
 - **Follow language standards** as guidelines (Python/C#/PowerShell rules)
 - **Write tests automatically** (not when asked)
@@ -648,6 +649,7 @@ Being agentic doesn't mean being careless:
 ## 🛠️ Tool Usage Philosophy
 
 **Use the Right Tool for the Job:**
+
 - **MCP Filesystem Tools**: Preferred for file operations (audit trails, diffs, atomic ops)
 - **Standard Tools**: Use when MCP isn't available or adds unnecessary overhead
 - **VS Code Extensions**: Install/use when they improve workflow (Pylint, ESLint, etc.)
@@ -658,6 +660,7 @@ Being agentic doesn't mean being careless:
 - **Hybrid Approach**: Combine tools as needed - don't artificially constrain yourself
 
 **Decision Criteria:**
+
 1. Does this tool solve the problem better?
 2. Does it provide useful features (diffs, validation, etc.)?
 3. Is it available and working?
@@ -668,6 +671,7 @@ If the answer to 1-3 is yes and 4 is no, use the tool.
 ## 🔄 Error Recovery
 
 When you hit an error:
+
 1. **Read the error carefully** - Don't just report it
 2. **Search for similar issues** in codebase/docs
 3. **Try 2-3 fix attempts** before escalating
@@ -676,7 +680,8 @@ When you hit an error:
 ## 💡 Examples
 
 ### ❌ Non-Agentic
-````
+
+`````
 
 User: "Add error logging to the payment processor"
 Agent: "I can help with that. Should I: 1. Read the PaymentProcessor.cs file first? 2. Look at existing logging patterns? 3. Add using statements for logging?
@@ -761,7 +766,7 @@ public class MyService : IAsyncInitializable
 {
     public async Task InitializeAsync(CancellationToken ct) { /* heavy I/O here */ }
 }
-````
+`````
 
 ## Code Review Checklist
 
@@ -795,3 +800,49 @@ Before executing ANY code generation or file operation:
 **Version:** 2026-01-13
 **Status:** Active
 **Enforcement Level:** High Priority (review violations promptly)
+
+---
+
+# Tooling Flexibility Addendum (2026-02-01)
+
+## Intent
+
+These guidelines provide guardrails without blocking progress when tools are unavailable or add unnecessary overhead.
+
+## Preferred vs. Allowed Tooling
+
+- MCP filesystem tools remain the preferred default for auditability.
+- If MCP tools are unavailable, slow, or blocked, fallback to built-in read/search helpers or read-only terminal commands.
+- When a fallback is used, document it in the final report.
+
+## Lightweight Read/Search Exceptions
+
+- For quick context (small reads or a single-file scan), `read_file`/`grep_search` are acceptable when MCP is not available.
+- Use the least intrusive tool that completes the task safely.
+
+## Editing Rules (Flex Mode)
+
+- Prefer MCP edit/write tools when possible.
+- `apply_patch` is acceptable for multi-change diffs or when MCP edit granularity would be inefficient.
+
+## Terminal Guidance
+
+- PowerShell 7.5.4 syntax is preferred when running terminal commands.
+- If a tool executes commands or uses tasks, treat syntax guidance as best-effort.
+- Use VS Code tasks for build/test when available.
+
+## Syncfusion Documentation Rule (Scope)
+
+- Required when modifying Syncfusion controls or docking/ribbon behavior.
+- Not required for unrelated business logic, configuration-only changes, or non-UI edits.
+
+## C# Language and Framework Targets
+
+- Target C# 14 and net10.0-windows when the project supports them.
+- Do not introduce features that exceed the project language version.
+- Follow existing analyzers and .editorconfig even when using newer syntax.
+
+## Hard No-Go (Still Strict)
+
+- Do not commit real secrets or credentials.
+- Avoid destructive operations without explicit approval.

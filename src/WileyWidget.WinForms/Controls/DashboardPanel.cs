@@ -19,8 +19,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Services;
 using static WileyWidget.WinForms.Services.ExportService;
-using WileyWidget.WinForms.Forms; // Added for MainViewModel access
-using FormsMainViewModel = WileyWidget.WinForms.Forms.MainViewModel;
+using FormsMainViewModel = WileyWidget.WinForms.ViewModels.MainViewModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;

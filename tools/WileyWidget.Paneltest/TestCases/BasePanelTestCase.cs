@@ -20,10 +20,16 @@ public abstract class BasePanelTestCase : IDisposable
     protected Form? TestForm;
     protected UserControl? CurrentPanel;
     private readonly List<Form> _disposables = new();
+    private bool _disposed;
 
     protected BasePanelTestCase(PanelTestFixture? fixture = null)
     {
         Fixture = fixture ?? new PanelTestFixture();
+    }
+
+    ~BasePanelTestCase()
+    {
+        Dispose(false);
     }
 
     /// <summary>
@@ -187,7 +193,6 @@ public abstract class BasePanelTestCase : IDisposable
     {
         Dispose(true);
         GC.SuppressFinalize(this);
-        return;
     }
 
     /// <summary>
@@ -196,6 +201,11 @@ public abstract class BasePanelTestCase : IDisposable
     /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
     protected virtual void Dispose(bool disposing)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         if (disposing)
         {
             // Dispose managed resources
@@ -212,6 +222,7 @@ public abstract class BasePanelTestCase : IDisposable
         }
 
         // Clean up native resources here (if any)
+        _disposed = true;
     }
 }
 

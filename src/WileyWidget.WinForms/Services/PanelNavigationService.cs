@@ -10,6 +10,8 @@ using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Themes;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -309,15 +311,31 @@ namespace WileyWidget.WinForms.Services
             // Already on UI thread - DockPanelInternal is called only from ShowPanel or AddPanelAsync
             // which have already marshalled execution via InvokeAsync
             panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
+            Logger.LogDebug("Docking panel: {PanelName} with style {Style}, allowFloating={AllowFloating}", panelName, preferredStyle, allowFloating);
 
             // Apply sensible defaults so charts/grids have usable space on first show
             ApplyDefaultPanelSizing(panel, preferredStyle, panel.GetType());
 
             // Enable docking features and caption buttons (required for headers and buttons to appear)
-            ApplyCaptionSettings(panel, panelName, allowFloating);
+            var forceFloating = ShouldFloatByDefault(preferredStyle);
+            ApplyCaptionSettings(panel, panelName, allowFloating || forceFloating);
 
-            // Dock the panel
+            // Dock or float the panel
             var effectiveStyle = preferredStyle;
+
+            var hostControl = _dockingManager.HostControl ?? _parentControl;
+            if (hostControl.IsDisposed)
+            {
+                hostControl = _parentControl;
+                Logger.LogWarning("DockingManager.HostControl was disposed, falling back to parent control for panel: {PanelName}", panelName);
+            }
+
+            if (forceFloating)
+            {
+                FloatPanel(panel, panelName, preferredStyle, hostControl);
+                return;
+            }
+
             if (effectiveStyle == DockingStyle.Fill)
             {
                 Logger.LogWarning(
@@ -326,21 +344,25 @@ namespace WileyWidget.WinForms.Services
                 effectiveStyle = DockingStyle.Right;
             }
 
-            int dockSize = CalculateDockSize(effectiveStyle, _parentControl);
+            int dockSize = CalculateDockSize(effectiveStyle, hostControl);
+            Logger.LogDebug("Calculated dock size: {Size} for style {Style}", dockSize, effectiveStyle);
 
             // Respect desired default dimension when we have one
             var (desiredSize, _) = GetDefaultPanelSizes(panel.GetType(), effectiveStyle);
             if (effectiveStyle is DockingStyle.Left or DockingStyle.Right && desiredSize.Width > 0)
             {
                 dockSize = desiredSize.Width;
+                Logger.LogDebug("Using desired width: {Width} for panel: {PanelName}", dockSize, panelName);
             }
             else if (effectiveStyle is DockingStyle.Top or DockingStyle.Bottom && desiredSize.Height > 0)
             {
                 dockSize = desiredSize.Height;
+                Logger.LogDebug("Using desired height: {Height} for panel: {PanelName}", dockSize, panelName);
             }
 
             // Dock the panel with calculated size
-            _dockingManager.DockControl(panel, _parentControl, effectiveStyle, dockSize);
+            _dockingManager.DockControl(panel, hostControl, effectiveStyle, dockSize);
+            Logger.LogInformation("Panel docked successfully: {PanelName} at {Style} with size {Size}", panelName, effectiveStyle, dockSize);
 
             // QuickBooksPanel: Prevent resizing due to explicit internal sizing (prevents StackOverflow)
             // Since all controls in QuickBooksPanel have explicit AutoSize=false + Heights,
@@ -516,6 +538,7 @@ namespace WileyWidget.WinForms.Services
                 // C# 14: Extension method for safe theme application with null-conditional.
                 // SfSkinManager is the single source of truth for theming.
                 // Theme cascade from parent form automatically applies to all child controls.
+                AppThemeColors.EnsureThemeAssemblyLoaded(Logger);
                 var themeName = GetCurrentThemeName();
                 panel?.ApplySyncfusionTheme(themeName, Logger);
             }
@@ -531,7 +554,7 @@ namespace WileyWidget.WinForms.Services
         /// SfSkinManager is Syncfusion's single source of truth for theming.
         /// </summary>
         private static string GetCurrentThemeName() =>
-            SfSkinManager.ApplicationVisualTheme ?? "Office2019White";
+            SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
         private void ApplyCaptionSettings(UserControl panel, string panelName, bool allowFloating)
         {
@@ -593,6 +616,64 @@ namespace WileyWidget.WinForms.Services
             {
                 Logger.LogDebug(ex, "SetMenuButtonVisibility failed (non-critical)");
             }
+        }
+
+        private static bool ShouldFloatByDefault(DockingStyle preferredStyle)
+        {
+            // Only panels explicitly designated for left/right docking should dock by default.
+            return preferredStyle is not DockingStyle.Left and not DockingStyle.Right;
+        }
+
+        private void FloatPanel(UserControl panel, string panelName, DockingStyle preferredStyle, Control hostControl)
+        {
+            var bounds = CalculateFloatingBounds(panel, preferredStyle, hostControl);
+            _dockingManager.FloatControl(panel, bounds);
+
+            try
+            {
+                _dockingManager.SetDockVisibility(panel, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SetDockVisibility failed for floating panel {PanelName}", panelName);
+            }
+
+            try
+            {
+                panel.Visible = true;
+                panel.BringToFront();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to update floating panel visibility for {PanelName}", panelName);
+            }
+
+            try
+            {
+                _dockingManager.ActivateControl(panel);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to activate floating panel {PanelName}", panelName);
+            }
+
+            Logger.LogInformation("Panel floated by default: {PanelName} at {Bounds}", panelName, bounds);
+        }
+
+        private static System.Drawing.Rectangle CalculateFloatingBounds(UserControl panel, DockingStyle preferredStyle, Control hostControl)
+        {
+            var (desiredSize, minimumSize) = GetDefaultPanelSizes(panel.GetType(), preferredStyle);
+            var width = desiredSize.Width > 0 ? desiredSize.Width : Math.Max(minimumSize.Width, Math.Max(640, hostControl.Width / 2));
+            var height = desiredSize.Height > 0 ? desiredSize.Height : Math.Max(minimumSize.Height, Math.Max(480, hostControl.Height / 2));
+
+            var screen = Screen.FromControl(hostControl).WorkingArea;
+            width = Math.Min(width, screen.Width);
+            height = Math.Min(height, screen.Height);
+
+            var x = screen.Left + Math.Max(0, (screen.Width - width) / 2);
+            var y = screen.Top + Math.Max(0, (screen.Height - height) / 2);
+
+            return new System.Drawing.Rectangle(x, y, width, height);
         }
 
         public void Dispose()

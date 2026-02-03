@@ -211,7 +211,7 @@ namespace WileyWidget.WinForms.Services
                 typeof(BudgetOverviewViewModel),
                 typeof(BudgetViewModel),
                 typeof(CustomersViewModel),
-                typeof(WileyWidget.WinForms.Forms.MainViewModel),
+                typeof(WileyWidget.WinForms.ViewModels.MainViewModel),
                 typeof(ReportsViewModel)
             };
 

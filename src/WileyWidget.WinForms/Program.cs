@@ -20,6 +20,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Serilog;
 using WileyWidget.Services.Logging;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms
 {
@@ -27,8 +28,9 @@ namespace WileyWidget.WinForms
     {
         private static IServiceProvider? _services;
         private static MainForm? _mainFormInstance;
+        private static SplashForm? _splashForm;
 
-        public static IServiceProvider Services => _services ?? throw new InvalidOperationException("Services not initialized");
+        public static IServiceProvider Services => _services ?? CreateFallbackServiceProvider();
 
         /// <summary>
         /// Safe accessor that returns the internal services instance or null if not yet initialized.
@@ -40,6 +42,33 @@ namespace WileyWidget.WinForms
         {
             get => _mainFormInstance;
             set => _mainFormInstance = value;
+        }
+
+        internal static void StartSplash(string message)
+        {
+            if (_splashForm == null)
+            {
+                _splashForm = new SplashForm();
+            }
+
+            _splashForm.Report(0.05, message, isIndeterminate: true);
+        }
+
+        internal static void ReportSplash(double progress, string message, bool isIndeterminate = false)
+        {
+            _splashForm?.Report(progress, message, isIndeterminate);
+        }
+
+        internal static void CompleteSplash(string message)
+        {
+            if (_splashForm == null)
+            {
+                return;
+            }
+
+            _splashForm.Complete(message);
+            _splashForm.Dispose();
+            _splashForm = null;
         }
 
         public static async Task RunStartupHealthCheckAsync(IServiceProvider services)
@@ -83,6 +112,22 @@ namespace WileyWidget.WinForms
 
             // Ensure log directory exists before Serilog initialization
             EnsureLogDirectoryExists();
+
+            // Configure Serilog logger manually for WinForms app
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("src/WileyWidget.WinForms/appsettings.json", optional: false, reloadOnChange: true)
+                .AddUserSecrets<Program>(optional: true)
+                .Build();
+
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(configuration)
+                .CreateLogger();
+
+            Log.Information("Program.Main: Starting WileyWidget application");
+            Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
+
+            StartSplash("Starting Wiley Widget...");
 
             System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
             System.Windows.Forms.Application.EnableVisualStyles();
@@ -143,8 +188,10 @@ namespace WileyWidget.WinForms
             try
             {
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Creating host builder...");
+                ReportSplash(0.15, "Building host...");
                 var host = CreateHostBuilder(args).Build();
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Host built successfully");
+                ReportSplash(0.3, "Host built", isIndeterminate: false);
 
                 _services = host.Services;
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Services assigned to _services");
@@ -159,16 +206,22 @@ namespace WileyWidget.WinForms
 
                 // Phase 1: Theming
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Initializing theme...");
+                Log.Information("Program.Main: Starting theme initialization");
+                ReportSplash(0.4, "Initializing theme...");
                 InitializeTheme(host.Services);
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Theme initialized");
+                Log.Information("Program.Main: Theme initialization completed");
+                ReportSplash(0.55, "Theme ready", isIndeterminate: false);
 
                 // Log that exception handlers are active
                 Log.Information("Exception handlers registered for unobserved tasks and UI thread errors");
 
                 // Phase 2: Orchestration
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Attempting to resolve IStartupOrchestrator...");
+                Log.Information("Program.Main: Resolving IStartupOrchestrator");
                 var orchestrator = host.Services.GetService(typeof(IStartupOrchestrator)) as IStartupOrchestrator;
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] IStartupOrchestrator resolved: {(orchestrator != null ? "SUCCESS" : "NULL")}");
+                Log.Information("Program.Main: IStartupOrchestrator resolved: {Resolved}", orchestrator != null);
 
                 if (orchestrator == null)
                 {
@@ -193,13 +246,32 @@ namespace WileyWidget.WinForms
                 // Async startup orchestration with a configurable timeout (Startup.TimeoutSeconds)
                 // Only timebox startup initialization, not the full app lifetime.
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application initialization with configured startup timeout...");
+                Log.Information("Program.Main: Starting application initialization with timeout");
+                ReportSplash(0.7, "Initializing services...");
                 ExecuteStartupWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
+                Log.Information("Program.Main: Application initialization completed");
+                ReportSplash(0.85, "Starting application...");
 
                 // Run the WinForms message loop without a timeout (normal app lifetime).
-                orchestrator.RunApplicationAsync(host.Services).GetAwaiter().GetResult();
+                Log.Information("Program.Main: Starting WinForms message loop");
+                ReportSplash(0.95, "Launching main window...");
+                try
+                {
+                    orchestrator.RunApplicationAsync(host.Services).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Unhandled exception in Application.Run");
+                    throw;
+                }
+                finally
+                {
+                    Log.Information("Application exited");
+                }
             }
             catch (Exception ex)
             {
+                CompleteSplash("Startup failed");
                 // Log the full exception chain to find the root cause
                 var current = ex;
                 int depth = 0;
@@ -215,6 +287,7 @@ namespace WileyWidget.WinForms
             }
             finally
             {
+                CompleteSplash("Exiting...");
                 Log.CloseAndFlush();
             }
         }
@@ -300,10 +373,7 @@ namespace WileyWidget.WinForms
                     // Register WinForms-specific services
                     services.AddWinFormsServices(hostContext.Configuration);
                 })
-                .UseSerilog((context, services, configuration) => configuration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .ReadFrom.Services(services)
-                    .Enrich.FromLogContext());
+                .UseSerilog();
 
         static void InitializeTheme(IServiceProvider serviceProvider)
         {
@@ -312,7 +382,7 @@ namespace WileyWidget.WinForms
 
             if (string.IsNullOrWhiteSpace(themeName))
             {
-                themeName = "Office2019Colorful";
+                themeName = AppThemeColors.DefaultTheme;
             }
 
             if (!ThemeApplicationHelper.ValidateTheme(themeName))
@@ -325,7 +395,7 @@ namespace WileyWidget.WinForms
             try
             {
                 // Primary theme: Office2019 (required for Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray)
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                AppThemeColors.EnsureThemeAssemblyLoaded();
                 Log.Information("✅ Loaded Office2019Theme assembly successfully - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray");
                 Log.Debug("Debug test log from Program.cs");
             }

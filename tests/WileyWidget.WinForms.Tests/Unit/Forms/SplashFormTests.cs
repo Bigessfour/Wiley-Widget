@@ -10,6 +10,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Xunit;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
@@ -48,7 +49,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void Report_UpdatesUiControls_OnSplashUiThread()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            TestThemeHelper.EnsureOffice2019Colorful();
             var splash = new SplashForm();
 
             try
@@ -59,15 +60,20 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 msgField.Should().NotBeNull();
                 progressField.Should().NotBeNull();
 
-                var label = (Label)msgField!.GetValue(splash)!;
-                var progress = (ProgressBar)progressField!.GetValue(splash)!;
+                var label = msgField!.GetValue(splash) as Label;
+                if (label is null)
+                {
+                    throw new InvalidOperationException("Splash message label not found.");
+                }
 
-                // Sanity
-                label.Should().NotBeNull();
-                progress.Should().NotBeNull();
+                var progressControl = progressField!.GetValue(splash) as Control;
+                if (progressControl is null)
+                {
+                    throw new InvalidOperationException("Splash progress control not found.");
+                }
 
                 // Ensure we're on a different thread than the controls (InvokeRequired should be true)
-                bool invokeRequired = label.InvokeRequired;
+                bool invokeRequired = label!.InvokeRequired;
                 invokeRequired.Should().BeTrue();
 
                 // Act: report a message and progress
@@ -78,8 +84,18 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 {
                     try
                     {
-                        var currentText = (string)label.Invoke(new Func<string>(() => label.Text));
-                        var currentValue = (int)progress.Invoke(new Func<int>(() => progress.Value));
+                        var currentTextObj = label.Invoke(new Func<string>(() => label.Text));
+                        if (currentTextObj is not string currentText) return false;
+
+                        var currentValue = (int)progressControl.Invoke(new Func<int>(() =>
+                        {
+                            if (progressControl is Syncfusion.Windows.Forms.Tools.ProgressBarAdv adv)
+                                return adv.Value;
+                            if (progressControl is ProgressBar bar)
+                                return bar.Value;
+                            return 0;
+                        }));
+
                         return currentText == "Working" && currentValue >= 41 && currentValue <= 43;
                     }
                     catch
@@ -101,7 +117,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void Dispose_CancelsAndAllowsUiThreadToExit_WithoutBlocking()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            TestThemeHelper.EnsureOffice2019Colorful();
             var splash = new SplashForm();
 
             // Access private ui thread
@@ -132,7 +148,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void ConcurrentReports_DoNotFreezeUi()
         {
             // Arrange
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            TestThemeHelper.EnsureOffice2019Colorful();
             var splash = new SplashForm();
 
             try
@@ -140,7 +156,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 var msgField = typeof(SplashForm).GetField("_messageLabel", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 var progressField = typeof(SplashForm).GetField("_progressBar", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 var label = (Label)msgField.GetValue(splash)!;
-                var progress = (ProgressBar)progressField.GetValue(splash)!;
+                var progress = progressField.GetValue(splash) as Control;
 
                 const int parallelUpdates = 200;
                 var tasks = new Task[parallelUpdates];
@@ -160,7 +176,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 {
                     try
                     {
-                        var txt = (string)label.Invoke(new Func<string>(() => label.Text));
+                        var txtObj = label.Invoke(new Func<string>(() => label.Text));
+                        if (txtObj is not string txt) return false;
                         return txt != "Initializing...";
                     }
                     catch

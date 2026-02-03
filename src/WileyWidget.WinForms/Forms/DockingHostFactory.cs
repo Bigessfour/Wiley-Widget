@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -43,6 +44,7 @@ public static class DockingHostFactory
     /// <param name="logger">Logger instance</param>
     /// <returns>Tuple of (DockingManager, leftPanel, rightPanel, centralPanel, activityLogPanel, activityRefreshTimer, layoutManager)</returns>
     /// <remarks>Central panel fills remaining space to prevent DockingManager paint crashes</remarks>
+#pragma warning disable CA1508 // activityLogPanel is always null by design; reserved for future implementation
     public static (
         DockingManager dockingManager,
         GradientPanelExt leftDockPanel,
@@ -56,101 +58,152 @@ public static class DockingHostFactory
         IServiceProvider serviceProvider,
         IPanelNavigationService? panelNavigator,
         ILogger? logger)
+#pragma warning restore CA1508
     {
         if (mainForm == null) throw new ArgumentNullException(nameof(mainForm));
         if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
 
         var sw = Stopwatch.StartNew();
         logger?.LogInformation("CreateDockingHost: Starting docking creation");
+        logger?.LogDebug("CreateDockingHost: MainForm={MainForm}, PanelNavigator={PanelNavigator}",
+            mainForm.GetType().Name, panelNavigator != null);
 
-        GradientPanelExt? centralDocumentPanel = null;
+        ThemeColors.EnsureThemeAssemblyLoaded(logger);
+
+        GradientPanelExt leftDockPanel;
+        GradientPanelExt centralDocumentPanel;
+        GradientPanelExt rightDockPanel;
         ActivityLogPanel? activityLogPanel = null;
         System.Windows.Forms.Timer? activityRefreshTimer = null;
         DockingLayoutManager? layoutManager = null;
-
         try
         {
-            // Suspend layout to prevent intermediate paints during docking setup
-            mainForm.SuspendLayout();
-
             // Create DockingManager with better defaults
             var dockingManager = new DockingManager
             {
                 ShowCaption = true,
-                ThemeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme  // Explicit theme for consistency
+                DockToFill = false
             };
+            var dockingManagerInit = (ISupportInitialize)dockingManager;
+            try { dockingManagerInit.BeginInit(); } catch { }
+            logger?.LogDebug("CreateDockingHost: DockingManager created with ShowCaption={ShowCaption}, DockToFill={DockToFill}",
+                dockingManager.ShowCaption, dockingManager.DockToFill);
 
-            // Create a dedicated container panel to host docking content so the Ribbon (top chrome) is never overlapped.
-            var hostContainer = new DockingHostClientPanel
+            try
             {
-                Name = "DockingHostContainer",
-                Dock = DockStyle.Fill,
-                BorderStyle = BorderStyle.None
-            };
+                var hostControl = (ContainerControl)mainForm;
 
-            // Add the host container to the main form before wiring DockingManager
-            mainForm.Controls.Add(hostContainer);
-            // Ensure the host container stays behind chrome controls (Ribbon/StatusBar)
-            hostContainer.SendToBack();
-            // Assign HostControl to the dedicated container
-            dockingManager.HostControl = hostContainer;
-            // Propagate active theme to host children (best-effort)
-            try { hostContainer.PropagateThemeToChildren(dockingManager.ThemeName); } catch { }
+                // Assign HostForm + HostControl directly to the MainForm
+                dockingManager.HostForm = mainForm;
+                dockingManager.HostControl = hostControl;
+                logger?.LogDebug("CreateDockingHost: HostControl set to MainForm (direct integration)");
 
-            logger?.LogDebug("DockingManager created with Office2019 theme and HostControl set to dedicated container");
+                // 1. Create left dock panel (empty container)
+                leftDockPanel = new GradientPanelExt
+                {
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                    Name = "LeftDockPanel",
+                    AccessibleName = "Left Dock Panel",
+                    AccessibleDescription = "Left dock panel container"
+                };
+                logger?.LogDebug("CreateDockingHost: Left dock panel created: Name={Name}", leftDockPanel.Name);
 
-            // 1. Create left dock panel (empty container)
-            var leftDockPanel = new GradientPanelExt
-            {
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                Name = "LeftDockPanel",
-                AccessibleName = "Left Dock Panel",
-                AccessibleDescription = "Left dock panel container"
-            };
+                // 2. Create central document panel (empty container)
+                centralDocumentPanel = new GradientPanelExt
+                {
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                    Name = "CentralDocumentPanel",
+                    Visible = true,
+                    AccessibleName = "Central Document Area",
+                    AccessibleDescription = "Main content area container"
+                };
+                logger?.LogDebug("CreateDockingHost: Central document panel created: Name={Name}, Visible={Visible}", centralDocumentPanel.Name, centralDocumentPanel.Visible);
 
-            // 2. Create central document panel (empty container)
-            centralDocumentPanel = new GradientPanelExt
-            {
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                Name = "CentralDocumentPanel",
-                Visible = true,
-                AccessibleName = "Central Document Area",
-                AccessibleDescription = "Main content area container"
-            };
+                // 3. Create right dock panel (empty container)
+                rightDockPanel = new GradientPanelExt
+                {
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                    Name = "RightDockPanel",
+                    AccessibleName = "Right Dock Panel",
+                    AccessibleDescription = "Right dock panel container"
+                };
+                logger?.LogDebug("CreateDockingHost: Right dock panel created: Name={Name}", rightDockPanel.Name);
 
-            // 3. Create right dock panel (empty container)
-            var rightDockPanel = new GradientPanelExt
-            {
-                BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                Name = "RightDockPanel",
-                AccessibleName = "Right Dock Panel",
-                AccessibleDescription = "Right dock panel container"
-            };
+                // Ensure base panels are real children of the host control before docking operations.
+                mainForm.Controls.Add(leftDockPanel);
+                mainForm.Controls.Add(centralDocumentPanel);
+                mainForm.Controls.Add(rightDockPanel);
+                leftDockPanel.SendToBack();
+                centralDocumentPanel.SendToBack();
+                rightDockPanel.SendToBack();
 
-            dockingManager.SetEnableDocking(leftDockPanel, true);
-            dockingManager.SetEnableDocking(centralDocumentPanel, true);
-            dockingManager.SetEnableDocking(rightDockPanel, true);
+                ArgumentNullException.ThrowIfNull(leftDockPanel);
+                ArgumentNullException.ThrowIfNull(centralDocumentPanel);
+                ArgumentNullException.ThrowIfNull(rightDockPanel);
 
-            dockingManager.DockControl(leftDockPanel, hostContainer, DockingStyle.Left, 300);
-            dockingManager.DockControl(rightDockPanel, hostContainer, DockingStyle.Right, 350);
-            dockingManager.DockControl(centralDocumentPanel, hostContainer, DockingStyle.Fill, 0);
+                logger?.LogInformation("Docking controls registered: Left={Left}, Central={Central}, Right={Right}, Activity=deferred",
+                    leftDockPanel.Name, centralDocumentPanel.Name, rightDockPanel.Name);
 
-            dockingManager.SetControlMinimumSize(leftDockPanel, new Size(250, 0));
-            dockingManager.SetControlMinimumSize(rightDockPanel, new Size(320, 0));
+                // Suspend layout to prevent intermediate paints during docking setup
+                mainForm.SuspendLayout();
+                try
+                {
+                    // DO NOT dock central with Fill to host – forbidden by Syncfusion.
+                    // Central fills remaining space automatically.
+                    centralDocumentPanel.Dock = DockStyle.Fill;
+                    if (!ReferenceEquals(centralDocumentPanel.Parent, hostControl))
+                    {
+                        hostControl.Controls.Add(centralDocumentPanel);
+                    }
+                    centralDocumentPanel.BringToFront();
+                    logger?.LogInformation("Central panel set to Fill parent (no explicit docking needed)");
 
-            dockingManager.SetAutoHideMode(leftDockPanel, true);
-            dockingManager.SetAutoHideMode(rightDockPanel, true);
+                    var leftDocked =
+                        TryDockControl(dockingManager, leftDockPanel, centralDocumentPanel, DockingStyle.Left, 300, logger);
+                    var rightDocked =
+                        TryDockControl(dockingManager, rightDockPanel, centralDocumentPanel, DockingStyle.Right, 350, logger);
 
-            dockingManager.SetDockVisibility(leftDockPanel, true);
-            dockingManager.SetDockVisibility(centralDocumentPanel, true);
-            dockingManager.SetDockVisibility(rightDockPanel, true);
+                    if (!leftDocked || !rightDocked)
+                    {
+                        logger?.LogWarning("CreateDockingHost: Docking failed; falling back to basic DockStyle layout");
+                        centralDocumentPanel.Dock = DockStyle.Fill;
+                        leftDockPanel.Dock = DockStyle.Left;
+                        rightDockPanel.Dock = DockStyle.Right;
+                    }
 
-            leftDockPanel.Refresh();
-            centralDocumentPanel.Refresh();
-            rightDockPanel.Refresh();
+                    if (leftDocked)
+                    {
+                        dockingManager.SetControlMinimumSize(leftDockPanel, new Size(250, 0));
+                        dockingManager.SetAutoHideMode(leftDockPanel, true);
+                        dockingManager.SetDockVisibility(leftDockPanel, true);
+                    }
+
+                    if (rightDocked)
+                    {
+                        dockingManager.SetControlMinimumSize(rightDockPanel, new Size(320, 0));
+                        dockingManager.SetAutoHideMode(rightDockPanel, true);
+                        dockingManager.SetDockVisibility(rightDockPanel, true);
+                    }
+
+                    logger?.LogDebug("CreateDockingHost: Docking layout applied (Left={LeftDocked}, Right={RightDocked})",
+                        leftDocked, rightDocked);
+
+                    // Ensure layout is calculated after all docking operations
+                    mainForm.PerformLayout();
+                    mainForm.Invalidate();
+                }
+                finally
+                {
+                    // Resume layout now that docking is complete
+                    mainForm.ResumeLayout(true);
+                }
+
+                leftDockPanel.Refresh();
+                centralDocumentPanel.Refresh();
+                rightDockPanel.Refresh();
 
             logger?.LogDebug("Docking panels created and docked (left, center, right) with empty containers");
             activityRefreshTimer = null;
@@ -158,21 +211,19 @@ public static class DockingHostFactory
             // Create Layout Manager (dockingManager is guaranteed non-null at this point in the try block)
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
-            layoutManager = new DockingLayoutManager(serviceProvider, panelNavigator, logger, layoutPath, mainForm, dockingManager!, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel);
+            layoutManager = new DockingLayoutManager(serviceProvider!, panelNavigator, logger, layoutPath, mainForm, dockingManager!, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel);
 
-            // Ensure layout is calculated after all docking operations
-            mainForm.PerformLayout();
-            mainForm.Invalidate();
-
-            // Resume layout now that docking is complete
-            mainForm.ResumeLayout(true);
-
-            logger?.LogInformation("Docking layout complete - Dashboard fills remaining central space (Left=300px, Right=350px)");
+            logger?.LogInformation("Docking layout complete - Dashboard hosted in tabbed document area (Left=300px, Right=350px)");
 
             sw.Stop();
             logger?.LogInformation("CreateDockingHost: Completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
 
             return (dockingManager, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel, activityRefreshTimer, layoutManager);
+            }
+            finally
+            {
+                try { dockingManagerInit.EndInit(); } catch { }
+            }
         }
         catch (Exception ex)
         {
@@ -182,7 +233,8 @@ public static class DockingHostFactory
             var fallbackManager = new DockingManager
             {
                 HostControl = mainForm, // CRITICAL: Ensure HostControl is set
-                ThemeName = "Office2019Colorful"
+                DockToFill = true,
+                ShowCaption = true
             };
 
             return (
@@ -235,14 +287,31 @@ public static class DockingHostFactory
             return false;
         }
 
+        if (ReferenceEquals(host, dockingManager.HostControl) && dockingStyle == DockingStyle.Fill)
+        {
+            logger?.LogWarning("Skipping invalid Fill dock to host control (Syncfusion restriction)");
+            return false;
+        }
+
         try
         {
+            if (ReferenceEquals(host, dockingManager.HostControl) && dockingStyle == DockingStyle.Tabbed)
+            {
+                logger?.LogDebug("TryDockControl: HostControl does not support DockingStyle.Tabbed. Switching to DockingStyle.Fill for {ControlName}.", control.Name);
+                dockingStyle = DockingStyle.Fill;
+            }
+
             dockingManager.DockControl(control, host, dockingStyle, size);
             control.SafeInvoke(() => control.Visible = true);
 
             logger?.LogInformation("TryDockControl: Successfully docked {ControlName} to {HostName} with style {Style}",
                 control.Name, host.Name, dockingStyle);
             return true;
+        }
+        catch (DockingManagerException dmEx)
+        {
+            logger?.LogError(dmEx, "TryDockControl: Syncfusion docking failure for {ControlName}", control.Name);
+            return false;
         }
         catch (Exception ex)
         {

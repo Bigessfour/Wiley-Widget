@@ -19,6 +19,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -48,7 +49,14 @@ public partial class MainForm
             // Check for cancellation early
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Align UI with persisted theme from service
+            await InitializeDockingAsync(cancellationToken).ConfigureAwait(true);
+
+            // Chrome initialization is now done in OnLoad, not here
+
+            // [PERF] Allow structures time to develop before applying theme
+            await Task.Delay(25, cancellationToken).ConfigureAwait(false);
+
+            // Apply theme to UI controls after chrome is initialized
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(_themeService.CurrentTheme);
@@ -94,7 +102,7 @@ public partial class MainForm
                     _logger?.LogInformation("[PANEL] Showing Dashboard");
                     // Ensure UI handle is available; small delay helps controls create handles on slower machines
                     try { await Task.Delay(100, cancellationToken); } catch (OperationCanceledException) { return; }
-                    this.InvokeIfRequired(() => _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true));
+                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
                     _logger?.LogInformation("Priority panels shown successfully");
                 }
                 catch (NullReferenceException nrex)
@@ -164,17 +172,54 @@ public partial class MainForm
         }
     }
 
+    private async Task InitializeDockingAsync(CancellationToken cancellationToken)
+    {
+        if (_syncfusionDockingInitialized || _uiConfig?.UseSyncfusionDocking != true)
+        {
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (this.InvokeRequired)
+        {
+            await this.InvokeAsync(() =>
+            {
+                if (_syncfusionDockingInitialized) return;
+
+                _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
+                InitializeSyncfusionDocking();
+                ConfigureDockingManagerChromeLayout();
+                _syncfusionDockingInitialized = true;
+            }).ConfigureAwait(true);
+        }
+        else
+        {
+            if (_syncfusionDockingInitialized) return;
+
+            _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
+            InitializeSyncfusionDocking();
+            ConfigureDockingManagerChromeLayout();
+            _syncfusionDockingInitialized = true;
+        }
+    }
+
     /// <summary>
     /// Run deferred initialization tasks after OnShown (health check, ViewModel, dashboard auto-show).
     /// Called from OnShown to perform non-blocking background initialization.
     /// </summary>
     private async Task RunDeferredInitializationAsync(CancellationToken cancellationToken)
     {
+        // [PERF] Allow UI structures additional time to fully develop before starting background tasks
+        await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+
         // [PERF] Background startup health check
         _ = Task.Run(async () =>
         {
             try
             {
+                // Additional small delay for health check to allow full structure completion
+                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_serviceProvider == null) return;
 
@@ -202,6 +247,8 @@ public partial class MainForm
         {
             try
             {
+                // Additional small delay for data seeding
+                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_serviceProvider == null) return;
                 await WileyWidget.WinForms.Services.UiTestDataSeeder.SeedIfEnabledAsync(_serviceProvider).ConfigureAwait(false);
@@ -241,13 +288,6 @@ public partial class MainForm
 
             _logger?.LogInformation("→ Phase 1: Docking already initialized at start of OnShown");
             _asyncLogger?.Information("→ Phase 1: Docking verification complete");
-
-            // [PERF] Z-order management for docking
-            if (_uiConfig.UseSyncfusionDocking)
-            {
-                try { EnsureDockingZOrder(); }
-                catch (Exception ex) { _logger?.LogWarning(ex, "Failed to ensure docking z-order"); }
-            }
 
             // [PERF] Phase 2: MainViewModel initialization and dashboard data load
             _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
@@ -640,10 +680,14 @@ public partial class MainForm
 
                 if (ext == ".csv" || ext == ".xlsx" || ext == ".xls" || ext == ".json" || ext == ".xml")
                 {
+                    var importOperation = $"Import:{Path.GetFileName(file)}";
+                    _statusProgressService?.Start(importOperation, $"Importing {Path.GetFileName(file)}...", isIndeterminate: false);
+
                     try
                     {
                         var result = await _fileImportService.ImportDataAsync<Dictionary<string, object>>(file, cancellationToken);
                         HandleImportResult(file, result);
+                        _statusProgressService?.Report(importOperation, 100, "Import complete");
                     }
                     catch (OperationCanceledException)
                     {
@@ -655,6 +699,10 @@ public partial class MainForm
                     {
                         _logger?.LogError(ioEx, "IO error importing file: {File}", file);
                         ShowErrorDialog("Import Error", $"Failed to read file:\n{Path.GetFileName(file)}\n\nError: {ioEx.Message}");
+                    }
+                    finally
+                    {
+                        _statusProgressService?.Complete(importOperation, "Import finished");
                     }
                 }
                 else

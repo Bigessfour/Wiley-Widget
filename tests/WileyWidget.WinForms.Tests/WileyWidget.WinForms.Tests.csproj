@@ -18,6 +18,7 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Xunit.StaFact" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Moq" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="coverlet.collector" />
@@ -34,8 +35,10 @@
     <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Data\WileyWidget.Data.csproj" />
     <ProjectReference Include="..\..\src\WileyWidget.Models\WileyWidget.Models.csproj" />
-    <!-- Temporarily removed to avoid tools build failures when running unit tests. Re-add when WileyWidgetMcpServer compiles. -->
-    <!-- <ProjectReference Include="..\..\tools\SyncfusionMcpServer\tools\WileyWidgetMcpServer\WileyWidgetMcpServer.csproj" /> -->
+    <!-- Temporarily removed to avoid tools build failures when running unit tests. Re-add when WileyWidgetMcpServer
+    compiles. -->
+    <!-- <ProjectReference
+    Include="..\..\tools\SyncfusionMcpServer\tools\WileyWidgetMcpServer\WileyWidgetMcpServer.csproj" /> -->
   </ItemGroup>
 
 </Project>

@@ -76,7 +76,7 @@ namespace WileyWidget.WinForms.Controls
 
             try
             {
-                SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+                ThemeColors.EnsureThemeAssemblyLoaded(_logger);
                 var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
                 try { SfSkinManager.SetVisualStyle(this, theme); } catch { }
             }
@@ -103,7 +103,7 @@ namespace WileyWidget.WinForms.Controls
 
             InitializeComponent();
 
-            SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
+            ThemeColors.EnsureThemeAssemblyLoaded(_logger);
 
             _activeThemeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             try { SfSkinManager.SetVisualStyle(this, _activeThemeName); } catch { }
