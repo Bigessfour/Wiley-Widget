@@ -79,10 +79,10 @@ jobs:
           key: dotnet-tools-${{ runner.os }}-${{ hashFiles('**/Directory.Packages.props') }}
           restore-keys: dotnet-tools-${{ runner.os }}-
 
-      - name: Setup .NET 9
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
 
       - name: Clear NuGet caches (best-effort)
         shell: pwsh
@@ -198,7 +198,7 @@ jobs:
       - name: Test - WinForms MainForm Startup Integration
         shell: powershell
         env:
-          WILEYWIDGET_UI_TESTS: "true"  # Matches the env var your test sets
+          WILEYWIDGET_UI_TESTS: "true" # Matches the env var your test sets
         run: |
           dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
             --filter "FullyQualifiedName~WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests" `
@@ -254,10 +254,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET 9
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
 
       - name: Confirm runner suitability
         shell: powershell
