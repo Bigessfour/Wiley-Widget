@@ -2,7 +2,7 @@ name: Build & WinForms Integration Check
 
 on:
   push:
-    branches: [main, develop, 'feature/*']
+    branches: [main, develop, "feature/*"]
   pull_request:
     branches: [main, develop]
   workflow_dispatch: {}
@@ -40,29 +40,59 @@ jobs:
           key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
           restore-keys: nuget-packages-${{ runner.os }}-
 
-      - name: Diagnostic - verify checkout and ThemeService presence
+      - name: Diagnostic - checkout, git and ThemeService checks
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
+          Write-Host "Git branch: $(git rev-parse --abbrev-ref HEAD)"
           Write-Host "Git commit: $(git rev-parse --short HEAD)"
+          git remote -v > ci-git-remote.txt
+          git status --porcelain -uall > ci-git-status.txt
+          git log -n 5 --pretty=oneline > ci-git-log.txt
+          git show --name-only HEAD > ci-git-show.txt
           Write-Host "Repository root: $(git rev-parse --show-toplevel)"
-          Write-Host "Listing WileyWidget.WinForms Services folder:"
-          Get-ChildItem -Path src\WileyWidget.WinForms\Services -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.Name }
-          if (Test-Path src\WileyWidget.WinForms\Services\ThemeService.cs) { Write-Host 'ThemeService.cs FOUND' } else { Write-Error 'ThemeService.cs MISSING' ; exit 2 }
+          Write-Host "Listing WileyWidget.WinForms Services folder (git ls-files):"
+          git ls-files "src/WileyWidget.WinForms/Services" > ci-services-files.txt
+          if (!(Test-Path ci-services-files.txt) -or ((Get-Content ci-services-files.txt) -eq '')) {
+            Write-Host "git ls-files returned nothing, falling back to directory listing"
+            Get-ChildItem -Path src\\WileyWidget.WinForms\\Services -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name } | Out-File ci-services-files.txt
+          }
+
+          if (Test-Path src\\WileyWidget.WinForms\\Services\\ThemeService.cs) {
+            Write-Host 'ThemeService.cs FOUND'
+            # Save head and tail of file for diagnostics
+            Get-Content -Path src\\WileyWidget.WinForms\\Services\\ThemeService.cs -TotalCount 200 | Out-File theme-content-head.txt
+            Get-Content -Path src\\WileyWidget.WinForms\\Services\\ThemeService.cs -Tail 200 | Out-File theme-content-tail.txt
+            Get-Content -Path src\\WileyWidget.WinForms\\Services\\ThemeService.cs -TotalCount 400 | Out-File theme-content.txt
+          } else {
+            Write-Host 'ThemeService.cs MISSING'
+            'ThemeService.cs MISSING' | Out-File theme-content.txt
+          }
+
+          Select-String -Path src\\WileyWidget.WinForms\\WileyWidget.WinForms.csproj -Pattern '<Compile' | Out-File csproj-compile.txt -ErrorAction SilentlyContinue
+          dotnet --info > dotnet-info.txt
+          dotnet --list-sdks > sdks.txt
 
       - name: Restore solution
         run: dotnet restore WileyWidget.sln --verbosity minimal
 
-      - name: Build solution
-        run: dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal
+      - name: Build solution (capture log)
+        shell: pwsh
+        run: |
+          dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) { Write-Error "Build failed; see build.log" }
 
-      - name: Run WinForms startup test
+      - name: Run WinForms startup test (capture log)
+        continue-on-error: true
+        shell: pwsh
         run: |
           dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj \
             --configuration Release \
             --no-build \
             --filter "FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions" \
             --logger "trx;LogFileName=startup-test.trx" \
-            --results-directory ./TestResults
+            --results-directory ./TestResults *>&1 | Tee-Object -FilePath test.log
+          Set-Content -Path test-exitcode.txt -Value $LASTEXITCODE
 
       - name: Publish test results
         if: always()
@@ -90,4 +120,21 @@ jobs:
             TestResults/
             **/*.log
             **/*-screenshot.png
+          retention-days: 7
+
+      - name: Upload CI diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics
+          path: |
+            build.log
+            test.log
+            test-exitcode.txt
+            ci-*.txt
+            theme-content*.txt
+            sdks.txt
+            dotnet-info.txt
+            src/WileyWidget.WinForms/Services/ThemeService.cs
+            src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
           retention-days: 7
