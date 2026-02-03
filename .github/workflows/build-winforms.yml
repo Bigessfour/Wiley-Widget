@@ -40,6 +40,15 @@ jobs:
           key: nuget-packages-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
           restore-keys: nuget-packages-${{ runner.os }}-
 
+      - name: Diagnostic - verify checkout and ThemeService presence
+        shell: pwsh
+        run: |
+          Write-Host "Git commit: $(git rev-parse --short HEAD)"
+          Write-Host "Repository root: $(git rev-parse --show-toplevel)"
+          Write-Host "Listing WileyWidget.WinForms Services folder:"
+          Get-ChildItem -Path src\WileyWidget.WinForms\Services -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.Name }
+          if (Test-Path src\WileyWidget.WinForms\Services\ThemeService.cs) { Write-Host 'ThemeService.cs FOUND' } else { Write-Error 'ThemeService.cs MISSING' ; exit 2 }
+
       - name: Restore solution
         run: dotnet restore WileyWidget.sln --verbosity minimal
 
