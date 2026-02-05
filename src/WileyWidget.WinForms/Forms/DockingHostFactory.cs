@@ -17,10 +17,13 @@ using WileyWidget.Services;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using Syncfusion.WinForms.DataGrid;
 using Action = System.Action;
 using WileyWidget.WinForms.Helpers;
@@ -47,9 +50,9 @@ public static class DockingHostFactory
 #pragma warning disable CA1508 // activityLogPanel is always null by design; reserved for future implementation
     public static (
         DockingManager dockingManager,
-        GradientPanelExt leftDockPanel,
-        GradientPanelExt rightDockPanel,
-        GradientPanelExt centralDocumentPanel,
+        LegacyGradientPanel leftDockPanel,
+        LegacyGradientPanel rightDockPanel,
+        LegacyGradientPanel centralDocumentPanel,
         ActivityLogPanel? activityLogPanel,
         System.Windows.Forms.Timer? activityRefreshTimer,
         DockingLayoutManager? layoutManager
@@ -70,19 +73,22 @@ public static class DockingHostFactory
 
         ThemeColors.EnsureThemeAssemblyLoaded(logger);
 
-        GradientPanelExt leftDockPanel;
-        GradientPanelExt centralDocumentPanel;
-        GradientPanelExt rightDockPanel;
+        LegacyGradientPanel leftDockPanel;
+        LegacyGradientPanel centralDocumentPanel;
+        LegacyGradientPanel rightDockPanel;
         ActivityLogPanel? activityLogPanel = null;
         System.Windows.Forms.Timer? activityRefreshTimer = null;
         DockingLayoutManager? layoutManager = null;
         try
         {
-            // Create DockingManager with better defaults
+            // Create DockingManager with production-ready defaults
             var dockingManager = new DockingManager
             {
                 ShowCaption = true,
-                DockToFill = false
+                DockToFill = false,
+                CloseEnabled = true,
+                PersistState = true,
+                AnimateAutoHiddenWindow = true
             };
             var dockingManagerInit = (ISupportInitialize)dockingManager;
             try { dockingManagerInit.BeginInit(); } catch { }
@@ -99,7 +105,7 @@ public static class DockingHostFactory
                 logger?.LogDebug("CreateDockingHost: HostControl set to MainForm (direct integration)");
 
                 // 1. Create left dock panel (empty container)
-                leftDockPanel = new GradientPanelExt
+                leftDockPanel = new LegacyGradientPanel
                 {
                     BorderStyle = BorderStyle.None,
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
@@ -110,7 +116,7 @@ public static class DockingHostFactory
                 logger?.LogDebug("CreateDockingHost: Left dock panel created: Name={Name}", leftDockPanel.Name);
 
                 // 2. Create central document panel (empty container)
-                centralDocumentPanel = new GradientPanelExt
+                centralDocumentPanel = new LegacyGradientPanel
                 {
                     BorderStyle = BorderStyle.None,
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
@@ -121,16 +127,16 @@ public static class DockingHostFactory
                 };
                 logger?.LogDebug("CreateDockingHost: Central document panel created: Name={Name}, Visible={Visible}", centralDocumentPanel.Name, centralDocumentPanel.Visible);
 
-                // 3. Create right dock panel (empty container)
-                rightDockPanel = new GradientPanelExt
-                {
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                    Name = "RightDockPanel",
-                    AccessibleName = "Right Dock Panel",
-                    AccessibleDescription = "Right dock panel container"
-                };
-                logger?.LogDebug("CreateDockingHost: Right dock panel created: Name={Name}", rightDockPanel.Name);
+                // 3. Create right dock panel with TabControl for Activity Log and JARVIS Chat
+                logger?.LogInformation("CreateDockingHost: Creating right panel via RightDockPanelFactory");
+                var (rightPanelWithTabs, activityLog, initialMode) = RightDockPanelFactory.CreateRightDockPanel(mainForm, serviceProvider, logger);
+                rightDockPanel = rightPanelWithTabs;
+                activityLogPanel = activityLog;
+                rightDockPanel.Name = "RightDockPanel";
+                rightDockPanel.AccessibleName = "Right Dock Panel";
+                rightDockPanel.AccessibleDescription = "Right dock panel container with Activity Log and JARVIS Chat tabs";
+                logger?.LogInformation("CreateDockingHost: Right dock panel created with TabControl (ActivityLog + JARVISChat): Name={Name}, InitialMode={Mode}",
+                    rightDockPanel.Name, initialMode);
 
                 // Ensure base panels are real children of the host control before docking operations.
                 mainForm.Controls.Add(leftDockPanel);
@@ -139,6 +145,19 @@ public static class DockingHostFactory
                 leftDockPanel.SendToBack();
                 centralDocumentPanel.SendToBack();
                 rightDockPanel.SendToBack();
+
+                // Log TabControl initialization for troubleshooting
+                var rightTabControl = rightDockPanel.Controls.OfType<System.Windows.Forms.TabControl>().FirstOrDefault();
+                if (rightTabControl != null)
+                {
+                    logger?.LogInformation("CreateDockingHost: Right panel TabControl initialized with {TabCount} tabs: {TabNames}",
+                        rightTabControl.TabPages.Count,
+                        string.Join(", ", rightTabControl.TabPages.Cast<System.Windows.Forms.TabPage>().Select(t => t.Name)));
+                }
+                else
+                {
+                    logger?.LogWarning("CreateDockingHost: Right panel TabControl NOT FOUND - tab switching will fail");
+                }
 
                 ArgumentNullException.ThrowIfNull(leftDockPanel);
                 ArgumentNullException.ThrowIfNull(centralDocumentPanel);
@@ -205,20 +224,20 @@ public static class DockingHostFactory
                 centralDocumentPanel.Refresh();
                 rightDockPanel.Refresh();
 
-            logger?.LogDebug("Docking panels created and docked (left, center, right) with empty containers");
-            activityRefreshTimer = null;
+                logger?.LogDebug("Docking panels created and docked (left, center, right) with empty containers");
+                activityRefreshTimer = null;
 
-            // Create Layout Manager (dockingManager is guaranteed non-null at this point in the try block)
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
-            layoutManager = new DockingLayoutManager(serviceProvider!, panelNavigator, logger, layoutPath, mainForm, dockingManager!, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel);
+                // Create Layout Manager (dockingManager is guaranteed non-null at this point in the try block)
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var layoutPath = Path.Combine(appData, "WileyWidget", "docking_layout.bin");
+                layoutManager = new DockingLayoutManager(serviceProvider!, panelNavigator, logger, layoutPath, mainForm, dockingManager!, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel);
 
-            logger?.LogInformation("Docking layout complete - Dashboard hosted in tabbed document area (Left=300px, Right=350px)");
+                logger?.LogInformation("Docking layout complete - Dashboard hosted in tabbed document area (Left=300px, Right=350px)");
 
-            sw.Stop();
-            logger?.LogInformation("CreateDockingHost: Completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
+                sw.Stop();
+                logger?.LogInformation("CreateDockingHost: Completed in {ElapsedMs}ms", sw.ElapsedMilliseconds);
 
-            return (dockingManager, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel, activityRefreshTimer, layoutManager);
+                return (dockingManager, leftDockPanel, rightDockPanel, centralDocumentPanel, activityLogPanel, activityRefreshTimer, layoutManager);
             }
             finally
             {
@@ -239,9 +258,9 @@ public static class DockingHostFactory
 
             return (
                 fallbackManager,
-                new GradientPanelExt { Dock = DockStyle.Left },
-                new GradientPanelExt { Dock = DockStyle.Right },
-                new GradientPanelExt { Dock = DockStyle.Fill },
+                new LegacyGradientPanel { Dock = DockStyle.Left },
+                new LegacyGradientPanel { Dock = DockStyle.Right },
+                new LegacyGradientPanel { Dock = DockStyle.Fill },
                 null,
                 null,
                 null
