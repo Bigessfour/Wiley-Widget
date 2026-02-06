@@ -27,7 +27,7 @@ namespace WileyWidget.WinForms.Tests.Unit
             var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(provider);
 
             using var form = new Form();
-            using var panel = new WileyWidget.WinForms.Controls.WarRoomPanel(scopeFactory, logger);
+            using var panel = new WileyWidget.WinForms.Controls.Panels.WarRoomPanel(scopeFactory, logger);
 
             // Simulate adding panel to a visible form so control handles are created
             form.Controls.Add(panel);

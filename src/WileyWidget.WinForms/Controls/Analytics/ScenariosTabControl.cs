@@ -7,7 +7,11 @@ using Syncfusion.Windows.Forms.Tools;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.ViewModels;
+
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Analytics;
 
@@ -20,7 +24,7 @@ public partial class ScenariosTabControl : UserControl
     private readonly ScenariosTabViewModel? _viewModel;
 
     // UI Controls
-    private GradientPanelExt? _inputPanel;
+    private LegacyGradientPanel? _inputPanel;
     private SfDataGrid? _resultsGrid;
     private LoadingOverlay? _loadingOverlay;
 
@@ -36,6 +40,15 @@ public partial class ScenariosTabControl : UserControl
     public ScenariosTabControl(ScenariosTabViewModel? viewModel)
     {
         _viewModel = viewModel;
+
+        // Apply Syncfusion theme
+        try
+        {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            SfSkinManager.SetVisualStyle(this, theme);
+        }
+        catch { /* Theme application is best-effort */ }
+
         InitializeControls();
         if (_viewModel != null)
         {
@@ -78,7 +91,7 @@ public partial class ScenariosTabControl : UserControl
 
     private void InitializeInputPanel()
     {
-        _inputPanel = new GradientPanelExt
+        _inputPanel = new LegacyGradientPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10)

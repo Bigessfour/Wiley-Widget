@@ -107,11 +107,17 @@ public sealed class DpiAwareImageService : IDisposable
                 ["kpi"] = SystemIcons.Asterisk,           // KPI indicator
                 ["analytics"] = SystemIcons.Information,  // Analytics/statistics
                 ["insights"] = SystemIcons.Exclamation,   // Insights/alerts
+                ["deptsummary"] = SystemIcons.Information, // Department summary
+                ["insightfeed"] = SystemIcons.Exclamation, // Insight feed panel
 
                 // Accounts and financial
                 ["accounts"] = SystemIcons.Application,   // Chart of accounts/ledger
                 ["budget"] = SystemIcons.Information,     // Budget/money
+                ["budgetoverview"] = SystemIcons.Information, // Budget overview dashboard
                 ["customers"] = SystemIcons.Application,  // Customers/people
+                ["utilitybill"] = SystemIcons.Application, // Utility bills
+                ["revenuetrends"] = SystemIcons.Information, // Revenue trends analysis
+                ["recommendedcharge"] = SystemIcons.Information, // Recommended charge calculator
 
                 // Reports and audit
                 ["report"] = SystemIcons.Application,     // Report document
@@ -119,6 +125,8 @@ public sealed class DpiAwareImageService : IDisposable
                 ["pdf"] = SystemIcons.Shield,             // PDF document
                 ["excel"] = SystemIcons.Information,      // Excel/spreadsheet
                 ["audit"] = SystemIcons.Question,         // Audit log
+                ["auditlog"] = SystemIcons.Question,      // Audit log panel
+                ["activitylog"] = SystemIcons.Information, // Activity log panel
 
                 // Settings and preferences
                 ["settings"] = SystemIcons.Shield,        // Settings/gear
@@ -133,6 +141,7 @@ public sealed class DpiAwareImageService : IDisposable
 
                 // External integrations
                 ["quickbooks"] = SystemIcons.Application, // QuickBooks app
+                ["jarvis"] = SystemIcons.Question,        // JARVIS AI assistant
                 ["sync"] = SystemIcons.Shield,            // Sync/sync operation
                 ["warroom"] = SystemIcons.Exclamation,    // War room alert
 

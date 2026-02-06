@@ -15,6 +15,11 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Utils;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
+
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Analytics
 {
@@ -28,7 +33,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private NoDataOverlay? _noDataOverlay;
-        private GradientPanelExt? _summaryPanel;
+        private LegacyGradientPanel? _summaryPanel;
         private SfDataGrid? _metricsGrid;
         private TableLayoutPanel? _summaryCardsPanel;
 
@@ -101,7 +106,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
             rootTable.Controls.Add(_panelHeader, 0, 0);
 
             // Row 2: Summary panel with cards
-            _summaryPanel = new GradientPanelExt
+            _summaryPanel = new LegacyGradientPanel
             {
                 Dock = DockStyle.Fill,
                 Height = 120,
@@ -202,7 +207,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
 
         private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
         {
-            var cardPanel = new GradientPanelExt
+            var cardPanel = new LegacyGradientPanel
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(4),

@@ -74,7 +74,7 @@ public partial class MainForm
             // Set form properties
             Text = MainFormResources.FormTitle;
             Size = new Size(1400, 900);
-            MinimumSize = new Size(1024, 768);
+            MinimumSize = new Size(1400, 800);
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
             KeyPreview = true;
@@ -466,7 +466,7 @@ public partial class MainForm
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
-                dashboardBtn, new ToolStripSeparator(), accountsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
+                dashboardBtn, new ToolStripSeparator(), accountsBtn, budgetBtn, chartsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
             });
 
         }
@@ -684,9 +684,14 @@ public partial class MainForm
                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                 graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
                 using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
-                using (var brush = new SolidBrush(Color.DodgerBlue))
                 {
-                    graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    // Theme-aware icon color: use the form ForeColor which SfSkinManager sets per theme.
+                    // Fallback to a high-contrast system color if ForeColor is not set.
+                    var iconColor = this.ForeColor.IsEmpty ? SystemColors.Highlight : this.ForeColor;
+                    using (var brush = new SolidBrush(iconColor))
+                    {
+                        graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    }
                 }
             }
             return bitmap;
@@ -694,8 +699,10 @@ public partial class MainForm
         catch (Exception ex) { _logger?.LogWarning(ex, "CreateIconFromText failed"); return null; }
     }
 
-    private Color GetLoadingOverlayColor() => SystemColors.Control;
-    private Color GetLoadingLabelColor() => Color.White;
+    // Removed unused helpers: GetLoadingOverlayColor / GetLoadingLabelColor
+    // These helpers had no call sites in the codebase. Keep commented for possible future use.
+    // private Color GetLoadingOverlayColor() => SystemColors.Control;
+    // private Color GetLoadingLabelColor() => Color.White;
 
     private string GetCurrentTheme() => SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
@@ -731,17 +738,6 @@ public partial class MainForm
     {
         try
         {
-            try
-            {
-                var tmpDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp");
-                Directory.CreateDirectory(tmpDir);
-                var toggleLogPath = Path.Combine(tmpDir, "theme-toggle-log.txt");
-                File.AppendAllText(toggleLogPath, $"ToggleTheme called. CurrentTheme={_themeService?.CurrentTheme}\n");
-            }
-            catch (Exception ioEx)
-            {
-                _logger?.LogDebug(ioEx, "Unable to persist theme toggle log");
-            }
             var currentTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
             // Validate current theme before toggling

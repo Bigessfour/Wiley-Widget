@@ -144,4 +144,43 @@ namespace WileyWidget.Services.Abstractions
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
+
+    /// <summary>
+    /// Provides centralized, production-ready API key management for xAI Grok.
+    /// Supports Microsoft-recommended configuration hierarchy (User Secrets → Environment Variables → appsettings.json).
+    ///
+    /// CONFIGURATION HIERARCHY (highest to lowest priority):
+    /// 1. User Secrets: dotnet user-secrets set "XAI:ApiKey" "your-key-here"
+    /// 2. Environment Variables (any scope):
+    ///    - Recommended: XAI__ApiKey (double underscore per Microsoft convention)
+    ///    - Legacy: XAI_API_KEY (single underscore - still supported)
+    /// 3. appsettings.json: "XAI": { "ApiKey": "..." } (lowest priority - DO NOT use for secrets!)
+    ///
+    /// Usage:
+    /// 1. Set API key via user secrets: dotnet user-secrets set "XAI:ApiKey" "your-key"
+    /// 2. Inject IGrokApiKeyProvider into services
+    /// 3. Access key via provider.ApiKey property
+    /// </summary>
+    public interface IGrokApiKeyProvider
+    {
+        /// <summary>Gets the API key masked for safe logging (shows first 4 + last 4 chars).</summary>
+        string? MaskedApiKey { get; }
+
+        /// <summary>Gets the full API key (private - use only for API calls to Grok endpoint).</summary>
+        string? ApiKey { get; }
+
+        /// <summary>Indicates whether the API key has been validated against Grok endpoint at startup.</summary>
+        bool IsValidated { get; }
+
+        /// <summary>Indicates whether the API key came from user secrets (secure source) vs. environment or config.</summary>
+        bool IsFromUserSecrets { get; }
+
+        /// <summary>Validates the API key by making a test request to xAI Grok /v1/chat/completions endpoint.</summary>
+        /// <returns>Tuple of (IsValid, ValidationMessage) for diagnostics.</returns>
+        Task<(bool Success, string Message)> ValidateAsync();
+
+        /// <summary>Gets detailed configuration source information for logging and diagnostics.</summary>
+        /// <returns>String describing where the API key was loaded from (User Secrets / Environment / Config).</returns>
+        string GetConfigurationSource();
+    }
 }

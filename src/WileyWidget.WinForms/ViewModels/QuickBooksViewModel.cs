@@ -922,7 +922,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     {
         _cancellationTokenSource = new CancellationTokenSource();
         var uiContext = SynchronizationContext.Current; // Capture UI context once
-        
+
         _connectionPollingTimer = new System.Threading.Timer(
             async _ =>
             {

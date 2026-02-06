@@ -37,7 +37,6 @@ public partial class MainForm
     private Panel? _centralDocumentPanel;
 #pragma warning restore CS0649
     private Panel? _rightDockPanel;
-    private Dictionary<string, Control>? _dynamicDockPanels;
 
     [DllImport("user32.dll")]
     private static extern bool LockWindowUpdate(IntPtr hWndLock);
@@ -81,7 +80,7 @@ public partial class MainForm
             _centralDocumentPanel = centralPanel;
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
-            _dynamicDockPanels ??= new Dictionary<string, Control>();
+            // dynamic dock panels removed: DockingHostFactory owns panel creation
 
             if (_leftDockPanel != null)
             {
@@ -227,7 +226,6 @@ public partial class MainForm
             _centralDocumentPanel = centralPanel;
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
-            _dynamicDockPanels ??= new Dictionary<string, Control>();
             _logger?.LogDebug("Docking panels assigned: Left={Left}, Right={Right}, Central={Central}, Activity={Activity}",
                 _leftDockPanel?.Name, _rightDockPanel?.Name, _centralDocumentPanel?.Name, _activityLogPanel?.Name);
 
@@ -355,10 +353,9 @@ public partial class MainForm
                 try
                 {
                     // Panels are now created by DockingHostFactory - just ensure they're properly configured
-                    var dynamicPanelCount = _dynamicDockPanels?.Count ?? 0;
-                    var createdPanelCount = new[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel }.Count(p => p != null) + dynamicPanelCount;
-                    _logger?.LogInformation("Docking panels created by factory — count={PanelCount}, dynamicPanels={DynamicCount}, layoutManagerReady={LayoutManagerReady}",
-                        createdPanelCount, dynamicPanelCount, _dockingLayoutManager != null);
+                    var createdPanelCount = new[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel }.Count(p => p != null);
+                    _logger?.LogInformation("Docking panels created by factory — count={PanelCount}, layoutManagerReady={LayoutManagerReady}",
+                        createdPanelCount, _dockingLayoutManager != null);
                 }
                 catch (Exception panelEx)
                 {
@@ -705,12 +702,6 @@ public partial class MainForm
 
         try
         {
-            try
-            {
-                System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp"));
-                System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-log.txt"), $"OnThemeChanged invoked: {theme}\n");
-            }
-            catch { }
             _logger?.LogInformation("Applying theme change to all form controls: {Theme}", theme);
 
             // Apply theme recursively to entire control tree (form and all children)
@@ -729,11 +720,11 @@ public partial class MainForm
                 if (themeToggleBtn != null)
                 {
                     themeToggleBtn.Text = theme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
-                    try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-log.txt"), $"Updated ribbon themeToggle text to: {themeToggleBtn.Text}\n"); } catch { }
+                    _logger?.LogDebug("Updated ribbon themeToggle text to: {Text}", themeToggleBtn.Text);
                 }
                 else
                 {
-                    try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-log.txt"), "ribbon themeToggle not found\n"); } catch { }
+                    _logger?.LogDebug("Ribbon themeToggle not found");
                 }
             }
 
@@ -804,7 +795,6 @@ public partial class MainForm
         try
         {
             _asyncLogger?.Information("LoadAndApplyDockingLayout start - path={Path}", layoutPath);
-            LoadDynamicPanels(layoutPath);
 
             // Minimize flicker by locking OS-level painting and batching DockingManager updates
             try
@@ -944,8 +934,19 @@ public partial class MainForm
     private static void TryDeleteLayoutFiles(string? layoutPath)
     {
         if (string.IsNullOrWhiteSpace(layoutPath)) return;
-        try { if (File.Exists(layoutPath)) File.Delete(layoutPath); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Failed to delete layout file: {ex.Message}"); }
+        try
+        {
+            if (File.Exists(layoutPath))
+                File.Delete(layoutPath);
+        }
+        catch (IOException ioEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"IO error deleting layout file: {ioEx.Message}");
+        }
+        catch (UnauthorizedAccessException uaEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Access denied deleting layout file: {uaEx.Message}");
+        }
         TryCleanupTempFile(layoutPath + ".tmp");
     }
 
@@ -958,9 +959,31 @@ public partial class MainForm
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
             return Path.Combine(dir, DockingLayoutFileName);
         }
-        catch
+        catch (IOException ioEx)
         {
-            try { return Path.Combine(Path.GetTempPath(), DockingLayoutFileName); } catch { return DockingLayoutFileName; }
+            System.Diagnostics.Debug.WriteLine($"IO error accessing AppData: {ioEx.Message}");
+            try
+            {
+                return Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
+            }
+            catch (IOException tempIoEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"IO error accessing temp path: {tempIoEx.Message}");
+                return DockingLayoutFileName;
+            }
+        }
+        catch (UnauthorizedAccessException uaEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Access denied to AppData: {uaEx.Message}");
+            try
+            {
+                return Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
+            }
+            catch (UnauthorizedAccessException tempUaEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"Access denied to temp path: {tempUaEx.Message}");
+                return DockingLayoutFileName;
+            }
         }
     }
 
@@ -1251,24 +1274,7 @@ public partial class MainForm
         }
     }
 
-    public bool RemoveDynamicDockPanel(string panelName)
-    {
-        if (string.IsNullOrWhiteSpace(panelName)) return false;
-        _logger?.LogDebug("RemoveDynamicDockPanel requested for '{PanelName}' - delegating to DockingLayoutManager", panelName);
-        return false;
-    }
 
-    public Control? GetDynamicDockPanel(string panelName)
-    {
-        if (string.IsNullOrWhiteSpace(panelName)) return null;
-        _logger?.LogDebug("GetDynamicDockPanel requested for '{PanelName}' - delegating to DockingLayoutManager", panelName);
-        return null;
-    }
-
-    public IReadOnlyCollection<string> GetDynamicDockPanelNames()
-    {
-        return new List<string>().AsReadOnly();
-    }
 
     private void ResetToDefaultLayout()
     {
@@ -1451,11 +1457,7 @@ public partial class MainForm
         catch (Exception ex) { _logger?.LogDebug(ex, "Failed to apply theme to docking panels"); }
     }
 
-    private void LoadDynamicPanels(string? layoutPath = null)
-    {
-        try { _logger?.LogDebug("Dynamic panels load requested: {LayoutPath}", layoutPath ?? "<default>"); }
-        catch (Exception ex) { _logger?.LogDebug(ex, "Failed to load dynamic panels"); }
-    }
+
 
     private static void TryCleanupTempFile(string filePath)
     {
@@ -1467,9 +1469,13 @@ public partial class MainForm
                 System.Diagnostics.Debug.WriteLine($"Cleaned up temporary file: {filePath}");
             }
         }
-        catch (Exception ex)
+        catch (IOException ioEx)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to cleanup temporary file: {filePath}, Error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"IO error cleaning up temp file {filePath}: {ioEx.Message}");
+        }
+        catch (UnauthorizedAccessException uaEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Access denied cleaning up temp file {filePath}: {uaEx.Message}");
         }
     }
 
@@ -1656,37 +1662,38 @@ public partial class MainForm
         {
             _logger?.LogInformation("[SWITCH_RIGHT_PANEL] User requested {TabName}", tabName);
 
-            // Map friendly names to actual tab names
-            string actualTabName = tabName switch
+            if (!EnsureRightDockPanelInitialized(tabName))
             {
-                "JarvisChat" => "JARVISChatTab",
-                "ActivityLog" => "ActivityLogTab",
-                _ => tabName
-            };
+                return;
+            }
 
             var rightPanel = GetRightDockPanel();
-            if (rightPanel == null)
+            if (rightPanel == null || rightPanel.IsDisposed)
             {
                 _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right dock panel is null or disposed - cannot switch");
-                MessageBox.Show(
-                    "The right panel is not yet initialized. Please try again in a moment.",
-                    "Panel Not Ready",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                _asyncLogger?.Warning("[SWITCH_RIGHT_PANEL] Right dock panel not initialized - cannot switch");
                 return;
             }
 
-            if (rightPanel.IsDisposed)
-            {
-                _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right dock panel has been disposed - cannot switch");
-                return;
-            }
+            var hasKnownTarget = TryMapRightPanelTarget(tabName, out var targetMode, out var actualTabName);
 
             // Ensure the right panel is visible before switching
             if (!rightPanel.Visible)
             {
                 rightPanel.Visible = true;
                 _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Made right panel visible");
+            }
+
+            // Determine available tab controls early for defensive checks
+            var tabControlAdv = rightPanel.Controls.OfType<TabControlAdv>().FirstOrDefault();
+            var tabControl = rightPanel.Controls.OfType<TabControl>().FirstOrDefault();
+
+            if (tabControlAdv == null && tabControl == null)
+            {
+                _logger?.LogError("[SWITCH_RIGHT_PANEL] No TabControl found in right panel. Available controls: {Controls}",
+                    string.Join(", ", rightPanel.Controls.Cast<Control>().Select(c => $"{c.GetType().Name}:{c.Name}")));
+                _asyncLogger?.Error("[SWITCH_RIGHT_PANEL] Right panel tab control missing - cannot switch tabs");
+                return;
             }
 
             // Ensure right panel is docked and in proper position
@@ -1708,9 +1715,32 @@ public partial class MainForm
                     rightPanel.Refresh();
                     _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Ensured right panel is docked");
 
-                    // Activate the control to bring it to front
-                    _dockingManager.ActivateControl(rightPanel);
-                    _logger?.LogDebug("ActivateControl succeeded for {PanelName}", rightPanel.Name ?? "null");
+                    // Additional defensive checks before activation
+                    if (rightPanel.Parent == null || rightPanel.Parent.IsDisposed)
+                    {
+                        _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right panel parent is null or disposed - skipping activation");
+                    }
+                    else
+                    {
+                        bool hasTabs = (tabControl != null && tabControl.TabPages.Count > 0) ||
+                                       (tabControlAdv != null && tabControlAdv.TabPages.Count > 0);
+                        if (!hasTabs)
+                        {
+                            _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right panel tab control has no pages - skipping activation");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                _dockingManager.ActivateControl(rightPanel);
+                                _logger?.LogDebug("ActivateControl succeeded for {PanelName}", rightPanel.Name ?? "null");
+                            }
+                            catch (Exception actEx)
+                            {
+                                _logger?.LogDebug(actEx, "[SWITCH_RIGHT_PANEL] ActivateControl failed for {PanelName}", rightPanel.Name ?? "null");
+                            }
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1726,24 +1756,23 @@ public partial class MainForm
                 // Don't block user - panel might still work without docking manager activation
             }
 
-            // Now switch the tab content
-            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Switching to tab {ActualTabName}", actualTabName);
-
-            // Try both TabControlAdv and standard TabControl
-            var tabControlAdv = rightPanel.Controls.OfType<TabControlAdv>().FirstOrDefault();
-            var tabControl = rightPanel.Controls.OfType<TabControl>().FirstOrDefault();
-
-            if (tabControlAdv == null && tabControl == null)
+            if (hasKnownTarget && tabControl is not null && tabControlAdv is null)
             {
-                _logger?.LogError("[SWITCH_RIGHT_PANEL] No TabControl found in right panel. Available controls: {Controls}",
-                    string.Join(", ", rightPanel.Controls.Cast<Control>().Select(c => $"{c.GetType().Name}:{c.Name}")));
-                MessageBox.Show(
-                    "The right panel tab control was not initialized properly. Please restart the application.",
-                    "Tab Control Missing",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Switching to mode {Mode}", targetMode);
+                RightDockPanelFactory.SwitchRightPanelContent(rightPanel, targetMode, _logger);
+
+                if (targetMode == RightDockPanelFactory.RightPanelMode.JarvisChat)
+                {
+                    TriggerJarvisInitialization(rightPanel);
+                }
+
                 return;
             }
+
+            // Now switch the tab content (fallback path for non-standard tabs or TabControlAdv)
+            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Switching to tab {ActualTabName}", actualTabName);
+
+            // tabControlAdv and tabControl were discovered earlier for defensive checks
 
             // Find the requested tab by name using pattern matching (prefer standard TabControl)
             object? foundTab = null;
@@ -1793,29 +1822,9 @@ public partial class MainForm
                     actualTabName, selectedIndex, totalCount);
 
                 // Lazy initialization for JARVISChatUserControl (deferred until first navigation)
-                if (actualTabName == "JARVISChatTab" && foundTab is TabPage jarvisTabPage)
+                if (string.Equals(actualTabName, "JARVISChatTab", StringComparison.OrdinalIgnoreCase))
                 {
-                    var jarvisControl = jarvisTabPage.Controls.OfType<JARVISChatUserControl>().FirstOrDefault();
-                    if (jarvisControl != null)
-                    {
-                        // JARVISChatUserControl implements IAsyncInitializable - cast is guaranteed safe
-#pragma warning disable CA1508 // Avoid dead conditional code (analyzer false positive)
-                        var asyncInit = (WileyWidget.Abstractions.IAsyncInitializable)jarvisControl;
-#pragma warning restore CA1508
-                        _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Triggering lazy initialization for JARVISChatUserControl");
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await asyncInit.InitializeAsync().ConfigureAwait(false);
-                                _logger?.LogInformation("[SWITCH_RIGHT_PANEL] JARVISChatUserControl initialized successfully");
-                            }
-                            catch (Exception initEx)
-                            {
-                                _logger?.LogError(initEx, "[SWITCH_RIGHT_PANEL] Failed to initialize JARVISChatUserControl");
-                            }
-                        });
-                    }
+                    TriggerJarvisInitialization(rightPanel);
                 }
             }
             else
@@ -1833,21 +1842,212 @@ public partial class MainForm
 
                 _logger?.LogError("[SWITCH_RIGHT_PANEL] Tab {ActualTabName} not found. Available tabs: {AvailableTabs}",
                     actualTabName, availableTabs);
-                MessageBox.Show(
-                    $"Tab '{actualTabName}' was not found. Available tabs: {displayTabs}",
-                    "Tab Not Found",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                _logger?.LogWarning("Tab '{TabName}' not found; available tabs: {DisplayTabs}", actualTabName, displayTabs);
+                _asyncLogger?.Warning("[SWITCH_RIGHT_PANEL] Tab {TabName} not found", actualTabName);
+                return;
             }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "[SWITCH_RIGHT_PANEL] Failed to switch right panel to {TabName}", tabName);
-            MessageBox.Show(
-                $"Failed to open panel: {ex.Message}",
-                "Switch Panel Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
+            _logger?.LogWarning("Failed to switch right panel to {TabName}: {Message}", tabName, ex.Message);
+        }
+    }
+
+    private bool EnsureRightDockPanelInitialized(string tabName)
+    {
+        if (_rightDockPanel != null && !_rightDockPanel.IsDisposed)
+        {
+            return true;
+        }
+
+        if (_serviceProvider == null)
+        {
+            _logger?.LogWarning("[SWITCH_RIGHT_PANEL] ServiceProvider is null - cannot initialize right dock panel");
+            return false;
+        }
+
+        if (_dockingManager == null)
+        {
+            _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right dock panel missing; initializing docking before switching to {TabName}", tabName);
+            if (!TryInitializeBasicDocking())
+            {
+                _logger?.LogError("[SWITCH_RIGHT_PANEL] Docking initialization failed - cannot switch to {TabName}", tabName);
+                return false;
+            }
+        }
+
+        if (_rightDockPanel == null || _rightDockPanel.IsDisposed)
+        {
+            _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right dock panel still unavailable after initialization (DockingManager={HasManager})",
+                _dockingManager != null);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryMapRightPanelTarget(
+        string tabName,
+        out RightDockPanelFactory.RightPanelMode targetMode,
+        out string actualTabName)
+    {
+        var normalized = tabName?.Trim() ?? string.Empty;
+        var compact = normalized.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        switch (compact.ToLowerInvariant())
+        {
+            case "jarvis":
+            case "jarvischat":
+            case "jarvischattab":
+                targetMode = RightDockPanelFactory.RightPanelMode.JarvisChat;
+                actualTabName = "JARVISChatTab";
+                return true;
+            case "activitylog":
+            case "activitylogtab":
+                targetMode = RightDockPanelFactory.RightPanelMode.ActivityLog;
+                actualTabName = "ActivityLogTab";
+                return true;
+            default:
+                targetMode = RightDockPanelFactory.RightPanelMode.ActivityLog;
+                actualTabName = normalized;
+                return false;
+        }
+    }
+
+    private void TriggerJarvisInitialization(Control rightPanel)
+    {
+        var jarvisControl = FindDescendantControl<JARVISChatUserControl>(rightPanel);
+        if (jarvisControl == null)
+        {
+            _logger?.LogWarning("[SWITCH_RIGHT_PANEL] JARVIS chat control not found for initialization");
+            return;
+        }
+
+        // JARVISChatUserControl implements IAsyncInitializable - cast is guaranteed safe
+#pragma warning disable CA1508 // Avoid dead conditional code (analyzer false positive)
+        var asyncInit = (WileyWidget.Abstractions.IAsyncInitializable)jarvisControl;
+#pragma warning restore CA1508
+        _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Triggering lazy initialization for JARVISChatUserControl");
+
+        // Initialize JARVIS control asynchronously with proper cancellation and error handling
+        _ = InitializeJarvisControlAsync(jarvisControl, asyncInit);
+    }
+
+    private static TControl? FindDescendantControl<TControl>(Control parent)
+        where TControl : Control
+    {
+        foreach (Control child in parent.Controls)
+        {
+            if (child is TControl match)
+            {
+                return match;
+            }
+
+            var nested = FindDescendantControl<TControl>(child);
+            if (nested != null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Asynchronously initializes JARVIS chat control with proper cancellation, disposal guards, and error handling.
+    /// Uses background thread to avoid blocking UI while marshaling completion events back to UI thread.
+    /// </summary>
+    /// <param name="jarvisControl">The JARVIS control to initialize</param>
+    /// <param name="asyncInit">The async initializable interface for the control</param>
+    /// <returns>Task representing the async initialization operation</returns>
+    private async Task InitializeJarvisControlAsync(JARVISChatUserControl jarvisControl, WileyWidget.Abstractions.IAsyncInitializable asyncInit)
+    {
+        // Create cancellation token with timeout to prevent indefinite hangs
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        try
+        {
+            // Disposal guard: Check if control is already disposed before starting initialization
+            if (jarvisControl.IsDisposed)
+            {
+                _logger?.LogDebug("[JARVIS_INIT] Control is disposed - skipping initialization");
+                return;
+            }
+
+            _logger?.LogDebug("[JARVIS_INIT] Starting async initialization");
+
+            // Initialize on background thread to avoid blocking UI
+            await Task.Run(async () =>
+            {
+                // Double-check disposal state on background thread before heavy work
+                if (jarvisControl.IsDisposed)
+                {
+                    _logger?.LogDebug("[JARVIS_INIT] Control disposed during initialization start - aborting");
+                    return;
+                }
+
+                // Perform actual initialization with cancellation support
+                await asyncInit.InitializeAsync(cts.Token).ConfigureAwait(false);
+
+                _logger?.LogInformation("[JARVIS_INIT] JARVISChatUserControl initialized successfully");
+            }, cts.Token).ConfigureAwait(false);
+
+            // Marshal completion notification back to UI thread if needed
+            if (InvokeRequired && !IsDisposed)
+            {
+                try
+                {
+                    BeginInvoke(new System.Action(() =>
+                    {
+                        if (!jarvisControl.IsDisposed)
+                        {
+                            _logger?.LogDebug("[JARVIS_INIT] Initialization complete - control ready");
+                        }
+                    }));
+                }
+                catch (InvalidOperationException)
+                {
+                    // Handle may have been destroyed - not critical for initialization
+                    _logger?.LogDebug("[JARVIS_INIT] Could not marshal completion to UI thread - form may be closing");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogWarning("[JARVIS_INIT] Initialization cancelled or timed out after 30 seconds");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger?.LogDebug("[JARVIS_INIT] Control was disposed during initialization");
+        }
+        catch (Exception initEx)
+        {
+            _logger?.LogError(initEx, "[JARVIS_INIT] Failed to initialize JARVISChatUserControl");
+
+            // Optionally notify user of initialization failure on UI thread
+            if (!IsDisposed && InvokeRequired)
+            {
+                try
+                {
+                    BeginInvoke(new System.Action(() =>
+                    {
+                        if (!jarvisControl.IsDisposed && IsHandleCreated)
+                        {
+                            MessageBox.Show(
+                                this,
+                                $"JARVIS chat initialization failed: {initEx.Message}\n\nYou can try switching away and back to retry.",
+                                "Initialization Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                        }
+                    }));
+                }
+                catch
+                {
+                    // Suppress errors during error reporting notification - not critical
+                }
+            }
         }
     }
 }

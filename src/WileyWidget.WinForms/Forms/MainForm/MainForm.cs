@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Serilog;
+using Syncfusion.Runtime.Serialization;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
@@ -20,6 +21,9 @@ using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Helpers;
@@ -118,6 +122,11 @@ namespace WileyWidget.WinForms.Forms
 
         // [PERF] MRU List (persisted across sessions)
         private readonly List<string> _mruList = new List<string>();
+
+        // [PERF] Layout Persistence
+        private AppStateSerializer? _layoutSerializer;
+        private bool _panelsLocked = false;
+        private const string LayoutSerializerKey = "DockingManagerState";
 
         // [PERF] Theme tracking for dynamically added controls
         private readonly HashSet<Control> _themeTrackedControls = new HashSet<Control>();
@@ -252,8 +261,13 @@ namespace WileyWidget.WinForms.Forms
             KeyPreview = true;
             Load += (s, e) => { _logger?.LogInformation("MainForm Load event fired"); };
 
+            // [PERF] Ensure reasonable default size for complex layouts
+            this.Size = new Size(1280, 800);
+            this.MinimumSize = new Size(800, 600);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.WindowState = System.Windows.Forms.FormWindowState.Normal;
+
             // [PERF] Set form size constraints
-            MinimumSize = _uiConfig.MinimumFormSize;
             if (_uiConfig.IsUiTestHarness)
             {
                 MaximumSize = new Size(1920, 1080);
@@ -313,11 +327,6 @@ namespace WileyWidget.WinForms.Forms
 
             // [PERF] Add exception handlers
             AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
-            System.Windows.Forms.Application.ThreadException += (s, e) =>
-            {
-                Log.Error(e.Exception, "Unhandled UI thread exception");
-                _logger?.LogError(e.Exception, "Unhandled UI thread exception");
-            };
 
             // [PERF] Subscribe to font changes
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
@@ -372,8 +381,38 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Load MRU and restore window state (once, in OnLoad)
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Loading MRU list");
             LoadMruList();
+
+            // [FIX] Restore window state with validation
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Restoring window state");
-            _windowStateService.RestoreWindowState(this);
+            try
+            {
+                _windowStateService.RestoreWindowState(this);
+
+                // [FIX] Validate restored position is on a visible screen
+                bool isOnScreen = false;
+                foreach (var screen in Screen.AllScreens)
+                {
+                    if (screen.WorkingArea.IntersectsWith(this.Bounds))
+                    {
+                        isOnScreen = true;
+                        break;
+                    }
+                }
+
+                if (!isOnScreen)
+                {
+                    _logger?.LogWarning("Restored window position is off-screen - resetting to defaults");
+                    StartPosition = FormStartPosition.CenterScreen;
+                    WindowState = System.Windows.Forms.FormWindowState.Normal;
+                    Size = new Size(1280, 800);
+                }
+            }
+            catch (Exception wsEx)
+            {
+                _logger?.LogWarning(wsEx, "Failed to restore window state - using defaults");
+                StartPosition = FormStartPosition.CenterScreen;
+                WindowState = System.Windows.Forms.FormWindowState.Normal;
+            }
 
             // [PERF] Initialize UI chrome in OnLoad (before form is shown)
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting UI chrome initialization");
@@ -382,58 +421,8 @@ namespace WileyWidget.WinForms.Forms
                 using var chromePhase = StartupMetrics.TimerScope("Chrome Initialization");
                 InitializeChrome();
 
-                SuspendLayout();
-                try
-                {
-                    if (_menuStrip != null)
-                    {
-                        _menuStrip.Dock = DockStyle.Top;
-                        if (!Controls.Contains(_menuStrip))
-                        {
-                            Controls.Add(_menuStrip);
-                        }
-                    }
-
-                    if (_ribbon != null)
-                    {
-                        _ribbon.Dock = DockStyleEx.Top;
-                        _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
-                        _ribbon.BorderStyle = (ToolStripBorderStyle)BorderStyle.None;
-                        _ribbon.ThemeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-                        _ribbon.Width = ClientSize.Width;
-                        if (!Controls.Contains(_ribbon))
-                        {
-                            Controls.Add(_ribbon);
-                        }
-                        TryRecalculateRibbonHeight("OnLoad");
-                    }
-
-                    if (_navigationStrip != null)
-                    {
-                        if (!Controls.Contains(_navigationStrip))
-                        {
-                            Controls.Add(_navigationStrip);
-                        }
-                    }
-
-                    if (_statusBar != null)
-                    {
-                        _statusBar.Dock = DockStyle.Bottom;
-                        _statusBar.BorderStyle = BorderStyle.None;
-                        if (!Controls.Contains(_statusBar))
-                        {
-                            Controls.Add(_statusBar);
-                        }
-                    }
-                }
-                finally
-                {
-                    ResumeLayout(false);
-                }
-
-                // [PERF] Z-order management
+                // [PERF] Z-order management (already handled by InitializeChrome, but ensuring consistency)
                 if (_ribbon != null) _ribbon.BringToFront();
-                if (_menuStrip != null) _menuStrip.BringToFront();
                 if (_statusBar != null) _statusBar.BringToFront();
 
                 _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI chrome initialization completed");
@@ -477,6 +466,22 @@ namespace WileyWidget.WinForms.Forms
             }
 
             _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnShown START");
+
+            // [VISIBILITY] Ensure the ribbon has its tab selected and displayed after the form is fully rendered
+            if (_ribbon != null && _homeTab != null)
+            {
+                try
+                {
+                    _ribbon.SelectedTab = _homeTab;
+                    _ribbon.DisplayOption = RibbonDisplayOption.ShowTabsAndCommands;
+                    _ribbon.PerformLayout();
+                    _logger?.LogInformation("[RIBBON] Re-asserted SelectedTab and DisplayOption in OnShown");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to re-assert ribbon state in OnShown");
+                }
+            }
 
             // [PERF] Guard against multiple OnShown calls
             if (Interlocked.Exchange(ref _onShownExecuted, 1) != 0)
@@ -534,8 +539,22 @@ namespace WileyWidget.WinForms.Forms
                     InitializeSyncfusionDocking();
                     ConfigureDockingManagerChromeLayout();
                     _syncfusionDockingInitialized = true;
+
+                    // [FIX] Initialize panel navigator immediately after DockingManager is ready
+                    // This prevents race condition where ribbon buttons can be clicked before navigator exists
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Initializing panel navigator");
+                    EnsurePanelNavigatorInitialized();
+                    if (_panelNavigator != null)
+                    {
+                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Panel navigator successfully initialized");
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("[DIAGNOSTIC] OnShown: Panel navigator initialization returned null");
+                    }
+
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
-                    TryRecalculateRibbonHeight("OnShown");
+                    // RibbonForm handles sizing natively via AutoSize
                     AdjustDockingHostBounds();
 
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI chrome initialization completed in OnLoad");
@@ -554,11 +573,43 @@ namespace WileyWidget.WinForms.Forms
             base.OnShown(e);
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: base.OnShown completed");
             _logger?.LogInformation("MainForm Shown: Visible={Visible}, Bounds={Bounds}", Visible, Bounds);
+
+            // [FIX] Ensure window is visible and on-screen
             if (!Visible)
             {
                 Visible = true;
             }
+
+            // [FIX] Validate window is on a visible screen (prevents off-screen issues)
+            try
+            {
+                var currentScreen = Screen.FromControl(this);
+                if (!currentScreen.WorkingArea.IntersectsWith(this.Bounds))
+                {
+                    _logger?.LogWarning("Window is off-screen - resetting to center of primary screen");
+                    this.StartPosition = FormStartPosition.CenterScreen;
+                    this.Location = new System.Drawing.Point(
+                        (Screen.PrimaryScreen.WorkingArea.Width - this.Width) / 2,
+                        (Screen.PrimaryScreen.WorkingArea.Height - this.Height) / 2
+                    );
+                }
+            }
+            catch (Exception posEx)
+            {
+                _logger?.LogWarning(posEx, "Failed to validate window position - using center screen");
+                this.StartPosition = FormStartPosition.CenterScreen;
+            }
+
+            // [FIX] Force window to foreground with multiple strategies
+            this.Show();
+            this.BringToFront();
+            this.Focus();
             Activate();
+
+            // [FIX] Temporarily set TopMost to ensure visibility, then reset
+            this.TopMost = true;
+            System.Windows.Forms.Application.DoEvents();
+            this.TopMost = false;
 
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting deferred initialization");
 
@@ -572,31 +623,100 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Subscribe to activation event (unsubscribes after first activation)
             Activated += MainForm_Activated;
 
+            if (string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                ScheduleJarvisAutomationOpen();
+            }
+
             // [PERF] Launch CLI report viewer if requested (optional feature)
             TryLaunchReportViewerOnLoad();
 
             // [PERF] Ensure default action button for keyboard shortcuts
             EnsureDefaultActionButtons();
 
-            // [PERF] Allow UI structures time to fully develop and complete before starting background tasks
-            // Use BeginInvoke to defer async initialization until after all synchronous OnShown work completes
-            this.BeginInvoke(new System.Action(async () =>
+            // [PERF] Allow UI structures time to fully develop and complete before starting background tasks.
+            // Use BeginInvoke after the handle is created to avoid InvalidOperationException.
+            void ScheduleDeferredInitialization()
             {
-                try
+                if (IsDisposed)
                 {
-                    // Small additional delay to allow UI to settle
-                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
 
-                    // [PERF] Run deferred initialization tasks (health check, ViewModel, dashboard)
-                    _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);
-                }
-                catch (OperationCanceledException)
+                if (!IsHandleCreated)
                 {
-                    _logger?.LogDebug("Deferred initialization scheduling canceled");
+                    EventHandler? handler = null;
+                    handler = (_, __) =>
+                    {
+                        HandleCreated -= handler;
+                        ScheduleDeferredInitialization();
+                    };
+                    HandleCreated += handler;
+                    return;
                 }
-                catch (Exception ex)
+
+                BeginInvoke(new System.Action(async () =>
                 {
-                    _logger?.LogError(ex, "Failed to schedule deferred initialization");
+                    try
+                    {
+                        // Small additional delay to allow UI to settle
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+
+                        // [PERF] Run deferred initialization tasks (health check, ViewModel, dashboard)
+                        _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger?.LogDebug("Deferred initialization scheduling canceled");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to schedule deferred initialization");
+                    }
+                }));
+            }
+
+            ScheduleDeferredInitialization();
+        }
+
+        /// <summary>
+        /// Schedules JARVIS panel opening for UI automation, ensuring handle is created first.
+        /// </summary>
+        private void ScheduleJarvisAutomationOpen()
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (!IsHandleCreated)
+            {
+                EventHandler? handler = null;
+                handler = (_, __) =>
+                {
+                    HandleCreated -= handler;
+                    ScheduleJarvisAutomationOpen();
+                };
+                HandleCreated += handler;
+                return;
+            }
+
+            BeginInvoke(new System.Action(async () =>
+            {
+                const int maxAttempts = 5;
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    try
+                    {
+                        SwitchRightPanel("JarvisChat");
+                        _logger?.LogInformation("[AUTOMATION] Auto-opened JARVIS panel for UI automation (attempt {Attempt})", attempt);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "[AUTOMATION] Failed to auto-open JARVIS panel (attempt {Attempt}/{MaxAttempts})", attempt, maxAttempts);
+                        await Task.Delay(500).ConfigureAwait(true);
+                    }
                 }
             }));
         }
@@ -692,7 +812,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 ApplyThemeRecursive(this, _themeService.CurrentTheme);  // Re-apply on DPI change
             }
-            TryRecalculateRibbonHeight("OnDpiChanged");
+            // RibbonForm handles DPI scaling natively via AutoSize
             UpdateChromePadding();
             AdjustDockingHostBounds();
             PerformLayout();
@@ -743,6 +863,30 @@ namespace WileyWidget.WinForms.Forms
 
                 // [PERF] Dispose manually created controls
                 _defaultCancelButton?.Dispose();
+
+                // [PERF] Persist and dispose layout serializer
+                if (_layoutSerializer != null)
+                {
+                    try
+                    {
+                        // Unsubscribe from events
+                        _layoutSerializer.BeforePersist -= OnLayoutBeforePersist;
+
+                        // Persist final state before disposal
+                        if (_layoutSerializer.Enabled && _dockingManager != null)
+                        {
+                            _layoutSerializer.SerializeObject(LayoutSerializerKey, _dockingManager);
+                            _layoutSerializer.PersistNow();
+                            _logger?.LogDebug("[MAINFORM] Layout auto-saved on dispose");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "[MAINFORM] Failed to auto-save layout on dispose");
+                    }
+
+                    _layoutSerializer = null;
+                }
             }
             base.Dispose(disposing);
         }
@@ -812,16 +956,23 @@ namespace WileyWidget.WinForms.Forms
         /// Helper: First-chance exception handler with re-entry guard.
         /// Logs all exceptions with full diagnostic information including stack trace.
         /// Special handling for theme and docking exceptions at Debug level.
+        /// OperationCanceledException logged at Debug level (expected behavior, not errors).
         /// </summary>
         private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
         {
             var ex = e.Exception;
             if (ex == null) return;
 
-            // Special logging for target exceptions
+            // ✅ FIX: OperationCanceledException is expected during cancellation, log at Debug level
+            if (ex is System.OperationCanceledException)
+            {
+                _logger?.LogDebug(ex, "Operation cancelled (expected): {Message}", ex.Message);
+                return; // Early return - don't log as TARGET EXCEPTION
+            }
+
+            // Special logging for target exceptions (ArgumentException, DockingManagerException)
             if (ex is Syncfusion.Windows.Forms.Tools.DockingManagerException ||
-                ex is System.ArgumentException ||
-                ex is System.OperationCanceledException)
+                ex is System.ArgumentException)
             {
                 _logger?.LogError(ex, "TARGET EXCEPTION: {Type} | Full details: {FullException}", ex.GetType().FullName, ex.ToString());
             }

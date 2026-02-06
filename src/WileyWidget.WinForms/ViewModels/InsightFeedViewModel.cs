@@ -278,7 +278,7 @@ namespace WileyWidget.WinForms.ViewModels
                         var jarvisTab = tabControl.TabPages.Cast<TabPage>()
                             .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
 
-                        if (jarvisTab != null && jarvisTab.Controls != null && jarvisTab.Controls.Count > 0 && jarvisTab.Controls[0] is WileyWidget.WinForms.Controls.JARVISChatUserControl jarvisControl)
+                        if (jarvisTab != null && jarvisTab.Controls != null && jarvisTab.Controls.Count > 0 && jarvisTab.Controls[0] is WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl jarvisControl)
                         {
                             // Set initial prompt and switch tab
                             jarvisControl.InitialPrompt = insightContext.ToString();

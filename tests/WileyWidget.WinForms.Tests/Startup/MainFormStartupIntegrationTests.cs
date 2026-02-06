@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
@@ -31,7 +33,8 @@ public sealed class MainFormStartupIntegrationTests
             ["UI:IsUiTestHarness"] = "true",
             ["UI:UseSyncfusionDocking"] = "true",
             ["UI:ShowRibbon"] = "true",
-            ["UI:ShowStatusBar"] = "true"
+            ["UI:ShowStatusBar"] = "true",
+            ["UI:AutoShowDashboard"] = "true"
         };
 
         using var provider = IntegrationTestServices.BuildProvider(configOverrides);
@@ -41,17 +44,14 @@ public sealed class MainFormStartupIntegrationTests
 
         try
         {
+            // Force larger size to avoid layout cramping during test restore
+            form.Size = new System.Drawing.Size(1400, 900);
+            form.StartPosition = FormStartPosition.CenterScreen;
+            form.Show();
             _ = form.Handle;
-            form.CreateControl();
             Application.DoEvents();
 
-            InvokeOnLoad(form);
-            Application.DoEvents();
-
-            InvokeOnShown(form);
-            Application.DoEvents();
-
-            await PumpMessagesAsync(1500);
+            await PumpMessagesAsync(2000);
 
             var deferred = await WaitForDeferredInitializationAsync(form, TimeSpan.FromSeconds(5));
             if (deferred != null)
@@ -64,7 +64,7 @@ public sealed class MainFormStartupIntegrationTests
             }
 
             await form.InitializeAsync(CancellationToken.None);
-            await PumpMessagesAsync(500);
+            await PumpMessagesAsync(1500);
         }
         catch (Exception ex)
         {
@@ -73,14 +73,55 @@ public sealed class MainFormStartupIntegrationTests
 
         startupException.Should().BeNull("Startup should complete without exceptions");
 
+        // Diagnostic: log config values
+        var config = provider.GetService(typeof(IConfiguration)) as IConfiguration;
+        Console.WriteLine($"[TEST DIAG] UI:UseSyncfusionDocking = {config?.GetSection("UI:UseSyncfusionDocking").Value}");
+        Console.WriteLine($"[TEST DIAG] UI:IsUiTestHarness = {config?.GetSection("UI:IsUiTestHarness").Value}");
+        Console.WriteLine($"[TEST DIAG] UI:AutoShowDashboard = {config?.GetSection("UI:AutoShowDashboard").Value}");
+        // Check if _panelNavigator exists
+        var panelNav = GetPrivateField<object>(form, "_panelNavigator");
+        Console.WriteLine($"[TEST DIAG] _panelNavigator is null? {panelNav == null}");
+        // Check if _uiConfig exists and has docking enabled
+        var uiConfig = GetPrivateField<object>(form, "_uiConfig");
+        Console.WriteLine($"[TEST DIAG] _uiConfig is null? {uiConfig == null}");
+
         GetPrivateField<DockingManager>(form, "_dockingManager").Should().NotBeNull("DockingManager should be initialized");
         GetPrivateField<RibbonControlAdv>(form, "_ribbon").Should().NotBeNull("Ribbon should be initialized");
         GetPrivateField<StatusBarAdv>(form, "_statusBar").Should().NotBeNull("StatusBar should be initialized");
-        GetPrivateField<Panel>(form, "_centralDocumentPanel").Should().NotBeNull("Central document panel should be initialized");
+        var centralPanel = GetPrivateField<Panel>(form, "_centralDocumentPanel");
+        centralPanel.Should().NotBeNull("Central document panel should be initialized");
         var rightPanel = GetPrivateField<Panel>(form, "_rightDockPanel");
         rightPanel.Should().NotBeNull("Right dock panel should be initialized");
 
-        FindControl<DashboardPanel>(form).Should().NotBeNull("Dashboard should be present after initialization");
+        var autoShowDashboard = config?.GetValue<bool?>("UI:AutoShowDashboard") ?? false;
+        if (autoShowDashboard)
+        {
+            Console.WriteLine("[TEST] Waiting for DashboardPanel...");
+            var dashboardLoaded = await IntegrationTestServices.WaitForConditionAsync(
+                () => FindControl<DashboardPanel>(form) != null,
+                TimeSpan.FromSeconds(8),
+                pollInterval: TimeSpan.FromMilliseconds(200),
+                onTimeout: message =>
+                {
+                    var treePath = IntegrationTestServices.DumpControlTreeToFile(form);
+                    var screenshotPath = IntegrationTestServices.TryCaptureScreenshot(form);
+                    Console.WriteLine($"[TEST] {message}");
+                    Console.WriteLine($"[TEST] Control tree: {treePath}");
+                    if (!string.IsNullOrWhiteSpace(screenshotPath))
+                    {
+                        Console.WriteLine($"[TEST] Screenshot: {screenshotPath}");
+                    }
+                },
+                CancellationToken.None);
+
+            dashboardLoaded.Should().BeTrue("Dashboard should be present after initialization");
+            FindControl<DashboardPanel>(form).Should().NotBeNull("Dashboard should be present after initialization");
+        }
+        else
+        {
+            FindControl<DashboardPanel>(form)
+                .Should().BeNull("Dashboard should not be auto-shown when AutoShowDashboard is false");
+        }
 
         var tabControlAdv = rightPanel != null ? FindControl<TabControlAdv>(rightPanel) : null;
         var tabControl = rightPanel != null ? FindControl<TabControl>(rightPanel) : null;
@@ -103,18 +144,6 @@ public sealed class MainFormStartupIntegrationTests
             await form.MainViewModel.OnVisibilityChangedAsync(true);
             form.MainViewModel.IsDataLoaded.Should().BeTrue("Data should be loaded after initialization");
         }
-    }
-
-    private static void InvokeOnLoad(MainForm form)
-    {
-        var method = typeof(MainForm).GetMethod("OnLoad", BindingFlags.Instance | BindingFlags.NonPublic);
-        method?.Invoke(form, new object[] { EventArgs.Empty });
-    }
-
-    private static void InvokeOnShown(MainForm form)
-    {
-        var method = typeof(MainForm).GetMethod("OnShown", BindingFlags.Instance | BindingFlags.NonPublic);
-        method?.Invoke(form, new object[] { EventArgs.Empty });
     }
 
     private static async Task<Task?> WaitForDeferredInitializationAsync(MainForm form, TimeSpan timeout)
@@ -191,4 +220,5 @@ public sealed class MainFormStartupIntegrationTests
         return tabName.Contains("ActivityLog", StringComparison.OrdinalIgnoreCase)
             || tabName.Contains("Jarvis", StringComparison.OrdinalIgnoreCase);
     }
+
 }

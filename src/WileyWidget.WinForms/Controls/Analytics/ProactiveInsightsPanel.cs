@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
+using WileyWidget.WinForms.Controls.Supporting;
 using System.Drawing;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Controls;
@@ -13,6 +14,8 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using WileyWidget.WinForms.Controls.Base;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Analytics
 {
@@ -27,7 +30,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         private InsightFeedPanel? _insightFeedPanel;
 
         // Internal child controls (kept as fields for disposal and layout control)
-        private GradientPanelExt? _topPanel;
+        private LegacyGradientPanel? _topPanel;
         private PanelHeader? _panelHeader;
         private FlowLayoutPanel? _buttonContainer;
         private SfButton? _btnRefresh;
@@ -73,7 +76,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
             this.AccessibleDescription = "Displays proactive AI insights with header and actions";
 
             // Create gradient top panel with header
-            _topPanel = new GradientPanelExt
+            _topPanel = new LegacyGradientPanel
             {
                 // Removed fixed Height to allow growth; MinimumSize ensures a reasonable min height
                 MinimumSize = new Size(0, 60), // ensures header can't collapse below 60px

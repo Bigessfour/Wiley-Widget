@@ -35,10 +35,10 @@ namespace WileyWidget.WinForms.ViewModels
 
     public partial class DashboardViewModel : ObservableObject, IDashboardViewModel, IDisposable
     {
-    private readonly IBudgetRepository? _budgetRepository;
-    private readonly IMunicipalAccountRepository? _accountRepository;
-    private readonly IDashboardService? _dashboardService;
-            private readonly ILogger<DashboardViewModel> _logger;
+        private readonly IBudgetRepository? _budgetRepository;
+        private readonly IMunicipalAccountRepository? _accountRepository;
+        private readonly IDashboardService? _dashboardService;
+        private readonly ILogger<DashboardViewModel> _logger;
         private CancellationTokenSource? _loadCancellationTokenSource;
         private readonly SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;

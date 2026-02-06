@@ -42,8 +42,8 @@ namespace WileyWidget.WinForms.Helpers
             }
 
             if (control == null)
-                 // If control is null, fallback to non-owned MessageBox
-                 return MessageBox.Show(message, title, buttons, icon);
+                // If control is null, fallback to non-owned MessageBox
+                return MessageBox.Show(message, title, buttons, icon);
 
             if (control.IsDisposed || !control.IsHandleCreated)
                 return DialogResult.None;
@@ -72,7 +72,7 @@ namespace WileyWidget.WinForms.Helpers
         /// </summary>
         public static void ShowErrorOnUI(Control control, string message, string title = "Error", ILogger? logger = null)
         {
-             ShowMessageOnUI(control, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error, logger);
+            ShowMessageOnUI(control, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error, logger);
         }
 
         /// <summary>
@@ -82,13 +82,13 @@ namespace WileyWidget.WinForms.Helpers
         {
             if (panel == null || panel.IsDisposed) return;
 
-             if (panel.InvokeRequired)
-             {
-                 panel.Invoke(new System.Action(() => UpdateStatus(panel, message, icon)));
-                 return;
-             }
+            if (panel.InvokeRequired)
+            {
+                panel.Invoke(new System.Action(() => UpdateStatus(panel, message, icon)));
+                return;
+            }
 
-             panel.Text = message;
+            panel.Text = message;
         }
 
         /// <summary>
@@ -97,15 +97,15 @@ namespace WileyWidget.WinForms.Helpers
         /// </summary>
         public static void ApplyTheme(Form form, string themeName)
         {
-             if (form == null || form.IsDisposed) return;
+            if (form == null || form.IsDisposed) return;
 
-             if (form.InvokeRequired)
-             {
-                 form.Invoke(new System.Action(() => ApplyTheme(form, themeName)));
-                 return;
-             }
+            if (form.InvokeRequired)
+            {
+                form.Invoke(new System.Action(() => ApplyTheme(form, themeName)));
+                return;
+            }
 
-             ThemeColors.ApplyTheme(form, themeName);
+            ThemeColors.ApplyTheme(form, themeName);
         }
 
         /// <summary>

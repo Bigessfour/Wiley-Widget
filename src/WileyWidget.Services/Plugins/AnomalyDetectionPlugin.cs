@@ -29,16 +29,16 @@ namespace WileyWidget.Services.Plugins
                                   .Where(v => double.TryParse(v, out _))
                                   .Select(double.Parse)
                                   .ToList();
-            
+
             if (values.Count == 0) return "No valid numeric data found.";
 
             var mean = values.Average();
             var stdDev = Math.Sqrt(values.Average(v => Math.Pow(v - mean, 2)));
-            
+
             var sb = new StringBuilder();
             sb.AppendLine($"Analysis Result:");
             sb.AppendLine($"Count: {values.Count}, Mean: {mean:F2}, StdDev: {stdDev:F2}");
-            
+
             bool outlierFound = false; // Initialize to false
             for (int i = 0; i < values.Count; i++)
             {
@@ -55,7 +55,7 @@ namespace WileyWidget.Services.Plugins
             {
                 sb.AppendLine("No statistical outliers detected.");
             }
-            
+
             return sb.ToString();
         }
     }

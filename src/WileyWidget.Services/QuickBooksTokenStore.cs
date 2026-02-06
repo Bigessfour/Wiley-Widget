@@ -137,7 +137,7 @@ public sealed class QuickBooksTokenStore : IDisposable
             }
 
             var content = await File.ReadAllTextAsync(path);
-            
+
             // Try to decrypt if a secret vault is available and content looks like base64
             if (_secretVault is not null && IsBase64String(content))
             {

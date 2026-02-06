@@ -268,6 +268,16 @@ namespace WileyWidget.WinForms.Forms
                     ControlBox = false
                 };
 
+                // Apply Syncfusion theme to splash form
+                try
+                {
+                    WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(_form);
+                }
+                catch (Exception themeEx)
+                {
+                    Log.Debug(themeEx, "[SPLASH] Failed to apply theme to splash form (non-critical)");
+                }
+
                 var layout = new TableLayoutPanel
                 {
                     Dock = DockStyle.Fill,
@@ -391,15 +401,21 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        if (form.IsHandleCreated)
+                        if (form.IsHandleCreated && !form.IsDisposed)
                         {
                             if (form.InvokeRequired)
                             {
-                                form.Invoke((Action)(() =>
+                                // Fire-and-forget invoke to avoid blocking or re-throwing if form disposes mid-call
+                                try
                                 {
-                                    try { form.Close(); } catch { }
-                                    try { Application.ExitThread(); } catch { }
-                                }));
+                                    form.BeginInvoke((Action)(() =>
+                                    {
+                                        if (form.IsDisposed) return;
+                                        try { form.Close(); } catch { }
+                                        try { Application.ExitThread(); } catch { }
+                                    }));
+                                }
+                                catch (ObjectDisposedException) { /* Already gone */ }
                             }
                             else
                             {

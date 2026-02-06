@@ -132,7 +132,7 @@ namespace WileyWidget.Services
                 result.ValidationDuration = stopwatch.Elapsed;
                 result.IsValid = result.Errors.Count == 0;
 
-                _logger.LogInformation("=== Completed {Category} Validation in {Duration}ms (Valid: {IsValid}) ===", 
+                _logger.LogInformation("=== Completed {Category} Validation in {Duration}ms (Valid: {IsValid}) ===",
                     categoryName, result.ValidationDuration.TotalMilliseconds, result.IsValid);
             }
 

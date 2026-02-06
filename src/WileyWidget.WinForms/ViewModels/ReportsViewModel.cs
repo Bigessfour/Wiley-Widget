@@ -25,8 +25,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private readonly IReportService _reportService;
     private readonly ILogger<ReportsViewModel> _logger;
     private readonly IAuditService _auditService;
-        private readonly IReportExportService? _exportService;
-        private readonly IBudgetRepository _budgetRepository;
+    private readonly IReportExportService? _exportService;
+    private readonly IBudgetRepository _budgetRepository;
 
     /// <summary>
     /// Available report types for the dropdown.

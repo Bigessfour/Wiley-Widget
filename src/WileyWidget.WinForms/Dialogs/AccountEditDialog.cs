@@ -8,6 +8,7 @@ using Syncfusion.WinForms.Controls;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Panels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WileyWidget.WinForms.Dialogs

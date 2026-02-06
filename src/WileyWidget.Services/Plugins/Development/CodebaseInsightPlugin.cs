@@ -75,13 +75,13 @@ namespace WileyWidget.Services.Plugins.Development
             {
                 // Read file content
                 var content = File.ReadAllText(fullPath);
-                
+
                 // Truncate if extremely large (e.g., > 20KB) to save tokens, though typical source files are small.
                 if (content.Length > 20000)
                 {
                     return content.Substring(0, 20000) + "\n...[TRUNCATED due to length]...";
                 }
-                
+
                 return content;
             }
             catch (Exception ex)

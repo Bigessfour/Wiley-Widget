@@ -13,7 +13,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.ViewModels;
 
-namespace WileyWidget.ViewModels
+namespace WileyWidget.WinForms.ViewModels
 {
     /// <summary>
     /// Budget metric for display in grids and charts showing department-level budget vs actual variance.

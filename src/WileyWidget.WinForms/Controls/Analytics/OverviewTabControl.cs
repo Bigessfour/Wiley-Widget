@@ -12,8 +12,11 @@ using Syncfusion.Windows.Forms.Chart;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
-using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.ViewModels;
+
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Analytics;
 
@@ -28,17 +31,17 @@ public partial class OverviewTabControl : UserControl
     private readonly AnalyticsHubViewModel? _parentViewModel;
 
     // UI Controls
-    private GradientPanelExt? _toolbarPanel;
+    private LegacyGradientPanel? _toolbarPanel;
     private SfComboBox? _fiscalYearComboBox;
     private SfButton? _refreshButton;
     private SfButton? _exportButton;
 
-    private GradientPanelExt? _summaryPanel;
-    private GradientPanelExt? _lblTotalBudget;
-    private GradientPanelExt? _lblTotalActual;
-    private GradientPanelExt? _lblVariance;
-    private GradientPanelExt? _lblOverBudgetCount;
-    private GradientPanelExt? _lblUnderBudgetCount;
+    private LegacyGradientPanel? _summaryPanel;
+    private LegacyGradientPanel? _lblTotalBudget;
+    private LegacyGradientPanel? _lblTotalActual;
+    private LegacyGradientPanel? _lblVariance;
+    private LegacyGradientPanel? _lblOverBudgetCount;
+    private LegacyGradientPanel? _lblUnderBudgetCount;
 
     private ChartControl? _varianceChart;
     private SfDataGrid? _metricsGrid;
@@ -50,6 +53,15 @@ public partial class OverviewTabControl : UserControl
     {
         _viewModel = viewModel;
         _parentViewModel = parentViewModel;
+
+        // Apply Syncfusion theme
+        try
+        {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            SfSkinManager.SetVisualStyle(this, theme);
+        }
+        catch { /* Theme application is best-effort */ }
+
         InitializeControls();
         if (_viewModel != null)
         {
@@ -107,7 +119,7 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeToolbar(Control parent)
     {
-        _toolbarPanel = new GradientPanelExt
+        _toolbarPanel = new LegacyGradientPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10, 5, 10, 5)
@@ -152,7 +164,7 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeSummaryTiles(Control parent)
     {
-        _summaryPanel = new GradientPanelExt
+        _summaryPanel = new LegacyGradientPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10)
@@ -231,9 +243,9 @@ public partial class OverviewTabControl : UserControl
         parent.Controls.Add(_metricsGrid);
     }
 
-    private GradientPanelExt CreateSummaryTile(string title, string value, Color accentColor)
+    private LegacyGradientPanel CreateSummaryTile(string title, string value, Color accentColor)
     {
-        var tile = new GradientPanelExt
+        var tile = new LegacyGradientPanel
         {
             Width = 150,
             Height = 80,

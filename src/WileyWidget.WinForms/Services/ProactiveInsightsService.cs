@@ -154,13 +154,13 @@ namespace WileyWidget.WinForms.Services
 
                 _logger?.LogDebug("Parsing proactive insights from Grok response (length: {ResponseLength})", response.Length);
 
-                    // Parse response into insight cards
-                    var insights = ParseInsightsFromResponse(response);
+                // Parse response into insight cards
+                var insights = ParseInsightsFromResponse(response);
 
-                    // Update UI collection on the UI thread if needed
-                    UpdateInsightsOnUiThread(insights);
+                // Update UI collection on the UI thread if needed
+                UpdateInsightsOnUiThread(insights);
 
-                    _logger?.LogInformation("Successfully generated {InsightCount} proactive insights", insights.Count);
+                _logger?.LogInformation("Successfully generated {InsightCount} proactive insights", insights.Count);
             }
             catch (Exception ex)
             {

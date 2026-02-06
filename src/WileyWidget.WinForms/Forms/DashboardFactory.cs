@@ -12,10 +12,11 @@ using Syncfusion.Drawing;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using Action = System.Action;  // Disambiguate from Syncfusion.Windows.Forms.Tools.Action
 
 namespace WileyWidget.WinForms.Forms;
@@ -97,7 +98,7 @@ public static class DashboardFactory
             var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(chartsCard, () =>
             {
-                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
@@ -151,9 +152,9 @@ public static class DashboardFactory
     /// Create a dashboard card with title and description.
     /// Includes full accessibility support for screen readers (WCAG 2.1 Level A).
     /// </summary>
-    private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
+    private static (LegacyGradientPanel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
     {
-        var panel = new GradientPanelExt
+        var panel = new LegacyGradientPanel
         {
             Dock = DockStyle.None,
             Width = width,

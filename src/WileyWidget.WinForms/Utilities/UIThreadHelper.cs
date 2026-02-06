@@ -224,7 +224,7 @@ public static class UIThreadHelper
     {
         if (control == null) return false;
         if (control.IsDisposed) return false;
-        
+
         // Per Microsoft: InvokeRequired can return false even if handle isn't created
         // (if we're on the creation thread but before OnHandleCreated)
         // So we must explicitly check IsHandleCreated for safety
@@ -466,7 +466,7 @@ public static class UIThreadHelper
             // Convert Func<CancellationToken, Task> to Func<CancellationToken, ValueTask>
             // by wrapping the Task result in a ValueTask
             await control.InvokeAsync(
-                async (ct) => 
+                async (ct) =>
                 {
                     var task = asyncFunc(ct);
                     if (task != null)
@@ -499,7 +499,7 @@ public static class UIThreadHelper
     public static bool WaitForHandle(this Control control, int timeoutMs = 5000)
     {
         if (control == null) throw new ArgumentNullException(nameof(control));
-        
+
         if (control.IsHandleCreated) return true;
 
         var endTime = DateTime.UtcNow.AddMilliseconds(timeoutMs);

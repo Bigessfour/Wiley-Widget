@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Automation;
 
 // Suppress warnings for fields used in Razor markup (not visible to C# analyzer)
 #pragma warning disable CS0649  // Field never assigned (assigned via @ref in Razor)
@@ -22,6 +23,7 @@ namespace WileyWidget.WinForms.BlazorComponents
         private readonly List<ChatMessage> _messages = new();
         private string _userInput = string.Empty;
         private string _errorMessage = string.Empty;
+        private bool _isInitialized = false; // Track initialization state for diagnostic display
         private bool _isThinking;
         private bool _isSending;
         private string? _streamingMessageId;
@@ -32,6 +34,18 @@ namespace WileyWidget.WinForms.BlazorComponents
 
         // AssistView backing state - assigned via @ref in Razor markup
         private Syncfusion.Blazor.InteractiveChat.SfAIAssistView? _assistView;
+        private Syncfusion.Blazor.InteractiveChat.SfAIAssistView? AssistViewRef
+        {
+            get => _assistView;
+            set
+            {
+                _assistView = value;
+                if (_assistView != null)
+                {
+                    AutomationState?.MarkAssistViewReady();
+                }
+            }
+        }
         private List<Syncfusion.Blazor.InteractiveChat.AssistViewPrompt> _prompts = new();
         private List<string> _suggestions = new()
         {
@@ -82,6 +96,8 @@ namespace WileyWidget.WinForms.BlazorComponents
         private IJSRuntime? JS { get; set; }
         [Inject]
         private IConversationRepository? ConversationRepository { get; set; }
+        [Inject]
+        private JarvisAutomationState? AutomationState { get; set; }
         [CascadingParameter]
         private WileyWidget.Services.Abstractions.IUserContext? UserContext { get; set; }
 
@@ -90,22 +106,45 @@ namespace WileyWidget.WinForms.BlazorComponents
             Console.WriteLine("[JARVIS-BLAZOR] OnInitializedAsync - Starting component initialization");
             System.Diagnostics.Debug.WriteLine("[JARVIS-BLAZOR] OnInitializedAsync - Starting component initialization");
 
-            // Verify ChatBridge connection
-            await VerifyConnectionsAsync();
+            try
+            {
+                // Verify ChatBridge connection (non-blocking, just logs diagnostics)
+                await VerifyConnectionsAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[JARVIS-BLAZOR] WARNING: VerifyConnectionsAsync failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[JARVIS-BLAZOR] WARNING: VerifyConnectionsAsync failed: {ex.Message}");
+                // Don't fail initialization - just log the issue
+            }
 
-            ChatBridge.OnMessageReceived += HandleMessageReceived;
-            ChatBridge.ResponseChunkReceived += HandleResponseChunkReceived;
-            ChatBridge.ExternalPromptRequested += HandleExternalPromptRequested;
-            _conversationId = Guid.NewGuid().ToString();
+            try
+            {
+                ChatBridge.OnMessageReceived += HandleMessageReceived;
+                ChatBridge.ResponseChunkReceived += HandleResponseChunkReceived;
+                ChatBridge.ExternalPromptRequested += HandleExternalPromptRequested;
+                _conversationId = Guid.NewGuid().ToString();
 
-            // Try to load last conversation from database
-            await LoadLastConversationAsync();
+                // Try to load last conversation from database
+                await LoadLastConversationAsync();
 
-            // Map any existing messages into the AssistView prompts
-            UpdatePromptsFromMessages();
+                // Map any existing messages into the AssistView prompts
+                UpdatePromptsFromMessages();
 
-            Console.WriteLine($"[JARVIS-BLAZOR] OnInitializedAsync - Initialization complete, ConversationId={_conversationId}");
-            System.Diagnostics.Debug.WriteLine($"[JARVIS-BLAZOR] OnInitializedAsync - Initialization complete, ConversationId={_conversationId}");
+                AutomationState?.Reset();
+
+                _isInitialized = true; // Mark initialization complete for diagnostic display
+                Console.WriteLine($"[JARVIS-BLAZOR] OnInitializedAsync - Initialization complete, ConversationId={_conversationId}");
+                System.Diagnostics.Debug.WriteLine($"[JARVIS-BLAZOR] OnInitializedAsync - Initialization complete, ConversationId={_conversationId}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[JARVIS-BLAZOR] ERROR: OnInitializedAsync failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[JARVIS-BLAZOR] ERROR: OnInitializedAsync failed: {ex.Message}");
+                _errorMessage = $"Failed to initialize JARVIS Chat: {ex.Message}";
+                // Component will render with error message visible
+            }
+
             await base.OnInitializedAsync();
         }
 
@@ -116,14 +155,13 @@ namespace WileyWidget.WinForms.BlazorComponents
 
             if (firstRender)
             {
-                Console.WriteLine("[JARVIS-BLAZOR] First render detected - running connection tests in 1 second...");
-                System.Diagnostics.Debug.WriteLine("[JARVIS-BLAZOR] First render detected - running connection tests in 1 second...");
+                AutomationState?.MarkBlazorReady(_assistView != null);
+                AutomationState?.MarkAssistViewReady();
+                Console.WriteLine("[JARVIS-BLAZOR] First render complete - UI ready for user interaction");
+                System.Diagnostics.Debug.WriteLine("[JARVIS-BLAZOR] First render complete - UI ready for user interaction");
 
-                // Auto-run connection tests on first render
-                await Task.Delay(1000); // Small delay to ensure UI is ready
-                Console.WriteLine("[JARVIS-BLAZOR] Executing RunConnectionTestsAsync()...");
-                await RunConnectionTestsAsync();
-                Console.WriteLine("[JARVIS-BLAZOR] Connection tests completed");
+                // Connection tests removed from auto-run - user must click 'Test' button to validate
+                // This prevents API key errors from appearing immediately on panel open
             }
             await base.OnAfterRenderAsync(firstRender);
         }
@@ -274,6 +312,19 @@ namespace WileyWidget.WinForms.BlazorComponents
             }
             catch (Exception ex)
             {
+                // Check for API key errors and provide helpful guidance
+                var errorMsg = ex.Message.ToLowerInvariant();
+                if (errorMsg.Contains("api key") || errorMsg.Contains("incorrect") || errorMsg.Contains("invalid argument"))
+                {
+                    return "❌ **Grok API Key Error**\n\n" +
+                           "The configured API key is invalid or incorrectly formatted.\n\n" +
+                           "**To fix:**\n" +
+                           "1. Obtain a valid API key from https://console.x.ai\n" +
+                           "2. Set the key in User Secrets or appsettings.json\n" +
+                           "3. Restart the application\n\n" +
+                           $"_Error details: {ex.Message}_";
+                }
+
                 return $"❌ Grok connection failed: {ex.Message}";
             }
         }
@@ -325,6 +376,7 @@ namespace WileyWidget.WinForms.BlazorComponents
             var userMessage = CreateUserMessage(args.Prompt);
             _messages.Add(userMessage);
             UpdatePromptsFromMessages();
+            AutomationState?.NotifyPrompt(args.Prompt);
 
             using var localCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
 
@@ -339,6 +391,8 @@ namespace WileyWidget.WinForms.BlazorComponents
                     {
                         var response = await responseTask;
                         args.Response = response;
+
+                        AutomationState?.NotifyResponse(response);
 
                         var aiMsg = CreateAIMessage(response);
                         _messages.Add(aiMsg);
@@ -490,6 +544,11 @@ namespace WileyWidget.WinForms.BlazorComponents
             {
                 if (msg == null)
                     return;
+
+                if (!string.IsNullOrWhiteSpace(msg.Content))
+                {
+                    AutomationState?.NotifyResponse(msg.Content);
+                }
 
                 // If there's a streaming placeholder, update it; otherwise add a new assistant message
                 if (!string.IsNullOrEmpty(_streamingMessageId))
@@ -1145,8 +1204,8 @@ namespace WileyWidget.WinForms.BlazorComponents
                 };
                 _messages.Add(resultMsg);
                 UpdatePromptsFromMessages();
-
                 await ScrollToBottom();
+                AutomationState?.MarkDiagnosticsCompleted();
             }
             catch (Exception ex)
             {

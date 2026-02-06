@@ -47,7 +47,7 @@ namespace WileyWidget.Services
                     modelId: "grok-beta",
                     apiKey: apiKey,
                     endpoint: new Uri("https://api.x.ai/v1"));
-                
+
                 // Load the anomaly detection plugin locally so this service can use it
                 kernelBuilder.Plugins.AddFromType<Plugins.AnomalyDetectionPlugin>();
 

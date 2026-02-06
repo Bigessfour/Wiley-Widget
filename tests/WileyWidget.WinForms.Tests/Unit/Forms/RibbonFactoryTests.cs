@@ -204,7 +204,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                     "Accounts",
                     (object?)null,
                     "Office2019Colorful",
-                    new System.Action(() => form.ShowPanel<Controls.AccountsPanel>("Municipal Accounts", DockingStyle.Right)),
+                    new System.Action(() => form.ShowPanel<WileyWidget.WinForms.Controls.Panels.AccountsPanel>("Municipal Accounts", DockingStyle.Right)),
                     Mock.Of<ILogger>()
                 })!;
 
@@ -218,7 +218,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 completed.Should().Be(tcs.Task, "Activity logging should be triggered asynchronously");
 
                 // Assert: navigation service invoked
-                panelNavMock.Verify(n => n.ShowPanel<Controls.AccountsPanel>(It.Is<string>(s => s == "Municipal Accounts"), Syncfusion.Windows.Forms.Tools.DockingStyle.Right, It.IsAny<bool>()), Times.Once);
+                panelNavMock.Verify(n => n.ShowPanel<WileyWidget.WinForms.Controls.Panels.AccountsPanel>(It.Is<string>(s => s == "Municipal Accounts"), Syncfusion.Windows.Forms.Tools.DockingStyle.Right, It.IsAny<bool>()), Times.Once);
 
                 // Assert: activity log service called
                 activityMock.Verify(a => a.LogNavigationAsync(It.Is<string>(s => s.Contains("Navigated to")), It.IsAny<string>(), It.IsAny<string>()), Times.AtLeastOnce);

@@ -54,7 +54,7 @@ public sealed record UIConfiguration
     /// <summary>
     /// Whether to auto-show the dashboard on startup.
     /// </summary>
-    public bool AutoShowDashboard { get; init; } = false;
+    public bool AutoShowDashboard { get; init; } = true;
 
     /// <summary>
     /// Default fiscal year for financial views.
@@ -110,7 +110,7 @@ public sealed record UIConfiguration
             ShowStatusBar = configuration.GetValue<bool?>("UI:ShowStatusBar") ?? true,
             DefaultFormSize = new Size(defaultWidth, defaultHeight),
             MinimumFormSize = new Size(minWidth, minHeight),
-            AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? false,
+            AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? true,
             DefaultFiscalYear = configuration.GetValue<int?>("UI:DefaultFiscalYear") ?? DateTime.UtcNow.Year,
             EnableDockingLockDuringLoad = configuration.GetValue<bool?>("UI:EnableDockingLockDuringLoad") ?? true,
             ThemeApplyMaxDepth = configuration.GetValue<int?>("UI:ThemeApplyMaxDepth") ?? 32,

@@ -9,7 +9,7 @@ using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Services.Abstractions;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
@@ -161,9 +161,9 @@ public sealed class MainFormIntegrationTests
             // For deterministic behavior in CI, set up a minimal docking host manually
             var manualDockingManager = new Syncfusion.Windows.Forms.Tools.DockingManager { HostControl = form };
             form.SetPrivateField("_dockingManager", manualDockingManager);
-            form.SetPrivateField("_leftDockPanel", new GradientPanelExt { Name = "LeftDockPanel" });
-            form.SetPrivateField("_rightDockPanel", new GradientPanelExt { Name = "RightDockPanel" });
-            form.SetPrivateField("_centralDocumentPanel", new GradientPanelExt { Name = "CentralDocumentPanel" });
+            form.SetPrivateField("_leftDockPanel", new LegacyGradientPanel { Name = "LeftDockPanel" });
+            form.SetPrivateField("_rightDockPanel", new LegacyGradientPanel { Name = "RightDockPanel" });
+            form.SetPrivateField("_centralDocumentPanel", new LegacyGradientPanel { Name = "CentralDocumentPanel" });
             form.SetPrivateField("_dockingLayoutManager", null);
             form.SetPrivateField("_syncfusionDockingInitialized", true);
 
@@ -219,7 +219,7 @@ public sealed class MainFormIntegrationTests
             Application.DoEvents();  // Process messages after docking init
 
             // Show dashboard panel
-            form.ShowPanel<WileyWidget.WinForms.Controls.DashboardPanel>();
+            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.DashboardPanel>();
             Application.DoEvents();  // Process messages after panel creation
 
             // Verify dashboard is created and visible
@@ -227,7 +227,7 @@ public sealed class MainFormIntegrationTests
             var centralPanel = (Control)form.GetPrivateField("_centralDocumentPanel")!;
 
             // Check if dashboard panel exists in central area
-            var dashboardPanel = FindControl<WileyWidget.WinForms.Controls.DashboardPanel>(centralPanel);
+            var dashboardPanel = FindControl<WileyWidget.WinForms.Controls.Panels.DashboardPanel>(centralPanel);
             dashboardPanel.Should().NotBeNull();
         }
         finally

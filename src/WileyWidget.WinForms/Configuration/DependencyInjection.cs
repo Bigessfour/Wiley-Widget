@@ -32,6 +32,9 @@ using Serilog;
 using Serilog.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -246,6 +249,9 @@ namespace WileyWidget.WinForms.Configuration
 
             // Blazor WebView Services (Required for BlazorWebView controls)
             services.AddWindowsFormsBlazorWebView();
+
+            // Automation hooks for JARVIS UI validation
+            services.AddSingleton<WileyWidget.WinForms.Automation.JarvisAutomationState>();
 
             // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
             // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in Syncfusion.Blazor.SmartComponents
@@ -594,39 +600,39 @@ namespace WileyWidget.WinForms.Configuration
             // Example panels' ViewModels - sometimes omitted during refactor
             services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
             // JARVIS Chat ViewModel for docked chat control
-            services.AddScoped<WileyWidget.WinForms.Controls.JARVISChatViewModel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)
             // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
             // =====================================================================
 
-            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.BudgetPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ReportsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.SettingsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.BudgetOverviewPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ReportsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.SettingsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.RevenueTrendsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.CustomersPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AccountEditPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AnalyticsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.CustomersPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.CsvMappingWizardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 
             // =====================================================================
-            // FORMS (Singleton for MainForm, Transient for child forms)
-            // MainForm: Singleton because it's the application's main window (lives for app lifetime)
-            // Child Forms: Transient because they're created/disposed multiple times
+            // FORMS (Scoped for MainForm per UI scope pattern)
+            // MainForm: Scoped - resolved from UI scope created in Program.Main to ensure proper
+            //           lifetime management and access to scoped dependencies (DbContext, panels, etc.)
+            //           The UI scope lives for the application lifetime but allows proper disposal chain.
+            // Child Forms: Removed - application now uses panel-based navigation (see below)
             // =====================================================================
 
             // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)

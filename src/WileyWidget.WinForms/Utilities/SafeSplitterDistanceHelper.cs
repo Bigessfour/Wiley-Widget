@@ -61,13 +61,47 @@ namespace WileyWidget.WinForms.Utils
                 ? control.Height
                 : control.Width;
 
+            // [CRITICAL FIX] Clamp min-sizes to safe fallback if they're too large for initial container
+            // This prevents ArgumentOutOfRangeException when container starts small
+            int currentDimension = sc.Orientation == Orientation.Horizontal
+                ? control.Height
+                : control.Width;
+
+            int splitterWidth = 0;
+            try { splitterWidth = sc.SplitterWidth; } catch { splitterWidth = 5; }
+
+            int maxSafeMinSize = Math.Max(25, (currentDimension - splitterWidth) / 2 - 10);
+            int safePanel1Min = Math.Min(panel1MinSize, maxSafeMinSize);
+            int safePanel2Min = Math.Min(panel2MinSize, maxSafeMinSize);
+
+            if (safePanel1Min != panel1MinSize || safePanel2Min != panel2MinSize)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SafeSplitterDistanceHelper] Clamped min sizes: Panel1 {panel1MinSize}->{safePanel1Min}, " +
+                    $"Panel2 {panel2MinSize}->{safePanel2Min} (container={currentDimension}px, orientation={sc.Orientation})");
+            }
+
+            // Apply safe values immediately to prevent validation exceptions
+            try
+            {
+                sc.Panel1MinSize = safePanel1Min;
+                sc.Panel2MinSize = safePanel2Min;
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SafeSplitterDistanceHelper] Initial safe values set: Panel1MinSize={safePanel1Min}, Panel2MinSize={safePanel2Min}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[SafeSplitterDistanceHelper] Failed to set initial safe values: {ex.Message}");
+                return; // Bail out if container in invalid state
+            }
+
             // Use SizeChanged to defer initialization until control has real dimensions
             control.SizeChanged += (s, e) =>
             {
                 if (!initialized)
                 {
                     // Calculate minimum dimension needed
-                    int requiredDimension = panel1MinSize + panel2MinSize + sc.SplitterWidth;
+                    int requiredDimension = safePanel1Min + safePanel2Min + splitterWidth;
                     minDimension = sc.Orientation == Orientation.Horizontal
                         ? control.Height
                         : control.Width;
@@ -78,12 +112,21 @@ namespace WileyWidget.WinForms.Utils
                         initialized = true;
                         try
                         {
-                            sc.Panel1MinSize = panel1MinSize;
-                            sc.Panel2MinSize = panel2MinSize;
+                            // Use the original requested sizes now that we have space
+                            int finalPanel1Min = Math.Min(panel1MinSize, Math.Max(25, minDimension - panel2MinSize - splitterWidth - 10));
+                            int finalPanel2Min = Math.Min(panel2MinSize, Math.Max(25, minDimension - panel1MinSize - splitterWidth - 10));
+
+                            sc.Panel1MinSize = finalPanel1Min;
+                            sc.Panel2MinSize = finalPanel2Min;
                             TrySetSplitterDistance(sc, desiredDistance);
+
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[SafeSplitterDistanceHelper] SplitContainer configured: Orientation={sc.Orientation}, " +
+                                $"Panel1Min={finalPanel1Min}, Panel2Min={finalPanel2Min}, Distance={sc.SplitterDistance}, Dimension={minDimension}");
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            System.Diagnostics.Debug.WriteLine($"[SafeSplitterDistanceHelper] Configuration failed: {ex.Message}");
                             // Silently ignore - layout may still be adjusting
                         }
                     }
@@ -159,7 +202,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Attempts to set SplitterDistance with automatic bounds checking.
         /// Returns true if successful, false if the desired distance is out of bounds.
-        /// 
+        ///
         /// CRITICAL VALIDATIONS:
         /// 1. Control must not be null or disposed
         /// 2. Control must have a created window handle (IsHandleCreated)
@@ -226,9 +269,10 @@ namespace WileyWidget.WinForms.Utils
                 // Underlying control rejected the value (likely due to layout race); caller can retry later
                 return false;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Any other exception during property reads or sets - fail gracefully
+                Console.WriteLine($"Container: {splitContainer.Width}x{splitContainer.Height} (Min1: {splitContainer.Panel1MinSize}, Min2: {splitContainer.Panel2MinSize}), SplitWidth: {splitContainer.SplitterWidth}, Tried: {desiredDistance}, Error: {ex.Message}");
                 return false;
             }
         }
@@ -394,8 +438,68 @@ namespace WileyWidget.WinForms.Utils
                         ? control.Height
                         : control.Width;
 
+                    // [CRITICAL FIX] Clamp min sizes to prevent exceeding container dimensions
+                    int splWidth = 0;
+                    try { splWidth = sc.SplitterWidth; } catch { splWidth = 5; }
+
+                    // Calculate available space for both panels
+                    int availableForPanels = Math.Max(0, currentDimension - splWidth);
+
+                    // FIXED LOGIC: Ensure sum of min sizes never exceeds available space
+                    int safePanel1 = Math.Min(panel1MinSize, availableForPanels - Math.Max(1, panel2MinSize));
+                    int safePanel2 = Math.Min(panel2MinSize, availableForPanels - Math.Max(1, panel1MinSize));
+
+                    // If requested sizes exceed available space, scale them down proportionally
+                    int requestedTotal = panel1MinSize + panel2MinSize;
+                    if (requestedTotal > availableForPanels)
+                    {
+                        // Scale down proportionally while maintaining minimum viable sizes
+                        const int absoluteMin = 25; // Absolute minimum for any panel
+
+                        if (availableForPanels < (absoluteMin * 2))
+                        {
+                            // Not enough space for both panels - skip initialization
+                            return;
+                        }
+
+                        // Calculate proportional sizes and CLAMP to available space
+                        double scale = (double)(availableForPanels - absoluteMin * 2) / (requestedTotal - absoluteMin * 2);
+                        safePanel1 = Math.Min(Math.Max(absoluteMin, (int)(panel1MinSize * scale)), availableForPanels / 2);
+                        safePanel2 = Math.Min(availableForPanels - safePanel1, Math.Max(absoluteMin, (int)(panel2MinSize * scale)));
+
+                        // Final defensive clamp: ensure safePanel2 never exceeds remaining space
+                        if (safePanel2 > availableForPanels - safePanel1)
+                        {
+                            safePanel2 = Math.Max(absoluteMin, availableForPanels - safePanel1);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[SafeSplitterDistanceHelper] Scaled min sizes: Panel1 {panel1MinSize}→{safePanel1}, " +
+                            $"Panel2 {panel2MinSize}→{safePanel2} (Available={availableForPanels}px)");
+                    }
+                    else
+                    {
+                        // Clamp to absolute maximums
+                        safePanel1 = Math.Min(panel1MinSize, availableForPanels - 25);
+                        safePanel2 = Math.Min(panel2MinSize, availableForPanels - safePanel1);
+                    }
+
                     // Calculate minimum required dimension
-                    minRequiredDimension = panel1MinSize + panel2MinSize + sc.SplitterWidth;
+                    int minDistance = Math.Max(0, safePanel1);
+                    int maxDistance = currentDimension - Math.Max(0, safePanel2) - splWidth;
+                    if (maxDistance < minDistance)
+                    {
+                        return;
+                    }
+
+                    int safeDistance = EnforceBounds(desiredDistance, minDistance, maxDistance);
+                    int panel1Size = Math.Max(0, safeDistance);
+                    int panel2Size = Math.Max(0, currentDimension - safeDistance - splWidth);
+
+                    safePanel1 = Math.Min(Math.Max(0, safePanel1), panel1Size);
+                    safePanel2 = Math.Min(Math.Max(0, safePanel2), panel2Size);
+
+                    minRequiredDimension = safePanel1 + safePanel2 + splWidth;
 
                     // Only initialize if we have enough space
                     if (currentDimension >= minRequiredDimension)
@@ -403,14 +507,15 @@ namespace WileyWidget.WinForms.Utils
                         initialized = true;
                         try
                         {
-                            // Set min sizes safely
-                            if (panel1MinSize > 0)
-                                sc.Panel1MinSize = panel1MinSize;
-                            if (panel2MinSize > 0)
-                                sc.Panel2MinSize = panel2MinSize;
+                            // Set min sizes safely - order matters!
+                            // Set Panel1MinSize first, then Panel2MinSize
+                            if (safePanel1 > 0)
+                                sc.Panel1MinSize = safePanel1;
+                            if (safePanel2 > 0)
+                                sc.Panel2MinSize = safePanel2;
 
                             // Set splitter distance with bounds enforcement
-                            TrySetSplitterDistance(sc, desiredDistance);
+                            TrySetSplitterDistance(sc, safeDistance);
 
                             // Log initialization for debugging
                             System.Diagnostics.Debug.WriteLine(
@@ -531,6 +636,91 @@ namespace WileyWidget.WinForms.Utils
                 return false;
 
             return minValid <= maxValid;
+        }
+
+        /// <summary>
+        /// Clamps the SplitContainer minimum sizes so they fit inside the current client dimension plus a safety buffer.
+        /// Panel2MinSize is reduced first and Panel1MinSize only if the overflow remains.
+        /// </summary>
+        /// <param name="splitContainer">The SplitContainer or SplitContainerAdv that should be adjusted.</param>
+        /// <param name="fallbackMin">Minimum pixel size to enforce for each panel.</param>
+        /// <param name="safetyBuffer">Pixels reserved for the splitter and breathing room.</param>
+        /// <returns>True if any panel minimum was lowered.</returns>
+        public static bool ClampMinSizesToAvailableSpace(dynamic splitContainer, int fallbackMin = 25, int safetyBuffer = 40)
+        {
+            if (splitContainer == null || splitContainer.IsDisposed || fallbackMin <= 0)
+                return false;
+
+            try
+            {
+                int dimension = splitContainer.Orientation == Orientation.Horizontal
+                    ? splitContainer.Height
+                    : splitContainer.Width;
+                int splitterWidth = Math.Max(splitContainer.SplitterWidth ?? 1, 1);
+                int available = Math.Max(0, dimension - splitterWidth - safetyBuffer);
+
+                int panel1Min = splitContainer.Panel1MinSize ?? 0;
+                int panel2Min = splitContainer.Panel2MinSize ?? 0;
+                int maxCombined = Math.Max(available, fallbackMin * 2);
+                int currentSum = panel1Min + panel2Min;
+
+                if (currentSum <= maxCombined)
+                    return false;
+
+                int excess = currentSum - maxCombined;
+                int originalPanel1 = panel1Min;
+                int originalPanel2 = panel2Min;
+
+                if (panel2Min > fallbackMin)
+                {
+                    int reduce = Math.Min(panel2Min - fallbackMin, excess);
+                    panel2Min -= reduce;
+                    excess -= reduce;
+                }
+
+                if (excess > 0 && panel1Min > fallbackMin)
+                {
+                    int reduce = Math.Min(panel1Min - fallbackMin, excess);
+                    panel1Min -= reduce;
+                    excess -= reduce;
+                }
+
+                if (excess > 0)
+                {
+                    panel2Min = Math.Max(fallbackMin, panel2Min - excess);
+                    excess = 0;
+                }
+
+                panel1Min = Math.Max(fallbackMin, panel1Min);
+                panel2Min = Math.Max(fallbackMin, panel2Min);
+
+                bool changed = false;
+                if (panel1Min != originalPanel1)
+                {
+                    splitContainer.Panel1MinSize = panel1Min;
+                    changed = true;
+                }
+
+                if (panel2Min != originalPanel2)
+                {
+                    splitContainer.Panel2MinSize = panel2Min;
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[SafeSplitterDistanceHelper] Clamped min sizes: Panel1 {originalPanel1}px → {panel1Min}px, " +
+                        $"Panel2 {originalPanel2}px → {panel2Min}px (Dimension={dimension}px, Available={available}px)");
+                    return true;
+                }
+            }
+            catch
+            {
+                // Keep the helper failure-safe
+            }
+
+            return false;
         }
 
         /// <summary>

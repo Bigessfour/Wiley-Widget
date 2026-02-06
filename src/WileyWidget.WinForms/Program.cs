@@ -127,6 +127,12 @@ namespace WileyWidget.WinForms
             Log.Information("Program.Main: Starting WileyWidget application");
             Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
 
+            // Register Syncfusion license as early as possible — before any Syncfusion controls are instantiated
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Registering Syncfusion license (early)...");
+            Log.Information("Program.Main: Registering Syncfusion license (early - before splash)");
+            RegisterSyncfusionLicense();
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Syncfusion license registered (early)");
+
             StartSplash("Starting Wiley Widget...");
 
             System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
@@ -136,6 +142,17 @@ namespace WileyWidget.WinForms
             // Wire global exception handlers for unobserved async tasks and UI thread errors
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
+                var ex = e.Exception.GetBaseException();
+
+                // ✅ FIX (P3): Suppress BlockingCollection cancellation during shutdown (expected behavior)
+                if (ex is OperationCanceledException &&
+                    ex.StackTrace?.Contains("BlockingCollection", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    Log.Debug("Background task cancelled during shutdown (expected): {Message}", ex.Message);
+                    e.SetObserved();
+                    return;
+                }
+
                 Log.Error(e.Exception, "Unobserved task exception (fire-and-forget task raised error)");
                 e.SetObserved(); // Suppress crash, log only
             };
@@ -204,6 +221,9 @@ namespace WileyWidget.WinForms
                 }
                 catch { }
 
+                // Syncfusion license was registered earlier (before splash) to ensure
+                // license is applied before any Syncfusion controls are instantiated.
+
                 // Phase 1: Theming
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Initializing theme...");
                 Log.Information("Program.Main: Starting theme initialization");
@@ -248,7 +268,11 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application initialization with configured startup timeout...");
                 Log.Information("Program.Main: Starting application initialization with timeout");
                 ReportSplash(0.7, "Initializing services...");
+                // CRITICAL: Use GetAwaiter().GetResult() to preserve STA thread mode for WinForms
+                // async Task Main breaks STA context after await, causing drag-drop registration failures
+                // See: errors-20260205.log - ThreadStateException during MainForm.OnHandleCreated
                 ExecuteStartupWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
+
                 Log.Information("Program.Main: Application initialization completed");
                 ReportSplash(0.85, "Starting application...");
 
@@ -282,6 +306,16 @@ namespace WileyWidget.WinForms
                     depth++;
                 }
                 Log.Fatal(ex, "Application start-up failed");
+
+                // [MODIFIED] Ensure the user sees the fatal crash reason before exit
+                try
+                {
+                    var coreError = ex.GetBaseException();
+                    var message = $"Wiley Widget failed to start.\n\nType: {ex.GetType().Name}\nMessage: {ex.Message}\n\nRoot Cause: {coreError.Message}\n\nCheck logs for full stack trace.";
+                    MessageBox.Show(message, "Fatal Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch { /* Suppress MessageBox failure in crash path */ }
+
                 // Re-throw so application exits with visible error
                 throw;
             }
@@ -391,31 +425,51 @@ namespace WileyWidget.WinForms
                 themeName = "Default";
             }
 
-            // Load all required theme assemblies for Office2019Colorful and fallback themes
+            // Load Office2019Theme assembly (required for Office2019Colorful and related themes)
+            // Per Syncfusion best practices: Load assembly early, apply theme to individual forms
+            // Note: ApplicationVisualTheme is optional - theme cascade from form.SetVisualStyle is sufficient
             try
             {
-                // Primary theme: Office2019 (required for Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray)
                 AppThemeColors.EnsureThemeAssemblyLoaded();
-                Log.Information("✅ Loaded Office2019Theme assembly successfully - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray");
-                Log.Debug("Debug test log from Program.cs");
+                Log.Information("✅ Office2019Theme assembly loaded - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray, Office2019Dark");
+
+                // Optional: Set global theme property (not required per official demos, but useful for dynamic control creation)
+                SfSkinManager.ApplicationVisualTheme = themeName;
+                Log.Information("Syncfusion theme initialized: {Theme}", themeName);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - falling back to default theme");
-                // Fallback: continue without theme assembly, UI will use default rendering
-                themeName = "Default";
+                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - UI will use default rendering");
+                // Non-fatal: continue without theme, controls will render with default styling
+            }
+        }
+
+        /// <summary>
+        /// Registers Syncfusion license from environment variable.
+        /// MUST be called BEFORE any Syncfusion controls are instantiated or theme assemblies are loaded.
+        /// </summary>
+        static void RegisterSyncfusionLicense()
+        {
+            var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+            if (string.IsNullOrWhiteSpace(licenseKey))
+            {
+                Log.Warning("⚠️ SYNCFUSION_LICENSE_KEY environment variable not set. Application will show trial/evaluation popup.");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Syncfusion license key missing - running in evaluation mode");
+                // Do not throw - missing license just shows trial popup, not a fatal error
+                return;
             }
 
-            // Set application-level theme
             try
             {
-                SfSkinManager.ApplicationVisualTheme = themeName;
-                Log.Information("Syncfusion theme initialized: {Theme} (Office2019Theme assembly loaded and ready)", themeName);
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                Log.Information("✅ Syncfusion license registered successfully");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Syncfusion license registered");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to set ApplicationVisualTheme - falling back to Default theme");
-                SfSkinManager.ApplicationVisualTheme = "Default";
+                Log.Error(ex, "❌ Failed to register Syncfusion license - application will show trial popup");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ❌ License registration failed: {ex.Message}");
+                // Do not throw - license failure is non-fatal, just shows trial watermark/popup
             }
         }
 

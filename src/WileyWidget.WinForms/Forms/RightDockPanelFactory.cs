@@ -8,9 +8,12 @@ using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -48,7 +51,7 @@ public static class RightDockPanelFactory
     /// Theme cascade applied to both panels via SfSkinManager (Validation #4).
     /// </remarks>
     public static (
-        GradientPanelExt rightDockPanel,
+        LegacyGradientPanel rightDockPanel,
         ActivityLogPanel activityLogPanel,
         RightPanelMode initialMode
     ) CreateRightDockPanel(
@@ -67,7 +70,7 @@ public static class RightDockPanelFactory
         try
         {
             // Create container panel
-            var rightDockPanel = new GradientPanelExt
+            var rightDockPanel = new LegacyGradientPanel
             {
                 Dock = DockStyle.Right,
                 Width = 350,
@@ -141,7 +144,7 @@ public static class RightDockPanelFactory
     /// <param name="targetMode">Target panel mode</param>
     /// <param name="logger">Logger instance</param>
     public static void SwitchRightPanelContent(
-        GradientPanelExt rightDockPanel,
+        LegacyGradientPanel rightDockPanel,
         RightPanelMode targetMode,
         ILogger? logger)
     {
@@ -271,7 +274,7 @@ public static class RightDockPanelFactory
     /// </summary>
     /// <param name="rightDockPanel">Right dock panel container</param>
     /// <returns>Current RightPanelMode</returns>
-    public static RightPanelMode GetCurrentMode(GradientPanelExt rightDockPanel)
+    public static RightPanelMode GetCurrentMode(LegacyGradientPanel rightDockPanel)
     {
         if (rightDockPanel == null) throw new ArgumentNullException(nameof(rightDockPanel));
         return (RightPanelMode?)rightDockPanel.Tag ?? RightPanelMode.ActivityLog;
@@ -282,7 +285,7 @@ public static class RightDockPanelFactory
     /// </summary>
     /// <param name="rightDockPanel">Right dock panel container</param>
     /// <param name="mode">Mode to set</param>
-    public static void SetMode(GradientPanelExt rightDockPanel, RightPanelMode mode)
+    public static void SetMode(LegacyGradientPanel rightDockPanel, RightPanelMode mode)
     {
         if (rightDockPanel == null) throw new ArgumentNullException(nameof(rightDockPanel));
         rightDockPanel.Tag = mode;

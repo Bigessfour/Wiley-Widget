@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGridConverter;
 using Syncfusion.Data;
+using Syncfusion.Windows.Forms.Tools;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Extensions;
 
@@ -30,20 +31,59 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="panelName">Name identifier for the panel</param>
         public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
         {
+            ShowPanel<TPanel>(panelName, DockingStyle.Right);
+        }
+
+        /// <summary>
+        /// Shows a panel of specified type with the given name and docking style.
+        /// Delegates to PanelNavigationService for centralized panel management.
+        /// Enhanced with diagnostic logging for troubleshooting navigation failures.
+        /// </summary>
+        /// <typeparam name="TPanel">Type of panel control to show (must derive from UserControl)</typeparam>
+        /// <param name="panelName">Name identifier for the panel</param>
+        /// <param name="dockingStyle">Docking style for the panel</param>
+        public void ShowPanel<TPanel>(string panelName, DockingStyle dockingStyle) where TPanel : UserControl
+        {
             try
             {
-                if (string.IsNullOrWhiteSpace(panelName))
+                _logger?.LogDebug("[NAVIGATION] ShowPanel<{PanelType}> requested: Name={PanelName}, DockingStyle={DockingStyle}",
+                    typeof(TPanel).Name, panelName, dockingStyle);
+
+                if (_panelNavigator == null)
                 {
-                    _logger?.LogWarning("ShowPanel called with null or empty panelName");
+                    _logger?.LogError("[NAVIGATION] PanelNavigationService is null - cannot show panel {PanelName}", panelName);
+                    MessageBox.Show(
+                        $"Navigation service not initialized. Cannot open {panelName}.",
+                        "Navigation Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                     return;
                 }
 
-                // Delegate to PanelNavigationService for consistent panel management
-                _panelNavigator?.ShowPanel<TPanel>(panelName);
+                // Verify panel type is registered in DI container
+                var panel = _serviceProvider?.GetService(typeof(TPanel));
+                if (panel == null)
+                {
+                    _logger?.LogError("[NAVIGATION] Panel type {PanelType} not registered in DI container", typeof(TPanel).Name);
+                    MessageBox.Show(
+                        $"Panel type {typeof(TPanel).Name} is not available. Please check application configuration.",
+                        "Navigation Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+
+                _panelNavigator.ShowPanel<TPanel>(panelName, dockingStyle);
+                _logger?.LogInformation("[NAVIGATION] Successfully navigated to {PanelType}: {PanelName}", typeof(TPanel).Name, panelName);
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "ShowPanel<{PanelType}>({PanelName}) failed", typeof(TPanel).Name, panelName);
+                _logger?.LogError(ex, "[NAVIGATION] Failed to show panel {PanelType}: {PanelName}", typeof(TPanel).Name, panelName);
+                MessageBox.Show(
+                    $"Failed to open {panelName}: {ex.Message}",
+                    "Navigation Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
             }
         }
 
@@ -188,7 +228,7 @@ namespace WileyWidget.WinForms.Forms
         /// Sorts the active grid by its first sortable column.
         /// </summary>
         /// <param name="descending">If true, sorts in descending order; otherwise ascending</param>
-        private void SortActiveGridByFirstSortableColumn(bool descending)
+        public void SortActiveGridByFirstSortableColumn(bool descending)
         {
             try
             {

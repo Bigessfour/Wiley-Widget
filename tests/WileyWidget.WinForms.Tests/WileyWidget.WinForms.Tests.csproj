@@ -23,6 +23,8 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Syncfusion.Tools.Windows" />
+    <PackageReference Include="FlaUI.Core" />
+    <PackageReference Include="FlaUI.UIA3" />
   </ItemGroup>
 
   <ItemGroup>

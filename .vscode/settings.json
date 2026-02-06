@@ -354,6 +354,11 @@
       "allowedModels": [
         "copilot/auto"
       ]
+    },
+    "Wiley-Widget/.vscode/mcp.json: wileywidget-ui-mcp": {
+      "allowedModels": [
+        "copilot/grok-code-fast-1"
+      ]
     }
   },
   "trunk.addToolsToPath": true

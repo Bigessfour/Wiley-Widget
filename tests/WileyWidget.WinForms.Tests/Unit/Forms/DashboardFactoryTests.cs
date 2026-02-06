@@ -16,6 +16,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
@@ -92,7 +93,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             // Assert
             panel.Should().BeOfType<FlowLayoutPanel>();
-            var cards = panel.Controls.OfType<GradientPanelExt>().ToList();
+            var cards = panel.Controls.OfType<LegacyGradientPanel>().ToList();
             cards.Count.Should().Be(5, "dashboard should contain five navigation cards");
 
             var accountsCard = cards.FirstOrDefault(c => c.Name.Contains("Accounts"));
@@ -116,7 +117,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
-            var accountsCard = panel.Controls.OfType<GradientPanelExt>().First(c => c.Name.Contains("Accounts"));
+            var accountsCard = panel.Controls.OfType<LegacyGradientPanel>().First(c => c.Name.Contains("Accounts"));
 
             // Act: simulate click by invoking protected OnClick via reflection
             var onClick = typeof(Control).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -140,7 +141,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
 
-            var accountsCard = panel.Controls.OfType<GradientPanelExt>().First(c => c.Name.Contains("Accounts"));
+            var accountsCard = panel.Controls.OfType<LegacyGradientPanel>().First(c => c.Name.Contains("Accounts"));
             var desc = accountsCard.Controls.OfType<Label>().First(l => l.Name.EndsWith("_Desc"));
 
             // DashboardViewModel.AccountsSummary should appear in description
@@ -160,7 +161,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
-            var accountsCard = panel.Controls.OfType<GradientPanelExt>().First(c => c.Name.Contains("Accounts"));
+            var accountsCard = panel.Controls.OfType<LegacyGradientPanel>().First(c => c.Name.Contains("Accounts"));
 
             accountsCard.AccessibleName.Should().Be("Dashboard Card: Accounts");
             accountsCard.AccessibleRole.Should().Be(AccessibleRole.Grouping);

@@ -42,12 +42,13 @@ public static class DockingManagerExtensions
 
         try
         {
-            // Unsubscribe common events to prevent leak/crash during disposal
-            // Note: Use reflection or concrete names if known
+            // Dispose the DockingManager
+            // Child panels will be disposed by their own lifecycle management
             dockingManager.Dispose();
         }
         catch (ObjectDisposedException) { /* Already disposed */ }
-        catch (Exception) { /* Ignore disposal errors */ }
+        catch (InvalidOperationException) { /* Dispose during CreateHandle - ignore */ }
+        catch (Exception) { /* Ignore other disposal errors */ }
     }
 
     /// <summary>

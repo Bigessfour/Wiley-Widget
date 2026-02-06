@@ -6,8 +6,12 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Tools;
 using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
+
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Analytics;
 
@@ -23,7 +27,7 @@ public partial class TrendsTabControl : UserControl
     private ChartControl? _trendsChart;
     private ChartControl? _forecastChart;
     private ChartControl? _departmentChart;
-    private GradientPanelExt? _controlsPanel;
+    private LegacyGradientPanel? _controlsPanel;
     private LoadingOverlay? _loadingOverlay;
 
     // Control elements
@@ -35,6 +39,15 @@ public partial class TrendsTabControl : UserControl
     public TrendsTabControl(TrendsTabViewModel? viewModel)
     {
         _viewModel = viewModel;
+
+        // Apply Syncfusion theme
+        try
+        {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            SfSkinManager.SetVisualStyle(this, theme);
+        }
+        catch { /* Theme application is best-effort */ }
+
         InitializeControls();
         if (_viewModel != null)
         {
@@ -77,7 +90,7 @@ public partial class TrendsTabControl : UserControl
 
     private void InitializeControlsPanel()
     {
-        _controlsPanel = new GradientPanelExt
+        _controlsPanel = new LegacyGradientPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10)

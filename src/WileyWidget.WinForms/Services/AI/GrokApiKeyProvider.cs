@@ -3,40 +3,13 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.UserSecrets;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.Services.AI
 {
     /// <summary>
-    /// Provides centralized, production-ready API key management for xAI Grok.
-    /// Implements Microsoft-recommended configuration hierarchy:
-    /// 1. User Secrets (highest priority - safe for development)
-    /// 2. Environment Variables (process scope - CI/CD friendly)
-    /// 3. appsettings.json (lowest priority - configuration-based)
-    /// 4. Validates keys and tracks validation state at startup.
-    /// </summary>
-    public interface IGrokApiKeyProvider
-    {
-        /// <summary>Gets the currently configured API key (safe for logging: returns masked value).</summary>
-        string? MaskedApiKey { get; }
-
-        /// <summary>Gets the full API key (private - only for API calls).</summary>
-        string? ApiKey { get; }
-
-        /// <summary>Indicates whether the API key has been validated at startup.</summary>
-        bool IsValidated { get; }
-
-        /// <summary>Indicates whether the API key is from user secrets (secure source).</summary>
-        bool IsFromUserSecrets { get; }
-
-        /// <summary>Validates the API key by making a test request to xAI Grok endpoint.</summary>
-        Task<(bool Success, string Message)> ValidateAsync();
-
-        /// <summary>Gets detailed configuration source for diagnostics.</summary>
-        string GetConfigurationSource();
-    }
-
-    /// <summary>
     /// Production implementation of IGrokApiKeyProvider with full configuration hierarchy support.
+    /// See IGrokApiKeyProvider (WileyWidget.Services.Abstractions) for interface documentation.
     /// </summary>
     public sealed class GrokApiKeyProvider : IGrokApiKeyProvider
     {
@@ -69,18 +42,22 @@ namespace WileyWidget.WinForms.Services.AI
 
         /// <summary>
         /// Initialize API key following Microsoft's configuration hierarchy:
-        /// User Secrets > Environment Variables > appsettings.json
+        /// User Secrets > Environment Variables (XAI__ApiKey per Microsoft convention) > appsettings.json
+        /// Note: XAI_API_KEY (single underscore) is still supported for backward compatibility.
+        ///
+        /// See: https://learn.microsoft.com/aspnet/core/fundamentals/configuration/#environment-variables
+        /// Environment variables use __ (double underscore) which maps to : (colon) in hierarchical configuration.
         /// </summary>
         private void InitializeApiKey()
         {
             _logger?.LogInformation("[Grok] Initializing API key from configuration hierarchy...");
 
             // Configuration key candidates (in order of priority)
+            // These work through the IConfiguration system (user secrets, appsettings.json, environment variables)
             var candidates = new[]
             {
-                ("XAI:ApiKey", "configuration (XAI:ApiKey)"),
-                ("Grok:ApiKey", "configuration (Grok:ApiKey)"),
-                ("XAI_API_KEY", "configuration (XAI_API_KEY)"),
+                ("XAI:ApiKey", "configuration: XAI:ApiKey (user-secrets or XAI__ApiKey env var)"),
+                ("Grok:ApiKey", "configuration: Grok:ApiKey (legacy)"),
             };
 
             // 1. Try User Secrets first (highest priority, secure)
@@ -101,12 +78,14 @@ namespace WileyWidget.WinForms.Services.AI
                 }
             }
 
-            // 2. Try environment variables (process scope, CI/CD friendly)
-            var envKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Process);
-            if (!string.IsNullOrWhiteSpace(envKey))
+            // 2. Try environment variables with proper hierarchical naming (XAI__ApiKey)
+            // According to Microsoft docs, __ (double underscore) maps to : (colon) in configuration
+            // Try all scopes: Process > User > Machine
+            var hierarchicalEnvKey = Environment.GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.Process);
+            if (!string.IsNullOrWhiteSpace(hierarchicalEnvKey))
             {
-                _apiKey = envKey.Trim().Trim('"');
-                _configurationSource = "environment variable (XAI_API_KEY - process scope)";
+                _apiKey = hierarchicalEnvKey.Trim().Trim('"');
+                _configurationSource = "environment variable (XAI__ApiKey - process scope) [RECOMMENDED for env vars]";
                 _isFromUserSecrets = false;
                 _logger?.LogInformation(
                     "[Grok] API key loaded from {Source} (length: {Length})",
@@ -115,15 +94,71 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            // 3. Try user-scoped environment variable (legacy support)
-            var userEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.User);
-            if (!string.IsNullOrWhiteSpace(userEnvKey))
+            hierarchicalEnvKey = Environment.GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.User);
+            if (!string.IsNullOrWhiteSpace(hierarchicalEnvKey))
             {
-                _apiKey = userEnvKey.Trim().Trim('"');
-                _configurationSource = "environment variable (XAI_API_KEY - user scope)";
+                _apiKey = hierarchicalEnvKey.Trim().Trim('"');
+                _configurationSource = "environment variable (XAI__ApiKey - user scope) [RECOMMENDED for env vars]";
+                _isFromUserSecrets = false;
+                _logger?.LogInformation(
+                    "[Grok] API key loaded from {Source} (length: {Length})",
+                    _configurationSource,
+                    _apiKey.Length);
+                return;
+            }
+
+            hierarchicalEnvKey = Environment.GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.Machine);
+            if (!string.IsNullOrWhiteSpace(hierarchicalEnvKey))
+            {
+                _apiKey = hierarchicalEnvKey.Trim().Trim('"');
+                _configurationSource = "environment variable (XAI__ApiKey - machine scope) [RECOMMENDED for env vars]";
+                _isFromUserSecrets = false;
+                _logger?.LogInformation(
+                    "[Grok] API key loaded from {Source} (length: {Length})",
+                    _configurationSource,
+                    _apiKey.Length);
+                return;
+            }
+
+            // 3. LEGACY: Try XAI_API_KEY (single underscore) - still supported for backward compatibility
+            var legacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Process);
+            if (!string.IsNullOrWhiteSpace(legacyEnvKey))
+            {
+                _apiKey = legacyEnvKey.Trim().Trim('"');
+                _configurationSource = "environment variable (XAI_API_KEY - process scope) [LEGACY - use XAI__ApiKey instead]";
                 _isFromUserSecrets = false;
                 _logger?.LogWarning(
-                    "[Grok] API key loaded from user-scoped environment variable (prefer user.secrets for development). Length: {Length}",
+                    "[Grok] API key loaded from LEGACY {Source} (length: {Length}). " +
+                    "Prefer 'XAI__ApiKey' environment variable (double underscore) per Microsoft configuration conventions.",
+                    _configurationSource,
+                    _apiKey.Length);
+                return;
+            }
+
+            legacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.User);
+            if (!string.IsNullOrWhiteSpace(legacyEnvKey))
+            {
+                _apiKey = legacyEnvKey.Trim().Trim('"');
+                _configurationSource = "environment variable (XAI_API_KEY - user scope) [LEGACY - use XAI__ApiKey instead]";
+                _isFromUserSecrets = false;
+                _logger?.LogWarning(
+                    "[Grok] API key loaded from LEGACY {Source} (length: {Length}). " +
+                    "Prefer 'XAI__ApiKey' environment variable (double underscore) per Microsoft configuration conventions.",
+                    _configurationSource,
+                    _apiKey.Length);
+                return;
+            }
+
+            legacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Machine);
+            if (!string.IsNullOrWhiteSpace(legacyEnvKey))
+            {
+                _apiKey = legacyEnvKey.Trim().Trim('"');
+                _configurationSource = "environment variable (XAI_API_KEY - machine scope) [LEGACY - use XAI__ApiKey instead]";
+                _isFromUserSecrets = false;
+                _logger?.LogWarning(
+                    "[Grok] API key loaded from LEGACY {Source} (length: {Length}). " +
+                    "Prefer 'XAI__ApiKey' environment variable (double underscore) per Microsoft configuration conventions.",
+                    _configurationSource,
                     _apiKey.Length);
                 return;
             }
@@ -131,9 +166,12 @@ namespace WileyWidget.WinForms.Services.AI
             // 4. API key not found
             _configurationSource = "NOT CONFIGURED";
             _logger?.LogWarning(
-                "[Grok] No API key found in user secrets, environment variables, or configuration. " +
+                "[Grok] No API key found in user secrets or environment variables. " +
                 "JARVIS Chat will not function. " +
-                "To configure, run: dotnet user-secrets set XAI:ApiKey <your-key>");
+                "Configure via one of these methods:\n" +
+                "  1. User Secrets: dotnet user-secrets set XAI:ApiKey <your-key>\n" +
+                "  2. Environment Variable (recommended): setx XAI__ApiKey <your-key> (double underscore, per Microsoft conventions)\n" +
+                "  3. Environment Variable (legacy): setx XAI_API_KEY <your-key> (single underscore, deprecated)");
         }
 
         /// <summary>
@@ -165,11 +203,12 @@ namespace WileyWidget.WinForms.Services.AI
         }
 
         /// <summary>
-        /// Validate API key by making a test request to xAI Grok /models endpoint.
+        /// Validate API key by making a minimal test request to xAI Grok /v1/chat/completions endpoint.
         /// This verifies that:
         /// 1. The API key is syntactically valid (not expired/revoked)
         /// 2. The endpoint is reachable
         /// 3. Authentication succeeds
+        /// Note: xAI doesn't provide a /models endpoint like OpenAI, so we make a minimal chat completion request.
         /// </summary>
         public async Task<(bool Success, string Message)> ValidateAsync()
         {
@@ -182,15 +221,29 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                _logger?.LogInformation("[Grok] Validating API key via /models endpoint...");
+                _logger?.LogInformation("[Grok] Validating API key via minimal test request to /v1/chat/completions...");
 
                 var httpClient = _httpClientFactory?.CreateClient("GrokClient") ?? new HttpClient();
-                var endpoint = new Uri(GetBaseEndpoint(), "models");
+                var endpoint = new Uri(GetBaseEndpoint(), "chat/completions");
 
-                using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                // Create minimal test request payload
+                var testPayload = new
+                {
+                    model = "grok-beta",
+                    messages = new[]
+                    {
+                        new { role = "user", content = "test" }
+                    },
+                    max_tokens = 1,
+                    stream = false
+                };
+
+                var jsonContent = System.Text.Json.JsonSerializer.Serialize(testPayload);
+                using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+                request.Content = new System.Net.Http.StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
-                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
                 using var response = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
 
                 if (response.IsSuccessStatusCode)
@@ -204,18 +257,18 @@ namespace WileyWidget.WinForms.Services.AI
                 var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 var errorMsg = response.StatusCode switch
                 {
-                    System.Net.HttpStatusCode.Unauthorized => "❌ API key is invalid or expired. Update user.secrets with a valid key.",
-                    System.Net.HttpStatusCode.Forbidden => "❌ API key is valid but lacks required permissions.",
-                    System.Net.HttpStatusCode.NotFound => "❌ xAI endpoint not found. Check configuration.",
-                    _ => $"❌ API validation failed: HTTP {(int)response.StatusCode}"
+                    System.Net.HttpStatusCode.Unauthorized => $"❌ API key is invalid or expired. Update user.secrets with a valid key. Response: {body}",
+                    System.Net.HttpStatusCode.Forbidden => $"❌ API key is valid but lacks required permissions. Response: {body}",
+                    System.Net.HttpStatusCode.BadRequest => $"❌ API validation failed: Bad Request. This may indicate an invalid API key format. Response: {body}",
+                    _ => $"❌ API validation failed: HTTP {(int)response.StatusCode} - Response: {body}"
                 };
 
-                _logger?.LogWarning("[Grok] Validation failed: {Message} - Response: {Body}", errorMsg, body);
+                _logger?.LogWarning("[Grok] Validation failed: {ErrorMsg}", errorMsg);
                 return (false, errorMsg);
             }
             catch (System.Threading.Tasks.TaskCanceledException)
             {
-                var msg = "❌ API key validation timed out (5s). Check network connectivity.";
+                var msg = "❌ API key validation timed out (10s). Check network connectivity.";
                 _logger?.LogWarning("[Grok] {Message}", msg);
                 return (false, msg);
             }

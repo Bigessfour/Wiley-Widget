@@ -20,7 +20,11 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Analytics
 {
@@ -31,7 +35,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
     /// </summary>
     public partial class InsightFeedPanel : ScopedPanelBase<InsightFeedViewModel>
     {
-        private GradientPanelExt _topPanel = null!;
+        private LegacyGradientPanel _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private Label _lblStatus = null!;
@@ -106,7 +110,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 this.AccessibleDescription = "Displays proactive insights and the data grid";
 
                 // Top panel with header and toolbar
-                _topPanel = new GradientPanelExt
+                _topPanel = new LegacyGradientPanel
                 {
                     // Removed fixed Height to allow growth; MinimumSize ensures header won't collapse below 60px
                     MinimumSize = new Size(0, 60), // ensures header won't collapse below 60px

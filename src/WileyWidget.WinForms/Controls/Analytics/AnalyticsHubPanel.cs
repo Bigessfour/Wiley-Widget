@@ -2,7 +2,10 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,6 +20,8 @@ using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
 using TabControlAdv = Syncfusion.Windows.Forms.Tools.TabControlAdv;
 using TabPageAdv = Syncfusion.Windows.Forms.Tools.TabPageAdv;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utils;
@@ -44,6 +49,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     private TextBoxExt? _searchTextBox;
     private SfButton? _globalRefreshButton;
     private SfButton? _globalExportButton;
+    private LegacyGradientPanel? _filtersPanel;
 
     // Tab-specific controls (lazy-loaded)
     private OverviewTabControl? _overviewTab;
@@ -56,6 +62,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     private ToolStripStatusLabel? _statusLabel;
     private ToolStripStatusLabel? _recordCountLabel;
     private ToolStripStatusLabel? _lastRefreshLabel;
+    private DateTimeOffset? _lastRefreshAt;
 
     // Event handlers for cleanup
     private EventHandler? _panelHeaderRefreshHandler;
@@ -66,6 +73,18 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     private EventHandler? _globalExportClickHandler;
     private EventHandler? _tabControlSelectedIndexChangedHandler;
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
+    private bool _isInitialized;
+
+    /// <summary>
+    /// Gets or sets the strongly-typed ViewModel.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public new AnalyticsHubViewModel? ViewModel
+    {
+        get => (AnalyticsHubViewModel?)base.ViewModel;
+        set => base.ViewModel = value;
+    }
 
     /// <summary>
     /// Initializes a new instance of the AnalyticsHubPanel class.
@@ -75,7 +94,28 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         ILogger<ScopedPanelBase<AnalyticsHubViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        InitializeControls();
+        // NOTE: InitializeControls() moved to OnViewModelResolved()
+    }
+
+    protected override void OnViewModelResolved(object? viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+        if (viewModel is AnalyticsHubViewModel && !_isInitialized && !DesignMode)
+        {
+            try
+            {
+                InitializeControls();
+                SubscribeToViewModelEvents();
+                BindInitialData();
+                _isInitialized = true;
+                _logger?.LogDebug("AnalyticsHubPanel controls initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to initialize AnalyticsHubPanel controls");
+                UpdateStatus("Initialization failed");
+            }
+        }
     }
 
     #region ICompletablePanel Implementation
@@ -87,9 +127,13 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         if (IsLoaded) return;
 
+        ct.ThrowIfCancellationRequested();
+
         try
         {
             IsBusy = true;
+            ShowLoadingOverlay("Loading Analytics Hub...");
+            HideNoDataOverlay();
             UpdateStatus("Loading Analytics Hub...");
 
             if (ViewModel != null && !DesignMode)
@@ -97,24 +141,35 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
                 await ViewModel.RefreshAllCommand.ExecuteAsync(null);
             }
 
+            ct.ThrowIfCancellationRequested();
+
             // Load the initially selected tab
-            await LoadCurrentTabAsync();
+            await LoadCurrentTabAsync(ct);
+
+            _lastRefreshAt = DateTimeOffset.Now;
+            UpdateLastRefreshLabel();
+            UpdateRecordCount();
+            UpdateNoDataOverlayVisibility();
 
             _logger?.LogDebug("AnalyticsHubPanel loaded successfully");
             UpdateStatus("Ready");
+            _isLoaded = true;
         }
         catch (OperationCanceledException)
         {
             _logger?.LogInformation("AnalyticsHubPanel load cancelled");
+            UpdateStatus("Load cancelled");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to load AnalyticsHubPanel");
             UpdateStatus("Error loading data");
+            ShowErrorOverlay("Failed to load analytics data. Check logs for details.");
         }
         finally
         {
             IsBusy = false;
+            HideLoadingOverlay();
         }
     }
 
@@ -138,6 +193,46 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             errors.Add(new ValidationItem("ViewModel", "ViewModel not initialized", ValidationSeverity.Error));
         }
+        else
+        {
+            // Validate fiscal year selection
+            if (ViewModel.SelectedFiscalYear == 0)
+            {
+                errors.Add(new ValidationItem("FiscalYear", "Please select a fiscal year", ValidationSeverity.Warning));
+            }
+
+            // Validate tab-specific data availability
+            if (_tabControl != null)
+            {
+                switch (_tabControl.SelectedIndex)
+                {
+                    case 0: // Overview
+                        if (ViewModel.Overview == null)
+                        {
+                            errors.Add(new ValidationItem("Overview", "Overview data not loaded", ValidationSeverity.Warning));
+                        }
+                        break;
+                    case 1: // Trends
+                        if (ViewModel.Trends == null)
+                        {
+                            errors.Add(new ValidationItem("Trends", "Trends data not loaded", ValidationSeverity.Warning));
+                        }
+                        break;
+                    case 2: // Scenarios
+                        if (ViewModel.Scenarios == null)
+                        {
+                            errors.Add(new ValidationItem("Scenarios", "Scenarios data not loaded", ValidationSeverity.Warning));
+                        }
+                        break;
+                    case 3: // Variances
+                        if (ViewModel.Variances == null)
+                        {
+                            errors.Add(new ValidationItem("Variances", "Variances data not loaded", ValidationSeverity.Warning));
+                        }
+                        break;
+                }
+            }
+        }
 
         return new ValidationResult(errors.Count == 0, errors);
     }
@@ -154,6 +249,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         // Set up form properties
         Text = "Analytics Hub";
+        Dock = DockStyle.Fill;
         Size = new Size(1400, 900);
         MinimumSize = new Size(
             (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200.0f),
@@ -194,6 +290,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         // Set tab order
         SetTabOrder();
 
+        // Apply theme to child controls
+        ApplyThemeToControls(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+
         // Resume layout
         this.ResumeLayout(false);
         this.PerformLayout();
@@ -201,14 +300,16 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private void InitializeGlobalFilters()
     {
-        var filtersPanel = new GradientPanelExt
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        _filtersPanel = new LegacyGradientPanel
         {
             Dock = DockStyle.Top,
             Height = 50,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None
         };
-        SfSkinManager.SetVisualStyle(filtersPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+        SfSkinManager.SetVisualStyle(_filtersPanel, themeName);
+        _filtersPanel.ThemeName = themeName;
 
         var table = new TableLayoutPanel
         {
@@ -269,8 +370,8 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         table.Controls.Add(_searchTextBox, 3, 0);
         table.Controls.Add(buttonsPanel, 4, 0);
 
-        filtersPanel.Controls.Add(table);
-        Controls.Add(filtersPanel);
+        _filtersPanel.Controls.Add(table);
+        Controls.Add(_filtersPanel);
     }
 
     private void InitializeTabControl()
@@ -303,7 +404,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             overviewTabPage, trendsTabPage, scenariosTabPage, variancesTabPage
         });
 
-        _tabControlSelectedIndexChangedHandler = async (s, e) => await LoadCurrentTabAsync();
+        _tabControlSelectedIndexChangedHandler = async (s, e) => await LoadCurrentTabAsync(CancellationToken.None);
         _tabControl.SelectedIndexChanged += _tabControlSelectedIndexChangedHandler;
 
         Controls.Add(_tabControl);
@@ -354,13 +455,22 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         if (_tabControl != null) _tabControl.TabIndex = 4;
     }
 
-    private async Task LoadCurrentTabAsync()
+    protected virtual async Task LoadCurrentTabAsync(CancellationToken ct)
     {
         if (_tabControl == null || ViewModel == null) return;
 
+        var overlayShown = false;
+
         try
         {
+            ct.ThrowIfCancellationRequested();
+
             UpdateStatus("Loading tab data...");
+            if (_loadingOverlay != null && !_loadingOverlay.Visible)
+            {
+                ShowLoadingOverlay("Loading tab data...");
+                overlayShown = true;
+            }
 
             switch (_tabControl.SelectedIndex)
             {
@@ -390,12 +500,26 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
                     break;
             }
 
+            UpdateRecordCount();
+            UpdateNoDataOverlayVisibility();
             UpdateStatus("Ready");
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus("Load cancelled");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to load current tab");
             UpdateStatus("Error loading tab");
+            ShowErrorOverlay("Failed to load analytics tab. Check logs for details.");
+        }
+        finally
+        {
+            if (overlayShown)
+            {
+                HideLoadingOverlay();
+            }
         }
     }
 
@@ -412,39 +536,131 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private void ExportHub()
     {
-        // TODO: Implement global export functionality
-        MessageBox.Show("Global export functionality will be implemented", "Analytics Hub",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
+        if (IsBusy || ViewModel == null || _tabControl == null)
+        {
+            return;
+        }
+
+        _ = ExportHubAsync(CancellationToken.None);
+    }
+
+    private async Task ExportHubAsync(CancellationToken ct)
+    {
+        if (_tabControl == null || ViewModel == null)
+        {
+            ShowErrorOverlay("Analytics data is not ready for export.");
+            return;
+        }
+
+        var tabName = GetCurrentTabName();
+        var defaultFileName = $"Analytics_{tabName}_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+
+        using var saveDialog = new SaveFileDialog
+        {
+            Filter = "CSV Files|*.csv",
+            Title = $"Export {tabName}",
+            FileName = defaultFileName
+        };
+
+        if (saveDialog.ShowDialog() != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            IsBusy = true;
+            ShowLoadingOverlay($"Exporting {tabName}...");
+            UpdateStatus($"Exporting {tabName}...");
+
+            await ExportCurrentTabToCsvAsync(saveDialog.FileName, ct);
+
+            UpdateStatus("Export completed successfully");
+            MessageBox.Show(
+                $"Export completed successfully:\n{saveDialog.FileName}",
+                "Export Successful",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus("Export cancelled");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to export analytics data");
+            UpdateStatus("Export failed");
+            ShowErrorOverlay($"Export failed: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+            HideLoadingOverlay();
+        }
+    }
+
+    protected override void OnThemeChanged(string themeName)
+    {
+        base.OnThemeChanged(themeName);
+
+        try
+        {
+            SfSkinManager.SetVisualStyle(this, themeName);
+            ApplyThemeToControls(themeName);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to apply theme '{Theme}' to AnalyticsHubPanel", themeName);
+        }
     }
 
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
 
-        // Bind ViewModel properties
-        if (ViewModel != null)
+        if (!IsLoaded && !DesignMode)
         {
-            _viewModelPropertyChangedHandler = (s, e) =>
-            {
-                if (e.PropertyName == nameof(ViewModel.FiscalYears))
-                {
-                    BindFiscalYears();
-                }
-                else if (e.PropertyName == nameof(ViewModel.SelectedFiscalYear))
-                {
-                    UpdateSelectedFiscalYear();
-                }
-            };
-            ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
-
-            BindFiscalYears();
-            UpdateSelectedFiscalYear();
+            _ = LoadAsync(CancellationToken.None);
         }
+    }
+
+    private void SubscribeToViewModelEvents()
+    {
+        if (ViewModel == null) return;
+
+        if (_viewModelPropertyChangedHandler != null)
+        {
+            ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+        }
+
+        _viewModelPropertyChangedHandler = (s, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModel.FiscalYears))
+            {
+                BindFiscalYears();
+            }
+            else if (e.PropertyName == nameof(ViewModel.SelectedFiscalYear))
+            {
+                UpdateSelectedFiscalYear();
+            }
+        };
+
+        ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+    }
+
+    private void BindInitialData()
+    {
+        BindFiscalYears();
+        UpdateSelectedFiscalYear();
+        UpdateRecordCount();
+        UpdateLastRefreshLabel();
     }
 
     private void BindFiscalYears()
     {
-        if (_fiscalYearComboBox != null && ViewModel != null)
+        if (_fiscalYearComboBox != null && ViewModel?.FiscalYears != null)
         {
             _fiscalYearComboBox.DataSource = ViewModel.FiscalYears;
         }
@@ -456,6 +672,479 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             _fiscalYearComboBox.SelectedItem = ViewModel.SelectedFiscalYear;
         }
+    }
+
+    private void UpdateRecordCount()
+    {
+        if (_recordCountLabel == null || ViewModel == null) return;
+
+        var metricsCount = ViewModel.Overview?.Metrics?.Count ?? 0;
+        var kpiCount = ViewModel.Overview?.Kpis?.Count ?? 0;
+        var total = metricsCount + kpiCount;
+
+        if (InvokeRequired)
+        {
+            Invoke(() => _recordCountLabel.Text = $"Records: {total}");
+        }
+        else
+        {
+            _recordCountLabel.Text = $"Records: {total}";
+        }
+    }
+
+    private void UpdateLastRefreshLabel()
+    {
+        if (_lastRefreshLabel == null) return;
+
+        var labelText = _lastRefreshAt.HasValue
+            ? $"Last refresh: {_lastRefreshAt.Value:yyyy-MM-dd HH:mm}"
+            : "Last refresh: Never";
+
+        if (InvokeRequired)
+        {
+            Invoke(() => _lastRefreshLabel.Text = labelText);
+        }
+        else
+        {
+            _lastRefreshLabel.Text = labelText;
+        }
+    }
+
+    private void ShowLoadingOverlay(string message)
+    {
+        if (_loadingOverlay == null) return;
+
+        if (InvokeRequired)
+        {
+            Invoke(() =>
+            {
+                _loadingOverlay.Message = message;
+                _loadingOverlay.Visible = true;
+                _loadingOverlay.BringToFront();
+            });
+        }
+        else
+        {
+            _loadingOverlay.Message = message;
+            _loadingOverlay.Visible = true;
+            _loadingOverlay.BringToFront();
+        }
+    }
+
+    private void HideLoadingOverlay()
+    {
+        if (_loadingOverlay == null) return;
+
+        if (InvokeRequired)
+        {
+            Invoke(() => _loadingOverlay.Visible = false);
+        }
+        else
+        {
+            _loadingOverlay.Visible = false;
+        }
+    }
+
+    private void ShowNoDataOverlay(string message)
+    {
+        if (_noDataOverlay == null) return;
+
+        if (InvokeRequired)
+        {
+            Invoke(() =>
+            {
+                _noDataOverlay.Message = message;
+                _noDataOverlay.Visible = true;
+                _noDataOverlay.BringToFront();
+            });
+        }
+        else
+        {
+            _noDataOverlay.Message = message;
+            _noDataOverlay.Visible = true;
+            _noDataOverlay.BringToFront();
+        }
+    }
+
+    private void HideNoDataOverlay()
+    {
+        if (_noDataOverlay == null) return;
+
+        if (InvokeRequired)
+        {
+            Invoke(() => _noDataOverlay.Visible = false);
+        }
+        else
+        {
+            _noDataOverlay.Visible = false;
+        }
+    }
+
+    private void UpdateNoDataOverlayVisibility()
+    {
+        if (ViewModel == null || _tabControl == null)
+        {
+            ShowNoDataOverlay("No analytics data available\r\nPerform budget operations to generate insights");
+            return;
+        }
+
+        bool hasData = _tabControl.SelectedIndex switch
+        {
+            0 => (ViewModel.Overview?.Metrics?.Count ?? 0) > 0 || (ViewModel.Overview?.Kpis?.Count ?? 0) > 0,
+            1 => (ViewModel.Trends?.TrendData?.Count ?? 0) > 0 || (ViewModel.Trends?.ForecastData?.Count ?? 0) > 0,
+            2 => (ViewModel.Scenarios?.ScenarioResults?.Count ?? 0) > 0,
+            3 => (ViewModel.Variances?.Variances?.Count ?? 0) > 0,
+            _ => false
+        };
+
+        if (hasData)
+        {
+            HideNoDataOverlay();
+        }
+        else
+        {
+            var tabName = GetCurrentTabName();
+            ShowNoDataOverlay($"No {tabName.ToLower(CultureInfo.InvariantCulture)} data available\r\nPerform budget operations to generate insights");
+        }
+    }
+
+    private void ShowErrorOverlay(string message)
+    {
+        _logger?.LogError("AnalyticsHubPanel error: {Message}", message);
+        MessageBox.Show(this, message, "Analytics Hub", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+
+    private void ApplyThemeToControls(string themeName)
+    {
+        if (_filtersPanel != null)
+        {
+            SfSkinManager.SetVisualStyle(_filtersPanel, themeName);
+            _filtersPanel.ThemeName = themeName;
+        }
+
+        if (_fiscalYearComboBox != null)
+        {
+            SfSkinManager.SetVisualStyle(_fiscalYearComboBox, themeName);
+            _fiscalYearComboBox.ThemeName = themeName;
+        }
+
+        if (_searchTextBox != null)
+        {
+            SfSkinManager.SetVisualStyle(_searchTextBox, themeName);
+            _searchTextBox.ThemeName = themeName;
+        }
+
+        if (_globalRefreshButton != null)
+        {
+            SfSkinManager.SetVisualStyle(_globalRefreshButton, themeName);
+            _globalRefreshButton.ThemeName = themeName;
+        }
+
+        if (_globalExportButton != null)
+        {
+            SfSkinManager.SetVisualStyle(_globalExportButton, themeName);
+            _globalExportButton.ThemeName = themeName;
+        }
+
+        if (_tabControl != null)
+        {
+            SfSkinManager.SetVisualStyle(_tabControl, themeName);
+            foreach (TabPageAdv page in _tabControl.TabPages)
+            {
+                SfSkinManager.SetVisualStyle(page, themeName);
+            }
+        }
+
+        if (_panelHeader != null)
+        {
+            SfSkinManager.SetVisualStyle(_panelHeader, themeName);
+        }
+
+        if (_loadingOverlay != null)
+        {
+            SfSkinManager.SetVisualStyle(_loadingOverlay, themeName);
+            _loadingOverlay.ThemeName = themeName;
+        }
+
+        if (_noDataOverlay != null)
+        {
+            SfSkinManager.SetVisualStyle(_noDataOverlay, themeName);
+            _noDataOverlay.ThemeName = themeName;
+        }
+
+        if (_overviewTab != null)
+        {
+            SfSkinManager.SetVisualStyle(_overviewTab, themeName);
+        }
+
+        if (_trendsTab != null)
+        {
+            SfSkinManager.SetVisualStyle(_trendsTab, themeName);
+        }
+
+        if (_scenariosTab != null)
+        {
+            SfSkinManager.SetVisualStyle(_scenariosTab, themeName);
+        }
+
+        if (_variancesTab != null)
+        {
+            SfSkinManager.SetVisualStyle(_variancesTab, themeName);
+        }
+    }
+
+    private string GetCurrentTabName()
+    {
+        if (_tabControl == null)
+        {
+            return "Analytics";
+        }
+
+        return _tabControl.SelectedIndex switch
+        {
+            0 => "Overview",
+            1 => "Trends",
+            2 => "Scenarios",
+            3 => "Variances",
+            _ => "Analytics"
+        };
+    }
+
+    private async Task ExportCurrentTabToCsvAsync(string filePath, CancellationToken ct)
+    {
+        if (ViewModel == null)
+        {
+            throw new InvalidOperationException("Analytics data is not available.");
+        }
+
+        await using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
+
+        switch (_tabControl?.SelectedIndex)
+        {
+            case 0:
+                await WriteOverviewCsvAsync(writer, ct);
+                break;
+            case 1:
+                await WriteTrendsCsvAsync(writer, ct);
+                break;
+            case 2:
+                await WriteScenariosCsvAsync(writer, ct);
+                break;
+            case 3:
+                await WriteVariancesCsvAsync(writer, ct);
+                break;
+            default:
+                await WriteOverviewCsvAsync(writer, ct);
+                break;
+        }
+    }
+
+    private async Task WriteOverviewCsvAsync(StreamWriter writer, CancellationToken ct)
+    {
+        if (ViewModel?.Overview == null) return;
+
+        await writer.WriteLineAsync("Section,Name,Value,Department,BudgetedAmount,Amount,Variance,VariancePercent,IsOverBudget,Format,IsPositive");
+
+        var overview = ViewModel.Overview;
+        var summaryItems = new (string Name, decimal Value)[]
+        {
+            ("Total Budget", overview.TotalBudget),
+            ("Total Actual", overview.TotalActual),
+            ("Total Variance", overview.TotalVariance),
+            ("Over Budget Count", overview.OverBudgetCount),
+            ("Under Budget Count", overview.UnderBudgetCount)
+        };
+
+        foreach (var item in summaryItems)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                "Summary",
+                EscapeCsvField(item.Name),
+                item.Value.ToString(CultureInfo.InvariantCulture),
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty
+            }));
+        }
+
+        if (overview.Kpis == null) return;
+
+        foreach (var kpi in overview.Kpis)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                "KPI",
+                EscapeCsvField(kpi.Title),
+                kpi.Value.ToString(CultureInfo.InvariantCulture),
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                EscapeCsvField(kpi.Format),
+                kpi.IsPositive.ToString(CultureInfo.InvariantCulture)
+            }));
+        }
+
+        if (overview.Metrics == null) return;
+
+        foreach (var metric in overview.Metrics)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                "Metric",
+                EscapeCsvField(metric.Name),
+                metric.Value.ToString(CultureInfo.InvariantCulture),
+                EscapeCsvField(metric.DepartmentName),
+                metric.BudgetedAmount.ToString(CultureInfo.InvariantCulture),
+                metric.Amount.ToString(CultureInfo.InvariantCulture),
+                metric.Variance.ToString(CultureInfo.InvariantCulture),
+                metric.VariancePercent.ToString(CultureInfo.InvariantCulture),
+                metric.IsOverBudget.ToString(CultureInfo.InvariantCulture),
+                string.Empty,
+                string.Empty
+            }));
+        }
+    }
+
+    private async Task WriteTrendsCsvAsync(StreamWriter writer, CancellationToken ct)
+    {
+        if (ViewModel?.Trends == null) return;
+
+        await writer.WriteLineAsync("Section,Series,Date,Value,PredictedReserves,ConfidenceInterval,Department,AverageVariancePercent,TotalBudgeted,TotalActual,Count");
+
+        if (ViewModel.Trends.TrendData == null) return;
+
+        foreach (var series in ViewModel.Trends.TrendData)
+        {
+            foreach (var point in series.Points)
+            {
+                ct.ThrowIfCancellationRequested();
+                await writer.WriteLineAsync(string.Join(",", new[]
+                {
+                    "Trend",
+                    EscapeCsvField(series.Name),
+                    point.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    point.Value.ToString(CultureInfo.InvariantCulture),
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty,
+                    string.Empty
+                }));
+            }
+        }
+
+        foreach (var forecast in ViewModel.Trends.ForecastData)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                "Forecast",
+                string.Empty,
+                forecast.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                string.Empty,
+                forecast.PredictedReserves.ToString(CultureInfo.InvariantCulture),
+                forecast.ConfidenceInterval.ToString(CultureInfo.InvariantCulture),
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty
+            }));
+        }
+
+        foreach (var dept in ViewModel.Trends.DepartmentVariances)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                "Department",
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                EscapeCsvField(dept.Department),
+                dept.AverageVariancePercent.ToString(CultureInfo.InvariantCulture),
+                dept.TotalBudgeted.ToString(CultureInfo.InvariantCulture),
+                dept.TotalActual.ToString(CultureInfo.InvariantCulture),
+                dept.Count.ToString(CultureInfo.InvariantCulture)
+            }));
+        }
+    }
+
+    private async Task WriteScenariosCsvAsync(StreamWriter writer, CancellationToken ct)
+    {
+        if (ViewModel?.Scenarios == null) return;
+
+        await writer.WriteLineAsync("Description,ProjectedValue,Variance");
+
+        if (ViewModel.Scenarios.ScenarioResults == null) return;
+
+        foreach (var result in ViewModel.Scenarios.ScenarioResults)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                EscapeCsvField(result.Description),
+                result.ProjectedValue.ToString(CultureInfo.InvariantCulture),
+                result.Variance.ToString(CultureInfo.InvariantCulture)
+            }));
+        }
+    }
+
+    private async Task WriteVariancesCsvAsync(StreamWriter writer, CancellationToken ct)
+    {
+        if (ViewModel?.Variances == null) return;
+
+        await writer.WriteLineAsync("Department,Account,Budget,Actual,Variance,VariancePercent");
+
+        if (ViewModel.Variances.Variances == null) return;
+
+        foreach (var variance in ViewModel.Variances.Variances)
+        {
+            ct.ThrowIfCancellationRequested();
+            await writer.WriteLineAsync(string.Join(",", new[]
+            {
+                EscapeCsvField(variance.Department),
+                EscapeCsvField(variance.Account),
+                variance.Budget.ToString(CultureInfo.InvariantCulture),
+                variance.Actual.ToString(CultureInfo.InvariantCulture),
+                variance.Variance.ToString(CultureInfo.InvariantCulture),
+                variance.VariancePercent.ToString(CultureInfo.InvariantCulture)
+            }));
+        }
+    }
+
+    private static string EscapeCsvField(string? field)
+    {
+        if (string.IsNullOrEmpty(field))
+        {
+            return string.Empty;
+        }
+
+        if (field.Contains(",", StringComparison.Ordinal) ||
+            field.Contains("\"", StringComparison.Ordinal) ||
+            field.Contains("\n", StringComparison.Ordinal) ||
+            field.Contains("\r", StringComparison.Ordinal))
+        {
+            return "\"" + field.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+        }
+
+        return field;
     }
 
     private void ClosePanel()
