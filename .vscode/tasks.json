@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"label": "build",
-			"command": "dotnet build WileyWidget.sln",
+			"command": "dotnet build WileyWidget.sln -m:2",
 			"type": "shell",
 			"group": {
 				"kind": "build",
@@ -20,7 +20,7 @@
 		},
 		{
 			"label": "build: fast",
-			"command": "dotnet build WileyWidget.sln -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false",
+			"command": "dotnet build WileyWidget.sln -m:2 -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false",
 			"type": "shell",
 			"group": {
 				"kind": "build",
