@@ -242,29 +242,27 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 3
+                RowCount = 4
             };
-            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Header/Toolbar
+            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 0: Header
+            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Toolbar
             rootTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 180F)); // Row 2: KPI Gauges
             rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Row 3: Content
 
-            // --- Row 1: Header and ToolStrip ---
-            var headerTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Height = 48 };
-            headerTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            headerTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-            _panelHeader = new PanelHeader { Dock = DockStyle.Fill, Title = DashboardPanelResources.PanelTitle };
+            // --- Row 0: Header (PanelHeader directly with Dock=Top) ---
+            _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = DashboardPanelResources.PanelTitle };
             _panelHeaderRefreshHandler = OnPanelHeaderRefreshClicked;
             _panelHeaderCloseHandler = OnPanelHeaderCloseClicked;
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
 
+            rootTable.Controls.Add(_panelHeader, 0, 0);
+
+            // --- Row 1: ToolStrip ---
             _toolStrip = new ToolStrip { Dock = DockStyle.Fill, GripStyle = ToolStripGripStyle.Hidden };
             SetupToolStrip(_toolStrip);
 
-            headerTable.Controls.Add(_panelHeader, 0, 0);
-            headerTable.Controls.Add(_toolStrip, 1, 0);
-            rootTable.Controls.Add(headerTable, 0, 0);
+            rootTable.Controls.Add(_toolStrip, 0, 1);
 
             // --- Row 2: KPI and Gauges ---
             var kpiPanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1 };
@@ -275,7 +273,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             kpiPanel.Controls.Add(CreateGaugePanel("Expense Ratio", "gauge"), 2, 0);
             kpiPanel.Controls.Add(CreateGaugePanel("Budget Variance", "gauge"), 3, 0);
 
-            rootTable.Controls.Add(kpiPanel, 0, 1);
+            rootTable.Controls.Add(kpiPanel, 0, 2);
 
             // --- Row 3: Content Area (SplitContainerAdv with Chart and Grid) ---
             _mainSplitContainer = new SplitContainerAdv
@@ -315,7 +313,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _mainSplitContainer.Panel1.Controls.Add(_mainChart);
             _mainSplitContainer.Panel2.Controls.Add(_detailsGrid);
-            rootTable.Controls.Add(_mainSplitContainer, 0, 2);
+            rootTable.Controls.Add(_mainSplitContainer, 0, 3);
 
             // Status Bar
             _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };

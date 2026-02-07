@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.AspNetCore.Components.WebView.WindowsForms;  // Add this using
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ using WileyWidget.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
+using Syncfusion.Blazor;  // Add this for Syncfusion Blazor services
 using Serilog;
 using WileyWidget.Services.Logging;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -114,10 +116,13 @@ namespace WileyWidget.WinForms
             EnsureLogDirectoryExists();
 
             // Configure Serilog logger manually for WinForms app
+            // IMPORTANT: Configuration order - later sources override earlier ones
+            // Order: 1) appsettings.json, 2) user secrets, 3) environment variables (last for highest priority)
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("src/WileyWidget.WinForms/appsettings.json", optional: false, reloadOnChange: true)
                 .AddUserSecrets<Program>(optional: true)
+                .AddEnvironmentVariables()  // Environment variables last - highest priority
                 .Build();
 
             Log.Logger = new LoggerConfiguration()
@@ -126,6 +131,20 @@ namespace WileyWidget.WinForms
 
             Log.Information("Program.Main: Starting WileyWidget application");
             Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
+
+            // DEBUG: Log masked API key to verify configuration loading chain
+            var apiKeyFromConfig = configuration["xAI:ApiKey"] ?? configuration["XAI:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(apiKeyFromConfig))
+            {
+                var maskedKey = apiKeyFromConfig.Length > 8
+                    ? apiKeyFromConfig.Substring(0, 4) + "***" + apiKeyFromConfig.Substring(apiKeyFromConfig.Length - 4)
+                    : "***";
+                Log.Debug("[CONFIG DEBUG] xAI:ApiKey found in configuration chain: {MaskedKey} (length: {Length})", maskedKey, apiKeyFromConfig.Length);
+            }
+            else
+            {
+                Log.Warning("[CONFIG DEBUG] xAI:ApiKey NOT found in configuration chain (checked: appsettings.json, user secrets, environment variables)");
+            }
 
             // Register Syncfusion license as early as possible — before any Syncfusion controls are instantiated
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Registering Syncfusion license (early)...");
@@ -396,8 +415,24 @@ namespace WileyWidget.WinForms
             Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((context, config) =>
                 {
-                    // Ensure user-secrets are available even in non-standard host environments.
+                    // IMPORTANT: Configuration loading order - later sources override earlier ones.
+                    // Host.CreateDefaultBuilder() already adds appsettings.json and environment variables.
+                    // We explicitly add user secrets AFTER CreateDefaultBuilder sets up defaults.
+                    // Then we re-add environment variables at the END to ensure they have highest priority.
+                    // This ensures: 1) appsettings.json, 2) appsettings.{Environment}.json, 3) user secrets, 4) environment variables
+
+                    // Remove environment variables that were added by CreateDefaultBuilder
+                    var envVarSources = config.Sources.Where(s => s.GetType().Name.Contains("EnvironmentVariables")).ToList();
+                    foreach (var source in envVarSources)
+                    {
+                        config.Sources.Remove(source);
+                    }
+
+                    // Re-add in correct order: user secrets first
                     config.AddUserSecrets<Program>(optional: true);
+
+                    // Then environment variables LAST (highest priority)
+                    config.AddEnvironmentVariables();
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
@@ -406,6 +441,24 @@ namespace WileyWidget.WinForms
 
                     // Register WinForms-specific services
                     services.AddWinFormsServices(hostContext.Configuration);
+
+                    /// <summary>
+                    /// NEW: Register Blazor WebView services (required for BlazorWebView to initialize)
+                    /// Enables Windows Forms applications to host Blazor components and WebView controls.
+                    /// </summary>
+                    services.AddWindowsFormsBlazorWebView();
+#if DEBUG
+                    /// <summary>
+                    /// Optional: Enable developer tools for debugging Blazor components in Debug builds.
+                    /// Provides browser console access and component inspection capabilities.
+                    /// </summary>
+                    // Developer tools are available via AddBlazorWebViewDeveloperTools() if WebView2 supports it
+#endif
+                    /// <summary>
+                    /// NEW: Required for Syncfusion Blazor components (e.g., SfAIAssistView).
+                    /// Registers Syncfusion Blazor services and component infrastructure.
+                    /// </summary>
+                    services.AddSyncfusionBlazor();  // NEW: Required for Syncfusion Blazor components (e.g., SfAIAssistView)
                 })
                 .UseSerilog();
 

@@ -79,6 +79,12 @@ public partial class MainForm
                     continue;
                 }
 
+                if (IsBackStageControl(control))
+                {
+                    _logger?.LogDebug("Skipped theme application for BackStage control {ControlType}", controlType.Name);
+                    continue;
+                }
+
                 // Apply theme to current control with per-control error handling
                 try
                 {
@@ -93,9 +99,9 @@ public partial class MainForm
                     appliedCount++;
 
                     // Log debug info for Syncfusion controls and custom panels
-                    if (control is Syncfusion.WinForms.DataGrid.SfDataGrid ||
-                        control is Syncfusion.Windows.Forms.Tools.RibbonControlAdv ||
-                        control is WileyWidget.WinForms.Controls.Base.LegacyGradientPanel)
+                    if (control is Syncfusion.WinForms.DataGrid.SfDataGrid or
+                        Syncfusion.Windows.Forms.Tools.RibbonControlAdv or
+                        WileyWidget.WinForms.Controls.Base.LegacyGradientPanel)
                     {
                         _logger?.LogDebug("Applied theme '{Theme}' to {ControlType}: {ControlName}",
                             themeName, control.GetType().Name, control.Name ?? "&lt;unnamed&gt;");
@@ -148,6 +154,15 @@ public partial class MainForm
         {
             _logger?.LogWarning(ex, "Recursive theme application failed for theme '{Theme}'", themeName);
         }
+    }
+
+    private static bool IsBackStageControl(Control control)
+    {
+        Type type = control.GetType();
+        return type.Name is "BackStage"
+            or "BackStageTab"
+            or "BackStageButton"
+            or "BackStageSeparator";
     }
 
     /// <summary>

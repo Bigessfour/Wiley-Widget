@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Web.WebView2.Core;
 using Serilog;
 using Serilog.Events;
 using WileyWidget.Services.Logging;
@@ -414,6 +415,42 @@ public partial class MainForm
 
         // [PERF] Allow UI structures additional time to fully develop before starting background tasks
         await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+
+        // [PERF] WebView2 prewarm (non-blocking): create CoreWebView2Environment after the form is shown.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    var version = CoreWebView2Environment.GetAvailableBrowserVersionString();
+                    _logger?.LogInformation("[WEBVIEW2] Prewarm starting (Runtime={Version})", version);
+                }
+                catch (WebView2RuntimeNotFoundException ex)
+                {
+                    _logger?.LogWarning(ex, "[WEBVIEW2] Runtime not found - skipping prewarm");
+                    return;
+                }
+
+                _ = await CoreWebView2Environment.CreateAsync().ConfigureAwait(false);
+                _logger?.LogInformation("[WEBVIEW2] Prewarm completed");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger?.LogDebug("[WEBVIEW2] Prewarm canceled");
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogDebug("[WEBVIEW2] Prewarm skipped due to disposal");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "[WEBVIEW2] Prewarm failed (non-fatal)");
+            }
+        }, cancellationToken);
 
         // [PERF] Background startup health check
         _ = Task.Run(async () =>

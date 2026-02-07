@@ -114,23 +114,20 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             return;
         }
-
         try
         {
-            // Capture the current SynchronizationContext (should be the WinForms UI context)
             _uiSyncContext = System.Threading.SynchronizationContext.Current;
 
-            // Initialize controls now that ViewModel is available
             InitializeControls();
             BindViewModel();
+            ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-            // Defer sizing validation until layout is complete
-            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+            BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
 
             // Start async load - fire-and-forget with error handling
             _ = LoadAsyncSafe();
 
-            Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+            Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", Name);
         }
         catch (Exception ex)
         {
@@ -360,6 +357,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _toolTip.SetToolTip(_generateReportButton, "Generate utility bill report (Ctrl+R)");
 
         _exportExcelButton = CreateButton("E&xport", buttonSize, 6);
+        _exportExcelButton.Enabled = false;
         _exportExcelButtonClickHandler = ExportExcelButton_Click;
         _exportExcelButton.Click += _exportExcelButtonClickHandler;
         _toolTip.SetToolTip(_exportExcelButton, "Export bills to Excel (Ctrl+X)");
@@ -851,6 +849,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             _billsGrid.DataSource = snapshot;
             _billsGrid.ResumeLayout();
             _billsGrid.Refresh();
+            UpdateExportButtonState();
 
             UpdateNoDataOverlay();
         }
@@ -913,6 +912,20 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         if (_markPaidButton != null)
             _markPaidButton.Enabled = hasBillSelection && ViewModel.SelectedBill != null && !ViewModel.SelectedBill.IsPaid;
+
+    }
+
+    private void UpdateExportButtonState()
+    {
+        if (_exportExcelButton == null || _billsGrid == null)
+        {
+            return;
+        }
+
+        var view = _billsGrid.View;
+        var hasRows = view?.Records?.Count > 0;
+        var isLoading = ViewModel?.IsLoading ?? false;
+        _exportExcelButton.Enabled = view != null && hasRows && !isLoading;
     }
 
     private void UpdateNoDataOverlay()
@@ -957,6 +970,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         finally
         {
             IsBusy = false;
+            UpdateExportButtonState();
         }
     }
 
@@ -1147,6 +1161,19 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             {
                 if (_billsGrid == null) return;
 
+                var view = _billsGrid.View;
+                if (view == null)
+                {
+                    MessageBox.Show("Grid is still loading. Please try again once data is ready.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (view.Records?.Count == 0)
+                {
+                    MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
                 using var saveDialog = new SaveFileDialog
                 {
                     Filter = "Excel Files|*.xlsx",
@@ -1195,6 +1222,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 ViewModel.LoadCustomersCommand.ExecuteAsync(null));
 
             UpdateStatus("Data refreshed successfully");
+            UpdateExportButtonState();
         }
         catch (Exception ex)
         {
@@ -1390,6 +1418,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #endregion
 }
+
+
+
+
+
+
+
 
 
 

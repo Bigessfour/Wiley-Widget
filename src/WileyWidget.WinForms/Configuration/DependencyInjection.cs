@@ -4,6 +4,7 @@ using DI = Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
@@ -43,7 +44,7 @@ namespace WileyWidget.WinForms.Configuration
         public static ServiceCollection CreateServiceCollection(bool includeDefaults = true)
         {
             var services = new ServiceCollection();
-            ConfigureServicesInternal(services, includeDefaults);
+            ConfigureServicesInternal(services, configuration: null, includeDefaults: includeDefaults);
             return services;
         }
 
@@ -54,7 +55,7 @@ namespace WileyWidget.WinForms.Configuration
             // Register QuickBooks OAuth configuration BEFORE calling ConfigureServicesInternal
             services.Configure<QuickBooksOAuthOptions>(configuration.GetSection("Services:QuickBooks:OAuth"));
 
-            ConfigureServicesInternal(services, includeDefaults: true);
+            ConfigureServicesInternal(services, configuration, includeDefaults: true);
             return services;
         }
 
@@ -79,7 +80,7 @@ namespace WileyWidget.WinForms.Configuration
             });
         }
 
-        private static void ConfigureServicesInternal(IServiceCollection services, bool includeDefaults = true)
+        private static void ConfigureServicesInternal(IServiceCollection services, IConfiguration? configuration = null, bool includeDefaults = true)
         {
             // =====================================================================
             // INFRASTRUCTURE SERVICES (Configuration, Logging, Health Checks)
@@ -90,7 +91,8 @@ namespace WileyWidget.WinForms.Configuration
             // The host's configuration will be automatically available when services are registered
             // This ensures .env, user secrets, and environment variables are all properly loaded
             // For tests, provide a default in-memory configuration
-            if (includeDefaults)
+            IConfiguration? effectiveConfig = configuration;
+            if (effectiveConfig == null && includeDefaults)
             {
                 var defaultConfig = new ConfigurationBuilder()
                     .AddInMemoryCollection(new Dictionary<string, string?>
@@ -101,6 +103,7 @@ namespace WileyWidget.WinForms.Configuration
                     })
                     .Build();
                 services.TryAddSingleton<IConfiguration>(defaultConfig);
+                effectiveConfig = defaultConfig;
             }
 
             // Logging (Singleton - Serilog logger)
@@ -276,18 +279,57 @@ namespace WileyWidget.WinForms.Configuration
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
 
-            // For tests, register DbContext with in-memory database
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+            var connectionString = effectiveConfig?.GetConnectionString("DefaultConnection");
+            var isUiTestHarness = effectiveConfig?.GetValue<bool>("UI:IsUiTestHarness", false) ?? false;
+            var resolvedConnection = string.IsNullOrWhiteSpace(connectionString)
+                ? "Data Source=localhost\\SQLEXPRESS;Initial Catalog=WileyWidget;Integrated Security=True;Pooling=False;Encrypt=False;Trust Server Certificate=True"
+                : connectionString;
+            var useInMemory = includeDefaults && (isUiTestHarness ||
+                string.IsNullOrWhiteSpace(connectionString) ||
+                connectionString.Contains("Data Source=:memory:", StringComparison.OrdinalIgnoreCase));
+
+            var providerLabel = useInMemory ? "InMemory" : "SqlServer";
+            var connectionForLog = useInMemory ? "Data Source=:memory:" : resolvedConnection;
+            Log.Information("DI: AppDbContext provider={Provider} TestHarness={IsUiTestHarness} Connection={ConnectionString}",
+                providerLabel, isUiTestHarness, connectionForLog);
+
+            if (useInMemory)
             {
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase("TestDb"));
+                // For tests and UI harness, register DbContext with in-memory database
+                if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+                {
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseInMemoryDatabase("TestDb"));
+                }
+                if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+                {
+                    // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
+                    // DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped
+                    services.AddDbContextFactory<AppDbContext>((sp, options) =>
+                        options.UseInMemoryDatabase("TestDb"), ServiceLifetime.Scoped);
+                }
             }
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+            else
             {
-                // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
-                // DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped
-                services.AddDbContextFactory<AppDbContext>((sp, options) =>
-                    options.UseInMemoryDatabase("TestDb"), ServiceLifetime.Scoped);
+                if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+                {
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseSqlServer(resolvedConnection, sql =>
+                        {
+                            sql.MigrationsAssembly("WileyWidget.Data");
+                            sql.EnableRetryOnFailure();
+                        }));
+                }
+                if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+                {
+                    // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
+                    services.AddDbContextFactory<AppDbContext>((sp, options) =>
+                        options.UseSqlServer(resolvedConnection, sql =>
+                        {
+                            sql.MigrationsAssembly("WileyWidget.Data");
+                            sql.EnableRetryOnFailure();
+                        }), ServiceLifetime.Scoped);
+                }
             }
 
             // =====================================================================
@@ -308,6 +350,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
             services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IVendorRepository, VendorRepository>();
             services.AddScoped<IUtilityBillRepository, UtilityBillRepository>();
             services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
 
@@ -578,6 +622,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<SettingsViewModel>();
             services.AddScoped<UtilityBillViewModel>();
             services.AddScoped<AccountsViewModel>();
+            services.AddScoped<PaymentsViewModel>();
             services.AddScoped<DashboardViewModel>();
             services.AddScoped<AnalyticsViewModel>();
             services.AddScoped<IAnalyticsHubViewModel, AnalyticsHubViewModel>();
@@ -618,6 +663,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.CustomersPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.PaymentsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>();

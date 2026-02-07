@@ -6,6 +6,7 @@ using Xunit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Moq.Protected;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.Services.Abstractions;
 

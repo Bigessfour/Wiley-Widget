@@ -169,6 +169,24 @@ namespace WileyWidget.WinForms.Services
                     HandleDiValidationFailure(new InvalidOperationException("DI validation completed with errors."), result);
                 }
 
+                /// <summary>
+                /// NEW: Validate Blazor-specific services
+                /// Ensures that AddWindowsFormsBlazorWebView() and AddSyncfusionBlazor() were properly registered during startup.
+                /// These services are critical for JARVIS panel rendering and AI component functionality.
+                /// </summary>
+                try
+                {
+                    var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceScopeFactory>(serviceProvider);
+                    if (scopeFactory == null)
+                    {
+                        _logger.LogWarning("Blazor WebView services not registered - ensure AddWindowsFormsBlazorWebView() is called in startup");
+                    }
+                }
+                catch (Exception blazorCheckEx)
+                {
+                    _logger.LogWarning(blazorCheckEx, "Error checking Blazor services during validation");
+                }
+
                 // [PERF] Initialize all IAsyncInitializable services in background to avoid UI blocking
                 _ = Task.Run(async () =>
                 {

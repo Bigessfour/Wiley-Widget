@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Services.AI
     /// This prevents the regression where XAI:ApiKey configuration inconsistency caused
     /// the API key not to be properly resolved from environment variables.
     /// </summary>
-    public class GrokRecommendationServiceApiKeyIntegrationTests
+    public class GrokRecommendationServiceApiKeyIntegrationTests : IDisposable
     {
         private readonly Mock<ILogger<GrokRecommendationService>> _mockLogger =
             new Mock<ILogger<GrokRecommendationService>>();
@@ -30,6 +30,28 @@ namespace WileyWidget.WinForms.Tests.Integration.Services.AI
             new Mock<IHttpClientFactory>();
 
         private readonly IMemoryCache _memoryCache = new MemoryCache(new MemoryCacheOptions());
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
+                _memoryCache.Dispose();
+            }
+
+            _disposed = true;
+        }
 
         /// <summary>
         /// Test: GrokRecommendationService correctly injects and uses IGrokApiKeyProvider.

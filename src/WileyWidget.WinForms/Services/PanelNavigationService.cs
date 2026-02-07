@@ -346,11 +346,6 @@ namespace WileyWidget.WinForms.Services
                 {
                     panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
 
-                    if (panel == null)
-                    {
-                        throw new InvalidOperationException($"ActivatorUtilities.CreateInstance returned null for panel type {typeof(TPanel).Name}");
-                    }
-
                     Logger.LogDebug("[PANEL] Panel instance created successfully: {PanelName}, Type={Type}, IsDisposed={IsDisposed}",
                         panelName, panel.GetType().FullName, panel.IsDisposed);
                 }
@@ -470,7 +465,8 @@ namespace WileyWidget.WinForms.Services
                 try
                 {
                     existingPanel.Visible = true;
-                    try { existingPanel.BringToFront(); } catch (Exception bfEx)
+                    try { existingPanel.BringToFront(); }
+                    catch (Exception bfEx)
                     {
                         Logger.LogDebug(bfEx, "[PANEL-ACTIVATE] BringToFront failed for {PanelName} (non-critical)", panelName);
                     }

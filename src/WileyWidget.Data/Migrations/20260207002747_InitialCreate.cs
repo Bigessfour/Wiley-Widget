@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -57,6 +57,7 @@ namespace WileyWidget.Data.Migrations
                     QuickBooksRedirectUri = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     EnableAutoSave = table.Column<bool>(type: "bit", nullable: false),
                     AutoSaveIntervalMinutes = table.Column<int>(type: "int", nullable: false),
+                    ApplicationFont = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     UseDynamicColumns = table.Column<bool>(type: "bit", nullable: false),
                     EnableDataCaching = table.Column<bool>(type: "bit", nullable: false),
                     CacheExpirationMinutes = table.Column<int>(type: "int", nullable: false),
@@ -143,6 +144,23 @@ namespace WileyWidget.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BudgetPeriods", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ConversationHistories",
+                columns: table => new
+                {
+                    ConversationId = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MessagesJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MessageCount = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConversationHistories", x => x.ConversationId);
                 });
 
             migrationBuilder.CreateTable(
@@ -294,6 +312,51 @@ namespace WileyWidget.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TelemetryLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EventType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Details = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    StackTrace = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CorrelationId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    User = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SessionId = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TelemetryLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TownOfWileyBudgetData",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SourceFile = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    FundOrDepartment = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    AccountCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    PriorYearActual = table.Column<decimal>(type: "decimal(19,4)", precision: 19, scale: 4, nullable: true),
+                    SevenMonthActual = table.Column<decimal>(type: "decimal(19,4)", precision: 19, scale: 4, nullable: true),
+                    EstimateCurrentYr = table.Column<decimal>(type: "decimal(19,4)", precision: 19, scale: 4, nullable: true),
+                    BudgetYear = table.Column<decimal>(type: "decimal(19,4)", precision: 19, scale: 4, nullable: true),
+                    ActualYTD = table.Column<decimal>(type: "decimal(19,4)", precision: 19, scale: 4, nullable: true),
+                    Remaining = table.Column<decimal>(type: "decimal(19,4)", precision: 19, scale: 4, nullable: true),
+                    PercentOfBudget = table.Column<int>(type: "int", nullable: true),
+                    Category = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    MappedDepartment = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TownOfWileyBudgetData", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "UtilityCustomers",
                 columns: table => new
                 {
@@ -344,6 +407,15 @@ namespace WileyWidget.Data.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     ContactInfo = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Email = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    Phone = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    MailingAddressLine1 = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    MailingAddressLine2 = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    MailingAddressCity = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    MailingAddressState = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    MailingAddressPostalCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    MailingAddressCountry = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    QuickBooksId = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
@@ -633,10 +705,53 @@ namespace WileyWidget.Data.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Payments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CheckNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    PaymentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Payee = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 19, scale: 4, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    MunicipalAccountId = table.Column<int>(type: "int", nullable: true),
+                    VendorId = table.Column<int>(type: "int", nullable: true),
+                    InvoiceId = table.Column<int>(type: "int", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "Cleared"),
+                    IsCleared = table.Column<bool>(type: "bit", nullable: false),
+                    Memo = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Payments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Payments_Invoices_InvoiceId",
+                        column: x => x.InvoiceId,
+                        principalTable: "Invoices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Payments_MunicipalAccounts_MunicipalAccountId",
+                        column: x => x.MunicipalAccountId,
+                        principalTable: "MunicipalAccounts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Payments_Vendor_VendorId",
+                        column: x => x.VendorId,
+                        principalTable: "Vendor",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
             migrationBuilder.InsertData(
                 table: "AppSettings",
-                columns: new[] { "Id", "AutoSaveIntervalMinutes", "CacheExpirationMinutes", "CurrencyFormat", "CurrentFiscalYear", "DatabaseName", "DatabaseServer", "DateFormat", "DefaultLanguage", "EnableAI", "EnableAutoSave", "EnableDataCaching", "EnableFileLogging", "EnableNotifications", "EnableQuickBooksSync", "EnableSounds", "FiscalPeriod", "FiscalQuarter", "FiscalYearEnd", "FiscalYearStart", "FiscalYearStartDay", "FiscalYearStartMonth", "IncludeChartsInReports", "LastReportEndDate", "LastReportStartDate", "LastSelectedEnterpriseId", "LastSelectedFormat", "LastSelectedReportType", "LogFilePath", "QboAccessToken", "QboClientId", "QboClientSecret", "QboRefreshToken", "QboTokenExpiry", "QuickBooksAccessToken", "QuickBooksCompanyFile", "QuickBooksEnvironment", "QuickBooksRealmId", "QuickBooksRedirectUri", "QuickBooksRefreshToken", "QuickBooksTokenExpiresUtc", "SelectedLogLevel", "SessionTimeoutMinutes", "SyncIntervalMinutes", "Theme", "UseDynamicColumns", "UseFiscalYearForReporting", "WindowHeight", "WindowLeft", "WindowMaximized", "WindowTop", "WindowWidth", "XaiApiEndpoint", "XaiApiKey", "XaiMaxTokens", "XaiModel", "XaiTemperature", "XaiTimeout" },
-                values: new object[] { 1, 5, 30, "USD", "2024-2025", "WileyWidget", "localhost", "MM/dd/yyyy", "en-US", false, true, true, true, true, false, true, "Q1", 1, "June 30", "July 1", 1, 7, true, null, null, 1, null, null, "logs/wiley-widget.log", null, null, null, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, "sandbox", null, null, null, null, "Information", 60, 30, "FluentDark", false, true, null, null, null, null, null, "https://api.x.ai/v1", null, 2000, "grok-4-0709", 0.69999999999999996, 30 });
+                columns: new[] { "Id", "ApplicationFont", "AutoSaveIntervalMinutes", "CacheExpirationMinutes", "CurrencyFormat", "CurrentFiscalYear", "DatabaseName", "DatabaseServer", "DateFormat", "DefaultLanguage", "EnableAI", "EnableAutoSave", "EnableDataCaching", "EnableFileLogging", "EnableNotifications", "EnableQuickBooksSync", "EnableSounds", "FiscalPeriod", "FiscalQuarter", "FiscalYearEnd", "FiscalYearStart", "FiscalYearStartDay", "FiscalYearStartMonth", "IncludeChartsInReports", "LastReportEndDate", "LastReportStartDate", "LastSelectedEnterpriseId", "LastSelectedFormat", "LastSelectedReportType", "LogFilePath", "QboAccessToken", "QboClientId", "QboClientSecret", "QboRefreshToken", "QboTokenExpiry", "QuickBooksAccessToken", "QuickBooksCompanyFile", "QuickBooksEnvironment", "QuickBooksRealmId", "QuickBooksRedirectUri", "QuickBooksRefreshToken", "QuickBooksTokenExpiresUtc", "SelectedLogLevel", "SessionTimeoutMinutes", "SyncIntervalMinutes", "Theme", "UseDynamicColumns", "UseFiscalYearForReporting", "WindowHeight", "WindowLeft", "WindowMaximized", "WindowTop", "WindowWidth", "XaiApiEndpoint", "XaiApiKey", "XaiMaxTokens", "XaiModel", "XaiTemperature", "XaiTimeout" },
+                values: new object[] { 1, "Segoe UI, 9pt", 5, 30, "USD", "2024-2025", "WileyWidget", "localhost", "MM/dd/yyyy", "en-US", false, true, true, true, true, false, true, "Q1", 1, "June 30", "July 1", 1, 7, true, null, null, 1, null, null, "logs/wiley-widget.log", null, null, null, null, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, null, "sandbox", null, null, null, null, "Information", 60, 30, "FluentDark", false, true, null, null, null, null, null, "https://api.x.ai/v1", null, 2000, "grok-4.1", 0.69999999999999996, 30 });
 
             migrationBuilder.InsertData(
                 table: "BudgetPeriods",
@@ -703,26 +818,26 @@ namespace WileyWidget.Data.Migrations
                 columns: new[] { "Id", "AccountNumber", "ActivityCode", "ActualAmount", "BudgetedAmount", "CreatedAt", "DepartmentId", "Description", "EncumbranceAmount", "EndPeriod", "FiscalYear", "FundId", "FundType", "IsGASBCompliant", "MunicipalAccountId", "ParentId", "SourceFilePath", "SourceRowNumber", "StartPeriod", "UpdatedAt", "Variance" },
                 values: new object[,]
                 {
-                    { 1, "332.1", null, 0m, 360m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Federal: Mineral Lease", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 2, "333.00", null, 0m, 240m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "State: Cigarette Taxes", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 3, "334.31", null, 0m, 18153m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Highways Users", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 4, "313.00", null, 0m, 1775m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Additional MV", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 5, "337.17", null, 0m, 1460m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "County Road & Bridge", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 6, "311.20", null, 0m, 1500m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Senior Homestead Exemption", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 7, "312.00", null, 0m, 5100m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Specific Ownership Taxes", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 8, "314.00", null, 0m, 2500m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Tax A", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 9, "319.00", null, 0m, 35m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Penalties & Interest on Delinquent Taxes", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 10, "336.00", null, 0m, 120000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Sales Tax", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 11, "318.20", null, 0m, 7058m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Franchise Fee", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 12, "322.70", null, 0m, 50m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Animal Licenses", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 13, "310.00", null, 0m, 6000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Charges for Services: WSD Collection Fee", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 14, "370.00", null, 0m, 12000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Housing Authority Mgt Fee", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 15, "373.00", null, 0m, 2400m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Pickup Usage Fee", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 16, "361.00", null, 0m, 325m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Miscellaneous Receipts: Interest Earnings", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 17, "365.00", null, 0m, 100m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Dividends", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 18, "363.00", null, 0m, 1100m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Lease", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 19, "350.00", null, 0m, 10000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Wiley Hay Days Donations", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
-                    { 20, "362.00", null, 0m, 2500m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Donations", 0m, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m }
+                    { 1, "332.1", null, 0m, 360m, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 1, "Federal: Mineral Lease", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), 0m },
+                    { 2, "333.00", null, 0m, 240m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "State: Cigarette Taxes", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 3, "334.31", null, 0m, 18153m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Highways Users", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 4, "313.00", null, 0m, 1775m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Additional MV", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 5, "337.17", null, 0m, 1460m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "County Road & Bridge", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 6, "311.20", null, 0m, 1500m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Senior Homestead Exemption", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 7, "312.00", null, 0m, 5100m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Specific Ownership Taxes", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 8, "314.00", null, 0m, 2500m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Tax A", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 9, "319.00", null, 0m, 35m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Penalties & Interest on Delinquent Taxes", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 10, "336.00", null, 0m, 120000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Sales Tax", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 11, "318.20", null, 0m, 7058m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Franchise Fee", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 12, "322.70", null, 0m, 50m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Animal Licenses", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 13, "310.00", null, 0m, 6000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Charges for Services: WSD Collection Fee", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 14, "370.00", null, 0m, 12000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Housing Authority Mgt Fee", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 15, "373.00", null, 0m, 2400m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Pickup Usage Fee", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 16, "361.00", null, 0m, 325m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Miscellaneous Receipts: Interest Earnings", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 17, "365.00", null, 0m, 100m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Dividends", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 18, "363.00", null, 0m, 1100m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Lease", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 19, "350.00", null, 0m, 10000m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Wiley Hay Days Donations", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m },
+                    { 20, "362.00", null, 0m, 2500m, new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 1, "Donations", 0m, new DateTime(2026, 6, 30, 0, 0, 0, 0, DateTimeKind.Unspecified), 2026, 1, 1, true, null, null, null, null, new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified), 0m }
                 });
 
             migrationBuilder.InsertData(
@@ -860,6 +975,11 @@ namespace WileyWidget.Data.Migrations
                 column: "UtilityBillId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ConversationHistories_UpdatedAt",
+                table: "ConversationHistories",
+                column: "UpdatedAt");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_DepartmentCurrentCharges_Department",
                 table: "DepartmentCurrentCharges",
                 column: "Department",
@@ -921,6 +1041,56 @@ namespace WileyWidget.Data.Migrations
                 name: "IX_MunicipalAccounts_ParentAccountId",
                 table: "MunicipalAccounts",
                 column: "ParentAccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_CheckNumber",
+                table: "Payments",
+                column: "CheckNumber");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_InvoiceId",
+                table: "Payments",
+                column: "InvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_MunicipalAccountId",
+                table: "Payments",
+                column: "MunicipalAccountId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_Payee",
+                table: "Payments",
+                column: "Payee");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_PaymentDate",
+                table: "Payments",
+                column: "PaymentDate");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_Status",
+                table: "Payments",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_VendorId",
+                table: "Payments",
+                column: "VendorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TownOfWileyBudgetData_AccountCode",
+                table: "TownOfWileyBudgetData",
+                column: "AccountCode");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TownOfWileyBudgetData_FundOrDepartment",
+                table: "TownOfWileyBudgetData",
+                column: "FundOrDepartment");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TownOfWileyBudgetData_MappedDepartment",
+                table: "TownOfWileyBudgetData",
+                column: "MappedDepartment");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_BudgetEntryId",
@@ -993,6 +1163,9 @@ namespace WileyWidget.Data.Migrations
                 name: "Charges");
 
             migrationBuilder.DropTable(
+                name: "ConversationHistories");
+
+            migrationBuilder.DropTable(
                 name: "DepartmentCurrentCharges");
 
             migrationBuilder.DropTable(
@@ -1002,10 +1175,16 @@ namespace WileyWidget.Data.Migrations
                 name: "FiscalYearSettings");
 
             migrationBuilder.DropTable(
-                name: "Invoices");
+                name: "Payments");
 
             migrationBuilder.DropTable(
                 name: "TaxRevenueSummaries");
+
+            migrationBuilder.DropTable(
+                name: "TelemetryLogs");
+
+            migrationBuilder.DropTable(
+                name: "TownOfWileyBudgetData");
 
             migrationBuilder.DropTable(
                 name: "Transactions");
@@ -1017,13 +1196,16 @@ namespace WileyWidget.Data.Migrations
                 name: "UtilityBills");
 
             migrationBuilder.DropTable(
-                name: "Vendor");
+                name: "Invoices");
 
             migrationBuilder.DropTable(
                 name: "BudgetEntries");
 
             migrationBuilder.DropTable(
                 name: "UtilityCustomers");
+
+            migrationBuilder.DropTable(
+                name: "Vendor");
 
             migrationBuilder.DropTable(
                 name: "Funds");

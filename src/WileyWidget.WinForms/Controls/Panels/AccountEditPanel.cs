@@ -370,8 +370,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _toolTip = new ToolTip();
-            this.Padding = new Padding(16);
+            this.Padding = new Padding(8);
             this.AutoScroll = true;
+            this.MinimumSize = new Size(560, 620);  // Ensure panel has minimum size
+            this.Size = new Size(560, 620);         // Set initial size
 
             // === CREATE MAIN TABLE LAYOUT ===
             _mainLayout = new TableLayoutPanel
@@ -380,7 +382,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ColumnCount = 2,
                 RowCount = 11, // Title + 9 fields + button panel
                 AutoSize = false,
-                Padding = new Padding(16)
+                Padding = new Padding(8)  // Reduced padding to maximize space
             };
 
             // Set column widths: label (140px) + control (320px) + padding
@@ -508,6 +510,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "cmbDepartment",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                MaxDropDownItems = 10,
                 AccessibleName = "Department",
                 AccessibleDescription = "Select the department this account belongs to",
                 Dock = DockStyle.Fill,
@@ -533,6 +538,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "cmbFund",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                MaxDropDownItems = 10,
                 AccessibleName = "Fund Type",
                 AccessibleDescription = "Select the municipal fund type for this account",
                 Dock = DockStyle.Fill,
@@ -558,6 +566,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "cmbType",
                 DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                MaxDropDownItems = 10,
                 AccessibleName = "Account Type",
                 AccessibleDescription = "Select the account type",
                 Dock = DockStyle.Fill,
@@ -583,6 +594,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "numBalance",
                 AllowNull = false,
+                Value = 0,
                 MinValue = (double)decimal.MinValue,
                 MaxValue = (double)decimal.MaxValue,
                 AccessibleName = "Balance",
@@ -594,6 +606,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat
             };
+            // Set decimal digits via NumberFormatInfo
+            numBalance.NumberFormatInfo.CurrencyDecimalDigits = 2;
             _mainLayout.Controls.Add(numBalance, 1, 7);
             _toolTip.SetToolTip(numBalance, "Current account balance");
 
@@ -612,6 +626,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "numBudget",
                 AllowNull = false,
+                Value = 0,
                 MinValue = 0,
                 MaxValue = (double)decimal.MaxValue,
                 AccessibleName = "Budget Amount",
@@ -623,6 +638,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat
             };
+            // Set decimal digits via NumberFormatInfo
+            numBudget.NumberFormatInfo.CurrencyDecimalDigits = 2;
             _mainLayout.Controls.Add(numBudget, 1, 8);
             _toolTip.SetToolTip(numBudget, "Budgeted amount for this account");
 
@@ -673,7 +690,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
             _saveHandler = BtnSave_Click;
             btnSave.Click += _saveHandler;
-            _buttonPanel.Controls.Add(btnSave);
 
             btnCancel = new SfButton
             {
@@ -685,12 +701,19 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Cancel",
                 AccessibleDescription = "Cancel and discard changes",
                 TabIndex = 11,
-                ThemeName = themeName,
-                Margin = new Padding(0)
+                ThemeName = themeName
             };
             _cancelHandler = BtnCancel_Click;
             btnCancel.Click += _cancelHandler;
+
+            // Position buttons: Cancel first (rightmost), then Save to its left
+            btnCancel.Left = _buttonPanel.ClientSize.Width - btnCancel.Width - 10;
+            btnCancel.Top = 10;
+            btnSave.Left = btnCancel.Left - btnSave.Width - 10;
+            btnSave.Top = 10;
+
             _buttonPanel.Controls.Add(btnCancel);
+            _buttonPanel.Controls.Add(btnSave);
 
             _mainLayout.Controls.Add(_buttonPanel, 0, 10);
             _mainLayout.SetColumnSpan(_buttonPanel, 2);
@@ -1008,6 +1031,23 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             base.Dispose(disposing);
+        }
+
+        /// <summary>
+        /// Resolves the AccountsViewModel from the service provider.
+        /// </summary>
+        protected override object? ResolveViewModel(IServiceProvider serviceProvider)
+        {
+            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<AccountsViewModel>(serviceProvider);
+            if (vm == null)
+            {
+                Logger?.LogWarning("AccountEditPanel: Failed to resolve AccountsViewModel from service provider");
+            }
+            else
+            {
+                Logger?.LogDebug("AccountEditPanel: Successfully resolved AccountsViewModel");
+            }
+            return vm;
         }
     }
 }

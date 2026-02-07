@@ -42,6 +42,7 @@ namespace WileyWidget.Data
         public DbSet<BudgetPeriod> BudgetPeriods { get; set; } = null!;
         public DbSet<Invoice> Invoices { get; set; } = null!;
         public DbSet<Vendor> Vendors { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
         public DbSet<AuditEntry> AuditEntries { get; set; } = null!;
         public DbSet<TaxRevenueSummary> TaxRevenueSummaries { get; set; } = null!;
         public DbSet<ActivityLog> ActivityLogs { get; set; } = null!;
@@ -63,7 +64,7 @@ namespace WileyWidget.Data
             // Constants for seed data dates to reduce repetition
             var fy2026Start = new DateTime(2025, 7, 1);
             var fy2026End = new DateTime(2026, 6, 30);
-            var seedTimestamp = DateTime.UtcNow; // Use current time for CreatedAt/UpdatedAt instead of future dates
+            var seedTimestamp = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc); // Static timestamp for seed data (prevents migration warnings)
 
             // EF Core 10: Enable named default constraints for better migration control
             // modelBuilder.UseNamedDefaultConstraints(); // Commented out - requires EF Core 10+
@@ -187,6 +188,35 @@ namespace WileyWidget.Data
                 entity.Property(i => i.Status).HasMaxLength(50).HasDefaultValue("Pending");
             });
 
+            // Payment configuration
+            modelBuilder.Entity<Payment>(entity =>
+            {
+                entity.HasOne(p => p.MunicipalAccount)
+                      .WithMany()
+                      .HasForeignKey(p => p.MunicipalAccountId)
+                      .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(p => p.Vendor)
+                      .WithMany()
+                      .HasForeignKey(p => p.VendorId)
+                      .OnDelete(DeleteBehavior.SetNull);
+                entity.HasOne(p => p.Invoice)
+                      .WithMany()
+                      .HasForeignKey(p => p.InvoiceId)
+                      .OnDelete(DeleteBehavior.SetNull);
+                entity.HasIndex(p => p.CheckNumber);
+                entity.HasIndex(p => p.PaymentDate);
+                entity.HasIndex(p => p.Payee);
+                entity.HasIndex(p => p.Status);
+                entity.HasIndex(p => p.MunicipalAccountId);
+                entity.HasIndex(p => p.VendorId);
+                entity.Property(p => p.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(p => p.CheckNumber).HasMaxLength(20).IsRequired();
+                entity.Property(p => p.Payee).HasMaxLength(200).IsRequired();
+                entity.Property(p => p.Description).HasMaxLength(500).IsRequired();
+                entity.Property(p => p.Status).HasMaxLength(50).HasDefaultValue("Cleared");
+                entity.Property(p => p.Memo).HasMaxLength(1000);
+            });
+
             // ActivityLog configuration
             modelBuilder.Entity<ActivityLog>(entity =>
             {
@@ -232,6 +262,15 @@ namespace WileyWidget.Data
                 entity.HasIndex(v => v.IsActive);
                 entity.Property(v => v.Name).HasMaxLength(100).IsRequired();
                 entity.Property(v => v.ContactInfo).HasMaxLength(200);
+                entity.Property(v => v.Email).HasMaxLength(200);
+                entity.Property(v => v.Phone).HasMaxLength(50);
+                entity.Property(v => v.MailingAddressLine1).HasMaxLength(200);
+                entity.Property(v => v.MailingAddressLine2).HasMaxLength(200);
+                entity.Property(v => v.MailingAddressCity).HasMaxLength(100);
+                entity.Property(v => v.MailingAddressState).HasMaxLength(50);
+                entity.Property(v => v.MailingAddressPostalCode).HasMaxLength(20);
+                entity.Property(v => v.MailingAddressCountry).HasMaxLength(100);
+                entity.Property(v => v.QuickBooksId).HasMaxLength(50);
             });
 
             // Precision for TaxRevenueSummary decimal columns to prevent truncation/rounding issues

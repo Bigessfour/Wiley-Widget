@@ -5,12 +5,13 @@ using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Drawing;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
-using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
@@ -66,6 +67,7 @@ public static class RightDockPanelFactory
         logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel container (Activity Log + JARVIS Chat) with 6 validations");
 
         ThemeColors.EnsureThemeAssemblyLoaded(logger);
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
 
         try
         {
@@ -106,15 +108,8 @@ public static class RightDockPanelFactory
             // Tab 2: JARVIS Chat (Validation #1: Option A BlazorWebView.Services injection, #2: Tab Management,
             // #3: Lazy Personality Service post-InitializeAsync, #4: Theme Cascade via SfSkinManager)
             var jarvisTab = new TabPage { Text = "JARVIS Chat", Name = "JARVISChatTab" };
-            var jarvisLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<JARVISChatUserControl>>(serviceProvider)
-                ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<JARVISChatUserControl>)
-                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<JARVISChatUserControl>.Instance;
-            var jarvisControl = new JARVISChatUserControl(scopeFactory, serviceProvider, jarvisLogger)
-            {
-                Dock = DockStyle.Fill,
-                Name = "JARVISChatUserControl"
-            };
-            jarvisTab.Controls.Add(jarvisControl);
+            var jarvisPlaceholder = CreateJarvisPlaceholder(themeName);
+            jarvisTab.Controls.Add(jarvisPlaceholder);
             tabControl.TabPages.Add(jarvisTab);
 
             rightDockPanel.Controls.Add(tabControl);
@@ -267,6 +262,46 @@ public static class RightDockPanelFactory
         {
             logger?.LogError(ex, "Failed to switch right panel content to {TargetMode}", targetMode);
         }
+    }
+
+    private static Control CreateJarvisPlaceholder(string themeName)
+    {
+        var panel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Name = "JARVISChatPlaceholder",
+            Padding = new Padding(12)
+        };
+        SfSkinManager.SetVisualStyle(panel, themeName);
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2
+        };
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 70f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));
+
+        var label = new Label
+        {
+            Text = "Initializing chat...",
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter
+        };
+
+        var progress = new ProgressBar
+        {
+            Dock = DockStyle.Fill,
+            Style = ProgressBarStyle.Marquee,
+            MarqueeAnimationSpeed = 30
+        };
+
+        layout.Controls.Add(label, 0, 0);
+        layout.Controls.Add(progress, 0, 1);
+        panel.Controls.Add(layout);
+
+        return panel;
     }
 
     /// <summary>

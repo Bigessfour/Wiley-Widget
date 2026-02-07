@@ -796,6 +796,25 @@
 			"group": "none"
 		},
 		{
+			"label": "maintenance: Clear Logs",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/clear-logs.ps1"
+			],
+			"presentation": {
+				"panel": "new",
+				"reveal": "always",
+				"echo": true
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
 			"label": "👁️ Preview WarRoom Panel",
 			"dependsOn": [
 				"build: fast"

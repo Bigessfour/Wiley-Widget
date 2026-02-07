@@ -24,8 +24,23 @@ $successes = @()
 Write-Host "STEP 1: Checking Environment Variables..." -ForegroundColor Yellow
 Write-Host "─────────────────────────────────────────────────────────────────" -ForegroundColor Gray
 
-$xaiModern = [Environment]::GetEnvironmentVariable("XAI__ApiKey")
-$xaiLegacy = [Environment]::GetEnvironmentVariable("XAI_API_KEY")
+# Check all scopes for modern convention (User + Machine)
+$xaiModern = [Environment]::GetEnvironmentVariable("XAI__ApiKey", "User")
+if (-not $xaiModern) {
+    $xaiModern = [Environment]::GetEnvironmentVariable("XAI__ApiKey", "Machine")
+}
+if (-not $xaiModern) {
+    $xaiModern = [Environment]::GetEnvironmentVariable("XAI__ApiKey", "Process")
+}
+
+# Check all scopes for legacy convention
+$xaiLegacy = [Environment]::GetEnvironmentVariable("XAI_API_KEY", "Machine")
+if (-not $xaiLegacy) {
+    $xaiLegacy = [Environment]::GetEnvironmentVariable("XAI_API_KEY", "User")
+}
+if (-not $xaiLegacy) {
+    $xaiLegacy = [Environment]::GetEnvironmentVariable("XAI_API_KEY", "Process")
+}
 
 if ($null -ne $xaiModern -and $xaiModern -ne "") {
     Write-Host "  ✅ XAI__ApiKey (modern) found: $(($xaiModern.Substring(0, 4)) + '...' + ($xaiModern.Substring($xaiModern.Length - 4)))" `
@@ -115,9 +130,26 @@ Write-Host "──────────────────────�
 
 $foundSources = @()
 
-if ($null -ne $xaiModern -and $xaiModern -ne "") {
-    $foundSources += "XAI__ApiKey (environment variable - TIER 2)"
-} elseif ($null -ne $xaiLegacy -and $xaiLegacy -ne "") {
+# Refresh environment variables from all scopes for precedence check
+$xaiModernFinal = [Environment]::GetEnvironmentVariable("XAI__ApiKey", "User")
+if (-not $xaiModernFinal) {
+    $xaiModernFinal = [Environment]::GetEnvironmentVariable("XAI__ApiKey", "Machine")
+}
+if (-not $xaiModernFinal) {
+    $xaiModernFinal = [Environment]::GetEnvironmentVariable("XAI__ApiKey", "Process")
+}
+
+$xaiLegacyFinal = [Environment]::GetEnvironmentVariable("XAI_API_KEY", "Machine")
+if (-not $xaiLegacyFinal) {
+    $xaiLegacyFinal = [Environment]::GetEnvironmentVariable("XAI_API_KEY", "User")
+}
+if (-not $xaiLegacyFinal) {
+    $xaiLegacyFinal = [Environment]::GetEnvironmentVariable("XAI_API_KEY", "Process")
+}
+
+if ($null -ne $xaiModernFinal -and $xaiModernFinal -ne "") {
+    $foundSources += "XAI__ApiKey (environment variable - TIER 2 Modern)"
+} elseif ($null -ne $xaiLegacyFinal -and $xaiLegacyFinal -ne "") {
     $foundSources += "XAI_API_KEY (legacy environment variable - TIER 2)"
 }
 
@@ -151,8 +183,8 @@ if ($TestApi) {
     Write-Host "STEP 5: Testing API Connectivity..." -ForegroundColor Yellow
     Write-Host "─────────────────────────────────────────────────────────────────" -ForegroundColor Gray
 
-    # Get the API key from environment (this is what will be used)
-    $apiKey = $xaiModern ?? $xaiLegacy
+    # Get the API key from environment (prioritize modern convention)
+    $apiKey = $xaiModernFinal ?? $xaiLegacyFinal
 
     if ($null -ne $apiKey -and $apiKey -ne "") {
         Write-Host "  Testing with API key: $(($apiKey.Substring(0, 4)) + '...' + ($apiKey.Substring($apiKey.Length - 4)))" -ForegroundColor Gray

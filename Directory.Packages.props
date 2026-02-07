@@ -115,19 +115,19 @@
     <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <!-- Syncfusion WinForms packages v32.1.19 (latest with performance fixes) -->
-    <PackageVersion Include="Syncfusion.Grid.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Chart.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Shared.Base" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Licensing" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Tools.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="32.1.19" />
+    <!-- Syncfusion WinForms packages v32.2.3 (Service Pack 1 - fixes BackStage renderer NRE) -->
+    <PackageVersion Include="Syncfusion.Grid.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Chart.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Shared.Base" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Tools.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="32.2.3" />
     <!-- FluentTheme and MaterialTheme removed - NOT supported in Windows Forms per Syncfusion docs -->
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
     <!-- FastReport Open Source packages -->
@@ -144,17 +144,17 @@
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageVersion Include="Syncfusion.Core.WinForms" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Core.WinForms" Version="32.2.3" />
     <!-- SixLabors.ImageSharp removed - unused orphaned dependency -->
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
     <!-- Blazor WebView and Interactive Chat for Windows Forms -->
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="10.0.30" />
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
-    <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.SmartComponents" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Inputs" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Buttons" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.SmartComponents" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Inputs" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Buttons" Version="32.2.3" />
   </ItemGroup>
 </Project>

@@ -23,6 +23,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using AppVendor = WileyWidget.Models.Vendor;
 
 namespace WileyWidget.Services;
 
@@ -1107,6 +1108,17 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
 
 
+    public async System.Threading.Tasks.Task<SyncResult> SyncLocalVendorsToQboAsync(IEnumerable<AppVendor> vendors, CancellationToken cancellationToken = default)
+    {
+        if (vendors == null)
+        {
+            throw new ArgumentNullException(nameof(vendors));
+        }
+
+        var qboVendors = vendors.Select(MapToQuickBooksVendor).ToList();
+        return await SyncQboVendorsAsync(qboVendors, cancellationToken).ConfigureAwait(false);
+    }
+
     public async System.Threading.Tasks.Task<SyncResult> SyncVendorsToAppAsync(IEnumerable<Vendor> vendors, CancellationToken cancellationToken = default)
     {
         if (vendors == null)
@@ -1114,6 +1126,64 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             throw new ArgumentNullException(nameof(vendors));
         }
 
+        return await SyncQboVendorsAsync(vendors, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static Vendor MapToQuickBooksVendor(AppVendor vendor)
+    {
+        if (vendor == null)
+        {
+            throw new ArgumentNullException(nameof(vendor));
+        }
+
+        var qboVendor = new Vendor
+        {
+            DisplayName = vendor.Name.Trim(),
+            CompanyName = vendor.Name.Trim(),
+            Active = vendor.IsActive
+        };
+
+        if (!string.IsNullOrWhiteSpace(vendor.Email))
+        {
+            qboVendor.PrimaryEmailAddr = new EmailAddress { Address = vendor.Email };
+        }
+
+        if (!string.IsNullOrWhiteSpace(vendor.Phone))
+        {
+            qboVendor.PrimaryPhone = new TelephoneNumber { FreeFormNumber = vendor.Phone };
+        }
+
+        var hasAddress = !string.IsNullOrWhiteSpace(vendor.MailingAddressLine1)
+            || !string.IsNullOrWhiteSpace(vendor.MailingAddressLine2)
+            || !string.IsNullOrWhiteSpace(vendor.MailingAddressCity)
+            || !string.IsNullOrWhiteSpace(vendor.MailingAddressState)
+            || !string.IsNullOrWhiteSpace(vendor.MailingAddressPostalCode)
+            || !string.IsNullOrWhiteSpace(vendor.MailingAddressCountry);
+
+        if (hasAddress)
+        {
+            qboVendor.BillAddr = new PhysicalAddress
+            {
+                Line1 = vendor.MailingAddressLine1,
+                Line2 = vendor.MailingAddressLine2,
+                City = vendor.MailingAddressCity,
+                CountrySubDivisionCode = vendor.MailingAddressState,
+                PostalCode = vendor.MailingAddressPostalCode,
+                Country = vendor.MailingAddressCountry
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(vendor.QuickBooksId))
+        {
+            qboVendor.Id = vendor.QuickBooksId;
+        }
+
+        return qboVendor;
+    }
+
+    private async System.Threading.Tasks.Task<SyncResult> SyncQboVendorsAsync(IEnumerable<Vendor> vendors, CancellationToken cancellationToken = default)
+    {
+        var vendorList = vendors as IList<Vendor> ?? vendors.ToList();
         var stopwatch = Stopwatch.StartNew();
         try
         {
@@ -1151,7 +1221,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             int syncedCount = 0;
             bool hadFailures = false;
 
-            foreach (var vendor in vendors)
+            foreach (var vendor in vendorList)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -1191,7 +1261,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             // Log sync performance metrics
             _logger.LogInformation("Vendor sync completed: {SyncedCount}/{TotalCount} vendors synced in {DurationMs}ms, Success: {Success}",
-                syncedCount, vendors.Count(), stopwatch.ElapsedMilliseconds, !hadFailures);
+                syncedCount, vendorList.Count, stopwatch.ElapsedMilliseconds, !hadFailures);
 
             return new SyncResult
             {

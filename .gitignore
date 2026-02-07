@@ -177,7 +177,7 @@ docs/analysis/*.txt
 *.db
 *.db-shm
 *.db-wal
-WileyWidgetDev.db*
+WileyWidget.db*
 
 # Performance and diagnostic files
 startup-performance-results.json

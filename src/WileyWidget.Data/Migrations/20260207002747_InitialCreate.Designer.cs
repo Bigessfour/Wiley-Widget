@@ -12,8 +12,8 @@ using WileyWidget.Data;
 namespace WileyWidget.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260123035045_UpdatedModel")]
-    partial class UpdatedModel
+    [Migration("20260207002747_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -332,7 +332,7 @@ namespace WileyWidget.Data.Migrations
                             UseFiscalYearForReporting = true,
                             XaiApiEndpoint = "https://api.x.ai/v1",
                             XaiMaxTokens = 2000,
-                            XaiModel = "grok-4-0709",
+                            XaiModel = "grok-4.1",
                             XaiTemperature = 0.69999999999999996,
                             XaiTimeout = 30
                         });
@@ -489,7 +489,7 @@ namespace WileyWidget.Data.Migrations
                             AccountNumber = "332.1",
                             ActualAmount = 0m,
                             BudgetedAmount = 360m,
-                            CreatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DepartmentId = 1,
                             Description = "Federal: Mineral Lease",
                             EncumbranceAmount = 0m,
@@ -499,7 +499,7 @@ namespace WileyWidget.Data.Migrations
                             FundType = 1,
                             IsGASBCompliant = true,
                             StartPeriod = new DateTime(2025, 7, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            UpdatedAt = new DateTime(2025, 10, 28, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Variance = 0m
                         },
                         new
@@ -2011,6 +2011,84 @@ namespace WileyWidget.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("WileyWidget.Models.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CheckNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsCleared")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Memo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("MunicipalAccountId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Payee")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Cleared");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("VendorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CheckNumber");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("MunicipalAccountId");
+
+                    b.HasIndex("Payee");
+
+                    b.HasIndex("PaymentDate");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("VendorId");
+
+                    b.ToTable("Payments");
+                });
+
             modelBuilder.Entity("WileyWidget.Models.TaxRevenueSummary", b =>
                 {
                     b.Property<int>("Id")
@@ -2202,7 +2280,8 @@ namespace WileyWidget.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AccountCode")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal?>("ActualYTD")
                         .HasPrecision(19, 4)
@@ -2213,20 +2292,24 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("decimal(19,4)");
 
                     b.Property<string>("Category")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal?>("EstimateCurrentYr")
                         .HasPrecision(19, 4)
                         .HasColumnType("decimal(19,4)");
 
                     b.Property<string>("FundOrDepartment")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("MappedDepartment")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("PercentOfBudget")
                         .HasColumnType("int");
@@ -2244,9 +2327,16 @@ namespace WileyWidget.Data.Migrations
                         .HasColumnType("decimal(19,4)");
 
                     b.Property<string>("SourceFile")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountCode");
+
+                    b.HasIndex("FundOrDepartment");
+
+                    b.HasIndex("MappedDepartment");
 
                     b.ToTable("TownOfWileyBudgetData");
                 });
@@ -2568,6 +2658,42 @@ namespace WileyWidget.Data.Migrations
                     b.Property<string>("ContactInfo")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("MailingAddressCity")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MailingAddressCountry")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MailingAddressLine1")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("MailingAddressLine2")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("MailingAddressPostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("MailingAddressState")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("QuickBooksId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -2947,6 +3073,30 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("ParentAccount");
+                });
+
+            modelBuilder.Entity("WileyWidget.Models.Payment", b =>
+                {
+                    b.HasOne("WileyWidget.Models.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WileyWidget.Models.MunicipalAccount", "MunicipalAccount")
+                        .WithMany()
+                        .HasForeignKey("MunicipalAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WileyWidget.Models.Vendor", "Vendor")
+                        .WithMany()
+                        .HasForeignKey("VendorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("MunicipalAccount");
+
+                    b.Navigation("Vendor");
                 });
 
             modelBuilder.Entity("WileyWidget.Models.Transaction", b =>

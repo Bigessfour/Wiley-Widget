@@ -13,8 +13,21 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// <summary>
     /// Shared header used by docked panels.
     /// Provides a consistent title bar with actions: Refresh, Pin, Help, and Close.
-    /// Fixed height (44px) and padding (8px) to match UI guidelines.
-    /// Features: Loading spinner, keyboard shortcuts (Alt+key, Esc to close), tooltips, theme-aware styling.
+    ///
+    /// Features:
+    /// - Fixed height (52px) with consistent padding and button spacing
+    /// - Four action buttons with full keyboard shortcut support (Alt+R, Alt+P, Alt+H, Alt+C, Esc)
+    /// - Loading indicator (ProgressBarAdv) during async operations
+    /// - Theme-aware styling via SfSkinManager cascade
+    /// - Optional icon support via DpiAwareImageService (graceful text fallback)
+    /// - Rich tooltips with usage guidance and keyboard shortcuts
+    /// - Full accessibility support (AccessibleName, AccessibleDescription)
+    ///
+    /// Usage:
+    ///   var header = new PanelHeader(imageService) { Title = "My Panel" };
+    ///   header.RefreshClicked += async (s,e) => await LoadDataAsync();
+    ///   header.IsLoading = true;  // During long operations
+    ///   this.Controls.Add(header);
     /// </summary>
     public partial class PanelHeader : UserControl
     {
@@ -160,6 +173,15 @@ namespace WileyWidget.WinForms.Controls.Supporting
         /// <summary>
         /// Initialize PanelHeader with optional icon service for modern button icons.
         /// If no service is provided, buttons display text labels only.
+        ///
+        /// Icons are loaded from the provided DpiAwareImageService using these keys:
+        /// - "refresh" : Refresh/reload icon
+        /// - "pin" : Unpinned state pin icon (outline)
+        /// - "pin_filled" : Pinned state pin icon (filled)
+        /// - "help" : Question mark or help icon
+        /// - "close" : X or close icon
+        ///
+        /// If any icon fails to load, buttons gracefully fall back to text labels.
         /// </summary>
         public PanelHeader(DpiAwareImageService? imageService)
         {
@@ -203,6 +225,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private void InitializeComponent()
         {
             Height = HEADER_HEIGHT;
+            MinimumSize = new Size(0, HEADER_HEIGHT); // Prevent collapse
+            AutoSize = false; // Explicit false - we control the height
             Padding = new Padding(8);
             Dock = DockStyle.Top;
 
@@ -250,11 +274,19 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
             if (_imageService != null)
             {
-                var refreshIcon = _imageService.GetImage("refresh");
-                if (refreshIcon != null)
+                try
                 {
-                    _btnRefresh.Image = refreshIcon;
-                    _btnRefresh.Text = string.Empty; // Icon-only for cleaner look
+                    var refreshIcon = _imageService.GetImage("refresh");
+                    if (refreshIcon != null)
+                    {
+                        _btnRefresh.Image = refreshIcon;
+                        _btnRefresh.Text = string.Empty; // Icon-only for cleaner look
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Gracefully fall back to text if icon loading fails
+                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to load refresh icon: {ex.Message}");
                 }
             }
             _btnRefresh.Click += RefreshButton_Click;
@@ -266,18 +298,21 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     e.Handled = true;
                 }
             };
-            _toolTip.SetToolTip(_btnRefresh, "Refresh data (Alt+R)");
+            _toolTip.SetToolTip(_btnRefresh, "Refresh data\n\nReloads the current view with latest information from the server.\n\nKeyboard: Alt+R");
 
-            // Loading spinner (ProgressBarAdv, set to 50% for indeterminate appearance)
+            // Loading spinner (ProgressBarAdv, set to marquee-style for continuous animation)
             _loadingSpinner = new ProgressBarAdv
             {
-                Value = 50, // Indeterminate-like appearance
+                Value = 50, // Mid-range value creates visual feedback
+                Maximum = 100,
+                Minimum = 0,
                 AutoSize = false,
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                Size = new Size(24, Math.Max(12, buttonHeight - 8)),
+                Size = new Size(24, Math.Max(12, buttonHeight - 4)),
                 Visible = false
             };
-            _loadingSpinner.AccessibleName = "Loading";
+            _loadingSpinner.AccessibleName = "Loading indicator - Data is being refreshed, please wait";
+            _toolTip.SetToolTip(_loadingSpinner, "Loading in progress\n\nOperation may take a few moments");
 
             // Pin button (with optional icon)
             _btnPin = new SfButton
@@ -299,7 +334,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     e.Handled = true;
                 }
             };
-            UpdatePinButtonIcon(); // Apply icon after initialization
+            UpdatePinButtonIcon(); // Apply icon and tooltip after initialization
 
             // Help button (with optional icon)
             _btnHelp = new SfButton
@@ -315,11 +350,18 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
             if (_imageService != null)
             {
-                var helpIcon = _imageService.GetImage("help");
-                if (helpIcon != null)
+                try
                 {
-                    _btnHelp.Image = helpIcon;
-                    _btnHelp.Text = string.Empty; // Icon-only for cleaner look
+                    var helpIcon = _imageService.GetImage("help");
+                    if (helpIcon != null)
+                    {
+                        _btnHelp.Image = helpIcon;
+                        _btnHelp.Text = string.Empty; // Icon-only for cleaner look
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to load help icon: {ex.Message}");
                 }
             }
             _btnHelp.Click += (s, e) => HelpClicked?.Invoke(this, EventArgs.Empty);
@@ -331,7 +373,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     e.Handled = true;
                 }
             };
-            _toolTip.SetToolTip(_btnHelp, "Show help (Alt+H)");
+            _toolTip.SetToolTip(_btnHelp, "Show help\n\nDisplays additional information and guidance for this panel.\n\nKeyboard: Alt+H");
 
             // Close button (with optional icon)
             _btnClose = new SfButton
@@ -344,6 +386,22 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 TabStop = true,
                 TextImageRelation = TextImageRelation.ImageBeforeText
             };
+            if (_imageService != null)
+            {
+                try
+                {
+                    var closeIcon = _imageService.GetImage("close");
+                    if (closeIcon != null)
+                    {
+                        _btnClose.Image = closeIcon;
+                        _btnClose.Text = string.Empty; // Icon-only for cleaner look
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to load close icon: {ex.Message}");
+                }
+            }
             _btnClose.Click += (s, e) => CloseClicked?.Invoke(this, EventArgs.Empty);
             _btnClose.KeyDown += (s, e) =>
             {
@@ -353,7 +411,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     e.Handled = true;
                 }
             };
-            _toolTip.SetToolTip(_btnClose, "Close panel (Alt+C or Esc)");
+            _toolTip.SetToolTip(_btnClose, "Close panel\n\nDismisses this panel and returns to the main view.\n\nKeyboard: Alt+C or Esc");
 
             // Build actions panel layout
             actionsPanel.Controls.Add(_btnRefresh);
@@ -412,7 +470,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
             if (_toolTip != null)
             {
-                var tooltip = _isPinned ? "Unpin panel (keep it unlocked)" : "Pin panel (keep it open)";
+                var tooltip = _isPinned
+                    ? "Unpin panel\n\nRemoves the pin to allow this panel to auto-close or be rearranged.\n\nKeyboard: Alt+P"
+                    : "Pin panel\n\nKeeps this panel open and prevents it from auto-closing when navigating.\n\nKeyboard: Alt+P";
                 _toolTip.SetToolTip(_btnPin, tooltip);
             }
         }
@@ -421,13 +481,20 @@ namespace WileyWidget.WinForms.Controls.Supporting
         {
             if (_btnPin == null || _imageService == null) return;
 
-            // Update pin icon based on pinned state (filled vs outline)
-            var iconName = _isPinned ? "pin_filled" : "pin";
-            var icon = _imageService.GetImage(iconName);
-            if (icon != null)
+            try
             {
-                _btnPin.Image = icon;
-                _btnPin.Text = string.Empty; // Icon-only
+                // Update pin icon based on pinned state (filled vs outline)
+                var iconName = _isPinned ? "pin_filled" : "pin";
+                var icon = _imageService.GetImage(iconName);
+                if (icon != null)
+                {
+                    _btnPin.Image = icon;
+                    _btnPin.Text = string.Empty; // Icon-only
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Warning: Failed to load pin button icon: {ex.Message}");
             }
         }
 

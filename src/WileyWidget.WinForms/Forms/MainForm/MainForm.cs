@@ -708,7 +708,10 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        SwitchRightPanel("JarvisChat");
+                        ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
+                            "JARVIS Chat",
+                            Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
+                            allowFloating: true);
                         _logger?.LogInformation("[AUTOMATION] Auto-opened JARVIS panel for UI automation (attempt {Attempt})", attempt);
                         return;
                     }

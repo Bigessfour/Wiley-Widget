@@ -30,8 +30,28 @@ else if (!_isInitialized)
 @* ShowClearButton is a property of AssistView (child), not SfAIAssistView (parent)
    See: https://help.syncfusion.com/cr/aspnetcore-js2/Syncfusion.Blazor.InteractiveChat.SfAIAssistView.html *@
 <div class="jarvis-container" role="region" aria-label="JARVIS AI Assistant">
+    @* View Navigation Tabs - Syncfusion style tablist *@
+    @if (_assistViews.Count > 1)
+    {
+        <div class="view-tabs-container" role="tablist">
+            @foreach (var view in _assistViews)
+            {
+                var isActive = view.Index == _activeViewIndex;
+                <button class="view-tab @(isActive ? "active" : "")"
+                        role="tab"
+                        aria-selected="@isActive"
+                        aria-controls="@($"view-{view.Index}")"
+                        @onclick="() => SwitchViewAsync(view.Index)">
+                    <span class="tab-icon e-icons @view.IconCss"></span>
+                    <span class="tab-label">@view.Label</span>
+                </button>
+            }
+        </div>
+    }
+
     <SfAIAssistView @ref="AssistViewRef"
                     CssClass="custom-ai-assist"
+                    ActiveView="@_activeViewIndex"
                     Prompts="@_prompts"
                     PromptPlaceholder="Ask me anything about Wiley Widget..."
                     PromptSuggestions="@_suggestions"
@@ -43,95 +63,138 @@ else if (!_isInitialized)
                     PromptRequested="HandlePromptRequestedAsync">
         <ChildContent>
             <AssistViews>
-                <AssistView @key="@_currentViewId"
-                            Header="@_currentViewHeader"
-                            IconCss="e-icons e-ai-assist">
-                    <BannerTemplate>
-                        <div class="assist-banner">
-                            <div class="assist-banner-icon e-icons e-ai-assist"></div>
-                            <div class="assist-banner-content">
-                                <div class="assist-banner-title">@_bannerTitle</div>
-                                <div class="assist-banner-subtitle">@_bannerSubtitle</div>
-                            </div>
-                        </div>
-                    </BannerTemplate>
-                    <PromptItemTemplate>
-                        <div class="custom-prompt-item" role="article" aria-label="User prompt">
-                            <div class="prompt-header">
-                                <span class="prompt-icon e-icons e-user-avatar" aria-hidden="true"></span>
-                                <span class="prompt-author">@GetUserDisplayName()</span>
-                            </div>
-                            <div class="prompt-content">@context.Prompt</div>
-                        </div>
-                    </PromptItemTemplate>
-                    <ResponseItemTemplate>
-                        <div class="custom-response-item" role="article" aria-label="Assistant response">
-                            <div class="response-header">
-                                <span class="response-icon e-icons e-ai-assist" aria-hidden="true"></span>
-                                <span class="response-author">JARVIS</span>
-                                @if (_isThinking && string.IsNullOrEmpty(context.Response))
-                                {
-                                    <span class="thinking-indicator" aria-live="polite" aria-label="Thinking">
-                                        <span class="dot"></span>
-                                        <span class="dot"></span>
-                                        <span class="dot"></span>
-                                    </span>
-                                }
-                            </div>
-                            <div class="response-content">
-                                @if (!string.IsNullOrEmpty(context.Response))
-                                {
-                                    @((MarkupString)FormatMarkdownResponse(context.Response))
-                                }
-                                else if (_isThinking)
-                                {
-                                    <span class="processing-text">Processing your request...</span>
-                                }
-                            </div>
-                            @if (!string.IsNullOrEmpty(context.Response))
-                            {
-                                <div class="response-actions">
-                                    <SfButton CssClass="e-small e-flat" IconCss="e-icons e-copy" @onclick="() => CopyToClipboard(context.Response)" aria-label="Copy response">Copy</SfButton>
-                                    <SfButton CssClass="e-small e-flat" IconCss="e-icons e-refresh" @onclick="() => RegenerateResponse(context.Prompt)" aria-label="Regenerate response">Regenerate</SfButton>
-                                    <SfButton CssClass="e-small e-flat" IconCss="@_audioIconCss" @onclick="() => ToggleAudioPlaybackAsync(context.Response)" aria-label="@_audioTooltip">@(_isPlayingAudio ? "Stop" : "Read")</SfButton>
-                                    <SfButton CssClass="e-small e-flat" IconCss="e-icons e-like" @onclick="() => HandleResponseFeedbackAsync(context.Response, true)" aria-label="Like response">Like</SfButton>
-                                    <SfButton CssClass="e-small e-flat" IconCss="e-icons e-dislike" @onclick="() => HandleResponseFeedbackAsync(context.Response, false)" aria-label="Dislike response">Dislike</SfButton>
+                @foreach (var view in _assistViews)
+                {
+                    if (view.IsCustom)
+                    {
+                        <CustomView @key="@view.Index"
+                                    Header="@view.Header"
+                                    IconCss="@view.IconCss">
+                            <ViewTemplate>
+                                <div class="custom-view-container" id="@($"view-{view.Index}")">
+                                    <div class="custom-view-header">
+                                        <div class="custom-view-icon e-icons @view.IconCss"></div>
+                                        <div class="custom-view-titles">
+                                            <div class="custom-view-title">@view.BannerTitle</div>
+                                            <div class="custom-view-subtitle">@view.BannerSubtitle</div>
+                                        </div>
+                                    </div>
+                                    <div class="custom-view-body">
+                                        <p>Use this space for analytics, summaries, or reference content alongside chat.</p>
+                                    </div>
                                 </div>
-                            }
-                        </div>
-                    </ResponseItemTemplate>
-                    <FooterTemplate>
-                        <div class="assist-footer" role="contentinfo">
-                            @if (!string.IsNullOrEmpty(_errorMessage))
-                            {
-                                <div class="error-banner" role="alert" aria-live="assertive">
-                                    <span class="e-icons e-error" aria-hidden="true"></span>
-                                    <span class="error-text">@_errorMessage</span>
-                                    <SfButton CssClass="e-small e-flat" IconCss="e-icons e-close" @onclick="ClearError" aria-label="Dismiss error"></SfButton>
+                            </ViewTemplate>
+                        </CustomView>
+                    }
+                    else
+                    {
+                        <AssistView @key="@view.Index"
+                                    Header="@view.Header"
+                                    IconCss="@view.IconCss">
+                            <BannerTemplate>
+                                <div class="assist-banner" id="@($"view-{view.Index}")">
+                                    <div class="assist-banner-icon e-icons @view.IconCss"></div>
+                                    <div class="assist-banner-content">
+                                        <div class="assist-banner-title">@view.BannerTitle</div>
+                                        <div class="assist-banner-subtitle">@view.BannerSubtitle</div>
+                                    </div>
                                 </div>
-                            }
-                            else
-                            {
-                                <div class="footer-info">
-                                    <span class="footer-icon e-icons e-info" aria-hidden="true"></span>
-                                    <span class="footer-text">Powered by Grok AI • Session: @GetConversationId()</span>
-                                    <span class="token-usage" title="Token Usage">
-                                        <span class="e-icons e-data-usage" aria-hidden="true"></span>
-                                        @_tokensUsed / @_tokenLimit tokens
-                                    </span>
+                            </BannerTemplate>
+                            <PromptItemTemplate>
+                                <div class="custom-prompt-item" role="article" aria-label="User prompt">
+                                    <div class="prompt-header">
+                                        <div class="prompt-avatar" title="@GetUserDisplayName()">@GetUserInitials()</div>
+                                        <div class="prompt-info">
+                                            <span class="prompt-author">You</span>
+                                            <span class="prompt-timestamp">@FormatTimestamp(context.Timestamp)</span>
+                                        </div>
+                                    </div>
+                                    <div class="prompt-content">@context.Prompt</div>
                                 </div>
-                            }
-                        </div>
-                    </FooterTemplate>
-                </AssistView>
+                            </PromptItemTemplate>
+                            <ResponseItemTemplate>
+                                <div class="custom-response-item" role="article" aria-label="Assistant response">
+                                    <div class="response-header">
+                                        <div class="response-avatar" title="AI Assistance">
+                                            <span class="e-icons e-ai-assist" aria-hidden="true"></span>
+                                        </div>
+                                        <div class="response-info">
+                                            <div class="response-header-top">
+                                                <span class="response-author">AI Assist</span>
+                                                @if (_isThinking && string.IsNullOrEmpty(context.Response))
+                                                {
+                                                    <span class="thinking-indicator" aria-live="polite" aria-label="Thinking">
+                                                        <span class="dot"></span>
+                                                        <span class="dot"></span>
+                                                        <span class="dot"></span>
+                                                    </span>
+                                                }
+                                            </div>
+                                            <span class="response-timestamp">@FormatTimestamp(context.Timestamp)</span>
+                                        </div>
+                                    </div>
+                                    <div class="response-content">
+                                        @if (!string.IsNullOrEmpty(context.Response))
+                                        {
+                                            @((MarkupString)FormatMarkdownResponse(context.Response))
+                                        }
+                                        else if (_isThinking)
+                                        {
+                                            <span class="processing-text">Processing your request...</span>
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(context.Response))
+                                    {
+                                        <div class="response-actions">
+                                            <SfButton CssClass="e-small e-flat" IconCss="e-icons e-copy" @onclick="() => CopyToClipboard(context.Response)" aria-label="Copy response" title="Copy to clipboard">Copy</SfButton>
+                                            <SfButton CssClass="e-small e-flat" IconCss="e-icons e-refresh" @onclick="() => RegenerateResponse(context.Prompt)" aria-label="Regenerate response" title="Generate new response">Refresh</SfButton>
+                                            <SfButton CssClass="e-small e-flat" IconCss="@_audioIconCss" @onclick="() => ToggleAudioPlaybackAsync(context.Response)" aria-label="@_audioTooltip" title="Read response aloud">@(_isPlayingAudio ? "Stop" : "Read")</SfButton>
+                                            <SfButton CssClass="e-small e-flat" IconCss="e-icons e-like" @onclick="() => HandleResponseFeedbackAsync(context.Response, true)" aria-label="Mark as helpful" title="Helpful">👍</SfButton>
+                                            <SfButton CssClass="e-small e-flat" IconCss="e-icons e-dislike" @onclick="() => HandleResponseFeedbackAsync(context.Response, false)" aria-label="Mark as unhelpful" title="Not helpful">👎</SfButton>
+                                        </div>
+                                    }
+                                </div>
+                            </ResponseItemTemplate>
+                            <FooterTemplate>
+                                <div class="assist-footer" role="contentinfo">
+                                    @if (!string.IsNullOrEmpty(_errorMessage))
+                                    {
+                                        <div class="error-banner" role="alert" aria-live="assertive">
+                                            <span class="e-icons e-error" aria-hidden="true"></span>
+                                            <span class="error-text">@_errorMessage</span>
+                                            <SfButton CssClass="e-small e-flat" IconCss="e-icons e-close" @onclick="ClearError" aria-label="Dismiss error"></SfButton>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="footer-info">
+                                            <span class="footer-icon e-icons e-info" aria-hidden="true"></span>
+                                            <span class="footer-text">Powered by Grok AI • Session: @GetConversationId()</span>
+                                            <span class="token-usage" title="Token Usage">
+                                                <span class="e-icons e-data-usage" aria-hidden="true"></span>
+                                                @_tokensUsed / @_tokenLimit tokens
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            </FooterTemplate>
+                            <AssistViewToolbar>
+                                <AssistViewToolbarItems>
+                                    <AssistViewToolbarItem Text="Copy All" TooltipText="Copy entire conversation" IconCss="e-icons e-copy" @onclick="() => HandleToolbarItemClickedAsync('Copy All')" />
+                                    <AssistViewToolbarItem Text="Refresh" TooltipText="Regenerate last response" IconCss="e-icons e-refresh" @onclick="() => HandleToolbarItemClickedAsync('Refresh')" />
+                                    <AssistViewToolbarItem Type="AssistViewToolbarItemType.Spacer" />
+                                    <AssistViewToolbarItem Text="Test" TooltipText="Test AI connection" IconCss="e-icons e-check" @onclick="() => HandleToolbarItemClickedAsync('Test')" />
+                                    <AssistViewToolbarItem Type="AssistViewToolbarItemType.Spacer" />
+                                    <AssistViewToolbarItem Text="Settings" TooltipText="Configure settings" IconCss="e-icons e-settings" @onclick="() => HandleToolbarItemClickedAsync('Settings')" />
+                                    <AssistViewToolbarItem Text="Clear" TooltipText="Clear conversation" IconCss="e-icons e-delete" CssClass="e-danger" @onclick="() => HandleToolbarItemClickedAsync('Clear')" />
+                                </AssistViewToolbarItems>
+                            </AssistViewToolbar>
+                        </AssistView>
+                    }
+                }
             </AssistViews>
         </ChildContent>
     </SfAIAssistView>
-    <div class="toolbar-actions" role="toolbar">
-        <SfButton CssClass="e-small e-flat" IconCss="e-icons e-settings" @onclick="ShowSettingsAsync" aria-label="Settings" title="Settings">Settings</SfButton>
-        <SfButton CssClass="e-small e-flat" IconCss="e-icons e-refresh" @onclick="ClearConversationAsync" aria-label="Clear conversation" title="Clear Conversation">Clear</SfButton>
-        <SfButton CssClass="e-small e-flat" IconCss="e-icons e-check" @onclick="RunConnectionTestsAsync" aria-label="Test connections" title="Test Connections">Test</SfButton>
-    </div>
 </div>
 
 @* Settings Dialog *@
@@ -208,6 +271,101 @@ else if (!_isInitialized)
         box-sizing: border-box;
     }
 
+    /* View Tabs Navigation */
+    .view-tabs-container {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: linear-gradient(to right, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+        border-bottom: 2px solid rgba(0,0,0,0.1);
+        padding: 0;
+        min-height: 48px;
+    }
+
+    .view-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease-out;
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        position: relative;
+    }
+
+    .view-tab:hover {
+        background: rgba(102, 126, 234, 0.05);
+        color: #667eea;
+    }
+
+    .view-tab.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .tab-icon {
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+    }
+
+    .tab-label {
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* CustomView Styling */
+    .custom-view-container {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .custom-view-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .custom-view-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(102, 126, 234, 0.12);
+        color: #667eea;
+        font-size: 18px;
+    }
+
+    .custom-view-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #222;
+    }
+
+    .custom-view-subtitle {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .custom-view-body {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+        padding: 16px;
+        color: #333;
+    }
+
     /* Banner Styling */
     .assist-banner {
         display: flex;
@@ -259,16 +417,76 @@ else if (!_isInitialized)
     }
 
     .custom-response-item {
-        background: rgba(118, 75, 162, 0.05);
+        background: linear-gradient(135deg, rgba(118, 75, 162, 0.04) 0%, rgba(102, 126, 234, 0.02) 100%);
         border-left: 3px solid #764ba2;
+        border-radius: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .custom-response-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(118, 75, 162, 0.2), transparent);
     }
 
     .prompt-header,
     .response-header {
         display: flex;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
         font-weight: 600;
+        gap: 12px;
+    }
+
+    .prompt-avatar,
+    .response-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 18px;
+        font-weight: 700;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .prompt-avatar {
+        text-transform: uppercase;
+        font-size: 14px;
+    }
+
+    .response-avatar {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        box-shadow: 0 2px 8px rgba(118, 75, 162, 0.3);
+    }
+
+    .response-avatar .e-ai-assist {
+        font-size: 18px;
+    }
+
+    .prompt-info,
+    .response-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .response-header-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .prompt-icon,
@@ -277,10 +495,45 @@ else if (!_isInitialized)
         margin-right: 8px;
     }
 
+    .prompt-author,
+    .response-author {
+        font-size: 15px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .prompt-timestamp,
+    .response-timestamp {
+        font-size: 12px;
+        color: #999;
+        font-weight: 400;
+        white-space: nowrap;
+    }
+
     .prompt-content,
     .response-content {
         line-height: 1.6;
         color: var(--text-color, #333);
+        padding: 0 0 0 48px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: pre-wrap;
+    }
+
+    .response-content pre {
+        background: transparent;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font-family: inherit;
+        color: inherit;
+        white-space: pre-wrap;
+    }
+
+    .response-content code {
+        background: #f5f5f5;
+        padding: 2px 4px;
+        border-radius: 3px;
     }
 
     /* Thinking Indicator */
@@ -288,14 +541,16 @@ else if (!_isInitialized)
         display: inline-flex;
         gap: 4px;
         margin-left: 8px;
+        align-items: center;
     }
 
     .thinking-indicator .dot {
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         animation: bounce 1.4s infinite ease-in-out both;
+        box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
     }
 
     .thinking-indicator .dot:nth-child(1) { animation-delay: -0.32s; }
@@ -314,10 +569,25 @@ else if (!_isInitialized)
     /* Response Actions */
     .response-actions {
         display: flex;
-        gap: 8px;
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(0,0,0,0.1);
+        gap: 6px;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid rgba(0,0,0,0.08);
+        flex-wrap: wrap;
+    }
+
+    .response-actions .e-btn:hover {
+        background: rgba(102, 126, 234, 0.1) !important;
+        color: #667eea !important;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2) !important;
+    }
+
+    .response-actions .e-btn {
+        font-size: 13px;
+        padding: 6px 12px !important;
+        transition: all 0.2s ease-out;
+        border: none !important;
     }
 
     /* Footer Styling */
@@ -376,10 +646,65 @@ else if (!_isInitialized)
     /* Toolbar Actions */
     .toolbar-actions {
         display: flex;
-        gap: 8px;
-        padding: 8px 16px;
-        background: rgba(0,0,0,0.02);
-        border-top: 1px solid rgba(0,0,0,0.1);
+        align-items: center;
+        padding: 12px 16px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.6) 100%);
+        border-top: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 -1px 3px rgba(0,0,0,0.02);
+        gap: 0;
+    }
+
+    .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .toolbar-spacer {
+        flex: 1;
+        min-width: 12px;
+    }
+
+    .toolbar-separator {
+        width: 1px;
+        height: 24px;
+        background: rgba(0,0,0,0.1);
+        margin: 0 4px;
+    }
+
+    .toolbar-actions .e-btn {
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 14px !important;
+        border-radius: 4px !important;
+        transition: all 0.2s ease-out;
+        background: rgba(102, 126, 234, 0.05) !important;
+        color: #667eea !important;
+        border: none !important;
+    }
+
+    .toolbar-actions .e-btn:hover {
+        background: rgba(102, 126, 234, 0.15) !important;
+        color: #667eea !important;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15) !important;
+    }
+
+    .toolbar-actions .e-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 3px rgba(102, 126, 234, 0.1) !important;
+    }
+
+    .toolbar-actions .e-outline {
+        background: transparent !important;
+        border: 1px solid #f44447 !important;
+        color: #f44447 !important;
+    }
+
+    .toolbar-actions .e-outline:hover {
+        background: rgba(244, 68, 71, 0.1) !important;
+        color: #f44447 !important;
+        box-shadow: 0 2px 8px rgba(244, 68, 71, 0.15) !important;
     }
 
     /* Compact prompt box */

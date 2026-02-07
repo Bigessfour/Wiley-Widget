@@ -127,16 +127,32 @@ public static class DockingHostFactory
                 };
                 logger?.LogDebug("CreateDockingHost: Central document panel created: Name={Name}, Visible={Visible}", centralDocumentPanel.Name, centralDocumentPanel.Visible);
 
-                // 3. Create right dock panel with TabControl for Activity Log and JARVIS Chat
-                logger?.LogInformation("CreateDockingHost: Creating right panel via RightDockPanelFactory");
-                var (rightPanelWithTabs, activityLog, initialMode) = RightDockPanelFactory.CreateRightDockPanel(mainForm, serviceProvider, logger);
-                rightDockPanel = rightPanelWithTabs;
-                activityLogPanel = activityLog;
-                rightDockPanel.Name = "RightDockPanel";
-                rightDockPanel.AccessibleName = "Right Dock Panel";
-                rightDockPanel.AccessibleDescription = "Right dock panel container with Activity Log and JARVIS Chat tabs";
-                logger?.LogInformation("CreateDockingHost: Right dock panel created with TabControl (ActivityLog + JARVISChat): Name={Name}, InitialMode={Mode}",
-                    rightDockPanel.Name, initialMode);
+                // 3. Create right dock panel (Activity Log only)
+                rightDockPanel = new LegacyGradientPanel
+                {
+                    BorderStyle = BorderStyle.None,
+                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                    Name = "RightDockPanel",
+                    AccessibleName = "Right Dock Panel",
+                    AccessibleDescription = "Right dock panel container (Activity Log)"
+                };
+
+                var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetRequiredService<IServiceScopeFactory>(serviceProvider);
+                var activityLogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetService<ILogger<ActivityLogPanel>>(serviceProvider)
+                    ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>)
+                    ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
+
+                activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger)
+                {
+                    Dock = DockStyle.Fill,
+                    Name = "ActivityLogPanel"
+                };
+
+                rightDockPanel.Controls.Add(activityLogPanel);
+                logger?.LogInformation("CreateDockingHost: Right dock panel created with ActivityLogPanel");
 
                 // Ensure base panels are real children of the host control before docking operations.
                 mainForm.Controls.Add(leftDockPanel);
@@ -145,19 +161,6 @@ public static class DockingHostFactory
                 leftDockPanel.SendToBack();
                 centralDocumentPanel.SendToBack();
                 rightDockPanel.SendToBack();
-
-                // Log TabControl initialization for troubleshooting
-                var rightTabControl = rightDockPanel.Controls.OfType<System.Windows.Forms.TabControl>().FirstOrDefault();
-                if (rightTabControl != null)
-                {
-                    logger?.LogInformation("CreateDockingHost: Right panel TabControl initialized with {TabCount} tabs: {TabNames}",
-                        rightTabControl.TabPages.Count,
-                        string.Join(", ", rightTabControl.TabPages.Cast<System.Windows.Forms.TabPage>().Select(t => t.Name)));
-                }
-                else
-                {
-                    logger?.LogWarning("CreateDockingHost: Right panel TabControl NOT FOUND - tab switching will fail");
-                }
 
                 ArgumentNullException.ThrowIfNull(leftDockPanel);
                 ArgumentNullException.ThrowIfNull(centralDocumentPanel);

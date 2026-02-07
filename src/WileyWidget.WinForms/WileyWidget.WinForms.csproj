@@ -133,6 +133,10 @@
     <Content Include="Reports\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- App settings must be copied because default content items are disabled -->
+    <Content Include="appsettings*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <!-- Blazor wwwroot static assets -->
     <Content Include="wwwroot\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

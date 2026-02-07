@@ -119,7 +119,24 @@ namespace WileyWidget.WinForms.Controls.Panels
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
 
-            // Main TableLayoutPanel root
+            // Panel Header - added directly to Controls with Dock = Top
+            _panelHeader = new PanelHeader
+            {
+                Title = "Recent Activity (Navigation Hub Activity Log)",
+                Dock = DockStyle.Top
+            };
+            _panelHeader.AccessibleName = "Activity Log Header";
+            _panelHeader.AccessibleDescription = "Header for the activity log panel";
+            _panelHeader.TabIndex = 0;
+            this.Controls.Add(_panelHeader);
+
+            // Wire PanelHeader events
+            _panelHeader.RefreshClicked += (s, e) => { Logger?.LogDebug("Refresh clicked on ActivityLogPanel"); /* Refresh logic if needed */ };
+            _panelHeader.CloseClicked += (s, e) => ClosePanel();
+            _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Activity Log Help: This panel shows recent navigation and system activities.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+            _panelHeader.PinToggled += (s, e) => { Logger?.LogDebug("Pin toggled on ActivityLogPanel"); /* Pin logic */ };
+
+            // Main TableLayoutPanel root (now starts with content, header is above)
             var mainTable = new TableLayoutPanel
             {
                 Name = "MainTable",
@@ -128,20 +145,20 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ColumnCount = 1
             };
 
-            // Row 0: Header panel with _panelHeader and buttons
-            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            // Row 0: Button controls
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            // Header panel (Row 0)
-            var headerPanel = new Panel
+            // Button panel (Row 0)
+            var buttonPanel = new Panel
             {
-                Name = "HeaderPanel",
+                Name = "ButtonPanel",
                 Dock = DockStyle.Fill,
-                Height = 65,
+                Height = 36,
                 Padding = new Padding(8)
             };
 
-            // Control buttons - add right-docked controls first so the title fills remaining space
+            // Control buttons - add right-docked controls first
             _btnExport = new SfButton
             {
                 Text = "Export",
@@ -153,7 +170,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnExport.AccessibleName = "Export Activity Log";
             _btnExport.AccessibleDescription = "Export activity log entries to CSV file";
             _btnExport.TabIndex = 2;
-            headerPanel.Controls.Add(_btnExport);
+            buttonPanel.Controls.Add(_btnExport);
 
             _btnClearLog = new SfButton
             {
@@ -166,7 +183,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnClearLog.AccessibleName = "Clear Activity Log";
             _btnClearLog.AccessibleDescription = "Clears all activity log entries";
             _btnClearLog.TabIndex = 3;
-            headerPanel.Controls.Add(_btnClearLog);
+            buttonPanel.Controls.Add(_btnClearLog);
 
             _chkAutoRefresh = new CheckBoxAdv
             {
@@ -180,25 +197,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             _chkAutoRefresh.AccessibleName = "Auto Refresh";
             _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
             _chkAutoRefresh.TabIndex = 4;
-            headerPanel.Controls.Add(_chkAutoRefresh);
+            buttonPanel.Controls.Add(_chkAutoRefresh);
 
-            _panelHeader = new PanelHeader
-            {
-                Title = "Recent Activity (Navigation Hub Activity Log)",
-                Dock = DockStyle.Fill
-            };
-            _panelHeader.AccessibleName = "Activity Log Header";
-            _panelHeader.AccessibleDescription = "Header for the activity log panel";
-            _panelHeader.TabIndex = 0;
-            headerPanel.Controls.Add(_panelHeader);
-
-            // Wire PanelHeader events
-            _panelHeader.RefreshClicked += (s, e) => { Logger?.LogDebug("Refresh clicked on ActivityLogPanel"); /* Refresh logic if needed */ };
-            _panelHeader.CloseClicked += (s, e) => ClosePanel();
-            _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Activity Log Help: This panel shows recent navigation and system activities.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
-            _panelHeader.PinToggled += (s, e) => { Logger?.LogDebug("Pin toggled on ActivityLogPanel"); /* Pin logic */ };
-
-            mainTable.Controls.Add(headerPanel, 0, 0);
+            mainTable.Controls.Add(buttonPanel, 0, 0);
 
             // Row 1: SplitContainer with _activityGrid
             var gridSplit = new SplitContainerAdv

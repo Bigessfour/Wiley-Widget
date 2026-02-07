@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
@@ -296,10 +298,9 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     }
 
     /// <summary>
-    /// Gets the command to create a new account.
+    /// Internal method to create a new account (called by UI command).
     /// </summary>
-    [RelayCommand]
-    private async Task CreateAccountAsync(MunicipalAccount newAccount, CancellationToken cancellationToken = default)
+    private async Task CreateAccountInternalAsync(MunicipalAccount newAccount, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -370,10 +371,10 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     }
 
     /// <summary>
-    /// Gets the command to delete an account.
+    /// Gets the command to delete the selected account.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanDeleteAccount))]
-    private async Task DeleteAccountAsync(CancellationToken cancellationToken = default)
+    private async Task DeleteSelectedAccountAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -650,6 +651,132 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         StatusText = $"Sample data loaded – {Accounts.Count} municipal accounts (Water, Sewer, Trash, Apartments focus)";
         _logger.LogInformation("Sample data loaded successfully - {Count} accounts added, Total Balance: {Balance:C}, Active: {Active}",
             Accounts.Count, TotalBalance, ActiveAccountCount);
+    }
+
+    // New: CRUD RelayCommands with CanExecute for Edit/Delete
+    [RelayCommand(CanExecute = nameof(CanModifyAccount))]
+    private async Task EditAccountAsync(MunicipalAccountDisplay display)
+    {
+
+        try
+        {
+            var account = await _municipalAccountRepository.GetByIdAsync(display.Id);
+            if (account == null)
+            {
+                ErrorMessage = "Account not found.";
+                return;
+            }
+
+            var editModel = MunicipalAccountEditModel.FromEntity(account);
+            using var dialog = new AccountEditDialog(editModel, _logger);
+            if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK || !dialog.IsSaved) return;
+
+            var updatedAccount = editModel.ToEntity();
+            await _municipalAccountRepository.UpdateAsync(updatedAccount);
+
+            // Update the display model by replacing it with a new instance (init-only properties)
+            var index = Accounts.IndexOf(display);
+            if (index >= 0)
+            {
+                var updatedDisplay = new MunicipalAccountDisplay
+                {
+                    Id = updatedAccount.Id,
+                    AccountNumber = updatedAccount.AccountNumber?.Value ?? string.Empty,
+                    AccountName = updatedAccount.Name,
+                    Description = updatedAccount.FundDescription,
+                    AccountType = updatedAccount.Type.ToString(),
+                    FundName = updatedAccount.Fund.ToString(),
+                    CurrentBalance = updatedAccount.Balance,
+                    BudgetAmount = updatedAccount.BudgetAmount,
+                    Department = updatedAccount.Department?.Name ?? string.Empty,
+                    IsActive = updatedAccount.IsActive,
+                    HasParent = updatedAccount.ParentAccountId.HasValue
+                };
+                Accounts[index] = updatedDisplay;
+                SelectedAccount = updatedDisplay;
+            }
+
+            UpdateSummaries();
+            StatusText = "Account updated successfully.";
+            _logger?.LogInformation("Account {Id} updated", display.Id);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to update account: {ex.Message}";
+            _logger?.LogError(ex, "Error updating account {Id}", display.Id);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateAccountAsync()
+    {
+        try
+        {
+            var editModel = new MunicipalAccountEditModel();
+            using var dialog = new AccountEditDialog(editModel, _logger);
+            if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK || !dialog.IsSaved) return;
+
+            var newAccount = editModel.ToEntity();
+            await _municipalAccountRepository.AddAsync(newAccount);
+
+            var display = new MunicipalAccountDisplay
+            {
+                Id = newAccount.Id,
+                AccountNumber = newAccount.AccountNumber?.Value ?? string.Empty,
+                AccountName = newAccount.Name,
+                Description = newAccount.FundDescription,
+                AccountType = newAccount.Type.ToString(),
+                FundName = newAccount.Fund.ToString(),
+                CurrentBalance = newAccount.Balance,
+                BudgetAmount = newAccount.BudgetAmount,
+                Department = newAccount.Department?.Name ?? string.Empty,
+                IsActive = newAccount.IsActive,
+                HasParent = newAccount.ParentAccountId.HasValue
+            };
+
+            Accounts.Add(display);
+            SelectedAccount = display;
+            UpdateSummaries();
+            StatusText = "New account created.";
+            _logger?.LogInformation("New account {Id} created", display.Id);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to create account: {ex.Message}";
+            _logger?.LogError(ex, "Error creating new account");
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanModifyAccount))]
+    private async Task DeleteAccountAsync(MunicipalAccountDisplay display)
+    {
+
+        var message = "Delete this account? This action cannot be undone.";
+        var detail = $"{display.AccountNumber} - {display.AccountName}";
+        if (!DeleteConfirmationDialog.Show(null, message, detail, _logger)) return;
+
+        try
+        {
+            await _municipalAccountRepository.DeleteAsync(display.Id);
+            Accounts.Remove(display);
+            SelectedAccount = null;
+            UpdateSummaries();
+            StatusText = "Account deleted.";
+            _logger?.LogInformation("Account {Id} deleted", display.Id);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to delete account: {ex.Message}";
+            _logger?.LogError(ex, "Error deleting account {Id}", display.Id);
+        }
+    }
+
+    private bool CanModifyAccount(MunicipalAccountDisplay display) => true;
+
+    [RelayCommand]
+    private async Task RefreshAsync()
+    {
+        await LoadAccountsAsync();
     }
 
     /// <summary>

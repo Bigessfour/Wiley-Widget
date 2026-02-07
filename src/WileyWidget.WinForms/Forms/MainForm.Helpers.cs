@@ -386,7 +386,7 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 // Validate data before export
-                if (grid.View?.Records?.Count == 0)
+                if (grid.View.Records?.Count == 0)
                 {
                     MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;

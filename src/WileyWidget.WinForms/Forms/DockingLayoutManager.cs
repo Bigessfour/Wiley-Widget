@@ -320,15 +320,6 @@ public class DockingLayoutManager : IDisposable
                                             _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
                                         }
 
-                                        try
-                                        {
-                                            // Ensure default tab/content is selected before showing
-                                            RightDockPanelFactory.SwitchRightPanelContent(_rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
-                                        }
-                                        catch (Exception switchEx)
-                                        {
-                                            _logger?.LogDebug(switchEx, "Failed to switch right panel content after layout apply");
-                                        }
 
                                         // Small micro-delay to let the control settle (UI thread)
                                         try { await Task.Delay(50); } catch { /* ignore */ }
@@ -614,14 +605,6 @@ public class DockingLayoutManager : IDisposable
                                     _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
                                 }
 
-                                try
-                                {
-                                    RightDockPanelFactory.SwitchRightPanelContent(_rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
-                                }
-                                catch (Exception switchEx)
-                                {
-                                    _logger?.LogDebug(switchEx, "Failed to switch right panel content after layout apply");
-                                }
 
                                 try { Thread.Sleep(50); } catch { /* ignore */ }
 

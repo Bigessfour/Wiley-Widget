@@ -59,11 +59,24 @@ namespace WileyWidget.WinForms.BlazorComponents
         private TaskCompletionSource<string>? _responseTcs;
         private readonly StringBuilder _responseBuffer = new();
 
-        // View configuration - used in Razor BannerTemplate
-        private string _currentViewId = Guid.NewGuid().ToString();
-        private string _currentViewHeader = "JARVIS - Wiley Widget Assistant";
-        private string _bannerTitle = "AI Assistance";
-        private string _bannerSubtitle = "Your intelligent municipal budget assistant. Ask me anything!";
+        // View configuration - multi-view support with Syncfusion ActiveView
+        private class AssistViewDef
+        {
+            public int Index { get; set; }
+            public string Label { get; set; } = "View";
+            public string Header { get; set; } = "JARVIS";
+            public string IconCss { get; set; } = "e-icons e-ai-assist";
+            public string BannerTitle { get; set; } = "AI Assistance";
+            public string BannerSubtitle { get; set; } = "Your intelligent municipal budget assistant. Ask me anything!";
+            public bool IsCustom { get; set; }
+        }
+
+        private List<AssistViewDef> _assistViews = new();
+        private int _activeViewIndex;
+        private string _currentViewId = "";  // Kept for compatibility
+        private string _currentViewHeader = "JARVIS - Wiley Widget Assistant";  // Kept for compatibility
+        private string _bannerTitle = "AI Assistance";  // Kept for compatibility
+        private string _bannerSubtitle = "Your intelligent municipal budget assistant. Ask me anything!";  // Kept for compatibility
 
         // Attachment settings
         private readonly Syncfusion.Blazor.InteractiveChat.AssistViewAttachmentSettings _attachmentSettings = new();
@@ -109,6 +122,12 @@ namespace WileyWidget.WinForms.BlazorComponents
             try
             {
                 // Verify ChatBridge connection (non-blocking, just logs diagnostics)
+                // NEW: Diagnostic logging for Blazor init
+                System.Diagnostics.Debug.WriteLine("[JARVIS-BLAZOR] OnInitializedAsync started");
+                if (JS != null)
+                {
+                    await JS.InvokeVoidAsync("console.log", "[JARVIS-BLAZOR] Component initializing...");  // Log to browser console
+                }
                 await VerifyConnectionsAsync();
             }
             catch (Exception ex)
@@ -120,6 +139,9 @@ namespace WileyWidget.WinForms.BlazorComponents
 
             try
             {
+                // Initialize multi-view support with default views
+                InitializeDefaultViews();
+
                 ChatBridge.OnMessageReceived += HandleMessageReceived;
                 ChatBridge.ResponseChunkReceived += HandleResponseChunkReceived;
                 ChatBridge.ExternalPromptRequested += HandleExternalPromptRequested;
@@ -132,6 +154,8 @@ namespace WileyWidget.WinForms.BlazorComponents
                 UpdatePromptsFromMessages();
 
                 AutomationState?.Reset();
+                System.Diagnostics.Debug.WriteLine("[JARVIS-BLAZOR] OnInitializedAsync completed");
+                _isInitialized = true;  // Ensure this is set
 
                 _isInitialized = true; // Mark initialization complete for diagnostic display
                 Console.WriteLine($"[JARVIS-BLAZOR] OnInitializedAsync - Initialization complete, ConversationId={_conversationId}");
@@ -155,6 +179,10 @@ namespace WileyWidget.WinForms.BlazorComponents
 
             if (firstRender)
             {
+                if (JS != null)
+                {
+                    await JS.InvokeVoidAsync("console.log", "[JARVIS-BLAZOR] First render complete");  // Debug
+                }
                 AutomationState?.MarkBlazorReady(_assistView != null);
                 AutomationState?.MarkAssistViewReady();
                 Console.WriteLine("[JARVIS-BLAZOR] First render complete - UI ready for user interaction");
@@ -164,6 +192,53 @@ namespace WileyWidget.WinForms.BlazorComponents
                 // This prevents API key errors from appearing immediately on panel open
             }
             await base.OnAfterRenderAsync(firstRender);
+        }
+
+        /// <summary>
+        /// Initializes default views for multi-view support.
+        /// </summary>
+        private void InitializeDefaultViews()
+        {
+            _assistViews.Clear();
+
+            _assistViews.Add(new AssistViewDef
+            {
+                Index = 0,
+                Label = "Chat",
+                Header = "JARVIS - Wiley Widget Assistant",
+                IconCss = "e-icons e-ai-assist",
+                BannerTitle = "AI Assistance",
+                BannerSubtitle = "Your intelligent municipal budget assistant. Ask me anything!",
+                IsCustom = false
+            });
+
+            _assistViews.Add(new AssistViewDef
+            {
+                Index = 1,
+                Label = "Insights",
+                Header = "Insights",
+                IconCss = "e-icons e-chart-line",
+                BannerTitle = "Insights Overview",
+                BannerSubtitle = "Summaries and quick analytics alongside your conversation.",
+                IsCustom = true
+            });
+
+            _activeViewIndex = 0;
+        }
+
+        /// <summary>
+        /// Switches to a different AssistView by index.
+        /// </summary>
+        private Task SwitchViewAsync(int viewIndex)
+        {
+            if (viewIndex == _activeViewIndex || viewIndex < 0 || viewIndex >= _assistViews.Count)
+            {
+                return Task.CompletedTask;
+            }
+
+            _activeViewIndex = viewIndex;
+            StateHasChanged();
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -632,6 +707,48 @@ namespace WileyWidget.WinForms.BlazorComponents
             });
         }
 
+        /// <summary>
+        /// Handles toolbar item clicks from the AssistViewToolbar.
+        /// </summary>
+        private async Task HandleToolbarItemClickedAsync(string itemText)
+        {
+            if (string.IsNullOrEmpty(itemText))
+                return;
+
+            itemText = itemText.ToLower(CultureInfo.InvariantCulture);
+
+            try
+            {
+                switch (itemText)
+                {
+                    case "copy all":
+                        await CopyConversationAsync();
+                        break;
+                    case "refresh":
+                        await RefreshLatestResponseAsync();
+                        break;
+                    case "test":
+                        await RunConnectionTestsAsync();
+                        break;
+                    case "settings":
+                        await ShowSettingsAsync();
+                        break;
+                    case "clear":
+                        await ClearConversationAsync();
+                        break;
+                    default:
+                        System.Diagnostics.Debug.WriteLine($"Unknown toolbar item: {itemText}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Toolbar action failed: {ex.Message}";
+                StateHasChanged();
+                System.Diagnostics.Debug.WriteLine($"Toolbar error: {ex.Message}");
+            }
+        }
+
         private void HandleExternalPromptRequested(object? sender, ChatExternalPromptEventArgs e)
         {
             _ = InvokeAsync(async () =>
@@ -735,6 +852,46 @@ namespace WileyWidget.WinForms.BlazorComponents
             return char.ToUpper(parts[0][0], CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture);
         }
 
+        /// <summary>
+        /// Formats a timestamp for display in the chat header (relative time or compact format).
+        /// </summary>
+        private string FormatTimestamp(DateTime timestamp)
+        {
+            try
+            {
+                var now = DateTime.Now;
+                var timeSpan = now - timestamp;
+
+                // Today: show time only
+                if (timestamp.Date == now.Date)
+                {
+                    return timestamp.ToString("h:mm tt", CultureInfo.InvariantCulture);
+                }
+
+                // Yesterday or within last 7 days: show relative
+                if (timeSpan.TotalDays < 1)
+                {
+                    if (timeSpan.TotalMinutes < 1)
+                        return "now";
+                    if (timeSpan.TotalMinutes < 60)
+                        return $"{(int)timeSpan.TotalMinutes}m ago";
+                    return $"{(int)timeSpan.TotalHours}h ago";
+                }
+
+                if (timeSpan.TotalDays < 7)
+                {
+                    return $"{(int)timeSpan.TotalDays}d ago";
+                }
+
+                // Older: show short date
+                return timestamp.ToString("MMM d", CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return "...";
+            }
+        }
+
         private ChatMessage CreateUserMessage(string content)
         {
             return new ChatMessage
@@ -765,35 +922,14 @@ namespace WileyWidget.WinForms.BlazorComponents
             if (string.IsNullOrWhiteSpace(response))
                 return string.Empty;
 
-            // Basic markdown formatting
-            var formatted = response;
+            // HTML escape to prevent XSS and preserve plain text
+            var formatted = System.Web.HttpUtility.HtmlEncode(response);
 
-            // Code blocks
-            formatted = System.Text.RegularExpressions.Regex.Replace(
-                formatted,
-                @"```([\s\S]*?)```",
-                "<pre><code>$1</code></pre>");
-
-            // Inline code
-            formatted = System.Text.RegularExpressions.Regex.Replace(
-                formatted,
-                @"`([^`]+)`",
-                "<code>$1</code>");
-
-            // Bold
-            formatted = System.Text.RegularExpressions.Regex.Replace(
-                formatted,
-                @"\*\*([^\*]+)\*\*",
-                "<strong>$1</strong>");
-
-            // Italic
-            formatted = System.Text.RegularExpressions.Regex.Replace(
-                formatted,
-                @"\*([^\*]+)\*",
-                "<em>$1</em>");
-
-            // Line breaks
+            // Preserve line breaks as <br/> for text display
             formatted = formatted.Replace("\n", "<br/>");
+
+            // Wrap in pre tag to preserve whitespace (pre-wrap formatting)
+            formatted = $"<pre style=\"white-space: pre-wrap; word-wrap: break-word;\">{formatted}</pre>";
 
             return formatted;
         }
@@ -1315,6 +1451,91 @@ namespace WileyWidget.WinForms.BlazorComponents
         {
             _errorMessage = string.Empty;
             StateHasChanged();
+        }
+
+        /// <summary>
+        /// Copies the entire conversation to clipboard as formatted text.
+        /// </summary>
+        private async Task CopyConversationAsync()
+        {
+            try
+            {
+                if (_messages.Count == 0)
+                {
+                    _errorMessage = "No messages to copy.";
+                    StateHasChanged();
+                    return;
+                }
+
+                var sb = new StringBuilder();
+                sb.AppendLine("=== JARVIS Conversation ===");
+                sb.AppendLine($"Session: {GetConversationId()}");
+                sb.AppendLine($"Exported: {DateTime.Now:G}");
+                sb.AppendLine();
+
+                foreach (var msg in _messages)
+                {
+                    var sender = msg.IsUser ? "You" : "AI Assist";
+                    var timestamp = msg.Timestamp.ToString("h:mm tt", CultureInfo.InvariantCulture);
+                    sb.AppendLine($"[{sender}] {timestamp}");
+                    sb.AppendLine(msg.Content);
+                    sb.AppendLine();
+                }
+
+                if (JS != null)
+                {
+                    await JS.InvokeVoidAsync("navigator.clipboard.writeText", sb.ToString());
+                    // Show brief success feedback
+                    _errorMessage = $"Copied {_messages.Count} messages to clipboard";
+                    StateHasChanged();
+                    await Task.Delay(2000);
+                    _errorMessage = string.Empty;
+                    StateHasChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Copy failed: {ex.Message}";
+                StateHasChanged();
+            }
+        }
+
+        /// <summary>
+        /// Regenerates the latest AI response.
+        /// </summary>
+        private async Task RefreshLatestResponseAsync()
+        {
+            try
+            {
+                // Find the last user message
+                var lastUserMessage = _messages.LastOrDefault(m => m.IsUser);
+                if (lastUserMessage == null)
+                {
+                    _errorMessage = "No previous request to refresh.";
+                    StateHasChanged();
+                    return;
+                }
+
+                // Remove the last AI response if it exists
+                var lastAiMessage = _messages.LastOrDefault(m => !m.IsUser);
+                if (lastAiMessage != null)
+                {
+                    _messages.Remove(lastAiMessage);
+                }
+
+                // Update UI to reflect removal
+                UpdatePromptsFromMessages();
+                StateHasChanged();
+
+                // Regenerate the response using the last user message
+                _userInput = lastUserMessage.Content;
+                await SendMessageAsync();
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Refresh failed: {ex.Message}";
+                StateHasChanged();
+            }
         }
 
         /// <summary>

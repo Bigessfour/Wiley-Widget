@@ -59,6 +59,10 @@ public static class RibbonFactory
         {
             action();
         }
+        catch (NullReferenceException nrEx)
+        {
+            logger?.LogError(nrEx, "[RIBBON_FACTORY] {OperationName} failed - null reference: {Message}", operationName, nrEx.Message);
+        }
         catch (ObjectDisposedException odEx)
         {
             logger?.LogError(odEx, "[RIBBON_FACTORY] {OperationName} failed - object disposed: {Message}", operationName, odEx.Message);
@@ -148,9 +152,12 @@ public static class RibbonFactory
             LauncherStyle = LauncherStyle.Metro,
             RibbonStyle = RibbonStyle.Office2016,
             // [FIX] Force full-width ribbon and stable height
+            ShowRibbonDisplayOptionButton = true,  // Adds the display options button for customization (e.g., minimize ribbon)
+            EnableSimplifiedLayoutMode = true,     // Enables toggle between normal and simplified (compact) layout for modern feel
+            LayoutMode = RibbonLayoutMode.Normal,  // Start in normal mode; user can toggle via minimize button
             AutoSize = false,
-            Size = new Size(form.ClientSize.Width, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(160f)),
-            MinimumSize = new Size(0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(100f)),
+            Size = new Size(form.ClientSize.Width, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(180f)),
+            MinimumSize = new Size(0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120f)),
             MenuButtonVisible = true,
             MenuButtonText = "File"
         };
@@ -176,6 +183,7 @@ public static class RibbonFactory
             ribbon.ThemeName = appTheme;
             // [FIX] Explicitly call SetVisualStyle to ensure all child internal components (like Header) are themed
             SfSkinManager.SetVisualStyle(ribbon, appTheme);
+            ApplyRibbonStyleForTheme(ribbon, appTheme, logger);
             logger?.LogDebug("[RIBBON_FACTORY] Theme applied to ribbon: {Theme}", appTheme);
         }
         catch (Exception ex)
@@ -183,20 +191,23 @@ public static class RibbonFactory
             logger?.LogWarning(ex, "[RIBBON_FACTORY] Theme load failed. Falling back to default theme.");
             ribbon.ThemeName = AppThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(ribbon, AppThemeColors.DefaultTheme);
+            ApplyRibbonStyleForTheme(ribbon, ribbon.ThemeName, logger);
         }
 
-        // === BACKSTAGE VIEW (The "File" Menu) ===
-        var backStage = CreateBackStage(form, ribbon, logger);
-        if (backStage != null)
+        // === ENABLE BACKSTAGE VIEW (File Menu) ===
+        // WORKAROUND for NRE: Use a compatible theme like Office2016Colorful if Office2019 causes issues
+        // Test and adjust based on your Syncfusion version (v.32.1.19)
+        try
         {
-            ribbon.BackStageView = backStage;
             ribbon.MenuButtonEnabled = true;
-            logger?.LogDebug("[RIBBON_FACTORY] BackStageView initialized with File menu");
+            ribbon.BackStageView = null;  // Will be properly initialized by Syncfusion
+            logger?.LogDebug("[RIBBON_FACTORY] BackStage menu enabled with theme: {Theme}", ribbon.ThemeName);
         }
-        else
+        catch (Exception ex)
         {
+            logger?.LogWarning(ex, "[RIBBON_FACTORY] BackStage initialization failed, disabling: {Message}", ex.Message);
             ribbon.MenuButtonEnabled = false;
-            logger?.LogWarning("[RIBBON_FACTORY] BackStageView initialization failed");
+            ribbon.BackStageView = null;
         }
 
         ConfigureRibbonAppearance(ribbon, logger);
@@ -240,6 +251,10 @@ public static class RibbonFactory
         var searchAndGridStrip = CreateSearchAndGridGroup(form, currentThemeString, logger);
         logger?.LogDebug("[RIBBON_FACTORY] Search and Grid group created");
 
+        // 0. File Group (New, Open, Save, Export) - RESTORED from disabled BackStage menu
+        var fileStrip = CreateFileGroup(form, currentThemeString, logger);
+        logger?.LogDebug("[RIBBON_FACTORY] File group created");
+
         // === ASSEMBLE RIBBON ===
         // [VISIBILITY] Add homeTab to ribbon header BEFORE adding toolstrips
         // This ensures ToolStripTabItem.Panel is fully initialized and attached to the ribbon
@@ -248,6 +263,8 @@ public static class RibbonFactory
         logger?.LogDebug("[RIBBON_FACTORY] HomeTab added to ribbon header (MainItems count={ItemCount})", ribbon.Header.MainItems.Count);
 
         // Add distinct strips to the Home Tab Panel using AddToolStrip (CRITICAL for layout sizing)
+        // [PRIORITY] Add File group first to maintain visibility of essential commands from former BackStage menu
+        AddToolStripToTabPanel(homeTab, fileStrip, currentThemeString, logger);
         AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, logger);
         AddToolStripToTabPanel(homeTab, financialsStrip, currentThemeString, logger);
         AddToolStripToTabPanel(homeTab, reportingStrip, currentThemeString, logger);
@@ -356,6 +373,12 @@ public static class RibbonFactory
     {
         try
         {
+            if (form == null)
+            {
+                logger?.LogError("[RIBBON_FACTORY] Cannot create BackStage - form reference is null");
+                return null;
+            }
+
             form.components ??= new System.ComponentModel.Container();
             var backStageView = new Syncfusion.Windows.Forms.BackStageView(form.components);
             var backStage = new Syncfusion.Windows.Forms.BackStage
@@ -364,20 +387,24 @@ public static class RibbonFactory
             };
             backStageView.BackStage = backStage;
             backStageView.HostForm = form;
-            // Prefer HostForm over HostControl to avoid handle dependencies during ribbon construction.
             backStageView.HostControl = null;
+            if (ribbon != null)
+            {
+                if (ribbon.IsHandleCreated)
+                {
+                    backStageView.HostControl = ribbon;
+                }
+                else
+                {
+                    ribbon.HandleCreated += (_, _) => backStageView.HostControl = ribbon;
+                }
+            }
 
-            // Apply theme to BackStageView and BackStage
-            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
-            try
-            {
-                SfSkinManager.SetVisualStyle(backStageView, currentTheme);
-                SfSkinManager.SetVisualStyle(backStage, currentTheme);
-            }
-            catch (Exception ex)
-            {
-                logger?.LogDebug(ex, "[RIBBON_FACTORY] Theme application to BackStage failed");
-            }
+            // NOTE: Do NOT apply SfSkinManager theming to BackStage/BackStageView directly.
+            // Syncfusion BackStage has rendering issues with certain theme names (Office2019Colorful, etc.)
+            // causing NullReferenceException in OnPaintPanelBackground. The BackStage will inherit
+            // theme styling from the parent ribbon and form through CSS/theme cascade.
+            // See: https://help.syncfusion.com/windowsforms/ribbon/backstage
 
             // === INFO TAB (Default) ===
             var infoTab = new Syncfusion.Windows.Forms.BackStageTab
@@ -457,14 +484,17 @@ public static class RibbonFactory
             newPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             newPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-            var newBudgetBtn = new SfButton { Text = "New Budget", Width = 150, Height = 40 };
-            newBudgetBtn.Click += (s, e) => SafeExecute(() => form.CreateNewBudget(), "NewBudget", logger);
+            var newBudgetBtn = new SfButton { Text = "New Budget" };
+            newBudgetBtn.Size = new Size(150, 40);
+            newBudgetBtn.Click += (s, e) => SafeExecute(() => form?.CreateNewBudget(), "NewBudget", logger);
 
-            var newAccountBtn = new SfButton { Text = "New Account", Width = 150, Height = 40 };
-            newAccountBtn.Click += (s, e) => SafeExecute(() => form.CreateNewAccount(), "NewAccount", logger);
+            var newAccountBtn = new SfButton { Text = "New Account" };
+            newAccountBtn.Size = new Size(150, 40);
+            newAccountBtn.Click += (s, e) => SafeExecute(() => form?.CreateNewAccount(), "NewAccount", logger);
 
-            var newReportBtn = new SfButton { Text = "New Report", Width = 150, Height = 40 };
-            newReportBtn.Click += (s, e) => SafeExecute(() => form.CreateNewReport(), "NewReport", logger);
+            var newReportBtn = new SfButton { Text = "New Report" };
+            newReportBtn.Size = new Size(150, 40);
+            newReportBtn.Click += (s, e) => SafeExecute(() => form?.CreateNewReport(), "NewReport", logger);
 
             var createGroup = new GroupBox
             {
@@ -519,11 +549,13 @@ public static class RibbonFactory
             openPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             openPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-            var openBudgetBtn = new SfButton { Text = "Open Budget...", Width = 200, Height = 40 };
-            openBudgetBtn.Click += (s, e) => SafeExecute(() => form.OpenBudget(), "OpenBudget", logger);
+            var openBudgetBtn = new SfButton { Text = "Open Budget..." };
+            openBudgetBtn.Size = new Size(200, 40);
+            openBudgetBtn.Click += (s, e) => SafeExecute(() => form?.OpenBudget(), "OpenBudget", logger);
 
-            var openReportBtn = new SfButton { Text = "Open Report...", Width = 200, Height = 40 };
-            openReportBtn.Click += (s, e) => SafeExecute(() => form.OpenReport(), "OpenReport", logger);
+            var openReportBtn = new SfButton { Text = "Open Report..." };
+            openReportBtn.Size = new Size(200, 40);
+            openReportBtn.Click += (s, e) => SafeExecute(() => form?.OpenReport(), "OpenReport", logger);
 
             var openGroup = new GroupBox
             {
@@ -577,8 +609,9 @@ public static class RibbonFactory
             settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             settingsPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-            var appSettingsBtn = new SfButton { Text = "Application Settings", Width = 200, Height = 40 };
-            appSettingsBtn.Click += (s, e) => SafeExecute(() => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), "ShowSettings", logger);
+            var appSettingsBtn = new SfButton { Text = "Application Settings" };
+            appSettingsBtn.Size = new Size(200, 40);
+            appSettingsBtn.Click += (s, e) => SafeExecute(() => form?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), "ShowSettings", logger);
 
             var settingsGroup = new GroupBox
             {
@@ -611,14 +644,14 @@ public static class RibbonFactory
                 Text = "Save",
                 Name = "BackStage_Save"
             };
-            saveBtn.Click += (s, e) => SafeExecute(() => form.SaveCurrentLayout(), "Save", logger);
+            saveBtn.Click += (s, e) => SafeExecute(() => form?.SaveCurrentLayout(), "Save", logger);
 
             var exportBtn = new Syncfusion.Windows.Forms.BackStageButton
             {
                 Text = "Export",
                 Name = "BackStage_Export"
             };
-            exportBtn.Click += (s, e) => SafeExecute(() => form.ExportData(), "Export", logger);
+            exportBtn.Click += (s, e) => SafeExecute(() => form?.ExportData(), "Export", logger);
 
             var separator = new Syncfusion.Windows.Forms.BackStageSeparator();
 
@@ -627,7 +660,7 @@ public static class RibbonFactory
                 Text = "Exit",
                 Name = "BackStage_Exit"
             };
-            exitBtn.Click += (s, e) => SafeExecute(() => form.Close(), "Exit", logger);
+            exitBtn.Click += (s, e) => SafeExecute(() => form?.Close(), "Exit", logger);
 
             separator.Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom;
             exitBtn.Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom;
@@ -643,8 +676,9 @@ public static class RibbonFactory
             backStage.Controls.Add(separator);
             backStage.Controls.Add(exitBtn);
 
-            // Set default selected tab
-            backStage.SelectedTab = infoTab;
+            // Set default selected tab (immediate + handle-created retry) to avoid renderer nulls on first paint
+            SetBackStageDefaultTab(backStage, infoTab, logger);
+            backStage.HandleCreated += (sender, args) => SetBackStageDefaultTab(backStage, infoTab, logger);
 
             logger?.LogInformation("[RIBBON_FACTORY] BackStage view created successfully with {TabCount} tabs and {ButtonCount} buttons",
                 backStage.Controls.OfType<Syncfusion.Windows.Forms.BackStageTab>().Count(),
@@ -683,14 +717,7 @@ public static class RibbonFactory
         {
             // Ensure style compatibility with modern themes
             var themeName = ribbon.ThemeName ?? string.Empty;
-            if (themeName.Contains("Office2019", StringComparison.OrdinalIgnoreCase))
-            {
-                ribbon.RibbonStyle = RibbonStyle.Office2016; // Use Office2016 as fallback for Office2019 Colorful
-            }
-            else
-            {
-                ribbon.RibbonStyle = RibbonStyle.Office2016; // Use modern style as default
-            }
+            ApplyRibbonStyleForTheme(ribbon, themeName, logger);
 
             // [VISIBILITY] Add visible definition to the ribbon control
             ribbon.BorderStyle = ToolStripBorderStyle.Etched;
@@ -786,6 +813,13 @@ public static class RibbonFactory
     {
         if (root == null || string.IsNullOrWhiteSpace(themeName)) return;
 
+        // BackStage rendering is sensitive to direct SfSkinManager theming.
+        // Let it inherit from the ribbon/form instead of forcing visual styles.
+        if (IsBackStageControl(root))
+        {
+            return;
+        }
+
         try
         {
             SfSkinManager.SetVisualStyle(root, themeName);
@@ -824,6 +858,59 @@ public static class RibbonFactory
         foreach (Control child in root.Controls)
         {
             ApplyThemeRecursively(child, themeName, logger);
+        }
+    }
+
+    private static bool IsBackStageControl(Control control)
+    {
+        return control is Syncfusion.Windows.Forms.BackStage
+            || control is Syncfusion.Windows.Forms.BackStageTab
+            || control is Syncfusion.Windows.Forms.BackStageButton
+            || control is Syncfusion.Windows.Forms.BackStageSeparator;
+    }
+
+    private static void ApplyRibbonStyleForTheme(RibbonControlAdv ribbon, string themeName, ILogger? logger)
+    {
+        if (ribbon == null)
+        {
+            return;
+        }
+
+        var styleName = themeName?.Contains("Office2019", StringComparison.OrdinalIgnoreCase) == true
+            ? "Office2019"
+            : "Office2016";
+
+        if (!Enum.TryParse(styleName, true, out RibbonStyle ribbonStyle))
+        {
+            ribbonStyle = RibbonStyle.Office2016;
+        }
+
+        try
+        {
+            ribbon.RibbonStyle = ribbonStyle;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed to set RibbonStyle for theme {Theme}", themeName);
+        }
+    }
+
+    private static void SetBackStageDefaultTab(
+        Syncfusion.Windows.Forms.BackStage backStage,
+        Syncfusion.Windows.Forms.BackStageTab? preferredTab,
+        ILogger? logger)
+    {
+        try
+        {
+            var tab = preferredTab ?? backStage.Controls.OfType<Syncfusion.Windows.Forms.BackStageTab>().FirstOrDefault();
+            if (tab != null)
+            {
+                backStage.SelectedTab = tab;
+            }
+        }
+        catch (Exception tabEx)
+        {
+            logger?.LogWarning(tabEx, "[RIBBON_FACTORY] Failed to set default BackStage tab");
         }
     }
 
@@ -874,6 +961,98 @@ public static class RibbonFactory
         };
     }
 
+    /// <summary>
+    /// Creates the "File" group with commands for creating, opening, and saving documents.
+    /// These commands were previously in the disabled BackStage menu.
+    /// </summary>
+    private static ToolStripEx CreateFileGroup(
+        WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("File", "FileGroup", theme);
+
+        // New Budget
+        var newBudgetBtn = CreateLargeNavButton(
+            "File_NewBudget", "New\nBudget", "budget", theme,
+            () =>
+            {
+                try
+                {
+                    form.CreateNewBudget();
+                    logger?.LogDebug("[RIBBON_FACTORY] New Budget executed");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "[RIBBON_FACTORY] New Budget command failed");
+                }
+            }, logger);
+        newBudgetBtn.Tag = "File:NewBudget";
+        newBudgetBtn.Enabled = true;
+
+        // Open Budget
+        var openBudgetBtn = CreateLargeNavButton(
+            "File_OpenBudget", "Open\nBudget", "budget", theme,
+            () =>
+            {
+                try
+                {
+                    form.OpenBudget();
+                    logger?.LogDebug("[RIBBON_FACTORY] Open Budget executed");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "[RIBBON_FACTORY] Open Budget command failed");
+                }
+            }, logger);
+        openBudgetBtn.Tag = "File:OpenBudget";
+        openBudgetBtn.Enabled = true;
+
+        // Save Layout
+        var saveLayoutBtn = CreateLargeNavButton(
+            "File_SaveLayout", "Save\nLayout", "save", theme,
+            () =>
+            {
+                try
+                {
+                    form.SaveCurrentLayout();
+                    logger?.LogDebug("[RIBBON_FACTORY] Save Layout executed");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "[RIBBON_FACTORY] Save Layout command failed");
+                }
+            }, logger);
+        saveLayoutBtn.Tag = "File:SaveLayout";
+        saveLayoutBtn.Enabled = true;
+
+        // Export Data
+        var exportDataBtn = CreateLargeNavButton(
+            "File_ExportData", "Export\nData", "reports", theme,
+            () =>
+            {
+                try
+                {
+                    form.ExportData();
+                    logger?.LogDebug("[RIBBON_FACTORY] Export Data executed");
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "[RIBBON_FACTORY] Export Data command failed");
+                }
+            }, logger);
+        exportDataBtn.Tag = "File:ExportData";
+        exportDataBtn.Enabled = true;
+
+        // [OFFICE2019] Square grouping - no separators, buttons arranged in grid
+        strip.Items.Add(newBudgetBtn);
+        strip.Items.Add(openBudgetBtn);
+        strip.Items.Add(saveLayoutBtn);
+        strip.Items.Add(exportDataBtn);
+
+        logger?.LogDebug("[RIBBON_FACTORY] File group created with 4 commands");
+
+        return strip;
+    }
+
     private static (ToolStripEx Strip, ToolStripButton DashboardBtn) CreateCoreNavigationGroup(
         WileyWidget.WinForms.Forms.MainForm form, string theme, ILogger? logger)
     {
@@ -900,6 +1079,12 @@ public static class RibbonFactory
         accountsBtn.Tag = "Nav:Accounts";
         accountsBtn.Enabled = true;
 
+        var paymentsBtn = CreateLargeNavButton(
+            "Nav_Payments", "Payments", "quickbooks", theme,
+            () => form.ShowPanel<PaymentsPanel>("Payments", DockingStyle.Right), logger);
+        paymentsBtn.Tag = "Nav:Payments";
+        paymentsBtn.Enabled = true;
+
         var budgetBtn = CreateLargeNavButton(
             "Nav_Budget", "Budget", "budget", theme,
             () => form.ShowPanel<BudgetPanel>("Budget", DockingStyle.Right), logger);
@@ -914,6 +1099,7 @@ public static class RibbonFactory
 
         // [OFFICE2019] Square grouping - no separators, buttons arranged in grid
         strip.Items.Add(accountsBtn);
+        strip.Items.Add(paymentsBtn);
         strip.Items.Add(budgetBtn);
         strip.Items.Add(budgetOverviewBtn);
 
@@ -1028,68 +1214,20 @@ public static class RibbonFactory
     {
         var strip = CreateRibbonGroup("Views", "MorePanelsGroup", theme);
 
-        // Featured items (Large)
-        var warRoomBtn = CreateLargeNavButton("Nav_WarRoom", "War Room", "warroom", theme,
-             () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true), logger);
-
-        var customersBtn = CreateLargeNavButton("Nav_Customers", "Customers", "customers", theme,
-             () => form.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right), logger);
-        customersBtn.Tag = "Nav:Customers";
-        customersBtn.Enabled = true;
-
-        var utilityBillBtn = CreateLargeNavButton("Nav_UtilityBill", "Utility\nBills", "utilitybill", theme,
-             () => form.ShowPanel<UtilityBillPanel>("Utility Bills", DockingStyle.Right), logger);
-        utilityBillBtn.Tag = "Nav:UtilityBill";
-        utilityBillBtn.Enabled = true;
-
-        var revenueTrendsBtn = CreateLargeNavButton("Nav_RevenueTrends", "Revenue\nTrends", "revenuetrends", theme,
-             () => form.ShowPanel<RevenueTrendsPanel>("Revenue Trends", DockingStyle.Right), logger);
-        revenueTrendsBtn.Tag = "Nav:RevenueTrends";
-        revenueTrendsBtn.Enabled = true;
-
-        var recommendedChargeBtn = CreateLargeNavButton("Nav_RecommendedCharge", "Recommended\nCharge", "recommendedcharge", theme,
-             () => form.ShowPanel<RecommendedMonthlyChargePanel>("Recommended Monthly Charge", DockingStyle.Right), logger);
-        recommendedChargeBtn.Tag = "Nav:RecommendedCharge";
-        recommendedChargeBtn.Enabled = true;
-
-        // Analytics panels
-        var deptSummaryBtn = CreateLargeNavButton("Nav_DeptSummary", "Dept\nSummary", "deptsummary", theme,
-             () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>("Department Summary", DockingStyle.Right), logger);
-        deptSummaryBtn.Tag = "Nav:DeptSummary";
-        deptSummaryBtn.Enabled = true;
-
-        var insightFeedBtn = CreateLargeNavButton("Nav_InsightFeed", "Insight\nFeed", "insightfeed", theme,
-             () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.InsightFeedPanel>("Insight Feed", DockingStyle.Right), logger);
-        insightFeedBtn.Tag = "Nav:InsightFeed";
-        insightFeedBtn.Enabled = true;
-
-        // Activity/Audit panels
-        var activityLogBtn = CreateLargeNavButton("Nav_ActivityLog", "Activity\nLog", "activitylog", theme,
-             () => form.ShowPanel<ActivityLogPanel>(
-                 "Activity Log",
-                 DockingStyle.Bottom,
-                 allowFloating: true), logger);
-        activityLogBtn.Tag = "Nav:ActivityLog";
-        activityLogBtn.Enabled = true;
-
-        var auditLogBtn = CreateLargeNavButton("Nav_AuditLog", "Audit\nLog", "auditlog", theme,
-             () => form.ShowPanel<AuditLogPanel>("Audit Log", DockingStyle.Bottom), logger);
-        auditLogBtn.Tag = "Nav:AuditLog";
-        auditLogBtn.Enabled = true;
-
-        strip.Items.Add(warRoomBtn);
+        // Create gallery items for dynamic, Office-like presentation
+        strip.Items.Add(CreateGalleryItem("War Room", "warroom", () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(customersBtn);
-        strip.Items.Add(utilityBillBtn);
+        strip.Items.Add(CreateGalleryItem("Customers", "customers", () => form.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right), logger));
+        strip.Items.Add(CreateGalleryItem("Utility Bills", "utilitybill", () => form.ShowPanel<UtilityBillPanel>("Utility Bills", DockingStyle.Right), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(revenueTrendsBtn);
-        strip.Items.Add(recommendedChargeBtn);
+        strip.Items.Add(CreateGalleryItem("Revenue Trends", "revenuetrends", () => form.ShowPanel<RevenueTrendsPanel>("Revenue Trends", DockingStyle.Right), logger));
+        strip.Items.Add(CreateGalleryItem("Recommended Charge", "recommendedcharge", () => form.ShowPanel<RecommendedMonthlyChargePanel>("Recommended Monthly Charge", DockingStyle.Right), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(deptSummaryBtn);
-        strip.Items.Add(insightFeedBtn);
+        strip.Items.Add(CreateGalleryItem("Dept Summary", "deptsummary", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>("Department Summary", DockingStyle.Right), logger));
+        strip.Items.Add(CreateGalleryItem("Insight Feed", "insightfeed", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.InsightFeedPanel>("Insight Feed", DockingStyle.Right), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(activityLogBtn);
-        strip.Items.Add(auditLogBtn);
+        strip.Items.Add(CreateGalleryItem("Activity Log", "activitylog", () => form.ShowPanel<ActivityLogPanel>("Activity Log", DockingStyle.Bottom, allowFloating: true), logger));
+        strip.Items.Add(CreateGalleryItem("Audit Log", "auditlog", () => form.ShowPanel<AuditLogPanel>("Audit Log", DockingStyle.Bottom), logger));
 
         return strip;
     }
@@ -1161,25 +1299,64 @@ public static class RibbonFactory
         searchStack.Items.Add(lbl);
         searchStack.Items.Add(searchBox);
 
-        // 3. Theme Toggle (Large)
-        var themeBtn = new ToolStripButton
+        // 3. Theme Combo Box (Replaces toggle button for more intuitive selection)
+        var themeCombo = new ToolStripComboBoxEx
         {
-            Text = "Toggle Theme",
-            TextImageRelation = TextImageRelation.ImageAboveText,
-            ImageScaling = ToolStripItemImageScaling.None
+            Name = "ThemeCombo",
+            Text = "Theme",
+            AutoSize = false,
+            Width = (int)DpiAware.LogicalToDeviceUnits(140f),
+            AccessibleName = "Theme Selection",
+            AccessibleRole = AccessibleRole.ComboBox,
+            AccessibleDescription = "Select application theme (Office2019Colorful, Office2019White, Office2019Black, Office2016Colorful, Office2016White)"
         };
-        themeBtn.Name = "ThemeToggle";
-        // Reuse an icon if available, or just text
-        themeBtn.Click += (s, e) =>
+
+        // Add available themes to combo
+        themeCombo.Items.AddRange(new object[]
         {
-            logger?.LogInformation("[RIBBON_FACTORY] Theme toggle button clicked");
-            form.ToggleTheme();
+            "Office2019Colorful",
+            "Office2019White",
+            "Office2019Black",
+            "Office2016Colorful",
+            "Office2016White"
+        });
+
+        // Set default theme (try to get current theme from ribbon)
+        themeCombo.SelectedIndex = 0;
+
+        themeCombo.SelectedIndexChanged += (s, e) =>
+        {
+            var selectedTheme = themeCombo.Text;
+            if (string.IsNullOrWhiteSpace(selectedTheme))
+            {
+                return;
+            }
+
+            try
+            {
+                // Ensure theme assembly is loaded
+                AppThemeColors.EnsureThemeAssemblyLoaded(logger);
+
+                SfSkinManager.ApplicationVisualTheme = selectedTheme;
+                SfSkinManager.SetVisualStyle(form, selectedTheme);
+                ApplyThemeRecursively(form, selectedTheme, logger);
+
+                // Refresh ribbon and main form
+                form.PerformLayout();
+                form.Refresh();
+
+                logger?.LogInformation("[RIBBON_FACTORY] Theme changed to {Theme}", selectedTheme);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[RIBBON_FACTORY] Failed to apply theme {Theme}: {Message}", selectedTheme, ex.Message);
+            }
         };
 
         strip.Items.Add(searchStack);
         strip.Items.Add(CreateRibbonSeparator());
         strip.Items.Add(gridStack);
-        strip.Items.Add(themeBtn);
+        strip.Items.Add(themeCombo);
 
         return strip;
     }
@@ -1339,6 +1516,62 @@ public static class RibbonFactory
             }
         };
         return btn;
+    }
+
+    /// <summary>
+    /// Creates a gallery item for the "Views" group with icon and text.
+    /// </summary>
+    private static ToolStripButton CreateGalleryItem(
+        string text, string iconName, Action onClick, ILogger? logger)
+    {
+        var item = new ToolStripButton(text)
+        {
+            Text = text,
+            TextImageRelation = TextImageRelation.ImageAboveText,
+            AutoSize = false,
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(65f), (int)DpiAware.LogicalToDeviceUnits(75f)),
+            DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
+            ImageScaling = ToolStripItemImageScaling.None,
+            Padding = new Padding(3, 1, 3, 1),
+            Margin = new Padding(2, 1, 2, 1)
+        };
+
+        if (!string.IsNullOrEmpty(iconName))
+        {
+            try
+            {
+                var img = LoadBackStageIcon(iconName, new Size(32, 32), logger);
+                if (img != null)
+                {
+                    item.Image = img;
+                    logger?.LogDebug("[RIBBON_FACTORY] Loaded gallery item icon: {IconName}", iconName);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "[RIBBON_FACTORY] Failed to load gallery item icon {IconName}", iconName);
+            }
+        }
+
+        if (item.Image == null)
+        {
+            item.Image = CreatePlaceholderIcon(new Size(32, 32));
+        }
+
+        item.Click += (s, e) =>
+        {
+            try
+            {
+                onClick();
+                logger?.LogDebug("[RIBBON_FACTORY] Gallery item '{ItemText}' clicked", text);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[RIBBON_FACTORY] Gallery item '{ItemText}' click failed", text);
+            }
+        };
+
+        return item;
     }
 
     private static void LogNavigationActivity(WileyWidget.WinForms.Forms.MainForm? form, string actionName, string panelName, ILogger? logger)

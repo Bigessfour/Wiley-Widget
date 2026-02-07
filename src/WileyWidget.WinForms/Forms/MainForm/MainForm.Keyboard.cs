@@ -9,6 +9,7 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using Panels = WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Forms;
@@ -255,20 +256,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.J))
         {
-            try
-            {
-                SwitchRightPanel("JarvisChat");
-                return true;
-            }
-            catch (InvalidOperationException invEx)
-            {
-                _logger?.LogError(invEx, "Error switching to JARVIS Chat - invalid operation");
-                MessageBox.Show(
-                    "The JARVIS Chat panel is not ready. Please try again in a moment.",
-                    "Panel Not Ready",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
+            return TryShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Bottom);
         }
 
         return base.ProcessCmdKey(ref msg, keyData);

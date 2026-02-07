@@ -38,6 +38,50 @@ namespace WileyWidget.WinForms.Services.AI
                 LogLevel.Warning,
                 new EventId(1001, nameof(LogApiKeyValidationFailed)),
                 "[XAI] API key validation failed: {Message}");
+
+        // API Key Retrieval Logging
+        private static readonly Action<ILogger, string, int, bool, Exception?> LogApiKeyRetrievedFromSource =
+            LoggerMessage.Define<string, int, bool>(
+                LogLevel.Information,
+                new EventId(1002, nameof(LogApiKeyRetrievedFromSource)),
+                "[XAI] API key retrieved from {Source} (length: {Length}, validated: {IsValidated})");
+
+        private static readonly Action<ILogger, string, Exception?> LogApiKeyRetrievalFailed =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(1003, nameof(LogApiKeyRetrievalFailed)),
+                "[XAI] API key retrieval failed: {Message}");
+
+        private static readonly Action<ILogger, string, int, Exception?> LogApiKeyPreview =
+            LoggerMessage.Define<string, int>(
+                LogLevel.Debug,
+                new EventId(1004, nameof(LogApiKeyPreview)),
+                "[XAI] API key preview: {Preview} (length {Length})");
+
+        private static readonly Action<ILogger, string, Exception?> LogApiKeyNotFound =
+            LoggerMessage.Define<string>(
+                LogLevel.Warning,
+                new EventId(1005, nameof(LogApiKeyNotFound)),
+                "[XAI] API key NOT found in configuration/environment. Checked sources: {Sources}");
+
+        // HTTP Request/Response Logging
+        private static readonly Action<ILogger, string, string, Exception?> LogHttpRequestStarted =
+            LoggerMessage.Define<string, string>(
+                LogLevel.Debug,
+                new EventId(2001, nameof(LogHttpRequestStarted)),
+                "[XAI] HTTP {Method} {Endpoint} - request headers configured");
+
+        private static readonly Action<ILogger, string, int, Exception?> LogHttpResponseStatus =
+            LoggerMessage.Define<string, int>(
+                LogLevel.Information,
+                new EventId(2002, nameof(LogHttpResponseStatus)),
+                "[XAI] HTTP response from {Endpoint}: {StatusCode}");
+
+        private static readonly Action<ILogger, string, string, string, Exception?> LogHttpRequestHeaders =
+            LoggerMessage.Define<string, string, string>(
+                LogLevel.Trace,
+                new EventId(2003, nameof(LogHttpRequestHeaders)),
+                "[XAI] HTTP {Method} {Endpoint}: Content-Type=application/json, Authorization=Bearer ***masked***, Accept={Accept}");
         private Kernel? _kernel;
         private readonly IXaiModelDiscoveryService? _modelDiscoveryService;
         private readonly IGrokApiKeyProvider? _apiKeyProvider;  // ✅ NEW: Inject the centralized provider
@@ -121,11 +165,20 @@ namespace WileyWidget.WinForms.Services.AI
             // ✅ FIXED: Use injected IGrokApiKeyProvider instead of reading environment variables directly
             _apiKey = apiKeyProvider.ApiKey;  // Get API key from centralized provider
             var source = apiKeyProvider.GetConfigurationSource();
-            _logger?.LogInformation(
-                "[XAI] Using API key from {Source} (length: {Length}, validated: {IsValidated})",
-                source,
-                _apiKey?.Length ?? 0,
-                apiKeyProvider.IsValidated);
+            if (_logger != null)
+            {
+                LogApiKeyRetrievedFromSource(_logger, source, _apiKey?.Length ?? 0, apiKeyProvider.IsValidated, null);
+            }
+
+            // Log API key preview (masked) for diagnostics
+            if (!string.IsNullOrWhiteSpace(_apiKey))
+            {
+                var preview = _apiKey.Length > 8 ? _apiKey.Substring(0, 4) + "..." + _apiKey.Substring(_apiKey.Length - 4) : _apiKey;
+                if (_logger != null)
+                {
+                    LogApiKeyPreview(_logger, preview, _apiKey.Length, null);
+                }
+            }
 
             _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4.1";
 
@@ -171,20 +224,15 @@ namespace WileyWidget.WinForms.Services.AI
             // Use new /responses endpoint instead of deprecated /chat/completions
             _endpoint = new Uri(_baseEndpoint, ResponsesEndpointSuffix); // /v1/responses
 
-            // Log the API key presence for diagnostics (do not log the full key)
-            if (!string.IsNullOrWhiteSpace(_apiKey))
+            // Additional diagnostics about API key sources checked
+            if (string.IsNullOrWhiteSpace(_apiKey))
             {
-                logger?.LogInformation("[XAI] API key detected in configuration/environment.");
-                var preview = _apiKey.Length > 8 ? _apiKey.Substring(0, 4) + "..." + _apiKey.Substring(_apiKey.Length - 4) : _apiKey;
-                logger?.LogDebug("[XAI] API key preview: {Preview} (length {Length})", preview, _apiKey.Length);
+                var sourcesChecked = string.Join(", ", ApiKeyEnvironmentTargets.Select(t => $"{t.Source}"));
+                if (_logger != null)
+                {
+                    LogApiKeyNotFound(_logger, sourcesChecked, null);
+                }
             }
-            else
-            {
-                logger?.LogWarning("[XAI] API key NOT found in configuration/environment. Chat will not function.");
-            }
-
-            // Log environment and configuration details for diagnostics
-            logger?.LogInformation("[XAI] Environment variable {EnvVar} length: {EnvLength}, Config API key length: {ConfigLength}", ApiKeyEnvironmentVariable, Environment.GetEnvironmentVariable(ApiKeyEnvironmentVariable)?.Length ?? 0, _apiKey?.Length ?? 0);
             logger?.LogInformation("[XAI] Using model={Model}, endpoint={Endpoint} (NEW /v1/responses API)", _model, _endpoint);
 
             // Initialize HttpClient early (lightweight, non-blocking)
@@ -194,6 +242,11 @@ namespace WileyWidget.WinForms.Services.AI
             if (!string.IsNullOrWhiteSpace(_apiKey))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                _logger?.LogDebug("[XAI] Authorization header configured (Bearer token set)");
+            }
+            else
+            {
+                _logger?.LogWarning("[XAI] No API key available - Authorization header not configured");
             }
 
             _logger?.LogDebug("[XAI] GrokAgentService instantiated - heavy Semantic Kernel initialization deferred to InitializeAsync()");
@@ -449,7 +502,18 @@ namespace WileyWidget.WinForms.Services.AI
             try
             {
                 _logger?.LogDebug("[XAI] SendStreamingResponseAsync -> POST {Url} with stream=true (model={Model}, retryCount={RetryCount}, endpoint=responses)", _endpoint, model, retryCount);
+                if (_logger != null)
+                {
+                    LogHttpRequestHeaders(_logger, "POST", _endpoint?.ToString() ?? "unknown", "text/event-stream", null);
+                }
+
                 var resp = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+
+                // Log response status code
+                if (_logger != null)
+                {
+                    LogHttpResponseStatus(_logger, _endpoint?.ToString() ?? "unknown", (int)resp.StatusCode, null);
+                }
 
                 // Handle rate limit with exponential backoff
                 if ((int)resp.StatusCode == 429)
@@ -605,7 +669,19 @@ namespace WileyWidget.WinForms.Services.AI
             try
             {
                 _logger?.LogDebug("[XAI] GetSimpleResponse -> POST {Url} (model={Model}, endpoint=responses)", _endpoint, model);
+                if (_logger != null)
+                {
+                    LogHttpRequestHeaders(_logger, "POST", _endpoint?.ToString() ?? "unknown", "application/json", null);
+                }
+
                 var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
+
+                // Log response status code
+                if (_logger != null)
+                {
+                    LogHttpResponseStatus(_logger, _endpoint?.ToString() ?? "unknown", (int)resp.StatusCode, null);
+                }
+
                 if (!resp.IsSuccessStatusCode)
                 {
                     _logger?.LogWarning("Grok responses API returned non-success status: {Status}", resp.StatusCode);
@@ -708,7 +784,19 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
+                if (_logger != null)
+                {
+                    LogHttpRequestHeaders(_logger, "POST", _endpoint?.ToString() ?? "unknown", "application/json", null);
+                }
+
                 using var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
+
+                // Log response status code
+                if (_logger != null)
+                {
+                    LogHttpResponseStatus(_logger, _endpoint?.ToString() ?? "unknown", (int)resp.StatusCode, null);
+                }
+
                 var respBody = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 if (!resp.IsSuccessStatusCode)
                 {
@@ -800,7 +888,19 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 var modelsEndpoint = new Uri(_baseEndpoint!, "models");
                 _logger?.LogDebug("[XAI] Listing models via {Url}", modelsEndpoint);
+                if (_logger != null)
+                {
+                    LogHttpRequestHeaders(_logger, "GET", modelsEndpoint.ToString(), "application/json", null);
+                }
+
                 using var resp = await _httpClient.GetAsync(modelsEndpoint, ct).ConfigureAwait(false);
+
+                // Log response status code
+                if (_logger != null)
+                {
+                    LogHttpResponseStatus(_logger, modelsEndpoint.ToString(), (int)resp.StatusCode, null);
+                }
+
                 var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 if (!resp.IsSuccessStatusCode)
                 {
@@ -882,8 +982,19 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 var responseEndpoint = new Uri(_endpoint!, responseId);
                 _logger?.LogDebug("[XAI] Retrieving response {ResponseId} via {Url}", responseId, responseEndpoint);
+                if (_logger != null)
+                {
+                    LogHttpRequestHeaders(_logger, "GET", responseEndpoint.ToString(), "application/json", null);
+                }
 
                 using var resp = await _httpClient.GetAsync(responseEndpoint, ct).ConfigureAwait(false);
+
+                // Log response status code
+                if (_logger != null)
+                {
+                    LogHttpResponseStatus(_logger, responseEndpoint.ToString(), (int)resp.StatusCode, null);
+                }
+
                 var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
 
                 if (!resp.IsSuccessStatusCode)
@@ -1001,7 +1112,18 @@ namespace WileyWidget.WinForms.Services.AI
                 using var content = new StringContent(json, Encoding.UTF8, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"));
 
                 _logger?.LogDebug("[XAI] ContinueConversationAsync -> POST {Url} (previousResponseId={PreviousId})", _endpoint, previousResponseId);
+                if (_logger != null)
+                {
+                    LogHttpRequestHeaders(_logger, "POST", _endpoint?.ToString() ?? "unknown", "application/json", null);
+                }
+
                 var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
+
+                // Log response status code
+                if (_logger != null)
+                {
+                    LogHttpResponseStatus(_logger, _endpoint?.ToString() ?? "unknown", (int)resp.StatusCode, null);
+                }
 
                 if (!resp.IsSuccessStatusCode)
                 {

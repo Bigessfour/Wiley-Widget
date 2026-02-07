@@ -15,6 +15,7 @@ using WileyWidget.Abstractions;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.BlazorComponents;
 using WileyWidget.WinForms.Automation;
+using WileyWidget.WinForms.Services;
 
 using WileyWidget.WinForms.Controls.Base;
 
@@ -26,7 +27,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// Designed to be docked as a TabPage in the right panel alongside Activity Log.
     /// Implements IAsyncInitializable to defer heavy WebView2 initialization off the UI thread.
     /// </summary>
-    public partial class JARVISChatUserControl : ScopedPanelBase<JARVISChatViewModel>, IAsyncInitializable
+    public partial class JARVISChatUserControl : ScopedPanelBase<JARVISChatViewModel>, IAsyncInitializable, IParameterizedPanel
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly JarvisAutomationState? _automationState;
@@ -34,12 +35,36 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private LoadingOverlay? _loadingOverlay;
         private TextBox? _automationStatusText;
         private bool _isInitialized;
+        private bool _pendingInitialization;
+        private bool _initializationFailed;
         private readonly SemaphoreSlim _initLock = new(1, 1);
         /// <summary>
         /// Gets or sets the initial prompt to be sent to JARVIS when the control is shown.
         /// </summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public string? InitialPrompt { get; set; }
+
+        public void InitializeWithParameters(object parameters)
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (parameters is not string prompt || string.IsNullOrWhiteSpace(prompt))
+            {
+                Logger?.LogDebug("[JARVIS-PARAM] Ignoring unsupported parameters type: {Type}", parameters?.GetType().Name ?? "<null>");
+                return;
+            }
+
+            InitialPrompt = prompt;
+            Logger?.LogInformation("[JARVIS-PARAM] InitialPrompt set via panel parameters ({Length} chars)", prompt.Length);
+
+            if (_isInitialized)
+            {
+                _ = SendInitialPromptAsync(CancellationToken.None);
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
@@ -89,12 +114,21 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     return;
                 }
 
+                if (!IsReadyForInitialization())
+                {
+                    _pendingInitialization = true;
+                    Logger?.LogInformation("[JARVIS-INIT] Deferring BlazorWebView initialization until control is sized. ClientSize={Width}x{Height}, HandleCreated={HandleCreated}",
+                        ClientSize.Width, ClientSize.Height, IsHandleCreated);
+                    return;
+                }
+
                 Logger?.LogInformation("[JARVIS-INIT] Initializing BlazorWebView asynchronously (off UI thread optimization)");
 
                 if (IsHeadlessTestMode())
                 {
                     Logger?.LogDebug("Skipping BlazorWebView initialization in headless test mode");
                     _isInitialized = true;
+                    _pendingInitialization = false;
                     return;
                 }
 
@@ -112,35 +146,22 @@ namespace WileyWidget.WinForms.Controls.Supporting
                         "Please download and install from:\n" +
                         "https://go.microsoft.com/fwlink/p/?LinkId=2124703");
                     _isInitialized = true; // Mark as initialized to prevent retries
+                    _pendingInitialization = false;
                     return;
                 }
 
                 // Schedule BlazorWebView creation on the UI thread (WinForms requirement)
                 // Optimized: Use BeginInvoke instead of Task.Run wrapper
                 Logger?.LogInformation("[JARVIS-INIT] About to schedule BlazorWebViewCore init - InvokeRequired={InvokeReq}", InvokeRequired);
-
-                if (InvokeRequired)
-                {
-                    Logger?.LogDebug("[JARVIS-INIT] Using BeginInvoke to marshal to UI thread");
-                    BeginInvoke(new Action(() =>
-                    {
-                        Logger?.LogDebug("[JARVIS-INIT] BeginInvoke action executing on thread {Thread}", System.Threading.Thread.CurrentThread.ManagedThreadId);
-                        InitializeBlazorWebViewCore();
-                    }));
-                }
-                else
-                {
-                    Logger?.LogDebug("[JARVIS-INIT] Calling InitializeBlazorWebViewCore directly (already on UI thread)");
-                    InitializeBlazorWebViewCore();
-                }
+                await InitializeBlazorWebViewOnUiThreadAsync(cancellationToken).ConfigureAwait(false);
 
                 // Send initial prompt after BlazorWebView is ready (if configured)
-                if (!string.IsNullOrWhiteSpace(InitialPrompt))
+                if (_blazorWebView != null && !string.IsNullOrWhiteSpace(InitialPrompt))
                 {
                     await SendInitialPromptAsync(cancellationToken).ConfigureAwait(false);
                 }
 
-                _isInitialized = true;
+                _pendingInitialization = false;
                 Logger?.LogInformation("[JARVIS-INIT] ✅ BlazorWebView initialization sequence completed successfully");
             }
             catch (OperationCanceledException)
@@ -150,6 +171,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
             catch (Exception ex)
             {
                 Logger?.LogError(ex, "Failed to initialize BlazorWebView asynchronously");
+                _initializationFailed = true;
+                _isInitialized = true;
+                _pendingInitialization = false;
                 ShowErrorPlaceholder();
             }
             finally
@@ -250,9 +274,49 @@ namespace WileyWidget.WinForms.Controls.Supporting
             _automationStatusText.Tag = status;
         }
 
+        private bool IsReadyForInitialization()
+        {
+            return IsHandleCreated && ClientSize.Width > 0 && ClientSize.Height > 0;
+        }
+
+        private Task InitializeBlazorWebViewOnUiThreadAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled(cancellationToken);
+            }
+
+            if (_blazorWebView != null || IsDisposed)
+            {
+                return Task.CompletedTask;
+            }
+
+            if (InvokeRequired)
+            {
+                var tcs = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        InitializeBlazorWebViewCore();
+                        tcs.TrySetResult(null);
+                    }
+                    catch (Exception ex)
+                    {
+                        tcs.TrySetException(ex);
+                    }
+                }));
+                return tcs.Task;
+            }
+
+            InitializeBlazorWebViewCore();
+            return Task.CompletedTask;
+        }
+
         /// <summary>
         /// Initializes the BlazorWebView control on the UI thread.
         /// This is called from InitializeAsync after the form is shown to avoid blocking startup.
+        /// Enhanced with comprehensive error handling, detailed logging, and service validation.
         /// </summary>
         private void InitializeBlazorWebViewCore()
         {
@@ -267,6 +331,22 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     IsDisposed, IsHeadlessTestMode());
                 return;
             }
+
+            if (_blazorWebView != null)
+            {
+                Logger?.LogDebug("[JARVIS-BLAZOR] BlazorWebView already created; skipping initialization.");
+                return;
+            }
+
+            if (ClientSize.Width == 0 || ClientSize.Height == 0)
+            {
+                _pendingInitialization = true;
+                Logger?.LogInformation("[JARVIS-BLAZOR] Deferring BlazorWebView creation due to zero size. ClientSize={Width}x{Height}",
+                    ClientSize.Width, ClientSize.Height);
+                return;
+            }
+
+            _initializationFailed = false;
 
             try
             {
@@ -288,9 +368,22 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 // The main provider has all infrastructure services properly initialized
                 Logger?.LogDebug("Using main IServiceProvider for BlazorWebView (has AddWindowsFormsBlazorWebView + AddSyncfusionBlazor)");
 
+                // Log WebView2 version information for diagnostics
+                try
+                {
+                    var webView2Version = CoreWebView2Environment.GetAvailableBrowserVersionString();
+                    Logger?.LogInformation("[JARVIS-BLAZOR] WebView2 Version: {Version}", webView2Version);
+                }
+                catch (Exception versionEx)
+                {
+                    Logger?.LogWarning(versionEx, "[JARVIS-BLAZOR] Failed to retrieve WebView2 version information");
+                }
+
                 // Validate that required services are available in main provider
-                Logger?.LogDebug("Verifying application services for JARVISAssist component");
+                Logger?.LogInformation("[JARVIS-BLAZOR] Verifying application services for JARVISAssist component");
+                var serviceValidationErrors = new System.Collections.Generic.List<string>();
                 bool hasBlazorWebViewService = false;
+
                 try
                 {
                     var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IChatBridgeService>(_serviceProvider);
@@ -303,114 +396,263 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     var blazorProvider = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.AspNetCore.Components.WebView.WindowsForms.BlazorWebView>(_serviceProvider);
                     hasBlazorWebViewService = blazorProvider != null;
 
+                    // Detailed service availability logging
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Service Availability - IChatBridgeService: {HasChatBridge}", chatBridge != null);
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Service Availability - IAIService: {HasAIService}", aiService != null);
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Service Availability - IConversationRepository: {HasConvRepo}", conversationRepo != null);
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Service Availability - JarvisAutomationState: {HasAutoState}", automationState != null);
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Service Availability - IUserContext: {HasUserContext}", userContext != null);
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Service Availability - BlazorWebView Infrastructure: {HasBlazor}", hasBlazorWebViewService);
+
                     var registeredCount = new object?[] { chatBridge, aiService, conversationRepo, automationState, userContext }
                         .Count(s => s != null);
-                    Logger?.LogDebug("Verified {Count} application services available in main provider (BlazorWebView registered: {HasBlazor})",
+                    Logger?.LogInformation("[JARVIS-BLAZOR] Verified {Count}/5 core application services available (BlazorWebView infrastructure: {HasBlazor})",
                         registeredCount, hasBlazorWebViewService);
+
+                    if (chatBridge == null) serviceValidationErrors.Add("IChatBridgeService not registered");
+                    if (aiService == null) serviceValidationErrors.Add("IAIService not registered");
+                    if (conversationRepo == null) serviceValidationErrors.Add("IConversationRepository not registered");
+                    if (automationState == null) serviceValidationErrors.Add("JarvisAutomationState not registered");
+                    if (userContext == null) serviceValidationErrors.Add("IUserContext not registered");
                 }
                 catch (Exception serviceEx)
                 {
-                    Logger?.LogWarning(serviceEx, "Failed to verify application services availability - proceeding with initialization");
-                    // Continue - some services may be optional or still initializing
+                    Logger?.LogWarning(serviceEx, "[JARVIS-BLAZOR] Exception during service verification (inner exception: {InnerEx})",
+                        serviceEx.InnerException?.Message);
+                    serviceValidationErrors.Add($"Service verification failed: {serviceEx.GetType().Name}: {serviceEx.Message}");
+                }
+
+                /// <summary>
+                /// NEW: Add runtime check for Blazor services availability
+                /// Verifies that AddWindowsFormsBlazorWebView() and AddSyncfusionBlazor() were properly called during startup.
+                /// </summary>
+                try
+                {
+                    var blazorServices = ServiceProviderServiceExtensions.GetService<IServiceScopeFactory>(_serviceProvider);
+                    if (blazorServices == null)
+                    {
+                        Logger?.LogError("Blazor services not registered - ensure AddWindowsFormsBlazorWebView() is called in startup");
+                        ShowErrorPlaceholder("Blazor Initialization Failed", "Required services not found. Check application startup configuration.");
+                        return;
+                    }
+                }
+                catch (Exception blazorCheckEx)
+                {
+                    Logger?.LogError(blazorCheckEx, "Error verifying Blazor services");
+                    ShowErrorPlaceholder("Blazor Initialization Failed", "Required services not found. Check application startup configuration.");
+                    return;
                 }
 
                 // Create and configure BlazorWebView using main service provider
                 // CRITICAL: Do NOT create a new ServiceCollection - BlazorWebView needs fully-initialized infrastructure
-                _blazorWebView = new BlazorWebView
+                try
                 {
-                    Dock = DockStyle.Fill,
-                    HostPage = "wwwroot/index.html",
-                    Services = _serviceProvider,
-                    AccessibleName = "JARVIS AI Chat Interface",
-                    Name = "JARVISChatBlazorView"
-                };
-
-                _blazorWebView.RootComponents.Add<JARVISAssist>("#app");
-                Logger?.LogDebug("Added JARVISAssist root component to BlazorWebView");
-
-#if DEBUG
-                // Enable WebView2 Developer Tools for debugging Blazor console errors
-                _blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
-#endif
-
-                // Add WebView2 error handler to catch fatal initialization failures
-                _blazorWebView.BlazorWebViewInitialized += (sender, e) =>
-                {
-                    try
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Creating new BlazorWebView instance...");
+                    _blazorWebView = new BlazorWebView
                     {
-                        Logger?.LogInformation("BlazorWebView initialized, subscribing to CoreWebView2InitializationCompleted");
+                        Dock = DockStyle.Fill,
+                        HostPage = "wwwroot/index.html",
+                        Services = _serviceProvider,
+                        AccessibleName = "JARVIS AI Chat Interface",
+                        Name = "JARVISChatBlazorView"
+                    };
+                    Logger?.LogDebug("[JARVIS-BLAZOR] BlazorWebView instance created successfully");
 
-                        // Capture console messages from JavaScript/Blazor
-                        e.WebView.CoreWebView2InitializationCompleted += async (s, args) =>
+                    Logger?.LogDebug("[JARVIS-BLAZOR] Adding JARVISAssist root component to BlazorWebView...");
+                    _blazorWebView.RootComponents.Add<JARVISAssist>("#app");
+                    Logger?.LogInformation("[JARVIS-BLAZOR] Added JARVISAssist root component to BlazorWebView");
+
+                    // Enable WebView2 Developer Tools and event logging (enabled in all builds for diagnostics)
+                    _blazorWebView.BlazorWebViewInitialized += OnBlazorWebViewInitialized;
+
+                    // Add WebView2 error handler to catch fatal initialization failures
+                    _blazorWebView.BlazorWebViewInitialized += (sender, e) =>
+                    {
+                        try
                         {
-                            if (!args.IsSuccess)
-                            {
-                                Logger?.LogError(args.InitializationException,
-                                    "CoreWebView2 initialization failed: {Message}",
-                                    args.InitializationException?.Message);
-                                ShowErrorPlaceholder("WebView2 Initialization Failed",
-                                    $"Failed to initialize WebView2:\n{args.InitializationException?.Message}");
-                            }
-                            else
-                            {
-                                Logger?.LogInformation("CoreWebView2 initialization succeeded - Blazor render should begin now");
-                            }
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger?.LogError(ex, "Failed to attach CoreWebView2 error handler");
-                    }
-                };
+                            Logger?.LogInformation("[JARVIS-BLAZOR] BlazorWebViewInitialized event fired, subscribing to CoreWebView2InitializationCompleted");
 
-                this.Controls.Add(_blazorWebView);
-                this.ResumeLayout(false);
+                            // Capture console messages from JavaScript/Blazor
+                            e.WebView.CoreWebView2InitializationCompleted += async (s, args) =>
+                            {
+                                if (!args.IsSuccess)
+                                {
+                                    Logger?.LogError(args.InitializationException,
+                                        "[JARVIS-BLAZOR] CoreWebView2 initialization failed: {Message}. Inner Exception: {InnerEx}",
+                                        args.InitializationException?.Message,
+                                        args.InitializationException?.InnerException?.Message);
+                                    ShowErrorPlaceholder("WebView2 Initialization Failed",
+                                        $"Failed to initialize WebView2 core:\n\n{args.InitializationException?.GetType().Name}:\n{args.InitializationException?.Message}\n\n" +
+                                        (args.InitializationException?.InnerException != null ? $"Inner: {args.InitializationException.InnerException.Message}\n\n" : "") +
+                                        "Verify WebView2 runtime is properly installed and not corrupted.");
+                                }
+                                else
+                                {
+                                    Logger?.LogInformation("[JARVIS-BLAZOR] CoreWebView2 initialization succeeded - Blazor render should begin now");
+                                }
+                            };
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger?.LogError(ex, "[JARVIS-BLAZOR] Failed to attach CoreWebView2 error handler. Exception: {ExType}: {Message}",
+                                ex.GetType().Name, ex.Message);
+                        }
+                    };
 
-                Logger?.LogInformation("BlazorWebView core initialization completed successfully");
-            }
-            catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("AddWindowsFormsBlazorWebView"))
-            {
-                Logger?.LogError(ioEx, "CRITICAL: BlazorWebView services not registered. Missing 'AddWindowsFormsBlazorWebView()' in DI configuration.");
-                ShowErrorPlaceholder("BlazorWebView Configuration Error",
-                    "BlazorWebView services not registered in dependency injection container.\n\n" +
-                    "Ensure DependencyInjection.ConfigureServicesInternal() calls:\n" +
-                    "services.AddWindowsFormsBlazorWebView()\n\n" +
-                    "This is required before any BlazorWebView control initializes.");
-                this.ResumeLayout(false);
+                    this.Controls.Add(_blazorWebView);
+                    this.ResumeLayout(false);
+
+                    _isInitialized = true;
+                    _pendingInitialization = false;
+                    _initializationFailed = false;
+
+                    Logger?.LogInformation("[JARVIS-BLAZOR] ✅ BlazorWebView core initialization completed successfully");
+                }
+                catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("AddWindowsFormsBlazorWebView"))
+                {
+                    Logger?.LogError(ioEx, "[JARVIS-BLAZOR] CRITICAL: BlazorWebView services not registered. Missing 'AddWindowsFormsBlazorWebView()' in DI configuration. Stack: {StackTrace}",
+                        ioEx.StackTrace);
+                    ShowErrorPlaceholder("BlazorWebView Configuration Error",
+                        "BlazorWebView services not registered in dependency injection container.\n\n" +
+                        "REQUIRED CONFIGURATION:\n" +
+                        "In DependencyInjection.ConfigureServicesInternal():\n" +
+                        "  services.AddWindowsFormsBlazorWebView();\n" +
+                        "  services.AddSyncfusionBlazor();\n\n" +
+                        "This setup must occur BEFORE any BlazorWebView control initializes.\n\n" +
+                        "Error Details:\n" + ioEx.Message);
+                    this.ResumeLayout(false);
+                }
+                catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("WebView2"))
+                {
+                    Logger?.LogError(ioEx, "[JARVIS-BLAZOR] WebView2 infrastructure error: {Message}. Stack: {StackTrace}",
+                        ioEx.Message, ioEx.StackTrace);
+                    ShowErrorPlaceholder("WebView2 Infrastructure Error",
+                        $"BlazorWebView detected a WebView2 configuration issue:\n\n{ioEx.Message}\n\n" +
+                        "Possible causes:\n" +
+                        "• WebView2 runtime not installed\n" +
+                        "• WebView2 runtime corrupted or outdated\n" +
+                        "• User permissions insufficient for WebView2 initialization\n\n" +
+                        "Please download and install from:\n" +
+                        "https://go.microsoft.com/fwlink/p/?LinkId=2124703");
+                    this.ResumeLayout(false);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogError(ex, "[JARVIS-BLAZOR] FAILED to initialize BlazorWebView. ExceptionType: {ExType}, Message: {Message}, Stack: {StackTrace}, InnerEx: {InnerEx}",
+                        ex.GetType().FullName, ex.Message, ex.StackTrace, ex.InnerException?.Message);
+
+                    var serviceContext = serviceValidationErrors.Any()
+                        ? $"\nService Validation Issues:\n• {string.Join("\n• ", serviceValidationErrors)}\n"
+                        : "";
+
+                    ShowErrorPlaceholder("BlazorWebView Runtime Error",
+                        $"Failed to initialize BlazorWebView.\n\n" +
+                        $"Exception Type: {ex.GetType().Name}\n" +
+                        $"Message: {ex.Message}\n" +
+                        (ex.InnerException != null ? $"Inner Exception: {ex.InnerException.Message}\n" : "") +
+                        serviceContext +
+                        "Troubleshooting:\n" +
+                        "1. Verify WebView2 runtime is installed\n" +
+                        "2. Check application logs for stack trace\n" +
+                        "3. Ensure user has system permissions for WebView2\n" +
+                        "4. Verify all required services are registered in DI container\n\n" +
+                        "Download WebView2:\n" +
+                        "https://go.microsoft.com/fwlink/p/?LinkId=2124703");
+                    this.ResumeLayout(false);
+                }
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex, "Failed to initialize BlazorWebView. WebView2 runtime may be missing or corrupted. Details: {Message}", ex.Message);
-                ShowErrorPlaceholder("BlazorWebView Runtime Error",
-                    $"Failed to initialize BlazorWebView:\n\n{ex.GetType().Name}: {ex.Message}\n\n" +
-                    "Verify WebView2 runtime is installed and application has system permissions.\n\n" +
-                    "Check logs for detailed error trace.");
-                this.ResumeLayout(false);
+                Logger?.LogError(ex, "[JARVIS-BLAZOR] UNEXPECTED ERROR in InitializeBlazorWebViewCore outer try block. ExceptionType: {ExType}, Message: {Message}, Stack: {StackTrace}",
+                    ex.GetType().FullName, ex.Message, ex.StackTrace);
+                ShowErrorPlaceholder("Unexpected Error",
+                    $"An unexpected error occurred during BlazorWebView initialization:\n\n" +
+                    $"{ex.GetType().Name}: {ex.Message}\n\n" +
+                    "Please check application logs for detailed error information.");
+                try
+                {
+                    this.ResumeLayout(false);
+                }
+                catch { /* Resume layout failed, something is very wrong */ }
             }
         }
 
-#if DEBUG
         /// <summary>
-        /// Event handler for BlazorWebView initialization. Enables Chrome DevTools in Debug builds.
+        /// Event handler for BlazorWebView initialization. Enables Chrome DevTools and subscribes to navigation and console events.
+        /// DevTools are enabled in all builds (not just Debug) for production diagnostics and rendering validation.
         /// </summary>
         private void OnBlazorWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
         {
             try
             {
-                // Enable Chrome DevTools (right-click → Inspect, or F12)
-                e.WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+                // NEW: Enable dev tools and log WebView init
+                // Enable Chrome DevTools (right-click → Inspect, or F12) in all builds for diagnostics
+                e.WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;  // Ensure dev tools accessible (F12 or right-click inspect)
+                e.WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
+
+                // Inject Syncfusion license key from environment variable before Blazor initializes
+                var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+                if (!string.IsNullOrWhiteSpace(licenseKey))
+                {
+                    var escapedKey = licenseKey.Replace("\"", "\\\"");
+                    var scriptToInjectKey = $@"
+                        window.syncfusionLicenseKey = ""{escapedKey}"";
+                        console.log('[JARVIS-LICENSE] Syncfusion license key injected from environment');
+                    ";
+                    _ = e.WebView.CoreWebView2.ExecuteScriptAsync(scriptToInjectKey);
+                    Logger?.LogInformation("[JARVIS-LICENSE] Injected Syncfusion license key from SYNCFUSION_LICENSE_KEY environment variable");
+                }
+                else
+                {
+                    Logger?.LogWarning("[JARVIS-LICENSE] SYNCFUSION_LICENSE_KEY environment variable not found. License registration will fail.");
+                }
+
+                _ = e.WebView.CoreWebView2.ExecuteScriptAsync("console.log('WebView2 initialized');");
+                Logger?.LogInformation("[JARVIS-WEBVIEW] WebView2 Developer Tools enabled");
+                Logger?.LogInformation("BlazorWebView CoreWebView2 initialized - check browser console (F12 in panel) for errors");
 
                 // Disable zoom control to prevent accidental Ctrl+Scroll zoom in docked panel
                 e.WebView.CoreWebView2.Settings.IsZoomControlEnabled = false;
 
-                Logger?.LogDebug("WebView2 Developer Tools enabled for JARVIS panel");
+                // Subscribe to NavigationCompleted to log rendering status
+                e.WebView.CoreWebView2.NavigationCompleted += (sender, navArgs) =>
+                {
+                    try
+                    {
+                        Logger?.LogInformation("[JARVIS-WEBVIEW] Navigation completed - IsSuccess={IsSuccess}, HttpStatusCode={HttpStatus}",
+                            navArgs.IsSuccess, navArgs.HttpStatusCode);
+                        if (!navArgs.IsSuccess)
+                        {
+                            Logger?.LogWarning("[JARVIS-WEBVIEW] Navigation failed with status code {HttpStatus}", navArgs.HttpStatusCode);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogWarning(ex, "[JARVIS-WEBVIEW] Exception in NavigationCompleted handler");
+                    }
+                };
+
+                // Subscribe to WebMessageReceived to capture JavaScript console messages
+                e.WebView.CoreWebView2.WebMessageReceived += (sender, messageArgs) =>
+                {
+                    try
+                    {
+                        var messageData = messageArgs.WebMessageAsJson;
+                        Logger?.LogDebug("[JARVIS-WEBVIEW] JS Message received: {MessageData}", messageData);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.LogWarning(ex, "[JARVIS-WEBVIEW] Exception in WebMessageReceived handler");
+                    }
+                };
+
+                Logger?.LogDebug("[JARVIS-WEBVIEW] Subscribed to NavigationCompleted and WebMessageReceived events");
             }
             catch (Exception ex)
             {
-                Logger?.LogWarning(ex, "Failed to enable WebView2 Developer Tools");
+                Logger?.LogWarning(ex, "[JARVIS-WEBVIEW] Failed to configure WebView2 event handlers");
             }
         }
-#endif
 
         protected override void OnHandleCreated(EventArgs e)
         {
@@ -421,7 +663,52 @@ namespace WileyWidget.WinForms.Controls.Supporting
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
+
+            // Check if size is zero; if so, re-initialize when it becomes non-zero
+            if (Visible && (ClientSize.Width == 0 || ClientSize.Height == 0))
+            {
+                _pendingInitialization = true;
+                Logger?.LogWarning("[JARVIS-SIZING] OnVisibleChanged: Control visible but size is zero (W={Width}, H={Height}). Deferring init until OnResize.",
+                    ClientSize.Width, ClientSize.Height);
+                return;
+            }
+
             TryInitializeWhenVisible();
+        }
+
+        /// <summary>
+        /// Handles panel resize events. Logs ClientSize and keeps BlazorWebView in sync with panel bounds.
+        /// If size becomes non-zero after being zero, triggers initialization if not yet complete.
+        /// </summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+
+            // Log panel sizing for visibility validation
+            Logger?.LogDebug("[JARVIS-SIZING] OnResize: ClientSize={Width}x{Height}", ClientSize.Width, ClientSize.Height);
+
+            // Apply BlazorWebView size to match panel client area
+            if (_blazorWebView != null && !IsDisposed)
+            {
+                try
+                {
+                    _blazorWebView.Size = this.ClientSize;
+                    Logger?.LogDebug("[JARVIS-SIZING] BlazorWebView resized to {Width}x{Height}", ClientSize.Width, ClientSize.Height);
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "[JARVIS-SIZING] Failed to resize BlazorWebView");
+                }
+            }
+
+            // If control is visible and size became non-zero after being zero, trigger initialization
+            if (Visible && _pendingInitialization && !_isInitialized && !_initializationFailed && ClientSize.Width > 0 && ClientSize.Height > 0)
+            {
+                _pendingInitialization = false;
+                Logger?.LogInformation("[JARVIS-SIZING] Control size became non-zero (W={Width}, H={Height}). Triggering initialization.",
+                    ClientSize.Width, ClientSize.Height);
+                _ = InitializeAsync();
+            }
         }
 
         private void TryInitializeWhenVisible()
@@ -454,6 +741,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Invoke(new Action(() => ShowErrorPlaceholder(title, message)));
                 return;
             }
+
+            _initializationFailed = true;
+            _isInitialized = true;
+            _pendingInitialization = false;
 
             try
             {
@@ -500,6 +791,14 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     };
                     this.Controls.Add(linkLabel);
                 }
+
+                /// <summary>
+                /// NEW: Add button to retry initialization
+                /// Allows users to attempt to reinitialize BlazorWebView after resolving startup issues.
+                /// </summary>
+                var retryButton = new Button { Text = "Retry", Dock = DockStyle.Bottom };
+                retryButton.Click += (s, e) => InitializeBlazorWebViewCore();  // Retry on click
+                this.Controls.Add(retryButton);
 
                 this.ResumeLayout(false);
             }
@@ -604,12 +903,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _automationState.Changed -= AutomationStateChanged;
                 }
-#if DEBUG
                 if (_blazorWebView != null)
                 {
                     _blazorWebView.BlazorWebViewInitialized -= OnBlazorWebViewInitialized;
                 }
-#endif
                 _blazorWebView?.Dispose();
                 _loadingOverlay?.Dispose();
                 _automationStatusText?.Dispose();
