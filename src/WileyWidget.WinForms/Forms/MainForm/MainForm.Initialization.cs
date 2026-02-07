@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -414,43 +415,10 @@ public partial class MainForm
         if (this.IsDisposed) return;
 
         // [PERF] Allow UI structures additional time to fully develop before starting background tasks
-        await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(50, cancellationToken).ConfigureAwait(true);
 
         // [PERF] WebView2 prewarm (non-blocking): create CoreWebView2Environment after the form is shown.
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    var version = CoreWebView2Environment.GetAvailableBrowserVersionString();
-                    _logger?.LogInformation("[WEBVIEW2] Prewarm starting (Runtime={Version})", version);
-                }
-                catch (WebView2RuntimeNotFoundException ex)
-                {
-                    _logger?.LogWarning(ex, "[WEBVIEW2] Runtime not found - skipping prewarm");
-                    return;
-                }
-
-                _ = await CoreWebView2Environment.CreateAsync().ConfigureAwait(false);
-                _logger?.LogInformation("[WEBVIEW2] Prewarm completed");
-            }
-            catch (OperationCanceledException)
-            {
-                _logger?.LogDebug("[WEBVIEW2] Prewarm canceled");
-            }
-            catch (ObjectDisposedException)
-            {
-                _logger?.LogDebug("[WEBVIEW2] Prewarm skipped due to disposal");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "[WEBVIEW2] Prewarm failed (non-fatal)");
-            }
-        }, cancellationToken);
+        StartWebView2Prewarm(cancellationToken);
 
         // [PERF] Background startup health check
         _ = Task.Run(async () =>
@@ -692,6 +660,66 @@ public partial class MainForm
                 }
                 catch { }
             }
+        }
+    }
+
+    private void StartWebView2Prewarm(CancellationToken cancellationToken)
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(new global::System.Action(() => StartWebView2Prewarm(cancellationToken)));
+            return;
+        }
+
+        _ = PrewarmWebView2Async(cancellationToken);
+    }
+
+    private async Task PrewarmWebView2Async(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(25, cancellationToken).ConfigureAwait(true);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            try
+            {
+                var version = CoreWebView2Environment.GetAvailableBrowserVersionString();
+                _logger?.LogInformation("[WEBVIEW2] Prewarm starting (Runtime={Version})", version);
+            }
+            catch (WebView2RuntimeNotFoundException ex)
+            {
+                _logger?.LogWarning(ex, "[WEBVIEW2] Runtime not found - skipping prewarm");
+                return;
+            }
+
+            _ = await CoreWebView2Environment.CreateAsync().ConfigureAwait(true);
+            _logger?.LogInformation("[WEBVIEW2] Prewarm completed");
+        }
+        catch (COMException ex) when ((uint)ex.HResult == 0x80010106)
+        {
+            _logger?.LogDebug(ex, "[WEBVIEW2] Prewarm skipped due to COM apartment state");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogDebug("[WEBVIEW2] Prewarm canceled");
+        }
+        catch (ObjectDisposedException)
+        {
+            _logger?.LogDebug("[WEBVIEW2] Prewarm skipped due to disposal");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "[WEBVIEW2] Prewarm failed (non-fatal)");
         }
     }
 

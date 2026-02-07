@@ -1,5 +1,6 @@
 using System.Threading;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Data;
 using WileyWidget.Services.Abstractions;
@@ -8,14 +9,14 @@ namespace WileyWidget.Services;
 
 public sealed class EfConversationRepository : IConversationRepository
 {
-    private readonly IDbContextFactory<AppDbContext> _dbContextFactory;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EfConversationRepository> _logger;
 
     public EfConversationRepository(
-        IDbContextFactory<AppDbContext> dbContextFactory,
+        IServiceProvider serviceProvider,
         ILogger<EfConversationRepository> logger)
     {
-        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -33,7 +34,9 @@ public sealed class EfConversationRepository : IConversationRepository
             throw new ArgumentException("ConversationId is required.", nameof(conversation));
         }
 
-        await using var context = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        using var scope = _serviceProvider.CreateScope();
+        var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var context = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
 
         var existing = await context.ConversationHistories
             .FirstOrDefaultAsync(c => c.ConversationId == history.ConversationId)
@@ -68,7 +71,9 @@ public sealed class EfConversationRepository : IConversationRepository
             return null;
         }
 
-        await using var context = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        using var scope = _serviceProvider.CreateScope();
+        var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var context = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
 
         var conversation = await context.ConversationHistories
             .AsNoTracking()
@@ -83,7 +88,9 @@ public sealed class EfConversationRepository : IConversationRepository
         if (skip < 0) skip = 0;
         if (limit <= 0) limit = 50;
 
-        await using var context = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        using var scope = _serviceProvider.CreateScope();
+        var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var context = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
 
         var conversations = await context.ConversationHistories
             .AsNoTracking()
@@ -103,7 +110,9 @@ public sealed class EfConversationRepository : IConversationRepository
             return;
         }
 
-        await using var context = await _dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        using var scope = _serviceProvider.CreateScope();
+        var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var context = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
 
         var existing = await context.ConversationHistories
             .FirstOrDefaultAsync(c => c.ConversationId == conversationId)

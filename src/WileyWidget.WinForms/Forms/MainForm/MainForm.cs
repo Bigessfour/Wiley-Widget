@@ -660,7 +660,7 @@ namespace WileyWidget.WinForms.Forms
                     try
                     {
                         // Small additional delay to allow UI to settle
-                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(100, cancellationToken).ConfigureAwait(true);
 
                         // [PERF] Run deferred initialization tasks (health check, ViewModel, dashboard)
                         _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);

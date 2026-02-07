@@ -13,9 +13,11 @@ using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 
@@ -78,6 +80,39 @@ public partial class MainForm
         }
 
         _panelNavigator.ShowPanel<TPanel>(panelName ?? typeof(TPanel).Name, parameters, preferredStyle, allowFloating);
+    }
+
+    /// <summary>
+    /// Opens JARVIS Chat in a modal dialog, using the shared application services.
+    /// </summary>
+    public void ShowJarvisChatModal()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        if (_serviceProvider == null)
+        {
+            _logger?.LogWarning("ShowJarvisChatModal called but ServiceProvider is null");
+            return;
+        }
+
+        AsyncEventHelper.EnsureOnUiThread(this, () =>
+        {
+            try
+            {
+                var dialogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<ILogger<JarvisChatDialog>>(_serviceProvider);
+                using var dialog = new JarvisChatDialog(_serviceProvider, dialogLogger);
+                dialog.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to open JARVIS Chat modal");
+                UIHelper.ShowErrorOnUI(this, "Failed to open JARVIS Chat window.", "JARVIS Chat", _logger);
+            }
+        });
     }
 
     /// <summary>

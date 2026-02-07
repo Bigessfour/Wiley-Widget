@@ -448,7 +448,7 @@ namespace WileyWidget.WinForms.Configuration
             // AI-Powered Search and Analysis Services
             services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
-            services.AddScoped<IConversationRepository, EfConversationRepository>();
+            services.AddSingleton<IConversationRepository, EfConversationRepository>();
 
             // JARVIS Personality Service (Scoped - depends on IAILoggingService which is scoped)
             services.AddScoped<IJARVISPersonalityService, JARVISPersonalityService>();
