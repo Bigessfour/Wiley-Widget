@@ -9,10 +9,10 @@ namespace WileyWidget.WinForms.Helpers;
 /// <summary>
 /// Thread-safe helper for marshalling calls to the UI thread per Microsoft WinForms threading best practices.
 /// https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/how-to-make-thread-safe-calls
-/// 
+///
 /// Windows Forms uses the Single-Threaded Apartment (STA) model - all control access MUST occur on the
 /// thread that created the control. This helper ensures safe cross-thread operations.
-/// 
+///
 /// .NET 10+: Uses Control.InvokeAsync() for non-blocking async marshalling where available.
 /// Fallback: Uses synchronous Invoke() for compatibility.
 /// </summary>

@@ -3154,7 +3154,3 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #endregion
 }
-
-
-
-

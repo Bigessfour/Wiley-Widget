@@ -1012,6 +1012,18 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
 
+            // Filter benign IOException related to HTTP transport connection cancellations
+            if (ex is System.IO.IOException ioEx)
+            {
+                if (ioEx.Message.Contains("transport connection", StringComparison.OrdinalIgnoreCase) &&
+                    (ioEx.Message.Contains("aborted", StringComparison.OrdinalIgnoreCase) ||
+                     ioEx.Message.Contains("thread exit", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _logger?.LogDebug("Ignored benign IOException during transport operation (likely cancellation): {Message}", ioEx.Message);
+                    return;
+                }
+            }
+
             // [PERF] Prevent recursive re-entry
             if (System.Threading.Interlocked.Exchange(ref _inFirstChanceHandler, 1) == 1)
                 return;

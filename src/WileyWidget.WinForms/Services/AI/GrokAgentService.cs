@@ -1947,11 +1947,21 @@ namespace WileyWidget.WinForms.Services.AI
                     }).ToList();
 
                 var json = JsonSerializer.Serialize(messages);
+
+                // Build human-readable content from messages
+                var contentBuilder = new StringBuilder();
+                foreach (var msg in messages)
+                {
+                    contentBuilder.AppendLine($"[{msg.Role.ToUpperInvariant()}]: {msg.Content}");
+                }
+
                 var conversation = new ConversationHistory
                 {
                     ConversationId = conversationId,
                     MessagesJson = json,
+                    Content = contentBuilder.ToString(),
                     MessageCount = messages.Count,
+                    CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     Title = history.LastOrDefault(m => m.Role == AuthorRole.User)?.Content?.Substring(0, Math.Min(50, history.LastOrDefault(m => m.Role == AuthorRole.User)?.Content?.Length ?? 0)) ?? "Chat Session"
                 };

@@ -570,7 +570,18 @@ namespace WileyWidget.WinForms.Configuration
             // 1. User Secrets (XAI:ApiKey) - highest priority, secure
             // 2. Environment Variables (XAI_API_KEY) - CI/CD friendly
             // 3. appsettings.json (XAI:ApiKey) - lowest priority, public
-            services.AddSingleton<IGrokApiKeyProvider, GrokApiKeyProvider>();
+            // ✅ ENHANCED: Explicitly inject IHttpClientFactory for validation requests
+            services.AddSingleton<IGrokApiKeyProvider>(sp =>
+            {
+                var config = DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp);
+                var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<GrokApiKeyProvider>>(sp);
+                var httpClientFactory = DI.ServiceProviderServiceExtensions.GetRequiredService<IHttpClientFactory>(sp);
+
+                return new GrokApiKeyProvider(
+                    configuration: config,
+                    logger: logger,
+                    httpClientFactory: httpClientFactory);  // ✅ Always inject factory
+            });
 
             // Grok Health Checks (registered with health check service)
             services.AddHealthChecks()
@@ -580,8 +591,29 @@ namespace WileyWidget.WinForms.Configuration
             // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
             // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
             // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
-            // Use AddScoped directly instead of ActivatorUtilities.CreateInstance to avoid trying to instantiate during validation.
-            services.TryAddScoped<GrokAgentService>();
+            // ✅ ENHANCED: Explicitly inject IHttpClientFactory to ensure proper connection pooling and prevent socket exhaustion
+            services.TryAddScoped<GrokAgentService>(sp =>
+            {
+                var apiKeyProvider = DI.ServiceProviderServiceExtensions.GetRequiredService<IGrokApiKeyProvider>(sp);
+                var config = DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp);
+                var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<GrokAgentService>>(sp);
+                var httpClientFactory = DI.ServiceProviderServiceExtensions.GetRequiredService<IHttpClientFactory>(sp);
+                var modelDiscovery = DI.ServiceProviderServiceExtensions.GetService<IXaiModelDiscoveryService>(sp);
+                var chatBridge = DI.ServiceProviderServiceExtensions.GetService<IChatBridgeService>(sp);
+                var jarvisPersonality = DI.ServiceProviderServiceExtensions.GetService<IJARVISPersonalityService>(sp);
+                var memoryCache = DI.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp);
+
+                return new GrokAgentService(
+                    apiKeyProvider: apiKeyProvider,
+                    config: config,
+                    logger: logger,
+                    httpClientFactory: httpClientFactory,  // ✅ Always inject factory (never null)
+                    modelDiscoveryService: modelDiscovery,
+                    chatBridge: chatBridge,
+                    serviceProvider: sp,
+                    jarvisPersonality: jarvisPersonality,
+                    memoryCache: memoryCache);
+            });
 
             // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
             // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered

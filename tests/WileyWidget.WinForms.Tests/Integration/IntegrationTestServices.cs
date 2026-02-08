@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.AspNetCore.Components.WebView.WindowsForms;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Tests.Integration;
@@ -79,6 +81,52 @@ internal static class IntegrationTestServices
         services.AddScoped<QuickBooksViewModel>();
         services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
         services.AddWindowsFormsBlazorWebView();
+
+        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+    }
+
+    /// <summary>
+    /// Builds a service provider with AI-specific mocked dependencies for isolated AI component testing.
+    /// </summary>
+    public static ServiceProvider BuildAITestProvider(Dictionary<string, string?>? overrides = null, Action<ServiceCollection>? configureServices = null)
+    {
+        var services = new ServiceCollection();
+
+        var defaults = new Dictionary<string, string?>
+        {
+            ["XAI:Model"] = "grok-4-1-fast-reasoning",
+            ["XAI:Endpoint"] = "https://api.x.ai/v1",
+            ["XAI:AutoSelectModelOnStartup"] = "false",
+            ["XAI:DefaultPresencePenalty"] = "0.0",
+            ["XAI:DefaultFrequencyPenalty"] = "0.0"
+        };
+
+        // Merge overrides
+        if (overrides != null)
+        {
+            foreach (var kvp in overrides)
+            {
+                defaults[kvp.Key] = kvp.Value;
+            }
+        }
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(defaults)
+            .Build();
+
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddLogging(builder => builder.AddDebug());
+
+        // Mock AI dependencies
+        services.AddSingleton<IMemoryCache>(new MemoryCache(new MemoryCacheOptions()));
+        services.AddSingleton<IChatBridgeService>(Mock.Of<IChatBridgeService>());
+        services.AddSingleton<IJARVISPersonalityService>(Mock.Of<IJARVISPersonalityService>());
+        services.AddSingleton<IXaiModelDiscoveryService>(Mock.Of<IXaiModelDiscoveryService>());
+        services.AddSingleton<IGrokApiKeyProvider>(Mock.Of<IGrokApiKeyProvider>());
+        services.AddSingleton<IAILoggingService>(Mock.Of<IAILoggingService>());
+
+        // Allow custom service configuration
+        configureServices?.Invoke(services);
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }

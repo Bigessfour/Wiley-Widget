@@ -707,9 +707,3 @@ namespace WileyWidget.WinForms.Controls.Analytics
     }
 
 }
-
-
-
-
-
-

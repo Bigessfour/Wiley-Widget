@@ -1,0 +1,63 @@
+{
+  "Timestamp": "2026-02-08T11:00:09.3835725-07:00",
+  "Configuration": {
+    "Model": "grok-4-1-fast-reasoning",
+    "Endpoint": "https://api.x.ai/v1/responses",
+    "Timeout": "30 seconds",
+    "OutputDirectory": "./diagnostics"
+  },
+  "ApiKeyValidation": {
+    "Status": "Pass",
+    "Message": "API key present and valid format (length: 84)"
+  },
+  "EndpointConnectivity": {
+    "Status": "Pass",
+    "StatusCode": 200,
+    "Message": "Successfully connected to Grok API endpoint"
+  },
+  "RequestResponse": {
+    "Status": "Pass",
+    "Message": "Response successfully parsed as JSON"
+  },
+  "ModelAvailability": {
+    "Status": "Pass",
+    "Model": "grok-4-1-fast-reasoning",
+    "ResponseReceived": true,
+    "TotalTokens": 402,
+    "InputTokens": 178,
+    "OutputTokens": 224
+  },
+  "RateLimitStatus": {
+    "Status": "Warn",
+    "Message": "Rate limit headers not present in response"
+  },
+  "OverallStatus": "Pass",
+  "TestDetails": [
+    {
+      "Name": "API Key Validation",
+      "Status": "Pass",
+      "Time": "2026-02-08T11:00:09.4015639-07:00"
+    },
+    {
+      "Name": "Endpoint Connectivity",
+      "Status": "Pass",
+      "Time": "2026-02-08T11:00:12.0992702-07:00"
+    },
+    {
+      "Name": "Model Availability",
+      "Status": "Pass",
+      "Model": "grok-4-1-fast-reasoning",
+      "Time": "2026-02-08T11:00:12.1170318-07:00"
+    },
+    {
+      "Name": "Response Parsing",
+      "Status": "Pass",
+      "Time": "2026-02-08T11:00:12.1172378-07:00"
+    },
+    {
+      "Name": "Rate Limit Check",
+      "Status": "Warn",
+      "Time": "2026-02-08T11:00:12.1238007-07:00"
+    }
+  ]
+}

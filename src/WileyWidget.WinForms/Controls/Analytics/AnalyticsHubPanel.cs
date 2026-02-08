@@ -1187,6 +1187,3 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         base.Dispose(disposing);
     }
 }
-
-
-

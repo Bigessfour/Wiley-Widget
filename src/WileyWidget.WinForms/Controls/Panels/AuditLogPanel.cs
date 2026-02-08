@@ -1319,7 +1319,3 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         base.Dispose(disposing);
     }
 }
-
-
-
-

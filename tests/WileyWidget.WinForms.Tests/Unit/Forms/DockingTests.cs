@@ -111,13 +111,13 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             central.Should().NotBeNull();
 
             // Check docking state - use Dock property since DockingManager.GetDockStyle may not be reliable in tests
-            left.Dock.Should().Be(DockStyle.Left);
-            right.Dock.Should().Be(DockStyle.Right);
+            left!.Dock.Should().Be(DockStyle.Left);
+            right!.Dock.Should().Be(DockStyle.Right);
 
             activityLogPanel.Should().NotBeNull();
 
             var gridCtl = FindChildByName(activityLogPanel!, "ActivityGrid");
-            gridCtl.Should().NotBeNull();
+            gridCtl!.Should().NotBeNull();
             gridCtl.Should().BeOfType<SfDataGrid>();
 
             var grid = (SfDataGrid)gridCtl!;

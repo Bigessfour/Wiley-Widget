@@ -37,9 +37,9 @@ public sealed class DockingLayoutManagerIntegrationTests
 
             await layoutManager.LoadDockingLayoutAsync(dockingManager);
 
-            left.IsDisposed.Should().BeFalse();
-            right.IsDisposed.Should().BeFalse();
-            central.IsDisposed.Should().BeFalse();
+            left!.IsDisposed.Should().BeFalse();
+            right!.IsDisposed.Should().BeFalse();
+            central!.IsDisposed.Should().BeFalse();
         }
         finally
         {
@@ -88,9 +88,9 @@ public sealed class DockingLayoutManagerIntegrationTests
             await layoutManager.LoadDockingLayoutAsync(dockingManager);
 
             // Should not throw and panels should still be valid
-            left.IsDisposed.Should().BeFalse();
-            right.IsDisposed.Should().BeFalse();
-            central.IsDisposed.Should().BeFalse();
+            left!.IsDisposed.Should().BeFalse();
+            right!.IsDisposed.Should().BeFalse();
+            central!.IsDisposed.Should().BeFalse();
         }
         finally
         {
@@ -159,9 +159,9 @@ public sealed class DockingLayoutManagerIntegrationTests
             right.Should().NotBeNull();
             central.Should().NotBeNull();
 
-            left.IsDisposed.Should().BeFalse();
-            right.IsDisposed.Should().BeFalse();
-            central.IsDisposed.Should().BeFalse();
+            left!.IsDisposed.Should().BeFalse();
+            right!.IsDisposed.Should().BeFalse();
+            central!.IsDisposed.Should().BeFalse();
         }
         finally
         {

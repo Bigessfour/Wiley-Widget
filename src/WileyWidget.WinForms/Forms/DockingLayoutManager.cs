@@ -1194,4 +1194,3 @@ public class DynamicPanelInfo
     public string? DockLabel { get; set; }
     public bool IsAutoHide { get; set; }
 }
-

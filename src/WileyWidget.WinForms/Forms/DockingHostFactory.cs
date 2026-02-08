@@ -74,8 +74,7 @@ public static class DockingHostFactory
         ThemeColors.EnsureThemeAssemblyLoaded(logger);
 
         // Resolve UIConfiguration to check for MinimalMode/AutoShowPanels
-        var uiConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Configuration.UIConfiguration>(serviceProvider)
-                    ?? WileyWidget.WinForms.Configuration.UIConfiguration.FromConfiguration(null);
+        var uiConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Configuration.UIConfiguration>(serviceProvider) ?? WileyWidget.WinForms.Configuration.UIConfiguration.FromConfiguration(null);
 
         LegacyGradientPanel? leftDockPanel = null;
         LegacyGradientPanel centralDocumentPanel;

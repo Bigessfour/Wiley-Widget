@@ -1,4 +1,5 @@
 using System;
+using System.Net.Sockets;
 
 namespace WileyWidget.WinForms.Helpers
 {
@@ -33,15 +34,32 @@ namespace WileyWidget.WinForms.Helpers
         {
             if (exception == null) throw new ArgumentNullException(nameof(exception));
 
+            // Check message content for specific cases
+            var message = exception.Message ?? string.Empty;
+
             return exception switch
             {
-                InvalidOperationException when exception.Message.Contains("API key", StringComparison.OrdinalIgnoreCase) =>
-                    "⚠️ AI service is not configured. Please check your API key settings.",
+                // Socket/network errors
+                System.Net.Sockets.SocketException =>
+                    "🌐 Network error. Please check your connection and try again.",
+                // Task cancellation/timeout
                 TaskCanceledException =>
                     "⏱️ Request timed out. Please try again.",
+                // HTTP request errors - check specific patterns
+                System.Net.Http.HttpRequestException when message.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                                                         message.Contains("401", StringComparison.OrdinalIgnoreCase) =>
+                    "⚠️ AI service is not configured. Please check your API key settings.",
+                System.Net.Http.HttpRequestException when message.Contains("deprecated", StringComparison.OrdinalIgnoreCase) ||
+                                                         message.Contains("not found", StringComparison.OrdinalIgnoreCase) =>
+                    "⚠️ Configuration error. Please check your model configuration settings.",
+                // Generic HTTP request exception
                 System.Net.Http.HttpRequestException =>
                     "🌐 Network error. Please check your connection and try again.",
-                _ => $"❌ Error: {exception.Message}"
+                // Invalid operation with API key
+                InvalidOperationException when message.Contains("API key", StringComparison.OrdinalIgnoreCase) =>
+                    "⚠️ AI service is not configured. Please check your API key settings.",
+                // Default
+                _ => $"❌ Error: {message}"
             };
         }
     }

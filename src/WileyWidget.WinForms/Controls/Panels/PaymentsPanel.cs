@@ -34,12 +34,31 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
     private SfButton _btnRefresh = null!;
     private SfButton _btnExport = null!;
     private TextBox _txtSearch = null!;
-    private int _hoverRowIndex = -1;
 
     public PaymentsPanel(IServiceScopeFactory scopeFactory, ILogger<PaymentsPanel> logger)
         : base(scopeFactory, logger)
     {
         InitializeControls();
+
+        // CRITICAL FIX: Load data when panel is loaded
+        Load += PaymentsPanel_Load;
+    }
+
+    private async void PaymentsPanel_Load(object? sender, EventArgs e)
+    {
+        Logger?.LogDebug("PaymentsPanel: Load event fired, loading payment data");
+        await LoadDataAsync();
+    }
+
+    protected override void OnViewModelResolved(PaymentsViewModel viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+
+        // Bind the grid DataSource to the ViewModel's Payments collection
+        _paymentsGrid.DataSource = viewModel.Payments;
+        Logger?.LogDebug("PaymentsPanel: Grid DataSource bound to ViewModel.Payments");
+
+        UpdateExportButtonState();
     }
 
     public async Task LoadDataAsync(CancellationToken cancellationToken = default)
@@ -56,6 +75,14 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
             // Load payments
             await ViewModel.LoadPaymentsCommand.ExecuteAsync(null);
+
+            // CRITICAL FIX: Force grid refresh after loading data
+            // The grid may not auto-refresh even though Payments is ObservableCollection
+            if (_paymentsGrid?.View != null)
+            {
+                _paymentsGrid.View.Refresh();
+                Logger?.LogDebug("PaymentsPanel: Grid refreshed after loading {Count} payments", ViewModel.Payments.Count);
+            }
         }
         catch (Exception ex)
         {
@@ -156,17 +183,29 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         });
         _paymentsGrid.Columns.Add(new GridTextColumn
         {
+            MappingName = "MunicipalAccount.Name",
+            HeaderText = "Account",
+            MinimumWidth = 150,
+            AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
+            AllowSorting = true,
+            AllowFiltering = true
+        });
+        _paymentsGrid.Columns.Add(new GridTextColumn
+        {
             MappingName = nameof(Payment.Status),
             HeaderText = "Status",
-            MinimumWidth = 90,
-            AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells
+            MinimumWidth = 100,
+            AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells,
+            AllowSorting = true,
+            AllowFiltering = true
         });
         _paymentsGrid.Columns.Add(new GridCheckBoxColumn
         {
             MappingName = nameof(Payment.IsCleared),
             HeaderText = "Cleared",
             MinimumWidth = 70,
-            AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells
+            AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells,
+            AllowEditing = false // Read-only indicator, synced with Status field
         });
 
         // Apply custom cell styling for color-coding
@@ -179,8 +218,6 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         // Header and row sizing for readability
         _paymentsGrid.HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(36f);
         _paymentsGrid.RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(40f);
-
-        // Hover visual feedback (deferred: implement via MouseMove for broad Syncfusion compatibility)"
 
         // Add summary row for total cleared payments
         var summaryRow = new GridTableSummaryRow
@@ -216,16 +253,6 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         mainLayout.Controls.Add(_paymentsGrid, 0, 1);
 
         Controls.Add(mainLayout);
-
-        // Wire up grid data binding when ViewModel is ready
-        HandleCreated += (s, e) =>
-        {
-            if (ViewModel != null)
-            {
-                _paymentsGrid.DataSource = ViewModel.Payments;
-                BeginInvoke(new Action(UpdateExportButtonState));
-            }
-        };
     }
 
     private Panel CreateToolbar(string themeName)
@@ -283,10 +310,11 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             Enabled = false,
             TextImageRelation = TextImageRelation.ImageBeforeText
         };
+        _btnEdit.Image = LoadIcon("Edit32");
         _btnEdit.Click += BtnEdit_Click;
         toolbar.Controls.Add(_btnEdit);
 
-        // Delete button - red icon
+        // Delete button
         _btnDelete = new SfButton
         {
             Text = "Delete",
@@ -296,6 +324,7 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             Enabled = false,
             TextImageRelation = TextImageRelation.ImageBeforeText
         };
+        _btnDelete.Image = LoadIcon("Delete32");
         _btnDelete.Click += BtnDelete_Click;
         toolbar.Controls.Add(_btnDelete);
 
@@ -308,6 +337,7 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             ThemeName = themeName,
             TextImageRelation = TextImageRelation.ImageBeforeText
         };
+        _btnRefresh.Image = LoadIcon("Refresh32");
         _btnRefresh.Click += async (s, e) => await ViewModel!.RefreshCommand.ExecuteAsync(null);
         toolbar.Controls.Add(_btnRefresh);
 
@@ -321,6 +351,7 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             Enabled = false,
             TextImageRelation = TextImageRelation.ImageBeforeText
         };
+        _btnExport.Image = LoadIcon("Excel32");
         _btnExport.Click += BtnExport_Click;
         toolbar.Controls.Add(_btnExport);
 
@@ -385,7 +416,12 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
+                Logger?.LogInformation("PaymentsPanel: Payment saved successfully, reloading data");
                 await LoadDataAsync();
+            }
+            else
+            {
+                Logger?.LogDebug("PaymentsPanel: Add payment dialog cancelled");
             }
         }
         catch (Exception ex)
@@ -428,7 +464,12 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
+                Logger?.LogInformation("PaymentsPanel: Payment edited successfully, reloading data");
                 await LoadDataAsync();
+            }
+            else
+            {
+                Logger?.LogDebug("PaymentsPanel: Edit payment dialog cancelled");
             }
         }
         catch (Exception ex)
@@ -519,16 +560,10 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             return;
         }
 
-        // Row alternation for better readability (pattern: every other row slightly tinted)
+        // Row alternation for better readability
         if (e.RowIndex >= 0 && e.RowIndex % 2 == 0)
         {
             e.Style.BackColor = System.Drawing.Color.FromArgb(249, 250, 251); // Very light gray
-        }
-
-        // Hover highlight for the row under mouse
-        if (e.RowIndex >= 0 && e.RowIndex == _hoverRowIndex)
-        {
-            e.Style.BackColor = System.Drawing.Color.FromArgb(200, 220, 255); // Pronounced blue hover
         }
 
         // Get the payment object from the row
@@ -652,10 +687,6 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             MessageBox.Show($"Error exporting to Excel: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-
-    // Mouse-based hover feedback will be implemented later using MouseMove/MouseLeave to maintain compatibility across Syncfusion versions.
-
-
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {

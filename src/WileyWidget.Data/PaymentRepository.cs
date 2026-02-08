@@ -38,6 +38,20 @@ public class PaymentRepository : IPaymentRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Payment>> GetRecentAsync(int count = 20, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("PaymentRepository: Getting {Count} most recent payments", count);
+        return await _context.Payments
+            .Include(p => p.MunicipalAccount)
+            .Include(p => p.Vendor)
+            .Include(p => p.Invoice)
+            .OrderByDescending(p => p.PaymentDate)
+            .ThenByDescending(p => p.CreatedAt)
+            .Take(count)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Payment?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("PaymentRepository: Getting payment by ID {Id}", id);

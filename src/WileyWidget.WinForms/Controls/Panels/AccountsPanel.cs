@@ -48,6 +48,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private SfButton? _editButton;
     private SfButton? _deleteButton;
     private SfButton? _refreshButton;
+    private TextBoxExt? _searchBox;
     private ToolTip? _buttonToolTips;
 
     // Event handlers for proper cleanup
@@ -287,6 +288,19 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _refreshButton.AccessibleDescription = "Refresh account list from database";
         _refreshButton.Click += RefreshButton_Click;
 
+        // Search Box - for filtering accounts
+        _searchBox = new TextBoxExt
+        {
+            Width = 250,
+            Height = 28,
+            ThemeName = activeTheme,
+            Name = "txtSearch",
+            AccessibleName = "Search",
+            Margin = new Padding(8, 8, 4, 8)
+        };
+        _searchBox.AccessibleDescription = "Type to search accounts by number, name, or fund";
+        _searchBox.TextChanged += SearchBox_TextChanged;
+
         // Configure tooltips for buttons (accessibility enhancement)
         _buttonToolTips = new ToolTip
         {
@@ -299,9 +313,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _buttonToolTips.SetToolTip(_editButton, "Edit the selected account (F2)");
         _buttonToolTips.SetToolTip(_deleteButton, "Delete the selected account (Delete)");
         _buttonToolTips.SetToolTip(_refreshButton, "Refresh account list from database (F5)");
+        _buttonToolTips.SetToolTip(_searchBox, "Type to filter accounts in real-time (Ctrl+F)");
 
-        _toolbarPanel.Controls.AddRange(new Control[] { _createButton, _editButton, _deleteButton, _refreshButton });
-        _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar has {Count} buttons", _toolbarPanel.Controls.Count);
+        _toolbarPanel.Controls.AddRange(new Control[] { _createButton, _editButton, _deleteButton, _refreshButton, _searchBox });
+        _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar has {Count} buttons and search box", _toolbarPanel.Controls.Count);
 
         _layout.Controls.Add(_toolbarPanel, 0, 0);
         _toolbarPanel.BringToFront(); // Ensure Z-order
@@ -324,7 +339,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             ShowHeaderToolTip = true,
             ShowValidationErrorToolTip = true,
             Name = "dataGridAccounts",
-            AccessibleName = "Accounts Grid"
+            AccessibleName = "Accounts Grid",
+            ThemeName = activeTheme
         };
         _accountsGrid.AccessibleDescription = "Municipal accounts data grid";
         _accountsGrid.SelectionChanged += _gridSelectionChangedHandler = Grid_SelectionChanged;
@@ -396,12 +412,23 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
     /// <summary>
     /// Handles keyboard shortcuts for enhanced UX.
-    /// Ctrl+N = New Account, F2 = Edit, Delete = Delete, F5 = Refresh, Enter = Edit selected
+    /// Ctrl+N = New Account, F2 = Edit, Delete = Delete, F5 = Refresh, Ctrl+F = Search, Enter = Edit selected
     /// </summary>
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         try
         {
+            // Ctrl+F: Focus search box
+            if (keyData == (Keys.Control | Keys.F))
+            {
+                if (_searchBox != null)
+                {
+                    _searchBox.Focus();
+                    _searchBox.SelectAll();
+                }
+                return true;
+            }
+
             // Ctrl+N: Create new account
             if (keyData == (Keys.Control | Keys.N))
             {
@@ -458,6 +485,51 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         if (e.DataRow != null && _accountsGrid != null)
         {
             _logger?.LogDebug("Cell clicked at row index: {RowIndex}", e.DataRow.RowIndex);
+        }
+    }
+
+    /// <summary>
+    /// Handles search box text changes to filter the accounts grid.
+    /// Filters by Account Number, Account Name, or Fund Name.
+    /// </summary>
+    private void SearchBox_TextChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_accountsGrid == null || _searchBox == null)
+                return;
+
+            var searchText = _searchBox.Text?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // Clear filter
+                _accountsGrid.View?.Filter = null;
+                _accountsGrid.View?.RefreshFilter();
+                _logger?.LogDebug("[SEARCH] Filter cleared");
+            }
+            else
+            {
+                // Apply filter - search in AccountNumber, AccountName, FundName
+                _accountsGrid.View.Filter = (item) =>
+                {
+                    if (item is MunicipalAccountDisplay account)
+                    {
+                        return (account.AccountNumber?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                               (account.AccountName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                               (account.FundName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                               (account.Department?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
+                    }
+                    return false;
+                };
+                _accountsGrid.View?.RefreshFilter();
+                _logger?.LogDebug("[SEARCH] Filter applied with term: '{SearchTerm}', Results: {Count}",
+                    searchText, _accountsGrid.View?.Records?.Count ?? 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[SEARCH] Error filtering accounts");
         }
     }
 

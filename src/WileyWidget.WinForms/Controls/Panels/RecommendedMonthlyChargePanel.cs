@@ -1183,7 +1183,3 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     #endregion
 }
-
-
-
-

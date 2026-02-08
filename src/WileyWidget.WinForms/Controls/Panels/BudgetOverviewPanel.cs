@@ -957,8 +957,3 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
     }
 }
-
-
-
-
-

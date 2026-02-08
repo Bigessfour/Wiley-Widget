@@ -370,10 +370,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _toolTip = new ToolTip();
-            this.Padding = new Padding(8);
+            this.Padding = new Padding(12);  // Increased padding
             this.AutoScroll = true;
-            this.MinimumSize = new Size(560, 620);  // Ensure panel has minimum size
-            this.Size = new Size(560, 620);         // Set initial size
+            this.MinimumSize = new Size(1300, 1500);  // 2x larger for better readability
+            this.Size = new Size(1300, 1500);         // 2x larger for better readability
+            this.Font = new Font("Segoe UI", 12F, FontStyle.Regular);  // 2x larger font
 
             // === CREATE MAIN TABLE LAYOUT ===
             _mainLayout = new TableLayoutPanel
@@ -385,33 +386,33 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Padding = new Padding(8)  // Reduced padding to maximize space
             };
 
-            // Set column widths: label (140px) + control (320px) + padding
-            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
+            // Set column widths: label (360px) + control (remaining) + padding
+            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360));
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            // Set row styles: Absolute for fixed heights, Percent for button panel
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); // Title
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Account Number
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Name
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 85)); // Description
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Department
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Fund
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Type
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Balance
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Budget
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Active
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50)); // Button Panel
+            // Set row styles: 2x larger heights for better readability
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80)); // Title
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Account Number
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Name
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200)); // Description (taller)
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Department
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Fund
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Type
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Balance
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Budget
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Active
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 120)); // Button Panel (taller)
 
             // === TITLE ROW (Row 0) ===
             lblTitle = new Label
             {
                 Text = _isNew ? "Create New Account" : "Edit Account",
                 AutoSize = false,
-                Height = 30,
+                Height = 72,  // 2x larger
                 TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 0, 10),
-                // Theme cascade handles Font/Color - do NOT override
+                Margin = new Padding(0, 0, 0, 12),
+                Font = new Font("Segoe UI", 16F, FontStyle.Bold)  // Large title font
             };
             _mainLayout.Controls.Add(lblTitle, 0, 0);
             _mainLayout.SetColumnSpan(lblTitle, 2);
@@ -423,7 +424,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
 
@@ -437,7 +439,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 1,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
             _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
@@ -449,7 +452,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblName, 0, 2);
 
@@ -462,7 +466,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 2,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtName, 1, 2);
             _toolTip.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
@@ -474,7 +479,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.TopRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblDescription, 0, 3);
 
@@ -485,12 +491,13 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Description",
                 AccessibleDescription = "Enter optional description",
                 Multiline = true,
-                Height = 80,
+                Height = 190,  // 2x larger
                 ScrollBars = ScrollBars.Vertical,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 3,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtDescription, 1, 3);
             _toolTip.SetToolTip(txtDescription, "Optional detailed description");
@@ -502,7 +509,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblDepartment, 0, 4);
 
@@ -518,7 +526,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 4,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbDepartment, 1, 4);
             _toolTip.SetToolTip(cmbDepartment, "Select owning department");
@@ -530,7 +539,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblFund, 0, 5);
 
@@ -546,7 +556,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 5,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbFund, 1, 5);
             _toolTip.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
@@ -558,7 +569,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblType, 0, 6);
 
@@ -574,7 +586,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 6,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbType, 1, 6);
             _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
@@ -586,7 +599,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblBalance, 0, 7);
 
@@ -604,7 +618,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TabIndex = 7,
                 ThemeName = themeName,
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                NumberFormatInfo = CurrencyFormat
+                NumberFormatInfo = CurrencyFormat,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             // Set decimal digits via NumberFormatInfo
             numBalance.NumberFormatInfo.CurrencyDecimalDigits = 2;
@@ -618,7 +633,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5)
+                Margin = new Padding(0, 5, 10, 5),
+                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblBudget, 0, 8);
 
@@ -636,7 +652,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TabIndex = 8,
                 ThemeName = themeName,
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                NumberFormatInfo = CurrencyFormat
+                NumberFormatInfo = CurrencyFormat,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             // Set decimal digits via NumberFormatInfo
             numBudget.NumberFormatInfo.CurrencyDecimalDigits = 2;
@@ -663,7 +680,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleDescription = "Check to mark this account as active",
                 Margin = new Padding(0, 5, 0, 5),
                 TabIndex = 9,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(chkActive, 1, 9);
             _toolTip.SetToolTip(chkActive, "Indicates whether this account is currently active");
@@ -679,14 +697,15 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "btnSave",
                 Text = _isNew ? "&Create" : "&Save",
-                Width = 100,
-                Height = 32,
+                Width = 200,  // 2x larger
+                Height = 80,  // 2x larger
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 AccessibleName = _isNew ? "Create Account" : "Save Account",
                 AccessibleDescription = "Save the account changes",
                 TabIndex = 10,
                 ThemeName = themeName,
-                Margin = new Padding(0, 0, 10, 0)
+                Margin = new Padding(0, 0, 10, 0),
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
             };
             _saveHandler = BtnSave_Click;
             btnSave.Click += _saveHandler;
@@ -695,13 +714,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "btnCancel",
                 Text = "&Cancel",
-                Width = 100,
-                Height = 32,
+                Width = 200,  // 2x larger
+                Height = 80,  // 2x larger
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 AccessibleName = "Cancel",
                 AccessibleDescription = "Cancel and discard changes",
                 TabIndex = 11,
-                ThemeName = themeName
+                ThemeName = themeName,
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
             };
             _cancelHandler = BtnCancel_Click;
             btnCancel.Click += _cancelHandler;
@@ -892,8 +912,26 @@ namespace WileyWidget.WinForms.Controls.Panels
                     return;
                 }
 
-                // Convert edit model to entity
-                var account = _editModel.ToEntity();
+                // Convert edit model to entity (with validation)
+                MunicipalAccount account;
+                try
+                {
+                    account = _editModel.ToEntity();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // ToEntity throws InvalidOperationException if DepartmentId is not set
+                    Logger?.LogWarning(ex, "AccountEditPanel: ToEntity validation failed");
+                    MessageBox.Show(
+                        ex.Message,
+                        "Validation Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+
+                    // Focus the department combobox to help user fix the issue
+                    cmbDepartment?.Focus();
+                    return;
+                }
 
                 // If editing, preserve the Id
                 if (_existingAccount != null)

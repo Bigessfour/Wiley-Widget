@@ -46,9 +46,9 @@ public sealed class DockingIntegrationTests
         dockingManager.HostControl.Should().Be(form);
 
         // Validate panels are properly docked
-        leftPanel.Dock.Should().Be(DockStyle.Left);
-        rightPanel.Dock.Should().Be(DockStyle.Right);
-        centralPanel.Dock.Should().Be(DockStyle.Fill);
+        leftPanel!.Dock.Should().Be(DockStyle.Left);
+        rightPanel!.Dock.Should().Be(DockStyle.Right);
+        centralPanel!.Dock.Should().Be(DockStyle.Fill);
     }
 
     [StaFact]
@@ -69,23 +69,23 @@ public sealed class DockingIntegrationTests
         ArgumentNullException.ThrowIfNull(layoutManager);
 
         // Modify panel sizes to test persistence
-        leftPanel.Width = 250;
-        rightPanel.Width = 350;
-        centralPanel.Height = 600;
+        leftPanel!.Width = 250;
+        rightPanel!.Width = 350;
+        centralPanel!.Height = 600;
 
         // Save layout
         layoutManager.SaveDockingLayout(dockingManager);
 
         // Modify again
-        leftPanel.Width = 300;
-        rightPanel.Width = 400;
+        leftPanel!.Width = 300;
+        rightPanel!.Width = 400;
 
         // Load layout
         await layoutManager.LoadDockingLayoutAsync(dockingManager);
 
         // Verify layout was restored (sizes should be approximately restored)
-        leftPanel.Width.Should().BeInRange(240, 260); // Allow some tolerance
-        rightPanel.Width.Should().BeInRange(340, 360);
+        leftPanel!.Width.Should().BeInRange(240, 260); // Allow some tolerance
+        rightPanel!.Width.Should().BeInRange(340, 360);
     }
 
     [StaFact]
@@ -104,9 +104,9 @@ public sealed class DockingIntegrationTests
             DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, logger);
 
         // Verify theme application
-        leftPanel.ThemeName.Should().Be("Office2019Colorful");
-        rightPanel.ThemeName.Should().Be("Office2019Colorful");
-        centralPanel.ThemeName.Should().Be("Office2019Colorful");
+        leftPanel!.ThemeName.Should().Be("Office2019Colorful");
+        rightPanel!.ThemeName.Should().Be("Office2019Colorful");
+        centralPanel!.ThemeName.Should().Be("Office2019Colorful");
     }
 
     [StaFact]
@@ -127,7 +127,7 @@ public sealed class DockingIntegrationTests
         ArgumentNullException.ThrowIfNull(layoutManager);
 
         // Test panel visibility changes
-        leftPanel.Visible = false;
+        leftPanel!.Visible = false;
         layoutManager.SaveDockingLayout(dockingManager);
 
         leftPanel.Visible = true;

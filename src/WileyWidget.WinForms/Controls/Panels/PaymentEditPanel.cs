@@ -167,7 +167,7 @@ public partial class PaymentEditPanel : ScopedPanelBase
                 _txtDescription.Text = _existingPayment.Description;
                 _txtMemo.Text = _existingPayment.Memo ?? string.Empty;
                 _cmbStatus.SelectedItem = _existingPayment.Status;
-                _chkCleared.Checked = _existingPayment.IsCleared;
+                // Checkbox state is set automatically via Status changed event
 
                 // Select the associated account if one exists
                 if (_existingPayment.MunicipalAccountId.HasValue)
@@ -196,7 +196,7 @@ public partial class PaymentEditPanel : ScopedPanelBase
                 _dtpPaymentDate.Value = DateTime.Now;
                 _cmbStatus.SelectedItem = "Pending";
                 _cmbAccount.SelectedIndex = -1; // No account selected
-                _chkCleared.Checked = false;
+                // Checkbox state is set automatically via Status changed event
                 _btnDelete.Visible = false;
             }
 
@@ -218,9 +218,17 @@ public partial class PaymentEditPanel : ScopedPanelBase
         SfSkinManager.SetVisualStyle(this, themeName);
 
         Name = "PaymentEditPanel";
-        Size = new System.Drawing.Size(900, 1050); // Increased width and height for better spacing
+        Size = new System.Drawing.Size(900, 1050);
         Padding = new Padding(0);
-        AutoScaleMode = AutoScaleMode.Font;
+        AutoScaleMode = AutoScaleMode.Dpi;  // High-DPI display support
+
+        // === MODERN FLUENT DESIGN LAYOUT ===
+        // Base spacing unit: 8px (multiples of 8 for consistency)
+        const int ROW_SPACING = 24;        // 3 * 8px
+        const int SECTION_GAP = 48;        // 6 * 8px
+        const int CONTROL_HEIGHT = 40;     // Fluent-recommended touch target
+        const int MULTILINE_HEIGHT = 96;   // 12 * 8px
+        const int LABEL_WIDTH = 160;       // 20 * 8px
 
         // Main container with header
         var mainContainer = new TableLayoutPanel
@@ -230,22 +238,21 @@ public partial class PaymentEditPanel : ScopedPanelBase
             ColumnCount = 1,
             Padding = new Padding(0)
         };
-
-        mainContainer.RowStyles.Add(new RowStyle(SizeType.Absolute, 70)); // Header
+        mainContainer.RowStyles.Add(new RowStyle(SizeType.Absolute, 64)); // Header
         mainContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Form content
 
         // === HEADER ===
         var headerPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = System.Drawing.Color.FromArgb(0, 102, 204), // Professional blue
-            Padding = new Padding(20, 15, 20, 15)
+            BackColor = System.Drawing.Color.FromArgb(0, 102, 204),
+            Padding = new Padding(24, 16, 24, 16) // Base-8 padding
         };
 
         var headerLabel = new Label
         {
-            Text = _isNew ? "✎ New Payment" : "✎ Edit Payment",
-            Font = new System.Drawing.Font("Segoe UI", 15, System.Drawing.FontStyle.Bold),
+            Text = _isNew ? "New Payment" : "Edit Payment",
+            Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold),
             ForeColor = System.Drawing.Color.White,
             Dock = DockStyle.Fill,
             TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
@@ -254,11 +261,11 @@ public partial class PaymentEditPanel : ScopedPanelBase
         headerPanel.Controls.Add(headerLabel);
         mainContainer.Controls.Add(headerPanel, 0, 0);
 
-        // === FORM CONTENT ===
+        // === SCROLLABLE FORM CONTENT ===
         var formPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(25, 20, 25, 20),
+            Padding = new Padding(32, 24, 32, 24), // 4*BASE_UNIT, 3*BASE_UNIT
             AutoScroll = true
         };
 
@@ -272,87 +279,57 @@ public partial class PaymentEditPanel : ScopedPanelBase
             AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
 
-        var labelColumnWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(160f);
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, labelColumnWidth));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LABEL_WIDTH));
         mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        // === SECTION 1: CHECK INFO ===
         var row = 0;
 
-        // Section header: Check Information
-        var sectionLabel1 = new Label
-        {
-            Text = "Check Information",
-            Font = new System.Drawing.Font("Segoe UI", 12, System.Drawing.FontStyle.Bold),
-            ForeColor = System.Drawing.Color.FromArgb(0, 102, 204),
-            AutoSize = true,
-            Padding = new Padding(0, 15, 0, 10),
-            UseMnemonic = false
-        };
-        mainLayout.Controls.Add(sectionLabel1, 0, row);
-        mainLayout.SetColumnSpan(sectionLabel1, 2);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // === SECTION 1: CHECK INFORMATION (48px top gap) ===
+        AddSectionHeader(mainLayout, ref row, "Check Information", SECTION_GAP);
 
-        // Check Number
-        mainLayout.Controls.Add(CreateLabel("Check #:", 11F), 0, row);
-        _txtCheckNumber = new TextBoxExt
-        {
-            Dock = DockStyle.Fill,
-            MaxLength = 20,
-            ThemeName = themeName,
-            CharacterCasing = System.Windows.Forms.CharacterCasing.Upper,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2)
-        };
-        mainLayout.Controls.Add(_txtCheckNumber, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Check Number (width constraint: 180px)
+        AddLabeledControl(mainLayout, ref row, "Check Number",
+            _txtCheckNumber = new TextBoxExt
+            {
+                MaxLength = 20,
+                ThemeName = themeName,
+                CharacterCasing = System.Windows.Forms.CharacterCasing.Upper,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = CONTROL_HEIGHT,
+                Anchor = AnchorStyles.Left,
+                Width = 180
+            }, ROW_SPACING);
 
-        // Payment Date
-        mainLayout.Controls.Add(CreateLabel("Date:", 11F), 0, row);
-        _dtpPaymentDate = new DateTimePickerAdv
-        {
-            Dock = DockStyle.Fill,
-            ThemeName = themeName,
-            Format = System.Windows.Forms.DateTimePickerFormat.Short,
-            ShowCheckBox = false,
-            ShowUpDown = false,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2)
-        };
-        mainLayout.Controls.Add(_dtpPaymentDate, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Payment Date (width constraint: 200px)
+        AddLabeledControl(mainLayout, ref row, "Payment Date",
+            _dtpPaymentDate = new DateTimePickerAdv
+            {
+                ThemeName = themeName,
+                Format = System.Windows.Forms.DateTimePickerFormat.Short,
+                ShowCheckBox = false,
+                ShowUpDown = false,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = CONTROL_HEIGHT,
+                Anchor = AnchorStyles.Left,
+                Width = 200
+            }, ROW_SPACING);
 
-        // === SECTION 2: PAYEE & AMOUNT ===
-        var sectionLabel2 = new Label
-        {
-            Text = "Payee & Amount",
-            Font = new System.Drawing.Font("Segoe UI", 12, System.Drawing.FontStyle.Bold),
-            ForeColor = System.Drawing.Color.FromArgb(0, 102, 204),
-            AutoSize = true,
-            Padding = new Padding(0, 15, 0, 10),
-            UseMnemonic = false
-        };
-        mainLayout.Controls.Add(sectionLabel2, 0, row);
-        mainLayout.SetColumnSpan(sectionLabel2, 2);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // === SECTION 2: PAYEE & AMOUNT (48px gap) ===
+        AddSectionHeader(mainLayout, ref row, "Payee & Amount", SECTION_GAP);
 
-        // Payee (Vendor Dropdown)
+        // Payee with Add Vendor button
         var payeeContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             RowCount = 1,
             ColumnCount = 2,
             Padding = new Padding(0),
-            Margin = new Padding(0, 2, 0, 2),
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink
+            Margin = new Padding(0),
+            AutoSize = false,
+            Height = CONTROL_HEIGHT
         };
         payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, CONTROL_HEIGHT));
 
         _cmbPayee = new SfComboBox
         {
@@ -362,171 +339,131 @@ public partial class PaymentEditPanel : ScopedPanelBase
             AllowNull = true,
             AutoCompleteMode = AutoCompleteMode.SuggestAppend,
             AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains,
-            AutoCompleteSuggestDelay = 100,
             AllowCaseSensitiveOnAutoComplete = false,
             Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 0, 5, 0)
+            Height = CONTROL_HEIGHT,
+            Margin = new Padding(0, 0, 8, 0) // 8px gap before button
         };
         payeeContainer.Controls.Add(_cmbPayee, 0, 0);
 
         _btnAddVendor = new SfButton
         {
             Text = "+",
-            Width = 35,
-            Height = 42,
             ThemeName = themeName,
-            Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold),
-            Dock = DockStyle.Right
+            Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold),
+            Dock = DockStyle.Fill,
+            AccessibleName = "Add New Vendor",
+            Image = LoadIcon("Add32")
         };
         _btnAddVendor.Click += BtnAddVendor_Click;
         payeeContainer.Controls.Add(_btnAddVendor, 1, 0);
 
-        mainLayout.Controls.Add(CreateLabel("Payee:", 11F), 0, row);
-        mainLayout.Controls.Add(payeeContainer, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        AddLabeledControl(mainLayout, ref row, "Payee", payeeContainer, ROW_SPACING);
 
-        // Amount
-        mainLayout.Controls.Add(CreateLabel("Amount:", 11F), 0, row);
-        _numAmount = new SfNumericTextBox
-        {
-            Dock = DockStyle.Fill,
-            FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-            Value = 0,
-            MinValue = 0,
-            MaxValue = 9999999.99,
-            ThemeName = themeName,
-            AllowNull = false,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2)
-        };
-        mainLayout.Controls.Add(_numAmount, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Amount (width constraint: 200px)
+        AddLabeledControl(mainLayout, ref row, "Amount",
+            _numAmount = new SfNumericTextBox
+            {
+                FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
+                Value = 0,
+                MinValue = 0,
+                MaxValue = 9999999.99,
+                ThemeName = themeName,
+                AllowNull = false,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = CONTROL_HEIGHT,
+                Anchor = AnchorStyles.Left,
+                Width = 200
+            }, ROW_SPACING);
 
-        // === SECTION 3: DETAILS ===
-        var sectionLabel3 = new Label
-        {
-            Text = "Additional Details",
-            Font = new System.Drawing.Font("Segoe UI", 12, System.Drawing.FontStyle.Bold),
-            ForeColor = System.Drawing.Color.FromArgb(0, 102, 204),
-            AutoSize = true,
-            Padding = new Padding(0, 15, 0, 10),
-            UseMnemonic = false
-        };
-        mainLayout.Controls.Add(sectionLabel3, 0, row);
-        mainLayout.SetColumnSpan(sectionLabel3, 2);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // === SECTION 3: ACCOUNT & DESCRIPTION (48px gap) ===
+        AddSectionHeader(mainLayout, ref row, "Account & Description", SECTION_GAP);
 
-        // Account
-        mainLayout.Controls.Add(CreateLabel("Account:", 11F), 0, row);
-        _cmbAccount = new SfComboBox
-        {
-            Dock = DockStyle.Fill,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown,
-            ThemeName = themeName,
-            AllowNull = true,
-            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains,
-            AutoCompleteSuggestDelay = 100,
-            AllowCaseSensitiveOnAutoComplete = false,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2)
-        };
-        mainLayout.Controls.Add(_cmbAccount, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Account (fills width)
+        AddLabeledControl(mainLayout, ref row, "Account",
+            _cmbAccount = new SfComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown,
+                ThemeName = themeName,
+                AllowNull = true,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains,
+                AllowCaseSensitiveOnAutoComplete = false,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = CONTROL_HEIGHT
+            }, ROW_SPACING);
 
-        // Description
-        mainLayout.Controls.Add(CreateLabel("Description:", 11F), 0, row);
-        _txtDescription = new TextBoxExt
-        {
-            Dock = DockStyle.Fill,
-            Multiline = true,
-            MaxLength = 500,
-            ThemeName = themeName,
-            ScrollBars = ScrollBars.Vertical,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2),
-            MinimumSize = new System.Drawing.Size(0, 80)
-        };
-        mainLayout.Controls.Add(_txtDescription, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Description (fixed 96px height, scrollable)
+        AddLabeledControl(mainLayout, ref row, "Description",
+            _txtDescription = new TextBoxExt
+            {
+                Dock = DockStyle.Fill,
+                Multiline = true,
+                MaxLength = 500,
+                ThemeName = themeName,
+                ScrollBars = ScrollBars.Vertical,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = MULTILINE_HEIGHT,
+                Padding = new Padding(8) // Internal padding for comfort
+            }, ROW_SPACING);
 
-        // Memo
-        mainLayout.Controls.Add(CreateLabel("Memo:", 11F), 0, row);
-        _txtMemo = new TextBoxExt
-        {
-            Dock = DockStyle.Fill,
-            Multiline = true,
-            MaxLength = 1000,
-            ThemeName = themeName,
-            ScrollBars = ScrollBars.Vertical,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2),
-            MinimumSize = new System.Drawing.Size(0, 100)
-        };
-        mainLayout.Controls.Add(_txtMemo, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Memo (fixed 96px height, scrollable)
+        AddLabeledControl(mainLayout, ref row, "Memo",
+            _txtMemo = new TextBoxExt
+            {
+                Dock = DockStyle.Fill,
+                Multiline = true,
+                MaxLength = 1000,
+                ThemeName = themeName,
+                ScrollBars = ScrollBars.Vertical,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = MULTILINE_HEIGHT,
+                Padding = new Padding(8)
+            }, ROW_SPACING);
 
-        // === SECTION 4: STATUS ===
-        var sectionLabel4 = new Label
-        {
-            Text = "Status",
-            Font = new System.Drawing.Font("Segoe UI", 12, System.Drawing.FontStyle.Bold),
-            ForeColor = System.Drawing.Color.FromArgb(0, 102, 204),
-            AutoSize = true,
-            Padding = new Padding(0, 15, 0, 10),
-            UseMnemonic = false
-        };
-        mainLayout.Controls.Add(sectionLabel4, 0, row);
-        mainLayout.SetColumnSpan(sectionLabel4, 2);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // === SECTION 4: STATUS (48px gap) ===
+        AddSectionHeader(mainLayout, ref row, "Status", SECTION_GAP);
 
-        // Status Combo
-        mainLayout.Controls.Add(CreateLabel("Status:", 11F), 0, row);
-        _cmbStatus = new SfComboBox
-        {
-            Dock = DockStyle.Fill,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            DataSource = new[] { "Cleared", "Pending", "Void", "Cancelled" },
-            ThemeName = themeName,
-            AllowNull = false,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2)
-        };
-        mainLayout.Controls.Add(_cmbStatus, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        // Status dropdown (width constraint: 200px)
+        AddLabeledControl(mainLayout, ref row, "Payment Status",
+            _cmbStatus = new SfComboBox
+            {
+                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                DataSource = new[] { "Pending", "Cleared", "Void", "Cancelled" },
+                ThemeName = themeName,
+                AllowNull = false,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = CONTROL_HEIGHT,
+                Anchor = AnchorStyles.Left,
+                Width = 200
+            }, ROW_SPACING);
 
         // Cleared checkbox
-        mainLayout.Controls.Add(new Label { Text = " " }, 0, row);
-        _chkCleared = new CheckBoxAdv
-        {
-            Text = "✓ Check has cleared bank",
-            Dock = DockStyle.Fill,
-            ThemeName = themeName,
-            CheckState = CheckState.Unchecked,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(0, 2, 0, 2)
-        };
-        mainLayout.Controls.Add(_chkCleared, 1, row);
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        row++;
+        AddLabeledControl(mainLayout, ref row, string.Empty,
+            _chkCleared = new CheckBoxAdv
+            {
+                Text = "Check has cleared the bank",
+                ThemeName = themeName,
+                CheckState = CheckState.Unchecked,
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                Height = CONTROL_HEIGHT,
+                AutoSize = true
+            }, ROW_SPACING);
 
-        // === BUTTONS ===
+        // Wire up event handlers for checkbox/status synchronization
+        _chkCleared.CheckedChanged += ChkCleared_CheckedChanged;
+        _cmbStatus.SelectedIndexChanged += CmbStatus_SelectedIndexChanged;
+
+        // === ACTION BUTTONS (48px top gap, right-aligned) ===
         var buttonPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, 25, 0, 0),
-            Margin = new Padding(0, 20, 0, 0),
+            Padding = new Padding(0, SECTION_GAP, 0, 0),
             AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false
         };
 
         _btnSave = new SfButton
@@ -535,9 +472,9 @@ public partial class PaymentEditPanel : ScopedPanelBase
             Width = 120,
             Height = 40,
             ThemeName = themeName,
-            AccessibleName = "Save Payment Button",
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(8, 0, 0, 0)
+            Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold),
+            Margin = new Padding(8, 0, 0, 0),
+            Image = LoadIcon("Save32")
         };
         _btnSave.Click += BtnSave_Click;
 
@@ -547,9 +484,9 @@ public partial class PaymentEditPanel : ScopedPanelBase
             Width = 120,
             Height = 40,
             ThemeName = themeName,
-            AccessibleName = "Cancel Button",
             Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(8, 0, 0, 0)
+            Margin = new Padding(8, 0, 0, 0),
+            Image = LoadIcon("Close32")
         };
         _btnCancel.Click += (s, e) => ParentForm?.Close();
 
@@ -559,10 +496,10 @@ public partial class PaymentEditPanel : ScopedPanelBase
             Width = 120,
             Height = 40,
             ThemeName = themeName,
-            AccessibleName = "Delete Payment Button",
-            Visible = false,
             Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(8, 0, 0, 0)
+            Visible = false,
+            Margin = new Padding(8, 0, 0, 0),
+            Image = LoadIcon("Delete32")
         };
         _btnDelete.Click += BtnDelete_Click;
 
@@ -576,14 +513,62 @@ public partial class PaymentEditPanel : ScopedPanelBase
 
         formPanel.Controls.Add(mainLayout);
         mainContainer.Controls.Add(formPanel, 0, 1);
-
         Controls.Add(mainContainer);
 
-        // Setup autocomplete filtering using Filter predicate for vendor dropdown
+        // Wire up autocomplete filters
         _cmbPayee.Filter = FilterVendors;
-
-        // Setup autocomplete filtering using Filter predicate for account dropdown
         _cmbAccount.Filter = FilterAccounts;
+    }
+
+    // === HELPER METHODS FOR MODERN LAYOUT ===
+
+    /// <summary>
+    /// Adds a section header with consistent styling and spacing
+    /// </summary>
+    private void AddSectionHeader(TableLayoutPanel layout, ref int row, string text, int topMargin)
+    {
+        var header = new Label
+        {
+            Text = text,
+            Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
+            ForeColor = System.Drawing.Color.FromArgb(0, 102, 204),
+            AutoSize = true,
+            Margin = new Padding(0, topMargin, 0, 16), // Consistent gap below header
+            Padding = new Padding(0)
+        };
+        layout.Controls.Add(header, 0, row);
+        layout.SetColumnSpan(header, 2);
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        row++;
+    }
+
+    /// <summary>
+    /// Adds a labeled control with consistent spacing
+    /// </summary>
+    private void AddLabeledControl(TableLayoutPanel layout, ref int row, string labelText, Control control, int bottomMargin)
+    {
+        if (!string.IsNullOrEmpty(labelText))
+        {
+            var label = new Label
+            {
+                Text = labelText + ":",
+                Font = new System.Drawing.Font("Segoe UI", 11F),
+                TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+                Anchor = AnchorStyles.Right,
+                AutoSize = true,
+                Padding = new Padding(0, 10, 12, 0) // Align vertically with 40px control
+            };
+            layout.Controls.Add(label, 0, row);
+        }
+        else
+        {
+            layout.Controls.Add(new Label { Text = string.Empty}, 0, row);
+        }
+
+        control.Margin = new Padding(0, 0, 0, bottomMargin);
+        layout.Controls.Add(control, 1, row);
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        row++;
     }
 
     /// <summary>
@@ -611,22 +596,26 @@ public partial class PaymentEditPanel : ScopedPanelBase
     }
 
     /// <summary>
-    /// Helper to create styled labels for consistent appearance
+    /// Helper to load icon from resources
     /// </summary>
-    private static Label CreateLabel(string text, float fontSize)
+    private System.Drawing.Image? LoadIcon(string iconName)
     {
-        return new Label
+        try
         {
-            Text = text,
-            AutoSize = true,
-            Anchor = AnchorStyles.Top | AnchorStyles.Left,
-            TextAlign = System.Drawing.ContentAlignment.TopLeft,
-            Font = new System.Drawing.Font("Segoe UI", fontSize, System.Drawing.FontStyle.Regular),
-            ForeColor = System.Drawing.Color.FromArgb(64, 64, 64),
-            Padding = new Padding(0, 8, 10, 0),
-            Margin = new Padding(0, 0, 0, 0),
-            UseMnemonic = false
-        };
+            var type = typeof(PaymentEditPanel);
+            var stream =
+                type.Assembly.GetManifestResourceStream(
+                    $"WileyWidget.WinForms.Resources.FlatIcons.{iconName}flatflat.png") ??
+                type.Assembly.GetManifestResourceStream(
+                    $"WileyWidget.WinForms.Resources.FlatIcons.{iconName}.png") ??
+                type.Assembly.GetManifestResourceStream(
+                    $"WileyWidget.WinForms.Resources.FlatIcons.{iconName}flat.png");
+
+            if (stream != null)
+                return System.Drawing.Image.FromStream(stream);
+        }
+        catch { }
+        return null;
     }
 
     private async void BtnAddVendor_Click(object? sender, EventArgs e)
@@ -649,7 +638,7 @@ public partial class PaymentEditPanel : ScopedPanelBase
                 StartPosition = FormStartPosition.CenterParent,
                 MinimizeBox = false,
                 MaximizeBox = false,
-                AutoScaleMode = AutoScaleMode.Font
+                AutoScaleMode = AutoScaleMode.Dpi  // High-DPI display support
             };
 
             var tableLayout = new TableLayoutPanel
@@ -971,7 +960,7 @@ public partial class PaymentEditPanel : ScopedPanelBase
             payment.Description = _txtDescription.Text.Trim();
             payment.Memo = _txtMemo.Text.Trim();
             payment.Status = _cmbStatus.SelectedItem?.ToString() ?? "Pending";
-            payment.IsCleared = _chkCleared.Checked;
+            payment.IsCleared = payment.Status == "Cleared";
 
             // Set the associated account
             if (_cmbAccount.SelectedIndex >= 0 && _cmbAccount.SelectedItem is AccountDisplayItem selectedItem)
@@ -986,17 +975,22 @@ public partial class PaymentEditPanel : ScopedPanelBase
             if (_isNew)
             {
                 await repository.AddAsync(payment, CancellationToken.None);
+                Logger?.LogInformation("PaymentEditPanel: Payment created successfully - CheckNumber: {CheckNumber}, Amount: {Amount}, Payee: {Payee}",
+                    payment.CheckNumber, payment.Amount, payment.Payee);
                 MessageBox.Show("Payment created successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
                 await repository.UpdateAsync(payment, CancellationToken.None);
+                Logger?.LogInformation("PaymentEditPanel: Payment updated successfully - ID: {Id}, CheckNumber: {CheckNumber}, Amount: {Amount}",
+                    payment.Id, payment.CheckNumber, payment.Amount);
                 MessageBox.Show("Payment updated successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
 
             if (ParentForm is Form parentForm)
             {
                 parentForm.DialogResult = DialogResult.OK;
+                Logger?.LogDebug("PaymentEditPanel: DialogResult set to OK");
             }
             ParentForm?.Close();
         }
@@ -1081,5 +1075,67 @@ public partial class PaymentEditPanel : ScopedPanelBase
             _chkCleared?.Dispose();
         }
         base.Dispose(disposing);
+    }
+
+    /// <summary>
+    /// Event handler for Cleared checkbox changes.
+    /// Synchronizes checkbox state with Status dropdown.
+    /// </summary>
+    private void ChkCleared_CheckedChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            // Temporarily unhook status change handler to prevent infinite loop
+            if (_cmbStatus != null)
+            {
+                _cmbStatus.SelectedIndexChanged -= CmbStatus_SelectedIndexChanged;
+
+                if (_chkCleared.Checked)
+                {
+                    _cmbStatus.SelectedItem = "Cleared";
+                }
+                else
+                {
+                    // If unchecking and status is Cleared, revert to Pending
+                    if (_cmbStatus.SelectedItem?.ToString() == "Cleared")
+                    {
+                        _cmbStatus.SelectedItem = "Pending";
+                    }
+                }
+
+                // Re-hook the event handler
+                _cmbStatus.SelectedIndexChanged += CmbStatus_SelectedIndexChanged;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "PaymentEditPanel: Error in ChkCleared_CheckedChanged");
+        }
+    }
+
+    /// <summary>
+    /// Event handler for Status dropdown changes.
+    /// Synchronizes Status dropdown with checkbox state.
+    /// </summary>
+    private void CmbStatus_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            // Temporarily unhook checkbox change handler to prevent infinite loop
+            if (_chkCleared != null)
+            {
+                _chkCleared.CheckedChanged -= ChkCleared_CheckedChanged;
+
+                var status = _cmbStatus.SelectedItem?.ToString();
+                _chkCleared.Checked = status == "Cleared";
+
+                // Re-hook the event handler
+                _chkCleared.CheckedChanged += ChkCleared_CheckedChanged;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "PaymentEditPanel: Error in CmbStatus_SelectedIndexChanged");
+        }
     }
 }

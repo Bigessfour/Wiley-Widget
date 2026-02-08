@@ -2272,8 +2272,3 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     #endregion
 }
-
-
-
-
-

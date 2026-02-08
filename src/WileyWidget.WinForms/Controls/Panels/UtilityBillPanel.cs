@@ -1418,16 +1418,3 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #endregion
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

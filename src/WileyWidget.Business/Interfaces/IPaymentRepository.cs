@@ -18,6 +18,11 @@ public interface IPaymentRepository
     Task<IReadOnlyList<Payment>> GetAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the most recent N payments (ordered by payment date descending)
+    /// </summary>
+    Task<IReadOnlyList<Payment>> GetRecentAsync(int count = 20, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets a payment by ID
     /// </summary>
     Task<Payment?> GetByIdAsync(int id, CancellationToken cancellationToken = default);

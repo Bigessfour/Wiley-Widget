@@ -908,7 +908,3 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         base.Dispose(disposing);
     }
 }
-
-
-
-
