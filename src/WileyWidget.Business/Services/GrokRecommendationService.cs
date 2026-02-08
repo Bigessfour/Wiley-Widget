@@ -90,7 +90,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         _apiEndpoint = NormalizeChatCompletionsEndpoint(_configuration["XAI:Endpoint"]);
         _model = _configuration["XAI:Model"] ?? "grok-4.1";
         _useGrokApi = !string.IsNullOrWhiteSpace(_apiKey) &&
-                      _configuration.GetValue<bool>("XAI:Enabled", false);
+                      _configuration.GetValue<bool>("XAI:Enabled", true);
 
         // Log API key source for diagnostics
         _logger.LogInformation(

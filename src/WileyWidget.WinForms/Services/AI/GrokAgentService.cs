@@ -102,6 +102,7 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly double? _defaultFrequencyPenalty;
         private bool _isInitialized = false;
         private bool _initializationFailed = false;
+        private bool _skConnectorDisabled = false;  // Track if SK connector registration was disabled
         private readonly CancellationTokenSource _serviceCts = new();
         private bool _disposed = false;
         private readonly bool _ownsHttpClient;
@@ -141,8 +142,8 @@ namespace WileyWidget.WinForms.Services.AI
             IJARVISPersonalityService? jarvisPersonality = null,
             IMemoryCache? memoryCache = null)
         {
-            if (config == null) throw new ArgumentNullException(nameof(config));
-            if (apiKeyProvider == null) throw new ArgumentNullException(nameof(apiKeyProvider));
+            if (config == null) throw new ArgumentNullException(nameof(config), "[XAI] Configuration is required for GrokAgentService");
+            if (apiKeyProvider == null) throw new ArgumentNullException(nameof(apiKeyProvider), "[XAI] IGrokApiKeyProvider is required for GrokAgentService");
 
             _apiKeyProvider = apiKeyProvider;  // ✅ Store provider reference
             _logger = logger;
@@ -153,14 +154,6 @@ namespace WileyWidget.WinForms.Services.AI
             _serviceProvider = serviceProvider;
             _jarvisPersonality = jarvisPersonality;
             _memoryCache = memoryCache;
-
-            // Subscribe to chat bridge events if available
-            if (_chatBridge != null)
-            {
-                _chatBridge.PromptSubmitted += OnChatPromptSubmitted;
-                _chatBridge.ExternalPromptRequested += OnExternalPromptRequested;
-                _logger?.LogInformation("[XAI] ChatBridgeService subscribed for prompt and external prompt events");
-            }
 
             // ✅ FIXED: Use injected IGrokApiKeyProvider instead of reading environment variables directly
             _apiKey = apiKeyProvider.ApiKey;  // Get API key from centralized provider
@@ -180,7 +173,7 @@ namespace WileyWidget.WinForms.Services.AI
                 }
             }
 
-            _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4.1";
+            _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4-1-fast-reasoning";
 
             // Read default penalties from configuration (XAI/Grok keys). Reasoning models may not support these penalties.
             var presenceStr = config["XAI:DefaultPresencePenalty"] ?? config["Grok:DefaultPresencePenalty"];
@@ -207,6 +200,12 @@ namespace WileyWidget.WinForms.Services.AI
                 endpointStr = "https://api.x.ai/v1";
             }
 
+            // Validate endpoint URI
+            if (!Uri.TryCreate(endpointStr, UriKind.Absolute, out var _))
+            {
+                throw new ArgumentException($"[XAI] Invalid endpoint URI configured: {endpointStr}", nameof(config));
+            }
+
             var baseEndpointCandidate = endpointStr.TrimEnd('/');
             if (baseEndpointCandidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
             {
@@ -220,7 +219,13 @@ namespace WileyWidget.WinForms.Services.AI
             baseEndpointCandidate = baseEndpointCandidate.TrimEnd('/');
             var normalizedBase = baseEndpointCandidate + '/';
 
-            _baseEndpoint = new Uri(normalizedBase, UriKind.Absolute);
+            // Final validation
+            if (!Uri.TryCreate(normalizedBase, UriKind.Absolute, out var validatedBase))
+            {
+                throw new ArgumentException($"[XAI] Failed to construct valid endpoint URI from: {endpointStr}", nameof(config));
+            }
+
+            _baseEndpoint = validatedBase;
             // Use new /responses endpoint instead of deprecated /chat/completions
             _endpoint = new Uri(_baseEndpoint, ResponsesEndpointSuffix); // /v1/responses
 
@@ -239,6 +244,19 @@ namespace WileyWidget.WinForms.Services.AI
             _ownsHttpClient = httpClientFactory == null;
             _httpClient = httpClientFactory?.CreateClient("GrokClient") ?? new HttpClient();
             _httpClient.BaseAddress = _baseEndpoint;
+
+            // Set long timeout for reasoning models (streaming can take minutes)
+            // WILEY SOCKET FIX: Use 2-minute timeout to prevent debugger-induced socket aborts
+            // while still allowing long-running reasoning completions
+            var configuredTimeout = TimeSpan.FromSeconds(120); // 2 minutes default
+            var timeoutConfig = config["XAI:HttpTimeoutSeconds"] ?? config["Grok:HttpTimeoutSeconds"];
+            if (!string.IsNullOrWhiteSpace(timeoutConfig) && int.TryParse(timeoutConfig, out var timeoutSec) && timeoutSec > 0)
+            {
+                configuredTimeout = TimeSpan.FromSeconds(timeoutSec);
+            }
+            _httpClient.Timeout = configuredTimeout;
+            _logger?.LogDebug("[XAI] HttpClient timeout configured: {Timeout}s", configuredTimeout.TotalSeconds);
+
             if (!string.IsNullOrWhiteSpace(_apiKey))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
@@ -278,17 +296,60 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 _logger?.LogDebug("[XAI] Beginning async initialization of Grok service");
 
-                // Add API key validation before Semantic Kernel setup
-                if (_apiKeyProvider != null)
+                // Validate injected dependencies
+                if (_baseEndpoint == null || _endpoint == null)
                 {
-                    var (success, message) = await _apiKeyProvider.ValidateAsync();
+                    _logger?.LogError("[XAI] Endpoint configuration is invalid during initialization");
+                    _initializationFailed = true;
+                    throw new InvalidOperationException("[XAI] Endpoint configuration not properly initialized");
+                }
+
+                // Add API key validation before Semantic Kernel setup (with timeout)
+                try
+                {
+                    using var validationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    validationCts.CancelAfter(TimeSpan.FromSeconds(10)); // 10-second timeout for validation
+
+                    _logger?.LogDebug("[XAI] 🔑 Starting API key validation with 10s timeout");
+                    var validationStart = System.Diagnostics.Stopwatch.StartNew();
+
+                    var (success, message) = await _apiKeyProvider.ValidateAsync().ConfigureAwait(false);
+
+                    validationStart.Stop();
+                    _logger?.LogDebug("[XAI] 🔑 API key validation completed in {ElapsedMs}ms", validationStart.ElapsedMilliseconds);
+
                     if (!success)
                     {
-                        _logger?.LogWarning("[XAI] API key validation failed: {Message}", message);
+                        _logger?.LogWarning("[XAI] ❌ API key validation failed: {Message}", message);
                         _initializationFailed = true;
+                        // Don't throw - allow service to operate in degraded mode
                         return;
                     }
-                    _logger?.LogInformation("[XAI] API key validated successfully");
+                    _logger?.LogInformation("[XAI] ✅ API key validated successfully");
+                }
+                catch (HttpRequestException hex) when (hex.InnerException is System.IO.IOException ioex)
+                {
+                    _logger?.LogWarning(hex, "[XAI] 🔌❌ Socket error during API key validation - likely debugger interference. Inner: {InnerMsg}. Service will operate in degraded mode.", ioex.Message);
+                    _initializationFailed = true;
+                    return;
+                }
+                catch (TaskCanceledException tcex) when (!ct.IsCancellationRequested)
+                {
+                    _logger?.LogWarning(tcex, "[XAI] ⏱️ API key validation timed out (10s) - check network connectivity");
+                    _initializationFailed = true;
+                    return;
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger?.LogWarning("[XAI] 🛑 API key validation cancelled");
+                    _initializationFailed = true;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "[XAI] ❌ Unexpected error during API key validation: {ExceptionType}", ex.GetType().Name);
+                    _initializationFailed = true;
+                    return;
                 }
 
                 // Optionally auto-select a model (short timeout) before building the kernel so the kernel uses the selected model
@@ -297,8 +358,8 @@ namespace WileyWidget.WinForms.Services.AI
                     try
                     {
                         using var ctsAuto = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                        ctsAuto.CancelAfter(TimeSpan.FromSeconds(3));
-                        var selected = await AutoSelectModelAsync(ctsAuto.Token);
+                        ctsAuto.CancelAfter(TimeSpan.FromSeconds(3)); // 3-second timeout for model selection
+                        var selected = await AutoSelectModelAsync(ctsAuto.Token).ConfigureAwait(false);
                         if (!string.IsNullOrWhiteSpace(selected) && !string.Equals(selected, _model, StringComparison.OrdinalIgnoreCase))
                         {
                             _logger?.LogInformation("[XAI] Auto-selected model '{Selected}' replacing configured '{Configured}'", selected, _model);
@@ -307,22 +368,33 @@ namespace WileyWidget.WinForms.Services.AI
                     }
                     catch (OperationCanceledException)
                     {
-                        _logger?.LogWarning("[XAI] Auto model selection timed out");
+                        _logger?.LogWarning("[XAI] Auto model selection timed out (3s)");
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex, "[XAI] Auto model selection failed");
+                        _logger?.LogWarning(ex, "[XAI] Auto model selection failed, continuing with configured model '{Model}'", _model);
                     }
                 }
 
-                // Build Semantic Kernel on background thread
+                // Build Semantic Kernel on background thread (with timeout)
+                using var kernelBuildCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                kernelBuildCts.CancelAfter(TimeSpan.FromSeconds(30)); // 30-second timeout for kernel build
+
                 await Task.Run(() =>
                 {
-                    ct.ThrowIfCancellationRequested();
+                    kernelBuildCts.Token.ThrowIfCancellationRequested();
 
                     var builder = Kernel.CreateBuilder();
 
-                    if (!string.IsNullOrWhiteSpace(_apiKey))
+                    var disableSkConnector = bool.TryParse(_config["XAI:DisableSemanticKernelConnector"] ?? _config["Grok:DisableSemanticKernelConnector"], out var tmpDisable) && tmpDisable;
+                    _skConnectorDisabled = disableSkConnector;  // Store for runtime checks
+                    _logger?.LogInformation("[XAI] SK connector disabled flag set to: {Disabled}", _skConnectorDisabled);
+
+                    if (disableSkConnector)
+                    {
+                        _logger?.LogInformation("[XAI] Semantic Kernel connector registration DISABLED via config - using HTTP-only mode with /v1/responses endpoint (xAI-native format)");
+                    }
+                    else if (!string.IsNullOrWhiteSpace(_apiKey))
                     {
                         try
                         {
@@ -356,36 +428,122 @@ namespace WileyWidget.WinForms.Services.AI
                         _logger?.LogWarning("[XAI] Grok API key not configured; Semantic Kernel chat connector will not be registered.");
                     }
 
-                    _kernel = builder.Build();
-
-                    // Auto-register kernel plugins discovered in the executing assembly (types with [KernelFunction]).
-                    // Keeping this scoped avoids scanning unrelated testhost/runtime assemblies.
-                    // Pass IServiceProvider to enable DI-aware plugin instantiation (fixes MissingMethodException for plugins with constructor dependencies)
                     try
                     {
-                        var assemblyToScan = typeof(GrokAgentService).Assembly;
-                        KernelPluginRegistrar.ImportPluginsFromAssemblies(_kernel, new[] { assemblyToScan }, _logger, _serviceProvider);
-                        _logger?.LogDebug("[XAI] Auto-registered kernel plugins from assembly: {Assembly}", assemblyToScan.FullName);
+                        _kernel = builder.Build() ?? throw new InvalidOperationException("[XAI] Failed to build Semantic Kernel instance");
+
+                        _logger?.LogInformation("[XAI] ✅ Semantic Kernel built successfully - beginning plugin discovery");
+
+                        // Auto-register kernel plugins discovered in the executing assembly (types with [KernelFunction]).
+                        // Keeping this scoped avoids scanning unrelated testhost/runtime assemblies.
+                        // Pass IServiceProvider to enable DI-aware plugin instantiation (fixes MissingMethodException for plugins with constructor dependencies)
+                        try
+                        {
+                            var assemblyToScan = typeof(GrokAgentService).Assembly;
+                            _logger?.LogDebug("[XAI] Scanning assembly for plugins: {Assembly}", assemblyToScan.FullName);
+
+                            // Discover plugin types before registration
+                            var pluginTypes = assemblyToScan.GetTypes()
+                                .Where(t => t.IsClass && !t.IsAbstract)
+                                .Where(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                                    .Any(m => m.GetCustomAttributes(inherit: true).Any(a => a.GetType().Name == "KernelFunctionAttribute")))
+                                .ToList();
+
+                            _logger?.LogInformation("[XAI] 🔍 Discovered {Count} plugin types in assembly", pluginTypes.Count);
+                            foreach (var pluginType in pluginTypes)
+                            {
+                                _logger?.LogDebug("[XAI]    → Plugin type discovered: {PluginType}", pluginType.FullName);
+                            }
+
+                            // Check specifically for CSharpEvaluationPlugin
+                            var csharpEvalPlugin = pluginTypes.FirstOrDefault(t => t.Name == "CSharpEvaluationPlugin");
+                            if (csharpEvalPlugin != null)
+                            {
+                                _logger?.LogInformation("[XAI] 🎯 CSharpEvaluationPlugin discovered - JARVIS will have C# evaluation capabilities");
+                                var functions = csharpEvalPlugin.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                                    .Where(m => m.GetCustomAttributes(inherit: true).Any(a => a.GetType().Name == "KernelFunctionAttribute"))
+                                    .Select(m => m.Name)
+                                    .ToList();
+                                _logger?.LogDebug("[XAI]    → CSharpEvaluationPlugin functions: {Functions}", string.Join(", ", functions));
+                            }
+                            else
+                            {
+                                _logger?.LogWarning("[XAI] ⚠️ CSharpEvaluationPlugin NOT discovered - JARVIS C# eval capabilities unavailable");
+                            }
+
+                            // Perform actual registration
+                            KernelPluginRegistrar.ImportPluginsFromAssemblies(_kernel, new[] { assemblyToScan }, _logger, _serviceProvider);
+
+                            // Verify registration
+                            _logger?.LogInformation("[XAI] ✅ Plugin registration complete - {Count} plugins registered", _kernel.Plugins.Count);
+                            foreach (var plugin in _kernel.Plugins)
+                            {
+                                _logger?.LogDebug("[XAI]    ✓ Plugin registered: {PluginName} ({FunctionCount} functions)",
+                                    plugin.Name, plugin.Count());
+                            }
+
+                            // Explicitly verify CSharpEvaluationPlugin registration
+                            var csharpEvalRegistered = _kernel.Plugins.Any(p => p.Name == "CSharpEvaluationPlugin");
+                            if (csharpEvalRegistered)
+                            {
+                                var plugin = _kernel.Plugins.First(p => p.Name == "CSharpEvaluationPlugin");
+                                var functionNames = plugin.Select(f => f.Name).ToList();
+                                _logger?.LogInformation("[XAI] ✅ CSharpEvaluationPlugin SUCCESSFULLY REGISTERED - Functions: {Functions}",
+                                    string.Join(", ", functionNames));
+                            }
+                            else
+                            {
+                                _logger?.LogError("[XAI] ❌ CSharpEvaluationPlugin FAILED TO REGISTER - JARVIS cannot evaluate C# code");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogError(ex, "[XAI] ❌ Failed to auto-register kernel plugins from executing assembly");
+                        }
+                    }
+                    catch (TypeInitializationException tiex)
+                    {
+                        // Handle Semantic Kernel type initializer failures (e.g., KernelJsonSchemaBuilder)
+                        _logger?.LogError(tiex, "[XAI] ✗ CRITICAL: Kernel type initializer failed (likely KernelJsonSchemaBuilder)");
+                        if (tiex.InnerException != null)
+                        {
+                            _logger?.LogError(tiex.InnerException, "[XAI] Inner exception details: {Type}: {Message}",
+                                tiex.InnerException.GetType().Name, tiex.InnerException.Message);
+                        }
+                        _logger?.LogWarning("[XAI] Semantic Kernel initialization failed - service will operate in HTTP-only mode (degraded)");
+
+                        // Allow service to continue in degraded mode - direct HTTP calls will still work
+                        _kernel = null;
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex, "[XAI] Failed to auto-register kernel plugins from executing assembly.");
+                        _logger?.LogError(ex, "[XAI] ✗ Unexpected error during kernel build: {Type}: {Message}",
+                            ex.GetType().Name, ex.Message);
+                        _logger?.LogWarning("[XAI] Semantic Kernel initialization failed - service will operate in HTTP-only mode (degraded)");
+                        _kernel = null;
                     }
-                }, ct);
+                }, kernelBuildCts.Token).ConfigureAwait(false);
 
                 _isInitialized = true;
-                _logger?.LogInformation("[XAI] Grok service async initialization complete");
-                _logger?.LogInformation("[XAI] GrokAgentService kernel initialized successfully - Plugins registered: {Count}", _kernel?.Plugins.Count ?? 0);
+                if (_kernel != null)
+                {
+                    _logger?.LogInformation("[XAI] Grok service async initialization complete - Semantic Kernel + plugins ready");
+                    _logger?.LogInformation("[XAI] GrokAgentService kernel initialized successfully - Plugins registered: {Count}", _kernel.Plugins.Count);
+                }
+                else
+                {
+                    _logger?.LogWarning("[XAI] Grok service async initialization complete - Operating in HTTP-only mode (Semantic Kernel unavailable)");
+                }
 
-                // Optional: run a quick validation if configured
+                // Optional: run a quick validation if configured (with timeout)
                 var validateOnStartupStr = _config["XAI:ValidateOnStartup"] ?? _config["Grok:ValidateOnStartup"];
                 if (bool.TryParse(validateOnStartupStr, out var validateOnStartup) && validateOnStartup && !string.IsNullOrWhiteSpace(_apiKey))
                 {
                     try
                     {
                         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                        cts.CancelAfter(TimeSpan.FromSeconds(5));
-                        var (success, msg) = await ValidateApiKeyAsync(cts.Token);
+                        cts.CancelAfter(TimeSpan.FromSeconds(5)); // 5-second timeout for startup validation
+                        var (success, msg) = await ValidateApiKeyAsync(cts.Token).ConfigureAwait(false);
                         if (success)
                             _logger?.LogInformation("[XAI] Async initialization validation: API key OK");
                         else
@@ -393,7 +551,7 @@ namespace WileyWidget.WinForms.Services.AI
                     }
                     catch (OperationCanceledException)
                     {
-                        _logger?.LogWarning("[XAI] Async initialization validation timed out");
+                        _logger?.LogWarning("[XAI] Async initialization validation timed out (5s)");
                     }
                     catch (Exception ex)
                     {
@@ -410,7 +568,7 @@ namespace WileyWidget.WinForms.Services.AI
             catch (Exception ex)
             {
                 _initializationFailed = true;
-                _logger?.LogError(ex, "[XAI] GrokAgentService initialization failed");
+                _logger?.LogError(ex, "[XAI] GrokAgentService initialization failed critically: {Message}", ex.Message);
                 throw;
             }
         }
@@ -460,10 +618,115 @@ namespace WileyWidget.WinForms.Services.AI
         public DateTime? LastApiKeyValidation => _lastApiKeyValidation;
 
         /// <summary>
-        /// Get a streaming response using the new /v1/responses endpoint with SSE (Server-Sent Events).
-        /// Invokes a callback for each chunk and returns complete response after streaming all chunks.
+        /// Gets a list of registered plugin names and their function counts.
+        /// Useful for debugging and verifying plugin registration.
+        /// </summary>
+        public Dictionary<string, int> GetRegisteredPlugins()
+        {
+            if (_kernel == null || !_isInitialized)
+            {
+                return new Dictionary<string, int>();
+            }
+
+            return _kernel.Plugins.ToDictionary(p => p.Name, p => p.Count());
+        }
+
+        /// <summary>
+        /// Gets detailed information about a specific plugin.
+        /// Returns null if plugin not found or kernel not initialized.
+        /// </summary>
+        public IReadOnlyList<string>? GetPluginFunctions(string pluginName)
+        {
+            if (_kernel == null || !_isInitialized)
+            {
+                return null;
+            }
+
+            var plugin = _kernel.Plugins.FirstOrDefault(p =>
+                string.Equals(p.Name, pluginName, StringComparison.OrdinalIgnoreCase));
+
+            return plugin?.Select(f => f.Name).ToList();
+        }
+
+        /// <summary>
+        /// Checks if the CSharpEvaluationPlugin is registered and available.
+        /// Returns true if JARVIS can evaluate C# code, false otherwise.
+        /// </summary>
+        public bool IsCSharpEvaluationAvailable()
+        {
+            if (_kernel == null || !_isInitialized)
+            {
+                return false;
+            }
+
+            var hasPlugin = _kernel.Plugins.Any(p => p.Name == "CSharpEvaluationPlugin");
+
+            if (hasPlugin)
+            {
+                _logger?.LogDebug("[XAI] CSharpEvaluationPlugin availability check: AVAILABLE");
+            }
+            else
+            {
+                _logger?.LogDebug("[XAI] CSharpEvaluationPlugin availability check: NOT AVAILABLE");
+            }
+
+            return hasPlugin;
+        }
+
+        /// <summary>
+        /// Gets comprehensive diagnostics about the Semantic Kernel and plugin state.
+        /// Useful for troubleshooting and runtime inspection.
+        /// </summary>
+        public string GetKernelDiagnostics()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("🔍 Semantic Kernel Diagnostics:");
+            sb.AppendLine();
+            sb.AppendLine($"   Initialized: {_isInitialized}");
+            sb.AppendLine($"   Initialization Failed: {_initializationFailed}");
+            sb.AppendLine($"   Kernel Instance: {(_kernel != null ? "Available" : "Null")}");
+            sb.AppendLine($"   SK Connector Disabled: {_skConnectorDisabled}");
+            sb.AppendLine();
+
+            if (_kernel != null && _isInitialized)
+            {
+                sb.AppendLine($"🔌 Registered Plugins ({_kernel.Plugins.Count}):");
+                foreach (var plugin in _kernel.Plugins)
+                {
+                    sb.AppendLine($"   ✓ {plugin.Name} ({plugin.Count()} functions)");
+                    foreach (var function in plugin)
+                    {
+                        sb.AppendLine($"      → {function.Name}");
+                    }
+                }
+                sb.AppendLine();
+
+                sb.AppendLine("🎯 CSharpEvaluationPlugin Status:");
+                var csharpEvalAvailable = IsCSharpEvaluationAvailable();
+                sb.AppendLine($"   Available: {(csharpEvalAvailable ? "✅ YES" : "❌ NO")}");
+
+                if (csharpEvalAvailable)
+                {
+                    var functions = GetPluginFunctions("CSharpEvaluationPlugin");
+                    if (functions != null)
+                    {
+                        sb.AppendLine($"   Functions: {string.Join(", ", functions)}");
+                    }
+                }
+            }
+            else
+            {
+                sb.AppendLine("⚠️ Kernel not initialized - no plugin information available");
+            }
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Get a streaming response using /v1/chat/completions endpoint (OpenAI-compatible).
+        /// Uses proper Server-Sent Events (SSE) streaming with real-time delta accumulation.
+        /// Invokes a callback for each content chunk as it arrives.
         /// Implements exponential backoff retry for 429 (rate limit) responses.
-        /// Response IDs are tracked for conversation continuation and retrieval.
         /// </summary>
         public async Task<string> GetStreamingResponseAsync(string userMessage, string? systemPrompt = null, string? modelOverride = null, Action<string>? onChunk = null, CancellationToken ct = default)
         {
@@ -473,46 +736,61 @@ namespace WileyWidget.WinForms.Services.AI
                 return "No API key configured for Grok";
             }
 
-            var model = modelOverride ?? _model ?? "grok-4.1";
+            if (_baseEndpoint == null)
+            {
+                _logger?.LogError("[XAI] Base endpoint not properly initialized in GetStreamingResponseAsync");
+                return "Grok endpoint not configured";
+            }
+
+            var model = modelOverride ?? _model ?? "grok-4-1-fast-reasoning";
             var sysPrompt = systemPrompt ?? "You are a helpful assistant.";
 
-            return await SendStreamingResponseAsync(model, sysPrompt, userMessage, onChunk, ct).ConfigureAwait(false);
+            return await SendStreamingChatCompletionAsync(model, sysPrompt, userMessage, onChunk, ct).ConfigureAwait(false);
         }
 
-        private async Task<string> SendStreamingResponseAsync(string model, string systemPrompt, string userMessage, Action<string>? onChunk, CancellationToken ct, int retryCount = 0, int maxRetries = 3)
+        /// <summary>
+        /// Internal method to send streaming chat completion request using /v1/chat/completions (OpenAI-compatible).
+        /// Implements proper SSE parsing with delta accumulation and exponential backoff for rate limits.
+        /// </summary>
+        private async Task<string> SendStreamingChatCompletionAsync(string model, string systemPrompt, string userMessage, Action<string>? onChunk, CancellationToken ct, int retryCount = 0, int maxRetries = 3)
         {
-            // Build input array for /v1/responses endpoint (new format: input instead of messages)
-            var inputArray = new object[]
+            // Use /chat/completions for streaming (documented, proven SSE support)
+            var streamingEndpoint = new Uri(_baseEndpoint!, "chat/completions");
+
+            // Build messages array for /chat/completions endpoint (OpenAI-compatible format)
+            var messagesArray = new object[]
             {
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userMessage }
             };
 
-            var payload = CreateResponsesPayload(model, inputArray, stream: true);
+            var payload = CreateChatRequestPayload(model, messagesArray, stream: true);
             var json = JsonSerializer.Serialize(payload);
-            using var request = new HttpRequestMessage(HttpMethod.Post, _endpoint)
+            using var request = new HttpRequestMessage(HttpMethod.Post, streamingEndpoint)
             {
                 Content = new StringContent(json, Encoding.UTF8, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"))
             };
 
-            // SSE streaming: request Accept header should be text/event-stream per x.ai docs
+            // SSE streaming: request Accept header should be text/event-stream
             request.Headers.Accept.Clear();
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
             try
             {
-                _logger?.LogDebug("[XAI] SendStreamingResponseAsync -> POST {Url} with stream=true (model={Model}, retryCount={RetryCount}, endpoint=responses)", _endpoint, model, retryCount);
-                if (_logger != null)
-                {
-                    LogHttpRequestHeaders(_logger, "POST", _endpoint?.ToString() ?? "unknown", "text/event-stream", null);
-                }
+                _logger?.LogDebug("[XAI] SendStreamingChatCompletionAsync -> POST {Url} with stream=true (model={Model}, retryCount={RetryCount})", streamingEndpoint, model, retryCount);
+
+                // SOCKET DIAGNOSTIC: Log before HTTP call to track timing
+                var requestStartTime = System.Diagnostics.Stopwatch.StartNew();
+                _logger?.LogDebug("[XAI] 🔌 Initiating HTTP request to {Endpoint}", streamingEndpoint);
 
                 var resp = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
 
-                // Log response status code
+                requestStartTime.Stop();
+                _logger?.LogDebug("[XAI] ✅ HTTP request completed in {ElapsedMs}ms", requestStartTime.ElapsedMilliseconds);
+
                 if (_logger != null)
                 {
-                    LogHttpResponseStatus(_logger, _endpoint?.ToString() ?? "unknown", (int)resp.StatusCode, null);
+                    LogHttpResponseStatus(_logger, streamingEndpoint.ToString(), (int)resp.StatusCode, null);
                 }
 
                 // Handle rate limit with exponential backoff
@@ -523,7 +801,7 @@ namespace WileyWidget.WinForms.Services.AI
                         var delayMs = (int)Math.Pow(2, retryCount) * 1000; // 1s, 2s, 4s backoff
                         _logger?.LogWarning("[XAI] Rate limited (429); retry {RetryCount}/{MaxRetries} after {DelayMs}ms", retryCount + 1, maxRetries, delayMs);
                         await Task.Delay(delayMs, ct).ConfigureAwait(false);
-                        return await SendStreamingResponseAsync(model, systemPrompt, userMessage, onChunk, ct, retryCount + 1, maxRetries).ConfigureAwait(false);
+                        return await SendStreamingChatCompletionAsync(model, systemPrompt, userMessage, onChunk, ct, retryCount + 1, maxRetries).ConfigureAwait(false);
                     }
                     else
                     {
@@ -534,37 +812,29 @@ namespace WileyWidget.WinForms.Services.AI
 
                 if (!resp.IsSuccessStatusCode)
                 {
-                    _logger?.LogWarning("Grok responses API returned non-success status: {Status}", resp.StatusCode);
+                    _logger?.LogWarning("Grok chat/completions API returned non-success status: {Status}", resp.StatusCode);
                     var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                    // Parse error details and log full message for diagnostics
-                    try
-                    {
-                        using var errDoc = JsonDocument.Parse(body);
-                        var errMsg = errDoc.RootElement.TryGetProperty("error", out var e) ? e.GetString() :
-                                     errDoc.RootElement.TryGetProperty("message", out var m) ? m.GetString() : null;
-                        if (!string.IsNullOrWhiteSpace(errMsg))
-                        {
-                            _logger?.LogWarning("Grok responses error detail: {ErrorDetail}", errMsg);
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        _logger?.LogDebug("SendStreamingResponseAsync: failed to parse error JSON for diagnostics");
-                    }
                     return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
                 }
 
-                // Read streaming response chunks (SSE format)
+                // Read streaming response chunks (SSE format: "data: {json}\n\n")
                 var responseBuilder = new StringBuilder();
-                var responseId = string.Empty;
                 var responseStream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
                 using var reader = new System.IO.StreamReader(responseStream);
+                var lineCount = 0;
 
                 while (!ct.IsCancellationRequested)
                 {
                     var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                     if (line == null)
                         break; // End of stream
+
+                    lineCount++;
+                    _logger?.LogTrace("[XAI SSE] Line {LineNum}: {Line}", lineCount, line.Length > 200 ? line.Substring(0, 200) + "..." : line);
+
+                    // Skip empty lines
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
 
                     // SSE format: "data: {json}"
                     if (line.StartsWith("data: ", StringComparison.Ordinal))
@@ -573,71 +843,81 @@ namespace WileyWidget.WinForms.Services.AI
 
                         if (dataJson == "[DONE]")
                         {
-                            _logger?.LogDebug("Stream ended with [DONE] marker");
+                            _logger?.LogDebug("[XAI SSE] Stream ended with [DONE] marker");
                             break; // Stream complete
                         }
 
                         try
                         {
                             using var doc = JsonDocument.Parse(dataJson);
-                            // New responses API: extract from output array instead of choices
-                            if (doc.RootElement.TryGetProperty("id", out var idElem))
-                            {
-                                responseId = idElem.GetString() ?? string.Empty;
-                            }
 
-                            if (doc.RootElement.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
+                            // Standard OpenAI/X.ai streaming format: choices[0].delta.content
+                            if (doc.RootElement.TryGetProperty("choices", out var choices) &&
+                                choices.ValueKind == JsonValueKind.Array &&
+                                choices.GetArrayLength() > 0)
                             {
-                                if (output.GetArrayLength() > 0)
+                                var firstChoice = choices[0];
+                                if (firstChoice.TryGetProperty("delta", out var delta) &&
+                                    delta.TryGetProperty("content", out var contentElem))
                                 {
-                                    var item = output[0];
-                                    if (item.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
+                                    var contentText = contentElem.GetString();
+                                    if (!string.IsNullOrEmpty(contentText))
                                     {
-                                        if (contentArray.GetArrayLength() > 0)
-                                        {
-                                            var contentItem = contentArray[0];
-                                            if (contentItem.TryGetProperty("text", out var textElem))
-                                            {
-                                                var contentText = textElem.GetString();
-                                                if (!string.IsNullOrEmpty(contentText))
-                                                {
-                                                    responseBuilder.Append(contentText);
-                                                    onChunk?.Invoke(contentText);
-                                                }
-                                            }
-                                        }
+                                        responseBuilder.Append(contentText);
+                                        onChunk?.Invoke(contentText);
                                     }
                                 }
                             }
                         }
                         catch (JsonException ex)
                         {
-                            _logger?.LogWarning(ex, "Failed to parse SSE chunk: {Data}", dataJson);
+                            _logger?.LogWarning(ex, "[XAI SSE] Failed to parse SSE chunk: {Data}", dataJson.Length > 100 ? dataJson.Substring(0, 100) + "..." : dataJson);
                         }
                     }
-                    // Skip empty lines or other SSE metadata
                 }
 
                 var fullResponse = responseBuilder.ToString();
-                _logger?.LogDebug("Streaming completed: {Length} chars, ResponseId: {ResponseId}", fullResponse.Length, responseId);
-
-                // Track response ID for conversation continuation if available
-                if (!string.IsNullOrWhiteSpace(responseId))
-                {
-                    _conversationResponseIds[userMessage.GetHashCode().ToString()] = responseId;
-                }
+                _logger?.LogDebug("[XAI SSE] Streaming completed: {Length} chars, Lines read: {LineCount}", fullResponse.Length, lineCount);
 
                 return fullResponse;
             }
-            catch (OperationCanceledException)
+            catch (HttpRequestException hex) when (hex.InnerException is System.IO.IOException ioex && ioex.Message.Contains("aborted"))
             {
-                _logger?.LogWarning("SendStreamingResponseAsync canceled by token");
-                throw;
+                // SOCKET ABORT: Connection closed mid-flight (likely debugger, HttpClient disposal, or OS socket timeout)
+                _logger?.LogWarning(hex, "[XAI] 🔌❌ Socket connection aborted during Grok streaming - likely debugger interference or HttpClient lifetime issue. Inner: {InnerMsg}", ioex.Message);
+
+                // Retry once for transient socket issues
+                if (retryCount == 0)
+                {
+                    _logger?.LogInformation("[XAI] Retrying after socket abort (attempt 1/1)");
+                    await Task.Delay(500, ct).ConfigureAwait(false); // Brief delay before retry
+                    return await SendStreamingChatCompletionAsync(model, systemPrompt, userMessage, onChunk, ct, retryCount: 1, maxRetries: 1).ConfigureAwait(false);
+                }
+
+                return $"Socket connection aborted (debugger or network issue): {ioex.Message}";
+            }
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // TIMEOUT: Request exceeded HttpClient.Timeout (not user-initiated cancellation)
+                _logger?.LogWarning("[XAI] ⏱️ HTTP request timed out (HttpClient.Timeout exceeded, not user cancellation)");
+                return "Grok request timed out - check network connectivity and HttpClient.Timeout configuration";
+            }
+            catch (TaskCanceledException) when (ct.IsCancellationRequested)
+            {
+                // USER CANCELLATION: Explicit cancellation via CancellationToken
+                _logger?.LogInformation("[XAI] 🛑 SendStreamingChatCompletionAsync cancelled by user (CancellationToken)");
+                throw; // Propagate user cancellation
+            }
+            catch (System.IO.IOException ioex)
+            {
+                // RAW SOCKET ERROR: Direct IOException (not wrapped in HttpRequestException)
+                _logger?.LogError(ioex, "[XAI] 🔌❌ Raw socket IOException during Grok streaming: {Msg}", ioex.Message);
+                return $"Network socket error: {ioex.Message}";
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Grok responses streaming request failed");
-                return $"Grok streaming failed: {ex.Message}";
+                _logger?.LogError(ex, "[XAI] ❌ Grok streaming request failed with unexpected exception: {ExceptionType}", ex.GetType().Name);
+                return $"Grok streaming failed: {ex.GetType().Name} - {ex.Message}";
             }
         }
 
@@ -654,7 +934,13 @@ namespace WileyWidget.WinForms.Services.AI
                 return "No API key configured for Grok";
             }
 
-            var model = modelOverride ?? _model ?? "grok-4.1";
+            if (_endpoint == null)
+            {
+                _logger?.LogError("[XAI] Endpoint not properly initialized in GetSimpleResponse");
+                return "Grok endpoint not configured";
+            }
+
+            var model = modelOverride ?? _model ?? "grok-4-1-fast-reasoning";
             var sysPrompt = systemPrompt ?? "You are a test assistant.";
 
             // Use new /v1/responses endpoint with input array format
@@ -674,7 +960,14 @@ namespace WileyWidget.WinForms.Services.AI
                     LogHttpRequestHeaders(_logger, "POST", _endpoint?.ToString() ?? "unknown", "application/json", null);
                 }
 
+                // SOCKET DIAGNOSTIC: Track request timing
+                var requestStartTime = System.Diagnostics.Stopwatch.StartNew();
+                _logger?.LogDebug("[XAI] 🔌 Initiating HTTP POST to {Endpoint}", _endpoint);
+
                 var resp = await _httpClient.PostAsync(_endpoint, content, ct).ConfigureAwait(false);
+
+                requestStartTime.Stop();
+                _logger?.LogDebug("[XAI] ✅ HTTP POST completed in {ElapsedMs}ms", requestStartTime.ElapsedMilliseconds);
 
                 // Log response status code
                 if (_logger != null)
@@ -697,7 +990,7 @@ namespace WileyWidget.WinForms.Services.AI
                             errMsg.IndexOf("model", StringComparison.OrdinalIgnoreCase) >= 0 &&
                             errMsg.IndexOf("does not exist", StringComparison.OrdinalIgnoreCase) >= 0)
                         {
-                            var fallback = "grok-4.1";
+                            var fallback = "grok-4-1-fast-reasoning";
                             if (!string.Equals(model, fallback, StringComparison.OrdinalIgnoreCase))
                             {
                                 _logger?.LogWarning("Model '{Model}' not found; retrying GetSimpleResponse with fallback '{FallbackModel}'", model, fallback);
@@ -741,15 +1034,30 @@ namespace WileyWidget.WinForms.Services.AI
                     return respStr;
                 }
             }
-            catch (TaskCanceledException)
+            catch (HttpRequestException hex) when (hex.InnerException is System.IO.IOException ioex && ioex.Message.Contains("aborted"))
             {
-                _logger?.LogWarning("GetSimpleResponse canceled by token");
+                _logger?.LogWarning(hex, "[XAI] 🔌❌ Socket aborted during GetSimpleResponse - debugger or HttpClient lifetime issue. Inner: {InnerMsg}", ioex.Message);
+                return $"Socket connection aborted: {ioex.Message}";
+            }
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            {
+                _logger?.LogWarning("[XAI] ⏱️ GetSimpleResponse timed out (HttpClient.Timeout exceeded)");
+                return "Request timed out - check network connectivity";
+            }
+            catch (TaskCanceledException) when (ct.IsCancellationRequested)
+            {
+                _logger?.LogInformation("[XAI] 🛑 GetSimpleResponse cancelled by user");
                 throw;
+            }
+            catch (System.IO.IOException ioex)
+            {
+                _logger?.LogError(ioex, "[XAI] 🔌❌ Raw IOException in GetSimpleResponse: {Msg}", ioex.Message);
+                return $"Network error: {ioex.Message}";
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Grok request failed");
-                return $"Grok request failed: {ex.Message}";
+                _logger?.LogError(ex, "[XAI] ❌ GetSimpleResponse failed: {ExceptionType}", ex.GetType().Name);
+                return $"Grok request failed: {ex.GetType().Name} - {ex.Message}";
             }
         }
 
@@ -767,7 +1075,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return (false, "No API key configured");
             }
 
-            var model = modelOverride ?? _model ?? "grok-4.1";
+            var model = modelOverride ?? _model ?? "grok-4-1-fast-reasoning";
             var requestObj = new
             {
                 input = new object[]
@@ -815,7 +1123,7 @@ namespace WileyWidget.WinForms.Services.AI
                                 errMsg.IndexOf("model", StringComparison.OrdinalIgnoreCase) >= 0 &&
                                 errMsg.IndexOf("does not exist", StringComparison.OrdinalIgnoreCase) >= 0)
                             {
-                                var fallback = "grok-4.1";
+                                var fallback = "grok-4-1-fast-reasoning";
                                 if (!string.Equals(model, fallback, StringComparison.OrdinalIgnoreCase))
                                 {
                                     _logger?.LogWarning("Model '{Model}' not found; retrying validation with fallback '{FallbackModel}'", model, fallback);
@@ -1293,99 +1601,6 @@ namespace WileyWidget.WinForms.Services.AI
         }
 
         /// <summary>
-        /// Event handler for external prompt requests from chat bridge.
-        /// Routes external prompts (e.g., from JARVISChatUserControl initial prompt) through the agent.
-        /// </summary>
-        private void OnExternalPromptRequested(object? sender, ChatExternalPromptEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(e?.Prompt) || _disposed)
-            {
-                _logger?.LogWarning("[XAI] Chat bridge external prompt ignored: prompt empty or service disposed");
-                return;
-            }
-
-            _logger?.LogInformation("[XAI] Chat bridge external prompt received: {PromptLength} chars", e.Prompt.Length);
-
-            // Queue async work on the thread pool with proper error handling
-            Task.Run(async () =>
-            {
-                try
-                {
-                    // Use safe token access - check if disposed first
-                    var token = CancellationToken.None;
-                    try
-                    {
-                        if (!_disposed && _serviceCts != null)
-                        {
-                            token = _serviceCts.Token;
-                        }
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // Service already disposed, use default token
-                    }
-
-                    await RunAgentToChatBridgeAsync(e.Prompt, null, token);
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger?.LogInformation("[XAI] Chat bridge external prompt operation cancelled");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "[XAI] Error in chat bridge external prompt handler");
-                }
-            });
-        }
-
-        /// <summary>
-        /// Event handler for chat bridge prompt submissions.
-        /// Routes prompts from Blazor through the agent and streams responses back via the bridge.
-        /// </summary>
-        private void OnChatPromptSubmitted(object? sender, ChatPromptSubmittedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(e?.Prompt) || _disposed)
-            {
-                _logger?.LogWarning("[XAI] Chat bridge prompt ignored: prompt empty or service disposed");
-                return;
-            }
-
-            _logger?.LogInformation("[XAI] Chat bridge prompt received: {PromptLength} chars (ConversationId: {ConversationId})", e.Prompt.Length, e.ConversationId ?? "N/A");
-
-            // Queue async work on the thread pool with proper error handling
-            // Don't use fire-and-forget - wrap in try/catch to log errors
-            Task.Run(async () =>
-            {
-                try
-                {
-                    // Use safe token access - check if disposed first
-                    var token = CancellationToken.None;
-                    try
-                    {
-                        if (!_disposed && _serviceCts != null)
-                        {
-                            token = _serviceCts.Token;
-                        }
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // Service already disposed, use default token
-                    }
-
-                    await RunAgentToChatBridgeAsync(e.Prompt, e.ConversationId, token);
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger?.LogInformation("[XAI] Chat bridge operation cancelled");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "[XAI] Error in chat bridge prompt handler");
-                }
-            });
-        }
-
-        /// <summary>
         /// Runs an agentic chat session with streaming via ChatBridgeService.
         /// Sends chunks back to Blazor as they arrive.
         /// Sends initial "JARVIS is thinking..." message.
@@ -1509,16 +1724,31 @@ namespace WileyWidget.WinForms.Services.AI
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "[XAI] Semantic Kernel streaming failed; attempting fallback to simple HTTP chat");
+                _logger?.LogWarning(ex, "[XAI] Semantic Kernel streaming failed; attempting fallback to direct HTTP streaming");
                 try
                 {
-                    var fallback = await GetSimpleResponse(userRequest, _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt).ConfigureAwait(false);
-                    await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = fallback ?? $"Grok streaming failed: {ex.Message}", IsUser = false, Timestamp = DateTime.UtcNow });
-                    _logger?.LogInformation("[XAI] RunAgentToChatBridgeAsync completed via fallback - Response length: {Length}", fallback?.Length ?? 0);
+                    var responseBuilder = new StringBuilder();
+                    var fallback = await GetStreamingResponseAsync(
+                        userRequest,
+                        _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt,
+                        onChunk: async (chunk) =>
+                        {
+                            if (!ct.IsCancellationRequested)
+                            {
+                                await _chatBridge!.SendResponseChunkAsync(chunk);
+                            }
+                            responseBuilder.Append(chunk);
+                        },
+                        ct: ct
+                    ).ConfigureAwait(false);
+
+                    var fullMessage = fallback ?? responseBuilder.ToString();
+                    await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = fullMessage ?? $"Grok streaming failed: {ex.Message}", IsUser = false, Timestamp = DateTime.UtcNow });
+                    _logger?.LogInformation("[XAI] RunAgentToChatBridgeAsync completed via streaming fallback - Response length: {Length}", fullMessage?.Length ?? 0);
                 }
                 catch (Exception fallbackEx)
                 {
-                    _logger?.LogError(fallbackEx, "[XAI] Both Semantic Kernel and fallback failed");
+                    _logger?.LogError(fallbackEx, "[XAI] Both Semantic Kernel and streaming fallback failed");
                     await _chatBridge!.NotifyMessageReceivedAsync(new ChatMessage { Content = $"Grok agent error: {ex.Message}", IsUser = false, Timestamp = DateTime.UtcNow });
                 }
             }
@@ -1801,12 +2031,6 @@ namespace WileyWidget.WinForms.Services.AI
                         _serviceCts?.Dispose();
                     }
 
-                    if (_chatBridge != null)
-                    {
-                        _chatBridge.PromptSubmitted -= OnChatPromptSubmitted;
-                        _chatBridge.ExternalPromptRequested -= OnExternalPromptRequested;
-                    }
-
                     if (_ownsHttpClient)
                     {
                         _httpClient.Dispose();
@@ -1913,17 +2137,144 @@ namespace WileyWidget.WinForms.Services.AI
         {
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
-                yield return "No API key configured for Grok";
+                yield return "⚠️ No API key configured for Grok";
                 yield break;
             }
 
-            if (!_isInitialized || _kernel == null)
+            if (!_isInitialized)
             {
-                yield return "Grok service not initialized";
+                yield return "⚠️ Grok service still initializing... please retry in a moment";
                 yield break;
             }
 
-            var chatService = _kernel.GetRequiredService<IChatCompletionService>();
+            // Get response either via Semantic Kernel or HTTP fallback
+            var response = await GetStreamResponseInternalAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+            yield return response;
+        }
+
+        /// <summary>
+        /// Internal helper: Gets streaming response with SK primary path and HTTP fallback.
+        /// Returns complete response as string (avoids yield-in-try-catch C# limitation).
+        /// </summary>
+        private async Task<string> GetStreamResponseInternalAsync(string prompt, string? systemMessage, CancellationToken cancellationToken)
+        {
+            // If SK connector was disabled or kernel is not available, use HTTP-only streaming
+            _logger?.LogDebug("[XAI] GetStreamResponseInternalAsync: _skConnectorDisabled={Disabled}, _kernel={KernelNull}", _skConnectorDisabled, _kernel == null);
+
+            if (_skConnectorDisabled || _kernel == null)
+            {
+                if (_skConnectorDisabled)
+                {
+                    _logger?.LogInformation("[XAI] SK connector disabled via config - using direct HTTP streaming with /v1/responses endpoint");
+                }
+                else
+                {
+                    _logger?.LogWarning("[XAI] GetStreamResponseInternalAsync: kernel is null - using direct HTTP streaming");
+                }
+                return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Prefer non-streaming for tool-heavy prompts to improve tool call reliability.
+            if (ShouldPreferToolCalling(prompt))
+            {
+                _logger?.LogInformation("[XAI] Tool-heavy prompt detected - using non-streaming mode for reliable tool calls");
+                try
+                {
+                    var nonStreaming = await TryGetNonStreamingWithSemanticKernelAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(nonStreaming))
+                    {
+                        return nonStreaming;
+                    }
+
+                    _logger?.LogWarning("[XAI] Non-streaming tool call returned empty content; falling back to streaming");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "[XAI] Non-streaming tool call failed; falling back to streaming");
+                }
+            }
+
+            // Try Semantic Kernel streaming first; if it fails, fall back to direct HTTP
+            try
+            {
+                return await TryStreamWithSemanticKernelAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+            }
+            catch (InvalidOperationException iex) when (iex.Message.Contains("not registered"))
+            {
+                _logger?.LogWarning(iex, "[XAI] SK chat service not registered - using direct HTTP streaming");
+                return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+            }
+            catch (KernelException kex) when (kex.Message.Contains("not registered"))
+            {
+                _logger?.LogWarning(kex, "[XAI] SK chat service not registered (KernelException) - using direct HTTP streaming");
+                return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+            }
+            catch (TypeInitializationException tiex) when (tiex.InnerException is MissingMethodException mex)
+            {
+                _logger?.LogError(tiex, "[XAI] SK type init error during streaming: {Message}", mex.Message);
+                var result = await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+                return "⚠️ Semantic Kernel incompatibility detected - switched to direct HTTP...\n" + result;
+            }
+            catch (OperationCanceledException ex) when (ex.InnerException is IOException ioEx && ioEx.Message.Contains("aborted"))
+            {
+                _logger?.LogWarning(ex, "[XAI] Connection aborted during SK streaming - retrying with backoff");
+                try
+                {
+                    await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+                    var result = await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+                    return "🔄 Reconnecting...\n" + result;
+                }
+                catch (Exception retryEx)
+                {
+                    _logger?.LogError(retryEx, "[XAI] Retry failed after connection abort");
+                    return "❌ Connection retry failed - please try again";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "[XAI] GetStreamResponseInternalAsync failed: {Type}: {Message}", ex.GetType().Name, ex.Message);
+                return $"❌ Error: {ex.Message}";
+            }
+        }
+
+        private static readonly string[] ToolHeavyKeywords =
+        {
+            "variance",
+            "budget",
+            "audit",
+            "calculate",
+            "forecast",
+            "what-if",
+            "scenario",
+            "fund",
+            "enterprise",
+            "rate",
+            "allocation",
+            "compliance"
+        };
+
+        private bool ShouldPreferToolCalling(string prompt)
+        {
+            if (string.IsNullOrWhiteSpace(prompt))
+            {
+                return false;
+            }
+
+            if (_kernel == null || _kernel.Plugins.Count == 0)
+            {
+                return false;
+            }
+
+            return ToolHeavyKeywords.Any(keyword =>
+                prompt.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Attempts a non-streaming response using Semantic Kernel to improve tool call reliability.
+        /// </summary>
+        private async Task<string> TryGetNonStreamingWithSemanticKernelAsync(string prompt, string? systemMessage, CancellationToken cancellationToken)
+        {
+            var chatService = _kernel!.GetRequiredService<IChatCompletionService>();
             var history = new ChatHistory();
             if (!string.IsNullOrWhiteSpace(systemMessage))
             {
@@ -1938,17 +2289,92 @@ namespace WileyWidget.WinForms.Services.AI
                 MaxTokens = 4000
             };
 
-            await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
+            if (!IsReasoningModel(_model))
+            {
+                if (_defaultPresencePenalty.HasValue) settings.PresencePenalty = _defaultPresencePenalty.Value;
+                if (_defaultFrequencyPenalty.HasValue) settings.FrequencyPenalty = _defaultFrequencyPenalty.Value;
+            }
+
+            var messages = await chatService.GetChatMessageContentsAsync(
                 history,
                 executionSettings: settings,
                 kernel: _kernel,
-                cancellationToken: cancellationToken).ConfigureAwait(false))
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            var content = string.Concat(messages
+                .Where(message => !string.IsNullOrWhiteSpace(message.Content))
+                .Select(message => message.Content));
+
+            return content;
+        }
+
+        /// <summary>
+        /// Attempts to stream response using Semantic Kernel chat completion service.
+        /// </summary>
+        private async Task<string> TryStreamWithSemanticKernelAsync(string prompt, string? systemMessage, CancellationToken cancellationToken)
+        {
+            try
             {
-                if (!string.IsNullOrEmpty(chunk.Content))
+                var chatService = _kernel!.GetRequiredService<IChatCompletionService>();
+                var history = new ChatHistory();
+                if (!string.IsNullOrWhiteSpace(systemMessage))
                 {
-                    yield return chunk.Content;
+                    history.AddSystemMessage(systemMessage);
+                }
+                history.AddUserMessage(prompt);
+
+                var settings = new OpenAIPromptExecutionSettings
+                {
+                    ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                    Temperature = 0.3,
+                    MaxTokens = 4000
+                };
+
+                var responseBuilder = new StringBuilder();
+                await foreach (var chunk in chatService.GetStreamingChatMessageContentsAsync(
+                    history,
+                    executionSettings: settings,
+                    kernel: _kernel,
+                    cancellationToken: cancellationToken).ConfigureAwait(false))
+                {
+                    if (!string.IsNullOrEmpty(chunk.Content))
+                    {
+                    responseBuilder.Append(chunk.Content);
                 }
             }
+
+            return responseBuilder.ToString();
+            }
+            catch (InvalidOperationException iex) when (iex.Message.Contains("not registered"))
+            {
+                _logger?.LogWarning(iex, "[XAI] IChatCompletionService not registered in kernel (SK connector disabled) - falling back to HTTP");
+                throw; // Re-throw to be caught by caller for HTTP fallback
+            }
+        }
+
+        /// <summary>
+        /// Fallback: Uses direct HTTP streaming via GetStreamingResponseAsync with callback.
+        /// </summary>
+        private async Task<string> TryGetStreamingResponseWithFallbackAsync(string prompt, string? systemMessage, CancellationToken cancellationToken)
+        {
+            var chunks = new List<string>();
+            var result = await GetStreamingResponseAsync(
+                prompt,
+                systemMessage,
+                modelOverride: null,
+                onChunk: chunk => chunks.Add(chunk),
+                ct: cancellationToken).ConfigureAwait(false);
+
+            // If the result is an error, return it; otherwise return collected chunks
+            if (result.StartsWith("Error", StringComparison.OrdinalIgnoreCase) ||
+                result.StartsWith("No API", StringComparison.OrdinalIgnoreCase) ||
+                result.StartsWith("Grok", StringComparison.OrdinalIgnoreCase))
+            {
+                return result;
+            }
+
+            // Prefer chunks if collected, otherwise use result
+            return chunks.Count > 0 ? string.Concat(chunks) : result;
         }
 
         public async Task<string> SendMessageAsync(string message, object conversationHistory, CancellationToken cancellationToken = default)

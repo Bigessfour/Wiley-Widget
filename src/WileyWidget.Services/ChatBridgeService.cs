@@ -18,6 +18,7 @@ public class ChatBridgeService : IChatBridgeService
     public event EventHandler<ChatMessage> OnMessageReceived;
     public event EventHandler<ChatPromptSubmittedEventArgs> PromptSubmitted;
     public event EventHandler<ChatResponseChunkEventArgs> ResponseChunkReceived;
+    public event EventHandler<EventArgs> ResponseCompleted;
     public event EventHandler<ChatSuggestionSelectedEventArgs> SuggestionSelected;
     public event EventHandler<ChatExternalPromptEventArgs> ExternalPromptRequested;
 
@@ -113,6 +114,16 @@ public class ChatBridgeService : IChatBridgeService
         var args = new ChatResponseChunkEventArgs { Chunk = chunk };
         ResponseChunkReceived?.Invoke(this, args);
 
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Notifies that a streaming response has completed.
+    /// </summary>
+    public Task NotifyResponseCompletedAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Response streaming completed");
+        ResponseCompleted?.Invoke(this, EventArgs.Empty);
         return Task.CompletedTask;
     }
 

@@ -118,9 +118,19 @@ namespace WileyWidget.WinForms
             // Configure Serilog logger manually for WinForms app
             // IMPORTANT: Configuration order - later sources override earlier ones
             // Order: 1) appsettings.json, 2) user secrets, 3) environment variables (last for highest priority)
+            var basePath = Directory.GetCurrentDirectory();
+            var appSettingsPath = "src/WileyWidget.WinForms/appsettings.json";
+
+            // If we are already in the project directory or the file isn't found at the repo-root relative path,
+            // fallback to local directory (handles both dev-from-root and direct-exe-run scenarios).
+            if (!File.Exists(Path.Combine(basePath, appSettingsPath)) && File.Exists(Path.Combine(basePath, "appsettings.json")))
+            {
+                appSettingsPath = "appsettings.json";
+            }
+
             var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("src/WileyWidget.WinForms/appsettings.json", optional: false, reloadOnChange: true)
+                .SetBasePath(basePath)
+                .AddJsonFile(appSettingsPath, optional: false, reloadOnChange: true)
                 .AddUserSecrets<Program>(optional: true)
                 .AddEnvironmentVariables()  // Environment variables last - highest priority
                 .Build();
@@ -417,6 +427,27 @@ namespace WileyWidget.WinForms
                 {
                     // IMPORTANT: Configuration loading order - later sources override earlier ones.
                     // Host.CreateDefaultBuilder() already adds appsettings.json and environment variables.
+                    // Since we set the working directory to the repo root, we must explicitly add the
+                    // project-specific appsettings.json from the src tree.
+                    var appSettingsPath = "src/WileyWidget.WinForms/appsettings.json";
+                    var envAppSettingsPath = $"src/WileyWidget.WinForms/appsettings.{context.HostingEnvironment.EnvironmentName}.json";
+
+                    // Fallback to local paths if running from within the project directory or bin folder
+                    if (!File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, appSettingsPath)) &&
+                        File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, "appsettings.json")))
+                    {
+                        appSettingsPath = "appsettings.json";
+                    }
+
+                    if (!File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, envAppSettingsPath)) &&
+                        File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, $"appsettings.{context.HostingEnvironment.EnvironmentName}.json")))
+                    {
+                        envAppSettingsPath = $"appsettings.{context.HostingEnvironment.EnvironmentName}.json";
+                    }
+
+                    config.AddJsonFile(appSettingsPath, optional: false, reloadOnChange: true);
+                    config.AddJsonFile(envAppSettingsPath, optional: true, reloadOnChange: true);
+
                     // We explicitly add user secrets AFTER CreateDefaultBuilder sets up defaults.
                     // Then we re-add environment variables at the END to ensure they have highest priority.
                     // This ensures: 1) appsettings.json, 2) appsettings.{Environment}.json, 3) user secrets, 4) environment variables

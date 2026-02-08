@@ -202,15 +202,9 @@ public partial class MainForm
         CacheGlobalSearchTextBox();
         EnsureRibbonAccessibility();
 
-        // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
-        try
-        {
-            _ribbon.ValidateAndConvertImages(_logger);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "ValidateAndConvertImages failed on ribbon");
-        }
+        // [PERF] Heavy image validation (converting animated images to static) is now deferred
+        // to DeferChromeOptimizationAsync in MainForm.Initialization.cs. This avoids
+        // blocking the UI thread during OnLoad (~200-400ms saved).
 
         try
         {

@@ -628,6 +628,8 @@ namespace WileyWidget.WinForms.Forms
                 ScheduleJarvisAutomationOpen();
             }
 
+
+
             // [PERF] Launch CLI report viewer if requested (optional feature)
             TryLaunchReportViewerOnLoad();
 
@@ -703,6 +705,17 @@ namespace WileyWidget.WinForms.Forms
 
             BeginInvoke(new System.Action(async () =>
             {
+                // [FIX] If the fixed JARVIS sidebar already exists (from MainForm.Docking),
+                // just show and activate it instead of spawning a second conflicting instance.
+                // This prevents multiple BlazorWebView instances from fighting over the same UserDataFolder.
+                if (_jarvisDockPanel != null && _jarvisChatUserControl != null && !_jarvisDockPanel.IsDisposed)
+                {
+                    _logger?.LogInformation("[AUTOMATION] Activating existing stable JARVIS sidebar for UI automation");
+                    _jarvisDockPanel.Visible = true;
+                    _jarvisDockPanel.BringToFront();
+                    return;
+                }
+
                 const int maxAttempts = 5;
                 for (var attempt = 1; attempt <= maxAttempts; attempt++)
                 {
@@ -954,6 +967,13 @@ namespace WileyWidget.WinForms.Forms
                 Activated -= MainForm_Activated; // Unsubscribe after first call
             }
         }
+
+        /// <summary>
+        /// Configures JARVIS panel docking to prevent reparenting during WebView2 initialization.
+        /// Disables both persistence and dynamic reparenting to keep the panel HWND stable during Blazor bootstrap.
+        /// This fixes the E_ABORT (HWND invalidation) issue that occurs when DockingManager reparents a control
+        /// mid-CreateCoreWebView2ControllerAsync.
+
 
         /// <summary>
         /// Helper: First-chance exception handler with re-entry guard.

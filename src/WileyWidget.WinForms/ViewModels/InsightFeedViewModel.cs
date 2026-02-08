@@ -219,7 +219,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Command to open JARVIS AI chat with the selected insight as context.
         /// Triggered when user clicks on an insight row in the grid.
         ///
-        /// The insight context is passed to the JARVIS modal form so JARVIS can provide
+        /// The insight context is passed to the JARVIS chat panel so JARVIS can provide
         /// specific recommendations related to the selected insight.
         /// Example: "Budget variance alert" → JARVIS provides investigation recommendations.
         /// </summary>

@@ -564,6 +564,11 @@ namespace WileyWidget.WinForms.Services
             if (forceFloating)
             {
                 FloatPanel(panel, panelName, preferredStyle, hostControl);
+                // CRITICAL FIX: For floating panels, explicitly trigger async initialization
+                // Floating windows may not have Visible state propagated correctly,
+                // so we must force initialization after the panel is created and floated.
+                Logger.LogInformation("[PANEL-FLOAT] Panel {PanelName} floated - forcing async initialization trigger", panelName);
+                TryInitializeAsyncPanel(panel, panelName);
                 return;
             }
 
@@ -941,6 +946,7 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 _dockingManager.SetDockVisibility(panel, true);
+                Logger.LogDebug("[PANEL-FLOAT] SetDockVisibility(true) called for {PanelName}", panelName);
             }
             catch (Exception ex)
             {
@@ -950,7 +956,9 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 panel.Visible = true;
+                Logger.LogDebug("[PANEL-FLOAT] Panel.Visible set to true for {PanelName}", panelName);
                 panel.BringToFront();
+                Logger.LogDebug("[PANEL-FLOAT] BringToFront() called for {PanelName}", panelName);
             }
             catch (Exception ex)
             {
@@ -960,13 +968,27 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 _dockingManager.ActivateControl(panel);
+                Logger.LogDebug("[PANEL-FLOAT] ActivateControl() called for {PanelName}", panelName);
             }
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "Failed to activate floating panel {PanelName}", panelName);
             }
 
-            Logger.LogInformation("Panel floated by default: {PanelName} at {Bounds}", panelName, bounds);
+            // CRITICAL FIX: Force panel invalidation and refresh to ensure rendering
+            try
+            {
+                panel.Invalidate(true);
+                panel.Update();
+                Logger.LogDebug("[PANEL-FLOAT] Panel invalidated and updated for {PanelName}", panelName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to invalidate/update floating panel for {PanelName}", panelName);
+            }
+
+            Logger.LogInformation("Panel floated by default: {PanelName} at {Bounds}, Visible={Visible}, Handle={Handle}",
+                panelName, bounds, panel.Visible, panel.IsHandleCreated);
         }
 
         private static System.Drawing.Rectangle CalculateFloatingBounds(UserControl panel, DockingStyle preferredStyle, Control hostControl)

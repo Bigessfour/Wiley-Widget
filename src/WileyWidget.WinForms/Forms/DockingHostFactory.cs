@@ -50,8 +50,8 @@ public static class DockingHostFactory
 #pragma warning disable CA1508 // activityLogPanel is always null by design; reserved for future implementation
     public static (
         DockingManager dockingManager,
-        LegacyGradientPanel leftDockPanel,
-        LegacyGradientPanel rightDockPanel,
+        LegacyGradientPanel? leftDockPanel,
+        LegacyGradientPanel? rightDockPanel,
         LegacyGradientPanel centralDocumentPanel,
         ActivityLogPanel? activityLogPanel,
         System.Windows.Forms.Timer? activityRefreshTimer,
@@ -73,9 +73,13 @@ public static class DockingHostFactory
 
         ThemeColors.EnsureThemeAssemblyLoaded(logger);
 
-        LegacyGradientPanel leftDockPanel;
+        // Resolve UIConfiguration to check for MinimalMode/AutoShowPanels
+        var uiConfig = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Configuration.UIConfiguration>(serviceProvider)
+                    ?? WileyWidget.WinForms.Configuration.UIConfiguration.FromConfiguration(null);
+
+        LegacyGradientPanel? leftDockPanel = null;
         LegacyGradientPanel centralDocumentPanel;
-        LegacyGradientPanel rightDockPanel;
+        LegacyGradientPanel? rightDockPanel = null;
         ActivityLogPanel? activityLogPanel = null;
         System.Windows.Forms.Timer? activityRefreshTimer = null;
         DockingLayoutManager? layoutManager = null;
@@ -99,23 +103,12 @@ public static class DockingHostFactory
             {
                 var hostControl = (ContainerControl)mainForm;
 
-                // Assign HostForm + HostControl directly to the MainForm
+                // Assignment of HostForm + HostControl directly to the MainForm
                 dockingManager.HostForm = mainForm;
                 dockingManager.HostControl = hostControl;
                 logger?.LogDebug("CreateDockingHost: HostControl set to MainForm (direct integration)");
 
-                // 1. Create left dock panel (empty container)
-                leftDockPanel = new LegacyGradientPanel
-                {
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                    Name = "LeftDockPanel",
-                    AccessibleName = "Left Dock Panel",
-                    AccessibleDescription = "Left dock panel container"
-                };
-                logger?.LogDebug("CreateDockingHost: Left dock panel created: Name={Name}", leftDockPanel.Name);
-
-                // 2. Create central document panel (empty container)
+                // 2. Create central document panel (empty container) - ALWAYS created
                 centralDocumentPanel = new LegacyGradientPanel
                 {
                     BorderStyle = BorderStyle.None,
@@ -126,48 +119,62 @@ public static class DockingHostFactory
                     AccessibleDescription = "Main content area container"
                 };
                 logger?.LogDebug("CreateDockingHost: Central document panel created: Name={Name}, Visible={Visible}", centralDocumentPanel.Name, centralDocumentPanel.Visible);
-
-                // 3. Create right dock panel (Activity Log only)
-                rightDockPanel = new LegacyGradientPanel
-                {
-                    BorderStyle = BorderStyle.None,
-                    BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
-                    Name = "RightDockPanel",
-                    AccessibleName = "Right Dock Panel",
-                    AccessibleDescription = "Right dock panel container (Activity Log)"
-                };
-
-                var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetRequiredService<IServiceScopeFactory>(serviceProvider);
-                var activityLogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                        .GetService<ILogger<ActivityLogPanel>>(serviceProvider)
-                    ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                        .GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>)
-                    ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
-
-                activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger)
-                {
-                    Dock = DockStyle.Fill,
-                    Name = "ActivityLogPanel"
-                };
-
-                rightDockPanel.Controls.Add(activityLogPanel);
-                logger?.LogInformation("CreateDockingHost: Right dock panel created with ActivityLogPanel");
-
-                // Ensure base panels are real children of the host control before docking operations.
-                mainForm.Controls.Add(leftDockPanel);
                 mainForm.Controls.Add(centralDocumentPanel);
-                mainForm.Controls.Add(rightDockPanel);
-                leftDockPanel.SendToBack();
                 centralDocumentPanel.SendToBack();
-                rightDockPanel.SendToBack();
 
-                ArgumentNullException.ThrowIfNull(leftDockPanel);
+                if (!uiConfig.MinimalMode)
+                {
+                    // 1. Create left dock panel (empty container)
+                    leftDockPanel = new LegacyGradientPanel
+                    {
+                        BorderStyle = BorderStyle.None,
+                        BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                        Name = "LeftDockPanel",
+                        AccessibleName = "Left Dock Panel",
+                        AccessibleDescription = "Left dock panel container"
+                    };
+                    logger?.LogDebug("CreateDockingHost: Left dock panel created: Name={Name}", leftDockPanel.Name);
+                    mainForm.Controls.Add(leftDockPanel);
+                    leftDockPanel.SendToBack();
+
+                    // 3. Create right dock panel (Activity Log only)
+                    rightDockPanel = new LegacyGradientPanel
+                    {
+                        BorderStyle = BorderStyle.None,
+                        BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
+                        Name = "RightDockPanel",
+                        AccessibleName = "Right Dock Panel",
+                        AccessibleDescription = "Right dock panel container (Activity Log)"
+                    };
+
+                    var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                        .GetRequiredService<IServiceScopeFactory>(serviceProvider);
+                    var activityLogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                            .GetService<ILogger<ActivityLogPanel>>(serviceProvider)
+                        ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                            .GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>)
+                        ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
+
+                    activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger)
+                    {
+                        Dock = DockStyle.Fill,
+                        Name = "ActivityLogPanel"
+                    };
+
+                    rightDockPanel.Controls.Add(activityLogPanel);
+                    logger?.LogInformation("CreateDockingHost: Right dock panel created with ActivityLogPanel");
+                    mainForm.Controls.Add(rightDockPanel);
+                    rightDockPanel.SendToBack();
+                }
+                else
+                {
+                    logger?.LogInformation("CreateDockingHost: MinimalMode is TRUE. Skipping Left/Right dock panel creation.");
+                }
+
                 ArgumentNullException.ThrowIfNull(centralDocumentPanel);
-                ArgumentNullException.ThrowIfNull(rightDockPanel);
 
                 logger?.LogInformation("Docking controls registered: Left={Left}, Central={Central}, Right={Right}, Activity=deferred",
-                    leftDockPanel.Name, centralDocumentPanel.Name, rightDockPanel.Name);
+                    leftDockPanel?.Name ?? "Skip", centralDocumentPanel.Name, rightDockPanel?.Name ?? "Skip");
 
                 // Suspend layout to prevent intermediate paints during docking setup
                 mainForm.SuspendLayout();
@@ -183,31 +190,45 @@ public static class DockingHostFactory
                     centralDocumentPanel.BringToFront();
                     logger?.LogInformation("Central panel set to Fill parent (no explicit docking needed)");
 
-                    var leftDocked =
+                    var leftDocked = leftDockPanel != null &&
                         TryDockControl(dockingManager, leftDockPanel, centralDocumentPanel, DockingStyle.Left, 300, logger);
-                    var rightDocked =
+                    var rightDocked = rightDockPanel != null &&
                         TryDockControl(dockingManager, rightDockPanel, centralDocumentPanel, DockingStyle.Right, 350, logger);
 
-                    if (!leftDocked || !rightDocked)
-                    {
-                        logger?.LogWarning("CreateDockingHost: Docking failed; falling back to basic DockStyle layout");
-                        centralDocumentPanel.Dock = DockStyle.Fill;
-                        leftDockPanel.Dock = DockStyle.Left;
-                        rightDockPanel.Dock = DockStyle.Right;
-                    }
-
-                    if (leftDocked)
+                    if (leftDocked && leftDockPanel != null)
                     {
                         dockingManager.SetControlMinimumSize(leftDockPanel, new Size(250, 0));
-                        dockingManager.SetAutoHideMode(leftDockPanel, true);
-                        dockingManager.SetDockVisibility(leftDockPanel, true);
+
+                        // Respect AutoShowPanels config
+                        if (!uiConfig.AutoShowPanels)
+                        {
+                            dockingManager.SetAutoHideMode(leftDockPanel, true);
+                            dockingManager.SetDockVisibility(leftDockPanel, false);
+                            logger?.LogDebug("CreateDockingHost: AutoShowPanels is FALSE. Setting left panel to AutoHide.");
+                        }
+                        else
+                        {
+                            dockingManager.SetAutoHideMode(leftDockPanel, true);
+                            dockingManager.SetDockVisibility(leftDockPanel, true);
+                        }
                     }
 
-                    if (rightDocked)
+                    if (rightDocked && rightDockPanel != null)
                     {
                         dockingManager.SetControlMinimumSize(rightDockPanel, new Size(320, 0));
-                        dockingManager.SetAutoHideMode(rightDockPanel, true);
-                        dockingManager.SetDockVisibility(rightDockPanel, true);
+
+                        // Respect AutoShowPanels config
+                        if (!uiConfig.AutoShowPanels)
+                        {
+                            dockingManager.SetAutoHideMode(rightDockPanel, true);
+                            dockingManager.SetDockVisibility(rightDockPanel, false);
+                            logger?.LogDebug("CreateDockingHost: AutoShowPanels is FALSE. Setting right panel to AutoHide.");
+                        }
+                        else
+                        {
+                            dockingManager.SetAutoHideMode(rightDockPanel, true);
+                            dockingManager.SetDockVisibility(rightDockPanel, true);
+                        }
                     }
 
                     logger?.LogDebug("CreateDockingHost: Docking layout applied (Left={LeftDocked}, Right={RightDocked})",
@@ -223,9 +244,9 @@ public static class DockingHostFactory
                     mainForm.ResumeLayout(true);
                 }
 
-                leftDockPanel.Refresh();
+                leftDockPanel?.Refresh();
                 centralDocumentPanel.Refresh();
-                rightDockPanel.Refresh();
+                rightDockPanel?.Refresh();
 
                 logger?.LogDebug("Docking panels created and docked (left, center, right) with empty containers");
                 activityRefreshTimer = null;

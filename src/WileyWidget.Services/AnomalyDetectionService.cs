@@ -42,9 +42,12 @@ namespace WileyWidget.Services
                     return null;
                 }
 
+                // Use model from configuration (supports Grok:Model, XAI:Model, defaults to grok-4.1)
+                var model = _configuration["Grok:Model"] ?? _configuration["XAI:Model"] ?? "grok-4.1";
+
                 var kernelBuilder = Kernel.CreateBuilder();
                 kernelBuilder.AddOpenAIChatCompletion(
-                    modelId: "grok-beta",
+                    modelId: model,
                     apiKey: apiKey,
                     endpoint: new Uri("https://api.x.ai/v1"));
 

@@ -608,7 +608,7 @@ namespace WileyWidget.WinForms.Forms
                 if (control is WileyWidget.Abstractions.ILazyLoadViewModel controlLazyViewModel)
                 {
                     _logger?.LogDebug("Notifying {PanelType} (control) visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
-                    await controlLazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(false);
+                    await controlLazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(true);
                     return;
                 }
 
@@ -624,7 +624,7 @@ namespace WileyWidget.WinForms.Forms
                 if (dataContext is WileyWidget.Abstractions.ILazyLoadViewModel lazyViewModel)
                 {
                     _logger?.LogDebug("Notifying {PanelType} (ViewModel) visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
-                    await lazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(false);
+                    await lazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(true);
                 }
             }
             catch (Exception ex)

@@ -43,7 +43,7 @@ using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using Syncfusion.WinForms.DataGrid.Enums;
 
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Themes;
 
@@ -908,6 +908,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         base.Dispose(disposing);
     }
 }
+
 
 
 

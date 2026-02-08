@@ -33,7 +33,7 @@ using System.Windows.Forms;
 
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Dialogs;
 using WileyWidget.Models;
 
@@ -1602,3 +1602,4 @@ public partial class CustomersPanel : ScopedPanelBase
 
     #endregion
 }
+

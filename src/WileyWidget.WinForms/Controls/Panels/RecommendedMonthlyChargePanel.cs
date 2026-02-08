@@ -26,7 +26,7 @@ using Syncfusion.WinForms.Input;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Utils;
+// using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Helpers;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -1183,6 +1183,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     #endregion
 }
+
 
 
 

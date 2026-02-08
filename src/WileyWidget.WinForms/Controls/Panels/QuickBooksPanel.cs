@@ -39,7 +39,7 @@ using WileyWidget.WinForms.Controls.Supporting;
 using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Utils;
+// using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Helpers;
@@ -3154,6 +3154,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #endregion
 }
+
 
 
 

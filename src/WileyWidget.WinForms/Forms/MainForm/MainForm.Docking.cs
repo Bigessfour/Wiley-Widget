@@ -37,6 +37,8 @@ public partial class MainForm
     private Panel? _centralDocumentPanel;
 #pragma warning restore CS0649
     private Panel? _rightDockPanel;
+    private LegacyGradientPanel? _jarvisDockPanel;  // Fixed non-dockable JARVIS sidebar
+    private JARVISChatUserControl? _jarvisChatUserControl;  // JARVIS control reference
 
     [DllImport("user32.dll")]
     private static extern bool LockWindowUpdate(IntPtr hWndLock);
@@ -122,11 +124,15 @@ public partial class MainForm
 
             if (_leftDockPanel != null)
             {
-                _leftDockPanel.Visible = true;
+                // Respect AutoShowPanels configuration
+                bool shouldShow = _uiConfig?.AutoShowPanels ?? true;
+                if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                _leftDockPanel.Visible = shouldShow;
+
                 try
                 {
-                    _dockingManager.SetDockVisibility(_leftDockPanel, true);
-                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _leftDockPanel.Name ?? "null");
+                    _dockingManager.SetDockVisibility(_leftDockPanel, shouldShow);
+                    _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _leftDockPanel.Name ?? "null");
                 }
                 catch (Exception ex)
                 {
@@ -150,11 +156,15 @@ public partial class MainForm
 
             if (_rightDockPanel != null)
             {
-                _rightDockPanel.Visible = false;
+                // Respect AutoShowPanels configuration
+                bool shouldShow = _uiConfig?.AutoShowPanels ?? false; // Right panel default was false
+                if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                _rightDockPanel.Visible = shouldShow;
+
                 try
                 {
-                    _dockingManager.SetDockVisibility(_rightDockPanel, false);
-                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _rightDockPanel.Name ?? "null");
+                    _dockingManager.SetDockVisibility(_rightDockPanel, shouldShow);
+                    _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _rightDockPanel.Name ?? "null");
                 }
                 catch (Exception ex)
                 {
@@ -166,7 +176,36 @@ public partial class MainForm
 
             if (_activityLogPanel != null)
             {
-                _activityLogPanel.Visible = true;
+                _activityLogPanel.Visible = false;
+            }
+
+            // Create JARVIS Chat as fixed non-dockable sidebar (right-side)
+            if (_dockingManager != null && _serviceProvider != null)
+            {
+                try
+                {
+                    (_jarvisDockPanel, _jarvisChatUserControl) = JarvisDockPanelFactory.CreateJarvisDockPanel(
+                        this, _serviceProvider, _logger);
+
+                    if (_jarvisDockPanel != null)
+                    {
+                        // Add JARVIS panel to MainForm (positioned right-side via DockStyle.Right)
+                        // [CLEAN SLATE] In MinimalMode, we auto-show JARVIS as the primary focus
+                        bool shouldShowJarvis = _uiConfig?.MinimalMode ?? false;
+                        _jarvisDockPanel.Visible = shouldShowJarvis;
+                        this.Controls.Add(_jarvisDockPanel);
+
+                        // Configure as fixed (non-dockable) with DockingManager
+                        JarvisDockPanelFactory.ConfigureJarvisPanelAsDockingDisabled(_dockingManager, _jarvisDockPanel, _logger);
+
+                        _logger?.LogInformation("JARVIS Chat panel created and integrated - Fixed sidebar, hidden by default, non-dockable");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to create JARVIS Chat panel - chat will be unavailable");
+                    // Don't fail entire docking init; continue without JARVIS
+                }
             }
 
             if (_ribbon != null) _ribbon.BringToFront();
@@ -248,11 +287,15 @@ public partial class MainForm
                 _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
                 if (_leftDockPanel != null)
                 {
-                    _leftDockPanel.Visible = true;
+                    // Respect AutoShowPanels configuration
+                    bool shouldShow = _uiConfig?.AutoShowPanels ?? true;
+                    if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                    _leftDockPanel.Visible = shouldShow;
+
                     try
                     {
-                        _dockingManager.SetDockVisibility(_leftDockPanel, true);
-                        _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _leftDockPanel.Name ?? "null");
+                        _dockingManager.SetDockVisibility(_leftDockPanel, shouldShow);
+                        _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _leftDockPanel.Name ?? "null");
                     }
                     catch (Exception ex)
                     {
@@ -261,17 +304,20 @@ public partial class MainForm
                     }
                     _leftDockPanel.Refresh();
                     _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(300, 360));
-                    _logger?.LogDebug("Left panel configured: Visible=true, MinSize=300x360");
+                    _logger?.LogDebug("Left panel configured: Visible={Visible}, MinSize=300x360", shouldShow);
                 }
 
                 if (_rightDockPanel != null)
                 {
-                    // Start hidden by default to avoid covering central UI until user opens it
-                    _rightDockPanel.Visible = false;
+                    // Respect AutoShowPanels configuration (defaulted to false for right panel)
+                    bool shouldShow = _uiConfig?.AutoShowPanels ?? false;
+                    if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                    _rightDockPanel.Visible = shouldShow;
+
                     try
                     {
-                        _dockingManager.SetDockVisibility(_rightDockPanel, false);
-                        _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _rightDockPanel.Name ?? "null");
+                        _dockingManager.SetDockVisibility(_rightDockPanel, shouldShow);
+                        _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _rightDockPanel.Name ?? "null");
                     }
                     catch (Exception ex)
                     {
@@ -279,7 +325,7 @@ public partial class MainForm
                             _rightDockPanel.Name ?? "null");
                     }
                     _dockingManager.SetControlMinimumSize(_rightDockPanel, new Size(300, 360));
-                    _logger?.LogDebug("Right panel configured: Visible=false, MinSize=300x360");
+                    _logger?.LogDebug("Right panel configured: Visible={Visible}, MinSize=300x360", shouldShow);
                 }
             }
 
@@ -288,7 +334,7 @@ public partial class MainForm
             // 4. Activity grid will be loaded with actual data after docking completes
             if (_activityLogPanel != null)
             {
-                _activityLogPanel.Visible = true;
+                _activityLogPanel.Visible = false;
             }
 
             // Panel activation and layout recalc deferred until form is fully shown
@@ -761,6 +807,14 @@ public partial class MainForm
             return;
         }
 
+        // [CLEAN SLATE] In MinimalMode, we skip loading the persisted docking layout
+        // to ensure a completely clean UI without interference from previous sessions.
+        if (_uiConfig?.MinimalMode == true)
+        {
+            _logger?.LogInformation("[CLEAN-SLATE] MinimalMode is active - skipping docking layout restoration for a clean UI");
+            return;
+        }
+
         if (_dockingLayoutManager == null)
         {
             _logger?.LogWarning("Cannot load docking layout - DockingLayoutManager is null");
@@ -822,9 +876,13 @@ public partial class MainForm
                         {
                             var panelCount = (_dockingManager.Controls as System.Collections.ICollection)?.Count ?? 0;
                             _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
+
+                            // Respect AutoShowPanels configuration during layout restoration
+                            bool shouldAutoShow = _uiConfig?.AutoShowPanels ?? true;
+
                             if (leftPanel != null)
                             {
-                                _dockingManager.SetDockVisibility(leftPanel, true);
+                                _dockingManager.SetDockVisibility(leftPanel, shouldAutoShow);
                                 leftPanel.Refresh();
                             }
 
@@ -843,7 +901,7 @@ public partial class MainForm
 
                             if (rightPanel != null)
                             {
-                                _dockingManager.SetDockVisibility(rightPanel, true);
+                                _dockingManager.SetDockVisibility(rightPanel, shouldAutoShow);
                                 rightPanel.Refresh();
                             }
                         }

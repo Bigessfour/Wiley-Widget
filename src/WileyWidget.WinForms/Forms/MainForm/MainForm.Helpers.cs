@@ -173,10 +173,11 @@ public partial class MainForm
     /// </summary>
     private void ApplyTheme()
     {
-        // Delay applying theme until the docking panels are set up to prevent NullReferenceExceptions
-        if (_activityLogPanel == null || _leftDockPanel == null || _rightDockPanel == null)
+        // Delay applying theme until central panel is ready.
+        // In MinimalMode, Left/Right panels may be null by design.
+        if (_centralDocumentPanel == null)
         {
-            _logger?.LogDebug("Theme apply skipped: Docking controls are not initialized yet");
+            _logger?.LogDebug("Theme apply skipped: CentralDocumentPanel is not initialized yet");
             return;
         }
 

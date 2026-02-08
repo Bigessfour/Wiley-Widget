@@ -31,7 +31,7 @@ using Syncfusion.WinForms.Input;
 
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 
@@ -1129,6 +1129,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
     }
 }
+
 
 
 

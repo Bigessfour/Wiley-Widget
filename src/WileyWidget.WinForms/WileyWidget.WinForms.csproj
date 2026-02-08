@@ -109,6 +109,8 @@
     <!-- FastReport Open Source WinForms viewer -->
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+    <!-- Roslyn scripting for C# evaluation plugin (JARVIS) -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
     <!-- Blazor WebView for Windows Forms -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" />
     <PackageReference Include="Microsoft.Web.WebView2" />
@@ -139,7 +141,7 @@
     </Content>
     <!-- Blazor wwwroot static assets -->
     <Content Include="wwwroot\\**\\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
@@ -148,6 +150,14 @@
     <EmbeddedResource Include="Resources\\FlatIcons\\*.png">
       <LogicalName>WileyWidget.WinForms.Resources.FlatIcons.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- Bundle Fixed-Version WebView2 Runtime (eliminates HWND invalidation during Blazor init) -->
+  <Target Name="CopyWebView2Runtime" AfterTargets="Build">
+    <Copy SourceFiles="@(WebView2Files)" DestinationFolder="$(OutDir)WebView2Runtime\%(RecursiveDir)" />
+  </Target>
+  <ItemGroup>
+    <WebView2Files Include="..\..\WebView2Runtime\**\*.*" />
   </ItemGroup>
 
   <ItemGroup>

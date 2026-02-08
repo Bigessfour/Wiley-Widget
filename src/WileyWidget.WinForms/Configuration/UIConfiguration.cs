@@ -53,8 +53,20 @@ public sealed record UIConfiguration
 
     /// <summary>
     /// Whether to auto-show the dashboard on startup.
+    /// Changed to false by default to prevent multiple instances and ghost panels at startup.
     /// </summary>
-    public bool AutoShowDashboard { get; init; } = true;
+    public bool AutoShowDashboard { get; init; } = false;
+
+    /// <summary>
+    /// Minimal mode - only JARVIS Chat and central document panel are created.
+    /// Prevents auto-show of any other panels on first run or when enabled.
+    /// </summary>
+    public bool MinimalMode { get; init; } = true;
+
+    /// <summary>
+    /// Whether to auto-show panels based on layout or defaults.
+    /// </summary>
+    public bool AutoShowPanels { get; init; } = false;
 
     /// <summary>
     /// Default fiscal year for financial views.
@@ -110,7 +122,9 @@ public sealed record UIConfiguration
             ShowStatusBar = configuration.GetValue<bool?>("UI:ShowStatusBar") ?? true,
             DefaultFormSize = new Size(defaultWidth, defaultHeight),
             MinimumFormSize = new Size(minWidth, minHeight),
-            AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? true,
+            AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? false,
+            MinimalMode = configuration.GetValue<bool?>("UI:MinimalMode") ?? true,
+            AutoShowPanels = configuration.GetValue<bool?>("UI:AutoShowPanels") ?? false,
             DefaultFiscalYear = configuration.GetValue<int?>("UI:DefaultFiscalYear") ?? DateTime.UtcNow.Year,
             EnableDockingLockDuringLoad = configuration.GetValue<bool?>("UI:EnableDockingLockDuringLoad") ?? true,
             ThemeApplyMaxDepth = configuration.GetValue<int?>("UI:ThemeApplyMaxDepth") ?? 32,

@@ -23,7 +23,7 @@ using Panels = WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
-using WileyWidget.WinForms.Utils;
+// // using WileyWidget.WinForms.Utils; // Consolidated // Consolidated into Helpers
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
 
@@ -40,7 +40,7 @@ public partial class MainForm
     /// Called after MainForm is shown to perform heavy/async initialization work.
     /// Optimized for docking layout restoration and ViewModel initialization.
     /// </summary>
-    public async Task InitializeAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         // [QUICK WIN] Exit early if form is already disposed to avoid ObjectDisposedException
         if (this.IsDisposed) return;
@@ -65,7 +65,7 @@ public partial class MainForm
             // [PERF] Allow structures time to develop before applying theme
             try
             {
-                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(25, cancellationToken).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -120,7 +120,7 @@ public partial class MainForm
             // This avoids UI thread blocking during critical startup path (~500ms saved in logs)
             try
             {
-                await DeferChromeOptimizationAsync(cancellationToken).ConfigureAwait(false);
+                await DeferChromeOptimizationAsync(cancellationToken).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
@@ -142,7 +142,8 @@ public partial class MainForm
 
             if (_uiConfig.UseSyncfusionDocking)
             {
-                // Docking layout loading moved to OnShown for better timing
+                _logger?.LogInformation("InitializeAsync: Loading docking layout");
+                await LoadAndApplyDockingLayout(GetDockingLayoutPath(), cancellationToken).ConfigureAwait(true);
             }
 
             // Defensive: Ensure panel navigator is initialized before trying to show panels
@@ -190,9 +191,17 @@ public partial class MainForm
                         return;
                     }
 
-                    _logger?.LogInformation("[PANEL] About to invoke ShowPanel<DashboardPanel>");
-                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: false);
-                    _logger?.LogInformation("[PANEL] ShowPanel returned successfully");
+                    if (!_dashboardAutoShown && _uiConfig != null && _uiConfig.AutoShowDashboard)
+                    {
+                        _logger?.LogInformation("[PANEL] About to invoke ShowPanel<DashboardPanel>");
+                        _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: false);
+                        _dashboardAutoShown = true;
+                        _logger?.LogInformation("[PANEL] ShowPanel returned successfully");
+                    }
+                    else
+                    {
+                        _logger?.LogInformation("[PANEL] Skipping priority dashboard: AutoShown={Shown}, ConfigEnabled={Enabled}", _dashboardAutoShown, _uiConfig?.AutoShowDashboard);
+                    }
                     _logger?.LogInformation("Priority panels shown successfully");
                 }
                 catch (ArgumentException argEx)
@@ -532,7 +541,7 @@ public partial class MainForm
                 try
                 {
                     _asyncLogger?.Information("MainForm OnShown: Calling MainViewModel.InitializeAsync");
-                    await MainViewModel.InitializeAsync(cancellationToken).ConfigureAwait(false);
+                    await MainViewModel.InitializeAsync(cancellationToken).ConfigureAwait(true);
                     if (this.InvokeRequired)
                     {
                         await this.InvokeAsync(() =>
@@ -599,7 +608,7 @@ public partial class MainForm
             }
 
             // [PERF] Auto-show initial dashboard panel
-            if (!_dashboardAutoShown && _panelNavigator != null)
+            if (!_dashboardAutoShown && _panelNavigator != null && _uiConfig != null && _uiConfig.AutoShowDashboard)
             {
                 try
                 {
@@ -614,6 +623,10 @@ public partial class MainForm
                     ShowErrorDialog("Startup Error", "Could not load dashboard. Check logs.");
                 }
             }
+            else
+            {
+                _logger?.LogInformation("[PANEL] Skipping auto-show dashboard in RunDeferredInitializationAsync: AutoShown={Shown}, ConfigEnabled={Enabled}", _dashboardAutoShown, _uiConfig?.AutoShowDashboard);
+            }
 
             ApplyStatus("Ready");
             _logger?.LogInformation("OnShown: Deferred initialization completed");
@@ -622,14 +635,21 @@ public partial class MainForm
             try
             {
                 _logger?.LogDebug("OnShown: Running late image validation pass");
-                if (_ribbon != null)
+
+                // [FIX] Use UIThreadHelper for safe marshalling. This replaces the unreliable InvokeRequired check
+                // and ensures we marshal specifically to the UI thread before touching controls.
+                await this.InvokeAsyncNonBlocking(() =>
                 {
-                    _ribbon.ValidateAndConvertImages(_logger);
-                }
-                if (_menuStrip != null)
-                {
-                    _menuStrip.ValidateAndConvertImages(_logger);
-                }
+                    if (_ribbon != null && !_ribbon.IsDisposed)
+                    {
+                        _ribbon.ValidateAndConvertImages(_logger);
+                    }
+                    if (_menuStrip != null && !_menuStrip.IsDisposed)
+                    {
+                        _menuStrip.ValidateAndConvertImages(_logger);
+                    }
+                }, _logger);
+
                 _logger?.LogDebug("OnShown: Late image validation completed");
             }
             catch (Exception validationEx)
@@ -695,15 +715,22 @@ public partial class MainForm
             {
                 var version = CoreWebView2Environment.GetAvailableBrowserVersionString();
                 _logger?.LogInformation("[WEBVIEW2] Prewarm starting (Runtime={Version})", version);
+
+                // Use the same stable UDF path as JARVIS to avoid folder lock-up or profile conflicts
+                var customUdfPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WileyWidget", "WebView2");
+                if (!Directory.Exists(customUdfPath))
+                {
+                    Directory.CreateDirectory(customUdfPath);
+                }
+
+                _ = await CoreWebView2Environment.CreateAsync(null, customUdfPath, null).ConfigureAwait(true);
+                _logger?.LogInformation("[WEBVIEW2] Prewarm completed with UDF: {UDF}", customUdfPath);
             }
             catch (WebView2RuntimeNotFoundException ex)
             {
                 _logger?.LogWarning(ex, "[WEBVIEW2] Runtime not found - skipping prewarm");
                 return;
             }
-
-            _ = await CoreWebView2Environment.CreateAsync().ConfigureAwait(true);
-            _logger?.LogInformation("[WEBVIEW2] Prewarm completed");
         }
         catch (COMException ex) when ((uint)ex.HResult == 0x80010106)
         {
@@ -1028,42 +1055,31 @@ public partial class MainForm
         {
             _logger?.LogInformation("[PERF] Deferred Chrome Optimization starting - deferring Ribbon image validation to background");
 
-            // Small delay to avoid contending with other docking/theming operations
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+            // Avoid contending with other docking/theming operations
+            await Task.Delay(150, cancellationToken).ConfigureAwait(true);
 
-            // Validate and convert animated images to static bitmaps (Syncfusion ImageAnimator workaround)
-            // This is expensive (~200-300ms) and safe to do async after form is shown
-            try
+            // [FIX] E2E Thread Marshalling Evaluation:
+            // Use the enhanced UIThreadHelper.InvokeAsyncSafe pattern.
+            // This now handles waiting for the handle automatically and performs proper marshalling.
+            // We no longer need the explicit IsHandleCreated check here as the helper encapsulates it.
+            if (!_ribbon.IsDisposed)
             {
-                _logger?.LogDebug("[PERF] Validating Ribbon images (converting animated images to static bitmaps)");
-                _ribbon.ValidateAndConvertImages(_logger);
-                _logger?.LogInformation("[PERF] Ribbon image validation completed");
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "[PERF] Ribbon image validation failed - visual formatting may be suboptimal");
-            }
-
-            // Refresh ribbon to apply any remaining theming or layout adjustments
-            try
-            {
-                if (!_ribbon.IsDisposed && _ribbon.IsHandleCreated)
+                await _ribbon.InvokeAsyncNonBlocking(() =>
                 {
+                    _logger?.LogDebug("[PERF] Validating Ribbon images (converting animated images to static bitmaps)");
+                    _ribbon.ValidateAndConvertImages(_logger);
+
                     _ribbon.PerformLayout();
                     _ribbon.Refresh();
                     _ribbon.BringToFront();
-                    _logger?.LogInformation("[PERF] Deferred Chrome Optimization completed successfully");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "[PERF] Ribbon refresh failed during deferred optimization");
+                }, _logger);
+
+                _logger?.LogInformation("[PERF] Deferred Chrome Optimization completed successfully");
             }
         }
         catch (OperationCanceledException)
         {
             _logger?.LogDebug("[PERF] Deferred Chrome Optimization cancelled - form closing");
-            throw;
         }
         catch (Exception ex)
         {
@@ -1128,3 +1144,4 @@ public partial class MainForm
         }
     }
 }
+

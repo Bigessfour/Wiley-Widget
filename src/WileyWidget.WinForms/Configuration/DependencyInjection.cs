@@ -163,13 +163,7 @@ namespace WileyWidget.WinForms.Configuration
                              (int?)args.Outcome.Result?.StatusCode >= 500))  // 5xx
                     });
 
-                    // Hedging: Fire parallel attempts for faster response (great for Grok latency)
-                    // When initial attempt is slow, spawn hedged attempts staggered by 500ms
-                    builder.AddHedging(new HttpHedgingStrategyOptions
-                    {
-                        MaxHedgedAttempts = 3,
-                        Delay = TimeSpan.FromMilliseconds(500)
-                    });
+                    // Hedging disabled to avoid duplicate requests and cancellation cascades.
 
                     // Circuit Breaker: Prevent hammering when Grok is down
                     builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
@@ -439,6 +433,7 @@ namespace WileyWidget.WinForms.Configuration
 
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, GrokAgentService>();
+            services.AddScoped<JarvisGrokBridgeHandler>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
@@ -446,6 +441,34 @@ namespace WileyWidget.WinForms.Configuration
             services.TryAddScoped<IAILoggingService, AILoggingService>();
 
             // AI-Powered Search and Analysis Services
+            // Register OpenAI embedding generator for semantic search (using OpenAI endpoint as fallback)
+#pragma warning disable SKEXP0010 // Experimental API - required for SK 1.70 compatibility
+            try
+            {
+                var openaiKey = (configuration?["OPENAI_API_KEY"] ?? configuration?["OpenAI:ApiKey"]) ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(openaiKey))
+                {
+                    services.AddOpenAIEmbeddingGenerator(
+                        modelId: "text-embedding-3-small",
+                        apiKey: openaiKey
+                    );
+                }
+                else
+                {
+                    // No OpenAI key - semantic search will fall back to keyword search
+                    services.AddOpenAIEmbeddingGenerator(
+                        modelId: "text-embedding-3-small",
+                        apiKey: "placeholder"  // Will be null/unavailable in SemanticSearchService
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // Failed to register embedding generator - semantic search will use keyword fallback
+                System.Diagnostics.Debug.WriteLine($"[DI] Failed to register OpenAI embedding generator: {ex.Message}");
+            }
+#pragma warning restore SKEXP0010
+
             services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
             services.AddSingleton<IConversationRepository, EfConversationRepository>();
@@ -559,6 +582,11 @@ namespace WileyWidget.WinForms.Configuration
             // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
             // Use AddScoped directly instead of ActivatorUtilities.CreateInstance to avoid trying to instantiate during validation.
             services.TryAddScoped<GrokAgentService>();
+
+            // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
+            // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered
+            services.AddScoped<WileyWidget.Abstractions.IAsyncInitializable>(sp =>
+                DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp));
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)
             // Analyzes enterprise data using Grok and publishes insights to observable collection

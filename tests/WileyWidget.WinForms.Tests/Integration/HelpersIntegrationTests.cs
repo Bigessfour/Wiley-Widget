@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using WileyWidget.WinForms.Helpers;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Tests.Integration;
 
 namespace WileyWidget.WinForms.Tests.Integration;

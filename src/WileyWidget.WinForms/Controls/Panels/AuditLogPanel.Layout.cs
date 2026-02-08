@@ -17,7 +17,7 @@ using WileyWidget.WinForms.Controls.Base;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.Windows.Forms.Tools;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -145,3 +145,4 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
     }
 }
+

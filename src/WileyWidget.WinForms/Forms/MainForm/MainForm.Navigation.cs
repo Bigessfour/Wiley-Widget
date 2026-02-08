@@ -83,39 +83,6 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Opens JARVIS Chat in a modal dialog, using the shared application services.
-    /// </summary>
-    public void ShowJarvisChatModal()
-    {
-        if (IsDisposed)
-        {
-            return;
-        }
-
-        if (_serviceProvider == null)
-        {
-            _logger?.LogWarning("ShowJarvisChatModal called but ServiceProvider is null");
-            return;
-        }
-
-        AsyncEventHelper.EnsureOnUiThread(this, () =>
-        {
-            try
-            {
-                var dialogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<ILogger<JarvisChatDialog>>(_serviceProvider);
-                using var dialog = new JarvisChatDialog(_serviceProvider, dialogLogger);
-                dialog.ShowDialog(this);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to open JARVIS Chat modal");
-                UIHelper.ShowErrorOnUI(this, "Failed to open JARVIS Chat window.", "JARVIS Chat", _logger);
-            }
-        });
-    }
-
-    /// <summary>
     /// Performs a global search across all modules (accounts, budgets, reports).
     /// This method delegates to MainViewModel.GlobalSearchCommand for MVVM purity.
     /// Called from ribbon search box for backward compatibility.

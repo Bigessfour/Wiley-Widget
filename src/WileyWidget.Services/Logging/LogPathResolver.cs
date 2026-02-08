@@ -15,7 +15,7 @@ namespace WileyWidget.Services.Logging
                 ?? FindRepoRoot(new DirectoryInfo(AppContext.BaseDirectory));
 
             var baseDir = repoRoot?.FullName ?? Directory.GetCurrentDirectory();
-            var logsDir = Path.Combine(baseDir, "log");
+            var logsDir = Path.Combine(baseDir, "logs");
             Directory.CreateDirectory(logsDir);
             return logsDir;
         }

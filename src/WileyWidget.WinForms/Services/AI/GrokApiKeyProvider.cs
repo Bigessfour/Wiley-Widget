@@ -57,14 +57,15 @@ namespace WileyWidget.WinForms.Services.AI
             var candidates = new[]
             {
                 ("XAI:ApiKey", "configuration: XAI:ApiKey (user-secrets or XAI__ApiKey env var)"),
+                ("xAI:ApiKey", "configuration: xAI:ApiKey"),
                 ("Grok:ApiKey", "configuration: Grok:ApiKey (legacy)"),
             };
 
-            // 1. Try User Secrets first (highest priority, secure)
+            // 1. Try Configuration first (includes User Secrets, appsettings.json, and mapped Environment Variables)
             foreach (var (configKey, source) in candidates)
             {
                 var value = _configuration[configKey];
-                if (!string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value) && !value.Contains("YOUR_") && value.Trim().Length > 10)
                 {
                     _apiKey = value.Trim().Trim('"');
                     _configurationSource = source;
@@ -120,58 +121,14 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            // 3. LEGACY: Try XAI_API_KEY (single underscore) - still supported for backward compatibility
-            var legacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Process);
-            if (!string.IsNullOrWhiteSpace(legacyEnvKey))
-            {
-                _apiKey = legacyEnvKey.Trim().Trim('"');
-                _configurationSource = "environment variable (XAI_API_KEY - process scope) [LEGACY - use XAI__ApiKey instead]";
-                _isFromUserSecrets = false;
-                _logger?.LogWarning(
-                    "[Grok] API key loaded from LEGACY {Source} (length: {Length}). " +
-                    "Prefer 'XAI__ApiKey' environment variable (double underscore) per Microsoft configuration conventions.",
-                    _configurationSource,
-                    _apiKey.Length);
-                return;
-            }
-
-            legacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.User);
-            if (!string.IsNullOrWhiteSpace(legacyEnvKey))
-            {
-                _apiKey = legacyEnvKey.Trim().Trim('"');
-                _configurationSource = "environment variable (XAI_API_KEY - user scope) [LEGACY - use XAI__ApiKey instead]";
-                _isFromUserSecrets = false;
-                _logger?.LogWarning(
-                    "[Grok] API key loaded from LEGACY {Source} (length: {Length}). " +
-                    "Prefer 'XAI__ApiKey' environment variable (double underscore) per Microsoft configuration conventions.",
-                    _configurationSource,
-                    _apiKey.Length);
-                return;
-            }
-
-            legacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Machine);
-            if (!string.IsNullOrWhiteSpace(legacyEnvKey))
-            {
-                _apiKey = legacyEnvKey.Trim().Trim('"');
-                _configurationSource = "environment variable (XAI_API_KEY - machine scope) [LEGACY - use XAI__ApiKey instead]";
-                _isFromUserSecrets = false;
-                _logger?.LogWarning(
-                    "[Grok] API key loaded from LEGACY {Source} (length: {Length}). " +
-                    "Prefer 'XAI__ApiKey' environment variable (double underscore) per Microsoft configuration conventions.",
-                    _configurationSource,
-                    _apiKey.Length);
-                return;
-            }
-
-            // 4. API key not found
+            // 3. API key not found
             _configurationSource = "NOT CONFIGURED";
             _logger?.LogWarning(
                 "[Grok] No API key found in user secrets or environment variables. " +
                 "JARVIS Chat will not function. " +
                 "Configure via one of these methods:\n" +
                 "  1. User Secrets: dotnet user-secrets set XAI:ApiKey <your-key>\n" +
-                "  2. Environment Variable (recommended): setx XAI__ApiKey <your-key> (double underscore, per Microsoft conventions)\n" +
-                "  3. Environment Variable (legacy): setx XAI_API_KEY <your-key> (single underscore, deprecated)");
+                "  2. Environment Variable (recommended): setx XAI__ApiKey <your-key> (double underscore, per Microsoft conventions)");
         }
 
         /// <summary>
@@ -221,20 +178,20 @@ namespace WileyWidget.WinForms.Services.AI
 
             try
             {
-                _logger?.LogInformation("[Grok] Validating API key via minimal test request to /v1/chat/completions...");
+                _logger?.LogInformation("[Grok] Validating API key via minimal test request to /v1/responses endpoint...");
 
                 var httpClient = _httpClientFactory?.CreateClient("GrokClient") ?? new HttpClient();
-                var endpoint = new Uri(GetBaseEndpoint(), "chat/completions");
+                var endpoint = new Uri(GetBaseEndpoint(), "responses");
 
-                // Create minimal test request payload
+                // Create minimal test request payload using x.ai /v1/responses API format
                 var testPayload = new
                 {
-                    model = "grok-beta",
-                    messages = new[]
+                    model = _configuration["XAI:Model"] ?? "grok-4-1-fast-reasoning",
+                    input = new[]
                     {
-                        new { role = "user", content = "test" }
+                        new { role = "system", content = "You are a test assistant." },
+                        new { role = "user", content = "Say 'Test successful!' briefly." }
                     },
-                    max_tokens = 1,
                     stream = false
                 };
 
@@ -248,10 +205,31 @@ namespace WileyWidget.WinForms.Services.AI
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _isValidated = true;
-                    var msg = $"✅ API key validated successfully ({MaskedApiKey}). Grok service ready.";
-                    _logger?.LogInformation("[Grok] {Message}", msg);
-                    return (true, msg);
+                    // Verify response structure matches /v1/responses format
+                    var content = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(content);
+                        if (doc.RootElement.TryGetProperty("output", out var output) && output.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            _isValidated = true;
+                            var msg = $"✅ API key validated successfully ({MaskedApiKey}). Grok service ready.";
+                            _logger?.LogInformation("[Grok] {Message}", msg);
+                            return (true, msg);
+                        }
+                        else
+                        {
+                            var msg = $"❌ API validation failed: Unexpected response format. Expected /v1/responses format with 'output' field. Response: {content.Substring(0, Math.Min(200, content.Length))}";
+                            _logger?.LogWarning("[Grok] {Message}", msg);
+                            return (false, msg);
+                        }
+                    }
+                    catch (System.Text.Json.JsonException ex)
+                    {
+                        var msg = $"❌ API validation failed: Could not parse response JSON. {ex.Message}";
+                        _logger?.LogWarning("[Grok] {Message}", msg);
+                        return (false, msg);
+                    }
                 }
 
                 var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);

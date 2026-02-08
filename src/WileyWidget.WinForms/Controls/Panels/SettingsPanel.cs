@@ -35,7 +35,7 @@ using WileyWidget.WinForms.Controls.Supporting;
 using ValidationResult = WileyWidget.WinForms.Controls.Base.ValidationResult;
 using Syncfusion.Drawing;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -1351,6 +1351,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         #endregion
     }
 }
+
 
 
 

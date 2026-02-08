@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 
-namespace WileyWidget.WinForms.Utils
+namespace WileyWidget.WinForms.Helpers
 {
     /// <summary>
     /// Comprehensive control sizing validator for all WinForms controls.

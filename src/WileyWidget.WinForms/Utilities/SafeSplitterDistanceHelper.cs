@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace WileyWidget.WinForms.Utils
+namespace WileyWidget.WinForms.Helpers
 {
     /// <summary>
     /// Comprehensive helper utility for safely configuring SplitContainer sizing and layout.

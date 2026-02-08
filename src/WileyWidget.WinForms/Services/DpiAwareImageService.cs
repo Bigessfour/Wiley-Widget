@@ -53,30 +53,30 @@ public sealed class DpiAwareImageService : IDisposable
             ImageSize = new Size(16, 16) // Base size for toolbars/buttons
         };
 
-        LoadIconsAsync();
+        // [PERF] Do not load icons eagerly in constructor.
+        // This avoids blocking the UI thread during startup (~200ms saved).
+        // Icons will be loaded on-demand via GetImage/GetImageIndex.
     }
 
-    /// <summary>
-    /// Loads all application icons into the ImageListAdv with multiple DPI variants.
-    /// </summary>
-    /// <remarks>
-    /// Production implementation: Uses system icons with carefully selected fallbacks that maintain
-    /// visual consistency and clarity at all DPI levels (100%, 125%, 150%, 200%).
-    ///
-    /// DPI Mapping:
-    /// - DPI96: 16x16 (100% scaling, default)
-    /// - DPI120: 20x20 (125% scaling)
-    /// - DPI144: 24x24 (150% scaling)
-    /// - DPI192: 32x32 (200% scaling)
-    ///
-    /// Future enhancement: Load custom vector/PNG icons from embedded resources for branded appearance.
-    /// </remarks>
-    private void LoadIconsAsync()
+    private void EnsureIconsLoaded()
+    {
+        if (_iconNameToIndex.Count > 0) return;
+
+        lock (_iconNameToIndex)
+        {
+            if (_iconNameToIndex.Count > 0) return;
+            LoadIconsInternal();
+        }
+    }
+
+    private void LoadIconsInternal()
     {
         try
         {
+            _logger.LogInformation("DPI-aware image service: performing deferred icon loading...");
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             // Production-ready icon definitions with intentional system icon selections
-            // Each icon chosen for visual clarity and consistency across all DPI levels
             var iconDefinitions = new Dictionary<string, Icon>
             {
                 // File operations - standard system icons for familiar UI
@@ -202,6 +202,8 @@ public sealed class DpiAwareImageService : IDisposable
     /// </remarks>
     public Image? GetImage(string iconName)
     {
+        EnsureIconsLoaded();
+
         if (string.IsNullOrWhiteSpace(iconName))
         {
             return null;
@@ -230,12 +232,14 @@ public sealed class DpiAwareImageService : IDisposable
     /// - 120 DPI (125%): Returns 20x20 DPI120Image if available
     /// - 144 DPI (150%): Returns 24x24 DPI144Image if available
     /// - 192 DPI (200%): Returns 32x32 DPI192Image if available
-    /// 
+    ///
     /// This avoids the Syncfusion ribbon blurring issue where 32px icons upscaled from 16px sources
     /// appear fuzzy on non-100% displays.
     /// </remarks>
     public Image? GetScaledImage(string iconName, Size targetSize)
     {
+        EnsureIconsLoaded();
+
         if (string.IsNullOrWhiteSpace(iconName) || targetSize.Width <= 0 || targetSize.Height <= 0)
         {
             return null;
@@ -332,6 +336,7 @@ public sealed class DpiAwareImageService : IDisposable
     /// </remarks>
     public int GetImageIndex(string iconName)
     {
+        EnsureIconsLoaded();
         return _iconNameToIndex.TryGetValue(iconName, out int index) ? index : -1;
     }
 

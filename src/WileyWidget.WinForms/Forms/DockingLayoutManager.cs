@@ -19,7 +19,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Forms;
@@ -47,8 +47,8 @@ public class DockingLayoutManager : IDisposable
     private readonly string _layoutPath;  // Path for layout persistence
     private readonly Control _uiControl;  // UI control for thread marshaling
     private readonly DockingManager _dockingManager;
-    private readonly LegacyGradientPanel _leftDockPanel;
-    private readonly LegacyGradientPanel _rightDockPanel;
+    private readonly LegacyGradientPanel? _leftDockPanel;
+    private readonly LegacyGradientPanel? _rightDockPanel;
     private readonly LegacyGradientPanel _centralDocumentPanel;
     private readonly ActivityLogPanel? _activityLogPanel;
 
@@ -73,7 +73,7 @@ public class DockingLayoutManager : IDisposable
     // Dynamic panels tracking
     private Dictionary<string, LegacyGradientPanel>? _dynamicDockPanels = new();  // Instance-safe
 
-    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, LegacyGradientPanel leftDockPanel, LegacyGradientPanel rightDockPanel, LegacyGradientPanel centralDocumentPanel, ActivityLogPanel? activityLogPanel)
+    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, LegacyGradientPanel? leftDockPanel, LegacyGradientPanel? rightDockPanel, LegacyGradientPanel centralDocumentPanel, ActivityLogPanel? activityLogPanel)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
@@ -81,10 +81,12 @@ public class DockingLayoutManager : IDisposable
         _layoutPath = layoutPath ?? throw new ArgumentNullException(nameof(layoutPath));
         _uiControl = uiControl ?? throw new ArgumentNullException(nameof(uiControl));
         _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
-        _leftDockPanel = leftDockPanel ?? throw new ArgumentNullException(nameof(leftDockPanel));
-        _rightDockPanel = rightDockPanel ?? throw new ArgumentNullException(nameof(rightDockPanel));
+        _leftDockPanel = leftDockPanel;
+        _rightDockPanel = rightDockPanel;
         _centralDocumentPanel = centralDocumentPanel ?? throw new ArgumentNullException(nameof(centralDocumentPanel));
         _activityLogPanel = activityLogPanel;
+
+        // Note: DockingManager serialization handled by LoadDockState/SaveDockState with GZip compression
 
         // Setup save timer with tick handler
         _dockingLayoutSaveTimer = new System.Windows.Forms.Timer
@@ -94,7 +96,7 @@ public class DockingLayoutManager : IDisposable
         // Use synchronous handler to avoid fire-and-forget async pattern
         _dockingLayoutSaveTimer.Tick += (_, _) => DebounceSaveDockingLayoutSync();
 
-        _logger?.LogDebug("DockingLayoutManager initialized with layout path: {Path} (GZip compression enabled, retry mechanism active)", _layoutPath);
+        _logger?.LogDebug("DockingLayoutManager initialized with layout path: {Path} (GZip compression enabled, retry mechanism active, BinaryFmtStream serialization configured)", _layoutPath);
     }
 
     /// <summary>
@@ -1078,11 +1080,14 @@ public class DockingLayoutManager : IDisposable
             try
             {
                 // Left panel (Navigation)
-                _dockingManager.SetEnableDocking(_leftDockPanel, true);
-                _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
-                _dockingManager.DockControl(_leftDockPanel, hostControl, DockingStyle.Left, 300);
-                _dockingManager.SetAutoHideMode(_leftDockPanel, true);
-                _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px auto-hide)");
+                if (_leftDockPanel != null)
+                {
+                    _dockingManager.SetEnableDocking(_leftDockPanel, true);
+                    _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
+                    _dockingManager.DockControl(_leftDockPanel, hostControl, DockingStyle.Left, 300);
+                    _dockingManager.SetAutoHideMode(_leftDockPanel, true);
+                    _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px auto-hide)");
+                }
             }
             catch (Exception leftEx)
             {
@@ -1092,11 +1097,14 @@ public class DockingLayoutManager : IDisposable
             try
             {
                 // Right panel (Activity)
-                _dockingManager.SetEnableDocking(_rightDockPanel, true);
-                _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
-                _dockingManager.DockControl(_rightDockPanel, hostControl, DockingStyle.Right, 350);
-                _dockingManager.SetAutoHideMode(_rightDockPanel, true);
-                _logger?.LogDebug("Reset right docking panel to default (Activity, 350px auto-hide)");
+                if (_rightDockPanel != null)
+                {
+                    _dockingManager.SetEnableDocking(_rightDockPanel, true);
+                    _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
+                    _dockingManager.DockControl(_rightDockPanel, hostControl, DockingStyle.Right, 350);
+                    _dockingManager.SetAutoHideMode(_rightDockPanel, true);
+                    _logger?.LogDebug("Reset right docking panel to default (Activity, 350px auto-hide)");
+                }
             }
             catch (Exception rightEx)
             {
@@ -1186,3 +1194,4 @@ public class DynamicPanelInfo
     public string? DockLabel { get; set; }
     public bool IsAutoHide { get; set; }
 }
+

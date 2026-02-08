@@ -24,7 +24,7 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls.Analytics;

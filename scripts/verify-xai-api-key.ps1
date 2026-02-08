@@ -67,13 +67,28 @@ try {
     $secrets = dotnet user-secrets list 2>&1
     $secretsOutput = $secrets -join "`n"
 
-    if ($secretsOutput -match "XAI:ApiKey") {
-        Write-Host "  ✅ User secret 'XAI:ApiKey' found" -ForegroundColor Green
-        $successes += "User secret XAI:ApiKey is configured"
-    } else {
-        Write-Host "  ⚠️  User secret 'XAI:ApiKey' not found" -ForegroundColor Yellow
+    # Check all possible configuration key variations (matches GrokApiKeyProvider.cs)
+    $foundSecretKey = $null
+    $secretCandidates = @(
+        @{ Key = "XAI:ApiKey"; Description = "Recommended format (XAI:ApiKey)" },
+        @{ Key = "xAI:ApiKey"; Description = "Alternative casing (xAI:ApiKey)" },
+        @{ Key = "Grok:ApiKey"; Description = "Legacy format (Grok:ApiKey)" }
+    )
+
+    foreach ($candidate in $secretCandidates) {
+        if ($secretsOutput -match [regex]::Escape($candidate.Key)) {
+            Write-Host "  ✅ User secret '$($candidate.Key)' found - $($candidate.Description)" -ForegroundColor Green
+            $foundSecretKey = $candidate.Key
+            $successes += "User secret $($candidate.Key) is configured"
+            break
+        }
+    }
+
+    if ($null -eq $foundSecretKey) {
+        Write-Host "  ⚠️  No user secret found for xAI API key" -ForegroundColor Yellow
+        Write-Host "      Checked: XAI:ApiKey, xAI:ApiKey, Grok:ApiKey" -ForegroundColor Yellow
         Write-Host "      Set it with: dotnet user-secrets set 'XAI:ApiKey' 'your-key'" -ForegroundColor Yellow
-        $issues += "User secret XAI:ApiKey not configured"
+        $issues += "User secret for xAI API key not configured (checked all variants)"
     }
 } catch {
     Write-Host "  ⚠️  Could not check user-secrets: $_" -ForegroundColor Yellow
@@ -154,8 +169,17 @@ if ($null -ne $xaiModernFinal -and $xaiModernFinal -ne "") {
 }
 
 try {
-    if ($secretsOutput -match "XAI:ApiKey") {
-        $foundSources = @("User Secrets (TIER 1 - highest priority)") + $foundSources
+    # Check all possible user secret key variations
+    $foundUserSecretKey = $null
+    foreach ($candidate in $secretCandidates) {
+        if ($secretsOutput -match [regex]::Escape($candidate.Key)) {
+            $foundUserSecretKey = $candidate.Key
+            break
+        }
+    }
+
+    if ($foundUserSecretKey) {
+        $foundSources = @("User Secrets ($foundUserSecretKey - TIER 1, highest priority)") + $foundSources
     }
 } catch {
     # Continue

@@ -1141,22 +1141,15 @@ public static class RibbonFactory
         settingsBtn.Tag = "Nav:Settings";
         settingsBtn.Enabled = true;
 
-        // JARVIS Chat button (docked/floating)
+        // JARVIS Chat button (docked to right panel)
         var jarvisBtn = CreateLargeNavButton(
             "Nav_JARVIS", "JARVIS\nChat", "jarvis", theme,
             () => form.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
                 "JARVIS Chat",
-                DockingStyle.Bottom,
-                allowFloating: true), logger);
+                DockingStyle.Right,
+                allowFloating: false), logger);
         jarvisBtn.Tag = "Nav:JARVIS";
         jarvisBtn.Enabled = true;
-
-        // JARVIS Chat modal button
-        var jarvisModalBtn = CreateLargeNavButton(
-            "Action_JARVISModal", "JARVIS\nModal", "jarvis", theme,
-            () => form.ShowJarvisChatModal(), logger);
-        jarvisModalBtn.Tag = "Action:JARVISModal";
-        jarvisModalBtn.Enabled = true;
 
         // QuickBooks button
         var quickBooksBtn = CreateLargeNavButton(
@@ -1165,11 +1158,10 @@ public static class RibbonFactory
         quickBooksBtn.Tag = "Nav:QuickBooks";
         quickBooksBtn.Enabled = true;
 
-        // [OFFICE2019] Square grouping - Settings, QuickBooks, JARVIS, Modal arranged in grid
+        // [OFFICE2019] Square grouping - Settings, QuickBooks, JARVIS rearranged
         strip.Items.Add(settingsBtn);
         strip.Items.Add(quickBooksBtn);
         strip.Items.Add(jarvisBtn);
-        strip.Items.Add(jarvisModalBtn);
 
         return (strip, quickBooksBtn, settingsBtn);
     }

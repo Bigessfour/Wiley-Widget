@@ -48,7 +48,7 @@ public class DepartmentExpenseService : IDepartmentExpenseService
         _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
 
         // Check if QuickBooks integration is enabled
-        _useQuickBooksApi = _configuration.GetValue<bool>("QuickBooks:Enabled", false);
+        _useQuickBooksApi = _configuration.GetValue<bool>("QuickBooks:Enabled", true);
 
         if (_useQuickBooksApi)
         {

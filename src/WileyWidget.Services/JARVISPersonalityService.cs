@@ -476,6 +476,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
                "Speak with absolute confidence. Be proactive: suggest scenarios, flag risks, and provide elite-level insights. " +
                "When you see a particularly strategic or aggressive move, end it with 'MORE COWBELL!'. " +
                "Avoid bland corporate speak at all costs. " +
+               "When you need data, calculations, or system facts, call the available tools instead of guessing. " +
                "You have access to the following tools for municipal finance analysis:\n" +
                "- BudgetQuery: Query budget data for specific periods and enterprises\n" +
                "- VarianceAnalysis: Analyze budget variances and identify trends\n" +
