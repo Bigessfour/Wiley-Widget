@@ -22,8 +22,15 @@ console-output.log
 test-run.log
 build.log
 build-output.txt
+build-result.txt
+analyze-hub.log
+app-run.log
 *.binlog
 msbuild.binlog
+diagnostic-startup.ps1.log
+test-error.txt
+test-output.txt
+build-diag.txt
 
 # Publish artifacts
 publish/
@@ -160,7 +167,6 @@ yarn-error.log*
 
 # Large binary files (>50MB GitHub limit)
 *.pdf
-*.pdb
 *.dll
 *.exe
 !scripts/*.exe
@@ -191,11 +197,14 @@ coverage.xml
 *.nettrace
 *.nettrace.etlx
 
-# Debugger files
+# Debugger files and caches
 .vsdbg/
+.symbols/
 
-# Windows system files
+# Windows system files and misplaced user directories
 %APPDATA%/
+%LOCALAPPDATA%/
+%TEMP%/
 
 # Additional .NET build artifacts
 *.DotSettings.user
@@ -327,6 +336,11 @@ yarn-error.log*
 *.tmp
 tmp/
 temp/
+analyze-*.log
+dead-code-*.json
+dead-code-*.csv
+implementation-plan.json
+methods-to-implement.json
 
 # Generated manifests
 ai-fetchable-manifest.json
@@ -372,7 +386,9 @@ tests/WileyWidget.Docker.Tests/
 
 # Diagnostic dumps (process memory dumps, traces)
 dumps/
+diagnostics/
 *.dmp
 *.nettrace
 *.etlx
 *.bundle
+diagnostic-report.json
