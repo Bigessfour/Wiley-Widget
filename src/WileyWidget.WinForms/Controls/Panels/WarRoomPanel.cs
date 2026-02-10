@@ -66,6 +66,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         // Event handler storage for proper cleanup in Dispose
         private EventHandler? _btnRunScenarioClickHandler;
+        private EventHandler? _btnExportForecastClickHandler;
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
         private EventHandler? _scenarioInputTextChangedHandler;
 
@@ -225,6 +226,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Wire up Run Scenario button with stored handler for cleanup
                 _btnRunScenarioClickHandler = async (s, e) => await OnRunScenarioClickAsync();
                 _btnRunScenario.Click += _btnRunScenarioClickHandler;
+
+                // Wire up Export Forecast button with stored handler for cleanup
+                _btnExportForecastClickHandler = async (s, e) => await OnExportForecastClickAsync();
+                _btnExportForecast.Click += _btnExportForecastClickHandler;
 
                 // Wire up scenario input textbox with stored handler for cleanup
                 _scenarioInputTextChangedHandler = (s, e) => OnScenarioInputTextChanged();
@@ -398,6 +403,27 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ViewModel.ScenarioInput = _scenarioInput.Text;
                 SetHasUnsavedChanges(true); // Mark as dirty on user edit
                 _lblInputError.Visible = false; // Clear error on input change
+            }
+        }
+
+        /// <summary>
+        /// Handles Export Forecast button click.
+        /// </summary>
+        private async Task OnExportForecastClickAsync()
+        {
+            if (ViewModel?.ExportForecastCommand == null || !ViewModel.ExportForecastCommand.CanExecute(null))
+            {
+                _logger?.LogWarning("Export forecast command not available or cannot execute");
+                return;
+            }
+
+            try
+            {
+                await ViewModel.ExportForecastCommand.ExecuteAsync(null);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error executing export forecast command");
             }
         }
 
@@ -977,7 +1003,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             try
             {
                 IsBusy = true;
+
+                // Clear any existing panel-level validation errors
+                ClearValidationErrors();
                 _errorProvider?.Clear();
+
                 var errors = new List<ValidationItem>();
 
                 // Validate scenario input
@@ -1019,18 +1049,28 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 await Task.CompletedTask;
 
-                return errors.Count == 0
-                    ? ValidationResult.Success
-                    : ValidationResult.Failed(errors.ToArray());
+                if (errors.Count == 0)
+                {
+                    // No errors: ensure panel state reflects success
+                    ClearValidationErrors();
+                    return ValidationResult.Success;
+                }
+
+                // Propagate errors to panel state so UI and consumers can read them
+                SetValidationErrors(errors);
+                return ValidationResult.Failed(errors.ToArray());
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error validating WarRoom panel");
-                return ValidationResult.Failed(new ValidationItem(
+                var item = new ValidationItem(
                     FieldName: "Validation",
                     Message: ex.Message,
                     Severity: ValidationSeverity.Error
-                ));
+                );
+
+                SetValidationErrors(new[] { item });
+                return ValidationResult.Failed(item);
             }
             finally
             {
@@ -1084,6 +1124,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                     if (_btnRunScenario != null && _btnRunScenarioClickHandler != null)
                     {
                         _btnRunScenario.Click -= _btnRunScenarioClickHandler;
+                    }
+
+                    // Unsubscribe from export button click handler
+                    if (_btnExportForecast != null && _btnExportForecastClickHandler != null)
+                    {
+                        _btnExportForecast.Click -= _btnExportForecastClickHandler;
                     }
 
                     // Unsubscribe from text changed handler

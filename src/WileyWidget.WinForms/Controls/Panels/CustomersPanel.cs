@@ -170,16 +170,22 @@ public partial class CustomersPanel : ScopedPanelBase
 
     public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
     {
-        var errors = (List<ValidationItem>)ValidationErrors;
-        errors.Clear();
+        // Clear any existing panel-level validation errors
+        ClearValidationErrors();
 
         if (ViewModel != null)
         {
             var result = await ViewModel.ValidateAsync(ct);
-            // Populate errors from ViewModel if available
-            // For now, assume ViewModel handles its own errors
-            return result;
+            if (result.IsValid)
+            {
+                return ValidationResult.Success;
+            }
+
+            // Propagate ViewModel validation items to the panel state for UI consumption
+            SetValidationErrors(result.Errors);
+            return ValidationResult.Failed(result.Errors.ToArray());
         }
+
         return ValidationResult.Success;
     }
 
@@ -191,8 +197,12 @@ public partial class CustomersPanel : ScopedPanelBase
             if (result.IsValid)
             {
                 SetHasUnsavedChanges(false);
+                ClearValidationErrors();
+                return ValidationResult.Success;
             }
-            return result;
+
+            SetValidationErrors(result.Errors);
+            return ValidationResult.Failed(result.Errors.ToArray());
         }
         return ValidationResult.Success;
     }
