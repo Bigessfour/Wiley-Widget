@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
+using System.ComponentModel;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
@@ -37,11 +38,11 @@ public partial class OverviewTabControl : UserControl
     private SfButton? _exportButton;
 
     private LegacyGradientPanel? _summaryPanel;
-    private LegacyGradientPanel? _lblTotalBudget;
-    private LegacyGradientPanel? _lblTotalActual;
-    private LegacyGradientPanel? _lblVariance;
-    private LegacyGradientPanel? _lblOverBudgetCount;
-    private LegacyGradientPanel? _lblUnderBudgetCount;
+    private Label? _lblTotalBudget;
+    private Label? _lblTotalActual;
+    private Label? _lblVariance;
+    private Label? _lblOverBudgetCount;
+    private Label? _lblUnderBudgetCount;
 
     private ChartControl? _varianceChart;
     private SfDataGrid? _metricsGrid;
@@ -139,17 +140,21 @@ public partial class OverviewTabControl : UserControl
 
         // Fiscal Year
         var fyLabel = new Label { Text = "Fiscal Year:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
         _fiscalYearComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
-            DisplayMember = "Value",
-            ValueMember = "Value"
+            ThemeName = themeName,
+            DisplayMember = null,  // Use default ToString for List<int> integers
+            ValueMember = null,    // Use value itself without explicit member mapping
+            AllowNull = false,     // Require selection
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
         };
 
         // Buttons
         var buttonsPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
-        _refreshButton = new SfButton { Text = "Refresh", Width = 80 };
-        _exportButton = new SfButton { Text = "Export CSV", Width = 100 };
+        _refreshButton = new SfButton { Text = "Refresh", Width = 80, ThemeName = themeName };
+        _exportButton = new SfButton { Text = "Export CSV", Width = 100, ThemeName = themeName };
 
         buttonsPanel.Controls.AddRange(new Control[] { _refreshButton, _exportButton });
 
@@ -178,17 +183,12 @@ public partial class OverviewTabControl : UserControl
             WrapContents = true
         };
 
-        // Create summary tiles
-        _lblTotalBudget = CreateSummaryTile("Total Budget", "$0", Color.DodgerBlue);
-        _lblTotalActual = CreateSummaryTile("Total Actual", "$0", Color.Green);
-        _lblVariance = CreateSummaryTile("Variance", "$0", Color.Orange);
-        _lblOverBudgetCount = CreateSummaryTile("Over Budget", "0", Color.Red);
-        _lblUnderBudgetCount = CreateSummaryTile("Under Budget", "0", Color.Green);
-
-        flow.Controls.AddRange(new Control[] {
-            _lblTotalBudget, _lblTotalActual, _lblVariance,
-            _lblOverBudgetCount, _lblUnderBudgetCount
-        });
+        // Create summary tiles - CreateSummaryTile now adds tile to parent and returns the value label
+        _lblTotalBudget = CreateSummaryTile(flow, "Total Budget", "$0", Color.DodgerBlue);
+        _lblTotalActual = CreateSummaryTile(flow, "Total Actual", "$0", Color.Green);
+        _lblVariance = CreateSummaryTile(flow, "Variance", "$0", Color.Orange);
+        _lblOverBudgetCount = CreateSummaryTile(flow, "Over Budget", "0", Color.Red);
+        _lblUnderBudgetCount = CreateSummaryTile(flow, "Under Budget", "0", Color.Green);
 
         _summaryPanel.Controls.Add(flow);
         parent.Controls.Add(_summaryPanel);
@@ -219,12 +219,14 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeMetricsGrid(Control parent)
     {
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
         _metricsGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
             AllowEditing = false,
             AllowGrouping = true,
-            AutoGenerateColumns = false
+            AutoGenerateColumns = false,
+            ThemeName = themeName  // Apply theme to grid
         };
 
         var columns = new GridColumn[]
@@ -243,8 +245,9 @@ public partial class OverviewTabControl : UserControl
         parent.Controls.Add(_metricsGrid);
     }
 
-    private LegacyGradientPanel CreateSummaryTile(string title, string value, Color accentColor)
+    private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
     {
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
         var tile = new LegacyGradientPanel
         {
             Width = 150,
@@ -255,76 +258,277 @@ public partial class OverviewTabControl : UserControl
             AccessibleName = $"{title} summary card",
             AccessibleDescription = $"Displays {title.ToLowerInvariant()} metric"
         };
-        SfSkinManager.SetVisualStyle(tile, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(tile, currentTheme);
+        tile.ThemeName = currentTheme;
 
-        var layout = new TableLayoutPanel
+        var titleLabel = new Label
         {
-            Dock = DockStyle.Fill,
-            RowCount = 2,
-            ColumnCount = 1
+            Text = title,
+            Dock = DockStyle.Top,
+            Height = 24,
+            TextAlign = ContentAlignment.MiddleCenter
+            // Font and ForeColor inherited from theme cascade
         };
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
+        tile.Controls.Add(titleLabel);
 
         var valueLabel = new Label
         {
             Text = value,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-            ForeColor = accentColor
+            AccessibleName = $"{title} value",
+            AccessibleDescription = $"Current {title.ToLowerInvariant()}: {value}"
+            // Font and ForeColor inherited from theme cascade
         };
+        tile.Controls.Add(valueLabel);
 
-        var titleLabel = new Label
-        {
-            Text = title,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 9F)
-        };
-
-        layout.Controls.Add(valueLabel, 0, 0);
-        layout.Controls.Add(titleLabel, 0, 1);
-
-        tile.Controls.Add(layout);
-        return tile;
+        parent.Controls.Add(tile);
+        return valueLabel;
     }
 
     private void BindViewModel()
     {
-        if (_viewModel == null || _parentViewModel == null) return;
-
-        // Bind fiscal year combo to parent view model
-        _fiscalYearComboBox!.DataSource = _parentViewModel.FiscalYears;
-        _fiscalYearComboBox!.DataBindings.Add("SelectedValue", _parentViewModel, nameof(_parentViewModel.SelectedFiscalYear), true, DataSourceUpdateMode.OnPropertyChanged);
-
-        // Bind summary tiles
-        _lblTotalBudget!.DataBindings.Add("Text", _viewModel, nameof(_viewModel.TotalBudget), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
-        _lblTotalActual!.DataBindings.Add("Text", _viewModel, nameof(_viewModel.TotalActual), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
-        _lblVariance!.DataBindings.Add("Text", _viewModel, nameof(_viewModel.TotalVariance), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
-        _lblOverBudgetCount!.DataBindings.Add("Text", _viewModel, nameof(_viewModel.OverBudgetCount), true, DataSourceUpdateMode.OnPropertyChanged, "0", "N0");
-        _lblUnderBudgetCount!.DataBindings.Add("Text", _viewModel, nameof(_viewModel.UnderBudgetCount), true, DataSourceUpdateMode.OnPropertyChanged, "0", "N0");
-
-        // Bind grid
-        _metricsGrid!.DataSource = _viewModel.Metrics;
-
-        // Bind loading state
-        _viewModel.PropertyChanged += (s, e) =>
+        try
         {
-            if (e.PropertyName == nameof(_viewModel.IsLoading))
+            if (_viewModel == null || _parentViewModel == null) return;
+
+            // Ensure handle is created before binding
+            if (!this.IsHandleCreated)
+            {
+                this.CreateControl();
+            }
+
+            // Bind fiscal year combo to parent view model - use direct binding, not DataBindings
+            if (_fiscalYearComboBox != null && !this.IsDisposed)
+            {
+                try
+                {
+                    var yearsList = new List<int>(_parentViewModel.FiscalYears);
+                    yearsList.Sort();
+                    _fiscalYearComboBox.DataSource = yearsList;
+
+                    // Set initial selection
+                    var selectedIndex = yearsList.IndexOf(_parentViewModel.SelectedFiscalYear);
+                    if (selectedIndex >= 0)
+                    {
+                        _fiscalYearComboBox.SelectedIndex = selectedIndex;
+                    }
+                    else if (yearsList.Count > 0)
+                    {
+                        _fiscalYearComboBox.SelectedIndex = 0;
+                    }
+
+                    // Wire up selection change handler with proper thread safety
+                    _fiscalYearComboBox.SelectedIndexChanged += FiscalYear_SelectedIndexChanged;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error binding fiscal year combo: {ex.Message}");
+                }
+            }
+
+            // Subscribe to fiscal year changes from parent with thread safety
+            if (_parentViewModel != null)
+            {
+                _parentViewModel.PropertyChanged += ParentViewModel_PropertyChanged;
+            }
+
+            // Bind summary tiles - use friendly Labels, not gradient panels
+            if (_lblTotalBudget != null && !this.IsDisposed)
+                _lblTotalBudget.DataBindings.Add("Text", _viewModel, nameof(_viewModel.TotalBudget), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
+            if (_lblTotalActual != null && !this.IsDisposed)
+                _lblTotalActual.DataBindings.Add("Text", _viewModel, nameof(_viewModel.TotalActual), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
+            if (_lblVariance != null && !this.IsDisposed)
+                _lblVariance.DataBindings.Add("Text", _viewModel, nameof(_viewModel.TotalVariance), true, DataSourceUpdateMode.OnPropertyChanged, "$0", "C0");
+            if (_lblOverBudgetCount != null && !this.IsDisposed)
+                _lblOverBudgetCount.DataBindings.Add("Text", _viewModel, nameof(_viewModel.OverBudgetCount), true, DataSourceUpdateMode.OnPropertyChanged, "0", "N0");
+            if (_lblUnderBudgetCount != null && !this.IsDisposed)
+                _lblUnderBudgetCount.DataBindings.Add("Text", _viewModel, nameof(_viewModel.UnderBudgetCount), true, DataSourceUpdateMode.OnPropertyChanged, "0", "N0");
+
+            // Bind grid with performance optimization
+            if (_metricsGrid != null && !this.IsDisposed)
+            {
+                try
+                {
+                    _metricsGrid.BeginUpdate();
+                    _metricsGrid.DataSource = _viewModel.Metrics;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error binding metrics grid: {ex.Message}");
+                }
+                finally
+                {
+                    _metricsGrid.EndUpdate();
+                }
+            }
+
+            // Bind loading state with proper thread safety
+            if (_viewModel != null)
+            {
+                _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            }
+
+            UpdateLoadingState();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error binding OverviewTabControl ViewModel: {ex.Message}");
+        }
+    }
+
+    private void FiscalYear_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_fiscalYearComboBox?.SelectedItem is int year && _parentViewModel != null)
+            {
+                _parentViewModel.SelectedFiscalYear = year;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in FiscalYear_SelectedIndexChanged: {ex.Message}");
+        }
+    }
+
+    private void ParentViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        try
+        {
+            if (e.PropertyName == nameof(_parentViewModel.FiscalYears) && _fiscalYearComboBox != null && !this.IsDisposed)
+            {
+                if (this.InvokeRequired && this.IsHandleCreated)
+                {
+                    this.BeginInvoke((MethodInvoker)(() =>
+                    {
+                        if (_parentViewModel != null && _fiscalYearComboBox != null && !this.IsDisposed)
+                        {
+                            try
+                            {
+                                var years = new List<int>(_parentViewModel.FiscalYears);
+                                years.Sort();
+                                _fiscalYearComboBox.DataSource = years;
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error rebinding fiscal years: {ex.Message}");
+                            }
+                        }
+                    }));
+                }
+                else if (!this.InvokeRequired)
+                {
+                    try
+                    {
+                        var years = new List<int>(_parentViewModel.FiscalYears);
+                        years.Sort();
+                        _fiscalYearComboBox.DataSource = years;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error rebinding fiscal years: {ex.Message}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in ParentViewModel_PropertyChanged: {ex.Message}");
+        }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        try
+        {
+            if (e.PropertyName == nameof(_viewModel.IsLoading) && !this.IsDisposed)
             {
                 UpdateLoadingState();
             }
-        };
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in ViewModel_PropertyChanged: {ex.Message}");
+        }
+    }
 
-        UpdateLoadingState();
+    private void OnRefresh()
+    {
+        try
+        {
+            // Refresh button click handler
+            _ = LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in OnRefresh: {ex.Message}");
+        }
+    }
+
+    private void OnExport()
+    {
+        try
+        {
+            // Export button click handler - to be implemented
+            System.Diagnostics.Debug.WriteLine("Export functionality to be implemented");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in OnExport: {ex.Message}");
+        }
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        // Ensure handle is created before accessing controls
+        if (!this.IsHandleCreated)
+        {
+            this.CreateControl();
+        }
+
+        try
+        {
+            // Set up initial data binding timing
+            if (_metricsGrid != null && _viewModel != null)
+            {
+                // Wire up grid data source refresh on load
+                _metricsGrid.BeginUpdate();
+                _metricsGrid.DataSource = _viewModel.Metrics;
+                _metricsGrid.EndUpdate();
+            }
+
+            // Load initial data
+            _ = LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in OverviewTabControl.OnLoad: {ex.Message}");
+        }
     }
 
     private void UpdateLoadingState()
     {
-        if (_loadingOverlay != null)
+        if (_loadingOverlay != null && !this.IsDisposed)
         {
-            _loadingOverlay.Visible = _viewModel?.IsLoading ?? false;
+            if (this.InvokeRequired)
+            {
+                if (this.IsHandleCreated)
+                {
+                    this.BeginInvoke((MethodInvoker)(() =>
+                    {
+                        if (_loadingOverlay != null && !this.IsDisposed)
+                        {
+                            _loadingOverlay.Visible = _viewModel?.IsLoading ?? false;
+                        }
+                    }));
+                }
+            }
+            else
+            {
+                _loadingOverlay.Visible = _viewModel?.IsLoading ?? false;
+            }
         }
     }
 
@@ -343,8 +547,33 @@ public partial class OverviewTabControl : UserControl
         }
         catch (Exception ex)
         {
-            // Handle error - could show error overlay
             System.Diagnostics.Debug.WriteLine($"Failed to load overview tab: {ex.Message}");
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            try
+            {
+                // Unsubscribe from events
+                if (_refreshButton != null)
+                {
+                    _refreshButton.Click -= (s, e) => OnRefresh();
+                }
+                if (_exportButton != null)
+                {
+                    _exportButton.Click -= (s, e) => OnExport();
+                }
+                if (_fiscalYearComboBox != null)
+                {
+                    _fiscalYearComboBox.SelectedIndexChanged -= (s, e) => { /* handled in BindViewModel */ };
+                }
+            }
+            catch { /* Suppress errors during disposal */ }
+        }
+
+        base.Dispose(disposing);
     }
 }

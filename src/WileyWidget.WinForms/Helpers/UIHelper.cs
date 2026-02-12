@@ -3,7 +3,9 @@ using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Helpers
 {
@@ -159,8 +161,16 @@ namespace WileyWidget.WinForms.Helpers
                 }
                 else if (isFallback && control is not Label)
                 {
-                    // For non-label controls, apply background color instead
-                    control.BackColor = Color.FromArgb(240, 240, 240);  // Light gray background
+                    // Removed manual BackColor to respect SfSkinManager theme cascade.
+                    // Apply Syncfusion theme to the control as a best-effort alternative for dynamically-created controls.
+                    try
+                    {
+                        control.ApplySyncfusionTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+                    }
+                    catch
+                    {
+                        // Best-effort: do not throw if theming fails
+                    }
                 }
                 else
                 {

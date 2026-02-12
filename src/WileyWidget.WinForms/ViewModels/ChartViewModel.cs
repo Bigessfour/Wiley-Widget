@@ -215,8 +215,8 @@ namespace WileyWidget.WinForms.ViewModels
             ExportDataCommand = new RelayCommand(ExportData);
             ResetFiltersCommand = new RelayCommand(ResetFilters);
 
-            // Load sample utility budget data immediately (since real repository may be empty/fake in dev)
-            LoadSampleUtilityBudgetData();
+            // Sample population disabled: do not load synthetic utility budget data here
+            _logger.LogWarning("ChartViewModel constructor: sample population disabled. Ensure repositories provide real data.");
 
             _logger.LogInformation("ChartViewModel constructed for FY {FiscalYear}", SelectedYear);
         }
@@ -231,8 +231,8 @@ namespace WileyWidget.WinForms.ViewModels
                 new FakeBudgetRepository(),
                 null)
         {
-            // Load sample utility budget data for design-time display
-            LoadSampleUtilityBudgetData();
+            // Design-time/sample population disabled in production builds
+            _logger.LogWarning("ChartViewModel default constructor: sample population disabled.");
         }
 
         #endregion
@@ -486,98 +486,15 @@ namespace WileyWidget.WinForms.ViewModels
         /// <param name="cancellationToken">Cancellation token.</param>
         private async Task GenerateSampleDataAsync(int year, string? category, CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                var random = new Random(year);
-
-                // Clear existing collections
-                ChartData.Clear();
-                MonthlyRevenueData.Clear();
-                PieChartData.Clear();
-                LineChartData.Clear();
-                DepartmentDetails.Clear();
-                AvailableDepartments.Clear();
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Generate sample department variance data
-                var departments = new[]
-                {
-                    "General Administration",
-                    "Public Works",
-                    "Public Safety",
-                    "Parks & Recreation",
-                    "Utilities",
-                    "Community Development",
-                    "Finance",
-                    "Human Resources"
-                };
-
-                var totalBudgeted = 0m;
-                var totalActual = 0m;
-
-                AvailableDepartments.Add("All");
-
-                foreach (var dept in departments)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var budgeted = (decimal)(random.NextDouble() * 500000 + 250000);
-                    var actual = budgeted * (decimal)(0.7 + random.NextDouble() * 0.4); // 70-110% of budget
-                    var variance = budgeted - actual;
-
-                    ChartData.Add(new KeyValuePair<string, decimal>(dept, variance));
-                    PieChartData.Add((dept, actual));
-                    AvailableDepartments.Add(dept);
-
-                    DepartmentDetails.Add(new DepartmentSummary
-                    {
-                        DepartmentName = dept,
-                        Budgeted = budgeted,
-                        Actual = actual,
-                        Variance = variance,
-                        VariancePercentage = budgeted > 0 ? (variance / budgeted * 100) : 0
-                    });
-
-                    totalBudgeted += budgeted;
-                    totalActual += actual;
-                }
-
-                // Generate monthly trend data
-                var monthNames = new[] { "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-                var monthlyBase = totalActual / 12;
-
-                for (int i = 0; i < monthNames.Length; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var monthAmount = monthlyBase * (decimal)(0.8 + random.NextDouble() * 0.4);
-
-                    MonthlyRevenueData.Add(new MonthlyRevenue
-                    {
-                        Month = monthNames[i],
-                        MonthNumber = i + 1,
-                        Amount = monthAmount
-                    });
-
-                    LineChartData.Add(new ChartDataPoint
-                    {
-                        XValue = monthNames[i],
-                        YValue = (double)monthAmount,
-                        Label = monthNames[i]
-                    });
-                }
-
-                // Update summary properties
-                TotalBudgeted = totalBudgeted;
-                TotalActual = totalActual;
-                TotalVariance = totalBudgeted - totalActual;
-                VariancePercentage = totalBudgeted > 0 ? (TotalVariance / totalBudgeted * 100) : 0;
-                DepartmentCount = departments.Length;
-
-                _logger.LogInformation("Generated sample data: {DeptCount} departments, Budget: {Budget:C}, Actual: {Actual:C}",
-                    departments.Length, totalBudgeted, totalActual);
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogWarning("GenerateSampleDataAsync called: sample data generation disabled. Ensure budget repository is configured.");
+            // Clear any synthetic data and return immediately
+            ChartData.Clear();
+            MonthlyRevenueData.Clear();
+            PieChartData.Clear();
+            LineChartData.Clear();
+            DepartmentDetails.Clear();
+            AvailableDepartments.Clear();
+            await Task.CompletedTask;
         }
 
         #endregion
@@ -671,104 +588,15 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private void LoadSampleUtilityBudgetData()
         {
-            _logger.LogInformation("Loading sample budget data for utility departments: Water, Sewer, Trash, Apartments");
-
-            // Clear existing data
+            _logger.LogWarning("LoadSampleUtilityBudgetData called: sample data disabled. Ensure budget repository is configured for real data.");
             AvailableDepartments.Clear();
             DepartmentDetails.Clear();
             ChartData.Clear();
             PieChartData.Clear();
             LineChartData.Clear();
             MonthlyRevenueData.Clear();
-
-            // Populate available departments (for filter dropdown)
-            AvailableDepartments.Add("All Departments");
-            var utilityDepartments = new[] { "Water", "Sewer", "Trash", "Apartments" };
-            foreach (var dept in utilityDepartments)
-            {
-                AvailableDepartments.Add(dept);
-            }
-
-            // Base budgeted amounts per department (realistic starting points for utilities)
-            var baseBudgetByDepartment = new Dictionary<string, decimal>
-            {
-                ["Water"] = 220000m,
-                ["Sewer"] = 190000m,
-                ["Trash"] = 120000m,
-                ["Apartments"] = 160000m
-            };
-
-            var random = new Random(123); // Fixed seed for reproducible sample data
-
-            foreach (var dept in utilityDepartments)
-            {
-                decimal baseBudget = baseBudgetByDepartment[dept];
-
-                // Generate sample data point for each department
-                // Random variation around base (±15%)
-                decimal budgeted = Math.Round(baseBudget + random.NextDecimal(-0.15m * baseBudget, 0.15m * baseBudget), 2);
-
-                // Actual spending: bias toward over-budget (like real-world utilities) with variation
-                decimal actualVariation = random.NextDecimal(-20000m, 40000m); // More likely to be over
-                decimal actual = Math.Round(budgeted + actualVariation, 2);
-
-                decimal variance = Math.Round(actual - budgeted, 2); // Positive = over budget (matches screenshot logic)
-                decimal variancePercent = budgeted != 0 ? Math.Round((variance / budgeted) * 100m, 1) : 0m;
-
-                var summary = new DepartmentSummary
-                {
-                    DepartmentName = dept,
-                    TotalBudgeted = budgeted,
-                    TotalActual = actual,
-                    Variance = variance,
-                    VariancePercentage = variancePercent
-                };
-
-                DepartmentDetails.Add(summary);
-            }
-
-            // === Bar Chart: Average variance % per department (matches screenshot style) ===
-            foreach (var dept in utilityDepartments)
-            {
-                var deptData = DepartmentDetails.Where(d => d.DepartmentName == dept);
-                if (deptData.Any())
-                {
-                    decimal avgVariancePercent = Math.Round(deptData.Average(d => d.VariancePercentage), 1);
-                    ChartData.Add(new KeyValuePair<string, decimal>(dept, avgVariancePercent));
-                }
-            }
-
-            // === Pie Chart: Total budgeted amount per department ===
-            foreach (var dept in utilityDepartments)
-            {
-                decimal totalBudgeted = DepartmentDetails
-                    .Where(d => d.DepartmentName == dept)
-                    .Sum(d => d.TotalBudgeted);
-
-                PieChartData.Add((dept, Math.Round(totalBudgeted, 2)));
-            }
-
-            // === Line Chart: Monthly total actual spending (aggregated across all departments) ===
-            // Generate 6 months of aggregated data
-            var months = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-            foreach (var month in months)
-            {
-                decimal monthlyTotal = DepartmentDetails.Sum(d => d.TotalActual) / 6; // Distribute evenly
-
-                LineChartData.Add(new ChartDataPoint
-                {
-                    XValue = month,
-                    YValue = (double)monthlyTotal,
-                    Label = month
-                });
-            }
-
-            // Update summary totals
-            CalculateTotals();
-
-            // Update status
-            StatusText = $"Sample data loaded – {utilityDepartments.Length} utility departments";
-            SelectedCategory = "All Departments";
+            StatusText = "No sample chart data available";
+            SelectedCategory = "All Categories";
             SelectedDepartment = null;
         }
 
@@ -867,6 +695,13 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 // Fake implementation: return empty list
                 return Task.FromResult<IReadOnlyList<TownOfWileyBudget2026>>(Array.Empty<TownOfWileyBudget2026>().AsReadOnly());
+            }
+
+            // Implement missing GetHistoricalBudgetSummaryAsync for design-time fake
+            public Task<List<HistoricalBudgetYear>> GetHistoricalBudgetSummaryAsync(int yearsBack, int currentFiscalYear, CancellationToken cancellationToken = default)
+            {
+                // Fake implementation: return empty list
+                return Task.FromResult(new List<HistoricalBudgetYear>());
             }
         }
 

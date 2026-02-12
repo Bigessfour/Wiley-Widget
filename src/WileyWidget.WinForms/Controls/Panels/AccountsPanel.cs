@@ -28,6 +28,7 @@ using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -44,10 +45,14 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private BindingSource? _accountsBinding;
     private ErrorProvider? _errorProvider;
     private FlowLayoutPanel? _toolbarPanel;
+    private DpiAwareImageService? _imageService;
     private SfButton? _createButton;
     private SfButton? _editButton;
     private SfButton? _deleteButton;
     private SfButton? _refreshButton;
+    private SfComboBox? _fundFilterComboBox;
+    private SfComboBox? _accountTypeFilterComboBox;
+    private SfComboBox? _departmentFilterComboBox;
     private TextBoxExt? _searchBox;
     private ToolTip? _buttonToolTips;
 
@@ -64,9 +69,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// <summary>
     /// Initializes a new instance with DI-resolved ViewModel and logger.
     /// </summary>
-    public AccountsPanel(IServiceScopeFactory scopeFactory, ILogger<AccountsPanel> logger)
+    public AccountsPanel(IServiceScopeFactory scopeFactory, ILogger<AccountsPanel> logger, DpiAwareImageService imageService)
         : base(scopeFactory, logger)
     {
+        _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
         Logger?.LogDebug("[ACCOUNTS_CTOR] Constructor started");
 
         // Set AutoScaleMode for proper DPI scaling
@@ -288,7 +294,133 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _refreshButton.AccessibleDescription = "Refresh account list from database";
         _refreshButton.Click += RefreshButton_Click;
 
-        // Search Box - for filtering accounts
+        // === ICON ASSIGNMENT FOR TOOLBAR BUTTONS (Optional Polish) ===
+        try
+        {
+            // Get 16x16 icons for toolbar buttons
+            _createButton.Image = _imageService.GetImage("add");
+            _editButton.Image = _imageService.GetImage("edit");
+            _deleteButton.Image = _imageService.GetImage("delete");
+            _refreshButton.Image = _imageService.GetImage("refresh");
+
+            // Layout: icon on left, text on right
+            foreach (var btn in new[] { _createButton, _editButton, _deleteButton, _refreshButton })
+            {
+                btn.TextImageRelation = TextImageRelation.ImageBeforeText;
+                btn.ImageAlign = ContentAlignment.MiddleLeft;
+                btn.AutoSize = true; // Recalculate size with icon
+            }
+
+            Logger?.LogDebug("[ACCOUNTS_ICONS] ✅ Toolbar button icons assigned successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "[ACCOUNTS_ICONS] ⚠️ Failed to load button icons - UI will display text only");
+        }
+
+        // Fund Filter Dropdown
+        var fundLabel = new Label
+        {
+            Text = "Fund:",
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(16, 8, 4, 8),
+            Name = "lblFundFilter"
+        };
+
+        _fundFilterComboBox = new SfComboBox
+        {
+            Width = 120,
+            Height = 28,
+            ThemeName = activeTheme,
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            Name = "cmbFundFilter",
+            AccessibleName = "Fund Filter",
+            Margin = new Padding(0, 8, 4, 8)
+        };
+        _fundFilterComboBox.AccessibleDescription = "Filter accounts by fund type";
+        var fundItems = new List<object> { "All" };
+        if (ViewModel?.AvailableFunds != null)
+            fundItems.AddRange(ViewModel.AvailableFunds);
+        _fundFilterComboBox.DataSource = fundItems;
+        _fundFilterComboBox.DisplayMember = "ToString";
+        _fundFilterComboBox.ValueMember = "ToString";
+        _fundFilterComboBox.SelectedIndex = 0; // "All"
+        SfSkinManager.SetVisualStyle(_fundFilterComboBox, activeTheme);
+        _fundFilterComboBox.SelectedIndexChanged += FundFilterComboBox_SelectedIndexChanged;
+
+        // Account Type Filter Dropdown
+        var accountTypeLabel = new Label
+        {
+            Text = "Type:",
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(8, 8, 4, 8),
+            Name = "lblAccountTypeFilter"
+        };
+
+        _accountTypeFilterComboBox = new SfComboBox
+        {
+            Width = 100,
+            Height = 28,
+            ThemeName = activeTheme,
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            Name = "cmbAccountTypeFilter",
+            AccessibleName = "Account Type Filter",
+            Margin = new Padding(0, 8, 4, 8)
+        };
+        _accountTypeFilterComboBox.AccessibleDescription = "Filter accounts by account type";
+        var accountTypeItems = new List<object> { "All" };
+        if (ViewModel?.AvailableAccountTypes != null)
+            accountTypeItems.AddRange(ViewModel.AvailableAccountTypes);
+        _accountTypeFilterComboBox.DataSource = accountTypeItems;
+        _accountTypeFilterComboBox.DisplayMember = "ToString";
+        _accountTypeFilterComboBox.ValueMember = "ToString";
+        _accountTypeFilterComboBox.SelectedIndex = 0;
+        SfSkinManager.SetVisualStyle(_accountTypeFilterComboBox, activeTheme);
+        _accountTypeFilterComboBox.SelectedIndexChanged += AccountTypeFilterComboBox_SelectedIndexChanged;
+
+        // Department Filter Dropdown
+        var departmentLabel = new Label
+        {
+            Text = "Dept:",
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(8, 8, 4, 8),
+            Name = "lblDepartmentFilter"
+        };
+
+        _departmentFilterComboBox = new SfComboBox
+        {
+            Width = 120,
+            Height = 28,
+            ThemeName = activeTheme,
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            Name = "cmbDepartmentFilter",
+            AccessibleName = "Department Filter",
+            Margin = new Padding(0, 8, 4, 8)
+        };
+        _departmentFilterComboBox.AccessibleDescription = "Filter accounts by department";
+        var departmentItems = new List<object> { "All" };
+        if (ViewModel?.AvailableDepartments != null)
+            departmentItems.AddRange(ViewModel.AvailableDepartments);
+        _departmentFilterComboBox.DataSource = departmentItems;
+        _departmentFilterComboBox.DisplayMember = "ToString";
+        _departmentFilterComboBox.ValueMember = "ToString";
+        _departmentFilterComboBox.SelectedIndex = 0;
+        SfSkinManager.SetVisualStyle(_departmentFilterComboBox, activeTheme);
+        _departmentFilterComboBox.SelectedIndexChanged += DepartmentFilterComboBox_SelectedIndexChanged;
+
+        // Search Label and Box - for filtering accounts
+        var searchLabel = new Label
+        {
+            Text = "Search:",
+            AutoSize = true,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(16, 8, 4, 8),
+            Name = "lblSearch"
+        };
+
         _searchBox = new TextBoxExt
         {
             Width = 250,
@@ -296,7 +428,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             ThemeName = activeTheme,
             Name = "txtSearch",
             AccessibleName = "Search",
-            Margin = new Padding(8, 8, 4, 8)
+            Margin = new Padding(0, 8, 4, 8)
         };
         _searchBox.AccessibleDescription = "Type to search accounts by number, name, or fund";
         _searchBox.TextChanged += SearchBox_TextChanged;
@@ -313,9 +445,18 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _buttonToolTips.SetToolTip(_editButton, "Edit the selected account (F2)");
         _buttonToolTips.SetToolTip(_deleteButton, "Delete the selected account (Delete)");
         _buttonToolTips.SetToolTip(_refreshButton, "Refresh account list from database (F5)");
+        _buttonToolTips.SetToolTip(_fundFilterComboBox, "Filter accounts by fund type");
+        _buttonToolTips.SetToolTip(_accountTypeFilterComboBox, "Filter accounts by account type");
+        _buttonToolTips.SetToolTip(_departmentFilterComboBox, "Filter accounts by department");
         _buttonToolTips.SetToolTip(_searchBox, "Type to filter accounts in real-time (Ctrl+F)");
 
-        _toolbarPanel.Controls.AddRange(new Control[] { _createButton, _editButton, _deleteButton, _refreshButton, _searchBox });
+        _toolbarPanel.Controls.AddRange(new Control[] {
+            _createButton, _editButton, _deleteButton, _refreshButton,
+            fundLabel, _fundFilterComboBox,
+            accountTypeLabel, _accountTypeFilterComboBox,
+            departmentLabel, _departmentFilterComboBox,
+            searchLabel, _searchBox
+        });
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar has {Count} buttons and search box", _toolbarPanel.Controls.Count);
 
         _layout.Controls.Add(_toolbarPanel, 0, 0);
@@ -354,7 +495,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         // Configure grid columns
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountNumber", HeaderText = "Account #", MinimumWidth = 90, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells });
-        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountName", HeaderText = "Name", AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountName", HeaderText = "Account Name", AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "FundName", HeaderText = "Fund", MinimumWidth = 80 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountType", HeaderText = "Type", MinimumWidth = 80 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "CurrentBalance", HeaderText = "Balance", FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency, MinimumWidth = 100 });
@@ -530,6 +671,78 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         catch (Exception ex)
         {
             _logger?.LogError(ex, "[SEARCH] Error filtering accounts");
+        }
+    }
+
+    /// <summary>
+    /// Handles fund filter dropdown selection changes.
+    /// </summary>
+    private void FundFilterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (ViewModel == null || _fundFilterComboBox == null)
+                return;
+
+            MunicipalFundType? selectedFund = null;
+            if (_fundFilterComboBox.SelectedIndex > 0 && _fundFilterComboBox.SelectedItem is MunicipalFundType fund)
+            {
+                selectedFund = fund;
+            }
+            ViewModel.SelectedFund = selectedFund;
+            _logger?.LogDebug("[FUND_FILTER] Selected fund: {Fund}", selectedFund?.ToString() ?? "All");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[FUND_FILTER] Error setting fund filter");
+        }
+    }
+
+    /// <summary>
+    /// Handles account type filter dropdown selection changes.
+    /// </summary>
+    private void AccountTypeFilterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (ViewModel == null || _accountTypeFilterComboBox == null)
+                return;
+
+            AccountType? selectedType = null;
+            if (_accountTypeFilterComboBox.SelectedIndex > 0 && _accountTypeFilterComboBox.SelectedItem is AccountType type)
+            {
+                selectedType = type;
+            }
+            ViewModel.SelectedAccountType = selectedType;
+            _logger?.LogDebug("[ACCOUNT_TYPE_FILTER] Selected type: {Type}", selectedType?.ToString() ?? "All");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[ACCOUNT_TYPE_FILTER] Error setting account type filter");
+        }
+    }
+
+    /// <summary>
+    /// Handles department filter dropdown selection changes.
+    /// </summary>
+    private void DepartmentFilterComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (ViewModel == null || _departmentFilterComboBox == null)
+                return;
+
+            string? selectedDepartment = null;
+            if (_departmentFilterComboBox.SelectedIndex > 0 && _departmentFilterComboBox.SelectedItem is string dept)
+            {
+                selectedDepartment = dept;
+            }
+            ViewModel.SelectedDepartment = selectedDepartment;
+            _logger?.LogDebug("[DEPARTMENT_FILTER] Selected department: {Department}", selectedDepartment ?? "All");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[DEPARTMENT_FILTER] Error setting department filter");
         }
     }
 

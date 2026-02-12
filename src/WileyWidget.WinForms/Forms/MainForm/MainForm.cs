@@ -77,7 +77,7 @@ namespace WileyWidget.WinForms.Forms
     /// - MainForm.Helpers.cs: Theme, status, error dialog, MRU management
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-    public partial class MainForm : SfForm, IAsyncInitializable
+    public partial class MainForm : RibbonForm, IAsyncInitializable
     {
         private const int WS_EX_COMPOSITED = 0x02000000;
         private static int _inFirstChanceHandler = 0;
@@ -610,6 +610,15 @@ namespace WileyWidget.WinForms.Forms
             this.TopMost = true;
             System.Windows.Forms.Application.DoEvents();
             this.TopMost = false;
+
+            // Headless / UI test harness: skip all deferred/background initialization.
+            // This prevents WebView2 prewarm, async warmups, and other background tasks from running
+            // in environments like MCP stdio servers where native components can destabilize the process.
+            if (_uiConfig != null && _uiConfig.IsUiTestHarness)
+            {
+                _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI test harness mode - skipping deferred initialization");
+                return;
+            }
 
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting deferred initialization");
 

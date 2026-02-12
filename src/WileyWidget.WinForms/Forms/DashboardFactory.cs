@@ -149,6 +149,37 @@ public static class DashboardFactory
     }
 
     /// <summary>
+    /// Create a dashboard as a Form (`BudgetDashboardForm`) to be hosted in a FormHostPanel.
+    /// Uses DI to construct the form so constructor dependencies are resolved.
+    /// </summary>
+    public static BudgetDashboardForm CreateDashboardForm(IPanelNavigationService? panelNavigator, MainForm mainForm, ILogger logger)
+    {
+        try
+        {
+            IServiceProvider? serviceProvider = mainForm as IServiceProvider;
+            if (serviceProvider == null)
+            {
+                var prop = mainForm.GetType().GetProperty("ServiceProvider");
+                serviceProvider = prop?.GetValue(mainForm) as IServiceProvider;
+            }
+
+            if (serviceProvider == null)
+            {
+                throw new InvalidOperationException("ServiceProvider not available from MainForm - cannot create BudgetDashboardForm via DI");
+            }
+
+            var form = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<BudgetDashboardForm>(serviceProvider);
+            logger?.LogDebug("Created BudgetDashboardForm via DI");
+            return form;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "CreateDashboardForm failed");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Create a dashboard card with title and description.
     /// Includes full accessibility support for screen readers (WCAG 2.1 Level A).
     /// </summary>

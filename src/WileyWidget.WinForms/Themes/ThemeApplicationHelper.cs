@@ -64,10 +64,10 @@ namespace WileyWidget.WinForms.Themes
 
             if (!isKnownTheme)
             {
-                logger?.LogWarning("Theme '{ThemeName}' is not a recognized Syncfusion theme name", themeName);
+                logger?.LogWarning("Theme '{ThemeName}' is not a recognized Syncfusion theme name; validation failed.", themeName);
             }
 
-            return true;
+            return isKnownTheme;
         }
 
         /// <summary>
@@ -211,13 +211,19 @@ namespace WileyWidget.WinForms.Themes
 
                 _logger.LogInformation("Switching theme to '{NewTheme}'", newThemeName);
 
+                // Validate and map theme to a supported value (falls back in ThemeColors.ValidateTheme)
+                var validatedTheme = Themes.ThemeColors.ValidateTheme(newThemeName, _logger);
+
+                // Ensure theme assembly is loaded before applying global theme
+                Themes.ThemeColors.EnsureThemeAssemblyLoaded(_logger);
+
                 // Update global theme - cascade handles all controls automatically
-                SfSkinManager.ApplicationVisualTheme = newThemeName;
+                SfSkinManager.ApplicationVisualTheme = validatedTheme;
 
                 // Also update DockingManager explicitly via adapter for edge case
                 if (_dockingManagerAdapter is not null)
                 {
-                    _dockingManagerAdapter.ApplyTheme(newThemeName);
+                    _dockingManagerAdapter.ApplyTheme(validatedTheme);
                 }
 
                 _logger.LogInformation("Theme switched to '{NewTheme}'", newThemeName);

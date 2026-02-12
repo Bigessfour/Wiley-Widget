@@ -53,9 +53,9 @@ public sealed record UIConfiguration
 
     /// <summary>
     /// Whether to auto-show the dashboard on startup.
-    /// Changed to false by default to prevent multiple instances and ghost panels at startup.
+    /// Changed to true by default to provide a meaningful initial view when docking is enabled.
     /// </summary>
-    public bool AutoShowDashboard { get; init; } = false;
+    public bool AutoShowDashboard { get; init; } = true;
 
     /// <summary>
     /// Minimal mode - only JARVIS Chat and central document panel are created.

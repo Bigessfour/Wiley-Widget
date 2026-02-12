@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Themes;
@@ -15,7 +16,7 @@ namespace WileyWidget.WinForms.Dialogs
     /// Dialog for creating a new municipal account.
     /// Captures essential account properties and validates before saving.
     /// </summary>
-    public sealed class AccountCreateDialog : Form
+    public sealed class AccountCreateDialog : SfForm
     {
         private readonly ILogger? _logger;
         private TextBox? _accountNumberTextBox;
@@ -46,7 +47,7 @@ namespace WileyWidget.WinForms.Dialogs
         {
             _logger = logger;
             InitializeDialog();
-            ThemeColors.ApplyTheme(this);
+            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
 
             this.PerformLayout();
             this.Refresh();
@@ -61,6 +62,9 @@ namespace WileyWidget.WinForms.Dialogs
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
+
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
 
             var mainPanel = new TableLayoutPanel
             {

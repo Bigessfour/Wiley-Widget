@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
@@ -18,7 +19,7 @@ namespace WileyWidget.WinForms.Dialogs
     /// Dialog for creating or editing a municipal account.
     /// Hosts AccountEditPanel for consistent UI and validation.
     /// </summary>
-    public sealed class AccountEditDialog : Form
+    public sealed class AccountEditDialog : SfForm
     {
         private readonly ILogger? _logger;
         private readonly MunicipalAccountEditModel _editModel;
@@ -40,7 +41,7 @@ namespace WileyWidget.WinForms.Dialogs
             _editModel = editModel ?? throw new ArgumentNullException(nameof(editModel));
 
             InitializeDialog();
-            ThemeColors.ApplyTheme(this);
+            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
 
             // Hook the Shown event to initialize panel after dialog is visible
             this.Shown += OnDialogShown;
@@ -80,6 +81,9 @@ namespace WileyWidget.WinForms.Dialogs
             MinimizeBox = false;
             AutoScaleMode = AutoScaleMode.Dpi;
 
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
+
             // Create main layout - panel fills entire dialog with proper padding
             var mainLayout = new TableLayoutPanel
             {
@@ -94,10 +98,11 @@ namespace WileyWidget.WinForms.Dialogs
             var serviceProvider = Program.Services;
             var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<AccountEditPanel>>(serviceProvider);
+            var imageService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.DpiAwareImageService>(serviceProvider);
 
             _logger?.LogDebug("[DIALOG] Creating AccountEditPanel for {Mode} mode", _editModel.Id == 0 ? "Create" : "Edit");
 
-            _editPanel = new AccountEditPanel(scopeFactory, logger!)
+            _editPanel = new AccountEditPanel(scopeFactory, logger!, imageService)
             {
                 Dock = DockStyle.Fill
             };

@@ -480,45 +480,14 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task LoadSampleDataAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                Metrics.Clear();
-                Metrics.Add(new AnalyticsMetric { Name = "Revenue", Value = 1500000m, Unit = "$" });
-                Metrics.Add(new AnalyticsMetric { Name = "Expenses", Value = 1200000m, Unit = "$" });
-                Metrics.Add(new AnalyticsMetric { Name = "Reserves", Value = 300000m, Unit = "$" });
-
-                TopVariances.Clear();
-                TopVariances.Add(new VarianceAnalysis
-                {
-                    AccountNumber = "1000",
-                    AccountName = "General Fund",
-                    BudgetedAmount = 500000m,
-                    ActualAmount = 480000m,
-                    VarianceAmount = -20000m,
-                    VariancePercentage = -0.04m
-                });
-
-                TrendData.Clear();
-                for (int i = 1; i <= 12; i++)
-                {
-                    TrendData.Add(new MonthlyTrend
-                    {
-                        Month = $"2024-{i:D2}",
-                        Budgeted = 100000 + i * 5000,
-                        Actual = 95000 + i * 4500,
-                        Variance = -5000 - i * 500
-                    });
-                }
-
-                Insights.Clear();
-                Insights.Add("Revenue is trending below budget by 4%");
-                Insights.Add("Expense controls are effective");
-
-                UpdateSummaries();
-                UpdateFilteredCollections();
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogWarning("LoadSampleDataAsync called: sample analytics data disabled. Ensure analytics services are configured.");
+            Metrics.Clear();
+            TopVariances.Clear();
+            TrendData.Clear();
+            Insights.Clear();
+            UpdateSummaries();
+            UpdateFilteredCollections();
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -526,29 +495,11 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task LoadSampleScenarioDataAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                ScenarioProjections.Clear();
-                for (int i = 1; i <= ProjectionYears; i++)
-                {
-                    ScenarioProjections.Add(new YearlyProjection
-                    {
-                        Year = DateTime.Now.Year + i,
-                        ProjectedRevenue = 1600000m + i * 50000,
-                        ProjectedExpenses = 1250000m + i * 30000,
-                        ProjectedReserves = 350000m + i * 20000,
-                        RiskLevel = 0.1m + i * 0.05m
-                    });
-                }
-
-                Recommendations.Clear();
-                Recommendations.Add("Consider 5% rate increase to meet revenue targets");
-                Recommendations.Add("Monitor expense growth carefully");
-
-                RecommendationExplanation = "Sample scenario shows balanced growth with moderate risk.";
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogWarning("LoadSampleScenarioDataAsync called: sample scenario generation disabled. Ensure projection services are configured.");
+            ScenarioProjections.Clear();
+            Recommendations.Clear();
+            RecommendationExplanation = string.Empty;
+            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -556,23 +507,10 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task LoadSampleForecastDataAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                ForecastData.Clear();
-                for (int i = 0; i < ProjectionYears * 12; i++)
-                {
-                    ForecastData.Add(new ForecastPoint
-                    {
-                        Date = DateTime.Now.AddMonths(i),
-                        PredictedReserves = 300000m + i * 2000,
-                        ConfidenceInterval = 5000m
-                    });
-                }
-
-                RecommendationExplanation = "Sample forecast indicates stable reserve levels with low risk.";
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogWarning("LoadSampleForecastDataAsync called: sample forecast generation disabled. Ensure forecasting services are configured.");
+            ForecastData.Clear();
+            RecommendationExplanation = string.Empty;
+            await Task.CompletedTask;
         }
 
         private void ApplyAvailableEntities(IEnumerable<string> availableEntitiesFromResult)

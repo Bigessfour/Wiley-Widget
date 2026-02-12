@@ -58,6 +58,9 @@ namespace WileyWidget.WinForms.Controls.Panels
         private BindingSource? _bindingSource;
         private CancellationTokenSource? _autoRefreshCancellationTokenSource;
         private readonly SemaphoreSlim _refreshSemaphore = new SemaphoreSlim(1, 1);
+        private SplitContainerAdv? _gridSplit;
+        private TableLayoutPanel? _mainTable;
+        private bool _gridInitialized = false;
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
@@ -76,7 +79,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Create controls programmatically instead of using InitializeComponent
             CreateControls();
             ApplyTheme();
-            SetupUI();
+            // SetupUI() moved to OnShown after _activityGrid is created
             InitializeAutoRefresh();
             // LoadInitialData() moved to OnViewModelResolved to ensure ViewModel is available
         }
@@ -201,69 +204,124 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             mainTable.Controls.Add(buttonPanel, 0, 0);
 
-            // Row 1: SplitContainer with _activityGrid
-            var gridSplit = new SplitContainerAdv
+            // Row 1: Placeholder for SplitContainer (will be created in OnShown)
+            // Deferred to OnShown to avoid InvalidOperationException from premature SplitterDistance set
+            var placeholderPanel = new Panel
             {
-                Name = "GridSplit",
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 0 // No header in split, just the grid
+                Name = "GrowPlaceholder",
+                Dock = DockStyle.Fill
             };
-
-            // Data grid in the split container
-            _activityGrid = new SfDataGrid
-            {
-                Name = "ActivityGrid",
-                Dock = DockStyle.Fill,
-                AllowResizingColumns = true,
-                AllowSorting = true,
-                AllowFiltering = true,
-                ShowBusyIndicator = false
-            };
-            _activityGrid.AccessibleName = "Activity Log Grid";
-            _activityGrid.AccessibleDescription = "Grid listing recent activity entries";
-            _activityGrid.TabIndex = 1;
-
-            // Configure columns - use DateTime column for timestamps
-            _activityGrid.Columns.Add(new GridDateTimeColumn
-            {
-                MappingName = "Timestamp",
-                HeaderText = "Time",
-                Format = "g",
-                AllowSorting = true,
-                Width = 150
-            });
-
-            _activityGrid.Columns.Add(new GridTextColumn
-            {
-                MappingName = "Activity",
-                HeaderText = "Activity",
-                AllowSorting = true,
-                Width = 150
-            });
-
-            _activityGrid.Columns.Add(new GridTextColumn
-            {
-                MappingName = "Details",
-                HeaderText = "Details",
-                AllowSorting = false,
-                Width = 300
-            });
-
-            _activityGrid.Columns.Add(new GridTextColumn
-            {
-                MappingName = "Status",
-                HeaderText = "Status",
-                AllowSorting = true,
-                Width = 80
-            });
-
-            gridSplit.Panel1.Controls.Add(_activityGrid);
-            mainTable.Controls.Add(gridSplit, 0, 1);
+            mainTable.Controls.Add(placeholderPanel, 0, 1);
 
             Controls.Add(mainTable);
+            _mainTable = mainTable;
 
             this.ResumeLayout(false);
+        }
+
+        /// <summary>
+        /// Defers gridSplit creation to OnLoad to avoid InvalidOperationException
+        /// from setting SplitterDistance before the control has a valid handle and dimensions.
+        /// </summary>
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+
+            // Skip if already initialized (idempotent)
+            if (_gridInitialized || _mainTable == null)
+                return;
+
+            _gridInitialized = true;
+
+            try
+            {
+                Logger?.LogDebug("ActivityLogPanel.OnShown: Initializing gridSplit (Width={W}, Height={H}, Handle={H})",
+                    this.Width, this.Height, this.IsHandleCreated);
+
+                // Row 1 index is 1 in the table (row 0 is the button panel)
+                // Remove placeholder and add the real split container
+                var placeholder = _mainTable.Controls["GrowPlaceholder"];
+                if (placeholder != null)
+                {
+                    _mainTable.Controls.Remove(placeholder);
+                    placeholder.Dispose();
+                }
+
+                // Create SplitContainer AFTER the parent is fully sized
+                _gridSplit = new SplitContainerAdv
+                {
+                    Name = "GridSplit",
+                    Dock = DockStyle.Fill,
+                    Orientation = Orientation.Horizontal,
+                    SplitterDistance = 0 // No header in split, just the grid
+                };
+
+                // Data grid in the split container
+                _activityGrid = new SfDataGrid
+                {
+                    Name = "ActivityGrid",
+                    Dock = DockStyle.Fill,
+                    AllowResizingColumns = true,
+                    AllowSorting = true,
+                    AllowFiltering = true,
+                    ShowBusyIndicator = false
+                };
+                _activityGrid.AccessibleName = "Activity Log Grid";
+                _activityGrid.AccessibleDescription = "Grid listing recent activity entries";
+                _activityGrid.TabIndex = 1;
+
+                // Configure columns - use DateTime column for timestamps
+                _activityGrid.Columns.Add(new GridDateTimeColumn
+                {
+                    MappingName = "Timestamp",
+                    HeaderText = "Time",
+                    Format = "g",
+                    AllowSorting = true,
+                    Width = 150
+                });
+
+                _activityGrid.Columns.Add(new GridTextColumn
+                {
+                    MappingName = "Activity",
+                    HeaderText = "Activity",
+                    AllowSorting = true,
+                    Width = 150
+                });
+
+                _activityGrid.Columns.Add(new GridTextColumn
+                {
+                    MappingName = "Details",
+                    HeaderText = "Details",
+                    AllowSorting = false,
+                    Width = 300
+                });
+
+                _activityGrid.Columns.Add(new GridTextColumn
+                {
+                    MappingName = "Status",
+                    HeaderText = "Status",
+                    AllowSorting = true,
+                    Width = 80
+                });
+
+                _gridSplit.Panel1.Controls.Add(_activityGrid);
+                _mainTable.Controls.Add(_gridSplit, 0, 1);
+
+                // Now that the grid is added and the parent is sized, setup UI bindings
+                SetupUI();
+
+                Logger?.LogDebug("ActivityLogPanel.OnShown: gridSplit initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogError(ex, "Failed to initialize gridSplit in OnShown");
+            }
+        }
+
+        private void CreateControls_Old()
+        {
+            // This method is NO LONGER USED - kept for reference only
+            //GridSplit creation has been moved to OnShown to prevent InvalidOperationException
         }
 
         private void SetupUI()

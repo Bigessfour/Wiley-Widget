@@ -32,6 +32,13 @@ public partial class MainForm
     public IPanelNavigationService? PanelNavigator => _panelNavigator;
 
     /// <summary>
+    /// Navigation history for back/forward functionality.
+    /// </summary>
+    private readonly System.Collections.Generic.Stack<string> _navigationHistory = new();
+    private readonly System.Collections.Generic.Stack<string> _forwardHistory = new();
+    private string? _currentPanelName;
+
+    /// <summary>
     /// Shows or activates a docked panel. Creates it if not already present.
     /// Delegates to PanelNavigationService for centralized panel management.
     /// </summary>
@@ -231,6 +238,38 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Tracks navigation history for back/forward functionality.
+    /// Called whenever a panel is activated.
+    /// </summary>
+    /// <param name="panelName">The name of the panel that was activated.</param>
+    private void TrackNavigationHistory(string panelName)
+    {
+        if (string.IsNullOrEmpty(panelName))
+        {
+            return;
+        }
+
+        try
+        {
+            // If we're navigating to a different panel, add current to history
+            if (_currentPanelName != null && _currentPanelName != panelName)
+            {
+                _navigationHistory.Push(_currentPanelName);
+                _forwardHistory.Clear(); // Clear forward history when navigating to new panel
+                _logger?.LogDebug("Added {PreviousPanel} to navigation history, forward history cleared", _currentPanelName);
+            }
+
+            _currentPanelName = panelName;
+            _logger?.LogDebug("Navigation history updated: Current={CurrentPanel}, HistoryCount={HistoryCount}",
+                _currentPanelName, _navigationHistory.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to track navigation history for panel: {PanelName}", panelName);
+        }
+    }
+
+    /// <summary>
     /// Closes the settings panel if it's currently visible.
     /// Legacy method: SettingsForm replaced by SettingsPanel.
     /// </summary>
@@ -250,8 +289,143 @@ public partial class MainForm
     }
 
     /// <summary>
+    /// Navigates back to the previously active panel.
+    /// </summary>
+    /// <returns>True if navigation succeeded, false if no history available.</returns>
+    public bool NavigateBack()
+    {
+        if (_navigationHistory.Count == 0)
+        {
+            _logger?.LogDebug("Cannot navigate back: No navigation history available");
+            return false;
+        }
+
+        try
+        {
+            // Move current panel to forward history
+            if (_currentPanelName != null)
+            {
+                _forwardHistory.Push(_currentPanelName);
+            }
+
+            // Get previous panel from history
+            string previousPanel = _navigationHistory.Pop();
+            _currentPanelName = previousPanel;
+
+            // Activate the previous panel
+            if (_panelNavigator != null)
+            {
+                // Try to show the panel (this will activate it if it exists)
+                // We need to determine the panel type from the name
+                // For now, we'll use a generic approach
+                ActivatePanelByName(previousPanel);
+            }
+
+            _logger?.LogInformation("Navigated back to panel: {PanelName}", previousPanel);
+            UpdateNavigationButtons();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to navigate back");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Navigates forward to the next panel in history.
+    /// </summary>
+    /// <returns>True if navigation succeeded, false if no forward history available.</returns>
+    public bool NavigateForward()
+    {
+        if (_forwardHistory.Count == 0)
+        {
+            _logger?.LogDebug("Cannot navigate forward: No forward history available");
+            return false;
+        }
+
+        try
+        {
+            // Move current panel to back history
+            if (_currentPanelName != null)
+            {
+                _navigationHistory.Push(_currentPanelName);
+            }
+
+            // Get next panel from forward history
+            string nextPanel = _forwardHistory.Pop();
+            _currentPanelName = nextPanel;
+
+            // Activate the next panel
+            if (_panelNavigator != null)
+            {
+                ActivatePanelByName(nextPanel);
+            }
+
+            _logger?.LogInformation("Navigated forward to panel: {PanelName}", nextPanel);
+            UpdateNavigationButtons();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to navigate forward");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets whether back navigation is available.
+    /// </summary>
+    public bool CanNavigateBack => _navigationHistory.Count > 0;
+
+    /// <summary>
+    /// Gets whether forward navigation is available.
+    /// </summary>
+    public bool CanNavigateForward => _forwardHistory.Count > 0;
+
+    /// <summary>
+    /// Activates a panel by name. This is a helper method for navigation history.
+    /// Searches through DockingManager controls to find and activate the panel.
+    /// </summary>
+    /// <param name="panelName">The name of the panel to activate.</param>
+    private void ActivatePanelByName(string panelName)
+    {
+        if (_dockingManager == null || string.IsNullOrEmpty(panelName))
+        {
+            return;
+        }
+
+        try
+        {
+            // Search through DockingManager controls for a panel with matching name
+            var controlsObj = _dockingManager.Controls;
+            if (controlsObj is System.Collections.ICollection coll && coll.Count > 0)
+            {
+                foreach (var item in coll)
+                {
+                    if (item is Control control && !control.IsDisposed &&
+                        !string.IsNullOrEmpty(control.Name) && control.Name == panelName)
+                    {
+                        // Found the panel, activate it
+                        _dockingManager.ActivateControl(control);
+                        _logger?.LogDebug("Activated panel by name: {PanelName}", panelName);
+                        return;
+                    }
+                }
+            }
+
+            _logger?.LogWarning("Panel not found for activation: {PanelName}", panelName);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to activate panel by name: {PanelName}", panelName);
+        }
+    }
+
+    /// <summary>
     /// Handles panel activation events from the PanelNavigationService.
     /// Updates ribbon/navigation selection to keep UI in sync with active panel.
+    /// Also tracks navigation history for back/forward functionality.
     /// </summary>
     private void PanelNavigator_OnPanelActivated(object? sender, PanelActivatedEventArgs e)
     {
@@ -263,6 +437,9 @@ public partial class MainForm
         try
         {
             _logger?.LogDebug("Panel activated: {PanelName} ({PanelType})", e.PanelName, e.PanelType.Name);
+
+            // Track navigation history
+            TrackNavigationHistory(e.PanelName);
 
             // Update ribbon/navigation selection to match active panel
             // This keeps the UI synchronized with the navigation service state
@@ -317,10 +494,67 @@ public partial class MainForm
                     }
                 }
             }
+
+            // Update navigation button states (back/forward)
+            UpdateNavigationButtons();
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Failed to update navigation selection for panel: {PanelName}", panelName);
+        }
+    }
+
+    /// <summary>
+    /// Updates the enabled state of back/forward navigation buttons in the UI.
+    /// Should be called whenever navigation history changes.
+    /// </summary>
+    private void UpdateNavigationButtons()
+    {
+        try
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new System.Action(UpdateNavigationButtons));
+                return;
+            }
+
+            // Update ribbon navigation buttons
+            if (_ribbon != null)
+            {
+                var backButton = FindToolStripItem(_ribbon, "NavBack") as ToolStripButton;
+                var forwardButton = FindToolStripItem(_ribbon, "NavForward") as ToolStripButton;
+
+                if (backButton != null)
+                {
+                    backButton.Enabled = CanNavigateBack;
+                }
+
+                if (forwardButton != null)
+                {
+                    forwardButton.Enabled = CanNavigateForward;
+                }
+            }
+
+            // Update navigation strip buttons
+            if (_navigationStrip != null)
+            {
+                var backButton = _navigationStrip.Items.Find("NavBack", true).FirstOrDefault() as ToolStripButton;
+                var forwardButton = _navigationStrip.Items.Find("NavForward", true).FirstOrDefault() as ToolStripButton;
+
+                if (backButton != null)
+                {
+                    backButton.Enabled = CanNavigateBack;
+                }
+
+                if (forwardButton != null)
+                {
+                    forwardButton.Enabled = CanNavigateForward;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to update navigation button states");
         }
     }
 
@@ -417,5 +651,102 @@ public partial class MainForm
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Shows a form as a child or modal dialog. Creates it via DI if not already present.
+    /// Use this for standalone forms that should appear independently, not as docked panels.
+    /// </summary>
+    /// <typeparam name="TForm">The Form type to show.</typeparam>
+    /// <param name="asModal">If true, shows as modal dialog; otherwise as modeless child form (default: false).</param>
+    public void ShowForm<TForm>(bool asModal = false) where TForm : Form
+    {
+        if (_serviceProvider == null)
+        {
+            _logger?.LogWarning("ShowForm<{FormType}> called but ServiceProvider is null", typeof(TForm).Name);
+            return;
+        }
+
+
+
+        try
+        {
+            // Resolve form from DI container
+            var form = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<TForm>(_serviceProvider);
+
+            if (form == null)
+            {
+                _logger?.LogError("Failed to resolve form {FormType} from DI container", typeof(TForm).Name);
+                return;
+            }
+
+            // Set owner for proper Z-order and taskbar behavior
+            if (form.Owner == null)
+            {
+                form.Owner = this;
+            }
+
+            // Show form based on modal flag
+            if (asModal)
+            {
+                form.ShowDialog(this);
+            }
+            else
+            {
+                form.Show(this);
+            }
+
+            _logger?.LogInformation("Opened {FormType} (Modal: {AsModal})", typeof(TForm).Name, asModal);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to show form {FormType}", typeof(TForm).Name);
+            UIHelper.ShowErrorOnUI(this, $"Failed to open {typeof(TForm).Name}: {ex.Message}", "Navigation Error", _logger);
+        }
+    }
+
+    /// <summary>
+    /// Shows or activates a docked Form by hosting it inside the panel docking system.
+    /// Delegates to PanelNavigationService to preserve docking/floating behavior.
+    /// </summary>
+    public void ShowForm<TForm>(
+        string? panelName = null,
+        DockingStyle preferredStyle = DockingStyle.Right,
+        bool allowFloating = true)
+        where TForm : Form
+    {
+        EnsurePanelNavigatorInitialized();
+
+        if (_panelNavigator == null)
+        {
+            _logger?.LogWarning("ShowForm<{FormType}> called but PanelNavigator is still null after initialization attempt", typeof(TForm).Name);
+            return;
+        }
+
+#pragma warning disable CS8604 // Possible null reference argument
+        _panelNavigator.ShowForm<TForm>(panelName ?? typeof(TForm).Name, preferredStyle, allowFloating);
+#pragma warning restore CS8604
+    }
+
+    /// <summary>
+    /// Shows or activates a docked Form with initialization parameters.
+    /// Delegates to PanelNavigationService to preserve docking/floating behavior.
+    /// </summary>
+    public void ShowForm<TForm>(
+        string? panelName,
+        object? parameters,
+        DockingStyle preferredStyle = DockingStyle.Right,
+        bool allowFloating = true)
+        where TForm : Form
+    {
+        EnsurePanelNavigatorInitialized();
+
+        if (_panelNavigator == null)
+        {
+            _logger?.LogWarning("ShowForm<{FormType}> (with parameters) called but PanelNavigator is still null after initialization attempt", typeof(TForm).Name);
+            return;
+        }
+
+        _panelNavigator.ShowForm<TForm>(panelName ?? typeof(TForm).Name, parameters, preferredStyle, allowFloating);
     }
 }

@@ -994,68 +994,17 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     #region Sample Data
 
     /// <summary>
-    /// Loads realistic sample sync history data for demonstration.
+    /// Sample sync history population is disabled in production.
+    /// Clears any temporary history and logs a warning instead of adding hard-coded records.
     /// </summary>
     private void LoadSampleSyncHistory()
     {
-        _logger.LogInformation("Loading sample QuickBooks sync history");
-
-        var sampleRecords = new[]
-        {
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddHours(-2),
-                Operation = "Sync Data",
-                Status = "Success",
-                RecordsProcessed = 1247,
-                Duration = TimeSpan.FromSeconds(45.3),
-                Message = "Synced customers, invoices, and accounts"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-1),
-                Operation = "Import Accounts",
-                Status = "Success",
-                RecordsProcessed = 156,
-                Duration = TimeSpan.FromSeconds(12.7),
-                Message = "Imported 156 accounts, updated 23"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-1).AddHours(-3),
-                Operation = "Sync Data",
-                Status = "Success",
-                RecordsProcessed = 892,
-                Duration = TimeSpan.FromSeconds(38.1),
-                Message = "Synced customers and invoices"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-2),
-                Operation = "Connect",
-                Status = "Success",
-                RecordsProcessed = 0,
-                Duration = TimeSpan.FromSeconds(2.5),
-                Message = "Connected to QuickBooks successfully"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-3),
-                Operation = "Sync Data",
-                Status = "Failed",
-                RecordsProcessed = 0,
-                Duration = TimeSpan.FromSeconds(5.2),
-                Message = "Authentication token expired"
-            }
-        };
-
-        foreach (var record in sampleRecords)
-        {
-            SyncHistory.Add(record);
-        }
-
+        _logger.LogWarning("LoadSampleSyncHistory called: sample data disabled. Ensure QuickBooks sync history is loaded from production sources.");
+        SyncHistory.Clear();
         ApplyHistoryFilter();
         UpdateSummaries();
+        ErrorMessage = "Production QuickBooks data unavailable; sample history disabled.";
+        StatusText = "No QuickBooks history loaded";
     }
 
     #endregion

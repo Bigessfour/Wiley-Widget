@@ -859,71 +859,32 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
     private List<BudgetSummaryItem> GenerateSampleBudgetData()
     {
-        return
-        [
-            new("General Fund", 1500000m, 1200000m),
-            new("Water Fund", 800000m, 750000m),
-            new("Sewer Fund", 600000m, 580000m),
-            new("Streets Fund", 400000m, 420000m),
-            new("Parks Fund", 200000m, 180000m)
-        ];
+        _logger.LogWarning("GenerateSampleBudgetData called: sample data disabled. Returning empty dataset.");
+        return new List<BudgetSummaryItem>();
     }
 
     private List<AccountItem> GenerateSampleAccountData()
     {
-        return
-        [
-            new("1000", "Cash - General", "Asset", 250000m),
-            new("1100", "Accounts Receivable", "Asset", 75000m),
-            new("2000", "Accounts Payable", "Liability", 45000m),
-            new("3000", "Fund Balance", "Equity", 500000m),
-            new("4000", "Property Tax Revenue", "Revenue", 1200000m),
-            new("5000", "Personnel Services", "Expense", 800000m)
-        ];
+        _logger.LogWarning("GenerateSampleAccountData called: sample data disabled. Returning empty account list.");
+        return new List<AccountItem>();
     }
 
     private List<TransactionItem> GenerateSampleTransactionData(int count = 50)
     {
-        var transactions = new List<TransactionItem>();
-        var random = new Random(42);
-        var categories = new[] { "Payroll", "Utilities", "Supplies", "Maintenance", "Revenue" };
-
-        // Prevent invalid range
-        var daysRange = Math.Max(1, (ToDate - FromDate).Days);
-
-        for (int i = 0; i < count; i++)
-        {
-            var date = FromDate.AddDays(random.Next(daysRange));
-            var category = categories[random.Next(categories.Length)];
-            var amount = (decimal)(random.NextDouble() * 10000);
-            transactions.Add(new(date, $"TXN-{i + 1000}", category, amount));
-        }
-
-        return transactions.OrderBy(t => t.Date).ToList();
+        _logger.LogWarning("GenerateSampleTransactionData called: sample data disabled. Returning empty transaction list.");
+        return new List<TransactionItem>();
     }
 
     private List<CategoryBreakdownItem> GenerateSampleCategoryData()
     {
-        return
-        [
-            new("Personnel", 800000m, 53.3m),
-            new("Operations", 300000m, 20.0m),
-            new("Capital", 200000m, 13.3m),
-            new("Debt Service", 150000m, 10.0m),
-            new("Other", 50000m, 3.3m)
-        ];
+        _logger.LogWarning("GenerateSampleCategoryData called: sample data disabled. Returning empty category list.");
+        return new List<CategoryBreakdownItem>();
     }
 
     private List<VarianceItem> GenerateSampleVarianceData()
     {
-        return
-        [
-            new("General Fund", 1500000m, 1200000m, 300000m, 20.0m),
-            new("Water Fund", 800000m, 750000m, 50000m, 6.3m),
-            new("Sewer Fund", 600000m, 580000m, 20000m, 3.3m),
-            new("Streets Fund", 400000m, 420000m, -20000m, -5.0m),
-            new("Parks Fund", 200000m, 180000m, 20000m, 10.0m)
-        ];
+        _logger.LogWarning("GenerateSampleVarianceData called: sample data disabled. Returning empty variance list.");
+        return new List<VarianceItem>();
     }
 
     /// <summary>

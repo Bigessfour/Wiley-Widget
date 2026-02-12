@@ -41,6 +41,10 @@ namespace WileyWidget.WinForms.Themes
             "Office2019Black",
             "Office2019DarkGray",
             "Office2019Dark",
+            "Office2016Colorful",
+            "Office2016White",
+            "Office2016Black",
+            "Office2016DarkGray",
             "Default"
         };
 

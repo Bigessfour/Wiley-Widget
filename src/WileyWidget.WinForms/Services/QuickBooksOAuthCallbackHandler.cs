@@ -15,7 +15,7 @@ namespace WileyWidget.WinForms.Services;
 
 /// <summary>
 /// HTTP listener for QuickBooks OAuth 2.0 callback.
-/// Listens on http://localhost:5000/callback for authorization code from Intuit.
+/// Listens on the configured RedirectUri (from appsettings.json) for authorization code from Intuit.
 /// Exchanges the code for access tokens and stores them.
 /// Per Intuit docs: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0
 /// </summary>
@@ -36,7 +36,7 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
     /// </summary>
     /// <param name="logger">Logger instance</param>
     /// <param name="serviceProvider">Service provider for resolving dependencies</param>
-    /// <param name="listenUrl">URL to listen on (default: http://localhost:5000/)</param>
+    /// <param name="listenUrl">URL to listen on (must match RedirectUri from appsettings.json)</param>
     public QuickBooksOAuthCallbackHandler(
         ILogger<QuickBooksOAuthCallbackHandler> logger,
         IServiceProvider serviceProvider,
@@ -44,7 +44,13 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _listenUrl = listenUrl ?? "http://localhost:5000/";
+
+        if (string.IsNullOrWhiteSpace(listenUrl))
+        {
+            throw new ArgumentException("listenUrl must be provided from configuration (Services:QuickBooks:OAuth:RedirectUri)", nameof(listenUrl));
+        }
+
+        _listenUrl = listenUrl;
 
         if (!_listenUrl.EndsWith("/"))
         {

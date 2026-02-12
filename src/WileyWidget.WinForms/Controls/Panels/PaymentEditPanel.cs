@@ -245,9 +245,10 @@ public partial class PaymentEditPanel : ScopedPanelBase
         var headerPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            BackColor = System.Drawing.Color.FromArgb(0, 102, 204),
             Padding = new Padding(24, 16, 24, 16) // Base-8 padding
         };
+        // Apply theme to header panel instead of hard-coded background color
+        SfSkinManager.SetVisualStyle(headerPanel, themeName);
 
         var headerLabel = new Label
         {
@@ -562,7 +563,7 @@ public partial class PaymentEditPanel : ScopedPanelBase
         }
         else
         {
-            layout.Controls.Add(new Label { Text = string.Empty}, 0, row);
+            layout.Controls.Add(new Label { Text = string.Empty }, 0, row);
         }
 
         control.Margin = new Padding(0, 0, 0, bottomMargin);

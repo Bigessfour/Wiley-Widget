@@ -128,6 +128,13 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private ObservableCollection<MonthlyRevenue> monthlyRevenueData = new();
 
+        /// <summary>
+        /// Monthly budgeted vs actual data bound to the main ChartControl
+        /// Ordered by MonthNumber for correct chronological display
+        /// </summary>
+        [ObservableProperty]
+        private ObservableCollection<MonthlyBudgetSummary> monthlySummaries = new();
+
         // Status text for display
         [ObservableProperty]
         private string statusText = "Ready";
@@ -794,173 +801,51 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Initializes sample data for design-time preview
+        /// Design-time initializer is disabled in production builds.
+        /// Clears any temporary collections and logs a warning instead of populating hard-coded sample data.
         /// </summary>
         private void InitializeSampleData()
         {
-            MunicipalityName = "Town of Wiley (Design)";
-            FiscalYear = "FY 2025-2026";
-            LastUpdated = DateTime.Now;
+            _logger.LogWarning("InitializeSampleData called: design-time/sample population disabled. Ensure design-time tooling handles sample data separately.");
 
-            TotalBudgeted = 5000000m;
-            TotalActual = 4250000m;
-            TotalVariance = 750000m;
-            VariancePercentage = 15.0m;
-            TotalRevenue = 4500000m;
-            TotalExpenses = 4000000m;
-            NetIncome = 500000m;
-            AccountCount = 125;
-            ActiveDepartments = 8;
-
-            TotalBudgetGauge = 85.0f;
-            RevenueGauge = 90.0f;
-            ExpensesGauge = 80.0f;
-            NetPositionGauge = 70.0f;
-            StatusText = "Design Mode - Sample Data";
-
-            UpdateMetricsCollection();
-            // Use fallback for design-time (no repository available)
-            PopulateMonthlyRevenueDataFallback(2026);
-        }
-
-        /// <summary>
-        /// Loads comprehensive sample dashboard data (municipal utilities focus).
-        /// Used as fallback when repositories are unavailable or empty.
-        /// </summary>
-        private void LoadSampleDashboardData()
-        {
-            _logger.LogInformation("Loading sample dashboard data (municipal utilities focus)");
-
-            // Clear any partial/failed real data
+            // Clear any existing collections to avoid revealing hard-coded values
             Metrics.Clear();
             FundSummaries.Clear();
             DepartmentSummaries.Clear();
             TopVariances.Clear();
             MonthlyRevenueData.Clear();
+            MonthlySummaries.Clear();
 
-            MunicipalityName = "Town of Wiley";
-            FiscalYear = "FY 2025-2026";
+            // Indicate missing production data to the UI
+            ErrorMessage = "Design/sample data disabled; no production data loaded.";
+            HasError = true;
+            StatusText = "No production data loaded";
             LastUpdated = DateTime.Now;
+        }
 
-            // === KPI Metrics (for SfListView or tiles) ===
-            Metrics.Add(new DashboardMetric
-            {
-                Name = "Total Budget",
-                Value = 12_450_000,
-                Unit = "$",
-                Trend = "up",
-                ChangePercent = 4.2,
-                Description = "Approved annual budget"
-            });
-            Metrics.Add(new DashboardMetric
-            {
-                Name = "YTD Actual Spending",
-                Value = 6_820_000,
-                Unit = "$",
-                Trend = "down",
-                ChangePercent = -2.1,
-                Description = "Year-to-date expenditures"
-            });
-            Metrics.Add(new DashboardMetric
-            {
-                Name = "Budget Variance",
-                Value = 630_000,
-                Unit = "$",
-                Trend = "up",
-                ChangePercent = 5.3,
-                Description = "Remaining budget (positive = under spent)"
-            });
-            Metrics.Add(new DashboardMetric
-            {
-                Name = "Active Accounts",
-                Value = 48,
-                Unit = "",
-                Trend = "neutral",
-                ChangePercent = 0,
-                Description = "Municipal GL accounts"
-            });
+        /// <summary>
+        /// Production-only behavior: sample data is disabled.
+        /// This method clears any temporary collections and signals that no production data
+        /// has been loaded. Real data should be provided by the configured repositories
+        /// or dashboard services via `LoadDashboardDataAsync`.
+        /// </summary>
+        private void LoadSampleDashboardData()
+        {
+            _logger.LogWarning("LoadSampleDashboardData called: sample data is disabled in this build. Ensure repositories are configured to provide production data.");
 
-            // === Gauges ===
-            TotalBudgetGauge = 100f;                    // Base reference
-            RevenueGauge = 78.5f;                       // % of projected revenue collected
-            ExpensesGauge = 54.8f;                      // % of budget spent
-            NetPositionGauge = 68.2f;                   // Overall financial health %
+            // Clear any partial/failed real data to avoid showing hard-coded values
+            Metrics.Clear();
+            FundSummaries.Clear();
+            DepartmentSummaries.Clear();
+            TopVariances.Clear();
+            MonthlyRevenueData.Clear();
+            MonthlySummaries.Clear();
 
-            // === Budget Analysis Summary ===
-            TotalBudgeted = 12_450_000m;
-            TotalActual = 6_820_000m;
-            TotalVariance = TotalBudgeted - TotalActual; // Positive = under budget
-            VariancePercentage = Math.Round((TotalVariance / TotalBudgeted) * 100m, 1);
-
-            TotalRevenue = 7_920_000m;
-            TotalExpenses = 6_820_000m;
-            NetIncome = TotalRevenue - TotalExpenses;
-
-            AccountCount = 48;
-            ActiveDepartments = 8;
-
-            // === Fund Breakdown ===
-            FundSummaries.Add(new FundSummary { FundName = "General", Budgeted = 4_200_000m, Actual = 2_150_000m });
-            FundSummaries.Add(new FundSummary { FundName = "Enterprise (Utilities)", Budgeted = 6_800_000m, Actual = 3_780_000m });
-            FundSummaries.Add(new FundSummary { FundName = "Capital Projects", Budgeted = 1_000_000m, Actual = 650_000m });
-            FundSummaries.Add(new FundSummary { FundName = "Debt Service", Budgeted = 450_000m, Actual = 240_000m });
-
-            // === Department Breakdown (Utilities focus) ===
-            var depts = new[]
-            {
-                ("Water", 2_800_000m, 1_520_000m),
-                ("Sewer", 2_200_000m, 1_280_000m),
-                ("Trash", 1_200_000m, 680_000m),
-                ("Apartments", 600_000m, 300_000m),
-                ("Administration", 1_800_000m, 980_000m),
-                ("Public Works", 1_650_000m, 860_000m),
-                ("Finance", 900_000m, 480_000m),
-                ("Parks & Recreation", 300_000m, 170_000m)
-            };
-
-            foreach (var (dept, budgeted, actual) in depts)
-            {
-                var variance = actual - budgeted; // Positive = over budget
-                var variancePct = budgeted != 0 ? Math.Round((variance / budgeted) * 100m, 1) : 0m;
-                DepartmentSummaries.Add(new DepartmentSummary
-                {
-                    DepartmentName = dept,
-                    TotalBudgeted = budgeted,
-                    TotalActual = actual,
-                    Variance = variance,
-                    VariancePercentage = variancePct
-                });
-            }
-
-            // === Top Variances (worst offenders) ===
-            TopVariances.Add(new AccountVariance { AccountName = "Water Treatment Chemicals", VarianceAmount = 125_000m, VariancePercentage = 18.2m });
-            TopVariances.Add(new AccountVariance { AccountName = "Sewer Line Repairs", VarianceAmount = 98_000m, VariancePercentage = 14.7m });
-            TopVariances.Add(new AccountVariance { AccountName = "Trash Hauling Contract", VarianceAmount = 72_000m, VariancePercentage = 11.3m });
-            TopVariances.Add(new AccountVariance { AccountName = "Apartment Maintenance", VarianceAmount = -45_000m, VariancePercentage = -8.1m }); // Under
-
-            // === Monthly Trend Data (for main chart/sparklines) ===
-            var months = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-            decimal baseRevenue = 1_100_000m;
-            decimal baseExpense = 950_000m;
-            var random = new Random(42);
-
-            for (int i = 0; i < months.Length; i++)
-            {
-                decimal revenue = baseRevenue + random.Next(-80_000, 120_000);
-                decimal expense = baseExpense + random.Next(-50_000, 100_000);
-
-                MonthlyRevenueData.Add(new MonthlyRevenue
-                {
-                    Month = months[i],
-                    Amount = Math.Round(revenue - expense, 0),
-                    MonthNumber = i + 1
-                });
-            }
-
-            // Set status
-            ErrorMessage = null;
-            HasError = false;
-            StatusText = $"Sample data loaded – {DepartmentSummaries.Count} departments, FY 2025-2026";
+            // Indicate to the UI that production data was not loaded
+            ErrorMessage = "Production data unavailable; sample data disabled.";
+            HasError = true;
+            StatusText = "No production data loaded";
+            LastUpdated = DateTime.Now;
         }
 
     }
@@ -968,6 +853,20 @@ namespace WileyWidget.WinForms.ViewModels
     /// <summary>
     /// Monthly revenue data for chart display
     /// </summary>
+    /// <summary>
+    /// Monthly budget vs actual data for the main column chart (Budgeted orange, Actual blue)
+    /// </summary>
+    public class MonthlyBudgetSummary
+    {
+        public required string Month { get; set; }
+        public decimal Budgeted { get; set; }
+        public decimal Actual { get; set; }
+        /// <summary>
+        /// Optional numeric month for proper sorting (1=Jan ... 12=Dec)
+        /// </summary>
+        public int MonthNumber { get; set; }
+    }
+
     public class MonthlyRevenue
     {
         public required string Month { get; init; }

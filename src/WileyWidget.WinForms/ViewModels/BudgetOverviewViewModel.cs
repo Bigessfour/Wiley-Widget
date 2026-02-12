@@ -101,6 +101,14 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private decimal totalEncumbrance;
 
+        /// <summary>Gets or sets the total available amount across all categories.</summary>
+        [ObservableProperty]
+        private decimal totalAvailable;
+
+        /// <summary>Gets or sets the status text for UI display.</summary>
+        [ObservableProperty]
+        private string statusText = string.Empty;
+
         /// <summary>Gets or sets the total variance (Budget - Actual - Encumbrance).</summary>
         [ObservableProperty]
         private decimal totalVariance;
@@ -511,41 +519,31 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Loads sample/fallback data when service fails, to maintain UI functionality.
+        /// Sample/fallback population is disabled in production builds.
+        /// Clears temporary collections and logs a warning instead of populating hard-coded sample data.
         /// </summary>
         private void LoadSampleDataOnFailure()
         {
             try
             {
-                _logger.LogWarning("Loading sample budget data as fallback");
-
-                // Create sample categories
-                var sampleCategories = new[]
-                {
-                    new BudgetCategoryDto { Id = 1, Category = "Personnel", DepartmentName = "General", BudgetedAmount = 500000m, ActualAmount = 475000m, EncumbranceAmount = 10000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 2, Category = "Operations", DepartmentName = "General", BudgetedAmount = 250000m, ActualAmount = 260000m, EncumbranceAmount = 5000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 3, Category = "Utilities", DepartmentName = "Sewer", BudgetedAmount = 150000m, ActualAmount = 145000m, EncumbranceAmount = 2000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 4, Category = "Maintenance", DepartmentName = "Sewer", BudgetedAmount = 100000m, ActualAmount = 95000m, EncumbranceAmount = 3000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 5, Category = "Capital Projects", DepartmentName = "General", BudgetedAmount = 300000m, ActualAmount = 280000m, EncumbranceAmount = 15000m, FiscalYear = FiscalYear }
-                };
+                _logger.LogWarning("LoadSampleDataOnFailure called: sample budget overview data disabled. Ensure budget repository is configured.");
 
                 Categories.Clear();
-                foreach (var category in sampleCategories)
-                {
-                    Categories.Add(category);
-                }
+                TotalBudget = 0m;
+                TotalActual = 0m;
+                TotalEncumbrance = 0m;
+                TotalAvailable = 0m;
+                ErrorMessage = "Production budget overview data unavailable; sample data disabled.";
+                StatusText = "No production budget overview data loaded";
 
-                // Calculate totals from sample data
-                TotalBudget = sampleCategories.Sum(c => c.BudgetedAmount);
-                TotalActual = sampleCategories.Sum(c => c.ActualAmount);
-                TotalEncumbrance = sampleCategories.Sum(c => c.EncumbranceAmount);
-                TotalVariance = Variance;
-                OverallVariancePercent = TotalBudget == 0 ? 0 : (Variance / TotalBudget) * 100m;
+                // No sample categories available in production; compute totals from cleared collections.
+                TotalVariance = 0m;
+                OverallVariancePercent = 0m;
 
                 UpdateMetricsFromCategories();
                 LastUpdated = DateTime.Now;
 
-                _logger.LogInformation("Loaded {Count} sample budget categories", sampleCategories.Length);
+                _logger.LogInformation("Sample budget data disabled — cleared categories and metrics.");
             }
             catch (Exception ex)
             {

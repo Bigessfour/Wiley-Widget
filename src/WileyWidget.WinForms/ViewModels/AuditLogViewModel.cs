@@ -53,6 +53,7 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
     private bool _isLoading;
     private bool _isChartLoading;
     private string? _errorMessage;
+    private string? _statusText = "Ready";
     private DateTime _startDate = DateTime.Now.AddDays(-30);
     private DateTime _endDate = DateTime.Now;
     private string? _selectedActionType;
@@ -121,6 +122,22 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
             {
                 _errorMessage = value;
                 OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Short status text for UI status bar updates.
+    /// </summary>
+    public string? StatusText
+    {
+        get => _statusText;
+        set
+        {
+            if (_statusText != value)
+            {
+                _statusText = value;
+                OnPropertyChanged(nameof(StatusText));
             }
         }
     }
@@ -413,16 +430,15 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
 
             if (ct.IsCancellationRequested) return;
 
-            // If no entries, provide a realistic sample dataset as fallback
+            // If no entries, do not show synthetic sample data in production builds
             if (!entries.Any())
             {
                 ChartData.Clear();
-                foreach (var p in CreateSampleChartData(ChartGrouping, StartDate, EndDate))
-                    ChartData.Add(p);
-
-                TotalEvents = ChartData.Sum(c => c.Count);
-                PeakEvents = ChartData.Any() ? ChartData.Max(c => c.Count) : 0;
+                TotalEvents = 0;
+                PeakEvents = 0;
                 LastChartUpdated = DateTime.Now;
+                ErrorMessage = "No audit entries found; sample data disabled.";
+                StatusText = "No audit data loaded";
 
                 return;
             }

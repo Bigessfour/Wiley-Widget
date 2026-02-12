@@ -28,6 +28,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using Action = System.Action;
 using Syncfusion.WinForms.DataGrid;
+using WileyWidget.WinForms.Services;
 
 
 
@@ -104,6 +105,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private Supporting.ErrorProviderBinding? _errorBinding;
         private ToolTip? _toolTip;
         private BindingSource _bindingSource = null!;
+        private DpiAwareImageService? _imageService;
         private bool _isNew;
 
         // === EVENT HANDLER STORAGE FOR CLEANUP ===
@@ -127,9 +129,11 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// For new account creation, use the DI constructor.
         /// For editing, create via DI and call SetExistingAccount() to configure.
         /// </summary>
-        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger)
+        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger, DpiAwareImageService imageService)
             : base(scopeFactory, logger)
         {
+            _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
+
             // Set AutoScaleMode for proper DPI scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -734,6 +738,26 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _buttonPanel.Controls.Add(btnCancel);
             _buttonPanel.Controls.Add(btnSave);
+
+            // === ICON ASSIGNMENT FOR DIALOG BUTTONS (Optional Polish) ===
+            try
+            {
+                // Get 32x32 scaled icons for dialog buttons
+                btnSave.Image = _imageService?.GetScaledImage("save", new Size(32, 32));
+                btnCancel.Image = _imageService?.GetScaledImage("close", new Size(32, 32));
+
+                // Layout: icon above text for visual prominence
+                btnSave.TextImageRelation = TextImageRelation.ImageAboveText;
+                btnCancel.TextImageRelation = TextImageRelation.ImageAboveText;
+                btnSave.ImageAlign = ContentAlignment.TopCenter;
+                btnCancel.ImageAlign = ContentAlignment.TopCenter;
+
+                Logger?.LogDebug("[ACCOUNT_EDIT_ICONS] ✅ Dialog button icons assigned successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "[ACCOUNT_EDIT_ICONS] ⚠️ Failed to load dialog button icons - UI will display text only");
+            }
 
             _mainLayout.Controls.Add(_buttonPanel, 0, 10);
             _mainLayout.SetColumnSpan(_buttonPanel, 2);

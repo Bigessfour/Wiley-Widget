@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using WileyWidget.Models;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -12,8 +13,8 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public interface ICustomersViewModel : System.ComponentModel.INotifyPropertyChanged
     {
-        ObservableCollection<object> Customers { get; set; }
-        object? SelectedCustomer { get; set; }
+        ObservableCollection<UtilityCustomer> Customers { get; set; }
+        UtilityCustomer? SelectedCustomer { get; set; }
         bool IsLoading { get; set; }
         string? ErrorMessage { get; set; }
         string StatusText { get; set; }

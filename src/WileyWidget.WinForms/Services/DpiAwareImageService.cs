@@ -76,97 +76,115 @@ public sealed class DpiAwareImageService : IDisposable
             _logger.LogInformation("DPI-aware image service: performing deferred icon loading...");
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Production-ready icon definitions with intentional system icon selections
-            var iconDefinitions = new Dictionary<string, Icon>
+            // Icon definitions with resource name mappings
+            // Maps icon keys to embedded resource names (without "flat.png" suffix)
+            var iconResourceMappings = new Dictionary<string, string>
             {
-                // File operations - standard system icons for familiar UI
-                ["save"] = SystemIcons.WinLogo,           // Floppy disk substitute (Office standard)
-                ["open"] = SystemIcons.Application,       // Folder/window metaphor
-                ["export"] = SystemIcons.Shield,          // Export as document security icon
-                ["import"] = SystemIcons.Information,     // Information/document import metaphor
-                ["print"] = SystemIcons.Question,         // Alternative: printer-like appearance
+                // File operations
+                ["save"] = "save",
+                ["open"] = "open",
+                ["export"] = "export",
+                ["import"] = "import",
+                ["print"] = "print",
 
-                // Navigation - directional and structural
-                ["home"] = SystemIcons.Application,       // Home/app window
-                ["back"] = SystemIcons.Hand,              // Back arrow alternative
-                ["forward"] = SystemIcons.Asterisk,       // Forward indicator
-                ["refresh"] = SystemIcons.Exclamation,    // Refresh/alert
+                // Navigation
+                ["home"] = "home",
+                ["back"] = "back",
+                ["forward"] = "forward",
+                ["refresh"] = "reset",  // Use resetflat.png for refresh
+                ["pin"] = "pin",        // Need to add pinflat.png
+                ["pin_filled"] = "pin_filled", // Need to add pin_filledflat.png
+                ["close"] = "close",    // Need to add closeflat.png
 
-                // Data operations - CRUD and filtering
-                ["add"] = SystemIcons.Information,        // Plus/add icon
-                ["edit"] = SystemIcons.Question,          // Edit/pencil metaphor
-                ["delete"] = SystemIcons.Error,           // Delete/trash (error-like appearance)
-                ["search"] = SystemIcons.Question,        // Search/magnifying glass
-                ["filter"] = SystemIcons.Shield,          // Filter/funnel
+                // Data operations
+                ["add"] = "add",
+                ["edit"] = "edit",
+                ["delete"] = "delete",
+                ["search"] = "search",
+                ["filter"] = "filter",
 
                 // Dashboard and analytics
-                ["dashboard"] = SystemIcons.Application,  // Dashboard/main window
-                ["chart"] = SystemIcons.Information,      // Chart/graph data
-                ["charts"] = SystemIcons.Information,     // Multiple charts
-                ["gauge"] = SystemIcons.Shield,           // Gauge/meter
-                ["kpi"] = SystemIcons.Asterisk,           // KPI indicator
-                ["analytics"] = SystemIcons.Information,  // Analytics/statistics
-                ["insights"] = SystemIcons.Exclamation,   // Insights/alerts
-                ["deptsummary"] = SystemIcons.Information, // Department summary
-                ["insightfeed"] = SystemIcons.Exclamation, // Insight feed panel
+                ["dashboard"] = "dashboard",
+                ["chart"] = "chart",
+                ["charts"] = "charts",
+                ["gauge"] = "gauge",
+                ["kpi"] = "kpi",
+                ["analytics"] = "analytics",
+                ["insights"] = "insights",
+                ["deptsummary"] = "deptsummary",
+                ["insightfeed"] = "insightfeed",
 
                 // Accounts and financial
-                ["accounts"] = SystemIcons.Application,   // Chart of accounts/ledger
-                ["budget"] = SystemIcons.Information,     // Budget/money
-                ["budgetoverview"] = SystemIcons.Information, // Budget overview dashboard
-                ["customers"] = SystemIcons.Application,  // Customers/people
-                ["utilitybill"] = SystemIcons.Application, // Utility bills
-                ["revenuetrends"] = SystemIcons.Information, // Revenue trends analysis
-                ["recommendedcharge"] = SystemIcons.Information, // Recommended charge calculator
+                ["accounts"] = "accounts",
+                ["budget"] = "budget",
+                ["budgetoverview"] = "budgetoverview",
+                // 'rates' reuses recommendedcharge icon to avoid missing resource; add a dedicated rates icon later
+                ["rates"] = "recommendedcharge",
+                ["customers"] = "customers",
+                ["utilitybill"] = "utilitybill",
+                ["revenuetrends"] = "revenuetrends",
+                ["recommendedcharge"] = "recommendedcharge",
 
                 // Reports and audit
-                ["report"] = SystemIcons.Application,     // Report document
-                ["reports"] = SystemIcons.Application,    // Multiple reports
-                ["pdf"] = SystemIcons.Shield,             // PDF document
-                ["excel"] = SystemIcons.Information,      // Excel/spreadsheet
-                ["audit"] = SystemIcons.Question,         // Audit log
-                ["auditlog"] = SystemIcons.Question,      // Audit log panel
-                ["activitylog"] = SystemIcons.Information, // Activity log panel
+                ["report"] = "report",
+                ["reports"] = "reports",
+                ["pdf"] = "pdf",
+                ["excel"] = "excel",
+                ["audit"] = "audit",
+                ["auditlog"] = "auditlog",
+                ["activitylog"] = "activitylog",
 
                 // Settings and preferences
-                ["settings"] = SystemIcons.Shield,        // Settings/gear
-                ["config"] = SystemIcons.Information,     // Configuration
-                ["theme"] = SystemIcons.Asterisk,         // Theme/appearance
+                ["settings"] = "settings",
+                ["config"] = "config",
+                ["theme"] = "theme",
 
-                // Status indicators - semantic colors recommended in caller
-                ["success"] = SystemIcons.Information,    // Success check
-                ["warning"] = SystemIcons.Warning,        // Warning triangle
-                ["error"] = SystemIcons.Error,            // Error X
-                ["info"] = SystemIcons.Information,       // Information
+                // Status indicators
+                ["success"] = "success",
+                ["warning"] = "warning",
+                ["error"] = "error",
+                ["info"] = "info",
 
                 // External integrations
-                ["quickbooks"] = SystemIcons.Application, // QuickBooks app
-                ["jarvis"] = SystemIcons.Question,        // JARVIS AI assistant
-                ["sync"] = SystemIcons.Shield,            // Sync/sync operation
-                ["warroom"] = SystemIcons.Exclamation,    // War room alert
+                ["quickbooks"] = "quickbooks",
+                ["jarvis"] = "jarvis",
+                ["sync"] = "sync",
+                ["warroom"] = "warroom",
 
                 // Utilities
-                ["calculator"] = SystemIcons.Application, // Calculator
-                ["calendar"] = SystemIcons.Information,   // Calendar
-                ["email"] = SystemIcons.Shield,           // Email envelope
-                ["help"] = SystemIcons.Question           // Help/question mark
+                ["calculator"] = "calculator",
+                ["calendar"] = "calendar",
+                ["email"] = "email",
+                ["help"] = "help"  // Need to add helpflat.png
             };
 
             int index = 0;
-            foreach (var (iconName, fallbackIcon) in iconDefinitions)
+            foreach (var (iconName, resourceBaseName) in iconResourceMappings)
             {
+                // Try to load from embedded resources first
+                Image? baseImage = LoadEmbeddedIcon(resourceBaseName, 16);
+                if (baseImage == null)
+                {
+                    // Fallback to SystemIcons for missing resources
+                    _logger.LogWarning("Embedded icon not found: {ResourceName}, using SystemIcon fallback for {IconName}", resourceBaseName, iconName);
+                    baseImage = GetSystemIconFallback(iconName, 16);
+                }
+
                 // Add base DPI96 image (16x16) to Images collection
-                var icon96 = GetIconBitmap(fallbackIcon, 16);
-                _imageList.Images.Add(iconName, icon96);
+                _imageList.Images.Add(iconName, baseImage);
+
+                // Create DPI variants by loading larger embedded resources or scaling
+                Image? dpi120Image = LoadEmbeddedIcon(resourceBaseName, 20) ?? ScaleImage(baseImage, 20);
+                Image? dpi144Image = LoadEmbeddedIcon(resourceBaseName, 24) ?? ScaleImage(baseImage, 24);
+                Image? dpi192Image = LoadEmbeddedIcon(resourceBaseName, 32) ?? ScaleImage(baseImage, 32);
 
                 // Create DPIAwareImage instance and configure for different DPI levels
-                // ImageListAdv automatically selects the appropriate image based on current monitor DPI
                 var dpiAwareImage = new DPIAwareImage
                 {
-                    Index = index,                              // Map to the Images collection index
-                    DPI120Image = GetIconBitmap(fallbackIcon, 20),  // 125% (20x20)
-                    DPI144Image = GetIconBitmap(fallbackIcon, 24),  // 150% (24x24)
-                    DPI192Image = GetIconBitmap(fallbackIcon, 32)   // 200% (32x32)
+                    Index = index,
+                    DPI120Image = dpi120Image,
+                    DPI144Image = dpi144Image,
+                    DPI192Image = dpi192Image
                 };
                 _imageList.DPIImages.Add(dpiAwareImage);
 
@@ -175,7 +193,7 @@ public sealed class DpiAwareImageService : IDisposable
                 index++;
             }
 
-            _logger.LogInformation("DPI-aware image service: loaded {Count} icons with automatic scaling for 100%, 125%, 150%, 200% DPI", iconDefinitions.Count);
+            _logger.LogInformation("DPI-aware image service: loaded {Count} icons with automatic scaling for 100%, 125%, 150%, 200% DPI", iconResourceMappings.Count);
         }
         catch (Exception ex)
         {
@@ -190,6 +208,136 @@ public sealed class DpiAwareImageService : IDisposable
     {
         using var resizedIcon = new Icon(sourceIcon, size, size);
         return resizedIcon.ToBitmap();
+    }
+
+    /// <summary>
+    /// Loads an icon from embedded resources at the specified size.
+    /// </summary>
+    /// <param name="resourceBaseName">Base name without "flat.png" suffix.</param>
+    /// <param name="size">Target size (16, 20, 24, 32).</param>
+    /// <returns>Bitmap if found, null otherwise.</returns>
+    private static Image? LoadEmbeddedIcon(string resourceBaseName, int size)
+    {
+        try
+        {
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var resourceName = $"WileyWidget.WinForms.Resources.FlatIcons.{resourceBaseName}flat.png";
+
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
+            {
+                return null;
+            }
+
+            var originalImage = Image.FromStream(stream);
+
+            // If the image is already the target size, return it
+            if (originalImage.Size == new Size(size, size))
+            {
+                return originalImage;
+            }
+
+            // Scale to target size with high quality
+            var scaledImage = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(scaledImage))
+            {
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                graphics.DrawImage(originalImage, 0, 0, size, size);
+            }
+
+            originalImage.Dispose();
+            return scaledImage;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Scales an image to the specified size.
+    /// </summary>
+    private static Image ScaleImage(Image sourceImage, int size)
+    {
+        var scaledImage = new Bitmap(size, size);
+        using (var graphics = Graphics.FromImage(scaledImage))
+        {
+            graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+            graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            graphics.DrawImage(sourceImage, 0, 0, size, size);
+        }
+        return scaledImage;
+    }
+
+    /// <summary>
+    /// Gets a system icon fallback for when embedded resources are missing.
+    /// </summary>
+    private static Image GetSystemIconFallback(string iconName, int size)
+    {
+        var fallbackIcon = iconName switch
+        {
+            "refresh" => SystemIcons.Exclamation,
+            "pin" => SystemIcons.Hand,
+            "pin_filled" => SystemIcons.Hand,
+            "close" => SystemIcons.Error,
+            "help" => SystemIcons.Question,
+            "save" => SystemIcons.WinLogo,
+            "open" => SystemIcons.Application,
+            "export" => SystemIcons.Shield,
+            "import" => SystemIcons.Information,
+            "print" => SystemIcons.Question,
+            "home" => SystemIcons.Application,
+            "back" => SystemIcons.Hand,
+            "forward" => SystemIcons.Asterisk,
+            "add" => SystemIcons.Information,
+            "edit" => SystemIcons.Question,
+            "delete" => SystemIcons.Error,
+            "search" => SystemIcons.Question,
+            "filter" => SystemIcons.Shield,
+            "dashboard" => SystemIcons.Application,
+            "chart" => SystemIcons.Information,
+            "charts" => SystemIcons.Information,
+            "gauge" => SystemIcons.Shield,
+            "kpi" => SystemIcons.Asterisk,
+            "analytics" => SystemIcons.Information,
+            "insights" => SystemIcons.Exclamation,
+            "deptsummary" => SystemIcons.Information,
+            "insightfeed" => SystemIcons.Exclamation,
+            "accounts" => SystemIcons.Application,
+            "budget" => SystemIcons.Information,
+            "budgetoverview" => SystemIcons.Information,
+            "customers" => SystemIcons.Application,
+            "utilitybill" => SystemIcons.Application,
+            "revenuetrends" => SystemIcons.Information,
+            "recommendedcharge" => SystemIcons.Information,
+            "report" => SystemIcons.Application,
+            "reports" => SystemIcons.Application,
+            "pdf" => SystemIcons.Shield,
+            "excel" => SystemIcons.Information,
+            "audit" => SystemIcons.Question,
+            "auditlog" => SystemIcons.Question,
+            "activitylog" => SystemIcons.Information,
+            "settings" => SystemIcons.Shield,
+            "config" => SystemIcons.Information,
+            "theme" => SystemIcons.Asterisk,
+            "success" => SystemIcons.Information,
+            "warning" => SystemIcons.Warning,
+            "error" => SystemIcons.Error,
+            "info" => SystemIcons.Information,
+            "quickbooks" => SystemIcons.Application,
+            "jarvis" => SystemIcons.Question,
+            "sync" => SystemIcons.Shield,
+            "warroom" => SystemIcons.Exclamation,
+            "calculator" => SystemIcons.Application,
+            "calendar" => SystemIcons.Information,
+            "email" => SystemIcons.Shield,
+            _ => SystemIcons.Application
+        };
+
+        return GetIconBitmap(fallbackIcon, size);
     }
 
     /// <summary>

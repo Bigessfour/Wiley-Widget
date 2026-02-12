@@ -24,6 +24,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.ViewModels;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Options;
 using Polly;
 using System.Net.Http;
 using System.Linq;
@@ -393,11 +394,14 @@ namespace WileyWidget.WinForms.Configuration
             services.TryAddSingleton<QuickBooksAuthService>(sp =>
                 (QuickBooksAuthService)DI.ServiceProviderServiceExtensions.GetRequiredService<IQuickBooksAuthService>(sp));
 
-            // QuickBooks OAuth Callback Handler (HTTP listener on port 5000 for OAuth redirect)
-            services.TryAddSingleton<QuickBooksOAuthCallbackHandler>();
-
-            // QuickBooks Token Store (persists and caches OAuth tokens + realm ID)
-            services.TryAddSingleton<QuickBooksTokenStore>();
+            // QuickBooks OAuth Callback Handler (HTTP listener for OAuth redirect)
+            services.TryAddSingleton<QuickBooksOAuthCallbackHandler>(sp =>
+            {
+                var logger = DI.ServiceProviderServiceExtensions.GetRequiredService<ILogger<QuickBooksOAuthCallbackHandler>>(sp);
+                var options = DI.ServiceProviderServiceExtensions.GetService<IOptions<QuickBooksOAuthOptions>>(sp);
+                var redirectUri = options?.Value?.RedirectUri;
+                return new QuickBooksOAuthCallbackHandler(logger, sp, redirectUri);
+            });
 
             // QuickBooks Integration Services (with resilience & proper lifecycle)
             // HttpClient factory already registered above with resilience for QB
@@ -561,6 +565,9 @@ namespace WileyWidget.WinForms.Configuration
             // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
 
+            // DPI-Aware Image Service (Singleton - manages DPI-scaled images for Syncfusion controls)
+            services.AddSingleton<DpiAwareImageService>();
+
             // =====================================================================
             // XAI GROK AI AGENT CONFIGURATION
             // =====================================================================
@@ -702,6 +709,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IInsightFeedViewModel, InsightFeedViewModel>();
             services.AddScoped<InsightFeedViewModel>();
             services.AddScoped<WileyWidget.WinForms.ViewModels.ActivityLogViewModel>();
+            // Rates panel ViewModel and expense provider (RatesPage is form-hosted)
+            services.AddScoped<RatesPageViewModel>();
+            services.AddScoped<IExpenseProvider, DefaultExpenseProvider>();
             // Example panels' ViewModels - sometimes omitted during refactor
             services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
             // JARVIS Chat ViewModel for docked chat control
@@ -716,6 +726,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.ReportsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.SettingsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel>();
+            // FormHostPanel is used to host standalone Forms (e.g., BudgetDashboardForm) inside docking panels.
+            // Ensure it's registered so DI validation recognizes it and tests can resolve its dependencies.
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.FormHostPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>();
@@ -730,7 +743,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.InsightFeedPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>();
+            // DashboardPanel removed in favor of BudgetDashboardForm (form-hosted). See migration.
             services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 
             // =====================================================================
@@ -741,11 +756,17 @@ namespace WileyWidget.WinForms.Configuration
             // Child Forms: Removed - application now uses panel-based navigation (see below)
             // =====================================================================
 
+            // ViewModels (Transient - lightweight data models)
+            services.AddTransient<IDashboardViewModel, DashboardViewModel>();
+
             // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)
             services.AddScoped<MainForm>();
 
             // Child Forms (Transient - Created/disposed as needed)
             // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()
+            services.AddTransient<BudgetDashboardForm>();  // Budget dashboard as standalone form (not docked panel)
+            // Rates page form (transient - created on demand via MainForm.ShowForm<TForm>)
+            services.AddTransient<RatesPage>();
 
             // NOTE: Child forms removed - application now uses panel-based navigation via IPanelNavigationService
             // Legacy forms (ChartForm, SettingsForm, AccountsForm, etc.) have been superseded by UserControl panels

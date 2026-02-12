@@ -171,12 +171,14 @@ public partial class VariancesTabControl : UserControl
             {
                 if (record.Variance < 0)
                 {
-                    e.Style.BackColor = Color.LightCoral;
+                    // Removed manual BackColor to respect SfSkinManager theme cascade.
+                    // Keep semantic text color for status clarity.
                     e.Style.TextColor = Color.DarkRed;
                 }
                 else if (record.Variance > 0)
                 {
-                    e.Style.BackColor = Color.LightGreen;
+                    // Removed manual BackColor to respect SfSkinManager theme cascade.
+                    // Keep semantic text color for status clarity.
                     e.Style.TextColor = Color.DarkGreen;
                 }
             }

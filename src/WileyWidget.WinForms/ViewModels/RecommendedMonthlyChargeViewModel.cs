@@ -17,7 +17,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// </summary>
 public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposable
 {
-    private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
+
     private readonly IDepartmentExpenseService? _departmentExpenseService;
     private readonly IGrokRecommendationService? _grokRecommendationService;
     protected IDbContextFactory<AppDbContext>? _dbContextFactory;
@@ -114,7 +114,6 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         IGrokRecommendationService? grokRecommendationService = null)
         : base(logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _departmentExpenseService = departmentExpenseService;
         _grokRecommendationService = grokRecommendationService;
 
@@ -497,78 +496,18 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     }
 
     /// <summary>
-    /// Loads sample department expense data (fallback when service unavailable)
+    /// Sample population is disabled in production. This method clears any temporary
+    /// department collections and logs a warning instead of populating hard-coded values.
     /// </summary>
     private void LoadSampleDepartmentData()
     {
+        _logger.LogWarning("LoadSampleDepartmentData called: sample data disabled. Ensure department service is configured for real data.");
         Departments.Clear();
+        Benchmarks.Clear();
 
-        // Sample data - realistic values for design/testing
-        var departments = new[]
-        {
-            new DepartmentRateModel
-            {
-                Department = "Water",
-                MonthlyExpenses = 168000m,
-                CurrentCharge = 55.00m,
-                CustomerCount = 3200,
-                StateAverage = 55.00m,
-                AiAdjustmentFactor = 1.1m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Sewer",
-                MonthlyExpenses = 276000m,
-                CurrentCharge = 75.00m,
-                CustomerCount = 3200,
-                StateAverage = 75.00m,
-                AiAdjustmentFactor = 1.12m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Trash",
-                MonthlyExpenses = 78400m,
-                CurrentCharge = 30.00m,
-                CustomerCount = 2800,
-                StateAverage = 32.00m,
-                AiAdjustmentFactor = 1.08m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Apartments",
-                MonthlyExpenses = 38640m,
-                CurrentCharge = 120.00m,
-                CustomerCount = 280,
-                StateAverage = 135.00m,
-                AiAdjustmentFactor = 1.15m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Electric",
-                MonthlyExpenses = 195000m,
-                CurrentCharge = 85.00m,
-                CustomerCount = 2500,
-                StateAverage = 90.00m,
-                AiAdjustmentFactor = 1.1m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Gas",
-                MonthlyExpenses = 92400m,
-                CurrentCharge = 45.00m,
-                CustomerCount = 2200,
-                StateAverage = 48.00m,
-                AiAdjustmentFactor = 1.1m
-            }
-        };
-
-        foreach (var dept in departments)
-        {
-            dept.UpdateSuggested(dept.AiAdjustmentFactor);
-            Departments.Add(dept);
-        }
-
-        _logger.LogDebug("Loaded {Count} sample departments", Departments.Count);
+        ErrorMessage = "Production data unavailable; sample population disabled.";
+        StatusText = "No production department data loaded";
+        LastUpdated = DateTime.Now;
     }
 
     /// <summary>
@@ -662,16 +601,17 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
     }
 
     /// <summary>
-    /// Initializes sample data for design-time preview
+    /// Design-time initializer is disabled. Clears collections and signals no production data.
     /// </summary>
     private void InitializeSampleData()
     {
-        LoadSampleDepartmentData();
-        LoadBenchmarkData();
+        _logger.LogWarning("InitializeSampleData called: sample data disabled in this build.");
+        Departments.Clear();
+        Benchmarks.Clear();
         CalculateTotals();
-
+        ErrorMessage = "Design/sample data disabled; no production data loaded.";
+        StatusText = "No production data loaded";
         LastUpdated = DateTime.Now;
-        StatusText = "Design Mode - Sample Data";
     }
 
     public void Dispose()

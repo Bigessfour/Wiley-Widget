@@ -70,6 +70,30 @@ namespace WileyWidget.WinForms.Services
             where TPanel : UserControl;
 
         /// <summary>
+        /// Shows or activates a docked Form by hosting it inside a `FormHostPanel`.
+        /// This preserves docking/floating behavior while allowing form-based UI to be used.
+        /// </summary>
+        /// <typeparam name="TForm">The Form type to host.</typeparam>
+        /// <param name="panelName">Unique display name for the hosted form.</param>
+        /// <param name="preferredStyle">Preferred docking position.</param>
+        /// <param name="allowFloating">If true, the hosted form can be floated.</param>
+        void ShowForm<TForm>(
+            string panelName,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TForm : Form;
+
+        /// <summary>
+        /// Shows or activates a docked Form with initialization parameters.
+        /// </summary>
+        void ShowForm<TForm>(
+            string panelName,
+            object? parameters,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TForm : Form;
+
+        /// <summary>
         /// Hides a docked panel by name.
         /// </summary>
         /// <param name="panelName">Name of the panel to hide.</param>
@@ -126,7 +150,8 @@ namespace WileyWidget.WinForms.Services
 
         private static readonly Dictionary<Type, PanelSizing> PanelSizeOverrides = new()
         {
-            { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
+            // FormHostPanel hosts Forms such as BudgetDashboardForm; provide dashboard sizing when hosting forms
+            { typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
             { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
             { typeof(AnalyticsHubPanel), new PanelSizing(new Size(600, 0), new Size(0, 500), new Size(500, 450)) },
             { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
@@ -395,6 +420,233 @@ namespace WileyWidget.WinForms.Services
                 throw new InvalidOperationException(
                     $"Unable to show panel '{panelName}' of type {typeof(TPanel).Name}. " +
                     $"Error: {ex.Message}. Check logs for detailed stack trace.", ex);
+            }
+        }
+
+        public void ShowForm<TForm>(
+            string panelName,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TForm : Form
+        {
+            ShowForm<TForm>(panelName, null, preferredStyle, allowFloating);
+        }
+
+        public void ShowForm<TForm>(
+            string panelName,
+            object? parameters,
+            DockingStyle preferredStyle = DockingStyle.Right,
+            bool allowFloating = true)
+            where TForm : Form
+        {
+            if (string.IsNullOrWhiteSpace(panelName))
+                throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            if (_dockingManager == null)
+            {
+                var ex = new InvalidOperationException("DockingManager is null - cannot show form without docking infrastructure");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show form {PanelName} - DockingManager is null", panelName);
+                throw ex;
+            }
+
+            if (_parentControl == null)
+            {
+                var ex = new InvalidOperationException("Parent control is null - cannot show form without parent container");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show form {PanelName} - Parent control is null", panelName);
+                throw ex;
+            }
+
+            if (_serviceProvider == null)
+            {
+                var ex = new InvalidOperationException("Service provider is null - cannot resolve form via DI");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show form {PanelName} - Service provider is null", panelName);
+                throw ex;
+            }
+
+            if (_parentControl.IsDisposed)
+            {
+                var ex = new ObjectDisposedException(nameof(_parentControl), "Parent control has been disposed - cannot show form");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show form {PanelName} - Parent control disposed", panelName);
+                throw ex;
+            }
+
+            Logger.LogDebug("[PANEL-SHOW] ShowForm<{Type}> called for '{PanelName}' - Thread={Thread}, InvokeRequired={InvokeReq}, HandleCreated={HasHandle}",
+                typeof(TForm).Name, panelName, System.Threading.Thread.CurrentThread.ManagedThreadId,
+                _parentControl.InvokeRequired, _parentControl.IsHandleCreated);
+
+            if (_parentControl.InvokeRequired || !_parentControl.IsHandleCreated)
+            {
+                Logger.LogDebug("[PANEL-SHOW] Marshalling required for {PanelName} - InvokeRequired={InvokeReq}, HandleCreated={HasHandle}",
+                    panelName, _parentControl.InvokeRequired, _parentControl.IsHandleCreated);
+
+                try
+                {
+                    if (!_parentControl.IsDisposed)
+                    {
+                        if (_parentControl.IsHandleCreated)
+                        {
+                            Logger.LogDebug("[PANEL-SHOW] Using BeginInvoke to marshal {PanelName} to UI thread", panelName);
+                            _parentControl.BeginInvoke(new System.Action(() =>
+                            {
+                                try
+                                {
+                                    ShowForm<TForm>(panelName, parameters, preferredStyle, allowFloating);
+                                }
+                                catch (Exception invokeEx)
+                                {
+                                    Logger.LogError(invokeEx, "[PANEL-SHOW] Exception in BeginInvoke callback for {PanelName}", panelName);
+                                    throw;
+                                }
+                            }));
+                            return;
+                        }
+
+                        Logger.LogInformation("[PANEL-SHOW] Deferring {PanelName} until parent handle is created", panelName);
+                        EventHandler? handleCreatedHandler = null;
+                        var handlerRegistered = false;
+
+                        handleCreatedHandler = (s, e) =>
+                        {
+                            if (!handlerRegistered) return;
+
+                            Logger.LogDebug("[PANEL-SHOW] HandleCreated fired for deferred form {PanelName}", panelName);
+                            try
+                            {
+                                _parentControl.HandleCreated -= handleCreatedHandler;
+                                handlerRegistered = false;
+                            }
+                            catch (Exception unsubEx)
+                            {
+                                Logger.LogDebug(unsubEx, "[PANEL-SHOW] Failed to unsubscribe HandleCreated handler (non-critical)");
+                            }
+
+                            try
+                            {
+                                if (_parentControl.IsDisposed)
+                                {
+                                    Logger.LogWarning("[PANEL-SHOW] Parent control disposed before deferred ShowForm for {PanelName}", panelName);
+                                    return;
+                                }
+
+                                ShowForm<TForm>(panelName, parameters, preferredStyle, allowFloating);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError(ex, "[PANEL-SHOW] Deferred ShowForm failed after handle creation for form {PanelName}", panelName);
+                            }
+                        };
+
+                        _parentControl.HandleCreated += handleCreatedHandler;
+                        handlerRegistered = true;
+                        Logger.LogDebug("[PANEL-SHOW] HandleCreated handler registered for {PanelName}", panelName);
+                        return;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("[PANEL-SHOW] Parent control disposed during marshalling attempt for {PanelName}", panelName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "[PANEL-SHOW] Failed to marshal ShowForm to UI thread for form {PanelName}, attempting direct execution", panelName);
+                }
+            }
+
+            try
+            {
+                Logger.LogInformation("[PANEL] Showing form {PanelName} - type: {Type}, existing: {Exists}",
+                    panelName, typeof(TForm).Name, _cachedPanels.ContainsKey(panelName));
+
+                // Reuse existing panel if already created
+                if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
+                {
+                    Logger.LogDebug("[PANEL] Reusing existing hosted panel instance for {PanelName}", panelName);
+
+                    if (existingPanel == null)
+                    {
+                        Logger.LogWarning("[PANEL] Cached panel for {PanelName} is null, removing from cache and creating new", panelName);
+                        _cachedPanels.Remove(panelName);
+                    }
+                    else if (existingPanel.IsDisposed)
+                    {
+                        Logger.LogWarning("[PANEL] Cached panel for {PanelName} is disposed, removing from cache and creating new", panelName);
+                        _cachedPanels.Remove(panelName);
+                    }
+                    else
+                    {
+                        try
+                        {
+                            ActivateExistingPanel(existingPanel, panelName, allowFloating);
+                            Logger.LogInformation("[PANEL] ✅ Successfully activated existing hosted panel {PanelName}", panelName);
+                            return;
+                        }
+                        catch (Exception activateEx)
+                        {
+                            Logger.LogError(activateEx, "[PANEL] Failed to activate existing hosted panel {PanelName}, will recreate", panelName);
+                            _cachedPanels.Remove(panelName);
+                        }
+                    }
+                }
+
+                // Create form instance via DI
+                TForm? form = null;
+                try
+                {
+                    form = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TForm>(_serviceProvider);
+                    Logger.LogDebug("[PANEL-FORM] Form instance created successfully: {PanelName}, Type={Type}", panelName, form.GetType().FullName);
+                }
+                catch (Exception createEx)
+                {
+                    Logger.LogError(createEx, "[PANEL-FORM] Failed to create form instance via DI for {PanelName} ({FormType})", panelName, typeof(TForm).Name);
+                    throw new InvalidOperationException(
+                        $"Failed to create form '{panelName}' of type {typeof(TForm).Name}. Check that all constructor dependencies are registered in DI container.", createEx);
+                }
+
+                // Initialize with parameters if provided
+                if (parameters is not null)
+                {
+                    if (form is IParameterizedPanel parameterizedForm)
+                    {
+                        try
+                        {
+                            Logger.LogDebug("[PANEL-FORM] Initializing form {PanelName} with parameters (type: {ParamType})", panelName, parameters.GetType().Name);
+                            parameterizedForm.InitializeWithParameters(parameters);
+                            Logger.LogDebug("[PANEL-FORM] Parameter initialization completed for {PanelName}", panelName);
+                        }
+                        catch (Exception paramEx)
+                        {
+                            Logger.LogError(paramEx, "[PANEL-FORM] Parameter initialization failed for {PanelName}", panelName);
+                            throw new InvalidOperationException($"Failed to initialize form '{panelName}' with provided parameters.", paramEx);
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning("[PANEL-FORM] Parameters provided for {PanelName} but form does not implement IParameterizedPanel", panelName);
+                    }
+                }
+
+                // Host the form inside a UserControl so the docking manager can dock it like other panels
+                var host = new FormHostPanel();
+                try
+                {
+                    host.HostForm(form);
+                }
+                catch (Exception hostEx)
+                {
+                    Logger.LogError(hostEx, "[PANEL-FORM] Failed to host form instance for {PanelName}", panelName);
+                    throw;
+                }
+
+                // Dock the hosted form
+                DockPanelInternal(host, panelName, preferredStyle, allowFloating);
+                Logger.LogInformation("[PANEL-FORM] ✅ Successfully created and docked new hosted form {PanelName}", panelName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[PANEL-FORM] ❌ Failed to show form: {PanelName} - {ErrorType}: {ErrorMessage}",
+                    panelName, ex.GetType().Name, ex.Message);
+                throw new InvalidOperationException(
+                    $"Unable to show hosted form '{panelName}' of type {typeof(TForm).Name}. Error: {ex.Message}. Check logs for detailed stack trace.", ex);
             }
         }
 

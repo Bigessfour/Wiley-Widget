@@ -46,9 +46,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
         private bool _isPinned;
         private bool _isLoading;
+        private bool _isRefreshing;
         private bool _refreshInProgress;
         private bool _helpButtonVisible = true;
         private bool _refreshButtonVisible = true;
+        private bool _pinButtonVisible = true;
+        private bool _closeButtonVisible = true;
 
         /// <summary>Raised when the user clicks Refresh.</summary>
         public event EventHandler? RefreshClicked;
@@ -106,7 +109,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 if (_btnRefresh != null)
                 {
                     _btnRefresh.Enabled = !value;
-                    _btnRefresh.Text = value ? "Refreshing..." : "Refresh";
+                    UpdateRefreshButtonText();
                 }
 
                 if (_btnPin != null)
@@ -163,6 +166,54 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnRefresh.Visible = value;
                 }
+            }
+        }
+
+        /// <summary>Show/hide the Pin button (default: true).</summary>
+        [Browsable(true)]
+        [DefaultValue(true)]
+        public bool ShowPinButton
+        {
+            get => _pinButtonVisible;
+            set
+            {
+                if (_pinButtonVisible == value) return;
+                _pinButtonVisible = value;
+                if (_btnPin != null)
+                {
+                    _btnPin.Visible = value;
+                }
+            }
+        }
+
+        /// <summary>Show/hide the Close button (default: true).</summary>
+        [Browsable(true)]
+        [DefaultValue(true)]
+        public bool ShowCloseButton
+        {
+            get => _closeButtonVisible;
+            set
+            {
+                if (_closeButtonVisible == value) return;
+                _closeButtonVisible = value;
+                if (_btnClose != null)
+                {
+                    _btnClose.Visible = value;
+                }
+            }
+        }
+
+        /// <summary>Get/set refreshing state. Controls Refresh button text independently of general loading.</summary>
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public bool IsRefreshing
+        {
+            get => _isRefreshing;
+            set
+            {
+                if (_isRefreshing == value) return;
+                _isRefreshing = value;
+                UpdateRefreshButtonText();
             }
         }
 
@@ -281,6 +332,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     {
                         _btnRefresh.Image = refreshIcon;
                         _btnRefresh.Text = string.Empty; // Icon-only for cleaner look
+                        _btnRefresh.Size = new Size(40, buttonHeight); // Compact width for icon-only
                     }
                 }
                 catch (Exception ex)
@@ -309,7 +361,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 AutoSize = false,
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 Size = new Size(24, Math.Max(12, buttonHeight - 4)),
-                Visible = false
+                Visible = false,
+                ProgressStyle = ProgressBarStyles.WaitingGradient, // Enable animation
+                WaitingGradientWidth = 10
             };
             _loadingSpinner.AccessibleName = "Loading indicator - Data is being refreshed, please wait";
             _toolTip.SetToolTip(_loadingSpinner, "Loading in progress\n\nOperation may take a few moments");
@@ -357,6 +411,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     {
                         _btnHelp.Image = helpIcon;
                         _btnHelp.Text = string.Empty; // Icon-only for cleaner look
+                        _btnHelp.Size = new Size(40, buttonHeight); // Compact width for icon-only
                     }
                 }
                 catch (Exception ex)
@@ -395,6 +450,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     {
                         _btnClose.Image = closeIcon;
                         _btnClose.Text = string.Empty; // Icon-only for cleaner look
+                        _btnClose.Size = new Size(40, buttonHeight); // Compact width for icon-only
                     }
                 }
                 catch (Exception ex)
@@ -456,10 +512,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
         {
             if (_btnPin == null) return;
 
+            UpdatePinButtonIcon(); // Ensure icon is loaded
+
             // Update button appearance based on pinned state
             // SfButton styling is managed by SfSkinManager theme cascade from parent form
             // Avoid manual BackColor/ForeColor assignments - theme system handles this
-            if (string.IsNullOrEmpty(_btnPin.Image?.ToString()))
+            if (_btnPin.Image == null)
             {
                 // Text-only mode (no icon service)
                 _btnPin.Text = _isPinned ? "Unpin" : "Pin";
@@ -477,6 +535,27 @@ namespace WileyWidget.WinForms.Controls.Supporting
             }
         }
 
+        private void UpdateRefreshButtonText()
+        {
+            if (_btnRefresh == null) return;
+
+            if (_isLoading && _isRefreshing)
+            {
+                _btnRefresh.Text = "Refreshing...";
+                _btnRefresh.Size = new Size(80, _btnRefresh.Height); // Wider for text
+            }
+            else if (_btnRefresh.Image != null)
+            {
+                _btnRefresh.Text = string.Empty;
+                _btnRefresh.Size = new Size(40, _btnRefresh.Height); // Compact for icon
+            }
+            else
+            {
+                _btnRefresh.Text = "Refresh";
+                _btnRefresh.Size = new Size(80, _btnRefresh.Height); // Default width
+            }
+        }
+
         private void UpdatePinButtonIcon()
         {
             if (_btnPin == null || _imageService == null) return;
@@ -490,6 +569,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnPin.Image = icon;
                     _btnPin.Text = string.Empty; // Icon-only
+                    _btnPin.Size = new Size(40, _btnPin.Height); // Compact width for icon-only
                 }
             }
             catch (Exception ex)

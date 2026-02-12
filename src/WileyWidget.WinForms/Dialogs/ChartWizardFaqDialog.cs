@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
@@ -12,7 +13,7 @@ namespace WileyWidget.WinForms.Dialogs
     /// Plain-language FAQ for the Syncfusion Chart Wizard.
     /// Intended to be reused by any chart surface in Wiley Widget.
     /// </summary>
-    public sealed class ChartWizardFaqDialog : Form
+    public sealed class ChartWizardFaqDialog : SfForm
     {
         private RichTextBox? _content;
         private SfButton? _okButton;
@@ -51,6 +52,9 @@ namespace WileyWidget.WinForms.Dialogs
             ShowIcon = false;
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.Dpi;
+
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
 
             var layout = new TableLayoutPanel
             {
@@ -104,7 +108,7 @@ namespace WileyWidget.WinForms.Dialogs
             AcceptButton = _okButton;
 
             // Apply theme (cascades to all children)
-            ThemeColors.ApplyTheme(this);
+            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
         }
 
         private static string BuildFaqText()

@@ -67,7 +67,7 @@ namespace WileyWidget.WinForms.Plugins
             int timeoutSeconds = DefaultTimeoutSeconds,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("[CSharpEval] ▶ Starting evaluation - code length: {CodeLength} chars, timeout: {Timeout}s", 
+            _logger.LogInformation("[CSharpEval] ▶ Starting evaluation - code length: {CodeLength} chars, timeout: {Timeout}s",
                 code?.Length ?? 0, timeoutSeconds);
 
             // ===== INPUT VALIDATION =====
@@ -80,10 +80,10 @@ namespace WileyWidget.WinForms.Plugins
             if (code.Length > MaxCodeLength)
             {
                 _logger.LogWarning("[CSharpEval] ❌ Rejected: code too large ({Length} > {Max})", code.Length, MaxCodeLength);
-                return JsonSerializer.Serialize(new 
-                { 
-                    success = false, 
-                    error = $"Code exceeds max length of {MaxCodeLength} chars (provided: {code.Length})." 
+                return JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    error = $"Code exceeds max length of {MaxCodeLength} chars (provided: {code.Length})."
                 });
             }
 
@@ -96,11 +96,11 @@ namespace WileyWidget.WinForms.Plugins
             {
                 var risksString = string.Join(", ", securityIssues);
                 _logger.LogWarning("[CSharpEval] 🔒 Security risks detected: {Risks}", risksString);
-                return JsonSerializer.Serialize(new 
-                { 
-                    success = false, 
-                    error = "Security risks detected in code", 
-                    details = $"Forbidden patterns: {risksString}" 
+                return JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    error = "Security risks detected in code",
+                    details = $"Forbidden patterns: {risksString}"
                 });
             }
 
@@ -133,9 +133,9 @@ namespace WileyWidget.WinForms.Plugins
                 // Use CSharpScript.EvaluateAsync for single-expression evaluation
                 // This is more efficient than Create + RunAsync for most JARVIS queries
                 var scriptTask = CSharpScript.EvaluateAsync(
-                    code, 
-                    scriptOptions, 
-                    globals, 
+                    code,
+                    scriptOptions,
+                    globals,
                     cancellationToken: cts.Token);
 
                 // Proper async timeout pattern with Task.WhenAny
@@ -147,15 +147,15 @@ namespace WileyWidget.WinForms.Plugins
                     // Script completed before timeout
                     var result = await scriptTask; // Will not block - already completed
                     stopwatch.Stop();
-                    
-                    _logger.LogInformation("[CSharpEval] ✅ Execution succeeded in {ElapsedMs}ms", 
+
+                    _logger.LogInformation("[CSharpEval] ✅ Execution succeeded in {ElapsedMs}ms",
                         stopwatch.ElapsedMilliseconds);
 
                     // Return structured JSON with result
-                    return JsonSerializer.Serialize(new 
-                    { 
-                        success = true, 
-                        result = FormatResultForJson(result), 
+                    return JsonSerializer.Serialize(new
+                    {
+                        success = true,
+                        result = FormatResultForJson(result),
                         elapsedMs = stopwatch.ElapsedMilliseconds,
                         resultType = result?.GetType().Name ?? "null"
                     });
@@ -164,12 +164,12 @@ namespace WileyWidget.WinForms.Plugins
                 {
                     // Timeout occurred
                     stopwatch.Stop();
-                    _logger.LogWarning("[CSharpEval] ⏱️ Timeout after {ElapsedMs}ms (limit: {TimeoutMs}ms)", 
+                    _logger.LogWarning("[CSharpEval] ⏱️ Timeout after {ElapsedMs}ms (limit: {TimeoutMs}ms)",
                         stopwatch.ElapsedMilliseconds, timeoutSeconds * 1000);
-                    
-                    return JsonSerializer.Serialize(new 
-                    { 
-                        success = false, 
+
+                    return JsonSerializer.Serialize(new
+                    {
+                        success = false,
                         error = $"Execution timed out after {timeoutSeconds}s",
                         elapsedMs = stopwatch.ElapsedMilliseconds
                     });
@@ -181,39 +181,39 @@ namespace WileyWidget.WinForms.Plugins
                 var errorDetails = ex.Diagnostics
                     .Select(d => $"Line {d.Location.GetLineSpan().StartLinePosition.Line + 1}: {d.GetMessage()}")
                     .ToArray();
-                
-                return JsonSerializer.Serialize(new 
-                { 
-                    success = false, 
-                    error = "Compilation error", 
-                    details = errorDetails 
+
+                return JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    error = "Compilation error",
+                    details = errorDetails
                 });
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogInformation("[CSharpEval] 🛑 Execution cancelled by user");
-                return JsonSerializer.Serialize(new 
-                { 
-                    success = false, 
-                    error = "Execution cancelled by user" 
+                return JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    error = "Execution cancelled by user"
                 });
             }
             catch (OperationCanceledException)
             {
                 _logger.LogWarning("[CSharpEval] ⏱️ Execution timed out (cancellation)");
-                return JsonSerializer.Serialize(new 
-                { 
-                    success = false, 
-                    error = $"Execution timed out after {timeoutSeconds}s" 
+                return JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    error = $"Execution timed out after {timeoutSeconds}s"
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[CSharpEval] ❌ Runtime error: {ExceptionType}", ex.GetType().Name);
-                return JsonSerializer.Serialize(new 
-                { 
-                    success = false, 
-                    error = "Runtime error", 
+                return JsonSerializer.Serialize(new
+                {
+                    success = false,
+                    error = "Runtime error",
                     details = $"{ex.GetType().Name}: {ex.Message}",
                     stackTrace = ex.StackTrace?.Split('\n').Take(5).ToArray() // First 5 lines only
                 });
@@ -227,7 +227,7 @@ namespace WileyWidget.WinForms.Plugins
         private static List<string> CheckForSecurityRisks(string code)
         {
             var risks = new List<string>();
-            
+
             // Forbidden patterns that could cause harm in Wiley Widget context
             var forbiddenPatterns = new Dictionary<string, string>
             {
@@ -293,7 +293,7 @@ namespace WileyWidget.WinForms.Plugins
         public string ListLoadedAssemblies()
         {
             _logger.LogDebug("[CSharpEval] Listing loaded assemblies...");
-            
+
             try
             {
                 var assemblies = AppDomain.CurrentDomain.GetAssemblies()
@@ -437,7 +437,7 @@ namespace WileyWidget.WinForms.Plugins
                     }
                 }
 
-                _logger.LogInformation("[CSharpEval] Inspected type: {TypeName} ({MemberCount} members)", 
+                _logger.LogInformation("[CSharpEval] Inspected type: {TypeName} ({MemberCount} members)",
                     type.FullName, properties.Length + methods.Length + fields.Length);
 
                 return sb.ToString();
@@ -455,7 +455,7 @@ namespace WileyWidget.WinForms.Plugins
         public string GetEnvironmentInfo()
         {
             _logger.LogDebug("[CSharpEval] Getting environment info...");
-            
+
             try
             {
                 var sb = new StringBuilder();
@@ -482,7 +482,7 @@ namespace WileyWidget.WinForms.Plugins
                 sb.AppendLine($"   Started: {process.StartTime:yyyy-MM-dd HH:mm:ss}");
                 sb.AppendLine($"   Uptime: {DateTime.Now - process.StartTime:hh\\:mm\\:ss}");
 
-                _logger.LogInformation("[CSharpEval] Environment info retrieved - {ProcessName} PID {ProcessId}", 
+                _logger.LogInformation("[CSharpEval] Environment info retrieved - {ProcessName} PID {ProcessId}",
                     process.ProcessName, process.Id);
 
                 return sb.ToString();

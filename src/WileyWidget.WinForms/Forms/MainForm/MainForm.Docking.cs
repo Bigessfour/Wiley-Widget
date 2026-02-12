@@ -644,7 +644,8 @@ public partial class MainForm
 
         if (_ribbon != null)
         {
-            top = Math.Max(top, _ribbon.Bottom);
+            // Add 15px margin after ribbon to prevent panel content from being cut off
+            top = Math.Max(top, _ribbon.Bottom + 15);
         }
 
         var bottom = ClientSize.Height;
@@ -753,6 +754,10 @@ public partial class MainForm
             // Apply theme recursively to entire control tree (form and all children)
             ApplyThemeRecursive(this, theme);
 
+            // Syncfusion RibbonControlAdv needs extra chrome properties for Office2016 schemes.
+            // (Sample: C:\Users\Public\Documents\Syncfusion\Windows\32.1.19\ribbon\RibbonControlAdv\CS\Form1.cs)
+            TryApplyRibbonChromeTheme(theme);
+
             // Update button text in Ribbon if present
             if (_ribbon != null)
             {
@@ -793,6 +798,66 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "Failed to apply theme change: {Theme}", theme);
         }
+    }
+
+    private void TryApplyRibbonChromeTheme(string theme)
+    {
+        if (_ribbon == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // ThemeName is still used for Office2019 and for consistent logging/diagnostics.
+            // For Office2016, the ribbon additionally needs Office2016ColorScheme set.
+            _ribbon.ThemeName = theme;
+
+            if (theme.StartsWith("Office2016", StringComparison.OrdinalIgnoreCase) &&
+                TryGetOffice2016ColorScheme(theme, out var scheme))
+            {
+                _ribbon.RibbonStyle = RibbonStyle.Office2016;
+                _ribbon.Office2016ColorScheme = scheme;
+            }
+
+            _ribbon.PerformLayout();
+            _ribbon.Refresh();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to apply ribbon chrome theme for '{Theme}'", theme);
+        }
+    }
+
+    private static bool TryGetOffice2016ColorScheme(string theme, out Office2016ColorScheme scheme)
+    {
+        scheme = Office2016ColorScheme.Colorful;
+
+        if (string.Equals(theme, "Office2016Colorful", StringComparison.OrdinalIgnoreCase))
+        {
+            scheme = Office2016ColorScheme.Colorful;
+            return true;
+        }
+
+        if (string.Equals(theme, "Office2016White", StringComparison.OrdinalIgnoreCase))
+        {
+            scheme = Office2016ColorScheme.White;
+            return true;
+        }
+
+        if (string.Equals(theme, "Office2016Black", StringComparison.OrdinalIgnoreCase))
+        {
+            scheme = Office2016ColorScheme.Black;
+            return true;
+        }
+
+        if (string.Equals(theme, "Office2016DarkGray", StringComparison.OrdinalIgnoreCase))
+        {
+            scheme = Office2016ColorScheme.DarkGray;
+            return true;
+        }
+
+        return false;
     }
 
     // REMOVED: Dead code - InitializeDockingManager() and ConfigureDockingManagerSettings() were never called

@@ -1,0 +1,100 @@
+{
+  "generatedAt": "2026-02-10T11:00:00Z",
+  "scannedPaths": ["src/"],
+  "summary": {
+    "SfDataGridMatches": 151,
+    "ThemeNameMatches": 200,
+    "SfSkinManagerLoadAssemblyMatches": 1,
+    "BackColorMatches": 36,
+    "ForeColorMatches": 47
+  },
+  "complianceSummary": {
+    "SfSkinManagerUsage": "present",
+    "ThemeNameUsage": "extensive",
+    "ManualColorAssignments": "some_present"
+  },
+  "findings": [
+    {
+      "file": "src/WileyWidget.WinForms/Helpers/UIHelper.cs",
+      "line": 163,
+      "snippet": "control.BackColor = Color.FromArgb(240, 240, 240);  // Light gray background",
+      "issue": "Manual BackColor assignment",
+      "severity": "warning",
+      "recommendation": "Remove manual BackColor; rely on SfSkinManager theme cascade or apply semantic status color where appropriate. Add comment: // REVIEW: removed manual color to comply with SfSkinManager"
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Forms/BudgetDashboardForm.cs",
+      "line": 446,
+      "snippet": "BackColor = Color.FromArgb(220, 255, 220)",
+      "issue": "Manual BackColor assignment (positive highlight)",
+      "severity": "info",
+      "recommendation": "Prefer semantic indicators (use label ForeColor = Color.Green) or use SfSkinManager.SetVisualStyle for dynamic controls. Consider marking as allowed semantic UI if intentional."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Forms/BudgetDashboardForm.cs",
+      "line": 455,
+      "snippet": "BackColor = Color.FromArgb(255, 220, 220)",
+      "issue": "Manual BackColor assignment (negative highlight)",
+      "severity": "info",
+      "recommendation": "Prefer semantic indicators or SfSkinManager styling."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Controls/Supporting/JARVISChatUserControl.cs",
+      "line": 371,
+      "snippet": "this.BackColor = Color.FromArgb(32, 32, 32); // Fallback color",
+      "issue": "Manual BackColor fallback",
+      "severity": "warning",
+      "recommendation": "Remove fallback and rely on theme cascade; if required, guard behind design-time check or comment clearly why it's needed."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs",
+      "line": 248,
+      "snippet": "BackColor = System.Drawing.Color.FromArgb(0, 102, 204),",
+      "issue": "Manual BackColor (accent) and ForeColor pairing",
+      "severity": "warning",
+      "recommendation": "Replace with SfSkinManager-driven styles or mark as semantic and centralize the color as standard .NET color constants."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Controls/Analytics/VariancesTabControl.cs",
+      "line": 174,
+      "snippet": "e.Style.BackColor = Color.LightCoral;",
+      "issue": "Manual alternating row color",
+      "severity": "warning",
+      "recommendation": "Use SfSkinManager theme variants or conditional styling via Theme-aware resources."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Controls/Analytics/VariancesTabControl.cs",
+      "line": 179,
+      "snippet": "e.Style.BackColor = Color.LightGreen;",
+      "issue": "Manual alternating row color",
+      "severity": "warning",
+      "recommendation": "Use SfSkinManager theme variants or conditional styling via Theme-aware resources."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Forms/Factories/StatusBarFactory.cs",
+      "line": 69,
+      "snippet": "ForeColor = Color.Green,",
+      "issue": "Manual ForeColor (semantic status)",
+      "severity": "ok",
+      "recommendation": "Allowed: semantic status colors (Color.Green). No action required unless you want to centralize."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Dialogs/ValidationDialog.cs",
+      "line": 108,
+      "snippet": "ForeColor = Color.Red,  // Semantic error color",
+      "issue": "Manual ForeColor (semantic error)",
+      "severity": "ok",
+      "recommendation": "Allowed: semantic error color. No enforcement required."
+    },
+    {
+      "file": "src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs",
+      "line": 2018,
+      "snippet": "_connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red;",
+      "issue": "Manual ForeColor used for connection status",
+      "severity": "ok",
+      "recommendation": "Allowed (semantic). Consider centralizing status color decision in a helper."
+    }
+  ],
+  "notes": "This is a report-only scan (no changes applied). Major compliance: SfSkinManager and ThemeName usage are applied widely and Theme assembly is loaded in ThemeColors.cs. Manual BackColor/ForeColor assignments exist in a few panels; many are semantic (allowed). Recommend a focused PR to replace non-semantic manual BackColor uses with SfSkinManager cascade or documented exceptions.",
+  "tool": "syncfusioncontroldevelopment-scan-v1"
+}

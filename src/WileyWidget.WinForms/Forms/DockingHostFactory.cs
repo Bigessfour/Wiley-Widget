@@ -114,6 +114,7 @@ public static class DockingHostFactory
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
                     Name = "CentralDocumentPanel",
                     Visible = true,
+                    Padding = new Padding(0, 5, 0, 0), // Add top padding to prevent content clipping below ribbon
                     AccessibleName = "Central Document Area",
                     AccessibleDescription = "Main content area container"
                 };

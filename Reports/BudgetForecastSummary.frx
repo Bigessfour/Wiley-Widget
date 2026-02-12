@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="02/10/2026 00:00:00" ReportInfo.Modified="02/10/2026 00:00:00" ReportInfo.CreatorVersion="2026.1.0.0">
+  <Dictionary>
+    <BusinessObjectDataSource Name="ForecastData" ReferenceName="ForecastData" DataType="System.Int32" Enabled="true">
+      <Column Name="EnterpriseName" DataType="System.String"/>
+      <Column Name="CurrentFiscalYear" DataType="System.Int32"/>
+      <Column Name="ProposedFiscalYear" DataType="System.Int32"/>
+      <Column Name="TotalCurrentBudget" DataType="System.Decimal"/>
+      <Column Name="TotalProposedBudget" DataType="System.Decimal"/>
+      <Column Name="TotalIncrease" DataType="System.Decimal"/>
+      <Column Name="TotalIncreasePercent" DataType="System.Decimal"/>
+      <Column Name="InflationRate" DataType="System.Decimal"/>
+      <Column Name="Summary" DataType="System.String"/>
+      <Column Name="GeneratedDate" DataType="System.DateTime"/>
+    </BusinessObjectDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Watermark.Font="Arial, 60pt">
+    <ReportTitleBand Name="ReportTitle1" Width="718.2" Height="113.4">
+      <TextObject Name="Text1" Left="0" Top="0" Width="718.2" Height="37.8" Text="BUDGET FORECAST SUMMARY" HorzAlign="Center" VertAlign="Center" Font="Arial, 20pt, style=Bold" TextFill.Color="Navy"/>
+      <TextObject Name="Text2" Left="0" Top="47.25" Width="718.2" Height="18.9" Text="[ForecastData.EnterpriseName]" HorzAlign="Center" Font="Arial, 14pt, style=Bold"/>
+      <TextObject Name="Text3" Left="0" Top="75.6" Width="718.2" Height="18.9" Text="Fiscal Year [ForecastData.CurrentFiscalYear] → [ForecastData.ProposedFiscalYear]" HorzAlign="Center" Font="Arial, 11pt"/>
+    </ReportTitleBand>
+    <DataBand Name="Data1" Top="117.4" Width="718.2" Height="283.5" DataSource="ForecastData">
+      <TextObject Name="Text4" Left="37.8" Top="18.9" Width="170.1" Height="18.9" Text="Generated:" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text5" Left="217.35" Top="18.9" Width="472.5" Height="18.9" Text="[ForecastData.GeneratedDate]" Format="Date" Format.Format="d" Font="Arial, 10pt"/>
+      <ShapeObject Name="Shape1" Left="18.9" Top="47.25" Width="680.4" Height="1.89" Border.Color="LightGray"/>
+      <TextObject Name="Text6" Left="37.8" Top="66.15" Width="170.1" Height="18.9" Text="Current Budget:" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text7" Left="217.35" Top="66.15" Width="170.1" Height="18.9" Text="[ForecastData.TotalCurrentBudget]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 10pt"/>
+      <TextObject Name="Text8" Left="37.8" Top="94.5" Width="170.1" Height="18.9" Text="Proposed Budget:" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text9" Left="217.35" Top="94.5" Width="170.1" Height="18.9" Text="[ForecastData.TotalProposedBudget]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 10pt, style=Bold" TextFill.Color="Green"/>
+      <TextObject Name="Text10" Left="37.8" Top="122.85" Width="170.1" Height="18.9" Text="Total Increase:" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text11" Left="217.35" Top="122.85" Width="170.1" Height="18.9" Text="[ForecastData.TotalIncrease]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 10pt, style=Bold" TextFill.Color="Red"/>
+      <TextObject Name="Text12" Left="37.8" Top="151.2" Width="170.1" Height="18.9" Text="Increase Percentage:" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text13" Left="217.35" Top="151.2" Width="170.1" Height="18.9" Text="[ForecastData.TotalIncreasePercent]%" HorzAlign="Right" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text14" Left="37.8" Top="179.55" Width="170.1" Height="18.9" Text="Inflation Rate:" Font="Arial, 10pt, style=Bold"/>
+      <TextObject Name="Text15" Left="217.35" Top="179.55" Width="170.1" Height="18.9" Text="[ForecastData.InflationRate]%" HorzAlign="Right" Font="Arial, 10pt"/>
+      <ShapeObject Name="Shape2" Left="18.9" Top="207.9" Width="680.4" Height="1.89" Border.Color="LightGray"/>
+      <TextObject Name="Text16" Left="37.8" Top="226.8" Width="661.5" Height="47.25" Text="[ForecastData.Summary]" Font="Arial, 10pt"/>
+    </DataBand>
+    <PageFooterBand Name="PageFooter1" Top="404.9" Width="718.2" Height="28.35">
+      <TextObject Name="Text17" Left="0" Top="9.45" Width="718.2" Height="18.9" Text="Page [Page] of [TotalPages#]" HorzAlign="Center" Font="Arial, 8pt"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

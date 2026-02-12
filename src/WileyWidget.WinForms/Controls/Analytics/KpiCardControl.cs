@@ -79,7 +79,9 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 Text = "Title",
                 Font = new Font("Segoe UI", 9f, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
-                AutoSize = false
+                AutoSize = false,
+                AccessibleRole = AccessibleRole.StaticText,
+                UseMnemonic = false
             };
 
             _lblValue = new Label
@@ -88,7 +90,10 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 Text = "0",
                 Font = new Font("Segoe UI", 16f, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter,
-                AutoSize = false
+                AutoSize = false,
+                AccessibleRole = AccessibleRole.StaticText,
+                AccessibleName = "KPI Value",
+                UseMnemonic = false
             };
 
             _lblSubtitle = new Label
@@ -98,15 +103,20 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 Text = string.Empty,
                 Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
-                AutoSize = false
+                AutoSize = false,
+                AccessibleRole = AccessibleRole.StaticText,
+                UseMnemonic = false
             };
 
             BorderStyle = BorderStyle.FixedSingle;
-            // Slightly larger padding for better separation on high DPI
-            Padding = new Padding(Dpi(10f));
+            // Optimized padding for professional appearance on high DPI
+            Padding = new Padding(Dpi(8f));
             // Conservative minimum size to avoid layout collapse; allow parent to control height
             MinimumSize = new Size(Dpi(100f), Dpi(64f));
-            // Do not force Height here; let parent layout manage the control size to avoid runtime layout exceptions
+            // Accessibility improvements
+            AccessibleRole = AccessibleRole.Grouping;
+            AccessibleName = "KPI Card";
+            AccessibleDescription = "Displays a key performance indicator metric";
 
             Controls.Add(_lblValue);
             Controls.Add(_lblTitle);

@@ -1,0 +1,8 @@
+{
+  "access_token": "YOUR_ACCESS_TOKEN_HERE",
+  "refresh_token": "YOUR_REFRESH_TOKEN_HERE",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "x_refresh_token_expires_in": 8726400,
+  "IssuedAtUtc": "2026-02-09T18:33:00Z"
+}

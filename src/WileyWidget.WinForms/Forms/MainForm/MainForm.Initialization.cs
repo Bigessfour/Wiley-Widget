@@ -193,8 +193,8 @@ public partial class MainForm
 
                     if (!_dashboardAutoShown && _uiConfig != null && _uiConfig.AutoShowDashboard)
                     {
-                        _logger?.LogInformation("[PANEL] About to invoke ShowPanel<DashboardPanel>");
-                        _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: false);
+                        _logger?.LogInformation("[PANEL] About to invoke ShowForm<BudgetDashboardForm>");
+                        _panelNavigator.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
                         _dashboardAutoShown = true;
                         _logger?.LogInformation("[PANEL] ShowPanel returned successfully");
                     }
@@ -220,6 +220,20 @@ public partial class MainForm
             else
             {
                 _logger?.LogWarning("[DIAGNOSTIC] Skipping dashboard: UseSyncfusionDocking={Docking}, AutoShowDashboard={AutoShow}, _panelNavigator={Nav}", _uiConfig.UseSyncfusionDocking, _uiConfig.AutoShowDashboard, _panelNavigator != null ? "set" : "null");
+
+                // Fallback: Show default panel when AutoShowDashboard is false to prevent blank initial view
+                if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && !_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
+                {
+                    _logger?.LogInformation("[FALLBACK] AutoShowDashboard is false, showing default RevenueTrends panel to prevent blank initial view");
+                    try
+                    {
+                        _panelNavigator.ShowPanel<RevenueTrendsPanel>("Revenue Trends", DockingStyle.Right, allowFloating: false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Failed to show fallback RevenueTrends panel");
+                    }
+                }
             }
 
             // Phase 2: Notify ViewModels of initial visibility for lazy loading
@@ -613,7 +627,7 @@ public partial class MainForm
                 try
                 {
                     _logger?.LogInformation("Showing initial dashboard panel...");
-                    ShowPanel<Panels.DashboardPanel>("Dashboard", null, DockingStyle.Top);
+                    ShowForm<BudgetDashboardForm>("Dashboard", null, DockingStyle.Top);
                     _dashboardAutoShown = true;
                     _logger?.LogInformation("Initial dashboard panel shown successfully");
                 }
@@ -687,6 +701,12 @@ public partial class MainForm
     {
         if (IsDisposed)
         {
+            return;
+        }
+
+        if (_uiConfig != null && _uiConfig.IsUiTestHarness)
+        {
+            _logger?.LogDebug("[WEBVIEW2] Prewarm skipped in UI test harness mode");
             return;
         }
 

@@ -25,6 +25,7 @@ namespace WileyWidget.WinForms.ViewModels
         bool HasResults { get; set; }
 
         IAsyncRelayCommand RunScenarioCommand { get; }
+        IAsyncRelayCommand ExportForecastCommand { get; }
         IRelayCommand ResetCommand { get; }
     }
 }

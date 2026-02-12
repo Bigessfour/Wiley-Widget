@@ -1,10 +1,10 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Enhanced dead code scanner with false positive detection
+    Enhanced dead code scanner with false positive reduction and performance improvements
 .DESCRIPTION
-    Improved scanner that understands RelayCommand patterns, nameof(),
-    event handlers, and other patterns that cause false positives
+    Detects potentially unused methods while handling RelayCommand, nameof(), event handlers,
+    implicit private methods, and qualified calls. Optimized for larger projects.
 #>
 
 param(
@@ -26,173 +26,157 @@ $excludePatterns = @(
     "*/obj/*", "*/bin/*", "*.Designer.cs", "*.g.cs", "*.xaml.cs"
 )
 
-Write-Host "`n🔍 Enhanced Dead Code Scanner" -ForegroundColor Cyan
-Write-Host "=" * 70
+Write-Host "`n🔍 Enhanced Dead Code Scanner (Improved)" -ForegroundColor Cyan
+Write-Host "=" * 80
 
-# Step 1: Find all method declarations
-Write-Host "`n📂 Scanning for method declarations..." -ForegroundColor Yellow
-$methods = @()
-
+# Step 1: Collect all valid .cs files
+Write-Host "`n📂 Collecting C# source files..." -ForegroundColor Yellow
+$allCodeFiles = @()
 foreach ($basePath in $searchPaths) {
+    if (-not (Test-Path $basePath)) { continue }
     Get-ChildItem -Path $basePath -Filter "*.cs" -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
-        $file = $_.FullName
-        $relativePath = $file -replace [regex]::Escape($PWD.Path + "\"), ""
-
-        # Skip excluded patterns
-        $shouldSkip = $false
-        foreach ($exclude in $excludePatterns) {
-            if ($relativePath -like $exclude) {
-                $shouldSkip = $true
-                break
-            }
+        $relativePath = $_.FullName -replace [regex]::Escape("$((Get-Location).Path)$( [System.IO.Path]::DirectorySeparatorChar )"), ""
+        $skip = $excludePatterns | Where-Object { $relativePath -like $_ }
+        if (-not $skip) {
+            $allCodeFiles += $_
         }
-        if ($shouldSkip) { return }
+    }
+}
+Write-Host "Found $($allCodeFiles.Count) source files to scan" -ForegroundColor Green
 
-        $lineNumber = 0
-        Get-Content $file | ForEach-Object {
-            $lineNumber++
-            $line = $_
+# Step 2: Find method declarations
+Write-Host "`n🔍 Scanning for method declarations..." -ForegroundColor Yellow
+$methods = @()
+foreach ($csFile in $allCodeFiles) {
+    $file = $csFile.FullName
+    $relativePath = $csFile.FullName -replace [regex]::Escape("$((Get-Location).Path)$( [System.IO.Path]::DirectorySeparatorChar )"), ""
+    $lines = Get-Content $file
+    $lineNumber = 0
 
-            # Match method declarations
-            if ($line -match '^\s*(public|private|protected|internal)\s+(?:static\s+)?(?:async\s+)?(?:partial\s+)?(?:virtual\s+)?(?:override\s+)?[\w<>]+\s+(\w+)\s*\(') {
-                $visibility = $matches[1]
-                $methodName = $matches[2]
+    foreach ($line in $lines) {
+        $lineNumber++
+        # Updated regex: visibility optional → defaults to private
+        if ($line -match '^\s*(?:(public|private|protected|internal)\s+)?(?:static\s+)?(?:async\s+)?(?:partial\s+)?(?:virtual\s+)?(?:override\s+)?(?:abstract\s+)?(?:new\s+)?[\w<>, \.]+\s+(\w+)\s*\(') {
+            $visibility = if ($matches[1]) { $matches[1] } else { 'private' }
+            $methodName = $matches[2]
 
-                # Skip if public and not including public methods
-                if ($visibility -eq 'public' -and -not $IncludePublic) {
-                    return
-                }
+            # Skip if public and not requested
+            if ($visibility -eq 'public' -and -not $IncludePublic) { continue }
 
-                # Skip constructors, properties, special methods
-                $fileName = [System.IO.Path]::GetFileNameWithoutExtension($file)
-                if ($methodName -eq $fileName -or
-                    $methodName -match '^(get_|set_|add_|remove_|op_)' -or
-                    $methodName -in @('Dispose', 'ToString', 'GetHashCode', 'Equals', 'Main', 'OnModelCreating')) {
-                    return
-                }
+            # Skip constructors, properties, event add/remove, special methods
+            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($file)
+            if ($methodName -eq $fileName -or
+                $methodName -match '^(get_|set_|add_|remove_|op_)' -or
+                $methodName -in @('Dispose', 'ToString', 'GetHashCode', 'Equals', 'Main', 'OnModelCreating')) {
+                continue
+            }
 
-                $methods += [PSCustomObject]@{
-                    MethodName = $methodName
-                    Visibility = $visibility
-                    File = $file
-                    RelativePath = $relativePath
-                    LineNumber = $lineNumber
-                    Declaration = $line.Trim()
-                }
+            $methods += [PSCustomObject]@{
+                MethodName    = $methodName
+                Visibility    = $visibility
+                File          = $file
+                RelativePath  = $relativePath
+                LineNumber    = $lineNumber
+                Declaration   = $line.Trim()
             }
         }
     }
 }
-
 Write-Host "Found $($methods.Count) method declarations" -ForegroundColor Green
 
-# Step 2: Check for usage with ENHANCED patterns
-Write-Host "`n🔎 Checking for usage (enhanced patterns)..." -ForegroundColor Yellow
-$totalMethods = $methods.Count
+# Step 3: Check usage with enhanced patterns
+Write-Host "`n🔎 Analyzing usage (optimized)..." -ForegroundColor Yellow
 $progress = 0
-$unusedMethods = @()
+$total = $methods.Count
 $usedMethods = @()
+$unusedMethods = @()
 
 foreach ($method in $methods) {
     $progress++
-    if ($progress % 10 -eq 0) {
-        Write-Progress -Activity "Checking usage" -Status "$progress/$totalMethods" -PercentComplete (($progress / $totalMethods) * 100)
+    if ($progress % 20 -eq 0 -or $progress -eq $total) {
+        Write-Progress -Activity "Analyzing methods" -Status "$progress/$total" -PercentComplete ($progress / $total * 100)
     }
 
     $methodName = $method.MethodName
-    $file = $method.File
-    $content = Get-Content $file -Raw
+    $content = Get-Content $method.File -Raw
 
-    # Enhanced usage detection patterns
+    # Enhanced usage patterns
     $usagePatterns = @(
-        # Direct call
-        "\s+$methodName\s*\(",
-        # Event subscription
-        "(\+=|=)\s*$methodName\s*;",
-        # nameof() reference
-        "nameof\(\s*$methodName\s*\)",
-        # String reference
-        "[\""']$methodName[\""']",
-        # RelayCommand with CanExecute
-        "\[RelayCommand\([^\]]*$methodName",
-        # Event handler in constructor/method
-        "\.$methodName\s*[\(;]",
-        # new EventHandler(methodName)
-        "new\s+\w+Handler\(\s*$methodName\s*\)",
-        # Lambda or delegate
-        "=>\s*$methodName\s*\("
+        "$methodName\s*\("                  # Direct or qualified call: Method( or obj.Method(
+        "\.$methodName\s*\("                # Explicitly qualified: .Method(
+        "\+=\s*$methodName"                 # Event subscription
+        "=\s*$methodName\s*;"               # Delegate assignment
+        "nameof\(\s*$methodName\s*\)"       # nameof(Method)
+        "`"$methodName`""                   # String literal "Method"
+        "'$methodName'"                     # String literal 'Method'
+        "new\s+\w+Handler\(\s*$methodName\s*\)"   # EventHandler
+        "new\s+RelayCommand\(\s*$methodName\s*\)" # RelayCommand
     )
 
     $isUsed = $false
-    $detectionMethod = ""
+    $detectedVia = ""
 
-    # Check each pattern
+    # Check same file first
     foreach ($pattern in $usagePatterns) {
-        # Search in same file first
         if ($content -match $pattern) {
             $isUsed = $true
-            $detectionMethod = "Same file: $($pattern -replace '\s+', ' ')"
-            break
-        }
-
-        # Search across all C# files for cross-file references
-        $searchResult = Get-ChildItem -Path "src/**/*.cs" -Recurse -File -ErrorAction SilentlyContinue |
-            Select-String -Pattern $pattern -SimpleMatch:$false -Quiet -ErrorAction SilentlyContinue
-
-        if ($searchResult) {
-            $isUsed = $true
-            $detectionMethod = "Cross-file: $($pattern -replace '\s+', ' ')"
+            $detectedVia = "Same file ($pattern)"
             break
         }
     }
 
     if ($isUsed) {
-        $usedMethods += [PSCustomObject]@{
-            MethodName = $methodName
-            File = $method.RelativePath
-            DetectedVia = $detectionMethod
+        $usedMethods += [PSCustomObject]@{ MethodName = $methodName; File = $method.RelativePath; DetectedVia = $detectedVia }
+        continue
+    }
+
+    # Heuristic: private method not found in own file → almost certainly unused
+    if ($method.Visibility -eq 'private') {
+        $unusedMethods += $method
+        continue
+    }
+
+    # Cross-file search only for non-private methods
+    foreach ($pattern in $usagePatterns) {
+        if (Select-String -Path $allCodeFiles.FullName -Pattern $pattern -Quiet) {
+            $isUsed = $true
+            $detectedVia = "Cross-file ($pattern)"
+            break
         }
+    }
+
+    if ($isUsed) {
+        $usedMethods += [PSCustomObject]@{ MethodName = $methodName; File = $method.RelativePath; DetectedVia = $detectedVia }
     } else {
-        $unusedMethods += [PSCustomObject]@{
-            MethodName = $methodName
-            Visibility = $method.Visibility
-            File = $method.File
-            RelativePath = $method.RelativePath
-            LineNumber = $method.LineNumber
-            Declaration = $method.Declaration
-        }
+        $unusedMethods += $method
     }
 }
 
-Write-Progress -Activity "Checking usage" -Completed
+Write-Progress -Activity "Analyzing methods" -Completed
 
-# Step 3: Report results
-Write-Host "`n" + ("=" * 70)
-Write-Host "📊 ENHANCED SCAN RESULTS" -ForegroundColor Cyan
-Write-Host ("=" * 70)
-
-Write-Host "`n✅ Used methods: $($usedMethods.Count)" -ForegroundColor Green
+# Step 4: Results
+Write-Host "`n" + ("=" * 80)
+Write-Host "📊 SCAN COMPLETE" -ForegroundColor Cyan
+Write-Host ("=" * 80)
+Write-Host "`n✅ Used methods     : $($usedMethods.Count)" -ForegroundColor Green
 Write-Host "⚠️  Potentially unused: $($unusedMethods.Count)" -ForegroundColor Yellow
 
 if ($unusedMethods.Count -eq 0) {
-    Write-Host "`n🎉 No unused methods found! All methods are properly referenced." -ForegroundColor Green
+    Write-Host "`n🎉 No unused methods detected!" -ForegroundColor Green
 } else {
     Write-Host "`n⚠️  Potentially unused methods:" -ForegroundColor Yellow
-    $unusedMethods | Select-Object MethodName, Visibility, RelativePath, LineNumber |
-        Format-Table -AutoSize
-
-    # Save results
-    $outputPath = "tmp/dead-code-report.json"
-    $report = @{
-        ScanDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-        TotalMethods = $totalMethods
-        UsedMethods = $usedMethods.Count
-        UnusedMethods = $unusedMethods
-    }
-
-    $report | ConvertTo-Json -Depth 3 | Out-File $outputPath
-    Write-Host "`n💾 Full report saved to: $outputPath" -ForegroundColor Cyan
+    $unusedMethods | Select-Object MethodName, Visibility, RelativePath, LineNumber | Format-Table -AutoSize
 }
 
-Write-Host "`n" + ("=" * 70)
-Write-Host "Scan complete!" -ForegroundColor Green
+# Save detailed report
+$reportPath = "tmp/dead-code-report.json"
+if (-not (Test-Path "tmp")) { New-Item -ItemType Directory -Path "tmp" | Out-Null }
+@{
+    ScanDate       = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    TotalMethods   = $methods.Count
+    Used           = $usedMethods.Count
+    PotentiallyUnused = $unusedMethods
+} | ConvertTo-Json -Depth 4 | Out-File $reportPath -Encoding utf8
+
+Write-Host "`n💾 Detailed report saved to: $reportPath" -ForegroundColor Cyan
+Write-Host "`nScan finished!" -ForegroundColor Green

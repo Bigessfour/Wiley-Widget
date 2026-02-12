@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Models;
+using WileyWidget.Business.Models;
 
 namespace WileyWidget.Business.Interfaces;
 
@@ -67,5 +69,14 @@ public interface IAccountsRepository
     /// <returns>Collection of accounts matching the search criteria.</returns>
     Task<IReadOnlyList<MunicipalAccount>> SearchAccountsAsync(
         string searchTerm,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns aggregated revenue per calendar month within the supplied date range (inclusive).
+    /// Implementations should aggregate by calendar month (month start) and include transaction counts.
+    /// </summary>
+    Task<IReadOnlyList<MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(
+        DateTime startDate,
+        DateTime endDate,
         CancellationToken cancellationToken = default);
 }

@@ -135,6 +135,11 @@
     <Content Include="Reports\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- Reference root-level FastReport templates for shared reports -->
+    <Content Include="..\\..\\Reports\\*.frx">
+      <Link>Reports\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <!-- App settings must be copied because default content items are disabled -->
     <Content Include="appsettings*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

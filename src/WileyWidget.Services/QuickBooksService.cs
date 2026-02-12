@@ -39,10 +39,10 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly IQuickBooksApiClient _apiClient;
     private readonly QuickBooksAuthService _authService;
 
-    // Values loaded lazily from secret vault or environment
+    // Values loaded lazily from IOptions, user secrets, or environment
     private string? _clientId;
     private string? _clientSecret;
-    private string _redirectUri = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
+    private string? _redirectUri;
     private string? _realmId;
     private string _environment = "sandbox";
     private string? _intuitPreLoginUrl; // optional convenience URL to pre-authenticate account
@@ -258,13 +258,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
                        ?? envRealmCandidate;
 
-            // Redirect URI is configurable; fall back to default local listener
-            var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
-                        ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI");
-            if (!string.IsNullOrWhiteSpace(redirectFromVault))
-            {
-                _redirectUri = redirectFromVault!;
-            }
+            // Redirect URI priority: User Secrets > Environment > IOptions (via auth service)
+            _redirectUri = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
+                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RedirectUri", _logger).ConfigureAwait(false)
+                        ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI")
+                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REDIRECT_URI");
 
             _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
                        ?? GetEnvironmentVariableAnyScope("QBO_ENVIRONMENT")
@@ -358,6 +356,27 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             Serilog.Log.Error(ex, "QBO connection test failed");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Fetches the company name from QuickBooks CompanyInfo API.
+    /// </summary>
+    private async System.Threading.Tasks.Task<string?> GetCompanyNameAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var pair = GetDataService();
+            var dataService = pair.Item2;
+
+            // Query for CompanyInfo (there's only one per company)
+            var companyInfo = dataService.FindAll(new Intuit.Ipp.Data.CompanyInfo()).FirstOrDefault();
+            return companyInfo?.CompanyName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch company name from QuickBooks");
+            return null;
         }
     }
 
@@ -1313,6 +1332,74 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         return _settings.Current;
     }
 
+    private async System.Threading.Tasks.Task<(string prefix, HttpListener listener)?> FindAvailablePortAndSetupListenerAsync(string preferredUri, CancellationToken cancellationToken = default)
+    {
+        // Try the preferred URI first (from config/secrets)
+        if (!string.IsNullOrWhiteSpace(preferredUri))
+        {
+            var preferredPrefix = preferredUri.EndsWith("/", StringComparison.Ordinal) ? preferredUri : preferredUri + "/";
+            var listener = new HttpListener();
+            listener.Prefixes.Add(preferredPrefix);
+
+            try
+            {
+                // Ensure URL ACL for preferred URI
+                var acl = await CheckUrlAclAsync(preferredPrefix).ConfigureAwait(false);
+                if (!acl.IsReady)
+                {
+                    var ensured = await TryEnsureUrlAclAsync(preferredPrefix, cancellationToken).ConfigureAwait(false);
+                    if (!ensured)
+                    {
+                        _logger.LogWarning("Failed to ensure URL ACL for preferred URI {Prefix}", preferredPrefix);
+                    }
+                }
+
+                listener.Start();
+                _logger.LogInformation("Successfully started OAuth listener on preferred URI {Prefix}", preferredPrefix);
+                return (preferredPrefix, listener);
+            }
+            catch (HttpListenerException ex)
+            {
+                _logger.LogWarning(ex, "Preferred URI {Prefix} is not available, trying dynamic ports", preferredPrefix);
+                listener.Close();
+            }
+        }
+
+        // Try ports 5000-5100
+        for (int port = 5000; port <= 5100; port++)
+        {
+            var prefix = $"http://localhost:{port}/";
+            var listener = new HttpListener();
+            listener.Prefixes.Add(prefix);
+
+            try
+            {
+                // Ensure URL ACL for this port
+                var acl = await CheckUrlAclAsync(prefix).ConfigureAwait(false);
+                if (!acl.IsReady)
+                {
+                    var ensured = await TryEnsureUrlAclAsync(prefix, cancellationToken).ConfigureAwait(false);
+                    if (!ensured)
+                    {
+                        _logger.LogDebug("Failed to ensure URL ACL for port {Port}, continuing", port);
+                    }
+                }
+
+                listener.Start();
+                _logger.LogInformation("Successfully started OAuth listener on dynamic port {Port}", port);
+                return (prefix, listener);
+            }
+            catch (HttpListenerException ex)
+            {
+                _logger.LogDebug(ex, "Port {Port} is not available, trying next port", port);
+                listener.Close();
+            }
+        }
+
+        _logger.LogError("No available ports found in range 5000-5100 for OAuth callback listener");
+        return null;
+    }
+
     private async System.Threading.Tasks.Task<bool> AcquireTokensInteractiveAsync(CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
@@ -1337,192 +1424,163 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
 
         var s = EnsureSettingsLoaded();
-        var listenerPrefix = _redirectUri.EndsWith("/", StringComparison.Ordinal) ? _redirectUri : _redirectUri + "/";
-        using var listener = new HttpListener();
-        const string fallbackPrefix = "http://localhost:8080/";
-        var prefixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { fallbackPrefix, listenerPrefix };
-        foreach (var prefix in prefixes)
-        {
-            listener.Prefixes.Add(prefix);
-        }
 
-        // Ensure URL ACL exists for our chosen prefix, then ensure Cloudflare tunnel is up for OAuth redirect
-        try
+        // Find an available port and set up the listener
+        var listenerResult = await FindAvailablePortAndSetupListenerAsync(_redirectUri, cancellationToken).ConfigureAwait(false);
+        if (listenerResult == null)
         {
-            var acl = await CheckUrlAclAsync(listenerPrefix).ConfigureAwait(false);
-            if (!acl.IsReady)
-            {
-                var ensured = await TryEnsureUrlAclAsync(listenerPrefix).ConfigureAwait(false);
-                _logger.LogInformation("URL ACL ensure attempted for {Prefix} (success={Success}).", listenerPrefix, ensured);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "URL ACL ensure step encountered an issue; proceeding to start listener.");
-        }
-
-        // Try to ensure a Cloudflare tunnel is available to reach our localhost callback (optional for local dev)
-        try
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            var tunnelReady = await EnsureCloudflaredTunnelAsync(cts.Token).ConfigureAwait(false);
-            if (tunnelReady)
-            {
-                _logger.LogInformation("Cloudflare tunnel ready{Url}.", string.IsNullOrWhiteSpace(_cloudflaredPublicUrl) ? string.Empty : $" at {_cloudflaredPublicUrl}");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Cloudflare tunnel step is optional and failed; continuing with local OAuth callback.");
-        }
-
-        try
-        {
-            listener.Start();
-        }
-        catch (HttpListenerException ex)
-        {
-            var command = $"netsh http add urlacl url={listenerPrefix} user=%USERNAME%";
-            _logger.LogError(ex, "Failed to start OAuth callback listener on {Prefix}. Run '{Command}' or restart with elevated privileges.", listenerPrefix, command);
+            _logger.LogError("Unable to find an available port for OAuth callback listener");
             return false;
         }
 
-        // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
-        var state = Guid.NewGuid().ToString("N");
-        var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
-        // If requested, print the exact authorization URL so it can be copied into the Intuit
-        // developer app Redirect URI list for diagnosis or portal registration.
-        if (printAuthUrl)
+        var (actualPrefix, listener) = listenerResult.Value;
+        using (listener)  // Ensure proper disposal
         {
-            _logger.LogInformation("WW_PRINT_AUTH_URL set - printing QuickBooks authorization URL to console");
-            try
-            {
-                Console.WriteLine(authUrl);
-            }
-            catch
-            {
-                // best-effort printing; do not fail if console isn't available
-            }
-            if (skipInteractive)
-            {
-                _logger.LogInformation("WW_SKIP_INTERACTIVE also set - printed auth URL and skipping browser launch.");
-                return true;
-            }
-        }
-        _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
-        // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
-        if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
-        {
-            try
-            {
-                LaunchOAuthBrowser(_intuitPreLoginUrl);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to open Intuit pre-login URL; continuing with OAuth");
-            }
-        }
-        LaunchOAuthBrowser(authUrl);
+            // Note: Cloudflare tunnel is NOT needed for OAuth callback (localhost-only)
+            // Webhooks require public HTTPS endpoint - handle separately via WileyWidget.Webhooks project
+            // and persistent named tunnel configuration (not quick tunnel)
+            _logger.LogDebug("OAuth callback uses localhost listener - tunnel not required for OAuth flow.");
 
-        HttpListenerContext? context = null;
-        try
-        {
-            var timeoutTask = System.Threading.Tasks.Task.Delay(TimeSpan.FromMinutes(5));
-            var contextTask = listener.GetContextAsync();
-            var completed = await System.Threading.Tasks.Task.WhenAny(contextTask, timeoutTask).ConfigureAwait(false);
-            if (completed != contextTask)
+            // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
+            var state = Guid.NewGuid().ToString("N");
+            var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
+            // If requested, print the exact authorization URL so it can be copied into the Intuit
+            // developer app Redirect URI list for diagnosis or portal registration.
+            if (printAuthUrl)
             {
-                _logger.LogWarning("OAuth callback listener timed out waiting for Intuit redirect.");
-                return false;
-            }
-
-            context = contextTask.Result;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed while awaiting QuickBooks OAuth callback.");
-            return false;
-        }
-        finally
-        {
-            listener.Stop();
-        }
-
-        var request = context.Request;
-        var response = context.Response;
-        var query = request.QueryString;
-        var returnedState = query["state"];
-        var code = query["code"];
-        var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
-        var error = query["error"];
-        var success = !string.IsNullOrWhiteSpace(code) && string.Equals(state, returnedState, StringComparison.Ordinal);
-
-        if (!string.IsNullOrWhiteSpace(error))
-        {
-            _logger.LogWarning("QuickBooks OAuth returned error {Error}", error);
-            success = false;
-        }
-
-        if (!success)
-        {
-            await WriteCallbackResponseAsync(response, "Authorization failed. You can close this window and return to Wiley Widget.").ConfigureAwait(false);
-            return false;
-        }
-
-        try
-        {
-            var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code).ConfigureAwait(false);
-            s.QboAccessToken = tokenResponse.AccessToken;
-            s.QboRefreshToken = tokenResponse.RefreshToken;
-            s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
-
-            // Capture realmId automatically if provided
-            if (!string.IsNullOrWhiteSpace(realmIdFromCallback))
-            {
-                _realmId = realmIdFromCallback;
-                // Persist realmId for future runs if a secret vault is available
+                _logger.LogInformation("WW_PRINT_AUTH_URL set - printing QuickBooks authorization URL to console");
                 try
                 {
-                    if (_secretVault != null)
-                        await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
+                    Console.WriteLine(authUrl);
                 }
-                catch { }
+                catch
+                {
+                    // best-effort printing; do not fail if console isn't available
+                }
+                if (skipInteractive)
+                {
+                    _logger.LogInformation("WW_SKIP_INTERACTIVE also set - printed auth URL and skipping browser launch.");
+                    return true;
+                }
             }
-            else if (string.IsNullOrWhiteSpace(_realmId) && !string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+            _logger.LogWarning("Launching QuickBooks OAuth flow. Complete sign-in for realm {RealmId}.", _realmId);
+            // If provided, launch pre-login URL to ensure correct account context, then launch OAuth
+            if (!string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
             {
-                // As a safety, detect account_id_hint from pre-login URL if user provided one
                 try
                 {
-                    var uri = new Uri(_intuitPreLoginUrl);
-                    var qs = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                    var hint = qs["account_id_hint"];
-                    if (!string.IsNullOrWhiteSpace(hint))
-                    {
-                        _realmId = hint;
-                        try
-                        {
-                            if (_secretVault != null)
-                                await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
-                        }
-                        catch { }
-                        _logger.LogInformation("Captured realmId from account_id_hint: {RealmId}", _realmId);
-                    }
+                    LaunchOAuthBrowser(_intuitPreLoginUrl);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Failed to parse account_id_hint from Intuit pre-login URL");
+                    _logger.LogWarning(ex, "Failed to open Intuit pre-login URL; continuing with OAuth");
                 }
             }
-            _settings.Save();
-            Serilog.Log.Information("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
-            await WriteCallbackResponseAsync(response, "Authorization complete. You may close this tab and return to Wiley Widget.").ConfigureAwait(false);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to exchange authorization code for tokens.");
-            await WriteCallbackResponseAsync(response, "Authorization encountered an error. Check application logs for details.").ConfigureAwait(false);
-            return false;
+            LaunchOAuthBrowser(authUrl);
+
+            HttpListenerContext? context = null;
+            try
+            {
+                var timeoutTask = System.Threading.Tasks.Task.Delay(TimeSpan.FromMinutes(5));
+                var contextTask = listener.GetContextAsync();
+                var completed = await System.Threading.Tasks.Task.WhenAny(contextTask, timeoutTask).ConfigureAwait(false);
+                if (completed != contextTask)
+                {
+                    _logger.LogWarning("OAuth callback listener timed out waiting for Intuit redirect.");
+                    return false;
+                }
+
+                context = contextTask.Result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed while awaiting QuickBooks OAuth callback.");
+                return false;
+            }
+            finally
+            {
+                listener.Stop();
+            }
+
+            var request = context.Request;
+            var response = context.Response;
+            var query = request.QueryString;
+            var returnedState = query["state"];
+            var code = query["code"];
+            var realmIdFromCallback = query["realmId"]; // provided by Intuit on success
+            var error = query["error"];
+            var success = !string.IsNullOrWhiteSpace(code) && string.Equals(state, returnedState, StringComparison.Ordinal);
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                _logger.LogWarning("QuickBooks OAuth returned error {Error}", error);
+                success = false;
+            }
+
+            if (!success)
+            {
+                await WriteCallbackResponseAsync(response, "Authorization failed. You can close this window and return to Wiley Widget.").ConfigureAwait(false);
+                listener.Stop();
+                return false;
+            }
+
+            try
+            {
+                var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code).ConfigureAwait(false);
+                s.QboAccessToken = tokenResponse.AccessToken;
+                s.QboRefreshToken = tokenResponse.RefreshToken;
+                s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+
+                // Capture realmId automatically if provided
+                if (!string.IsNullOrWhiteSpace(realmIdFromCallback))
+                {
+                    _realmId = realmIdFromCallback;
+                    // Persist realmId for future runs if a secret vault is available
+                    try
+                    {
+                        if (_secretVault != null)
+                            await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
+                    }
+                    catch { }
+                }
+                else if (string.IsNullOrWhiteSpace(_realmId) && !string.IsNullOrWhiteSpace(_intuitPreLoginUrl))
+                {
+                    // As a safety, detect account_id_hint from pre-login URL if user provided one
+                    try
+                    {
+                        var uri = new Uri(_intuitPreLoginUrl);
+                        var qs = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                        var hint = qs["account_id_hint"];
+                        if (!string.IsNullOrWhiteSpace(hint))
+                        {
+                            _realmId = hint;
+                            try
+                            {
+                                if (_secretVault != null)
+                                    await _secretVault.SetSecretAsync("QBO-REALM-ID", _realmId).ConfigureAwait(false);
+                            }
+                            catch { }
+                            _logger.LogInformation("Captured realmId from account_id_hint: {RealmId}", _realmId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to parse account_id_hint from Intuit pre-login URL");
+                    }
+                }
+                _settings.Save();
+                Serilog.Log.Information("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+                await WriteCallbackResponseAsync(response, "Authorization complete. You may close this tab and return to Wiley Widget.").ConfigureAwait(false);
+                listener.Stop();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to exchange authorization code for tokens.");
+                await WriteCallbackResponseAsync(response, "Authorization encountered an error. Check application logs for details.").ConfigureAwait(false);
+                listener.Stop();
+                return false;
+            }
         }
     }
 
@@ -1691,11 +1749,13 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     }
 
     /// <summary>
-    /// Ensures a Cloudflare tunnel is running that forwards the local redirect URI port, starting one if needed.
-    /// Uses 'cloudflared tunnel --url http://localhost:PORT' and waits for readiness indicated by a public URL in stdout.
-    /// This is optional for local development but helps when a public callback URL is required.
-    /// For webhooks, we need to tunnel to the webhooks server port, not the main app port.
+    /// DEPRECATED: Cloudflare tunnel management moved to infrastructure layer.
+    /// OAuth callbacks use localhost-only listener (no tunnel needed).
+    /// Webhooks require public HTTPS endpoint via persistent named tunnel.
+    /// Use cloudflared config.yml with named tunnel for production deployment.
+    /// See docs/CLOUDFLARE_TUNNEL_SETUP.md for configuration.
     /// </summary>
+    [Obsolete("Tunnel management moved to infrastructure. Use named tunnel with config.yml for webhooks.")]
     private async System.Threading.Tasks.Task<bool> EnsureCloudflaredTunnelAsync(CancellationToken cancellationToken)
     {
         await EnsureInitializedAsync().ConfigureAwait(false);
@@ -1953,26 +2013,33 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var s = EnsureSettingsLoaded();
-            var hasTokens = !string.IsNullOrEmpty(s.QboAccessToken) && !string.IsNullOrEmpty(s.QboRefreshToken);
-            var isExpired = s.QboTokenExpiry != default(DateTime) && s.QboTokenExpiry <= DateTime.UtcNow;
+            // Check TokenStore first (preferred method), then fall back to settings
+            var token = await _authService.GetAccessTokenAsync(cancellationToken);
 
-            if (!hasTokens)
+            if (token == null || !token.IsValid || token.IsExpired)
             {
-                return new ConnectionStatus
-                {
-                    IsConnected = false,
-                    StatusMessage = "Not connected - no tokens available"
-                };
-            }
+                // Fall back to checking legacy settings-based tokens
+                var s = EnsureSettingsLoaded();
+                var hasTokens = !string.IsNullOrEmpty(s.QboAccessToken) && !string.IsNullOrEmpty(s.QboRefreshToken);
+                var isExpired = s.QboTokenExpiry != default(DateTime) && s.QboTokenExpiry <= DateTime.UtcNow;
 
-            if (isExpired)
-            {
-                return new ConnectionStatus
+                if (!hasTokens)
                 {
-                    IsConnected = false,
-                    StatusMessage = "Not connected - tokens expired"
-                };
+                    return new ConnectionStatus
+                    {
+                        IsConnected = false,
+                        StatusMessage = "Not connected - no tokens available"
+                    };
+                }
+
+                if (isExpired)
+                {
+                    return new ConnectionStatus
+                    {
+                        IsConnected = false,
+                        StatusMessage = "Not connected - tokens expired"
+                    };
+                }
             }
 
             // Try to test the connection
@@ -1981,10 +2048,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             if (testResult)
             {
+                // Fetch the actual company name from QuickBooks
+                var companyName = await GetCompanyNameAsync(cancellationToken);
                 return new ConnectionStatus
                 {
                     IsConnected = true,
-                    CompanyName = _realmId,
+                    CompanyName = companyName ?? _realmId ?? "QuickBooks",
                     StatusMessage = "Connected and ready"
                 };
             }

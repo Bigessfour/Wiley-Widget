@@ -31,7 +31,7 @@ public static class SyncfusionThemingExtensions
     /// </remarks>
     public static Size PreferredDockSize(this UserControl panel) => panel switch
     {
-        DashboardPanel => new Size(560, 420),
+        FormHostPanel => new Size(560, 420),
         AccountsPanel => new Size(620, 380),
         AnalyticsHubPanel => new Size(560, 400),
         AuditLogPanel => new Size(520, 380),

@@ -142,6 +142,7 @@ public class BudgetRepository : IBudgetRepository
                 .Where(be => be.FiscalYear == fiscalYear)
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
 
@@ -172,6 +173,7 @@ public class BudgetRepository : IBudgetRepository
             .Where(be => be.FiscalYear == fiscalYear)
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
@@ -192,6 +194,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .AsQueryable();
 
         // Apply fiscal year filter if specified
@@ -227,6 +230,7 @@ public class BudgetRepository : IBudgetRepository
         return Task.FromResult(context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .AsQueryable());
     }
 
@@ -242,6 +246,7 @@ public class BudgetRepository : IBudgetRepository
             .Include(be => be.Children)
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .AsNoTracking()
             .FirstOrDefaultAsync(be => be.Id == id, cancellationToken);
     }
@@ -270,6 +275,7 @@ public class BudgetRepository : IBudgetRepository
                     .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
                     .Include(be => be.Department)
                     .Include(be => be.Fund)
+                    .Include(be => be.MunicipalAccount)
                     .AsNoTracking()
                     .ToListAsync(cancellationToken);
 
@@ -308,6 +314,7 @@ public class BudgetRepository : IBudgetRepository
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
                 .Where(be => be.FundId == fundId)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
@@ -333,6 +340,7 @@ public class BudgetRepository : IBudgetRepository
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
                 .Where(be => be.DepartmentId == departmentId)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
@@ -358,6 +366,7 @@ public class BudgetRepository : IBudgetRepository
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
                 .Where(be => be.FundId == fundId && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
@@ -383,6 +392,7 @@ public class BudgetRepository : IBudgetRepository
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
                 .Where(be => be.DepartmentId == departmentId && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
@@ -410,6 +420,7 @@ public class BudgetRepository : IBudgetRepository
             budgetEntries = await context.BudgetEntries
                 .Include(be => be.Department)
                 .Include(be => be.Fund)
+                .Include(be => be.MunicipalAccount)
                 .Where(be => be.FundId == sewerFundId && be.FiscalYear == fiscalYear)
                 .OrderBy(be => be.AccountNumber)
                 .AsNoTracking()
@@ -476,6 +487,7 @@ public class BudgetRepository : IBudgetRepository
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
             .ToListAsync(cancellationToken);
 
@@ -538,6 +550,7 @@ public class BudgetRepository : IBudgetRepository
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
             .ToListAsync(cancellationToken);
 
@@ -566,6 +579,7 @@ public class BudgetRepository : IBudgetRepository
         var budgetEntries = await context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
             .ToListAsync(cancellationToken);
 
@@ -603,6 +617,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
 
         // Dynamic enterprise filter if present on Department or Fund
@@ -658,6 +673,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
 
         var budgetEntries = await query.ToListAsync(cancellationToken);
@@ -683,6 +699,7 @@ public class BudgetRepository : IBudgetRepository
         var query = context.BudgetEntries
             .Include(be => be.Department)
             .Include(be => be.Fund)
+            .Include(be => be.MunicipalAccount)
             .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
 
         var budgetEntries = await query.ToListAsync(cancellationToken);
@@ -909,6 +926,59 @@ public class BudgetRepository : IBudgetRepository
             Console.WriteLine($"[TEST] Repository: ERROR fetching TownOfWileyBudget2026: {ex.Message}");
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _telemetryService?.RecordException(ex);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets historical budget summary for trend analysis (total budgets by fiscal year).
+    /// Retrieves the last N years of budget data with year-over-year growth calculations.
+    /// </summary>
+    public async Task<List<HistoricalBudgetYear>> GetHistoricalBudgetSummaryAsync(int yearsBack, int currentFiscalYear, CancellationToken cancellationToken = default)
+    {
+        using var activity = ActivitySource.StartActivity("BudgetRepository.GetHistoricalBudgetSummary");
+        activity?.SetTag("years_back", yearsBack);
+        activity?.SetTag("current_fiscal_year", currentFiscalYear);
+        activity?.SetTag("operation.type", "query");
+
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var results = new List<HistoricalBudgetYear>();
+            decimal previousTotal = 0m;
+
+            // Query fiscal years from oldest to newest (for proper YoY calculation)
+            for (int i = yearsBack; i >= 1; i--)
+            {
+                var fiscalYear = currentFiscalYear - i;
+                var totalBudget = await context.BudgetEntries
+                    .Where(be => be.FiscalYear == fiscalYear)
+                    .SumAsync(be => be.BudgetedAmount, cancellationToken);
+
+                var yoyChange = previousTotal > 0 ? totalBudget - previousTotal : 0m;
+                var yoyPercent = previousTotal > 0 ? (yoyChange / previousTotal) * 100m : 0m;
+
+                results.Add(new HistoricalBudgetYear
+                {
+                    FiscalYear = fiscalYear,
+                    TotalBudget = totalBudget,
+                    YearOverYearChange = yoyChange,
+                    YearOverYearPercent = yoyPercent
+                });
+
+                previousTotal = totalBudget;
+            }
+
+            activity?.SetTag("result.count", results.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            return results;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _telemetryService?.RecordException(ex, ("years_back", yearsBack), ("current_fiscal_year", currentFiscalYear));
             throw;
         }
     }

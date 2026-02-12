@@ -128,6 +128,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Defer sizing validation until handle is created
         DeferSizeValidation();
 
+        // Wire up VisibleChanged event for SplitContainer configuration (happens when panel becomes visible)
+        this.VisibleChanged += BudgetPanel_VisibleChanged;
+
         Logger.LogInformation("BudgetPanel initialized");
     }
 
@@ -166,6 +169,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void InitializeControls()
     {
+        Logger.LogInformation("BudgetPanel.InitializeControls: START - IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated}",
+            IsDisposed, IsHandleCreated);
+
         // Batch layout initialization for better performance
         SuspendLayout();
 
@@ -189,8 +195,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Orientation = Orientation.Vertical,
             SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(150.0f)
         };
-        // Configure proportional sizing: filter min 120px, grid min 300px, desired split at 150px
-        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplitContainer, 120, 300, 150);
+        // Note: SafeSplitterDistanceHelper.ConfigureSafeSplitContainer is deferred to avoid sizing exceptions
+        // during initialization. The helper will configure min sizes when the container is properly sized.
 
         // Top panel - Summary and filters
         InitializeTopPanel();
@@ -245,6 +251,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         this.Refresh();
 
         Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+
+        // SplitContainer configuration moved to OnShown event to avoid early initialization issues
+        // See: https://github.com/dotnet/winforms/issues/4000 for timing issues with SplitContainer
     }
 
     private void InitializeTopPanel()
@@ -423,6 +432,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Dock = DockStyle.Fill,
             Margin = new Padding(5),
             TabIndex = 2,
+            ThemeName = themeName,
             AccessibleName = "Fiscal Year Filter",
             AccessibleDescription = "Filter budget entries by fiscal year",
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
@@ -451,6 +461,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Dock = DockStyle.Fill,
             Margin = new Padding(5),
             TabIndex = 8,
+            ThemeName = themeName,
             AccessibleName = "Entity Filter",
             AccessibleDescription = "Filter budget entries by entity or fund",
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
@@ -478,6 +489,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Dock = DockStyle.Fill,
             Margin = new Padding(5),
             TabIndex = 3,
+            ThemeName = themeName,
             AccessibleName = "Department Filter",
             AccessibleDescription = "Filter budget entries by department",
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
@@ -499,6 +511,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Dock = DockStyle.Fill,
             Margin = new Padding(5),
             TabIndex = 4,
+            ThemeName = themeName,
             AccessibleName = "Fund Type Filter",
             AccessibleDescription = "Filter budget entries by fund type",
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
@@ -606,6 +619,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             SelectionMode = GridSelectionMode.Single,
             EditMode = EditMode.SingleClick,
             TabIndex = 8,
+            ThemeName = themeName,
             AccessibleName = "Budget Entries Grid",
             AccessibleDescription = "Data grid displaying budget entries with account numbers, amounts, variances, and related budget information"
         };
@@ -731,14 +745,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Format = "P2",
             AllowEditing = false
         });
-        // Percent of Budget (fraction property) - displays as percentage
-        _budgetGrid.Columns.Add(new GridNumericColumn
-        {
-            MappingName = "PercentOfBudgetFraction",
-            HeaderText = "% of Budget",
-            Format = "P2",
-            AllowEditing = false
-        });
 
         _budgetGrid.CurrentCellActivated += BudgetGrid_CurrentCellActivated;
 
@@ -794,6 +800,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "&Load Budgets",
             TabIndex = 9,
+            ThemeName = themeName,
             AccessibleName = "Load Budgets",
             AccessibleDescription = "Load budget entries for the selected fiscal year"
         };
@@ -803,6 +810,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "&Add Entry",
             TabIndex = 10,
+            ThemeName = themeName,
             AccessibleName = "Add Entry",
             AccessibleDescription = "Add a new budget entry"
         };
@@ -812,6 +820,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "&Edit Entry",
             TabIndex = 11,
+            ThemeName = themeName,
             AccessibleName = "Edit Entry",
             AccessibleDescription = "Edit the selected budget entry"
         };
@@ -821,6 +830,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "&Delete Entry",
             TabIndex = 12,
+            ThemeName = themeName,
             AccessibleName = "Delete Entry",
             AccessibleDescription = "Delete the selected budget entry"
         };
@@ -830,6 +840,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "&Import CSV",
             TabIndex = 13,
+            ThemeName = themeName,
             AccessibleName = "Import CSV",
             AccessibleDescription = "Import budget entries from CSV file"
         };
@@ -839,6 +850,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Export &CSV",
             TabIndex = 14,
+            ThemeName = themeName,
             AccessibleName = "Export CSV",
             AccessibleDescription = "Export budget entries to CSV file"
         };
@@ -848,6 +860,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Export &PDF",
             TabIndex = 15,
+            ThemeName = themeName,
             AccessibleName = "Export PDF",
             AccessibleDescription = "Export budget entries to PDF file"
         };
@@ -857,6 +870,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Export &Excel",
             TabIndex = 16,
+            ThemeName = themeName,
             AccessibleName = "Export Excel",
             AccessibleDescription = "Export budget entries to Excel file"
         };
@@ -950,52 +964,19 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 DataSourceUpdateMode.OnPropertyChanged);
         }
 
-        // Bind summary labels
-        if (_totalBudgetedLabel != null)
-        {
-            _totalBudgetedLabel.DataBindings.Add(
-                nameof(_totalBudgetedLabel.Text),
-                viewModelBinding,
-                nameof(ViewModel.TotalBudgeted),
-                true,
-                DataSourceUpdateMode.OnPropertyChanged,
-                null,
-                "Budgeted: {0:C}");
-        }
-
-        if (_totalActualLabel != null)
-        {
-            _totalActualLabel.DataBindings.Add(
-                nameof(_totalActualLabel.Text),
-                viewModelBinding,
-                nameof(ViewModel.TotalActual),
-                true,
-                DataSourceUpdateMode.OnPropertyChanged,
-                null,
-                "Actual: {0:C}");
-        }
-
-        if (_totalVarianceLabel != null)
-        {
-            _totalVarianceLabel.DataBindings.Add(
-                nameof(_totalVarianceLabel.Text),
-                viewModelBinding,
-                nameof(ViewModel.TotalVariance),
-                true,
-                DataSourceUpdateMode.OnPropertyChanged,
-                null,
-                "Variance: {0:C}");
-        }
+        // Bind summary labels (handled in PropertyChanged for thread safety)
+        // Removed DataBindings for TotalBudgeted, TotalActual, TotalVariance to prevent cross-thread issues
 
         // Bind status strip
         if (_statusLabel != null)
         {
-            _statusLabel.DataBindings.Add(
-                nameof(_statusLabel.Text),
-                viewModelBinding,
-                nameof(ViewModel.StatusText),
-                false,
-                DataSourceUpdateMode.OnPropertyChanged);
+            // Removed DataBindings.Add for StatusText to handle manually in PropertyChanged for thread safety
+            // _statusLabel.DataBindings.Add(
+            //     nameof(_statusLabel.Text),
+            //     viewModelBinding,
+            //     nameof(ViewModel.StatusText),
+            //     false,
+            //     DataSourceUpdateMode.OnPropertyChanged);
         }
 
         // Bind entity combo list if available
@@ -1180,12 +1161,97 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// </summary>
     protected override void OnViewModelResolved(object? viewModel)
     {
+        Logger.LogInformation("BudgetPanel.OnViewModelResolved called - ViewModel type: {Type}, IsNull: {IsNull}",
+            viewModel?.GetType().Name ?? "null", viewModel == null);
+
         base.OnViewModelResolved(viewModel);
         if (viewModel is not BudgetViewModel)
         {
+            Logger.LogWarning("BudgetPanel.OnViewModelResolved: ViewModel is not BudgetViewModel (actual type: {Type})",
+                viewModel?.GetType().Name ?? "null");
             return;
         }
+
+        Logger.LogInformation("BudgetPanel.OnViewModelResolved: Calling InitializeControls()");
+
+        // Initialize UI controls now that ViewModel is available
+        try
+        {
+            InitializeControls();
+            Logger.LogInformation("BudgetPanel.OnViewModelResolved: InitializeControls() completed successfully");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "BudgetPanel.OnViewModelResolved: FAILED to initialize controls");
+            throw;
+        }
+
         BindViewModel();
+
+        // Auto-load budget data for the current fiscal year (similar to DashboardPanel pattern)
+        // Defer to background thread to avoid blocking UI initialization
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(100); // Allow UI to settle after control creation
+                if (!IsDisposed && ViewModel?.LoadBudgetsCommand != null)
+                {
+                    Logger.LogInformation("BudgetPanel: Auto-loading budget data for fiscal year {Year}", ViewModel.SelectedFiscalYear);
+                    await ViewModel.LoadBudgetsCommand.ExecuteAsync(null).ConfigureAwait(true);
+                    Logger.LogInformation("BudgetPanel: Auto-load completed");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "BudgetPanel: Failed to auto-load budget data");
+            }
+        });
+    }
+
+    /// <summary>
+    /// Called when the panel becomes visible. This happens after layout is complete,
+    /// handle is created, and size is final. Safe to configure SplitContainer here.
+    /// </summary>
+    private void BudgetPanel_VisibleChanged(object? sender, EventArgs e)
+    {
+        // Only configure once when becoming visible
+        if (!Visible || _mainSplitContainer == null || _mainSplitContainer.IsDisposed || !_mainSplitContainer.IsHandleCreated)
+            return;
+
+        // Unsubscribe to avoid repeated configuration
+        this.VisibleChanged -= BudgetPanel_VisibleChanged;
+
+        try
+        {
+            // Clamp mins first (Syncfusion default min 25, but we want 120/300)
+            _mainSplitContainer.Panel1MinSize = Math.Max(25, Math.Min(120, _mainSplitContainer.Width - 300 - _mainSplitContainer.SplitterWidth - 10));
+            _mainSplitContainer.Panel2MinSize = Math.Max(25, Math.Min(300, _mainSplitContainer.Width - 120 - _mainSplitContainer.SplitterWidth - 10));
+
+            // Safe distance
+            int minDist = _mainSplitContainer.Panel1MinSize;
+            int maxDist = _mainSplitContainer.Width - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
+            int target = 150;
+            int safeDist = Math.Clamp(target, minDist, maxDist);
+
+            _mainSplitContainer.SplitterDistance = safeDist;
+
+            Logger.LogInformation(
+                "BudgetPanel SplitContainer configured in VisibleChanged: Panel1Min={P1}, Panel2Min={P2}, Distance={D}, Width={W}",
+                _mainSplitContainer.Panel1MinSize, _mainSplitContainer.Panel2MinSize, safeDist, _mainSplitContainer.Width);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "BudgetPanel SplitContainer config failed in VisibleChanged - using fallback");
+            try
+            {
+                _mainSplitContainer.SplitterDistance = _mainSplitContainer.Width / 2;  // safe fallback
+            }
+            catch
+            {
+                // Ignore fallback failures
+            }
+        }
     }
 
     private void BudgetGrid_CurrentCellActivated(object? sender, EventArgs e)
@@ -1835,6 +1901,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (ViewModel == null) return;
+
+        // Ensure UI updates happen on the UI thread (PropertyChanged can fire from background threads)
+        if (InvokeRequired)
+        {
+            Invoke(new System.Action(() => ViewModel_PropertyChanged(sender, e)));
+            return;
+        }
 
         switch (e.PropertyName)
         {

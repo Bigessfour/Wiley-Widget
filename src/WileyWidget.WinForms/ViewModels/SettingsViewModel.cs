@@ -69,8 +69,14 @@ namespace WileyWidget.WinForms.ViewModels
         public IReadOnlyList<string> Themes { get; } = new List<string>
         {
             "Office2019Colorful",
+            "Office2019Dark",
             "Office2019Black",
-            "Office2019White"
+            "Office2019White",
+            "Office2019DarkGray",
+            "Office2016Colorful",
+            "Office2016White",
+            "Office2016Black",
+            "Office2016DarkGray"
         };
 
         [ObservableProperty]

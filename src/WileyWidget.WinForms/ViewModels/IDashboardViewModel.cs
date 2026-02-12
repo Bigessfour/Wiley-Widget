@@ -88,6 +88,9 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>Collection of monthly revenue data for charts.</summary>
         ObservableCollection<MonthlyRevenue> MonthlyRevenueData { get; set; }
 
+        /// <summary>Collection of monthly budget vs actual data for charting.</summary>
+        ObservableCollection<MonthlyBudgetSummary> MonthlySummaries { get; set; }
+
         /// <summary>Current status text for display.</summary>
         string StatusText { get; set; }
 

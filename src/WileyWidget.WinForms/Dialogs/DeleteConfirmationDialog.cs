@@ -3,6 +3,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Dialogs
@@ -11,7 +12,7 @@ namespace WileyWidget.WinForms.Dialogs
     /// Reusable confirmation dialog for delete operations.
     /// Logs user decision without using MessageBox.
     /// </summary>
-    public sealed class DeleteConfirmationDialog : Form
+    public sealed class DeleteConfirmationDialog : SfForm
     {
         private readonly ILogger<DeleteConfirmationDialog>? _logger;
         private SfButton? _deleteButton;
@@ -35,7 +36,7 @@ namespace WileyWidget.WinForms.Dialogs
         {
             _logger = logger;
             InitializeDialog(title, message, detail);
-            ThemeColors.ApplyTheme(this);
+            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
 
             this.PerformLayout();
             this.Refresh();
@@ -54,6 +55,9 @@ namespace WileyWidget.WinForms.Dialogs
             ShowIcon = false;
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.Dpi;
+
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
 
             // Main layout panel
             var mainPanel = new TableLayoutPanel

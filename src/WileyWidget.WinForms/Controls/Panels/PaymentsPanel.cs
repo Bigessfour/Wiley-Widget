@@ -556,14 +556,16 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             e.Style.Font.Bold = true;
             e.Style.Font.Size = 11F;
-            e.Style.BackColor = System.Drawing.Color.FromArgb(230, 240, 255); // Light blue header
+            // Removed manual BackColor to respect SfSkinManager theme cascade.
+            // Header background should be provided by the active Syncfusion theme.
             return;
         }
 
         // Row alternation for better readability
         if (e.RowIndex >= 0 && e.RowIndex % 2 == 0)
         {
-            e.Style.BackColor = System.Drawing.Color.FromArgb(249, 250, 251); // Very light gray
+            // Removed manual alternating row BackColor to respect SfSkinManager theme cascade.
+            // Rely on theme or grid style for alternating rows instead of hard-coded colors.
         }
 
         // Get the payment object from the row

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.ListView;
 using WileyWidget.Models;
@@ -14,7 +15,7 @@ namespace WileyWidget.WinForms.Dialogs
     /// <summary>
     /// Dialog for editing customer information.
     /// </summary>
-    public sealed class CustomerEditDialog : Form
+    public sealed class CustomerEditDialog : SfForm
     {
         private readonly ILogger? _logger;
         private readonly UtilityCustomer _customer;
@@ -72,8 +73,11 @@ namespace WileyWidget.WinForms.Dialogs
             MaximizeBox = false;
             MinimizeBox = false;
 
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
+
             // Apply theme
-            ThemeColors.ApplyTheme(this);
+            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
 
             var mainPanel = new TableLayoutPanel
             {

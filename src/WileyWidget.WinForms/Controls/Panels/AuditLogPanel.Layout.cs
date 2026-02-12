@@ -116,7 +116,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _mainSplit.Panel2.Controls.Add(_chartHostPanel);
 
             // Configure safe splitter distance
-            SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(_mainSplit, 300, 300, desiredDistance: 520, splitterWidth: 6);
+            SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(_mainSplit, 300, 300, desiredDistance: 520);
 
             root.Controls.Add(_mainSplit, 0, 2);
 

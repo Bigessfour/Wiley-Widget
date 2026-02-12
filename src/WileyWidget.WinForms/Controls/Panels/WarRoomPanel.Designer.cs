@@ -21,6 +21,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._panelHeader = new WileyWidget.WinForms.Controls.Supporting.PanelHeader();
             this._scenarioInput = new System.Windows.Forms.TextBox();
             this._btnRunScenario = new Syncfusion.WinForms.Controls.SfButton();
+            this._btnExportForecast = new Syncfusion.WinForms.Controls.SfButton();
             this._lblInputError = new System.Windows.Forms.Label();
             this._lblVoiceHint = new System.Windows.Forms.Label();
             this._lblStatus = new System.Windows.Forms.Label();
@@ -48,6 +49,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._topPanel.Name = "WarRoomTopPanel";
             this._topPanel.Size = new System.Drawing.Size(800, 160);
             this._topPanel.TabIndex = 0;
+
+            // === ADD INPUT CONTROLS TO TOP PANEL ===
+            this._topPanel.Controls.Add(this._scenarioInput);
+            this._topPanel.Controls.Add(this._btnRunScenario);
+            this._topPanel.Controls.Add(this._btnExportForecast);
+            this._topPanel.Controls.Add(this._lblInputError);
+            this._topPanel.Controls.Add(this._lblVoiceHint);
+            this._topPanel.Controls.Add(this._lblStatus);
             //
             // _panelHeader
             //
@@ -68,10 +77,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             // _btnRunScenario
             //
             this._btnRunScenario.Location = new System.Drawing.Point(320, 50);
+            this._btnRunScenario.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             this._btnRunScenario.Name = "RunScenarioButton";
             this._btnRunScenario.Size = new System.Drawing.Size(120, 28);
             this._btnRunScenario.TabIndex = 2;
             this._btnRunScenario.Text = "Run Scenario";
+            //
+            // _btnExportForecast
+            //
+            this._btnExportForecast.Location = new System.Drawing.Point(450, 50);
+            this._btnExportForecast.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            this._btnExportForecast.Name = "ExportForecastButton";
+            this._btnExportForecast.Size = new System.Drawing.Size(140, 28);
+            this._btnExportForecast.TabIndex = 3;
+            this._btnExportForecast.Text = "Export Forecast";
             //
             // _lblInputError
             //
@@ -80,7 +99,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._lblInputError.Location = new System.Drawing.Point(10, 80);
             this._lblInputError.Name = "InputErrorLabel";
             this._lblInputError.Size = new System.Drawing.Size(0, 15);
-            this._lblInputError.TabIndex = 3;
+            this._lblInputError.TabIndex = 4;
             this._lblInputError.Visible = false;
             //
             // _lblVoiceHint
@@ -90,16 +109,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._lblVoiceHint.Location = new System.Drawing.Point(10, 100);
             this._lblVoiceHint.Name = "VoiceHint";
             this._lblVoiceHint.Size = new System.Drawing.Size(400, 15);
-            this._lblVoiceHint.TabIndex = 4;
+            this._lblVoiceHint.TabIndex = 5;
             this._lblVoiceHint.Text = "💬 Or ask JARVIS aloud using voice input (if available in your installation)";
             //
             // _lblStatus
             //
-            this._lblStatus.Dock = System.Windows.Forms.DockStyle.Fill;
-            this._lblStatus.Location = new System.Drawing.Point(450, 50);
+            this._lblStatus.Dock = System.Windows.Forms.DockStyle.None;
+            this._lblStatus.Location = new System.Drawing.Point(600, 50);
+            this._lblStatus.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             this._lblStatus.Name = "StatusLabel";
-            this._lblStatus.Size = new System.Drawing.Size(340, 100);
-            this._lblStatus.TabIndex = 5;
+            this._lblStatus.Size = new System.Drawing.Size(190, 100);
+            this._lblStatus.TabIndex = 6;
             this._lblStatus.Text = "Ready";
             this._lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             //
@@ -240,6 +260,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private PanelHeader _panelHeader;
         private TextBox _scenarioInput;
         private Syncfusion.WinForms.Controls.SfButton _btnRunScenario;
+        private Syncfusion.WinForms.Controls.SfButton _btnExportForecast;
         private Label _lblInputError;
         private Label _lblVoiceHint;
         private Label _lblStatus;

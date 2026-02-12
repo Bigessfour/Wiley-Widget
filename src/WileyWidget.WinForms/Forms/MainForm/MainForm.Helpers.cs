@@ -622,8 +622,10 @@ public partial class MainForm
 
             Directory.CreateDirectory(Path.GetDirectoryName(layoutPath)!);
 
-            // Create serializer with XMLFile mode (human-readable, version-control friendly)
-            _layoutSerializer = new AppStateSerializer(SerializeMode.XMLFile, layoutPath)
+            // Create serializer with BinaryFmtStream mode (avoids FontStyle serialization issues)
+            // XMLFile mode causes SerializationException with System.Drawing.FontStyle not in KnownTypes
+            // BinaryFmtStream is consistent with DockingLayoutManager and handles all .NET types
+            _layoutSerializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, layoutPath)
             {
                 Enabled = true // Explicitly enable serialization/deserialization
             };
@@ -698,17 +700,26 @@ public partial class MainForm
                 return;
             }
 
-            // Serialize DockingManager state
-            serializer.SerializeObject(LayoutSerializerKey, _dockingManager);
+            // Serialize DockingManager state with error handling for theme/font serialization issues
+            try
+            {
+                serializer.SerializeObject(LayoutSerializerKey, _dockingManager);
 
-            // Persist immediately to disk
-            serializer.PersistNow();
+                // Persist immediately to disk
+                serializer.PersistNow();
 
-            _logger?.LogInformation("[MAINFORM] Layout saved successfully to {Path}",
-                serializer.SerializationPath);
+                _logger?.LogInformation("[MAINFORM] Layout saved successfully to {Path}",
+                    serializer.SerializationPath);
 
-            MessageBox.Show("Layout saved successfully!", "Layout Saved",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Layout saved successfully!", "Layout Saved",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (System.Runtime.Serialization.SerializationException serEx)
+            {
+                _logger?.LogError(serEx, "[MAINFORM] Serialization failed - FontStyle/theme incompatibility");
+                MessageBox.Show("Layout save failed due to theme/font serialization issue. Try resetting the layout.",
+                    "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         catch (Exception ex)
         {
@@ -742,8 +753,27 @@ public partial class MainForm
                 return;
             }
 
-            // Attempt to deserialize layout
-            var layoutState = serializer.DeserializeObject(LayoutSerializerKey);
+            // Attempt to deserialize layout with error handling for theme parsing issues
+            object? layoutState = null;
+            try
+            {
+                layoutState = serializer.DeserializeObject(LayoutSerializerKey);
+            }
+            catch (ArgumentException argEx) when (argEx.Message.Contains("Office2019Colorful") || argEx.Message.Contains("was not found"))
+            {
+                // TreeViewAdv.ApplyControlTheme fails to parse Office2019Colorful as VisualStyle enum
+                _logger?.LogError(argEx, "[MAINFORM] Theme parsing error during deserialization - TreeViewAdv incompatibility");
+                MessageBox.Show("Saved layout has theme compatibility issues. Using default layout.",
+                    "Layout Load Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            catch (System.Runtime.Serialization.SerializationException serEx)
+            {
+                _logger?.LogError(serEx, "[MAINFORM] FontStyle/theme serialization error during load");
+                MessageBox.Show("Saved layout is incompatible. Using default layout.",
+                    "Layout Load Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             if (layoutState != null)
             {
@@ -752,10 +782,19 @@ public partial class MainForm
                 _logger?.LogInformation("[MAINFORM] Layout loaded from version {Version}",
                     string.IsNullOrEmpty(savedVersion) ? "(unknown)" : savedVersion);
 
-                // Apply layout to DockingManager
-                _dockingManager.LoadDockState(serializer);
-
-                _logger?.LogInformation("[MAINFORM] Layout loaded successfully");
+                // Apply layout to DockingManager with error handling for theme parsing
+                try
+                {
+                    _dockingManager.LoadDockState(serializer);
+                    _logger?.LogInformation("[MAINFORM] Layout loaded successfully");
+                }
+                catch (ArgumentException argEx) when (argEx.Message.Contains("Office2019Colorful") || argEx.Message.Contains("was not found"))
+                {
+                    // TreeViewAdv.ApplyControlTheme fails during LoadDockState
+                    _logger?.LogError(argEx, "[MAINFORM] TreeViewAdv theme parsing error in LoadDockState");
+                    MessageBox.Show("Layout theme incompatibility detected. Using default layout.",
+                        "Layout Load Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
             }
             else
             {

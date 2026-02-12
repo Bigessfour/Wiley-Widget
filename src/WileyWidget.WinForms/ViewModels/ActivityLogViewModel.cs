@@ -172,48 +172,13 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>
         /// Generates sample activity data for demonstration purposes.
+        /// Sample generation is disabled in production; this returns an empty collection and logs a warning.
         /// </summary>
         /// <returns>Collection of sample activity entries.</returns>
         private ObservableCollection<ActivityLog> GenerateSampleActivityData()
         {
-            var now = DateTime.Now;
-            var entries = new ObservableCollection<ActivityLog>();
-
-            // Generate sample activities
-            var sampleActivities = new[]
-            {
-                ("Opened Customers Panel", "Navigated to Customer Management panel", "Success"),
-                ("Data Load", "Loaded 45 utility customers from database", "Success"),
-                ("Filter Applied", "Filtered by Active status (35 results)", "Success"),
-                ("Export CSV", "Exported customer data to file", "Success"),
-                ("Opened Dashboard", "Navigated to Dashboard panel", "Success"),
-                ("Chart Rendered", "Rendered revenue trend chart (12 months)", "Success"),
-                ("Opened Budget Analysis", "Navigated to Budget panel", "Success"),
-                ("Analysis Calculation", "Computed budget variance analysis", "Success"),
-                ("Data Refresh", "Refreshed all panel data", "Success"),
-                ("Opened War Room", "Navigated to War Room scenario analysis", "Success"),
-                ("Scenario Created", "Generated new what-if scenario", "Success"),
-                ("Risk Assessment", "Calculated risk metrics", "Success"),
-                ("Opened Settings", "Opened application settings", "Success"),
-                ("Theme Changed", "Applied Office2019Colorful theme", "Success"),
-                ("Profile Updated", "Updated user preferences", "Success"),
-            };
-
-            for (int i = 0; i < sampleActivities.Length; i++)
-            {
-                var (activity, details, status) = sampleActivities[i];
-                entries.Add(new ActivityLog
-                {
-                    Id = i + 1,
-                    Timestamp = now.AddMinutes(-sampleActivities.Length + i),
-                    Activity = activity,
-                    Details = details,
-                    Status = status,
-                    User = Environment.UserName
-                });
-            }
-
-            return entries;
+            _logger.LogWarning("GenerateSampleActivityData called: sample activity generation disabled. Ensure activity log repository is configured.");
+            return new ObservableCollection<ActivityLog>();
         }
 
         #endregion

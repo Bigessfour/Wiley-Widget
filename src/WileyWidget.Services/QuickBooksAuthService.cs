@@ -245,14 +245,16 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
             _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
+                       ?? _oauthOptions?.RealmId
                        ?? envRealmCandidate;
 
-            var redirectFromVault = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
-                        ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI");
-            if (!string.IsNullOrWhiteSpace(redirectFromVault))
-            {
-                _redirectUri = redirectFromVault!;
-            }
+            // Redirect URI priority: User Secrets > Environment > IOptions from appsettings.json
+            _redirectUri = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
+                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RedirectUri", _logger).ConfigureAwait(false)
+                        ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI")
+                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REDIRECT_URI")
+                        ?? _oauthOptions?.RedirectUri
+                        ?? throw new InvalidOperationException("RedirectUri not configured in user secrets, environment, or appsettings.json");
 
             _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
                        ?? GetEnvironmentVariableAnyScope("QBO_ENVIRONMENT")
@@ -261,6 +263,12 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             _logger.LogInformation(
                 "QuickBooks auth service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
                 _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId ?? "<not set>", _environment);
+
+            // Sync RealmId to TokenStore if available
+            if (!string.IsNullOrEmpty(_realmId) && _tokenStore != null)
+            {
+                _tokenStore.SetRealmId(_realmId);
+            }
 
             _initialized = true;
         }

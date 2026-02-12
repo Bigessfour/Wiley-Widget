@@ -271,40 +271,21 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Returns sample dashboard data for design-time or offline scenarios.
-        /// Uses FallbackDataService for comprehensive, consistent fallback metrics.
+        /// Sample/fallback data is disabled. Return an empty collection so the UI
+        /// does not display hard-coded sample values. Production data must come
+        /// from configured services.
         /// </summary>
         private IEnumerable<DashboardItem> GetSampleDashboardData()
         {
-            var fallbackData = FallbackDataService.GetFallbackDashboardData();
-            return fallbackData.Cast<DashboardItem>();
+            _logger.LogWarning("GetSampleDashboardData called: sample/fallback data disabled. Ensure dashboard service is configured.");
+            return Enumerable.Empty<DashboardItem>();
         }
 
         private void PopulateMonthlyRevenueData()
         {
+            // Production-only: do not populate synthetic sample revenue data.
             MonthlyRevenueData.Clear();
-
-            var now = DateTime.Now;
-            var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-            for (int i = 11; i >= 0; i--)
-            {
-                var month = now.AddMonths(-i);
-                var monthName = monthNames[month.Month - 1];
-                var baseAmount = 100000m + (i * 15000m);
-                var previousAmount = Math.Max(baseAmount - 15000m, 0m);
-
-                MonthlyRevenueData.Add(new MonthlyRevenue
-                {
-                    Month = monthName,
-                    Amount = baseAmount,
-                    PreviousMonthAmount = previousAmount,
-                    Year = month.Year,
-                    MonthNumber = month.Month
-                });
-            }
-
-            _logger.LogDebug("PopulateMonthlyRevenueData: {Count} months loaded", MonthlyRevenueData.Count);
+            _logger.LogWarning("PopulateMonthlyRevenueData: sample population disabled. MonthlyRevenueData cleared.");
         }
 
         /// <summary>

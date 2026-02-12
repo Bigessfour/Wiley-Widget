@@ -16,8 +16,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Services.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.WinForms", "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj", "{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WileyWidget.Paneltest", "tools\WileyWidget.Paneltest\WileyWidget.Paneltest.csproj", "{F1E2D3C4-B5A6-47A8-9C0D-E1F2A3B4C5D6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AnyCPU = Debug|AnyCPU
@@ -52,10 +50,6 @@ Global
 		{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{A1B2C3D4-E5F6-47A8-B9C0-D1E2F3A4B5C6}.Release|AnyCPU.Build.0 = Release|AnyCPU
-		{F1E2D3C4-B5A6-47A8-9C0D-E1F2A3B4C5D6}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
-		{F1E2D3C4-B5A6-47A8-9C0D-E1F2A3B4C5D6}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
-		{F1E2D3C4-B5A6-47A8-9C0D-E1F2A3B4C5D6}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
-		{F1E2D3C4-B5A6-47A8-9C0D-E1F2A3B4C5D6}.Release|AnyCPU.Build.0 = Release|AnyCPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

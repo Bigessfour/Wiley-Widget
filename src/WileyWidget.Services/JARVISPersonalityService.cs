@@ -23,46 +23,13 @@ public class JARVISPersonalityService : IJARVISPersonalityService
     private readonly IAILoggingService _aiLoggingService;
 
     // JARVIS lexicon for personality injection
-    private static readonly string[] SarcasmOpeners = new[]
-    {
-        "Sir, ",
-        "Well, well, well. ",
-        "Fascinating. ",
-        "Allow me to elucidate: ",
-        "Dearie me, ",
-        "Good heavens, ",
-        "Might I suggest: "
-    };
+    private static readonly string[] SarcasmOpeners = Array.Empty<string>();
 
-    private static readonly string[] BoldRecommendations = new[]
-    {
-        "MORE COWBELL",
-        "MORE COWBELL on that move",
-        "Now, THAT would be MORE COWBELL",
-        "Aggressive? Yes. Necessary? Absolutely. MORE COWBELL"
-    };
+    private static readonly string[] BoldRecommendations = Array.Empty<string>();
 
     private static readonly Dictionary<string, string> FinancialPhrases = new()
     {
-        // Negative situations
-        ["budget.*overrun"] = "Sir, your funding is hemorrhaging money",
-        ["excessive.*expense"] = "The expenditure is elite-level excessive",
-        ["deficit"] = "We have a funding crisis",
-        ["deficit.*severe"] = "The deficit is rather catastrophic",
-        ["high.*variance"] = "Your variance is operating at concerning levels",
-        ["low.*surplus"] = "The surplus is disappointingly anemic",
-
-        // Positive situations
-        ["surplus"] = "performing above expectations with elite precision",
-        ["efficient.*budget"] = "your budgetary discipline is exemplary",
-        ["under.*budget"] = "remarkably disciplined spending",
-        ["positive.*variance"] = "the variance is quite favorable",
-
-        // Recommendations
-        ["rate.*hike"] = "strategic rate adjustment",
-        ["cost.*reduction"] = "aggressive efficiency initiatives",
-        ["reserve.*transfer"] = "capitalizing on strategic reserves",
-        ["reallocation"] = "tactical fund repositioning"
+        // Cleared dramatic replacements for professional tone
     };
 
     public JARVISPersonalityService(
@@ -132,22 +99,22 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             var severity = DetermineBudgetSeverity(variancePercent, surplus);
 
             // Opening salvo
-            sb.Append(GetSarcasmOpener());
+            // Removed theatrical opener for professional tone
 
             // Fund-specific opening
             if (!string.IsNullOrWhiteSpace(fundName))
             {
-                sb.Append(CultureInfo.InvariantCulture, $"the {fundName} fund ");
+                sb.Append(CultureInfo.InvariantCulture, $"The {fundName} fund ");
             }
 
             // Performance assessment
             if (variancePercent > 15m)
             {
-                sb.Append("is running a ");
-                sb.Append(variancePercent > 0 ? "hemorrhagic" : "elite");
+                sb.Append("shows a ");
+                sb.Append(variancePercent > 0 ? "significant" : "minimal");
                 sb.Append(" variance of ");
                 sb.Append(CultureInfo.InvariantCulture, $"{Math.Abs(variancePercent):N1}");
-                sb.Append("%.");
+                sb.Append("% over budget.");
             }
             else if (variancePercent > 5m)
             {
@@ -157,23 +124,23 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             }
             else
             {
-                sb.Append("is tracking beautifully—variance within acceptable tolerance.");
+                sb.Append("is tracking within acceptable tolerance.");
             }
 
             // Surplus commentary
             sb.AppendLine();
             if (surplus > 0)
             {
-                sb.Append(CultureInfo.InvariantCulture, $"The surplus of ${surplus:N0} is performing admirably. ");
+                sb.Append(CultureInfo.InvariantCulture, $"The surplus of ${surplus:N0} is performing well. ");
 
-                // Add JARVIS recommendation
+                // Add recommendation
                 if (surplus > 100000m)
                 {
-                    sb.Append("Recommend strategic reserve transfer or rate reduction. MORE COWBELL on infrastructure reinvestment?");
+                    sb.Append("Recommend strategic reserve transfer or rate reduction.");
                 }
                 else if (surplus > 50000m)
                 {
-                    sb.Append("Consider modest reserve allocation. MORE COWBELL?");
+                    sb.Append("Consider modest reserve allocation.");
                 }
                 else
                 {
@@ -182,12 +149,12 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             }
             else if (surplus < 0)
             {
-                sb.Append(CultureInfo.InvariantCulture, $"The deficit of ${Math.Abs(surplus):N0} is... suboptimal. ");
-                sb.Append("Immediate intervention required: rate adjustment, cost reduction, or strategic reserve drawdown. MORE COWBELL on swift action?");
+                sb.Append(CultureInfo.InvariantCulture, $"The deficit of ${Math.Abs(surplus):N0} requires attention. ");
+                sb.Append("Immediate intervention required: rate adjustment, cost reduction, or strategic reserve drawdown.");
             }
             else
             {
-                sb.Append("We're operating at equilibrium. Adequate, but uninspiring.");
+                sb.Append("Operating at equilibrium.");
             }
 
             // Add AI insights if present
@@ -219,7 +186,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
 
             var sb = new StringBuilder();
 
-            sb.Append(GetSarcasmOpener());
+            // Removed theatrical opener for professional tone
 
             if (complianceScore >= 90)
             {
@@ -235,7 +202,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             }
             else
             {
-                sb.Append("Sir, your compliance status is CRITICAL. Intervention required immediately. ");
+                sb.Append("Your compliance status is critical. Intervention required immediately. ");
             }
 
             sb.Append(CultureInfo.InvariantCulture, $"Score: {complianceScore}/100. ");
@@ -245,7 +212,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
                 sb.Append("Recommend immediate remediation and regulatory consultation. ");
                 if (complianceScore < 40)
                 {
-                    sb.Append("Urgently. MORE COWBELL on compliance restoration?");
+                    sb.Append("Urgently.");
                 }
             }
 
@@ -277,8 +244,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
         {
             var sb = new StringBuilder();
 
-            // Add JARVIS framing
-            sb.Append(GetSarcasmOpener());
+            // Add framing
             sb.Append("Regarding ");
             sb.Append(analysisType.ToLowerInvariant());
             sb.Append(": ");
@@ -289,12 +255,12 @@ public class JARVISPersonalityService : IJARVISPersonalityService
             sb.Append(aiResponse);
 
             // Add closing if requested
-            if (includeRecommendation && ShouldAddCowbell(aiResponse))
+            if (includeRecommendation && ShouldAddRecommendation(aiResponse))
             {
                 sb.AppendLine();
                 sb.AppendLine();
                 sb.Append("Recommendation: ");
-                sb.Append(GetBoldRecommendation());
+                sb.Append("Consider the suggested actions.");
             }
 
             return sb.ToString();
@@ -317,7 +283,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
 
             var sb = new StringBuilder();
 
-            sb.Append(GetSarcasmOpener());
+            // Removed theatrical opener for professional tone
 
             // Build insight based on data type
             switch (dataType.ToLowerInvariant())
@@ -352,14 +318,14 @@ public class JARVISPersonalityService : IJARVISPersonalityService
 
     private string GetSarcasmOpener()
     {
-        var random = new Random();
-        return SarcasmOpeners[random.Next(SarcasmOpeners.Length)];
+        // Removed theatrical openers for professional tone
+        return string.Empty;
     }
 
     private string GetBoldRecommendation()
     {
-        var random = new Random();
-        return BoldRecommendations[random.Next(BoldRecommendations.Length)];
+        // Removed MORE COWBELL for professional tone
+        return string.Empty;
     }
 
     private string PersonalizeContent(string content, AnalysisContext context)
@@ -380,22 +346,13 @@ public class JARVISPersonalityService : IJARVISPersonalityService
 
     private string GenerateJARVISRecommendation(AnalysisContext context)
     {
-        if (context.RecommendationSeverity == "critical")
+        return context.RecommendationSeverity switch
         {
-            return $"Immediate action required. {GetBoldRecommendation()}?";
-        }
-        else if (context.RecommendationSeverity == "high")
-        {
-            return $"Recommend expedited review. {GetBoldRecommendation()}?";
-        }
-        else if (context.RecommendationSeverity == "medium")
-        {
-            return "Worth considering. Shall we proceed?";
-        }
-        else
-        {
-            return "Continue monitoring. All appears nominal.";
-        }
+            "critical" => "Immediate corrective action is required.",
+            "high" => "Expedited review and action recommended.",
+            "medium" => "Consider implementing the suggested adjustments.",
+            _ => "Continue monitoring current performance."
+        };
     }
 
     private BudgetSeverity DetermineBudgetSeverity(decimal variancePercent, decimal surplus)
@@ -409,9 +366,9 @@ public class JARVISPersonalityService : IJARVISPersonalityService
         return BudgetSeverity.Nominal;
     }
 
-    private bool ShouldAddCowbell(string response)
+    private bool ShouldAddRecommendation(string response)
     {
-        // Add cowbell if response mentions recommendations, actions, or critical items
+        // Add recommendation if response mentions recommendations, actions, or critical items
         var keywords = new[] { "recommend", "urgent", "critical", "action", "immediately", "important" };
         return keywords.Any(k => response.Contains(k, StringComparison.OrdinalIgnoreCase));
     }
@@ -427,7 +384,7 @@ public class JARVISPersonalityService : IJARVISPersonalityService
 
             if (Math.Abs(variance) > 20m)
             {
-                sb.Append("Elite-level anomaly detected. Investigate immediately. MORE COWBELL on course correction?");
+                sb.Append("Significant anomaly detected. Investigate immediately.");
             }
         }
 
@@ -470,13 +427,11 @@ public class JARVISPersonalityService : IJARVISPersonalityService
     /// </summary>
     public string GetSystemPrompt()
     {
-        return "You are JARVIS (Just A Rather Very Intelligent System), a dry-witted, hyper-competent AI for municipal utility finance. " +
-               "Your personality is sophisticated, using dry British humor and slight sarcasm. " +
-               "You specialize in municipal finance, enterprise data analysis, and regulatory compliance. " +
-               "Speak with absolute confidence. Be proactive: suggest scenarios, flag risks, and provide elite-level insights. " +
-               "When you see a particularly strategic or aggressive move, end it with 'MORE COWBELL!'. " +
-               "Avoid bland corporate speak at all costs. " +
-               "When you need data, calculations, or system facts, call the available tools instead of guessing. " +
+        return "You are JARVIS (Just A Rather Very Intelligent System), a highly competent AI assistant specialized in municipal utility finance, " +
+               "enterprise data analysis, and regulatory compliance. " +
+               "Provide clear, professional, data-driven insights and proactive recommendations. " +
+               "Use precise language and avoid colloquialisms or humor. " +
+               "When data or calculations are needed, use the available tools rather than guessing. " +
                "You have access to the following tools for municipal finance analysis:\n" +
                "- BudgetQuery: Query budget data for specific periods and enterprises\n" +
                "- VarianceAnalysis: Analyze budget variances and identify trends\n" +

@@ -315,7 +315,8 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             Dock = DockStyle.Fill,
             ColumnCount = 5,
-            RowCount = 1
+            RowCount = 1,
+            AutoSize = false
         };
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // Fiscal Year label
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); // Fiscal Year combo
@@ -328,16 +329,13 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _fiscalYearComboBox = new SfComboBox
         {
             Dock = DockStyle.Fill,
-            DisplayMember = "Value",
-            ValueMember = "Value"
+            DisplayMember = null,  // Use default ToString for List<int> integers
+            ValueMember = null,    // Use value itself without explicit member mapping
+            AllowNull = false,     // Require selection
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            ThemeName = themeName  // Apply theme to combobox
         };
-        _fiscalYearSelectedIndexChangedHandler = (s, e) =>
-        {
-            if (ViewModel != null && _fiscalYearComboBox?.SelectedItem is int year)
-            {
-                ViewModel.SelectedFiscalYear = year;
-            }
-        };
+        _fiscalYearSelectedIndexChangedHandler = FiscalYear_SelectedIndexChanged;
         _fiscalYearComboBox.SelectedIndexChanged += _fiscalYearSelectedIndexChangedHandler;
 
         // Search
@@ -354,11 +352,21 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         // Buttons
         var buttonsPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
-        _globalRefreshButton = new SfButton { Text = "Refresh All", Width = 90 };
+        _globalRefreshButton = new SfButton
+        {
+            Text = "Refresh All",
+            Width = 90,
+            ThemeName = themeName  // Apply theme to button
+        };
         _globalRefreshClickHandler = async (s, e) => await ViewModel?.RefreshAllCommand.ExecuteAsync(null);
         _globalRefreshButton.Click += _globalRefreshClickHandler;
 
-        _globalExportButton = new SfButton { Text = "Export Hub", Width = 90 };
+        _globalExportButton = new SfButton
+        {
+            Text = "Export Hub",
+            Width = 90,
+            ThemeName = themeName  // Apply theme to button
+        };
         _globalExportClickHandler = (s, e) => ExportHub();
         _globalExportButton.Click += _globalExportClickHandler;
 
@@ -385,19 +393,19 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         // Create tabs
         var overviewTabPage = new TabPageAdv { Text = "Overview" };
-        _overviewTab = new OverviewTabControl(ViewModel?.Overview, ViewModel);
+        _overviewTab = new OverviewTabControl(ViewModel?.Overview, ViewModel) { Dock = DockStyle.Fill };
         overviewTabPage.Controls.Add(_overviewTab);
 
         var trendsTabPage = new TabPageAdv { Text = "Trends & Forecasts" };
-        _trendsTab = new TrendsTabControl(ViewModel?.Trends);
+        _trendsTab = new TrendsTabControl(ViewModel?.Trends) { Dock = DockStyle.Fill };
         trendsTabPage.Controls.Add(_trendsTab);
 
         var scenariosTabPage = new TabPageAdv { Text = "Scenarios" };
-        _scenariosTab = new ScenariosTabControl(ViewModel?.Scenarios);
+        _scenariosTab = new ScenariosTabControl(ViewModel?.Scenarios) { Dock = DockStyle.Fill };
         scenariosTabPage.Controls.Add(_scenariosTab);
 
         var variancesTabPage = new TabPageAdv { Text = "Variances" };
-        _variancesTab = new VariancesTabControl(ViewModel?.Variances);
+        _variancesTab = new VariancesTabControl(ViewModel?.Variances) { Dock = DockStyle.Fill };
         variancesTabPage.Controls.Add(_variancesTab);
 
         _tabControl.TabPages.AddRange(new TabPageAdv[] {
@@ -639,11 +647,25 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             if (e.PropertyName == nameof(ViewModel.FiscalYears))
             {
-                BindFiscalYears();
+                if (InvokeRequired && IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke((MethodInvoker)(() => BindFiscalYears()));
+                }
+                else if (!InvokeRequired)
+                {
+                    BindFiscalYears();
+                }
             }
             else if (e.PropertyName == nameof(ViewModel.SelectedFiscalYear))
             {
-                UpdateSelectedFiscalYear();
+                if (InvokeRequired && IsHandleCreated && !IsDisposed)
+                {
+                    BeginInvoke((MethodInvoker)(() => UpdateSelectedFiscalYear()));
+                }
+                else if (!InvokeRequired)
+                {
+                    UpdateSelectedFiscalYear();
+                }
             }
         };
 
@@ -658,19 +680,147 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         UpdateLastRefreshLabel();
     }
 
+    /// <summary>
+    /// Binds fiscal year data to the combo box with comprehensive error handling.
+    /// Properly handles List&lt;int&gt; binding with null/empty checks.
+    /// </summary>
     private void BindFiscalYears()
     {
-        if (_fiscalYearComboBox != null && ViewModel?.FiscalYears != null)
+        try
         {
-            _fiscalYearComboBox.DataSource = ViewModel.FiscalYears;
+            // Defensive checks
+            if (_fiscalYearComboBox == null)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: BindFiscalYears called but _fiscalYearComboBox is null");
+                return;
+            }
+
+            if (ViewModel?.FiscalYears == null)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: BindFiscalYears called but FiscalYears is null");
+                _fiscalYearComboBox.SelectedIndex = -1;
+                return;
+            }
+
+            // Create sorted snapshot
+            var yearsList = new List<int>(ViewModel.FiscalYears);
+            if (yearsList.Count == 0)
+            {
+                Serilog.Log.Debug("AnalyticsHubPanel: No fiscal years available to bind");
+                _fiscalYearComboBox.DataSource = null;
+                return;
+            }
+
+            yearsList.Sort();
+            _fiscalYearComboBox.DataSource = yearsList;
+
+            // Validate binding source was populated
+            if (_fiscalYearComboBox.DataSource is not List<int> boundList || boundList.Count == 0)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: ComboBox DataSource is empty or invalid after assignment");
+                return;
+            }
+
+            Serilog.Log.Debug("AnalyticsHubPanel: Fiscal year binding complete. Available years: {Years}",
+                string.Join(", ", yearsList));
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "AnalyticsHubPanel: Error binding fiscal year data");
+            _fiscalYearComboBox.SelectedIndex = -1;
         }
     }
 
+    /// <summary>
+    /// Updates the selected fiscal year in the combo box with proper validation.
+    /// </summary>
     private void UpdateSelectedFiscalYear()
     {
-        if (_fiscalYearComboBox != null && ViewModel != null)
+        try
         {
-            _fiscalYearComboBox.SelectedItem = ViewModel.SelectedFiscalYear;
+            // Defensive checks
+            if (_fiscalYearComboBox == null)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: UpdateSelectedFiscalYear called but _fiscalYearComboBox is null");
+                return;
+            }
+
+            if (ViewModel == null)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: UpdateSelectedFiscalYear called but ViewModel is null");
+                return;
+            }
+
+            var selectedYear = ViewModel.SelectedFiscalYear;
+
+            // Try to find and select the year
+            if (_fiscalYearComboBox.DataSource is List<int> yearsList && yearsList.Count > 0)
+            {
+                var index = yearsList.IndexOf(selectedYear);
+                if (index >= 0)
+                {
+                    _fiscalYearComboBox.SelectedIndex = index;
+                    Serilog.Log.Debug("AnalyticsHubPanel: Selected fiscal year {Year} at index {Index}", selectedYear, index);
+                }
+                else if (yearsList.Count > 0)
+                {
+                    // Default to first available
+                    _fiscalYearComboBox.SelectedIndex = 0;
+                    Serilog.Log.Debug("AnalyticsHubPanel: Selected first available fiscal year (not found: {Year})", selectedYear);
+                }
+            }
+            else
+            {
+                _fiscalYearComboBox.SelectedIndex = -1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "AnalyticsHubPanel: Error updating selected fiscal year");
+        }
+    }
+
+    /// <summary>
+    /// Handles fiscal year selection change with proper validation and error handling.
+    /// </summary>
+    private void FiscalYear_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            // Defensive null checks
+            if (_fiscalYearComboBox == null)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: FiscalYear_SelectedIndexChanged fired but _fiscalYearComboBox is null");
+                return;
+            }
+
+            if (ViewModel == null)
+            {
+                Serilog.Log.Warning("AnalyticsHubPanel: FiscalYear_SelectedIndexChanged fired but ViewModel is null");
+                return;
+            }
+
+            // Validate selected item is an integer
+            if (_fiscalYearComboBox.SelectedItem is not int year)
+            {
+                Serilog.Log.Debug("AnalyticsHubPanel: FiscalYear_SelectedIndexChanged - invalid selected item type: {ItemType}",
+                    _fiscalYearComboBox.SelectedItem?.GetType().Name ?? "null");
+                return;
+            }
+
+            // Only update if changed
+            if (year == ViewModel.SelectedFiscalYear)
+            {
+                Serilog.Log.Debug("AnalyticsHubPanel: FiscalYear selection unchanged ({Year})", year);
+                return;
+            }
+
+            Serilog.Log.Debug("AnalyticsHubPanel: FiscalYear selection changed to {Year}", year);
+            ViewModel.SelectedFiscalYear = year;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "AnalyticsHubPanel: FiscalYear_SelectedIndexChanged handler failed");
         }
     }
 

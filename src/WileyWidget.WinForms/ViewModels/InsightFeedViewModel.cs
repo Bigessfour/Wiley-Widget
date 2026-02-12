@@ -51,7 +51,6 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class InsightFeedViewModel : ViewModelBase, IInsightFeedViewModel
     {
         private readonly ProactiveInsightsService? _insightsService;
-        private readonly ILogger<InsightFeedViewModel> _logger;
         private readonly SynchronizationContext? _uiContext;
 
         [ObservableProperty]
@@ -90,7 +89,6 @@ namespace WileyWidget.WinForms.ViewModels
             ILogger<InsightFeedViewModel>? logger = null)
             : base(logger)
         {
-            _logger = logger ?? CreateNullLogger();
             _insightsService = insightsService;
             _uiContext = SynchronizationContext.Current;
 

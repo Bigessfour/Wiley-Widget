@@ -78,10 +78,10 @@ public partial class MainForm
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
             KeyPreview = true;
+            this.KeyDown += MainForm_KeyDown;
 
-            // Polish: Set modern title bar style via SfForm.Style
-            this.Style.TitleBar.Height = 36;
-            this.Style.TitleBar.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            // NOTE: SfForm.Style properties removed - RibbonForm uses different theming API
+            // Title bar styling is handled by Syncfusion theming via OfficeColorScheme
 
             // Initialize components container if needed
             components ??= new System.ComponentModel.Container();
@@ -170,6 +170,37 @@ public partial class MainForm
             return;
         }
 
+        // ✅ NEW: Validate ribbon state after creation (hardening pattern from Syncfusion sample)
+        if (_ribbon.IsDisposed || _ribbon.Disposing)
+        {
+            _logger?.LogError("InitializeRibbon: Ribbon disposed immediately after creation");
+            _ribbon = null;
+            ribbonStopwatch.Stop();
+            return;
+        }
+
+        if (!_ribbon.IsHandleCreated)
+        {
+            _logger?.LogWarning("InitializeRibbon: Ribbon handle not created immediately - may need deferred attachment");
+        }
+
+        // ✅ CRITICAL: Set OfficeColorScheme and ThemeName (required by Syncfusion)
+        // Use the current theme rather than hard-coding Office2019Colorful so Office2016 schemes can be applied.
+        try
+        {
+            var currentTheme = _themeService?.CurrentTheme
+                ?? SfSkinManager.ApplicationVisualTheme
+                ?? AppThemeColors.DefaultTheme;
+
+            _ribbon.OfficeColorScheme = ToolStripEx.ColorScheme.Silver;
+            _ribbon.ThemeName = currentTheme;
+            _logger?.LogDebug("InitializeRibbon: Set OfficeColorScheme=Silver, ThemeName={Theme}", currentTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "InitializeRibbon: Failed to set ribbon theme properties");
+        }
+
         try { _ribbon.AccessibleName = "Ribbon_Main"; } catch (Exception ex) { _logger?.LogDebug(ex, "Setting ribbon AccessibleName failed"); }
         try { _ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools"; } catch { }
         try { _ribbon.TabIndex = 1; _ribbon.TabStop = true; } catch { }
@@ -208,6 +239,46 @@ public partial class MainForm
 
         try
         {
+            // ✅ NEW: Check if form handle is created before adding ribbon (hardening pattern)
+            if (!IsHandleCreated)
+            {
+                _logger?.LogDebug("InitializeRibbon: Form handle not created yet, deferring ribbon attachment");
+                // Wait for handle to be created, then attach ribbon
+                void AttachRibbonWhenReady()
+                {
+                    if (_ribbon != null && !Controls.Contains(_ribbon) && !_ribbon.IsDisposed)
+                    {
+                        try
+                        {
+                            _ribbon.Dock = DockStyleEx.Top;
+                            _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+                            _ribbon.Width = ClientSize.Width;
+                            Controls.Add(_ribbon);
+                            _ribbon.BringToFront();
+                            _logger?.LogDebug("InitializeRibbon: Ribbon deferred-attached to form");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogDebug(ex, "InitializeRibbon: deferred attachment failed");
+                        }
+                    }
+                }
+
+                // Hook HandleCreated event to run attachment when form is ready
+                EventHandler? handler = null;
+                handler = (_, __) =>
+                {
+                    this.HandleCreated -= handler;
+                    if (!IsDisposed && !Disposing)
+                    {
+                        AttachRibbonWhenReady();
+                    }
+                };
+                this.HandleCreated += handler;
+                return;  // Exit - attachment will happen via event
+            }
+
+            // Form handle is ready - safe to add ribbon directly
             if (!Controls.Contains(_ribbon))
             {
                 _ribbon.Dock = DockStyleEx.Top;
@@ -399,15 +470,31 @@ public partial class MainForm
                 AccessibleRole = AccessibleRole.ToolBar,
                 AutoSize = true, // ToolStripEx handles height automatically
                 TabIndex = 2,
-                TabStop = true,
-                ThemeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful" // Syncfusion theme integration
+                TabStop = true
             };
+
+            // Ensure theme assembly is loaded before applying themes
+            AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
+            try
+            {
+                _navigationStrip.ThemeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme; // Syncfusion theme integration
+            }
+            catch (Exception ex)
+            {
+                // Protect against Syncfusion control theme parsing issues (avoid crashing during ApplyControlTheme)
+                _logger?.LogWarning(ex, "[MAINFORM] Failed to set NavigationStrip.ThemeName - falling back to default theme");
+                try
+                {
+                    _navigationStrip.ThemeName = AppThemeColors.DefaultTheme;
+                }
+                catch { /* swallow - we cannot do more here */ }
+            }
 
             // Helpers for button creation to save space?
             // Just pasting the logic from UI.cs
 
             var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = true };
-            dashboardBtn.Click += (s, e) => this.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+            dashboardBtn.Click += (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Top, allowFloating: true);
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
             accountsBtn.Click += (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
@@ -445,11 +532,13 @@ public partial class MainForm
             var themeToggleBtn = new ToolStripButton
             {
                 Name = "ThemeToggle",
-                AccessibleName = "Theme_Toggle",
-                AutoSize = true
+                AccessibleName = "Theme Toggle",
+                AccessibleDescription = "Toggle between light and dark themes",
+                AutoSize = true,
+                ToolTipText = "Switch application theme (Ctrl+T)"
             };
             themeToggleBtn.Click += ThemeToggleBtn_Click;
-            themeToggleBtn.Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+            themeToggleBtn.Text = GetThemeButtonText(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
 
             // Grid helpers (navigation strip)
             var navGridClearFilter = new ToolStripButton("Clear Grid Filter") { Name = "Nav_ClearGridFilter", AccessibleName = "Clear Grid Filter" };
@@ -535,8 +624,11 @@ public partial class MainForm
             var themeBtn = new ToolStripButton
             {
                 Name = "ThemeToggle",
-                Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode",
-                AutoSize = true
+                Text = GetThemeButtonText(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme),
+                AutoSize = true,
+                ToolTipText = "Switch application theme (Ctrl+T)",
+                AccessibleName = "Theme Toggle",
+                AccessibleDescription = "Toggle between light and dark themes"
             };
             themeBtn.Click += ThemeToggleFromRibbon;
 
@@ -594,7 +686,7 @@ public partial class MainForm
             // I will just put a comment that it's the same logic, but for `write_file` I need to be explicit.
 
             // File Menu
-            var fileMenu = new ToolStripMenuItem("&File") { Name = "Menu_File", ToolTipText = "File operations" };
+            var fileMenu = new ToolStripMenuItem("&File") { Name = "Menu_File", ToolTipText = "File operations", Image = CreateIconFromText("\uE8E5", 16) };
             _recentFilesMenu = new ToolStripMenuItem("&Recent Files") { Name = "Menu_File_RecentFiles" };
             UpdateMruMenu(_recentFilesMenu);
 
@@ -604,9 +696,9 @@ public partial class MainForm
             fileMenu.DropDownItems.AddRange(new ToolStripItem[] { _recentFilesMenu, clearRecentMenuItem, new ToolStripSeparator(), exitMenuItem });
 
             // View Menu
-            var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View" };
+            var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View", Image = CreateIconFromText("\uE8A7", 16) };
             // View > Dashboard
-            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
+            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Top, allowFloating: true)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
 
             // View > Accounts
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true)) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
@@ -626,12 +718,12 @@ public partial class MainForm
             viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, chartsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
 
             // Tools Menu
-            var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools" };
+            var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools", Image = CreateIconFromText("\uE90F", 16) };
             var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true)) { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
             toolsMenu.DropDownItems.Add(settingsMenuItem);
 
             // Help Menu
-            var helpMenu = new ToolStripMenuItem("&Help") { Name = "Menu_Help" };
+            var helpMenu = new ToolStripMenuItem("&Help") { Name = "Menu_Help", Image = CreateIconFromText("\uE897", 16) };
             var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) =>
             {
                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/WileyWidget/WileyWidget/wiki", UseShellExecute = true }); } catch { }
@@ -1044,10 +1136,58 @@ public partial class MainForm
         }
     }
 
+    private void MainForm_KeyDown(object? sender, KeyEventArgs e)
+    {
+        // Handle global keyboard shortcuts
+        if (e.Control && e.KeyCode == Keys.T)
+        {
+            // Ctrl+T: Toggle theme
+            e.Handled = true;
+            ThemeToggleFromRibbon(sender, e);
+        }
+    }
+
     private ToolStripItem? FindToolStripItem(Control container, string name)
     {
         if (container is ToolStrip strip) return strip.Items.Find(name, true).FirstOrDefault();
         foreach (Control c in container.Controls) { var res = FindToolStripItem(c, name); if (res != null) return res; }
         return null;
+    }
+
+    /// <summary>
+    /// ✅ NEW: Diagnostic method to verify ribbon state and configuration (for troubleshooting).
+    /// Call this from InitializeRibbon() after ribbon creation to identify any state issues.
+    /// </summary>
+    private void DiagnoseRibbon()
+    {
+        if (_ribbon == null)
+        {
+            _logger?.LogError("[RIBBON_DIAGNOSTICS] Ribbon is NULL");
+            return;
+        }
+
+        try
+        {
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ===== RIBBON STATE REPORT =====");
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] IsDisposed: {Disposed}", _ribbon.IsDisposed);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] IsDisposing: {Disposing}", _ribbon.Disposing);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] IsHandleCreated: {HasHandle}", _ribbon.IsHandleCreated);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Size: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Dock: {Dock}", _ribbon.Dock);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Visible: {Visible}", _ribbon.Visible);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] OfficeColorScheme: {Scheme}", _ribbon.OfficeColorScheme);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ThemeName: {Theme}", _ribbon.ThemeName);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] RibbonStyle: {Style}", _ribbon.RibbonStyle);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] LauncherStyle: {Launcher}", _ribbon.LauncherStyle);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Tabs Count: {TabCount}", _ribbon.Header?.MainItems.Count ?? 0);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Parent: {Parent}", _ribbon.Parent?.GetType().Name ?? "null");
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] In Controls Collection: {InCollection}", this.Controls.Contains(_ribbon));
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] TabIndex: {TabIndex}", _ribbon.TabIndex);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ===== END RIBBON STATE =====");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[RIBBON_DIAGNOSTICS] Exception during diagnostics");
+        }
     }
 }

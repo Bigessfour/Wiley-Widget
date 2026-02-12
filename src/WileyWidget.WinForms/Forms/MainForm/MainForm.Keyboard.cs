@@ -231,7 +231,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.D))
         {
-            return TryShowPanel<Panels.DashboardPanel>("Dashboard", DockingStyle.Top);
+            return TryShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Top);
         }
 
         if (keyData == (Keys.Alt | Keys.R))
@@ -286,6 +286,35 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Error showing {PanelName} panel", panelName);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Helper: Shows a Form safely, catching exceptions.
+    /// Mirrors TryShowPanel but for form-hosted dashboards and other forms.
+    /// </summary>
+    private bool TryShowForm<TForm>(string panelName, DockingStyle style) where TForm : Form
+    {
+        if (_panelNavigator == null)
+        {
+            _logger?.LogWarning("TryShowForm<{PanelType}> failed: PanelNavigator is null - navigation system not initialized", typeof(TForm).Name);
+            MessageBox.Show(
+                $"The {panelName} view is not ready. Please try again in a moment.",
+                "View Not Ready",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return false;
+        }
+
+        try
+        {
+            _panelNavigator.ShowForm<TForm>(panelName, style, true);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error showing {PanelName} form", panelName);
             return false;
         }
     }

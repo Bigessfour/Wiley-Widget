@@ -2,6 +2,7 @@ using System.Threading;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.Extensions.Logging;
 using CommunityToolkit.Mvvm.Input;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.ViewModels;
@@ -14,6 +15,8 @@ namespace WileyWidget.ViewModels;
 /// </summary>
 public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyticsViewModel, ILazyLoadViewModel
 {
+    // Provide a null logger fallback so existing logging calls succeed without DI registration.
+    private readonly ILogger<BudgetAnalyticsViewModel> _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<BudgetAnalyticsViewModel>.Instance;
     /// <summary>
     /// Gets or sets a value indicating whether data has been loaded.
     /// </summary>
@@ -76,8 +79,9 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
             ErrorMessage = null;
             AnalyticsData.Clear();
 
-            // Load sample data (replace with actual service call)
-            var sampleData = GenerateSampleAnalyticsData();
+            // Sample generation disabled in production. Ensure an analytics service is configured to provide data.
+            _logger.LogWarning("LoadData called: sample analytics data disabled. Ensure analytics service is configured.");
+            var sampleData = new List<BudgetAnalyticsData>();
 
             // Extract unique departments from data and populate dropdown
             var allDepartments = sampleData
@@ -160,35 +164,7 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
 
     private List<BudgetAnalyticsData> GenerateSampleAnalyticsData()
     {
-        var data = new List<BudgetAnalyticsData>();
-
-        string[] departments = { "Administration", "Operations", "Marketing", "Sales" };
-        string[] periods = { "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-
-        var random = new Random(42);
-
-        foreach (var dept in departments)
-        {
-            foreach (var period in periods)
-            {
-                var budgeted = random.Next(50000, 200000);
-                var actual = random.Next((int)(budgeted * 0.8), (int)(budgeted * 1.2));
-                var variance = actual - budgeted;
-                var variancePercent = ((double)variance / budgeted * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
-
-                data.Add(new BudgetAnalyticsData
-                {
-                    DepartmentName = dept,
-                    PeriodName = period,
-                    BudgetedAmount = budgeted,
-                    ActualAmount = actual,
-                    VarianceAmount = variance,
-                    VariancePercent = variancePercent,
-                    Status = variance > 0 ? "Over Budget" : "Under Budget"
-                });
-            }
-        }
-
-        return data;
+        _logger.LogWarning("GenerateSampleAnalyticsData called: sample analytics generation disabled. Returning empty dataset.");
+        return new List<BudgetAnalyticsData>();
     }
 }

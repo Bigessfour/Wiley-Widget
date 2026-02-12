@@ -17,6 +17,8 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.AI;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -86,6 +88,47 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 _ = (ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<JarvisGrokBridgeHandler>(ServiceProvider) : null)
                     ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<JarvisGrokBridgeHandler>(_serviceProvider);
 
+                // Mark diagnostics as completed for automation
+                var automationState = (ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Automation.JarvisAutomationState>(ServiceProvider) : null)
+                    ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Automation.JarvisAutomationState>(_serviceProvider);
+                automationState?.MarkDiagnosticsCompleted();
+
+                // Add automation status TextBox if JarvisAutomationState is available (for UI automation testing)
+                if (automationState != null)
+                {
+                    Logger?.LogInformation("[JARVIS-AUTOMATION] Adding automation status TextBox for UI testing");
+                    var statusTextBox = new System.Windows.Forms.TextBox
+                    {
+                        Name = "JarvisAutomationStatus",
+                        AccessibleName = "JarvisAutomationStatus",
+                        ReadOnly = true,
+                        BorderStyle = System.Windows.Forms.BorderStyle.None,
+                        BackColor = this.BackColor,
+                        ForeColor = this.ForeColor,
+                        Font = new System.Drawing.Font("Segoe UI", 8F),
+                        Text = automationState.Snapshot.ToStatusString(),
+                        Dock = System.Windows.Forms.DockStyle.Bottom,
+                        Height = 20,
+                        Visible = true
+                    };
+
+                    // Subscribe to automation state changes
+                    automationState.Changed += (s, e) =>
+                    {
+                        if (InvokeRequired)
+                        {
+                            BeginInvoke(() => statusTextBox.Text = e.Snapshot.ToStatusString());
+                        }
+                        else
+                        {
+                            statusTextBox.Text = e.Snapshot.ToStatusString();
+                        }
+                    };
+
+                    this.Controls.Add(statusTextBox);
+                    Logger?.LogDebug("[JARVIS-AUTOMATION] Automation status TextBox added");
+                }
+
                 _isInitialized = true;
                 Logger?.LogInformation("[JARVIS-LIFECYCLE] JARVIS WebView2 panel initialization successful");
             }
@@ -151,12 +194,19 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
             var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IChatBridgeService>(_serviceProvider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(_serviceProvider);
+            var automationState = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Automation.JarvisAutomationState>(_serviceProvider);
 
             themeService.ThemeChanged += (s, themeName) => SyncThemeWithJS(themeName, themeService.IsDark);
+
+            // Mark WebView2 as ready for automation
+            automationState?.MarkBlazorReady(assistViewReady: false);
 
             // Handle initial prompt via DOMContentLoaded to ensure UI is ready
             _webView.CoreWebView2.DOMContentLoaded += async (s, e) =>
             {
+                // Mark assist view as ready for automation
+                automationState?.MarkAssistViewReady();
+
                 SyncThemeWithJS(themeService.CurrentTheme, themeService.IsDark);
 
                 if (!string.IsNullOrWhiteSpace(InitialPrompt))
@@ -320,7 +370,14 @@ namespace WileyWidget.WinForms.Controls.Supporting
             this.SuspendLayout();
             this.Name = "JARVISChatUserControl";
             this.Size = new Size(400, 600);
-            this.BackColor = Color.FromArgb(32, 32, 32); // Fallback color
+            // Removed manual fallback BackColor to respect SfSkinManager theme cascade.
+            // Apply theme to this control as a best-effort measure for dynamically initialized controls.
+            try
+            {
+                var theme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+                this.ApplySyncfusionTheme(theme, Logger);
+            }
+            catch { /* best-effort */ }
             this.ResumeLayout(false);
         }
 

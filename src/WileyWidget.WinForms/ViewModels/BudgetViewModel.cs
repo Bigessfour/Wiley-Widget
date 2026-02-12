@@ -307,39 +307,31 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Loads sample budget data when service fails, to maintain UI functionality.
+        /// Sample/fallback population is disabled in production builds.
+        /// Clears temporary collections and logs a warning instead of populating hard-coded sample data.
         /// </summary>
         private void LoadSampleDataOnFailure()
         {
             try
             {
-                _logger.LogWarning("Loading sample budget entries as fallback");
+                _logger.LogWarning("LoadSampleDataOnFailure called: sample budget data disabled. Ensure budget repository is configured to provide production data.");
 
-                var sampleEntries = new[]
-                {
-                    new BudgetEntry { Id = 1, AccountNumber = "410.1", Description = "Town Administrator", BudgetedAmount = 150000m, ActualAmount = 145000m, FiscalYear = SelectedFiscalYear, DepartmentId = 1, FundType = FundType.GeneralFund, Variance = 5000m },
-                    new BudgetEntry { Id = 2, AccountNumber = "410.2", Description = "Town Clerk", BudgetedAmount = 80000m, ActualAmount = 82000m, FiscalYear = SelectedFiscalYear, DepartmentId = 1, FundType = FundType.GeneralFund, Variance = -2000m },
-                    new BudgetEntry { Id = 3, AccountNumber = "420.1", Description = "Police Department", BudgetedAmount = 500000m, ActualAmount = 485000m, FiscalYear = SelectedFiscalYear, DepartmentId = 2, FundType = FundType.GeneralFund, Variance = 15000m },
-                    new BudgetEntry { Id = 4, AccountNumber = "430.1", Description = "Fire Department", BudgetedAmount = 400000m, ActualAmount = 395000m, FiscalYear = SelectedFiscalYear, DepartmentId = 3, FundType = FundType.GeneralFund, Variance = 5000m },
-                    new BudgetEntry { Id = 5, AccountNumber = "440.1", Description = "Sewer Operations", BudgetedAmount = 250000m, ActualAmount = 265000m, FiscalYear = SelectedFiscalYear, DepartmentId = 4, FundType = FundType.EnterpriseFund, Variance = -15000m }
-                };
+                BudgetEntries = new ObservableCollection<BudgetEntry>();
+                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>();
 
-                BudgetEntries = new ObservableCollection<BudgetEntry>(sampleEntries);
-                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(sampleEntries);
+                TotalBudgeted = 0m;
+                TotalActual = 0m;
+                TotalVariance = 0m;
+                PercentUsed = 0;
+                EntriesOverBudget = 0;
+                EntriesUnderBudget = 0;
 
-                TotalBudgeted = sampleEntries.Sum(e => e.BudgetedAmount);
-                TotalActual = sampleEntries.Sum(e => e.ActualAmount);
-                TotalVariance = sampleEntries.Sum(e => e.Variance);
-                PercentUsed = TotalBudgeted > 0 ? (TotalActual / TotalBudgeted) * 100 : 0;
-                EntriesOverBudget = sampleEntries.Count(e => e.ActualAmount > e.BudgetedAmount);
-                EntriesUnderBudget = sampleEntries.Count(e => e.ActualAmount <= e.BudgetedAmount);
-
-                StatusText = $"Loaded {sampleEntries.Length} sample budget entries";
-                _logger.LogInformation("Loaded {Count} sample budget entries", sampleEntries.Length);
+                ErrorMessage = "Production budget data unavailable; sample data disabled.";
+                StatusText = "No production budget entries loaded";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load sample data");
+                _logger.LogError(ex, "Error while clearing sample budget data fallback");
             }
         }
 

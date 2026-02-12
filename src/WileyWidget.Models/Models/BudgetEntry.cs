@@ -88,6 +88,13 @@ public class BudgetEntry : IAuditable
     [NotMapped]
     public string EntityName => Fund?.Name ?? MunicipalAccount?.Name ?? FundType.ToString();
 
+    // Account and Department name helpers for datagrid display
+    [NotMapped]
+    public string AccountName => MunicipalAccount?.Name ?? string.Empty;
+
+    [NotMapped]
+    public string DepartmentName => Department?.Name ?? string.Empty;
+
     [NotMapped]
     public decimal TownOfWileyBudgetedAmount => IsTownOfWiley() ? BudgetedAmount : 0m;
 

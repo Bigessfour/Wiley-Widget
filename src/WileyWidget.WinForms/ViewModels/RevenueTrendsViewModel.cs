@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Business.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -109,13 +112,16 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
         Logger.LogDebug("RevenueTrendsViewModel initialized");
     }
 
+#if DEBUG
     /// <summary>
     /// Parameterless constructor for design-time/fallback scenarios.
+    /// Only included in DEBUG builds to prevent accidental fallback usage in production.
     /// </summary>
     public RevenueTrendsViewModel()
         : this(new FallbackAccountsRepository(), NullLogger<RevenueTrendsViewModel>.Instance)
     {
     }
+#endif
 
     /// <summary>
     /// Loads monthly revenue data asynchronously with proper cancellation support.
@@ -218,37 +224,19 @@ public partial class RevenueTrendsViewModel : ViewModelBase, IDisposable
         DateTime endDate,
         CancellationToken cancellationToken)
     {
-        // Get all accounts with transactions in the date range
-        var accounts = await _accountsRepository.GetAllAccountsAsync(cancellationToken);
+        // Delegate aggregation to repository; repository must return real production data.
+        var aggregates = await _accountsRepository.GetMonthlyRevenueAsync(startDate, endDate, cancellationToken);
 
-        // Group by month and sum revenue
-        var monthlyGroups = new Dictionary<DateTime, decimal>();
+        if (aggregates == null || aggregates.Count == 0)
+            return Array.Empty<RevenueMonthlyData>();
 
-        // Generate monthly buckets
-        var currentMonth = new DateTime(startDate.Year, startDate.Month, 1);
-        var endMonth = new DateTime(endDate.Year, endDate.Month, 1);
-
-        while (currentMonth <= endMonth)
-        {
-            // In a real implementation, you would query transactions for this month
-            // For now, generate sample data based on account balances
-            // Since we don't have CreatedDate, we'll simulate monthly distribution
-            var monthlyRevenue = accounts.Any()
-                ? accounts.Sum(a => a.Balance) * 0.1m / accounts.Count // Distribute across accounts
-                : 0m;
-
-            monthlyGroups[currentMonth] = monthlyRevenue;
-            currentMonth = currentMonth.AddMonths(1);
-        }
-
-        // Convert to array
-        var result = monthlyGroups
-            .OrderBy(kvp => kvp.Key)
-            .Select(kvp => new RevenueMonthlyData
+        var result = aggregates
+            .OrderBy(a => a.Month)
+            .Select(a => new RevenueMonthlyData
             {
-                Month = kvp.Key,
-                Revenue = kvp.Value,
-                TransactionCount = 0 // Would be populated from actual transaction data
+                Month = a.Month,
+                Revenue = a.Amount,
+                TransactionCount = a.TransactionCount
             })
             .ToArray();
 
@@ -319,15 +307,9 @@ internal class FallbackAccountsRepository : IAccountsRepository
 {
     public Task<IReadOnlyList<WileyWidget.Models.MunicipalAccount>> GetAllAccountsAsync(CancellationToken cancellationToken = default)
     {
-        // Return sample data for design-time preview
-        var sampleAccounts = new List<WileyWidget.Models.MunicipalAccount>
-        {
-            new WileyWidget.Models.MunicipalAccount { Id = 1, AccountNumber = new WileyWidget.Models.AccountNumber { Value = "1000" }, Name = "General Fund", Balance = 50000m },
-            new WileyWidget.Models.MunicipalAccount { Id = 2, AccountNumber = new WileyWidget.Models.AccountNumber { Value = "2000" }, Name = "Revenue Account", Balance = 75000m },
-            new WileyWidget.Models.MunicipalAccount { Id = 3, AccountNumber = new WileyWidget.Models.AccountNumber { Value = "3000" }, Name = "Expense Account", Balance = 60000m }
-        };
-
-        return Task.FromResult<IReadOnlyList<WileyWidget.Models.MunicipalAccount>>(sampleAccounts);
+        // Sample/fallback data disabled. Return empty list so production data must be provided by repository.
+        _ = cancellationToken; // explicit discard
+        return Task.FromResult<IReadOnlyList<WileyWidget.Models.MunicipalAccount>>(Array.Empty<WileyWidget.Models.MunicipalAccount>());
     }
 
     public Task<IReadOnlyList<WileyWidget.Models.MunicipalAccount>> GetAccountsByFundAsync(WileyWidget.Models.MunicipalFundType fundType, CancellationToken cancellationToken = default)
@@ -344,4 +326,7 @@ internal class FallbackAccountsRepository : IAccountsRepository
 
     public Task<IReadOnlyList<WileyWidget.Models.MunicipalAccount>> SearchAccountsAsync(string searchTerm, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<WileyWidget.Models.MunicipalAccount>>(new List<WileyWidget.Models.MunicipalAccount>());
+
+    public Task<IReadOnlyList<MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<MonthlyRevenueAggregate>>(Array.Empty<MonthlyRevenueAggregate>());
 }

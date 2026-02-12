@@ -1,5 +1,9 @@
 {
   "github.copilot.chat.localeOverride": "en",
+  "chat.useAgentSkills": true,
+  "chat.agentSkillsLocations": [
+    ".agents/skills"
+  ],
   "github.copilot.advanced": {
     "debug.overrideEngine": "gpt-4o-2024-11-20",
     "debug.useNodeFetcher": true,
@@ -353,11 +357,6 @@
     "Wiley-Widget/.vscode/mcp.json: mssql": {
       "allowedModels": [
         "copilot/auto"
-      ]
-    },
-    "Wiley-Widget/.vscode/mcp.json: wileywidget-ui-mcp": {
-      "allowedModels": [
-        "copilot/grok-code-fast-1"
       ]
     }
   },

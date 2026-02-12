@@ -21,6 +21,7 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using WileyWidget.Abstractions;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Models;
+using WileyWidget.WinForms.Services.AI.XAI;
 
 namespace WileyWidget.WinForms.Services.AI
 {
@@ -106,6 +107,7 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly CancellationTokenSource _serviceCts = new();
         private bool _disposed = false;
         private readonly bool _ownsHttpClient;
+        private readonly XAIBuiltInTools.XAIToolConfiguration? _toolConfiguration;  // xAI built-in tools configuration
         private const string ChatHistoryCacheKeyPrefix = "grok_chat_history_";
         private const int ChatHistoryCacheDurationMinutes = 30;
 
@@ -154,6 +156,9 @@ namespace WileyWidget.WinForms.Services.AI
             _serviceProvider = serviceProvider;
             _jarvisPersonality = jarvisPersonality;
             _memoryCache = memoryCache;
+
+            // Load xAI tools configuration
+            _toolConfiguration = LoadToolConfiguration(config, logger);
 
             // ✅ FIXED: Use injected IGrokApiKeyProvider instead of reading environment variables directly
             _apiKey = apiKeyProvider.ApiKey;  // Get API key from centralized provider
@@ -1597,6 +1602,19 @@ namespace WileyWidget.WinForms.Services.AI
                 if (_defaultFrequencyPenalty.HasValue) payload["frequency_penalty"] = _defaultFrequencyPenalty.Value;
             }
 
+            // Add xAI built-in tools if configured
+            if (_toolConfiguration?.Enabled == true)
+            {
+                var tools = XAIBuiltInTools.CreateToolDefinitions(_toolConfiguration);
+                if (tools.Count > 0)
+                {
+                    payload["tools"] = tools;
+                    _logger?.LogInformation("[XAI] Added {Count} built-in tools to request: {Tools}",
+                        tools.Count,
+                        string.Join(", ", tools.Select(t => ((Dictionary<string, object>)((Dictionary<string, object>)t)["function"])["name"])));
+                }
+            }
+
             return payload;
         }
 
@@ -2349,11 +2367,11 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     if (!string.IsNullOrEmpty(chunk.Content))
                     {
-                    responseBuilder.Append(chunk.Content);
+                        responseBuilder.Append(chunk.Content);
+                    }
                 }
-            }
 
-            return responseBuilder.ToString();
+                return responseBuilder.ToString();
             }
             catch (InvalidOperationException iex) when (iex.Message.Contains("not registered"))
             {
@@ -2391,6 +2409,135 @@ namespace WileyWidget.WinForms.Services.AI
         {
             // Simple implementation; conversation history is ignored for now
             return await GetSimpleResponse(message, ct: cancellationToken);
+        }
+
+        /// <summary>
+        /// Loads xAI tools configuration from appsettings.json
+        /// </summary>
+        private static XAIBuiltInTools.XAIToolConfiguration? LoadToolConfiguration(IConfiguration config, ILogger? logger)
+        {
+            try
+            {
+                var toolsSection = config.GetSection("XAI:Tools");
+                if (!toolsSection.Exists())
+                {
+                    logger?.LogInformation("[XAI] No tools configuration found in XAI:Tools section - built-in tools disabled");
+                    return null;
+                }
+
+                var toolConfig = new XAIBuiltInTools.XAIToolConfiguration
+                {
+                    Enabled = toolsSection.GetValue<bool>("Enabled", false)
+                };
+
+                if (!toolConfig.Enabled)
+                {
+                    logger?.LogInformation("[XAI] Built-in tools disabled via configuration (XAI:Tools:Enabled=false)");
+                    return toolConfig;
+                }
+
+                // Load Web Search configuration
+                var webSearchSection = toolsSection.GetSection("WebSearch");
+                if (webSearchSection.Exists())
+                {
+                    toolConfig.WebSearch = new XAIBuiltInTools.WebSearchConfig
+                    {
+                        Enabled = webSearchSection.GetValue<bool>("Enabled", false),
+                        EnableImageUnderstanding = webSearchSection.GetValue<bool>("EnableImageUnderstanding", false),
+                        AllowedDomains = webSearchSection.GetSection("AllowedDomains").Get<List<string>>() ?? new List<string>(),
+                        ExcludedDomains = webSearchSection.GetSection("ExcludedDomains").Get<List<string>>() ?? new List<string>()
+                    };
+
+                    if (toolConfig.WebSearch.Enabled)
+                    {
+                        logger?.LogInformation("[XAI] Web Search tool enabled (allowed_domains: {AllowedCount}, excluded_domains: {ExcludedCount})",
+                            toolConfig.WebSearch.AllowedDomains.Count,
+                            toolConfig.WebSearch.ExcludedDomains.Count);
+                    }
+                }
+
+                // Load X Search configuration
+                var xSearchSection = toolsSection.GetSection("XSearch");
+                if (xSearchSection.Exists())
+                {
+                    toolConfig.XSearch = new XAIBuiltInTools.XSearchConfig
+                    {
+                        Enabled = xSearchSection.GetValue<bool>("Enabled", false),
+                        EnableImageUnderstanding = xSearchSection.GetValue<bool>("EnableImageUnderstanding", false)
+                    };
+
+                    if (toolConfig.XSearch.Enabled)
+                    {
+                        logger?.LogInformation("[XAI] X Search tool enabled (image_understanding: {ImageUnderstanding})",
+                            toolConfig.XSearch.EnableImageUnderstanding);
+                    }
+                }
+
+                // Load Code Execution configuration
+                var codeExecSection = toolsSection.GetSection("CodeExecution");
+                if (codeExecSection.Exists())
+                {
+                    toolConfig.CodeExecution = new XAIBuiltInTools.CodeExecutionConfig
+                    {
+                        Enabled = codeExecSection.GetValue<bool>("Enabled", false),
+                        TimeoutSeconds = codeExecSection.GetValue<int>("TimeoutSeconds", 30)
+                    };
+
+                    if (toolConfig.CodeExecution.Enabled)
+                    {
+                        logger?.LogInformation("[XAI] Code Execution tool enabled (Python sandbox with pandas, numpy, scipy, matplotlib - timeout: {TimeoutSeconds}s)",
+                            toolConfig.CodeExecution.TimeoutSeconds);
+                    }
+                }
+
+                // Load Collections Search configuration
+                var collectionsSection = toolsSection.GetSection("CollectionsSearch");
+                if (collectionsSection.Exists())
+                {
+                    toolConfig.CollectionsSearch = new XAIBuiltInTools.CollectionsSearchConfig
+                    {
+                        Enabled = collectionsSection.GetValue<bool>("Enabled", false),
+                        CollectionIds = collectionsSection.GetSection("CollectionIds").Get<List<string>>() ?? new List<string>()
+                    };
+
+                    if (toolConfig.CollectionsSearch.Enabled)
+                    {
+                        logger?.LogInformation("[XAI] Collections Search tool enabled (collection_ids: {CollectionCount})",
+                            toolConfig.CollectionsSearch.CollectionIds.Count);
+                    }
+                }
+
+                // Validate configuration before returning
+                var (isValid, errors) = XAIBuiltInTools.ValidateConfiguration(toolConfig);
+                if (!isValid)
+                {
+                    logger?.LogWarning("[XAI] Tool configuration validation failed: {Errors}", string.Join("; ", errors));
+                    return null;
+                }
+
+                var enabledTools = new List<string>();
+                if (toolConfig.WebSearch?.Enabled == true) enabledTools.Add("web_search");
+                if (toolConfig.XSearch?.Enabled == true) enabledTools.Add("x_search");
+                if (toolConfig.CodeExecution?.Enabled == true) enabledTools.Add("code_execution");
+                if (toolConfig.CollectionsSearch?.Enabled == true) enabledTools.Add("collections_search");
+
+                if (enabledTools.Count > 0)
+                {
+                    logger?.LogInformation("[XAI] ✅ Loaded xAI built-in tools configuration - Enabled tools: {Tools}",
+                        string.Join(", ", enabledTools));
+                }
+                else
+                {
+                    logger?.LogInformation("[XAI] No xAI built-in tools enabled in configuration");
+                }
+
+                return toolConfig;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[XAI] Failed to load tools configuration from appsettings: {Message}", ex.Message);
+                return null;
+            }
         }
     }
 }

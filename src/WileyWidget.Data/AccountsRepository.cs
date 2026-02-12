@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Business.Interfaces;
+using WileyWidget.Business.Models;
 using WileyWidget.Models;
 
 namespace WileyWidget.Data;
@@ -172,5 +173,18 @@ public class AccountsRepository : IAccountsRepository
                 (a.FundDescription != null && a.FundDescription.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)))
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns aggregated revenue per calendar month within the supplied date range.
+    /// Minimal stub implementation: returns an empty collection until a proper DB aggregation is implemented.
+    /// </summary>
+    public Task<IReadOnlyList<MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("GetMonthlyRevenueAsync called: returning empty aggregates until implemented.");
+        return Task.FromResult<IReadOnlyList<MonthlyRevenueAggregate>>(Array.Empty<MonthlyRevenueAggregate>());
     }
 }
