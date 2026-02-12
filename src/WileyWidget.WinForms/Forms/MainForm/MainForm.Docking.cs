@@ -39,6 +39,8 @@ public partial class MainForm
     private Panel? _rightDockPanel;
     private LegacyGradientPanel? _jarvisDockPanel;  // Fixed non-dockable JARVIS sidebar
     private JARVISChatUserControl? _jarvisChatUserControl;  // JARVIS control reference
+    private ContainerControl? _dockingHostPanel;  // Dedicated host container for DockingManager
+    private bool _paintDiagnosticsInitialized;  // Tracks if paint diagnostics are already setup
 
     [DllImport("user32.dll")]
     private static extern bool LockWindowUpdate(IntPtr hWndLock);
@@ -73,8 +75,17 @@ public partial class MainForm
 
         try
         {
+            // Create dedicated docking host panel positioned below ribbon
+            _dockingHostPanel = new DockingHostContainer
+            {
+                Name = "DockingHostPanel",
+                Dock = DockStyle.Fill
+            };
+            Controls.Add(_dockingHostPanel);
+            _dockingHostPanel.SendToBack(); // Ensure behind ribbon
+
             var (dockingManager, leftPanel, rightPanel, centralPanel, activityLogPanel, _, layoutManager) =
-                DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
+                DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _dockingHostPanel, _logger);
 
             _dockingManager = dockingManager;
             _leftDockPanel = leftPanel;
@@ -83,6 +94,12 @@ public partial class MainForm
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
             // dynamic dock panels removed: DockingHostFactory owns panel creation
+
+            // Priority 3: Log initial dock state after creation
+            _logger?.LogInformation("INITIAL DOCK STATE | HostControl.Count={Count} | Left.Visible={LeftVis} | Right.Visible={RightVis}",
+                _dockingManager?.HostControl?.Controls.Count ?? 0,
+                _leftDockPanel?.Visible ?? false,
+                _rightDockPanel?.Visible ?? false);
 
             if (_leftDockPanel != null)
             {
@@ -124,15 +141,16 @@ public partial class MainForm
 
             if (_leftDockPanel != null)
             {
-                // Respect AutoShowPanels configuration
-                bool shouldShow = _uiConfig?.AutoShowPanels ?? true;
-                if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                // Force side panels visible for reliable panel navigation
+                // Side panels must exist as dock targets even if not initially populated
+                bool shouldShow = true;
                 _leftDockPanel.Visible = shouldShow;
 
                 try
                 {
                     _dockingManager.SetDockVisibility(_leftDockPanel, shouldShow);
-                    _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _leftDockPanel.Name ?? "null");
+                    _dockingManager.SetEnableDocking(_leftDockPanel, true);
+                    _logger?.LogInformation("Left dock panel FORCED visible for reliable panel display");
                 }
                 catch (Exception ex)
                 {
@@ -156,15 +174,16 @@ public partial class MainForm
 
             if (_rightDockPanel != null)
             {
-                // Respect AutoShowPanels configuration
-                bool shouldShow = _uiConfig?.AutoShowPanels ?? false; // Right panel default was false
-                if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                // Force side panels visible for reliable panel navigation
+                // Side panels must exist as dock targets even if not initially populated
+                bool shouldShow = true;
                 _rightDockPanel.Visible = shouldShow;
 
                 try
                 {
                     _dockingManager.SetDockVisibility(_rightDockPanel, shouldShow);
-                    _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _rightDockPanel.Name ?? "null");
+                    _dockingManager.SetEnableDocking(_rightDockPanel, true);
+                    _logger?.LogInformation("Right dock panel FORCED visible for reliable panel display");
                 }
                 catch (Exception ex)
                 {
@@ -254,8 +273,18 @@ public partial class MainForm
             {
                 throw new InvalidOperationException("ServiceProvider cannot be null when creating DockingHost.");
             }
+
+            // Create dedicated docking host panel positioned below ribbon
+            _dockingHostPanel = new DockingHostContainer
+            {
+                Name = "DockingHostPanel",
+                Dock = DockStyle.Fill
+            };
+            Controls.Add(_dockingHostPanel);
+            _dockingHostPanel.SendToBack(); // Ensure behind ribbon
+
             var (dockingManager, leftPanel, rightPanel, centralPanel, activityLogPanel, activityTimer, layoutManager) =
-                DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _logger);
+                DockingHostFactory.CreateDockingHost(this, _serviceProvider, _panelNavigator, _dockingHostPanel, _logger);
             dockingHostStopwatch.Stop();
             StartupInstrumentation.RecordPhaseTime("DockingManager Creation", dockingHostStopwatch.ElapsedMilliseconds);
 
@@ -287,9 +316,8 @@ public partial class MainForm
                 _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
                 if (_leftDockPanel != null)
                 {
-                    // Respect AutoShowPanels configuration
-                    bool shouldShow = _uiConfig?.AutoShowPanels ?? true;
-                    if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                    // Always show side panels (ignore MinimalMode - it's now disabled by default)
+                    bool shouldShow = true;
                     _leftDockPanel.Visible = shouldShow;
 
                     try
@@ -309,9 +337,8 @@ public partial class MainForm
 
                 if (_rightDockPanel != null)
                 {
-                    // Respect AutoShowPanels configuration (defaulted to false for right panel)
-                    bool shouldShow = _uiConfig?.AutoShowPanels ?? false;
-                    if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                    // Always show side panels (ignore MinimalMode - it's now disabled by default)
+                    bool shouldShow = true;
                     _rightDockPanel.Visible = shouldShow;
 
                     try
@@ -522,6 +549,17 @@ public partial class MainForm
                     "InitializeSyncfusionDocking complete - WileyWidget.WinForms.Controls.Panels.ActivityLogPanel={HasActivityPanel}",
                     _activityLogPanel != null);
 
+                // Setup paint diagnostics for troubleshooting paint/refresh issues
+                try
+                {
+                    SetupPaintDiagnostics();
+                    _logger?.LogDebug("Paint diagnostics initialized for DockingManager and panels");
+                }
+                catch (Exception paintEx)
+                {
+                    _logger?.LogWarning(paintEx, "Failed to setup paint diagnostics - continuing without paint monitoring");
+                }
+
                 // FINAL Z-order correction: Ensure ribbon stays on top of all docking content
                 if (_ribbon != null)
                 {
@@ -619,6 +657,16 @@ public partial class MainForm
 
             TrySetDockingManagerBoolProperty(_dockingManager, "MDIEnabled", false);
             TrySetDockingManagerBoolProperty(_dockingManager, "CloseButton", false);
+
+            // Setup paint diagnostics (idempotent - will skip if already initialized)
+            try
+            {
+                SetupPaintDiagnostics();
+            }
+            catch (Exception paintEx)
+            {
+                _logger?.LogDebug(paintEx, "Paint diagnostics setup skipped in ConfigureDockingManagerChromeLayout");
+            }
         }
         finally
         {
@@ -632,9 +680,8 @@ public partial class MainForm
     {
         UpdateChromePadding();
 
-        var hostControl = hostControlOverride ?? _dockingManager?.HostControl as Control;
-        if (hostControl == null || hostControl.IsDisposed) return;
-        if (ReferenceEquals(hostControl, this)) return;
+        // Always target the dedicated docking host panel
+        if (_dockingHostPanel == null || _dockingHostPanel.IsDisposed) return;
 
         var top = 0;
         if (_menuStrip != null)
@@ -644,29 +691,75 @@ public partial class MainForm
 
         if (_ribbon != null)
         {
-            // Add 15px margin after ribbon to prevent panel content from being cut off
-            top = Math.Max(top, _ribbon.Bottom + 15);
+            // Ensure adequate clearance below ribbon for docked panels
+            // Ribbon is ~180px tall in Normal mode, ~120px in Simplified mode
+            top = Math.Max(top, _ribbon.Bottom);
         }
 
         var bottom = ClientSize.Height;
-        if (_statusBar != null)
+        if (_statusBar != null && !_statusBar.IsDisposed)
         {
-            bottom = Math.Min(bottom, _statusBar.Top);
+            var statusTop = _statusBar.Top;
+            if (statusTop > top)
+            {
+                bottom = Math.Min(bottom, statusTop);
+            }
+            else if (_statusBar.Dock == DockStyle.Bottom && _statusBar.Height > 0)
+            {
+                bottom = Math.Min(bottom, ClientSize.Height - _statusBar.Height);
+            }
         }
 
         var height = Math.Max(0, bottom - top);
+        if (height <= 0)
+        {
+            height = Math.Max(0, ClientSize.Height - top);
+            _logger?.LogDebug(
+                "AdjustDockingHostBounds fallback applied: Height={Height}, Top={Top}, ClientHeight={ClientHeight}, StatusTop={StatusTop}, StatusHeight={StatusHeight}",
+                height,
+                top,
+                ClientSize.Height,
+                _statusBar?.Top,
+                _statusBar?.Height);
+        }
 
-        hostControl.SuspendLayout();
+        var leftInset = 0;
+        var rightInset = 0;
+        if (_jarvisDockPanel != null && !_jarvisDockPanel.IsDisposed && _jarvisDockPanel.Visible && ReferenceEquals(_jarvisDockPanel.Parent, this))
+        {
+            if (_jarvisDockPanel.Dock == DockStyle.Right)
+            {
+                rightInset = Math.Max(0, _jarvisDockPanel.Width);
+            }
+            else if (_jarvisDockPanel.Dock == DockStyle.Left)
+            {
+                leftInset = Math.Max(0, _jarvisDockPanel.Width);
+            }
+        }
+
+        var width = Math.Max(0, ClientSize.Width - leftInset - rightInset);
+        if (width <= 0)
+        {
+            width = Math.Max(0, ClientSize.Width - leftInset);
+            _logger?.LogDebug(
+                "AdjustDockingHostBounds width fallback applied: Width={Width}, LeftInset={LeftInset}, RightInset={RightInset}, ClientWidth={ClientWidth}",
+                width,
+                leftInset,
+                rightInset,
+                ClientSize.Width);
+        }
+
+        _dockingHostPanel.SuspendLayout();
         try
         {
-            hostControl.Dock = DockStyle.None;
-            hostControl.Location = new Point(0, top);
-            hostControl.Size = new Size(ClientSize.Width, height);
-            hostControl.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+            _dockingHostPanel.Dock = DockStyle.None;
+            _dockingHostPanel.Location = new Point(leftInset, top);
+            _dockingHostPanel.Size = new Size(width, height);
+            _dockingHostPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
         }
         finally
         {
-            hostControl.ResumeLayout(true);
+            _dockingHostPanel.ResumeLayout(true);
         }
     }
 
@@ -754,6 +847,20 @@ public partial class MainForm
             // Apply theme recursively to entire control tree (form and all children)
             ApplyThemeRecursive(this, theme);
 
+            // Apply theme to dedicated docking host panel
+            if (_dockingHostPanel != null && !_dockingHostPanel.IsDisposed)
+            {
+                try
+                {
+                    SfSkinManager.SetVisualStyle(_dockingHostPanel, theme);
+                    _logger?.LogDebug("Applied theme to docking host panel: {Theme}", theme);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Failed to apply theme to docking host panel");
+                }
+            }
+
             // Syncfusion RibbonControlAdv needs extra chrome properties for Office2016 schemes.
             // (Sample: C:\Users\Public\Documents\Syncfusion\Windows\32.1.19\ribbon\RibbonControlAdv\CS\Form1.cs)
             TryApplyRibbonChromeTheme(theme);
@@ -776,6 +883,27 @@ public partial class MainForm
                 else
                 {
                     _logger?.LogDebug("Ribbon themeToggle not found");
+                }
+
+                var themeCombo = FindToolStripItem(_ribbon, "ThemeCombo");
+                if (themeCombo == null)
+                {
+                    // Fallback: search whole form if ribbon-scoped lookup fails
+                    try { themeCombo = FindToolStripItem(this, "ThemeCombo"); } catch { }
+                }
+
+                if (themeCombo != null)
+                {
+                    if (!string.Equals(themeCombo.Text, theme, StringComparison.OrdinalIgnoreCase))
+                    {
+                        themeCombo.Text = theme;
+                    }
+
+                    _logger?.LogDebug("Updated ribbon themeCombo text to: {Text}", themeCombo.Text);
+                }
+                else
+                {
+                    _logger?.LogDebug("Ribbon themeCombo not found");
                 }
             }
 
@@ -1431,6 +1559,29 @@ public partial class MainForm
     {
         _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - delegating to DockingLayoutManager");
 
+        var dockingManager = _dockingManager;
+        _dockingManager = null;
+
+        if (dockingManager != null)
+        {
+            try
+            {
+                var hostControl = dockingManager.HostControl as Control;
+                if (hostControl != null && !hostControl.IsDisposed)
+                {
+                    hostControl.SuspendLayout();
+                    hostControl.Visible = false;
+                }
+
+                dockingManager.LockHostFormUpdate();
+                dockingManager.LockDockPanelsUpdate();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Failed to freeze docking manager host before disposal");
+            }
+        }
+
         // [PERF] Dispose Z-order debounce timer
         if (_zOrderDebounceTimer != null)
         {
@@ -1446,17 +1597,29 @@ public partial class MainForm
             }
         }
 
+        if (dockingManager != null)
+        {
+            try
+            {
+                dockingManager.DisposeSafely();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to dispose DockingManager");
+            }
+        }
+
         if (_dockingLayoutManager != null)
         {
             try
             {
-                if (_dockingManager != null && this.IsHandleCreated)
+                if (dockingManager != null && this.IsHandleCreated)
                 {
                     try { _logger?.LogDebug("Form disposal: layout persistence delegated to DockingLayoutManager"); }
                     catch (Exception ex) { _logger?.LogDebug(ex, "Failed to finalize layout persistence during disposal (non-critical)"); }
                 }
 
-                if (_dockingManager != null)
+                if (dockingManager != null)
                 {
                     try { _logger?.LogDebug("Form disposal: DockingLayoutManager event cleanup in progress"); }
                     catch (Exception ex) { _logger?.LogDebug(ex, "Error during event unsubscription (non-critical)"); }
@@ -1469,13 +1632,6 @@ public partial class MainForm
             {
                 _logger?.LogWarning(ex, "Failed to dispose DockingLayoutManager");
             }
-        }
-
-        if (_dockingManager != null)
-        {
-            var mgr = _dockingManager;
-            _dockingManager = null;
-            mgr.DisposeSafely();
         }
 
         _logger?.LogDebug("DisposeSyncfusionDockingResources completed - all resources delegated to DockingLayoutManager");
@@ -1565,6 +1721,239 @@ public partial class MainForm
         foreach (Control child in card.Controls)
         {
             child.Click += (s, e) => action?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Sets up diagnostic Paint event handlers for DockingManager HostControl and panels.
+    /// Helps diagnose paint/refresh issues common with Office2019 themes.
+    /// Subscribe temporarily in MainForm ctor or InitializeChrome for troubleshooting.
+    /// </summary>
+    private void SetupPaintDiagnostics()
+    {
+        // Only setup once to avoid duplicate event handlers
+        if (_paintDiagnosticsInitialized)
+        {
+            _logger?.LogDebug("[PAINT-DIAG] Paint diagnostics already initialized - skipping");
+            return;
+        }
+
+        if (_dockingManager == null)
+        {
+            _logger?.LogWarning("[PAINT-DIAG] Cannot setup paint diagnostics: DockingManager is null");
+            return;
+        }
+
+        try
+        {
+            // Subscribe to HostControl Paint event
+            var hostControl = _dockingManager.HostControl;
+            if (hostControl != null)
+            {
+                hostControl.Paint += (s, e) =>
+                {
+                    try
+                    {
+                        _logger?.LogDebug("[PAINT-DIAG] HostControl Paint fired | Region={Region}, Bounds={Bounds}",
+                            e.ClipRectangle, hostControl.Bounds);
+                    }
+                    catch (NullReferenceException nrEx)
+                    {
+                        // This is the known Office2019 theme bug - log but don't fail
+                        _logger?.LogDebug(nrEx, "[PAINT-DIAG] HostControl Paint NullReferenceException (known Office2019 issue) - suppressing");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "[PAINT-DIAG] HostControl Paint event error");
+                    }
+                };
+                _logger?.LogInformation("[PAINT-DIAG] HostControl Paint event handler attached");
+            }
+            else
+            {
+                _logger?.LogWarning("[PAINT-DIAG] HostControl is null - cannot attach Paint handler");
+            }
+
+            // Subscribe to panel Paint events for all docked panels
+            var controlsObj = _dockingManager.Controls;
+            if (controlsObj != null && controlsObj is System.Collections.ICollection coll)
+            {
+                int panelCount = 0;
+                foreach (var item in coll)
+                {
+                    if (item is Control panel && !panel.IsDisposed)
+                    {
+                        var panelName = !string.IsNullOrEmpty(panel.Name) ? panel.Name : panel.GetType().Name;
+                        panel.Paint += (s, e) =>
+                        {
+                            try
+                            {
+                                _logger?.LogDebug("[PAINT-DIAG] Panel '{PanelName}' Paint fired | Region={Region}, Visible={Visible}",
+                                    panelName, e.ClipRectangle, panel.Visible);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.LogDebug(ex, "[PAINT-DIAG] Panel '{PanelName}' Paint event error", panelName);
+                            }
+                        };
+                        panelCount++;
+                    }
+                }
+                _logger?.LogInformation("[PAINT-DIAG] Paint event handlers attached to {PanelCount} panels", panelCount);
+            }
+            else
+            {
+                // Priority 5: Expand PAINT-DIAG warning with diagnostic details
+                _logger?.LogWarning("[PAINT-DIAG] No panels found | HostControl.Null={Null} | Controls.Count={Count} | HostVisible={Vis}",
+                    _dockingManager?.HostControl == null,
+                    _dockingManager?.HostControl?.Controls.Count ?? -1,
+                    _dockingManager?.HostControl?.Visible ?? false);
+            }
+
+            _paintDiagnosticsInitialized = true;
+            _logger?.LogInformation("[PAINT-DIAG] Paint diagnostics setup complete");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[PAINT-DIAG] Failed to setup paint diagnostics");
+        }
+    }
+
+    /// <summary>
+    /// Diagnostic method: Logs z-order (control stacking order) for all docked panels.
+    /// Bad Indicator: Multiple panels stacked with the last-activated panel at highest index (can hide others in tabbed mode).
+    /// Call this after panel docking or activation to detect z-order masking issues.
+    /// </summary>
+    private void DiagnosticLogZOrder()
+    {
+        if (_dockingManager?.HostControl == null)
+        {
+            _logger?.LogWarning("[Z-ORDER-DIAG] Cannot log z-order: DockingManager.HostControl is null");
+            return;
+        }
+
+        try
+        {
+            var hostControl = _dockingManager.HostControl;
+            var hostedControls = hostControl.Controls.Cast<Control>().ToList();
+
+            if (hostedControls.Count == 0)
+            {
+                _logger?.LogInformation("[Z-ORDER-DIAG] No controls in HostControl.Controls");
+                return;
+            }
+
+            _logger?.LogInformation("[Z-ORDER-DIAG] ======== Z-ORDER SNAPSHOT (Total={Count} controls) ========", hostedControls.Count);
+
+            // Log from lowest to highest z-index (index 0 = back, highest = front)
+            for (int i = 0; i < hostedControls.Count; i++)
+            {
+                var ctrl = hostedControls[i];
+                var controlName = !string.IsNullOrEmpty(ctrl.Name) ? ctrl.Name : ctrl.GetType().Name;
+                var zIndex = hostControl.Controls.GetChildIndex(ctrl);
+                var visible = ctrl.Visible;
+                var bounds = ctrl.Bounds;
+                var dockStyle = ctrl.Dock;
+
+                // Mark frontend/backend indicators
+                var position = i == 0 ? "[BACK]" : i == hostedControls.Count - 1 ? "[FRONT]" : "[MID]";
+
+                _logger?.LogInformation("[Z-ORDER-DIAG] {Position} Index={ZIndex} | Name={ControlName} | Visible={Visible} | Dock={DockStyle} | Bounds={Bounds}",
+                    position, zIndex, controlName, visible, dockStyle, bounds);
+            }
+
+            _logger?.LogInformation("[Z-ORDER-DIAG] ======== Z-ORDER SNAPSHOT END ========");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[Z-ORDER-DIAG] Failed to log z-order");
+        }
+    }
+
+    /// <summary>
+    /// Forces a full refresh of the DockingManager HostControl and all docked panels.
+    /// Use this if no paint logs appear for specific panels.
+    /// </summary>
+    private void ForceRefreshDockingPanels()
+    {
+        if (_dockingManager == null)
+        {
+            _logger?.LogWarning("[PAINT-DIAG] Cannot force refresh: DockingManager is null");
+            return;
+        }
+
+        try
+        {
+            var hostControl = _dockingManager.HostControl;
+            if (hostControl != null)
+            {
+                hostControl.Invalidate(true);
+                _logger?.LogDebug("[PAINT-DIAG] Forced HostControl invalidation");
+            }
+
+            var controlsObj = _dockingManager.Controls;
+            if (controlsObj != null && controlsObj is System.Collections.ICollection coll)
+            {
+                foreach (var item in coll)
+                {
+                    if (item is Control panel && !panel.IsDisposed && panel.Visible)
+                    {
+                        panel.Invalidate(true);
+                        var panelName = !string.IsNullOrEmpty(panel.Name) ? panel.Name : panel.GetType().Name;
+                        _logger?.LogDebug("[PAINT-DIAG] Forced invalidation for panel '{PanelName}'", panelName);
+                    }
+                }
+            }
+
+            _logger?.LogInformation("[PAINT-DIAG] Force refresh completed");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[PAINT-DIAG] Failed to force refresh docking panels");
+        }
+    }
+
+    /// <summary>
+    /// Diagnostic method: Temporarily switches theme to test visibility.
+    /// Why? Office2019 themes can make tab strips invisible or panels transparent in certain configs.
+    /// Usage: Call with "Office2016Colorful" to switch from active Office2019 theme for comparison.
+    /// </summary>
+    public void DiagnosticSwitchTheme(string themeName)
+    {
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            _logger?.LogWarning("[THEME-DIAG] Cannot switch theme: themeName is null/empty");
+            return;
+        }
+
+        if (IsDisposed)
+        {
+            _logger?.LogWarning("[THEME-DIAG] Cannot switch theme: form is disposed");
+            return;
+        }
+
+        try
+        {
+            var currentTheme = _themeService?.CurrentTheme ?? "Unknown";
+
+            _logger?.LogWarning("[THEME-DIAG] Switching theme from {CurrentTheme} to {NewTheme} for visibility testing",
+                currentTheme, themeName);
+
+            // Apply new theme using ThemeColors service
+            AppThemeColors.ApplyTheme(this, themeName);
+
+            // Force refresh all panels to apply theme
+            ForceRefreshDockingPanels();
+
+            // Log z-order after theme switch to check if visibility improves
+            DiagnosticLogZOrder();
+
+            _logger?.LogWarning("[THEME-DIAG] Theme switch complete. Check logs for z-order and paint events. Switch back to {OriginalTheme} when done.",
+                currentTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[THEME-DIAG] Failed to switch theme to {ThemeName}", themeName);
         }
     }
 
@@ -1680,7 +2069,7 @@ public partial class MainForm
 
             foreach (var item in coll)
             {
-                if (item is not Control panel || panel == null || panel.IsDisposed)
+                if (item is not Control panel || panel.IsDisposed)
                 {
                     continue;
                 }
@@ -1753,6 +2142,14 @@ public partial class MainForm
     private void EnsureDockingZOrder()
     {
         EnsureDockingZOrder(validateHosting: true);
+    }
+
+    private sealed class DockingHostContainer : ContainerControl
+    {
+        public DockingHostContainer()
+        {
+            BackColor = SystemColors.Control;
+        }
     }
 
 }

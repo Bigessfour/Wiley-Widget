@@ -178,17 +178,15 @@ namespace WileyWidget.WinForms.Forms
                 }
                 catch (Exception serviceEx)
                 {
-                    _logger.LogWarning(serviceEx, "Service call failed — falling back to sample data");
+                    _logger.LogWarning(serviceEx, "Service call failed — using empty dashboard data");
                     _aiLoggingService.LogError("Dashboard Service Failure", serviceEx);
-                    dashboardItems = GetSampleDashboardData();
-                    ErrorMessage = "Live data unavailable — showing sample data";
+                    dashboardItems = Enumerable.Empty<DashboardItem>();
                 }
 
                 if (dashboardItems == null || !dashboardItems.Any())
                 {
-                    _logger.LogWarning("No data returned — using sample data");
-                    dashboardItems = GetSampleDashboardData();
-                    ErrorMessage ??= "No live data — displaying sample dashboard";
+                    _logger.LogInformation("No data returned — keeping dashboard empty until production data is available");
+                    dashboardItems = Enumerable.Empty<DashboardItem>();
                 }
 
                 ProcessDashboard(dashboardItems);
@@ -211,15 +209,7 @@ namespace WileyWidget.WinForms.Forms
                 _aiLoggingService.LogError("Dashboard Load Critical", ex);
                 ErrorMessage = $"Load failed: {ex.Message}";
 
-                try
-                {
-                    ProcessDashboard(GetSampleDashboardData());
-                    ErrorMessage += " — showing sample data as fallback";
-                }
-                catch (Exception fallbackEx)
-                {
-                    _logger.LogError(fallbackEx, "Even sample fallback failed");
-                }
+                ProcessDashboard(Enumerable.Empty<DashboardItem>());
             }
             finally
             {
@@ -227,49 +217,10 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
-        private IEnumerable<DashboardItem> GetSampleDashboardData()
-        {
-            var now = DateTime.Now;
-            return new[]
-            {
-                new DashboardItem { Title = "Total Budget", Value = "1250000.00", Category = "budget", Description = "Annual allocated budget" },
-                new DashboardItem { Title = "Total Actual", Value = "987500.50", Category = "actual", Description = "YTD spending" },
-                new DashboardItem { Title = "Variance", Value = "262499.50", Category = "variance", Description = "Remaining (positive = under)" },
-                new DashboardItem { Title = "Active Accounts", Value = "42", Category = "accounts", Description = "Live municipal accounts" },
-                new DashboardItem { Title = "Departments", Value = "8", Category = "departments", Description = "Tracked departments" },
-                new DashboardItem { Title = "Recent Activity", Value = "Budget entry approved", Category = "activity", Description = "Finance dept" },
-                new DashboardItem { Title = "Recent Activity", Value = "Invoice #1234 processed", Category = "activity", Description = "Accounts payable" },
-                new DashboardItem { Title = "Recent Activity", Value = "New account activated", Category = "activity", Description = "Customer #5678" },
-                new DashboardItem { Title = "Recent Activity", Value = "Report generated", Category = "activity", Description = "Monthly summary" }
-            };
-        }
-
         private void PopulateMonthlyRevenueData()
         {
-            // Populate with last 12 months of sample data
-            // In production, this would come from a repository query
             MonthlyRevenueData.Clear();
-
-            var now = DateTime.Now;
-            var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-            for (int i = 11; i >= 0; i--)
-            {
-                var month = now.AddMonths(-i);
-                var monthName = monthNames[month.Month - 1];
-                var baseAmount = 100000m + (i * 15000m);  // Increasing trend
-                var variance = (decimal)new Random().Next(-5000, 5000);
-
-                MonthlyRevenueData.Add(new MonthlyRevenue
-                {
-                    Month = monthName,
-                    Amount = baseAmount,
-                    Budget = baseAmount + 25000m,
-                    Variance = variance
-                });
-            }
-
-            _logger.LogDebug("PopulateMonthlyRevenueData: {Count} months loaded", MonthlyRevenueData.Count);
+            _logger.LogDebug("PopulateMonthlyRevenueData: no monthly revenue rows loaded.");
         }
 
         public async Task InitializeAsync(CancellationToken cancellationToken = default)

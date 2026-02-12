@@ -204,6 +204,13 @@ namespace WileyWidget.WinForms
 
             System.Windows.Forms.Application.ThreadException += static (s, e) =>
             {
+                if (e.Exception is NullReferenceException &&
+                    e.Exception.StackTrace?.Contains("Syncfusion.Windows.Forms.Tools.DockingManager.HostControl_Paint", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    Log.Warning(e.Exception, "[SYNCFUSION] Ignored known DockingManager HostControl paint null-reference exception");
+                    return;
+                }
+
                 Log.Error(e.Exception, "[CRITICAL] Unhandled UI thread exception - application will terminate with code -1");
                 // Log full exception details before showing dialog
                 var ex = e.Exception;
@@ -241,14 +248,7 @@ namespace WileyWidget.WinForms
 
                 _services = host.Services;
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Services assigned to _services");
-
-                // Diagnostic: List all registered services
-                try
-                {
-                    var serviceDescriptors = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IEnumerable<Microsoft.Extensions.DependencyInjection.ServiceDescriptor>>(host.Services);
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Total services registered: {(serviceDescriptors?.Count() ?? 0)}");
-                }
-                catch { }
+                Log.Information("ServiceProvider created successfully (services registered via ConfigureServices)");
 
                 // Syncfusion license was registered earlier (before splash) to ensure
                 // license is applied before any Syncfusion controls are instantiated.

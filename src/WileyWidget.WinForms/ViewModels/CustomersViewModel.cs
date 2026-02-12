@@ -25,17 +25,17 @@ public partial class CustomersViewModel : ViewModelBase, ICustomersViewModel
     private IUtilityCustomerRepository? _repo;
     private IQuickBooksService? _quickBooksService;
 
-    /// <summary>
-    /// Sample customer population is disabled in production builds.
-    /// This method clears any temporary collections and logs a warning instead of populating hard-coded sample data.
-    /// </summary>
-    private void LoadSampleData()
+    private void SetEmptyCustomersState()
     {
-        _logger?.LogWarning("LoadSampleData called: sample customer data disabled. Ensure ICustomersRepository is configured to provide production data.");
-
         Customers.Clear();
-        ErrorMessage = "Production customer data unavailable; sample data disabled.";
-        StatusText = "No production customers loaded";
+        FilteredCustomers.Clear();
+        TotalCustomers = 0;
+        ActiveCustomers = 0;
+        ResidentialCustomers = 0;
+        CommercialCustomers = 0;
+        TotalOutstandingBalance = 0m;
+        CustomersWithBalance = 0;
+        StatusText = "No customers available yet.";
     }
 
     [ObservableProperty]
@@ -212,13 +212,9 @@ public partial class CustomersViewModel : ViewModelBase, ICustomersViewModel
         {
             _logger?.LogError(ex, "Failed to load customers");
 
-            // Fallback to sample data
-            LoadSampleData();
-            ApplyFilters();
-            UpdateSummaries();
-
-            ErrorMessage = $"Failed to load customers: {ex.Message}. Showing sample data.";
-            StatusText = "Error loading - showing sample data";
+            SetEmptyCustomersState();
+            ErrorMessage = $"Failed to load customers: {ex.Message}";
+            StatusText = "Error loading customers";
         }
         finally
         {

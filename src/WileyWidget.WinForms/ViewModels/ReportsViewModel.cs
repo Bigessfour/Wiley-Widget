@@ -687,8 +687,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     {
         var dataSources = new Dictionary<string, object>();
 
-        // Generate sample data based on report type
-        // In production, this would come from real services
+        // Prepare report data based on report type
         List<ReportDataItem> previewTx = new();
         if (SelectedReportType == "Budget Comparison")
         {
@@ -713,14 +712,13 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                 switch (SelectedReportType)
                 {
                     case "Budget Summary":
-                        dataSources["BudgetData"] = GenerateSampleBudgetData();
+                        dataSources["BudgetData"] = CreateEmptyBudgetData();
                         break;
                     case "Account List":
-                        dataSources["AccountData"] = GenerateSampleAccountData();
+                        dataSources["AccountData"] = CreateEmptyAccountData();
                         break;
                     case "Monthly Transactions":
-                        // Simulate large dataset and update preview with pagination
-                        var allTx = GenerateSampleTransactionData(500); // larger set for pagination
+                        var allTx = CreateEmptyTransactionData();
                         dataSources["TransactionData"] = allTx;
 
                         // set preview page
@@ -731,10 +729,10 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
                         break;
                     case "Category Breakdown":
-                        dataSources["CategoryData"] = GenerateSampleCategoryData();
+                        dataSources["CategoryData"] = CreateEmptyCategoryData();
                         break;
                     case "Variance Analysis":
-                        dataSources["VarianceData"] = GenerateSampleVarianceData();
+                        dataSources["VarianceData"] = CreateEmptyVarianceData();
                         break;
                 }
             }, cancellationToken).ConfigureAwait(false);
@@ -798,7 +796,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         }
     }
 
-    #region Sample Data Generation (Replace with real service calls in production)
+    #region Empty Data Helpers
 
     private DataSet BuildBudgetComparisonDataSet(IEnumerable<BudgetEntry> entries)
     {
@@ -857,33 +855,28 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         return ds;
     }
 
-    private List<BudgetSummaryItem> GenerateSampleBudgetData()
+    private List<BudgetSummaryItem> CreateEmptyBudgetData()
     {
-        _logger.LogWarning("GenerateSampleBudgetData called: sample data disabled. Returning empty dataset.");
         return new List<BudgetSummaryItem>();
     }
 
-    private List<AccountItem> GenerateSampleAccountData()
+    private List<AccountItem> CreateEmptyAccountData()
     {
-        _logger.LogWarning("GenerateSampleAccountData called: sample data disabled. Returning empty account list.");
         return new List<AccountItem>();
     }
 
-    private List<TransactionItem> GenerateSampleTransactionData(int count = 50)
+    private List<TransactionItem> CreateEmptyTransactionData()
     {
-        _logger.LogWarning("GenerateSampleTransactionData called: sample data disabled. Returning empty transaction list.");
         return new List<TransactionItem>();
     }
 
-    private List<CategoryBreakdownItem> GenerateSampleCategoryData()
+    private List<CategoryBreakdownItem> CreateEmptyCategoryData()
     {
-        _logger.LogWarning("GenerateSampleCategoryData called: sample data disabled. Returning empty category list.");
         return new List<CategoryBreakdownItem>();
     }
 
-    private List<VarianceItem> GenerateSampleVarianceData()
+    private List<VarianceItem> CreateEmptyVarianceData()
     {
-        _logger.LogWarning("GenerateSampleVarianceData called: sample data disabled. Returning empty variance list.");
         return new List<VarianceItem>();
     }
 

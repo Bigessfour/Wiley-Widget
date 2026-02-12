@@ -747,6 +747,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         });
 
         _budgetGrid.CurrentCellActivated += BudgetGrid_CurrentCellActivated;
+        _budgetGrid.FilterChanging += BudgetGrid_FilterChanging;
 
         // Set AutoGenerateColumns explicitly to false
         _budgetGrid.AutoGenerateColumns = false;
@@ -1109,6 +1110,43 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     }
 
     /// <summary>
+    /// Cancels invalid relational filters on string columns to prevent expression runtime errors.
+    /// </summary>
+    private void BudgetGrid_FilterChanging(object? sender, FilterChangingEventArgs e)
+    {
+        if (e?.Column?.MappingName == null)
+        {
+            return;
+        }
+
+        var isStringColumn =
+            e.Column.MappingName == "AccountNumber" ||
+            e.Column.MappingName == "AccountName" ||
+            e.Column.MappingName == "DepartmentName" ||
+            e.Column.MappingName == "EntityName" ||
+            e.Column.MappingName == "FundTypeDescription";
+
+        if (!isStringColumn)
+        {
+            return;
+        }
+
+        var hasRelationalPredicate = e.FilterPredicates.Any(p =>
+            p.FilterType == Syncfusion.Data.FilterType.GreaterThan ||
+            p.FilterType == Syncfusion.Data.FilterType.GreaterThanOrEqual ||
+            p.FilterType == Syncfusion.Data.FilterType.LessThan ||
+            p.FilterType == Syncfusion.Data.FilterType.LessThanOrEqual);
+
+        if (!hasRelationalPredicate)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        Logger.LogDebug("BudgetPanel: Cancelled invalid relational filter on string column {Column}", e.Column.MappingName);
+    }
+
+    /// <summary>
     /// Applies theme to all controls.
     /// </summary>
     private void ApplyTheme(string theme)
@@ -1189,24 +1227,26 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         BindViewModel();
 
         // Auto-load budget data for the current fiscal year (similar to DashboardPanel pattern)
-        // Defer to background thread to avoid blocking UI initialization
-        _ = Task.Run(async () =>
+        // Keep this on the UI thread to avoid cross-thread data-binding updates.
+        _ = AutoLoadBudgetDataAsync();
+    }
+
+    private async Task AutoLoadBudgetDataAsync()
+    {
+        try
         {
-            try
+            await Task.Delay(100).ConfigureAwait(true); // Allow UI to settle after control creation
+            if (!IsDisposed && ViewModel?.LoadBudgetsCommand != null)
             {
-                await Task.Delay(100); // Allow UI to settle after control creation
-                if (!IsDisposed && ViewModel?.LoadBudgetsCommand != null)
-                {
-                    Logger.LogInformation("BudgetPanel: Auto-loading budget data for fiscal year {Year}", ViewModel.SelectedFiscalYear);
-                    await ViewModel.LoadBudgetsCommand.ExecuteAsync(null).ConfigureAwait(true);
-                    Logger.LogInformation("BudgetPanel: Auto-load completed");
-                }
+                Logger.LogInformation("BudgetPanel: Auto-loading budget data for fiscal year {Year}", ViewModel.SelectedFiscalYear);
+                await ViewModel.LoadBudgetsCommand.ExecuteAsync(null).ConfigureAwait(true);
+                Logger.LogInformation("BudgetPanel: Auto-load completed");
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "BudgetPanel: Failed to auto-load budget data");
-            }
-        });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "BudgetPanel: Failed to auto-load budget data");
+        }
     }
 
     /// <summary>
@@ -2300,6 +2340,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             {
                 _budgetGrid.QueryCellStyle -= BudgetGrid_QueryCellStyle;
                 _budgetGrid.CurrentCellActivated -= BudgetGrid_CurrentCellActivated;
+                _budgetGrid.FilterChanging -= BudgetGrid_FilterChanging;
             }
 
             // Dispose BindingSource

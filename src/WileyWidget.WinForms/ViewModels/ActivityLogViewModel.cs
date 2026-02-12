@@ -95,7 +95,7 @@ namespace WileyWidget.WinForms.ViewModels
         #region Data Loading
 
         /// <summary>
-        /// Loads activity entries from the repository or generates sample data.
+        /// Loads activity entries from the repository or creates an empty state if unavailable.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token.</param>
         public async Task LoadActivityAsync(CancellationToken cancellationToken = default)
@@ -133,15 +133,14 @@ namespace WileyWidget.WinForms.ViewModels
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Failed to load activity from repository, using sample data");
-                        entries = GenerateSampleActivityData();
+                        _logger.LogWarning(ex, "Failed to load activity from repository; using empty activity list");
+                        entries = CreateEmptyActivityData();
                     }
                 }
                 else
                 {
-                    // No repository available, generate sample data for demo
-                    _logger.LogInformation("No activity log repository configured, generating sample data");
-                    entries = GenerateSampleActivityData();
+                    _logger.LogInformation("No activity log repository configured; using empty activity list");
+                    entries = CreateEmptyActivityData();
                 }
 
                 ActivityEntries.Clear();
@@ -171,13 +170,10 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Generates sample activity data for demonstration purposes.
-        /// Sample generation is disabled in production; this returns an empty collection and logs a warning.
+        /// Creates an empty activity collection when no repository data is available.
         /// </summary>
-        /// <returns>Collection of sample activity entries.</returns>
-        private ObservableCollection<ActivityLog> GenerateSampleActivityData()
+        private ObservableCollection<ActivityLog> CreateEmptyActivityData()
         {
-            _logger.LogWarning("GenerateSampleActivityData called: sample activity generation disabled. Ensure activity log repository is configured.");
             return new ObservableCollection<ActivityLog>();
         }
 

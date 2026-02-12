@@ -191,7 +191,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
             _logger.LogInformation("Initializing QuickBooksViewModel");
 
             await CheckConnectionAsync(cancellationToken);
-            LoadSampleSyncHistory(); // Load sample data for demonstration
+            ResetSyncHistoryState();
 
             // Start connection polling (every 30 seconds)
             StartConnectionPolling();
@@ -991,20 +991,18 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
 
     #endregion
 
-    #region Sample Data
+    #region Empty-State Helpers
 
     /// <summary>
-    /// Sample sync history population is disabled in production.
-    /// Clears any temporary history and logs a warning instead of adding hard-coded records.
+    /// Resets sync history to an empty state when no production history source is configured.
     /// </summary>
-    private void LoadSampleSyncHistory()
+    private void ResetSyncHistoryState()
     {
-        _logger.LogWarning("LoadSampleSyncHistory called: sample data disabled. Ensure QuickBooks sync history is loaded from production sources.");
+        _logger.LogInformation("ResetSyncHistoryState called: no persisted QuickBooks history source is configured.");
         SyncHistory.Clear();
         ApplyHistoryFilter();
         UpdateSummaries();
-        ErrorMessage = "Production QuickBooks data unavailable; sample history disabled.";
-        StatusText = "No QuickBooks history loaded";
+        StatusText = "No QuickBooks history loaded yet";
     }
 
     #endregion

@@ -352,22 +352,41 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             // Apply theme to form
             SfSkinManager.SetVisualStyle(form, "Office2019Colorful");
 
+            form.CreateControl();
             var _ = form.Handle;
-            // Initialize chrome to ensure ThemeToggle exists
-            form.CallInitializeChrome();
+            // Initialize chrome through normal lifecycle
             form.CallOnLoad();
             form.Show();
+            form.PerformLayout();
+            Application.DoEvents();
 
-            // Pre-assert: Theme toggle button exists
+            // Pre-assert: Theme control exists (legacy ThemeToggle button or newer ThemeCombo selector)
             var findMethod = typeof(MainForm).GetMethod("FindToolStripItem", BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(Control), typeof(string) }, null)!;
-            var themeToggle = findMethod.Invoke(form, new object[] { form, "ThemeToggle" }) as ToolStripItem;
-            themeToggle.Should().NotBeNull("Theme toggle button should be present after OnLoad");
+            var themeControl = findMethod.Invoke(form, new object[] { form, "ThemeToggle" }) as ToolStripItem
+                ?? findMethod.Invoke(form, new object[] { form, "ThemeCombo" }) as ToolStripItem;
+            themeControl.Should().NotBeNull("Theme control should be present after OnLoad");
 
             // Act: Toggle theme
             form.ToggleTheme();
+            Application.DoEvents();
 
-            // Assert: after ThemeChanged event, button text updates to Light Mode (since we switched to Office2019Dark)
-            themeToggle!.Text.Should().Match("*Light*" , "Theme toggle text should reflect new theme state");
+            var activeThemeControl = findMethod.Invoke(form, new object[] { form, "ThemeToggle" }) as ToolStripItem
+                ?? findMethod.Invoke(form, new object[] { form, "ThemeCombo" }) as ToolStripItem
+                ?? themeControl;
+
+            // Assert: after ThemeChanged event, UI reflects Office2019Dark
+            if (string.Equals(activeThemeControl!.Name, "ThemeToggle", StringComparison.OrdinalIgnoreCase))
+            {
+                activeThemeControl.Text.Should().Match("*Light*", "Theme toggle text should reflect new theme state");
+            }
+            else if (string.Equals(activeThemeControl.Name, "ThemeCombo", StringComparison.OrdinalIgnoreCase))
+            {
+                activeThemeControl.Text.Should().Be("Office2019Dark", "Theme combo selection should reflect new theme state");
+            }
+            else
+            {
+                throw new Xunit.Sdk.XunitException($"Unexpected theme control name '{activeThemeControl.Name}'");
+            }
 
             form.Dispose();
         }

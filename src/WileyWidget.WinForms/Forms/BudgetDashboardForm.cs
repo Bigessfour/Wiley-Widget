@@ -409,6 +409,9 @@ namespace WileyWidget.WinForms.Forms
             grid.AllowSorting = true;
             grid.AllowFiltering = true;
 
+            // CRITICAL FIX: Prevent relational operators on string columns to avoid InvalidOperationException
+            grid.FilterChanging += DetailsGrid_FilterChanging;
+
             // Bind directly to DepartmentSummaries from the view model
             try
             {
@@ -437,6 +440,44 @@ namespace WileyWidget.WinForms.Forms
             catch { /* Older Syncfusion versions may not support unbound expressions; ignore */ }
 
             _logger?.LogDebug("SfDataGrid configured with 5 columns: Category, Budgeted, Actual, Variance, Status");
+        }
+
+        /// <summary>
+        /// Prevents invalid relational filters on string columns to fix System.InvalidOperationException:
+        /// "The binary operator GreaterThan is not defined for the types 'System.String' and 'System.String'"
+        /// </summary>
+        private void DetailsGrid_FilterChanging(object? sender, Syncfusion.WinForms.DataGrid.Events.FilterChangingEventArgs e)
+        {
+            if (e?.Column?.MappingName == null)
+            {
+                return;
+            }
+
+            // String columns that should not allow relational comparison operators
+            var isStringColumn =
+                e.Column.MappingName == "DepartmentName" ||
+                e.Column.MappingName == "Status";  // Status is unbound column with string result
+
+            if (!isStringColumn)
+            {
+                return;
+            }
+
+            // Check if any predicate uses relational operators (GreaterThan, LessThan, etc.)
+            var hasRelationalPredicate = e.FilterPredicates.Any(p =>
+                p.FilterType == Syncfusion.Data.FilterType.GreaterThan ||
+                p.FilterType == Syncfusion.Data.FilterType.GreaterThanOrEqual ||
+                p.FilterType == Syncfusion.Data.FilterType.LessThan ||
+                p.FilterType == Syncfusion.Data.FilterType.LessThanOrEqual);
+
+            if (!hasRelationalPredicate)
+            {
+                return;
+            }
+
+            // Cancel the filter and log the prevention
+            e.Cancel = true;
+            _logger?.LogDebug("BudgetDashboardForm: Cancelled invalid relational filter on string column {Column}", e.Column.MappingName);
         }
 
         // Lightweight model used for initial population in the dashboard preview

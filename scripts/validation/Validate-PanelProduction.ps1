@@ -33,7 +33,7 @@
     Requires: PowerShell 7.5.4+, .NET 10, Syncfusion WinForms
 #>
 
-#Requires -Version 7.5
+#Requires -Version 7.5.4
 
 [CmdletBinding()]
 param(

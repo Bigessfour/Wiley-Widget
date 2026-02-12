@@ -59,7 +59,7 @@ Execute steps below sequentially one by one in the order they are listed.
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -67,13 +67,13 @@ NuGet packages changes:
 
 Other changes:
 
-- Verify WinForms / .NET 9 compatibility after framework switch.
+- Verify WinForms / .NET 10 compatibility after framework switch.
 
 #### src\WileyWidget.Models\WileyWidget.Models.csproj
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -90,7 +90,7 @@ Other changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -101,7 +101,7 @@ NuGet packages changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -116,7 +116,7 @@ Other changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -135,7 +135,7 @@ Other changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -154,7 +154,7 @@ Other changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows10.0.26100.0` (keep platform version pin as-is if required).
+- Target framework should be `net10.0-windows10.0.26100.0` (keep platform version pin as-is if required).
 
 NuGet packages changes:
 
@@ -165,7 +165,7 @@ NuGet packages changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 
@@ -175,7 +175,7 @@ NuGet packages changes:
 
 Project properties changes:
 
-- Target framework should be changed from `net9.0-windows10.0.26100.0` to `net10.0-windows`.
+- Target framework should be `net10.0-windows`.
 
 NuGet packages changes:
 

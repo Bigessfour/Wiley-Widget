@@ -19,7 +19,7 @@ param(
     [string]$LogFile = "${PSScriptRoot}\\logs\\kill-dotnet.log"
 )
 
-#Requires -Version 7.0
+#Requires -Version 7.5.4
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"

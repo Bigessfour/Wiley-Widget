@@ -414,6 +414,8 @@ public partial class MainForm
 
                 _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
                 InitializeSyncfusionDocking();
+                AdjustDockingHostBounds();
+                PerformLayout();
                 ConfigureDockingManagerChromeLayout();
                 _syncfusionDockingInitialized = true;
             }).ConfigureAwait(true);
@@ -424,6 +426,8 @@ public partial class MainForm
 
             _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
             InitializeSyncfusionDocking();
+            AdjustDockingHostBounds();
+            PerformLayout();
             ConfigureDockingManagerChromeLayout();
             _syncfusionDockingInitialized = true;
         }

@@ -215,8 +215,7 @@ namespace WileyWidget.WinForms.ViewModels
             ExportDataCommand = new RelayCommand(ExportData);
             ResetFiltersCommand = new RelayCommand(ResetFilters);
 
-            // Sample population disabled: do not load synthetic utility budget data here
-            _logger.LogWarning("ChartViewModel constructor: sample population disabled. Ensure repositories provide real data.");
+            _logger.LogDebug("ChartViewModel constructor initialized with repository-backed data sources.");
 
             _logger.LogInformation("ChartViewModel constructed for FY {FiscalYear}", SelectedYear);
         }
@@ -231,8 +230,7 @@ namespace WileyWidget.WinForms.ViewModels
                 new FakeBudgetRepository(),
                 null)
         {
-            // Design-time/sample population disabled in production builds
-            _logger.LogWarning("ChartViewModel default constructor: sample population disabled.");
+            _logger.LogDebug("ChartViewModel default constructor initialized.");
         }
 
         #endregion
@@ -318,9 +316,9 @@ namespace WileyWidget.WinForms.ViewModels
                 }
                 else
                 {
-                    _logger.LogWarning("Budget repository returned null analysis - generating sample data");
-                    await GenerateSampleDataAsync(yearToLoad, categoryToLoad, token);
-                    StatusText = "Displaying sample data (no repository data available)";
+                    _logger.LogInformation("Budget repository returned no analysis data; keeping chart collections empty.");
+                    ClearChartData();
+                    StatusText = "No chart data available yet";
                 }
 
                 _logger.LogInformation("Chart data loaded successfully: {ChartPoints} data points", ChartData.Count);
@@ -337,16 +335,7 @@ namespace WileyWidget.WinForms.ViewModels
                 ErrorMessage = $"Failed to load charts: {ex.Message}";
                 StatusText = "Error loading data";
 
-                // Fallback to sample data on error
-                try
-                {
-                    await GenerateSampleDataAsync(yearToLoad, categoryToLoad, token);
-                    StatusText = "Displaying sample data (load error)";
-                }
-                catch
-                {
-                    // Suppress secondary errors
-                }
+                ClearChartData();
             }
             finally
             {
@@ -476,25 +465,21 @@ namespace WileyWidget.WinForms.ViewModels
 
         #endregion
 
-        #region Sample Data Generation
+        #region Empty-State Helpers
 
-        /// <summary>
-        /// Generates realistic sample data when repository is unavailable or returns no data.
-        /// </summary>
-        /// <param name="year">Fiscal year for sample data.</param>
-        /// <param name="category">Category filter (currently unused for sample generation).</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        private async Task GenerateSampleDataAsync(int year, string? category, CancellationToken cancellationToken)
+        private void ClearChartData()
         {
-            _logger.LogWarning("GenerateSampleDataAsync called: sample data generation disabled. Ensure budget repository is configured.");
-            // Clear any synthetic data and return immediately
             ChartData.Clear();
             MonthlyRevenueData.Clear();
             PieChartData.Clear();
             LineChartData.Clear();
             DepartmentDetails.Clear();
             AvailableDepartments.Clear();
-            await Task.CompletedTask;
+            DepartmentCount = 0;
+            TotalBudgeted = 0m;
+            TotalActual = 0m;
+            TotalVariance = 0m;
+            VariancePercentage = 0m;
         }
 
         #endregion
@@ -584,18 +569,18 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Loads sample utility budget data with Water, Sewer, Trash, and Apartments departments.
+        /// Resets utility budget chart collections to an empty state.
         /// </summary>
-        private void LoadSampleUtilityBudgetData()
+        private void ResetUtilityBudgetData()
         {
-            _logger.LogWarning("LoadSampleUtilityBudgetData called: sample data disabled. Ensure budget repository is configured for real data.");
+            _logger.LogInformation("ResetUtilityBudgetData called: clearing utility chart data.");
             AvailableDepartments.Clear();
             DepartmentDetails.Clear();
             ChartData.Clear();
             PieChartData.Clear();
             LineChartData.Clear();
             MonthlyRevenueData.Clear();
-            StatusText = "No sample chart data available";
+            StatusText = "No chart data available yet";
             SelectedCategory = "All Categories";
             SelectedDepartment = null;
         }

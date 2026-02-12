@@ -45,6 +45,38 @@ public sealed class SyncfusionThemeFixture : IDisposable
                 var dummyListView = new Syncfusion.WinForms.ListView.SfListView();
                 dummyListView.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
                 dummyListView.Dispose();
+
+                // Create a minimal ribbon/control tree without showing the window to avoid NC-paint paths.
+                using var warmupForm = new Form
+                {
+                    ShowInTaskbar = false,
+                    WindowState = FormWindowState.Minimized,
+                    StartPosition = FormStartPosition.Manual,
+                    Left = -32000,
+                    Top = -32000,
+                    Width = 300,
+                    Height = 200
+                };
+
+                using var warmupRibbon = new Syncfusion.Windows.Forms.Tools.RibbonControlAdv
+                {
+                    Name = "WarmupRibbon",
+                    Dock = Syncfusion.Windows.Forms.Tools.DockStyleEx.Top,
+                    ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme
+                };
+
+                var warmupTab = new Syncfusion.Windows.Forms.Tools.ToolStripTabItem { Text = "Warmup" };
+                var warmupStrip = new Syncfusion.Windows.Forms.Tools.ToolStripEx { Text = "WarmupStrip" };
+                warmupStrip.Items.Add(new ToolStripButton("Warmup"));
+
+                warmupRibbon.Header.AddMainItem(warmupTab);
+                warmupTab.Panel?.Controls.Add(warmupStrip);
+                warmupForm.Controls.Add(warmupRibbon);
+
+                warmupForm.CreateControl();
+                warmupRibbon.CreateControl();
+                warmupRibbon.PerformLayout();
+                warmupRibbon.Refresh();
             }
             catch (Exception ex)
             {

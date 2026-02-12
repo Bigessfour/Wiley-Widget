@@ -307,7 +307,7 @@ internal class FallbackAccountsRepository : IAccountsRepository
 {
     public Task<IReadOnlyList<WileyWidget.Models.MunicipalAccount>> GetAllAccountsAsync(CancellationToken cancellationToken = default)
     {
-        // Sample/fallback data disabled. Return empty list so production data must be provided by repository.
+        // Return empty list so production data is provided by repository.
         _ = cancellationToken; // explicit discard
         return Task.FromResult<IReadOnlyList<WileyWidget.Models.MunicipalAccount>>(Array.Empty<WileyWidget.Models.MunicipalAccount>());
     }

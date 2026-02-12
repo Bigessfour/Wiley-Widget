@@ -22,10 +22,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Services;
 [Trait("Category", "Integration")]
 [Trait("Category", "AI")]
 [Trait("Category", "Streaming")]
-public class GrokAgentServiceStreamingTests : IDisposable
+public sealed class GrokAgentServiceStreamingTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly MockHttpMessageHandlerBuilder _mockBuilder;
+    private bool _disposed;
 
     public GrokAgentServiceStreamingTests()
     {
@@ -263,7 +264,22 @@ public class GrokAgentServiceStreamingTests : IDisposable
 
     public void Dispose()
     {
-        _serviceProvider?.Dispose();
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _serviceProvider.Dispose();
+        }
+
+        _disposed = true;
     }
 }

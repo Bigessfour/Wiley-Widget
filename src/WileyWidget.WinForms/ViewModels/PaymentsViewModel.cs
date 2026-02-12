@@ -21,6 +21,7 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
     private readonly IPaymentRepository _paymentRepository;
     private readonly ILogger<PaymentsViewModel> _logger;
     private CancellationTokenSource? _cts;
+    private bool _disposed;
 
     [ObservableProperty]
     private ObservableCollection<Payment> _payments = new();
@@ -66,11 +67,10 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
             IsLoading = true;
             StatusMessage = "Loading recent payments...";
 
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
+            var cancellationToken = ReplaceCancellationTokenSource();
 
             // Load the most recent 20 payments by default for better performance
-            var payments = await _paymentRepository.GetRecentAsync(20, _cts.Token);
+            var payments = await _paymentRepository.GetRecentAsync(20, cancellationToken);
 
             Payments.Clear();
             foreach (var payment in payments)
@@ -115,13 +115,12 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
             IsLoading = true;
             StatusMessage = $"Searching for '{SearchText}'...";
 
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
+            var cancellationToken = ReplaceCancellationTokenSource();
 
-            var payments = await _paymentRepository.GetByPayeeAsync(SearchText, _cts.Token);
+            var payments = await _paymentRepository.GetByPayeeAsync(SearchText, cancellationToken);
 
             // Also search by check number
-            var byCheckNumber = await _paymentRepository.GetByCheckNumberAsync(SearchText, _cts.Token);
+            var byCheckNumber = await _paymentRepository.GetByCheckNumberAsync(SearchText, cancellationToken);
             var allResults = payments.Union(byCheckNumber).Distinct().OrderByDescending(p => p.PaymentDate);
 
             Payments.Clear();
@@ -165,10 +164,9 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
             IsLoading = true;
             StatusMessage = $"Filtering by date range...";
 
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
+            var cancellationToken = ReplaceCancellationTokenSource();
 
-            var payments = await _paymentRepository.GetByDateRangeAsync(StartDate.Value, EndDate.Value, _cts.Token);
+            var payments = await _paymentRepository.GetByDateRangeAsync(StartDate.Value, EndDate.Value, cancellationToken);
 
             Payments.Clear();
             foreach (var payment in payments.OrderByDescending(p => p.PaymentDate))
@@ -207,10 +205,9 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
             IsLoading = true;
             StatusMessage = $"Deleting payment {SelectedPayment.CheckNumber}...";
 
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
+            var cancellationToken = ReplaceCancellationTokenSource();
 
-            await _paymentRepository.DeleteAsync(SelectedPayment.Id, _cts.Token);
+            await _paymentRepository.DeleteAsync(SelectedPayment.Id, cancellationToken);
 
             Payments.Remove(SelectedPayment);
             SelectedPayment = null;
@@ -249,9 +246,49 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
         return Payments.Where(p => p.IsCleared).Sum(p => p.Amount);
     }
 
+    private CancellationToken ReplaceCancellationTokenSource()
+    {
+        var newSource = new CancellationTokenSource();
+        var previousSource = Interlocked.Exchange(ref _cts, newSource);
+
+        if (previousSource != null)
+        {
+            try
+            {
+                previousSource.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            previousSource.Dispose();
+        }
+
+        return newSource.Token;
+    }
+
     public void Dispose()
     {
-        _cts?.Cancel();
-        _cts?.Dispose();
+        if (_disposed)
+        {
+            return;
+        }
+
+        var source = Interlocked.Exchange(ref _cts, null);
+
+        if (source != null)
+        {
+            try
+            {
+                source.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            source.Dispose();
+        }
+
+        _disposed = true;
     }
 }

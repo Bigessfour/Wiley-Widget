@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
@@ -13,6 +14,7 @@ internal static class SyncfusionTestBootstrapper
     internal static void Initialize()
     {
         Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "true");
+        RegisterKnownWinFormsExceptionFilters();
 
         try
         {
@@ -51,5 +53,40 @@ internal static class SyncfusionTestBootstrapper
         {
             // Best-effort theme load for tests.
         }
+    }
+
+    private static void RegisterKnownWinFormsExceptionFilters()
+    {
+        try
+        {
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException, false);
+            Application.ThreadException += static (_, e) =>
+            {
+                if (e.Exception is NullReferenceException && IsKnownSyncfusionPaintException(e.Exception))
+                {
+                    Console.WriteLine($"[TEST-BOOTSTRAP] Ignored known Syncfusion paint exception: {e.Exception.Message}");
+                    return;
+                }
+
+                ExceptionDispatchInfo.Capture(e.Exception).Throw();
+            };
+        }
+        catch
+        {
+            // Best-effort safeguard for test-host WinForms paint exceptions.
+        }
+    }
+
+    private static bool IsKnownSyncfusionPaintException(Exception exception)
+    {
+        var stackTrace = exception.StackTrace;
+        if (string.IsNullOrWhiteSpace(stackTrace))
+        {
+            return false;
+        }
+
+        return stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanelThemeRenderer.DrawFrame", StringComparison.OrdinalIgnoreCase)
+            || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanel.OnNcPaint", StringComparison.OrdinalIgnoreCase)
+            || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.DockingManager.HostControl_Paint", StringComparison.OrdinalIgnoreCase);
     }
 }

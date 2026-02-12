@@ -616,16 +616,25 @@ public partial class MainForm
     {
         if (_layoutSerializer == null)
         {
-            var layoutPath = Path.Combine(
+            var layoutDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "WileyWidget", "Layouts", "DockingLayout");
+                "WileyWidget", "Layouts");
+            var layoutPath = Path.Combine(layoutDirectory, "DockingLayout.bin");
 
-            Directory.CreateDirectory(Path.GetDirectoryName(layoutPath)!);
+            Directory.CreateDirectory(layoutDirectory);
+
+            _layoutSerializerStream?.Dispose();
+            _layoutSerializerStream = new FileStream(
+                layoutPath,
+                FileMode.OpenOrCreate,
+                FileAccess.ReadWrite,
+                FileShare.Read);
+            _layoutSerializerStream.Position = 0;
 
             // Create serializer with BinaryFmtStream mode (avoids FontStyle serialization issues)
             // XMLFile mode causes SerializationException with System.Drawing.FontStyle not in KnownTypes
             // BinaryFmtStream is consistent with DockingLayoutManager and handles all .NET types
-            _layoutSerializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, layoutPath)
+            _layoutSerializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, _layoutSerializerStream)
             {
                 Enabled = true // Explicitly enable serialization/deserialization
             };
@@ -638,11 +647,36 @@ public partial class MainForm
 
             _logger?.LogDebug("[MAINFORM] AppStateSerializer initialized: Mode={Mode}, Path={Path}, Enabled={Enabled}",
                 _layoutSerializer.SerializationMode,
-                _layoutSerializer.SerializationPath,
+                layoutPath,
                 _layoutSerializer.Enabled);
         }
 
         return _layoutSerializer;
+    }
+
+    private void ResetLayoutSerializerStream(bool truncate)
+    {
+        if (_layoutSerializerStream == null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_layoutSerializerStream.CanSeek)
+            {
+                if (truncate && _layoutSerializerStream.CanWrite)
+                {
+                    _layoutSerializerStream.SetLength(0);
+                }
+
+                _layoutSerializerStream.Position = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[MAINFORM] Failed to reset layout serializer stream");
+        }
     }
 
     /// <summary>
@@ -703,10 +737,13 @@ public partial class MainForm
             // Serialize DockingManager state with error handling for theme/font serialization issues
             try
             {
+                ResetLayoutSerializerStream(truncate: true);
+
                 serializer.SerializeObject(LayoutSerializerKey, _dockingManager);
 
                 // Persist immediately to disk
                 serializer.PersistNow();
+                _layoutSerializerStream?.Flush(true);
 
                 _logger?.LogInformation("[MAINFORM] Layout saved successfully to {Path}",
                     serializer.SerializationPath);
@@ -757,6 +794,14 @@ public partial class MainForm
             object? layoutState = null;
             try
             {
+                ResetLayoutSerializerStream(truncate: false);
+
+                if (_layoutSerializerStream != null && _layoutSerializerStream.CanRead && _layoutSerializerStream.Length == 0)
+                {
+                    _logger?.LogInformation("[MAINFORM] No saved layout stream data found, using default");
+                    return;
+                }
+
                 layoutState = serializer.DeserializeObject(LayoutSerializerKey);
             }
             catch (ArgumentException argEx) when (argEx.Message.Contains("Office2019Colorful") || argEx.Message.Contains("was not found"))
@@ -794,6 +839,12 @@ public partial class MainForm
                     _logger?.LogError(argEx, "[MAINFORM] TreeViewAdv theme parsing error in LoadDockState");
                     MessageBox.Show("Layout theme incompatibility detected. Using default layout.",
                         "Layout Load Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                catch (Exception layoutEx)
+                {
+                    // Catch Syncfusion's internal layout validation failures (e.g., "The layout you tried to load is not valid")
+                    _logger?.LogWarning(layoutEx, "[MAINFORM] Saved layout invalid or corrupted - falling back to default layout");
+                    // Let Syncfusion fall back to default automatically
                 }
             }
             else
@@ -853,6 +904,7 @@ public partial class MainForm
                 if (_layoutSerializer != null)
                 {
                     _layoutSerializer.FlushSerializer();
+                    ResetLayoutSerializerStream(truncate: true);
                     _logger?.LogDebug("[MAINFORM] Persisted layout state flushed");
                 }
 

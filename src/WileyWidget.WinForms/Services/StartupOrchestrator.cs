@@ -268,12 +268,15 @@ namespace WileyWidget.WinForms.Services
 
         public async Task RunApplicationAsync(IServiceProvider serviceProvider)
         {
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator.RunApplicationAsync ENTRY");
             _logger.LogInformation("Starting WinForms application main loop...");
 
             // Create a scope to resolve scoped services like MainForm
             var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
             using var scope = scopeFactory.CreateScope();
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Resolving MainForm from DI...");
             var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: MainForm resolved successfully");
 
             // Store reference to MainFormInstance for programmatic access
             Program.MainFormInstance = mainForm;
@@ -301,7 +304,12 @@ namespace WileyWidget.WinForms.Services
                 mainForm.Shown += (_, __) => _ = ValidateServicesAsync(serviceProvider);
             }
 
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Calling Application.Run(mainForm) - entering message loop");
+            _logger.LogInformation("Entering WinForms message loop with Application.Run()");
             System.Windows.Forms.Application.Run(mainForm);
+
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Application.Run() returned - message loop exited");
+            _logger.LogInformation("Application.Run() returned - application exiting");
 
             await Task.CompletedTask;
         }

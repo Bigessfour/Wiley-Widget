@@ -240,9 +240,9 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             // Check if repository returned any data
             if (accountsList == null || !accountsList.Any())
             {
-                _logger.LogInformation("Repository returned no data - falling back to sample data");
-                LoadSampleData();
-                StatusText = "No database records found. Showing sample data.";
+                _logger.LogInformation("Repository returned no account data; keeping Accounts view empty.");
+                SetEmptyAccountsState();
+                StatusText = "No accounts available yet.";
                 return;
             }
 
@@ -283,12 +283,10 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load municipal accounts - falling back to sample data");
-            ErrorMessage = $"Failed to load from database. Showing sample data. Error: {ex.Message}";
-            StatusText = "Error loading accounts - showing sample data";
-
-            // Fallback to sample data for better UX
-            LoadSampleData();
+            _logger.LogError(ex, "Failed to load municipal accounts - using empty state");
+            ErrorMessage = $"Failed to load accounts: {ex.Message}";
+            StatusText = "Error loading accounts";
+            SetEmptyAccountsState();
         }
         finally
         {
@@ -474,18 +472,16 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         _logger.LogDebug("Summaries updated - Total: {Total:C}, Active: {Active}", TotalBalance, ActiveAccountCount);
     }
 
-    /// <summary>
-    /// Sample account population is disabled in production builds.
-    /// Clears any temporary collections and logs a warning instead of populating hard-coded sample data.
-    /// </summary>
-    private void LoadSampleData()
+    private void SetEmptyAccountsState()
     {
-        // Sample population removed — production repositories must provide account data.
-        _logger.LogWarning("LoadSampleData called: sample account data disabled. Ensure IAccountsRepository is configured to provide production data.");
-
         Accounts.Clear();
-        ErrorMessage = "Production account data unavailable; sample data disabled.";
-        StatusText = "No production accounts loaded";
+        TotalBalance = 0m;
+        ActiveAccountCount = 0;
+
+        if (string.IsNullOrWhiteSpace(StatusText))
+        {
+            StatusText = "No accounts available yet.";
+        }
     }
 
     // New: CRUD RelayCommands with CanExecute for Edit/Delete
@@ -665,8 +661,19 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         {
             if (disposing)
             {
-                _loadCancellationSource?.Cancel();
-                _loadCancellationSource?.Dispose();
+                var source = Interlocked.Exchange(ref _loadCancellationSource, null);
+                if (source != null)
+                {
+                    try
+                    {
+                        source.Cancel();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
+
+                    source.Dispose();
+                }
             }
             _disposed = true;
         }

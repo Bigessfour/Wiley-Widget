@@ -71,7 +71,10 @@ public sealed class MainFormIntegrationTests
     public void InitializeChrome_CreatesRibbonAndStatusBar()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
         using var form = new TestMainForm(provider);
         _ = form.Handle;  // Handle creation needed for chrome initialization
 
@@ -218,16 +221,16 @@ public sealed class MainFormIntegrationTests
             form.CallOnLoad();
             Application.DoEvents();  // Process messages after docking init
 
-            // Show dashboard panel
-            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.DashboardPanel>();
+            // Show dashboard form (hosted in FormHostPanel)
+            form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
             Application.DoEvents();  // Process messages after panel creation
 
             // Verify dashboard is created and visible
             var dockingManager = (DockingManager)form.GetPrivateField("_dockingManager")!;
             var centralPanel = (Control)form.GetPrivateField("_centralDocumentPanel")!;
 
-            // Check if dashboard panel exists in central area
-            var dashboardPanel = FindControl<WileyWidget.WinForms.Controls.Panels.DashboardPanel>(centralPanel);
+            // Check if dashboard host panel exists in central area
+            var dashboardPanel = FindControl<WileyWidget.WinForms.Controls.Panels.FormHostPanel>(centralPanel);
             dashboardPanel.Should().NotBeNull();
         }
         finally
@@ -247,7 +250,10 @@ public sealed class MainFormIntegrationTests
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
         using var form = new TestMainForm(provider);
         _ = form.Handle;
 

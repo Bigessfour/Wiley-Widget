@@ -2088,12 +2088,14 @@ public static class RibbonFactory
         {
             try
             {
+                logger?.LogInformation("[RIBBON-CLICK] {ButtonName} button clicked - calling navigation action", name);
                 LogNavigationActivity(null, text, text, logger);
                 onClick();
+                logger?.LogInformation("[RIBBON-CLICK] Navigation action completed successfully for {ButtonName}", name);
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[RIBBON_FACTORY] Navigation button '{ButtonName}' click failed: {Message}", name, ex.Message);
+                logger?.LogError(ex, "[RIBBON-CLICK] ❌ Navigation button '{ButtonName}' click failed: {Message}", name, ex.Message);
             }
         };
 

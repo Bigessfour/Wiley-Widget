@@ -489,6 +489,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _accountsGrid.RowValidating += Grid_RowValidating;
         _accountsGrid.QueryCellStyle += Grid_QueryCellStyle;
         _accountsGrid.CellClick += Grid_CellClick;
+        _accountsGrid.FilterChanging += Grid_FilterChanging;
 
         // Wrap grid setup in BeginInit/EndInit for performance
         _accountsGrid.BeginInit();
@@ -527,6 +528,11 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _accountsGrid.TableSummaryRows.Add(summaryRow);
 
         _accountsGrid.EndInit();
+
+        // Note: String column filter operators are restricted via Grid_FilterChanging event handler
+        // to prevent InvalidOperationException on relational operators (>, <, >=, <=)
+        // See Grid_FilterChanging method for implementation details
+
         _logger.LogDebug("[ACCOUNTS_PANEL] Grid configured with {Count} columns", _accountsGrid.Columns.Count);
 
         _layout.Controls.Add(_accountsGrid, 0, 1);
@@ -1250,6 +1256,47 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 e.Style.TextColor = Color.Red;
             }
         }
+    }
+
+    /// <summary>
+    /// Prevents invalid filter expressions on string columns (blocks relational operators like > < >= <=).
+    /// Syncfusion grids default to allowing all operators; restricting to string-appropriate filters only.
+    /// </summary>
+    private void Grid_FilterChanging(object? sender, Syncfusion.WinForms.DataGrid.Events.FilterChangingEventArgs e)
+    {
+        if (e?.Column?.MappingName == null)
+        {
+            return;
+        }
+
+        // String columns that should not allow relational comparison operators
+        var isStringColumn =
+            e.Column.MappingName == "AccountNumber" ||
+            e.Column.MappingName == "AccountName" ||
+            e.Column.MappingName == "FundName" ||
+            e.Column.MappingName == "AccountType" ||
+            e.Column.MappingName == "Department";
+
+        if (!isStringColumn)
+        {
+            return;
+        }
+
+        // Check if any predicate uses relational operators (GreaterThan, LessThan, etc.)
+        var hasRelationalPredicate = e.FilterPredicates.Any(p =>
+            p.FilterType == Syncfusion.Data.FilterType.GreaterThan ||
+            p.FilterType == Syncfusion.Data.FilterType.GreaterThanOrEqual ||
+            p.FilterType == Syncfusion.Data.FilterType.LessThan ||
+            p.FilterType == Syncfusion.Data.FilterType.LessThanOrEqual);
+
+        if (!hasRelationalPredicate)
+        {
+            return;
+        }
+
+        // Cancel the filter and log the prevention
+        e.Cancel = true;
+        _logger?.LogDebug("AccountsPanel: Cancelled invalid relational filter on string column {Column}", e.Column.MappingName);
     }
 
     /// <summary>

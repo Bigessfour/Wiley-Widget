@@ -42,7 +42,7 @@
       "requireExactSource": false,
       "enableStepFiltering": false,
       "logging": {
-        "moduleLoad": true,
+        "moduleLoad": false,
         "programOutput": true,
         "diagnosticsLog": {
           "protocolMessages": false
@@ -63,13 +63,20 @@
       "args": [],
       "cwd": "${workspaceFolder}/src/WileyWidget.WinForms",
       "stopAtEntry": false,
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
+      "console": "internalConsole",
+      "internalConsoleOptions": "openOnSessionStart",
       "env": {
         "DOTNET_ENVIRONMENT": "Development",
         "DOTNET_DbgEnableMiniDump": "1",
         "DOTNET_EnableDiagnostics": "1",
-        "UI:IsUiTestHarness": "false"
+        "UI:IsUiTestHarness": "false",
+        "Serilog__MinimumLevel__Default": "Warning",
+        "Serilog__MinimumLevel__Override__Microsoft": "Warning",
+        "Serilog__MinimumLevel__Override__System": "Warning",
+        "Serilog__MinimumLevel__Override__WileyWidget": "Warning",
+        "Logging__LogLevel__Default": "Warning",
+        "Logging__LogLevel__Microsoft": "Warning",
+        "Logging__LogLevel__System": "Warning"
       },
       "sourceFileMap": {
         "/__w/Wiley-Widget/Wiley-Widget": "${workspaceFolder}"
@@ -92,11 +99,12 @@
           "enabled": true
         }
       },
-      "justMyCode": false,
+      "justMyCode": true,
       "requireExactSource": false,
       "enableStepFiltering": false,
       "logging": {
-        "moduleLoad": true,
+        "exceptions": true,
+        "moduleLoad": false,
         "programOutput": true,
         "diagnosticsLog": {
           "protocolMessages": false

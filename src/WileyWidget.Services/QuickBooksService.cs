@@ -733,16 +733,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             var duration = DateTime.UtcNow - startTime;
             _logger.LogError(ex, "Accounts sync failed with unexpected error: {ErrorMessage}", ex.Message);
 
-            // Fallback to cached/sample accounts on sync failure
-            _logger.LogInformation("Attempting to use fallback accounts due to sync failure");
-            var fallbackAccounts = GetFallbackAccounts();
-
             return new SyncResult
             {
                 Success = false,
-                RecordsSynced = fallbackAccounts.Count,
+                RecordsSynced = 0,
                 Duration = duration,
-                ErrorMessage = $"Sync failed - using {fallbackAccounts.Count} fallback accounts. Original error: {ex.Message}"
+                ErrorMessage = $"Sync failed: {ex.Message}"
             };
         }
     }
@@ -2344,88 +2340,4 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Returns sample/fallback accounts for testing or when sync fails.
-    /// Used as a safety net to ensure Dashboard can display data even if QuickBooks is unavailable.
-    /// </summary>
-    private List<Account> GetFallbackAccounts()
-    {
-        _logger.LogInformation("Loading fallback/sample accounts for Dashboard");
-
-        return new List<Account>
-        {
-            new Account
-            {
-                Name = "[FALLBACK] Operating Account",
-                AcctNum = "1000",
-                AccountType = AccountTypeEnum.Bank,
-                CurrentBalance = 50000m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Equipment",
-                AcctNum = "1500",
-                AccountType = AccountTypeEnum.FixedAsset,
-                CurrentBalance = 125000m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Accounts Payable",
-                AcctNum = "2000",
-                AccountType = AccountTypeEnum.AccountsPayable,
-                CurrentBalance = -35000m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Retained Earnings",
-                AcctNum = "3000",
-                AccountType = AccountTypeEnum.Equity,
-                CurrentBalance = -140000m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Revenue",
-                AcctNum = "4000",
-                AccountType = AccountTypeEnum.Income,
-                CurrentBalance = 0m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Salaries Expense",
-                AcctNum = "5100",
-                AccountType = AccountTypeEnum.Expense,
-                CurrentBalance = 0m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Utilities Expense",
-                AcctNum = "5200",
-                AccountType = AccountTypeEnum.Expense,
-                CurrentBalance = 0m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            },
-            new Account
-            {
-                Name = "[FALLBACK] Depreciation Expense",
-                AcctNum = "5300",
-                AccountType = AccountTypeEnum.Expense,
-                CurrentBalance = 0m,
-                Active = true,
-                Description = "Sample fallback account - QuickBooks sync unavailable"
-            }
-        };
-    }
 }

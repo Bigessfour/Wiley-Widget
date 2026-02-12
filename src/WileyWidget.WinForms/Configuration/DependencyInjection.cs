@@ -651,6 +651,11 @@ namespace WileyWidget.WinForms.Configuration
             // User Preferences Service (Singleton - manages user settings persistence)
             // Registered in core via AddWileyWidgetCoreServices(configuration)
 
+            // Centralized UI thread dispatcher for WinForms marshalling
+            services.TryAddSingleton<IUiDispatcher, WinFormsUiDispatcher>();
+            services.TryAddSingleton<IUiDispatcherInitializer>(sp =>
+                (IUiDispatcherInitializer)DI.ServiceProviderServiceExtensions.GetRequiredService<IUiDispatcher>(sp));
+
             // Role-Based Access Control (Singleton - manages permissions and roles)
             services.AddSingleton<RoleBasedAccessControl>();
 

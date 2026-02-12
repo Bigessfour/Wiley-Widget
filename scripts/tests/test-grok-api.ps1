@@ -1,4 +1,4 @@
-#Requires -Version 7.5
+#Requires -Version 7.5.4
 <#
 .SYNOPSIS
     Validates xAI Grok API configuration and connectivity with comprehensive testing.

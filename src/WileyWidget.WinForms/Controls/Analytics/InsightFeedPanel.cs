@@ -47,6 +47,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
         private EventHandler? _refreshButtonClickHandler;
         private PropertyChangedEventHandler ViewModelPropertyChangedHandler;
         private SelectionChangingEventHandler? _insightsGridSelectionChangingHandler;
+        private FilterChangingEventHandler? _insightsGridFilterChangingHandler;
 
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
@@ -319,6 +320,10 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 _insightsGridSelectionChangingHandler = InsightsGrid_SelectionChanging;
                 _insightsGrid.SelectionChanging += _insightsGridSelectionChangingHandler;
 
+                // Prevent invalid relational filters on string columns
+                _insightsGridFilterChangingHandler = InsightsGrid_FilterChanging;
+                _insightsGrid.FilterChanging += _insightsGridFilterChangingHandler;
+
                 _logger?.LogInformation("ViewModel bound successfully to InsightFeedPanel");
             }
             catch (Exception ex)
@@ -446,6 +451,45 @@ namespace WileyWidget.WinForms.Controls.Analytics
         }
 
         /// <summary>
+        /// Prevents invalid relational filters on string columns to fix System.InvalidOperationException:
+        /// "The binary operator GreaterThan is not defined for the types 'System.String' and 'System.String'"
+        /// </summary>
+        private void InsightsGrid_FilterChanging(object? sender, FilterChangingEventArgs e)
+        {
+            if (e?.Column?.MappingName == null)
+            {
+                return;
+            }
+
+            // String columns that should not allow relational comparison operators
+            var isStringColumn =
+                e.Column.MappingName == nameof(InsightCardModel.Priority) ||
+                e.Column.MappingName == nameof(InsightCardModel.Category) ||
+                e.Column.MappingName == nameof(InsightCardModel.Explanation);
+
+            if (!isStringColumn)
+            {
+                return;
+            }
+
+            // Check if any predicate uses relational operators (GreaterThan, LessThan, etc.)
+            var hasRelationalPredicate = e.FilterPredicates.Any(p =>
+                p.FilterType == Syncfusion.Data.FilterType.GreaterThan ||
+                p.FilterType == Syncfusion.Data.FilterType.GreaterThanOrEqual ||
+                p.FilterType == Syncfusion.Data.FilterType.LessThan ||
+                p.FilterType == Syncfusion.Data.FilterType.LessThanOrEqual);
+
+            if (!hasRelationalPredicate)
+            {
+                return;
+            }
+
+            // Cancel the filter and log the prevention
+            e.Cancel = true;
+            _logger?.LogDebug("InsightFeedPanel: Cancelled invalid relational filter on string column {Column}", e.Column.MappingName);
+        }
+
+        /// <summary>
         /// Applies Office2019Colorful theme to the panel and all child controls using SfSkinManager.
         /// SfSkinManager is the single authoritative source for all theming.
         /// </summary>
@@ -517,6 +561,11 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     if (_insightsGrid != null && _insightsGridSelectionChangingHandler != null)
                     {
                         _insightsGrid.SelectionChanging -= _insightsGridSelectionChangingHandler;
+                    }
+
+                    if (_insightsGrid != null && _insightsGridFilterChangingHandler != null)
+                    {
+                        _insightsGrid.FilterChanging -= _insightsGridFilterChangingHandler;
                     }
 
                     _sharedTooltip?.Dispose();

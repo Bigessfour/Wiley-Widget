@@ -26,7 +26,7 @@ public sealed class DockingLayoutManagerIntegrationTests
         _ = form.Handle;
 
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
         var layoutPath = Path.Combine(Path.GetTempPath(), $"wiley-docking-{Guid.NewGuid():N}.bin");
         var layoutManager = new DockingLayoutManager(provider, null, logger, layoutPath, form, dockingManager, left, right, central, null);
 
@@ -60,7 +60,7 @@ public sealed class DockingLayoutManagerIntegrationTests
         _ = form.Handle;
 
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
         var layoutPath = Path.Combine(Path.GetTempPath(), $"wiley-docking-{Guid.NewGuid():N}.bin");
         var layoutManager = new DockingLayoutManager(provider, null, logger, layoutPath, form, dockingManager, left, right, central, null);
 
@@ -78,7 +78,7 @@ public sealed class DockingLayoutManagerIntegrationTests
         _ = form.Handle;
 
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
         var layoutPath = Path.Combine(Path.GetTempPath(), $"nonexistent-{Guid.NewGuid():N}.bin");
         var layoutManager = new DockingLayoutManager(provider, null, logger, layoutPath, form, dockingManager, left, right, central, null);
 
@@ -107,7 +107,7 @@ public sealed class DockingLayoutManagerIntegrationTests
         _ = form.Handle;
 
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
         var layoutPath = Path.Combine(Path.GetTempPath(), $"wiley-docking-{Guid.NewGuid():N}.bin");
         var layoutManager = new DockingLayoutManager(provider, null, logger, layoutPath, form, dockingManager, left, right, central, null);
 
@@ -139,7 +139,7 @@ public sealed class DockingLayoutManagerIntegrationTests
         _ = form.Handle;
 
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+        var (dockingManager, left, right, central, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
         var layoutPath = Path.Combine(Path.GetTempPath(), $"wiley-docking-{Guid.NewGuid():N}.bin");
         var layoutManager = new DockingLayoutManager(provider, null, logger, layoutPath, form, dockingManager, left, right, central, null);
 

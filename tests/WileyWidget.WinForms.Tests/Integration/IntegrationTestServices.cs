@@ -39,7 +39,8 @@ internal static class IntegrationTestServices
             ["UI:UseSyncfusionDocking"] = "false",
             ["UI:ShowRibbon"] = "true",
             ["UI:ShowStatusBar"] = "true",
-            ["UI:AutoShowDashboard"] = "true"
+            ["UI:AutoShowDashboard"] = "true",
+            ["UI:MinimalMode"] = "false"
         };
 
         // Merge overrides into defaults

@@ -78,7 +78,11 @@ if ($null -ne $consoleOutput) {
         "ERROR",
         "FATAL",
         "Exception",
-        "unhandled"
+        "unhandled",
+        "PANEL-VISIBILITY-DIAG",
+        "PANEL-VISIBILITY-ISSUE",
+        "Z-ORDER-ACTIVATION",
+        "Z-ORDER-DOCKING"
     )
 
     foreach ($marker in $diagnosticMarkers) {

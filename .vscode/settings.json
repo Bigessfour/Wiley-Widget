@@ -83,7 +83,7 @@
   // ============================================================================
   "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
   "xamlDiag.autoDetectCompiler": true,
-  "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
+  "xamlDiag.defaultObjDir": "obj/Debug/net10.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
   "xml.format.splitAttributes": "preserve",
   "xml.format.maxLineWidth": 120,
@@ -234,6 +234,13 @@
   // ============================================================================
   // PowerShell Configuration
   // ============================================================================
+  // Pin the PowerShell extension to PowerShell 7.5.4 (not Windows PowerShell 5.1)
+  // Ref: https://learn.microsoft.com/powershell/scripting/dev-cross-plat/vscode/using-vscode?view=powershell-7.5#configuration-settings-for-visual-studio-code
+  "powershell.powerShellAdditionalExePaths": {
+    "PowerShell 7.5.4 (Repo)": "C:/Program Files/PowerShell/7/pwsh.exe"
+  },
+  "powershell.powerShellDefaultVersion": "PowerShell 7.5.4 (Repo)",
+
   "powershell.scriptAnalysis.enable": true,
   "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
   "powershell.codeFormatting.preset": "OTBS",
@@ -332,7 +339,7 @@
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.limit.enabled": true,
   "workbench.editor.limit.value": 10,
-  "workbench.iconTheme": "material-icon-theme",
+  "workbench.iconTheme": "vs-seti",
   "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
   "editor.largeFileOptimizations": false,
@@ -340,9 +347,19 @@
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  // Default terminals to PowerShell 7.5.4 (`pwsh`) to match the PowerShell VS Code extension.
+  "terminal.integrated.defaultProfile.windows": "PowerShell 7.5.4",
   "terminal.integrated.profiles.windows": {
-    "PowerShell": {
+    "PowerShell 7.5.4": {
+      "path": [
+        "C:/Program Files/PowerShell/7/pwsh.exe"
+      ],
+      "args": [
+        "-NoLogo"
+      ],
+      "icon": "terminal-powershell"
+    },
+    "Windows PowerShell": {
       "source": "PowerShell",
       "icon": "terminal-powershell"
     },

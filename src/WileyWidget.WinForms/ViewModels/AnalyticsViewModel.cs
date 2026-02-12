@@ -338,10 +338,9 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
             {
-                // Circuit breaker is open - use fallback data
-                StatusText = "Service unavailable - using sample scenario";
-                _logger.LogWarning(ex, "Analytics service unavailable, using sample scenario data");
-                await LoadSampleScenarioDataAsync(cancellationToken);
+                StatusText = "Service unavailable - no scenario data available.";
+                _logger.LogWarning(ex, "Analytics service unavailable while running scenario analysis");
+                await ClearScenarioDataAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -351,12 +350,7 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 StatusText = $"Scenario failed: {ex.Message}";
                 _logger.LogError(ex, "Error running rate scenario");
-
-                // Fallback to sample data only if circuit breaker allows it
-                if (_circuitBreaker.CircuitState != Polly.CircuitBreaker.CircuitState.Open)
-                {
-                    await LoadSampleScenarioDataAsync(cancellationToken);
-                }
+                await ClearScenarioDataAsync(cancellationToken);
             }
             finally
             {
@@ -398,10 +392,9 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
             {
-                // Circuit breaker is open - use fallback data
-                StatusText = "Service unavailable - using sample forecast";
-                _logger.LogWarning(ex, "Analytics service unavailable, using sample forecast data");
-                await LoadSampleForecastDataAsync(cancellationToken);
+                StatusText = "Service unavailable - no forecast data available.";
+                _logger.LogWarning(ex, "Analytics service unavailable while generating forecast");
+                await ClearForecastDataAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -411,12 +404,7 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 StatusText = $"Forecast failed: {ex.Message}";
                 _logger.LogError(ex, "Error generating reserve forecast");
-
-                // Fallback to sample data only if circuit breaker allows it
-                if (_circuitBreaker.CircuitState != Polly.CircuitBreaker.CircuitState.Open)
-                {
-                    await LoadSampleForecastDataAsync(cancellationToken);
-                }
+                await ClearForecastDataAsync(cancellationToken);
             }
             finally
             {
@@ -475,12 +463,9 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         partial void OnVariancesSearchTextChanged(string value) => UpdateFilteredCollections();
 
-        /// <summary>
-        /// Loads sample data for design-time preview or fallback
-        /// </summary>
-        private async Task LoadSampleDataAsync(CancellationToken cancellationToken)
+        private async Task ClearAnalyticsDataAsync(CancellationToken cancellationToken)
         {
-            _logger.LogWarning("LoadSampleDataAsync called: sample analytics data disabled. Ensure analytics services are configured.");
+            _logger.LogInformation("ClearAnalyticsDataAsync called: clearing analytics collections.");
             Metrics.Clear();
             TopVariances.Clear();
             TrendData.Clear();
@@ -490,24 +475,18 @@ namespace WileyWidget.WinForms.ViewModels
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Loads sample scenario data
-        /// </summary>
-        private async Task LoadSampleScenarioDataAsync(CancellationToken cancellationToken)
+        private async Task ClearScenarioDataAsync(CancellationToken cancellationToken)
         {
-            _logger.LogWarning("LoadSampleScenarioDataAsync called: sample scenario generation disabled. Ensure projection services are configured.");
+            _logger.LogInformation("ClearScenarioDataAsync called: clearing scenario collections.");
             ScenarioProjections.Clear();
             Recommendations.Clear();
             RecommendationExplanation = string.Empty;
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Loads sample forecast data
-        /// </summary>
-        private async Task LoadSampleForecastDataAsync(CancellationToken cancellationToken)
+        private async Task ClearForecastDataAsync(CancellationToken cancellationToken)
         {
-            _logger.LogWarning("LoadSampleForecastDataAsync called: sample forecast generation disabled. Ensure forecasting services are configured.");
+            _logger.LogInformation("ClearForecastDataAsync called: clearing forecast collections.");
             ForecastData.Clear();
             RecommendationExplanation = string.Empty;
             await Task.CompletedTask;

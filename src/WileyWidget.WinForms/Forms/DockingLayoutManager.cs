@@ -307,39 +307,10 @@ public class DockingLayoutManager : IDisposable
                                 dockingManager.LoadDockState(serializer);
                                 _logger?.LogInformation("Docking layout applied on UI thread (attempt {Attempt}/{MaxAttempts})", retryAttempt + 1, MaxRetryAttempts);
 
-                                // Defer right-panel visibility until content is fully switched to avoid flicker
-                                try
-                                {
-                                    if (_rightDockPanel != null)
-                                    {
-                                        try
-                                        {
-                                            // Hide right panel before releasing batch updates
-                                            dockingManager.SetDockVisibility(_rightDockPanel, false);
-                                        }
-                                        catch (Exception visEx)
-                                        {
-                                            _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
-                                        }
-
-
-                                        // Small micro-delay to let the control settle (UI thread)
-                                        try { await Task.Delay(50); } catch { /* ignore */ }
-
-                                        try
-                                        {
-                                            dockingManager.SetDockVisibility(_rightDockPanel, true);
-                                        }
-                                        catch (Exception visEx)
-                                        {
-                                            _logger?.LogDebug(visEx, "Failed to set right panel visibility=true after layout apply");
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger?.LogDebug(ex, "Deferred right panel visibility handling failed");
-                                }
+                                // CRITICAL FIX: Removed flicker-mitigation code that was hiding the right panel
+                                // Setting SetDockVisibility(false) was making the panel unavailable as a dock target,
+                                // causing all business panels to fall back to Tabbed center mode.
+                                // The persisted layout should already have the correct visibility state.
 
                                 // SAFETY: Force visibility recovery if right panel is still hidden after layout load
                                 // This prevents the silent-failure case where layout deserialization errors
@@ -1085,8 +1056,10 @@ public class DockingLayoutManager : IDisposable
                     _dockingManager.SetEnableDocking(_leftDockPanel, true);
                     _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
                     _dockingManager.DockControl(_leftDockPanel, hostControl, DockingStyle.Left, 300);
-                    _dockingManager.SetAutoHideMode(_leftDockPanel, true);
-                    _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px auto-hide)");
+                    // CRITICAL FIX: Set auto-hide to FALSE so the panel is ALWAYS available as a dock target
+                    // Auto-hidden panels cannot be used as dock targets for other panels
+                    _dockingManager.SetAutoHideMode(_leftDockPanel, false);
+                    _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px, VISIBLE - not auto-hide)");
                 }
             }
             catch (Exception leftEx)
@@ -1102,8 +1075,10 @@ public class DockingLayoutManager : IDisposable
                     _dockingManager.SetEnableDocking(_rightDockPanel, true);
                     _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
                     _dockingManager.DockControl(_rightDockPanel, hostControl, DockingStyle.Right, 350);
-                    _dockingManager.SetAutoHideMode(_rightDockPanel, true);
-                    _logger?.LogDebug("Reset right docking panel to default (Activity, 350px auto-hide)");
+                    // CRITICAL FIX: Set auto-hide to FALSE so the panel is ALWAYS available as a dock target
+                    // Auto-hidden panels cannot be used as dock targets for other panels
+                    _dockingManager.SetAutoHideMode(_rightDockPanel, false);
+                    _logger?.LogDebug("Reset right docking panel to default (Activity, 350px, VISIBLE - not auto-hide)");
                 }
             }
             catch (Exception rightEx)
@@ -1169,11 +1144,6 @@ public class DockingLayoutManager : IDisposable
             // Dispose dynamic panels
             if (_dynamicDockPanels != null)
             {
-                foreach (var panel in _dynamicDockPanels.Values)
-                {
-                    try { panel?.Dispose(); }
-                    catch (Exception ex) { _logger?.LogDebug(ex, "Failed to dispose dynamic dock panel"); }
-                }
                 _dynamicDockPanels.Clear();
                 _dynamicDockPanels = null;
             }

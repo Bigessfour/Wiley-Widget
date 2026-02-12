@@ -15,7 +15,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2" />
     <!-- ==================== .NET 10 STABLE VERSIONS ==================== -->
-    <!-- Core .NET Extensions (stable .NET 9 versions) -->
+    <!-- Core .NET Extensions (stable .NET 10 versions) -->
     <PackageVersion Include="Microsoft.Extensions.Primitives" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
@@ -33,17 +33,17 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="10.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="10.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
-    <!-- IdentityModel – huge security jump, fully net9.0 compatible -->
+    <!-- IdentityModel – huge security jump, fully net10.0 compatible -->
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.2.0" />
     <PackageVersion Include="Microsoft.IdentityModel.*" Version="8.15.0" />
-    <!-- Third-party – all safe on .NET 9 -->
+    <!-- Third-party – all safe on .NET 10 -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="MailKit" Version="4.14.1" />
     <PackageVersion Include="MimeKit" Version="4.14.0" />
     <PackageVersion Include="Polly" Version="8.6.5" />
     <PackageVersion Include="Polly.Core" Version="8.6.5" />
     <PackageVersion Include="Polly.Extensions" Version="8.6.5" />
-    <!-- Serilog – use stable versions compatible with .NET 9 -->
+    <!-- Serilog – use stable versions compatible with .NET 10 -->
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="9.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />

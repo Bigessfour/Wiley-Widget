@@ -302,8 +302,8 @@ function prompt {
 #endregion
 
 #region Aliases
-Set-Alias -Name ll -Value 'Get-ChildItem -Force' -Force
-Set-Alias -Name la -Value 'Get-ChildItem -Force -Recurse' -Force
+function ll { Get-ChildItem -Force @args }
+function la { Get-ChildItem -Force -Recurse @args }
 Set-Alias -Name cls -Value 'Clear-Host' -Force
 Set-Alias -Name which -Value 'Get-Command' -Force
 Set-Alias -Name stats -Value 'Get-WidgetStats' -Force

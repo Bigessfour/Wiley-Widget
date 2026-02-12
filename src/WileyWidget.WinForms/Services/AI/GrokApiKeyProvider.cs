@@ -200,7 +200,8 @@ namespace WileyWidget.WinForms.Services.AI
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
                 request.Content = new System.Net.Http.StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
-                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+                // [FIX] Increased timeout from 10s to 30s to handle slower network connections
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
                 using var response = await httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
 
                 if (response.IsSuccessStatusCode)
@@ -246,7 +247,7 @@ namespace WileyWidget.WinForms.Services.AI
             }
             catch (System.Threading.Tasks.TaskCanceledException)
             {
-                var msg = "❌ API key validation timed out (10s). Check network connectivity.";
+                var msg = "❌ API key validation timed out (30s). Check network connectivity or try again later. JARVIS Chat will work once connection is restored.";
                 _logger?.LogWarning("[Grok] {Message}", msg);
                 return (false, msg);
             }

@@ -30,7 +30,7 @@ public sealed class DockingIntegrationTests
         var panelNavigator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPanelNavigationService>(provider);
 
         var (dockingManager, leftPanel, rightPanel, centralPanel, activityLogPanel, activityRefreshTimer, layoutManager) =
-            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, logger);
+            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, form, logger);
 
         // Validate all components are created
         dockingManager.Should().NotBeNull();
@@ -64,7 +64,7 @@ public sealed class DockingIntegrationTests
         var panelNavigator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPanelNavigationService>(provider);
 
         var (dockingManager, leftPanel, rightPanel, centralPanel, _, _, layoutManager) =
-            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, logger);
+            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, form, logger);
 
         ArgumentNullException.ThrowIfNull(layoutManager);
 
@@ -101,7 +101,7 @@ public sealed class DockingIntegrationTests
         var panelNavigator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPanelNavigationService>(provider);
 
         var (dockingManager, leftPanel, rightPanel, centralPanel, _, _, _) =
-            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, logger);
+            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, form, logger);
 
         // Verify theme application
         leftPanel!.ThemeName.Should().Be("Office2019Colorful");
@@ -122,7 +122,7 @@ public sealed class DockingIntegrationTests
         var panelNavigator = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPanelNavigationService>(provider);
 
         var (dockingManager, leftPanel, _, _, _, _, layoutManager) =
-            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, logger);
+            DockingHostFactory.CreateDockingHost(form, provider, panelNavigator, form, logger);
 
         ArgumentNullException.ThrowIfNull(layoutManager);
 

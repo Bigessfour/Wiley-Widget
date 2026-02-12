@@ -27,7 +27,7 @@ public sealed class QuickBooksPanelIntegrationTests
         _ = form.Handle;
 
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+        var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
         var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         var navigator = new PanelNavigationService(dockingManager, form, provider, navLogger);
 

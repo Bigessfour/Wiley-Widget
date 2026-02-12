@@ -125,7 +125,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         // Initialize with sample data for design-time
         if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime)
         {
-            InitializeSampleData();
+            InitializeEmptyData();
         }
 
         _logger.LogDebug("RecommendedMonthlyChargeViewModel initialized");
@@ -162,8 +162,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             }
             else
             {
-                _logger.LogWarning("IDepartmentExpenseService not available - loading sample data");
-                LoadSampleDepartmentData();
+                _logger.LogWarning("IDepartmentExpenseService not available - loading empty department state");
+                ClearDepartmentData();
             }
 
             LoadBenchmarkData();
@@ -187,9 +187,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             ErrorMessage = $"Failed to refresh data: {ex.Message}";
             StatusText = "Error loading data";
 
-            // Fallback to sample data on error
-            _logger.LogWarning("Falling back to sample data due to error");
-            LoadSampleDepartmentData();
+            _logger.LogWarning("Applying empty department state due to data refresh error");
+            ClearDepartmentData();
             LoadBenchmarkData();
             CalculateTotals();
         }
@@ -490,23 +489,18 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading real department data - falling back to sample data");
-            LoadSampleDepartmentData();
+            _logger.LogError(ex, "Error loading real department data - using empty department state");
+            ClearDepartmentData();
         }
     }
 
-    /// <summary>
-    /// Sample population is disabled in production. This method clears any temporary
-    /// department collections and logs a warning instead of populating hard-coded values.
-    /// </summary>
-    private void LoadSampleDepartmentData()
+    private void ClearDepartmentData()
     {
-        _logger.LogWarning("LoadSampleDepartmentData called: sample data disabled. Ensure department service is configured for real data.");
+        _logger.LogInformation("ClearDepartmentData called: clearing department collections.");
         Departments.Clear();
         Benchmarks.Clear();
 
-        ErrorMessage = "Production data unavailable; sample population disabled.";
-        StatusText = "No production department data loaded";
+        StatusText = "No department data available yet";
         LastUpdated = DateTime.Now;
     }
 
@@ -600,16 +594,12 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             TotalCurrentRevenue, TotalMonthlyExpenses, OverallStatus);
     }
 
-    /// <summary>
-    /// Design-time initializer is disabled. Clears collections and signals no production data.
-    /// </summary>
-    private void InitializeSampleData()
+    private void InitializeEmptyData()
     {
-        _logger.LogWarning("InitializeSampleData called: sample data disabled in this build.");
+        _logger.LogInformation("InitializeEmptyData called: initializing empty department collections.");
         Departments.Clear();
         Benchmarks.Clear();
         CalculateTotals();
-        ErrorMessage = "Design/sample data disabled; no production data loaded.";
         StatusText = "No production data loaded";
         LastUpdated = DateTime.Now;
     }

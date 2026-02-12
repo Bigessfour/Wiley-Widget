@@ -90,8 +90,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Themes
         [Fact]
         public void GetCurrentThemeName_WhenStyleIsUnknown_ShouldReturnThemeColorsDefaultTheme()
         {
-            // Arrange - Set to a style that may not be in the map
-            _dockingManager.VisualStyle = Syncfusion.Windows.Forms.VisualStyle.Default;
+            // Arrange - Apply an unknown theme to force adapter fallback behavior
+            _adapter.ApplyTheme("__UnknownTheme__");
 
             // Act
             var themeName = _adapter.GetCurrentThemeName();

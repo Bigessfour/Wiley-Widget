@@ -45,6 +45,7 @@ public partial class MainForm
     private StatusBarAdvPanel? _clockPanel;
     private System.Windows.Forms.Timer? _statusTimer;
     private ToolStripTextBox? _globalSearchTextBox;
+    private bool _chromeInitialized;
 
     /// <summary>
     /// Initialize UI chrome elements (Ribbon, Status Bar, Navigation).
@@ -54,6 +55,12 @@ public partial class MainForm
     {
         if (DesignMode)
         {
+            return;
+        }
+
+        if (_chromeInitialized)
+        {
+            _logger?.LogDebug("InitializeChrome skipped - chrome already initialized");
             return;
         }
 
@@ -78,6 +85,7 @@ public partial class MainForm
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
             KeyPreview = true;
+            this.KeyDown -= MainForm_KeyDown;
             this.KeyDown += MainForm_KeyDown;
 
             // NOTE: SfForm.Style properties removed - RibbonForm uses different theming API
@@ -94,21 +102,26 @@ public partial class MainForm
             InitializeMenuBar();
             _logger?.LogInformation("Menu bar initialized");
 
-            // Initialize Ribbon
-            // Always initialize the ribbon - it's required for proper UI chrome
-            var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            InitializeRibbon();
-            _ribbon?.Refresh();
-            ribbonPhaseStopwatch.Stop();
-            _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
-            if (_ribbon == null)
+            if (_uiConfig.ShowRibbon)
             {
-                _logger?.LogWarning("Ribbon initialization returned null - creating fallback ribbon");
-                CreateFallbackRibbon();
+                var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                InitializeRibbon();
+                _ribbon?.Refresh();
+                ribbonPhaseStopwatch.Stop();
+                _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
+                if (_ribbon == null)
+                {
+                    _logger?.LogWarning("Ribbon initialization returned null - creating fallback ribbon");
+                    CreateFallbackRibbon();
+                }
+                else
+                {
+                    _logger?.LogInformation("Ribbon initialized");
+                }
             }
             else
             {
-                _logger?.LogInformation("Ribbon initialized");
+                _logger?.LogInformation("Ribbon initialization skipped because UI:ShowRibbon is false");
             }
 
             // Initialize Status Bar
@@ -127,6 +140,8 @@ public partial class MainForm
 
             // Start status timer
             InitializeStatusTimer();
+
+            _chromeInitialized = true;
         }
         catch (Exception ex)
         {
@@ -144,6 +159,28 @@ public partial class MainForm
     /// </summary>
     private void InitializeRibbon()
     {
+        if (_ribbon != null && !_ribbon.IsDisposed)
+        {
+            try
+            {
+                if (!Controls.Contains(_ribbon) && IsHandleCreated)
+                {
+                    _ribbon.Dock = DockStyleEx.Top;
+                    _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+                    _ribbon.Width = ClientSize.Width;
+                    Controls.Add(_ribbon);
+                    _ribbon.BringToFront();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: failed to re-attach existing ribbon");
+            }
+
+            _logger?.LogDebug("InitializeRibbon skipped - existing ribbon already initialized");
+            return;
+        }
+
         _logger?.LogInformation("InitializeRibbon: Starting ribbon initialization");
         var ribbonStopwatch = System.Diagnostics.Stopwatch.StartNew();
         // Create ribbon via factory and be defensive about non-critical failures
@@ -178,6 +215,26 @@ public partial class MainForm
             ribbonStopwatch.Stop();
             return;
         }
+
+        void ForceCreateRibbonHandle()
+        {
+            if (_ribbon == null || _ribbon.IsHandleCreated)
+            {
+                return;
+            }
+
+            try
+            {
+                _logger?.LogDebug("InitializeRibbon: Forcing ribbon handle creation before attachment");
+                _ribbon.CreateControl();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Forced CreateControl failed");
+            }
+        }
+
+        ForceCreateRibbonHandle();
 
         if (!_ribbon.IsHandleCreated)
         {
@@ -293,6 +350,17 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "InitializeRibbon: failed to attach ribbon to form");
+        }
+
+        // Wire ribbon resize events to adjust docking host bounds
+        try
+        {
+            _ribbon.SizeChanged += OnRibbonSizeChanged;
+            _logger?.LogDebug("InitializeRibbon: Ribbon resize events wired");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "InitializeRibbon: Failed to wire ribbon resize events");
         }
 
         // RibbonForm handles sizing natively via AutoSize
@@ -1149,8 +1217,76 @@ public partial class MainForm
 
     private ToolStripItem? FindToolStripItem(Control container, string name)
     {
-        if (container is ToolStrip strip) return strip.Items.Find(name, true).FirstOrDefault();
-        foreach (Control c in container.Controls) { var res = FindToolStripItem(c, name); if (res != null) return res; }
+        if (container == null || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        if (container is ToolStrip strip)
+        {
+            return FindToolStripItemInCollection(strip.Items, name);
+        }
+
+        if (container is RibbonControlAdv ribbon)
+        {
+            foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
+            {
+                if (tab?.Panel == null)
+                {
+                    continue;
+                }
+
+                foreach (Control child in tab.Panel.Controls)
+                {
+                    var result = FindToolStripItem(child, name);
+                    if (result != null)
+                    {
+                        return result;
+                    }
+                }
+            }
+        }
+
+        foreach (Control child in container.Controls)
+        {
+            var result = FindToolStripItem(child, name);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    private static ToolStripItem? FindToolStripItemInCollection(ToolStripItemCollection items, string name)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            if (string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return item;
+            }
+
+            if (item is ToolStripPanelItem panelItem)
+            {
+                var panelResult = FindToolStripItemInCollection(panelItem.Items, name);
+                if (panelResult != null)
+                {
+                    return panelResult;
+                }
+            }
+
+            if (item is ToolStripDropDownItem dropDownItem)
+            {
+                var dropDownResult = FindToolStripItemInCollection(dropDownItem.DropDownItems, name);
+                if (dropDownResult != null)
+                {
+                    return dropDownResult;
+                }
+            }
+        }
+
         return null;
     }
 
@@ -1189,5 +1325,11 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "[RIBBON_DIAGNOSTICS] Exception during diagnostics");
         }
+    }
+
+    private void OnRibbonSizeChanged(object? sender, EventArgs e)
+    {
+        AdjustDockingHostBounds();
+        _dockingHostPanel?.PerformLayout();
     }
 }

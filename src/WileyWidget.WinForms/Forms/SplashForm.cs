@@ -191,6 +191,12 @@ namespace WileyWidget.WinForms.Forms
             if (_disposed) return;
             if (_ctsDisposed) return;
 
+            var completionMessage = finalMessage ?? string.Empty;
+
+            // Always emit a deterministic final progress update so observers
+            // can reliably detect completion in both UI and headless modes.
+            Report(1.0, completionMessage, isIndeterminate: false);
+
             try
             {
                 _cts.Cancel();
@@ -214,8 +220,8 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        if (!string.IsNullOrEmpty(finalMessage))
-                            Log.Debug("[SPLASH] Complete: {Message}", finalMessage);
+                        if (!string.IsNullOrEmpty(completionMessage))
+                            Log.Debug("[SPLASH] Complete: {Message}", completionMessage);
                     }
                     catch (Exception ex)
                     {
@@ -233,7 +239,7 @@ namespace WileyWidget.WinForms.Forms
                 try
                 {
                     if (_messageLabel != null && !_messageLabel.IsDisposed)
-                        _messageLabel.Text = finalMessage ?? string.Empty;
+                        _messageLabel.Text = completionMessage;
 
                     if (_progressBar != null && !_progressBar.IsDisposed)
                     {

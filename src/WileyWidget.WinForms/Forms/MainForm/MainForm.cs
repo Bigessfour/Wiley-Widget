@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -86,6 +87,7 @@ namespace WileyWidget.WinForms.Forms
         private IServiceProvider? _serviceProvider;
         private IServiceScope? _mainViewModelScope;
         private IPanelNavigationService? _panelNavigator;
+        private IUiDispatcherInitializer? _uiDispatcherInitializer;
         private IThemeService? _themeService;
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
@@ -125,6 +127,7 @@ namespace WileyWidget.WinForms.Forms
 
         // [PERF] Layout Persistence
         private AppStateSerializer? _layoutSerializer;
+        private FileStream? _layoutSerializerStream;
         private bool _panelsLocked = false;
         private const string LayoutSerializerKey = "DockingManagerState";
 
@@ -252,6 +255,17 @@ namespace WileyWidget.WinForms.Forms
             _themeService = themeService;
             _windowStateService = windowStateService ?? throw new ArgumentNullException(nameof(windowStateService));
             _fileImportService = fileImportService ?? throw new ArgumentNullException(nameof(fileImportService));
+            _uiDispatcherInitializer = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<IUiDispatcherInitializer>(_serviceProvider);
+
+            try
+            {
+                _uiDispatcherInitializer?.Initialize(this);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "UI dispatcher initialization in constructor will be retried during OnLoad");
+            }
 
             // [PERF] Initialize UI configuration early
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
@@ -375,6 +389,17 @@ namespace WileyWidget.WinForms.Forms
                 .GetService<ILogger<MainForm>>(_serviceProvider) ?? NullLogger<MainForm>.Instance;
 
             _initialized = true;
+
+            try
+            {
+                _uiDispatcherInitializer ??= Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<IUiDispatcherInitializer>(_serviceProvider);
+                _uiDispatcherInitializer?.Initialize(this);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to initialize UI dispatcher during OnLoad");
+            }
 
             ApplyThemeForFutureControls();
 
@@ -526,6 +551,7 @@ namespace WileyWidget.WinForms.Forms
                 catch (InvalidOperationException valEx)
                 {
                     _logger?.LogError(valEx, "[DIAGNOSTIC] OnShown: Initialization state validation FAILED - {Message}", valEx.Message);
+                    _logger?.LogCritical("[DIAGNOSTIC] Application.Exit() will be called - validation failure during OnShown");
                     UIHelper.ShowErrorOnUI(this,
                         $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.",
                         "Initialization Error", _logger);
@@ -637,6 +663,11 @@ namespace WileyWidget.WinForms.Forms
                 ScheduleJarvisAutomationOpen();
             }
 
+            if (string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_ACCOUNTS"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                ScheduleAccountsAutomationOpen();
+            }
+
 
 
             // [PERF] Launch CLI report viewer if requested (optional feature)
@@ -688,6 +719,9 @@ namespace WileyWidget.WinForms.Forms
             }
 
             ScheduleDeferredInitialization();
+
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] MainForm.OnShown EXIT - Form should now be visible and responsive");
+            _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnShown COMPLETED - form visible and ready");
         }
 
         /// <summary>
@@ -725,7 +759,7 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                const int maxAttempts = 5;
+                const int maxAttempts = 20;
                 for (var attempt = 1; attempt <= maxAttempts; attempt++)
                 {
                     try
@@ -747,14 +781,66 @@ namespace WileyWidget.WinForms.Forms
         }
 
         /// <summary>
+        /// Schedules Accounts panel opening for UI automation, ensuring handle is created first.
+        /// </summary>
+        private void ScheduleAccountsAutomationOpen()
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (!IsHandleCreated)
+            {
+                EventHandler? handler = null;
+                handler = (_, __) =>
+                {
+                    HandleCreated -= handler;
+                    ScheduleAccountsAutomationOpen();
+                };
+                HandleCreated += handler;
+                return;
+            }
+
+            BeginInvoke(new System.Action(async () =>
+            {
+                const int maxAttempts = 20;
+                for (var attempt = 1; attempt <= maxAttempts; attempt++)
+                {
+                    try
+                    {
+                        ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+                        _logger?.LogInformation("[AUTOMATION] Auto-opened Accounts panel for UI automation (attempt {Attempt})", attempt);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "[AUTOMATION] Failed to auto-open Accounts panel (attempt {Attempt}/{MaxAttempts})", attempt, maxAttempts);
+                        await Task.Delay(500).ConfigureAwait(true);
+                    }
+                }
+            }));
+        }
+
+        /// <summary>
         /// OnFormClosing: Cancel async operations, save state, dispose docking.
         /// Note: Must be void to override Form.OnFormClosing(FormClosingEventArgs).
         /// Uses fire-and-forget async cleanup without awaiting.
         /// </summary>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // [DIAGNOSTIC] Log why form is closing
+            _logger?.LogWarning("[DIAGNOSTIC] MainForm closing - Reason: {CloseReason}, Cancel: {Cancel}",
+                e.CloseReason, e.Cancel);
+
             try
             {
+                if (e.Cancel)
+                {
+                    _logger?.LogInformation("[DIAGNOSTIC] Form close cancelled");
+                    return;
+                }
+
                 // [PERF] Request cancellation for initialization operations
                 try
                 {
@@ -773,10 +859,6 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug("Form closing: timers stopped");
                 }
                 catch { }
-
-                // [PERF] Give brief moment for pending cancellation callbacks
-                // Use Application.DoEvents() to pump messages without blocking
-                Application.DoEvents();
 
                 // [PERF] Save docking layout (synchronous, non-blocking)
                 if (_dockingManager != null)
@@ -821,6 +903,10 @@ namespace WileyWidget.WinForms.Forms
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Exception in OnFormClosing");
+            }
+            finally
+            {
+                base.OnFormClosing(e);
             }
         }
 
@@ -900,6 +986,7 @@ namespace WileyWidget.WinForms.Forms
                         // Persist final state before disposal
                         if (_layoutSerializer.Enabled && _dockingManager != null)
                         {
+                            ResetLayoutSerializerStream(truncate: true);
                             _layoutSerializer.SerializeObject(LayoutSerializerKey, _dockingManager);
                             _layoutSerializer.PersistNow();
                             _logger?.LogDebug("[MAINFORM] Layout auto-saved on dispose");
@@ -911,6 +998,20 @@ namespace WileyWidget.WinForms.Forms
                     }
 
                     _layoutSerializer = null;
+                }
+
+                if (_layoutSerializerStream != null)
+                {
+                    try
+                    {
+                        _layoutSerializerStream.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "[MAINFORM] Failed to dispose layout serializer stream cleanly");
+                    }
+
+                    _layoutSerializerStream = null;
                 }
             }
             base.Dispose(disposing);
@@ -1019,6 +1120,14 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogDebug("Ignored Syncfusion NullReferenceException during initialization: {Message}", ex.Message);
                     return;
                 }
+            }
+
+            if (ex is InvalidOperationException invalidOperationException &&
+                invalidOperationException.Message.Contains("The binary operator GreaterThan is not defined for the types 'System.String' and 'System.String'", StringComparison.Ordinal) &&
+                invalidOperationException.StackTrace?.Contains("Syncfusion.WinForms.DataGrid.CalculationExtensions.GetExpression", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                _logger?.LogDebug("Ignored Syncfusion first-chance filter expression mismatch on string column comparison");
+                return;
             }
 
             // Filter benign IOException related to HTTP transport connection cancellations

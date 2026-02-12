@@ -9,12 +9,12 @@ The WileyWidget application integrates **FastReport Open Source** for report des
 
 ## Architecture Summary
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Report Design** | FastReport .frx templates | Visual layout editor, banded reports with groups/totals |
-| **Report Preview** | FastReport Report + PreviewControl | Interactive viewing, zoom, search, drill-down |
-| **Excel Export** | Syncfusion XlsIO | Production-quality exports with formulas, conditional formatting |
-| **PDF Export** | Syncfusion Pdf | Advanced PDF features (layers, forms, signatures, bookmarks) |
+| Component          | Technology                         | Purpose                                                          |
+| ------------------ | ---------------------------------- | ---------------------------------------------------------------- |
+| **Report Design**  | FastReport .frx templates          | Visual layout editor, banded reports with groups/totals          |
+| **Report Preview** | FastReport Report + PreviewControl | Interactive viewing, zoom, search, drill-down                    |
+| **Excel Export**   | Syncfusion XlsIO                   | Production-quality exports with formulas, conditional formatting |
+| **PDF Export**     | Syncfusion Pdf                     | Advanced PDF features (layers, forms, signatures, bookmarks)     |
 
 ## Implementation Status
 
@@ -205,6 +205,7 @@ public partial class BudgetForecastViewModel : ObservableObject
 **Use Case**: Budget analyst wants to review AI-generated forecast before approval
 
 **Solution**: Use FastReport templates with preview control
+
 - Load `BudgetForecastSummary.frx` for overview
 - Load `BudgetForecastLineItems.frx` for detailed review
 - Interactive navigation, zoom, search within the report
@@ -214,6 +215,7 @@ public partial class BudgetForecastViewModel : ObservableObject
 **Use Case**: Generate Excel workbook with multiple worksheets for executive review
 
 **Solution**: Use Syncfusion XlsIO directly
+
 - `ExportBudgetForecastAsync` creates multi-worksheet workbook
 - Summary, Line Items, Historical Trends, Assumptions tabs
 - Formatted with colors, formulas, conditional formatting
@@ -223,6 +225,7 @@ public partial class BudgetForecastViewModel : ObservableObject
 **Use Case**: Preview in FastReport, export via Syncfusion
 
 **Solution**: Use `ExportBudgetForecastHybridAsync` extension method
+
 - Preview using FastReport templates (fast, interactive)
 - Export using Syncfusion (high-quality, feature-rich)
 - Best of both worlds
@@ -247,6 +250,7 @@ public partial class BudgetForecastViewModel : ObservableObject
 - **PageFooter Band**: Page numbers
 
 **Data Sources**:
+
 - `LineItems`: Collection of `ProposedLineItem` objects
 - `ForecastHeader`: Header data for display
 
@@ -265,14 +269,14 @@ The open-source version has some constraints:
 
 ## Advantages Over Pure Syncfusion Approach
 
-| Feature | FastReport Advantage | Syncfusion Alternative |
-|---------|---------------------|------------------------|
-| **Visual Design** | WYSIWYG designer with bands, drag-drop | Programmatic only (PdfLightTable, DrawString) |
-| **Maintenance** | Change .frx template without recompile | Requires code changes and recompilation |
-| **Grouping/Totals** | Built-in group bands with automatic totals | Manual calculation and positioning |
-| **Template Reuse** | Same .frx for preview/print/multiple exports | Separate code for each output format |
-| **Non-Dev Editing** | Business users can modify templates | Requires developer for any layout change |
-| **Interactive Preview** | Built-in zoom, search, drill-down | Custom implementation required |
+| Feature                 | FastReport Advantage                         | Syncfusion Alternative                        |
+| ----------------------- | -------------------------------------------- | --------------------------------------------- |
+| **Visual Design**       | WYSIWYG designer with bands, drag-drop       | Programmatic only (PdfLightTable, DrawString) |
+| **Maintenance**         | Change .frx template without recompile       | Requires code changes and recompilation       |
+| **Grouping/Totals**     | Built-in group bands with automatic totals   | Manual calculation and positioning            |
+| **Template Reuse**      | Same .frx for preview/print/multiple exports | Separate code for each output format          |
+| **Non-Dev Editing**     | Business users can modify templates          | Requires developer for any layout change      |
+| **Interactive Preview** | Built-in zoom, search, drill-down            | Custom implementation required                |
 
 ## Next Steps
 
@@ -320,14 +324,17 @@ The open-source version has some constraints:
 ## Troubleshooting
 
 ### "Report template not found"
+
 - Ensure .frx files are in `Reports/` folder relative to executable
 - Set .frx files to "Copy to Output Directory: Copy if newer" in project properties
 
 ### "Data source not registered"
+
 - Verify data source names in .frx match code (case-sensitive)
 - Use `report.RegisterData()` before `report.Prepare()`
 
 ### "Export not supported"
+
 - FastReport Open Source lacks export plugins
 - Always use Syncfusion for PDF/Excel exports
 
@@ -347,5 +354,5 @@ The combination leverages the strengths of both libraries while avoiding their i
 
 ---
 
-*Last Updated: February 10, 2026*
-*Version: 1.0*
+_Last Updated: February 10, 2026_
+_Version: 1.0_

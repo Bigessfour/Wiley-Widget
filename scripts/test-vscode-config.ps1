@@ -40,7 +40,7 @@ function Test-BuildPaths {
     Write-Host "=== Build Path Validation ===" -ForegroundColor Green
     
     $projectPath = Join-Path $workspaceFolder "src\WileyWidget\WileyWidget.csproj"
-    $binPath = Join-Path $workspaceFolder "src\WileyWidget\bin\Debug\net9.0-windows10.0.19041.0\win-x64"
+    $binPath = Join-Path $workspaceFolder "src\WileyWidget\bin\Debug\net10.0-windows10.0.19041.0\win-x64"
     $exePath = Join-Path $binPath "WileyWidget.exe"
     
     if (Test-Path $projectPath) {

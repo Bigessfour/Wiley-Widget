@@ -264,8 +264,7 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogError(ex, "Failed to load budget overview for fiscal year {FiscalYear}", FiscalYear);
                 ErrorMessage = $"Failed to load budget overview: {ex.Message}";
 
-                // Provide sample data on failure for graceful degradation
-                LoadSampleDataOnFailure();
+                ResetBudgetOverviewDataOnFailure();
             }
             finally
             {
@@ -518,36 +517,30 @@ namespace WileyWidget.WinForms.ViewModels
                 Metrics.Count, OverBudgetCount, UnderBudgetCount);
         }
 
-        /// <summary>
-        /// Sample/fallback population is disabled in production builds.
-        /// Clears temporary collections and logs a warning instead of populating hard-coded sample data.
-        /// </summary>
-        private void LoadSampleDataOnFailure()
+        private void ResetBudgetOverviewDataOnFailure()
         {
             try
             {
-                _logger.LogWarning("LoadSampleDataOnFailure called: sample budget overview data disabled. Ensure budget repository is configured.");
+            _logger.LogWarning("ResetBudgetOverviewDataOnFailure called: loading empty budget overview state.");
 
                 Categories.Clear();
                 TotalBudget = 0m;
                 TotalActual = 0m;
                 TotalEncumbrance = 0m;
                 TotalAvailable = 0m;
-                ErrorMessage = "Production budget overview data unavailable; sample data disabled.";
-                StatusText = "No production budget overview data loaded";
+            StatusText = "No budget overview data available yet.";
 
-                // No sample categories available in production; compute totals from cleared collections.
                 TotalVariance = 0m;
                 OverallVariancePercent = 0m;
 
                 UpdateMetricsFromCategories();
                 LastUpdated = DateTime.Now;
 
-                _logger.LogInformation("Sample budget data disabled — cleared categories and metrics.");
+                _logger.LogInformation("Budget overview reset to empty metrics state.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load sample data");
+                _logger.LogError(ex, "Failed to reset budget overview data state");
             }
         }
     }

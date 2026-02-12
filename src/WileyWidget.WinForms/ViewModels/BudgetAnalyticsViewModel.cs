@@ -79,12 +79,11 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
             ErrorMessage = null;
             AnalyticsData.Clear();
 
-            // Sample generation disabled in production. Ensure an analytics service is configured to provide data.
-            _logger.LogWarning("LoadData called: sample analytics data disabled. Ensure analytics service is configured.");
-            var sampleData = new List<BudgetAnalyticsData>();
+            _logger.LogInformation("LoadData called: loading empty analytics state until production analytics service is configured.");
+            var analyticsRows = new List<BudgetAnalyticsData>();
 
             // Extract unique departments from data and populate dropdown
-            var allDepartments = sampleData
+            var allDepartments = analyticsRows
                 .Select(x => x.DepartmentName)
                 .Distinct()
                 .OrderBy(x => x)
@@ -102,7 +101,7 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
             }
 
             // Apply filters and add to view
-            var filteredData = ApplyFilters(sampleData);
+            var filteredData = ApplyFilters(analyticsRows);
             foreach (var item in filteredData)
             {
                 AnalyticsData.Add(item);
@@ -162,9 +161,9 @@ public partial class BudgetAnalyticsViewModel : ObservableObject, IBudgetAnalyti
     private bool CanRefresh() => !IsLoading;
     private bool CanFilterData() => !IsLoading;
 
-    private List<BudgetAnalyticsData> GenerateSampleAnalyticsData()
+    private List<BudgetAnalyticsData> CreateEmptyAnalyticsData()
     {
-        _logger.LogWarning("GenerateSampleAnalyticsData called: sample analytics generation disabled. Returning empty dataset.");
+        _logger.LogInformation("CreateEmptyAnalyticsData called: returning empty analytics data.");
         return new List<BudgetAnalyticsData>();
     }
 }

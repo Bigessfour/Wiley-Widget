@@ -781,6 +781,9 @@ namespace WileyWidget.WinForms.Services
 
                 Logger.LogInformation("[PANEL-ACTIVATE] ✅ Successfully activated existing panel {PanelName} - Visible={Visible}, Bounds={Bounds}, Docked={Docked}",
                     panelName, existingPanel.Visible, existingPanel.Bounds, _dockingManager.GetEnableDocking(existingPanel));
+
+                // Log detailed visibility diagnostics
+                DiagnosticLogPanelVisibility(existingPanel, panelName);
             }
             catch (Exception ex)
             {
@@ -849,8 +852,43 @@ namespace WileyWidget.WinForms.Services
             }
 
             // Dock the panel with calculated size
+            // Priority 4: Log side panel availability check before docking
+            var targetName = effectiveStyle switch
+            {
+                DockingStyle.Left => "LeftDockPanel",
+                DockingStyle.Right => "RightDockPanel",
+                _ => "HostControl"
+            };
+            var targetControl = effectiveStyle switch
+            {
+                DockingStyle.Left => _parentControl.Controls["LeftDockPanel"],
+                DockingStyle.Right => _parentControl.Controls["RightDockPanel"],
+                _ => hostControl
+            };
+            Logger.LogDebug("SIDE AVAIL CHECK | Style={Style} | Target={TargetName} | Target.Visible={Vis} | EnableDocking={Enable}",
+                effectiveStyle,
+                targetName,
+                targetControl?.Visible ?? false,
+                _dockingManager?.GetEnableDocking(targetControl) ?? false);
+
             _dockingManager.DockControl(panel, hostControl, effectiveStyle, dockSize);
             Logger.LogInformation("Panel docked successfully: {PanelName} at {Style} with size {Size}", panelName, effectiveStyle, dockSize);
+
+            // QUICK TEST FIX: Force parent if missing (Syncfusion workaround)
+            if (panel.Parent != _dockingManager.HostControl)
+            {
+                try
+                {
+                    _dockingManager.HostControl?.Controls.Add(panel);
+                    panel.Dock = DockStyle.Fill;
+                    Logger.LogWarning("FORCE PARENTED {PanelName} to HostControl (SetControl workaround)", panelName);
+                }
+                catch (Exception forceParentEx)
+                {
+                    Logger.LogWarning(forceParentEx, "Failed to force parent panel {PanelName} to HostControl", panelName);
+                }
+            }
+            _dockingManager.HostControl?.Invalidate(true);
 
             // QuickBooksPanel: Prevent resizing due to explicit internal sizing (prevents StackOverflow)
             // Since all controls in QuickBooksPanel have explicit AutoSize=false + Heights,
@@ -986,6 +1024,30 @@ namespace WileyWidget.WinForms.Services
 
             Logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
             Logger.LogInformation("[PANEL] {PanelName} docked - Visible={Visible}, Bounds={Bounds}", panelName, panel.Visible, panel.Bounds);
+
+            // Priority 1: DOCK SUCCESS CHECK - verify panel is in HostControl
+            Logger.LogInformation("DOCK SUCCESS CHECK | {PanelName} | HostControl.Contains={Contains} | Panel.Parent={ParentName} | HostControl.Controls.Count={Count} | Panel.Bounds={Bounds}",
+                panelName,
+                _dockingManager?.HostControl?.Controls.Contains(panel) ?? false,
+                panel.Parent?.Name ?? "null",
+                _dockingManager?.HostControl?.Controls.Count ?? 0,
+                panel.Bounds);
+
+            // Priority 2: List all HostControl children
+            if (_dockingManager?.HostControl?.Controls.Count > 0)
+            {
+                foreach (Control c in _dockingManager.HostControl.Controls)
+                {
+                    Logger.LogInformation("HOST CHILD | Name={Name} | Type={Type} | Visible={Vis}", c.Name, c.GetType().Name, c.Visible);
+                }
+            }
+            else
+            {
+                Logger.LogWarning("HOST EMPTY | No children in HostControl");
+            }
+
+            // Log detailed visibility diagnostics
+            DiagnosticLogPanelVisibility(panel, panelName);
         }
 
         private void TryInitializeAsyncPanel(UserControl panel, string panelName)
@@ -1472,6 +1534,109 @@ namespace WileyWidget.WinForms.Services
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "Failed to announce accessibility message (non-critical)");
+            }
+        }
+
+        /// <summary>
+        /// Diagnostic method: Captures all visibility-related properties of a single panel.
+        /// Logs: DockState, Parent, Visible, DockVisibility, AutoHideMode, ZIndex, Bounds.
+        /// </summary>
+        private void DiagnosticLogPanelVisibility(UserControl? panel, string panelName)
+        {
+            if (panel == null || panel.IsDisposed)
+            {
+                Logger.LogWarning("[PANEL-VISIBILITY-DIAG] ❌ NULL/DISPOSED | {PanelName}", panelName);
+                return;
+            }
+
+            try
+            {
+                var dockState = DockState.Float;
+                var parentName = panel.Parent?.Name ?? "(no parent)";
+                var isVisible = panel.Visible;
+                var dockVisibility = false;
+                var autoHideMode = false;
+                var zIndex = -1;
+                var bounds = panel.Bounds;
+
+                if (_dockingManager != null)
+                {
+                    try { dockState = _dockingManager.GetDockState(panel); } catch { }
+                    try { dockVisibility = _dockingManager.GetDockVisibility(panel); } catch { }
+                    try { autoHideMode = _dockingManager.GetAutoHideMode(panel); } catch { }
+                    try { zIndex = panel.Parent?.Controls.GetChildIndex(panel, false) ?? -1; } catch { }
+                }
+
+                var visibilityStatus = (isVisible && dockVisibility && !autoHideMode) ? "✅ VISIBLE" : "⚠️ HIDDEN";
+                Logger.LogInformation(
+                    "[PANEL-VISIBILITY-DIAG] {Status} {PanelName} | DockState={DockState} | Parent={Parent} | " +
+                    "Visible={Visible} | DockVis={DockVis} | AutoHide={AutoHide} | ZIndex={ZIndex} | " +
+                    "Bounds=({X},{Y},{W}x{H})",
+                    visibilityStatus, panelName, dockState, parentName, isVisible, dockVisibility,
+                    autoHideMode, zIndex, bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "[PANEL-VISIBILITY-DIAG] Exception logging panel visibility for {PanelName}", panelName);
+            }
+        }
+
+        /// <summary>
+        /// Diagnostic method: Logs visibility state of ALL cached panels (summary view).
+        /// Also logs availability of side panels (LeftDockPanel, RightDockPanel).
+        /// </summary>
+        private void DiagnosticLogAllPanelVisibility()
+        {
+            try
+            {
+                var sidePanelsAvailable = (_parentControl.Controls["LeftDockPanel"]?.Visible ?? false) ||
+                                         (_parentControl.Controls["RightDockPanel"]?.Visible ?? false);
+
+                Logger.LogInformation(
+                    "[PANEL-VISIBILITY-DIAG] Summary: {PanelCount} panels cached | SidePanelsAvailable={Available}",
+                    _cachedPanels.Count, sidePanelsAvailable);
+
+                var visibleCount = 0;
+                var hiddenCount = 0;
+
+                foreach (var kvp in _cachedPanels)
+                {
+                    var panelName = kvp.Key;
+                    var panel = kvp.Value;
+
+                    if (panel == null || panel.IsDisposed)
+                    {
+                        Logger.LogDebug("[PANEL-VISIBILITY-DIAG] Panel '{PanelName}' is null/disposed", panelName);
+                        hiddenCount++;
+                        continue;
+                    }
+
+                    var isVisible = false;
+                    var dockState = DockState.Float;
+
+                    if (_dockingManager != null)
+                    {
+                        try { isVisible = panel.Visible && _dockingManager.GetDockVisibility(panel); } catch { }
+                        try { dockState = _dockingManager.GetDockState(panel); } catch { }
+                    }
+
+                    if (isVisible)
+                        visibleCount++;
+                    else
+                        hiddenCount++;
+
+                    Logger.LogDebug(
+                        "[PANEL-VISIBILITY-DIAG]   - {PanelName}: {Status} | DockState={DockState}",
+                        panelName, isVisible ? "✅" : "❌", dockState);
+                }
+
+                Logger.LogInformation(
+                    "[PANEL-VISIBILITY-DIAG] Final tally: {VisibleCount} visible, {HiddenCount} hidden",
+                    visibleCount, hiddenCount);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "[PANEL-VISIBILITY-DIAG] Exception logging all panel visibility");
             }
         }
     }

@@ -417,20 +417,30 @@ namespace WileyWidget.Services
         {
             var rows = await _budgetRepository.GetTownOfWileyBudgetDataAsync(ct);
 
+            _logger.LogInformation("PopulateDepartmentSummariesFromSanitationAsync: Retrieved {RowCount} rows from repository", rows.Count);
+
+            // [FIX] Use MappedDepartment if available, otherwise fall back to FundOrDepartment
+            // This handles cases where data migration hasn't populated MappedDepartment yet
             var validRows = rows
-                .Where(r => !string.IsNullOrWhiteSpace(r.MappedDepartment)
+                .Where(r => (!string.IsNullOrWhiteSpace(r.MappedDepartment) || !string.IsNullOrWhiteSpace(r.FundOrDepartment))
                          && ((r.BudgetYear.GetValueOrDefault() > 0 || r.PriorYearActual.GetValueOrDefault() > 0)
                              || r.ActualYTD.GetValueOrDefault() > 0))
                 .ToList();
 
             if (!validRows.Any())
             {
-                _logger.LogWarning("PopulateDepartmentSummariesFromSanitationAsync: No valid rows found");
+                var mappedCount = rows.Count(r => !string.IsNullOrWhiteSpace(r.MappedDepartment));
+                var fundCount = rows.Count(r => !string.IsNullOrWhiteSpace(r.FundOrDepartment));
+                _logger.LogWarning("PopulateDepartmentSummariesFromSanitationAsync: No valid rows found. Total rows: {Total}, with MappedDepartment: {Mapped}, with FundOrDepartment: {Fund}",
+                    rows.Count, mappedCount, fundCount);
                 return;
             }
 
+            _logger.LogInformation("PopulateDepartmentSummariesFromSanitationAsync: Found {ValidCount} valid rows with budget data", validRows.Count);
+
+            // Group by MappedDepartment (preferred) or FundOrDepartment (fallback)
             var deptGroups = validRows
-                .GroupBy(r => r.MappedDepartment!)
+                .GroupBy(r => !string.IsNullOrWhiteSpace(r.MappedDepartment) ? r.MappedDepartment! : r.FundOrDepartment ?? "Unknown")
                 .Select(g => new
                 {
                     Department = g.Key,

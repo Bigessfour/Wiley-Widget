@@ -18,6 +18,7 @@ public abstract class RealApiTestBase : IDisposable
 
     private static int _totalTokensUsed;
     private const int MaxTokenBudget = 50000; // Maximum tokens for entire test suite
+    private bool _disposed;
 
     protected RealApiTestBase(ITestOutputHelper output)
     {
@@ -100,9 +101,24 @@ public abstract class RealApiTestBase : IDisposable
         return $"{apiKey[..4]}***{apiKey[^4..]}";
     }
 
-    public virtual void Dispose()
+    public void Dispose()
     {
-        // Cleanup if needed in derived classes
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing && Configuration is IDisposable disposableConfiguration)
+        {
+            disposableConfiguration.Dispose();
+        }
+
+        _disposed = true;
     }
 }

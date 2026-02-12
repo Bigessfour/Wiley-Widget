@@ -66,7 +66,10 @@ public sealed class MainFormKeyboardIntegrationTests
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
         using var form = new TestMainForm(provider);
 
         try
@@ -101,7 +104,10 @@ public sealed class MainFormKeyboardIntegrationTests
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
         using var form = new TestMainForm(provider);
         // _ = form.Handle;  // Commented out to avoid handle creation
         // form.CreateControl();  // Commented out to avoid control creation

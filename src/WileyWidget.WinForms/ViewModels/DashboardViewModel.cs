@@ -3,7 +3,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.ComponentModel;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
@@ -11,6 +14,8 @@ using Microsoft.Extensions.Configuration;
 using WileyWidget.WinForms.Logging;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -39,6 +44,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IMunicipalAccountRepository? _accountRepository;
         private readonly IDashboardService? _dashboardService;
         private readonly ILogger<DashboardViewModel> _logger;
+        private readonly IUiDispatcher _uiDispatcher;
         private CancellationTokenSource? _loadCancellationTokenSource;
         private readonly SemaphoreSlim _loadLock = new(1, 1);
         private const int MaxRetryAttempts = 3;
@@ -178,7 +184,8 @@ namespace WileyWidget.WinForms.ViewModels
             IMunicipalAccountRepository? accountRepository,
             ILogger<DashboardViewModel>? logger,
             IDashboardService? dashboardService = null,
-            IConfiguration? configuration = null)
+            IConfiguration? configuration = null,
+            IUiDispatcher? uiDispatcher = null)
         {
             // CRITICAL: Use NullLogger fallback to prevent null reference in error handlers
             _logger = logger ?? WileyWidget.WinForms.Logging.NullLogger<DashboardViewModel>.Instance;
@@ -194,22 +201,20 @@ namespace WileyWidget.WinForms.ViewModels
             _accountRepository = accountRepository;
             _dashboardService = dashboardService;
             _configuration = configuration;
+            _uiDispatcher = uiDispatcher ?? new InlineUiDispatcher();
 
             LoadCommand = new AsyncRelayCommand(LoadDashboardDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDashboardDataAsync);
             RefreshMetricsCommand = new AsyncRelayCommand(RefreshMetricsAsync);
             LoadFiscalYearCommand = new AsyncRelayCommand<int>(LoadFiscalYearDataAsync);
 
-            // Initialize with sample data for design-time
             if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime)
             {
-                InitializeSampleData();
+                InitializeEmptyData();
             }
             else
             {
-                // Immediate sample data so dashboard never starts blank
-                // Async real load will overwrite if available (triggered by panel visibility/refresh)
-                LoadSampleDashboardData();
+                ResetDashboardToEmptyState("No production data loaded yet");
             }
 
             _logger.LogDebug("DashboardViewModel initialized");
@@ -233,14 +238,18 @@ namespace WileyWidget.WinForms.ViewModels
                 var fiscalYearStart = new DateTime(currentFiscalYear - 1, 7, 1);
                 var fiscalYearEnd = new DateTime(currentFiscalYear, 6, 30);
 
-                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, CancellationToken.None);
+                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, CancellationToken.None).ConfigureAwait(false);
                 if (analysis != null)
                 {
-                    BudgetAnalysis = analysis;
-                    TotalBudgeted = analysis.TotalBudgeted;
-                    TotalActual = analysis.TotalActual;
-                    TotalVariance = analysis.TotalVariance;
-                    VariancePercentage = analysis.TotalVariancePercentage;
+                    await InvokeOnUiThreadAsync(() =>
+                    {
+                        BudgetAnalysis = analysis;
+                        TotalBudgeted = analysis.TotalBudgeted;
+                        TotalActual = analysis.TotalActual;
+                        TotalVariance = analysis.TotalVariance;
+                        VariancePercentage = analysis.TotalVariancePercentage;
+                    }, cancellationToken).ConfigureAwait(false);
+
                     _logger.LogInformation("Dashboard metrics refreshed: Budget={Budget}, Actual={Actual}", TotalBudgeted, TotalActual);
                 }
             }
@@ -261,15 +270,6 @@ namespace WileyWidget.WinForms.ViewModels
             // Validate dependencies defensively
             ValidateCriticalDependencies();
 
-            // If critical dependencies are missing, stop loading
-            if (HasError)
-            {
-                IsLoading = false;
-                _logger.LogError("Critical dependencies missing - aborting dashboard load");
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Critical dependencies missing - aborting");
-                return;
-            }
-
             ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Dependencies validated successfully");
 
             var cancellationTokenSource = new CancellationTokenSource();
@@ -278,8 +278,7 @@ namespace WileyWidget.WinForms.ViewModels
             _logger.LogDebug("Acquiring load lock...");
             ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Acquiring semaphore");
 
-            // Keep on UI thread to ensure property updates work correctly
-            await _loadLock.WaitAsync().ConfigureAwait(true);
+            await _loadLock.WaitAsync(localCancellationToken).ConfigureAwait(false);
 
             _logger.LogDebug("Load lock acquired");
             ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Semaphore acquired");
@@ -295,19 +294,23 @@ namespace WileyWidget.WinForms.ViewModels
                 {
                     try
                     {
-                        IsLoading = true;
-                        ErrorMessage = null;
+                        await InvokeOnUiThreadAsync(() =>
+                        {
+                            IsLoading = true;
+                            ErrorMessage = null;
+                        }, localCancellationToken).ConfigureAwait(false);
 
                         if (_budgetRepository == null || _accountRepository == null)
                         {
-                            ErrorMessage = "Dashboard repositories are not available";
-                            return;
+                            _logger.LogWarning("One or more dashboard repositories are not configured; loading empty dashboard state.");
+                            ResetDashboardToEmptyState("No production dashboard data available yet");
+                            break;
                         }
 
                         if (retryCount > 0)
                         {
                             _logger.LogInformation("Retrying dashboard data load (attempt {Attempt} of {Max})...", retryCount + 1, MaxRetryAttempts);
-                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), localCancellationToken);
+                            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retryCount)), localCancellationToken).ConfigureAwait(false);
                         }
                         else
                         {
@@ -371,15 +374,19 @@ namespace WileyWidget.WinForms.ViewModels
                             try
                             {
                                 _logger.LogInformation("Attempting to load Town of Wiley 2026 budget data from dashboard service...");
-                                await _dashboardService.PopulateDashboardMetricsFromWileyDataAsync(localCancellationToken);
+                                await _dashboardService.PopulateDashboardMetricsFromWileyDataAsync(localCancellationToken).ConfigureAwait(false);
 
                                 // Also populate department summaries from the mapped data
-                                await _dashboardService.PopulateDepartmentSummariesFromSanitationAsync(localCancellationToken);
+                                await _dashboardService.PopulateDepartmentSummariesFromSanitationAsync(localCancellationToken).ConfigureAwait(false);
 
                                 _logger.LogInformation("Town of Wiley 2026 budget data loaded successfully");
-                                LastUpdated = DateTime.Now;
-                                StatusText = "Wiley 2026 Budget Loaded";
-                                ErrorMessage = null;
+                                await InvokeOnUiThreadAsync(() =>
+                                {
+                                    LastUpdated = DateTime.Now;
+                                    StatusText = "Wiley 2026 Budget Loaded";
+                                    ErrorMessage = null;
+                                }, localCancellationToken).ConfigureAwait(false);
+
                                 break; // Successfully loaded—exit retry loop
                             }
                             catch (Exception wileyEx)
@@ -389,55 +396,67 @@ namespace WileyWidget.WinForms.ViewModels
                         }
 
                         // Fallback: Load budget analysis from repository
-                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, localCancellationToken);
+                        var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd, localCancellationToken).ConfigureAwait(false);
+
+                        decimal totalBudgetedValue = 0m;
+                        decimal totalActualValue = 0m;
+                        int activeDepartmentsCount = 0;
 
                         if (analysis != null)
                         {
-                            // Update all properties (already on UI thread due to no ConfigureAwait(false))
-                            BudgetAnalysis = analysis;
-                            TotalBudgeted = analysis.TotalBudgeted;
-                            TotalActual = analysis.TotalActual;
-                            TotalVariance = analysis.TotalVariance;
-                            VariancePercentage = analysis.TotalVariancePercentage;
-
-                            FundSummaries.Clear();
-                            foreach (var fund in analysis.FundSummaries)
-                            {
-                                FundSummaries.Add(fund);
-                            }
-
-                            // Update department summaries
-                            DepartmentSummaries.Clear();
-                            foreach (var dept in analysis.DepartmentSummaries)
-                            {
-                                DepartmentSummaries.Add(dept);
-                            }
-                            ActiveDepartments = analysis.DepartmentSummaries.Count;
-
-                            // Get top variances (largest deviations) and update
+                            totalBudgetedValue = analysis.TotalBudgeted;
+                            totalActualValue = analysis.TotalActual;
+                            var fundList = analysis.FundSummaries.ToList();
+                            var departmentList = analysis.DepartmentSummaries.ToList();
+                            activeDepartmentsCount = departmentList.Count;
                             var topVarList = analysis.AccountVariances
                                 .OrderByDescending(v => Math.Abs(v.VarianceAmount))
                                 .Take(10)
                                 .ToList();
 
-                            TopVariances.Clear();
-                            foreach (var variance in topVarList)
+                            await InvokeOnUiThreadAsync(() =>
                             {
-                                TopVariances.Add(variance);
-                            }
+                                BudgetAnalysis = analysis;
+                                TotalBudgeted = analysis.TotalBudgeted;
+                                TotalActual = analysis.TotalActual;
+                                TotalVariance = analysis.TotalVariance;
+                                VariancePercentage = analysis.TotalVariancePercentage;
+
+                                FundSummaries.Clear();
+                                foreach (var fund in fundList)
+                                {
+                                    FundSummaries.Add(fund);
+                                }
+
+                                DepartmentSummaries.Clear();
+                                foreach (var dept in departmentList)
+                                {
+                                    DepartmentSummaries.Add(dept);
+                                }
+
+                                ActiveDepartments = activeDepartmentsCount;
+
+                                TopVariances.Clear();
+                                foreach (var variance in topVarList)
+                                {
+                                    TopVariances.Add(variance);
+                                }
+                            }, localCancellationToken).ConfigureAwait(false);
                         }
                         else
                         {
-                            // No analysis data available - fall back to sample data
-                            _logger.LogInformation("Budget analysis returned null - falling back to sample dashboard data");
-                            LoadSampleDashboardData();
+                            _logger.LogInformation("Budget analysis returned no data; keeping empty dashboard metrics for the selected fiscal year.");
+                            await InvokeOnUiThreadAsync(() =>
+                            {
+                                ResetDashboardToEmptyState("No budget data available for selected fiscal year");
+                            }, localCancellationToken).ConfigureAwait(false);
                         }
 
                         // Load account count
-                        var accountCount = await _accountRepository.GetCountAsync(localCancellationToken);
+                        var accountCount = await _accountRepository.GetCountAsync(localCancellationToken).ConfigureAwait(false);
 
                         // Calculate revenue and expenses from budget entries
-                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, localCancellationToken);
+                        var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(currentFiscalYear, localCancellationToken).ConfigureAwait(false);
                         var totalRevenue = budgetEntries
                             .Where(be => be.AccountNumber.StartsWith("4", StringComparison.Ordinal)) // Revenue accounts typically start with 4
                             .Sum(be => be.ActualAmount);
@@ -450,54 +469,40 @@ namespace WileyWidget.WinForms.ViewModels
                         var netIncome = totalRevenue - totalExpenses;
 
                         // Calculate gauge values (0-100 scale representing percentage of budget used)
-                        var totalBudgetGauge = TotalBudgeted > 0 ? (float)((TotalActual / TotalBudgeted) * 100) : 0f;
-                        var revenueGauge = TotalBudgeted > 0 ? (float)((totalRevenue / (TotalBudgeted * 0.4m)) * 100) : 0f; // Assume 40% of budget is revenue
-                        var expensesGauge = TotalBudgeted > 0 ? (float)((totalExpenses / (TotalBudgeted * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
+                        var totalBudgetGauge = totalBudgetedValue > 0 ? (float)((totalActualValue / totalBudgetedValue) * 100) : 0f;
+                        var revenueGauge = totalBudgetedValue > 0 ? (float)((totalRevenue / (totalBudgetedValue * 0.4m)) * 100) : 0f; // Assume 40% of budget is revenue
+                        var expensesGauge = totalBudgetedValue > 0 ? (float)((totalExpenses / (totalBudgetedValue * 0.6m)) * 100) : 0f; // Assume 60% of budget is expenses
                         var netPositionGauge = Math.Max(0, Math.Min(100, 50 + (float)(netIncome / 1000000 * 50))); // Scale net position: -1M to +1M = 0-100
 
-                        // Update all properties (already on UI thread)
-                        try
+                        await InvokeOnUiThreadAsync(() =>
                         {
-                            // Update calculated values
                             AccountCount = accountCount;
                             TotalRevenue = totalRevenue;
                             TotalExpenses = totalExpenses;
                             NetIncome = netIncome;
 
-                            // Update gauge values
                             TotalBudgetGauge = totalBudgetGauge;
                             RevenueGauge = revenueGauge;
                             ExpensesGauge = expensesGauge;
                             NetPositionGauge = netPositionGauge;
 
-                            // Update metrics and revenue data
                             UpdateMetricsCollection();
-                            // Monthly revenue data loading deferred to async method during initialization
-                            // PopulateMonthlyRevenueDataAsync is called separately to avoid blocking UI updates
 
-                            // Update metadata
                             MunicipalityName = "Town of Wiley";
                             FiscalYear = $"FY {currentFiscalYear}";
                             LastUpdated = DateTime.Now;
                             StatusText = $"Loaded {AccountCount} accounts, {ActiveDepartments} departments";
-
-                            _logger.LogInformation("Dashboard UI updates completed: {MetricsCount} metrics, {RevenueCount} revenue data points",
-                                Metrics.Count, MonthlyRevenueData.Count);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to update UI collections");
-                        }
+                            HasError = false;
+                        }, localCancellationToken).ConfigureAwait(false);
 
                         _logger.LogInformation("Dashboard data loaded successfully: {ItemCount} metrics, Revenue: {Revenue:C}, Expenses: {Expenses:C}",
                             Metrics.Count, totalRevenue, totalExpenses);
                         _logger.LogInformation("Dashboard metrics updated: NetPosition={NetPosition:C}, Budgeted={Budgeted:C}, Actual={Actual:C}",
-                            netIncome, TotalBudgeted, TotalActual);
+                            netIncome, totalBudgetedValue, totalActualValue);
                         _logger.LogInformation("Dashboard collections: {FundCount} funds, {DeptCount} departments, {VarianceCount} variances",
-                            FundSummaries.Count, DepartmentSummaries.Count, TopVariances.Count);
+                            analysis?.FundSummaries.Count ?? 0, analysis?.DepartmentSummaries.Count ?? 0, analysis?.AccountVariances.Count ?? 0);
                         _logger.LogInformation("=== Dashboard load COMPLETED SUCCESSFULLY ===");
                         ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: COMPLETED SUCCESSFULLY");
-                        HasError = false;
                         // Successfully loaded—exit retry loop
                         break;
                     }
@@ -506,7 +511,10 @@ namespace WileyWidget.WinForms.ViewModels
                         // Handle cancellation gracefully for dashboard loads (tests expect cancellation to be swallowed)
                         _logger.LogInformation("Dashboard load cancelled (likely due to concurrent load request)");
                         ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] LoadDashboardDataAsync: Cancelled");
-                        ErrorMessage = null; // Clear error since this is expected
+                        await InvokeOnUiThreadAsync(() =>
+                        {
+                            ErrorMessage = null;
+                        }, CancellationToken.None).ConfigureAwait(false);
                         // Stop retrying and exit method without throwing to callers
                         break;
                     }
@@ -515,30 +523,40 @@ namespace WileyWidget.WinForms.ViewModels
                         // The view model or its dependencies were disposed (likely during shutdown).
                         // Do not retry on ObjectDisposedException; stop attempts and exit gracefully.
                         _logger.LogInformation(odex, "Dashboard load aborted due to disposal; stopping retries");
-                        ErrorMessage = "Dashboard load aborted due to shutdown";
+                        await InvokeOnUiThreadAsync(() =>
+                        {
+                            ErrorMessage = "Dashboard load aborted due to shutdown";
+                        }, CancellationToken.None).ConfigureAwait(false);
                         break;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error loading dashboard data");
-                        ErrorMessage = $"Failed to load dashboard: {ex.Message}";
-                        HasError = true;
+                        await InvokeOnUiThreadAsync(() =>
+                        {
+                            ErrorMessage = null;
+                            HasError = false;
+                        }, CancellationToken.None).ConfigureAwait(false);
                         // Increment retry count so we don't loop infinitely
                         retryCount++;
 
-                        // If this is the final attempt, fall back to sample data instead of showing error
+                        // If this is the final attempt, keep dashboard functional with empty state.
                         if (retryCount >= MaxRetryAttempts)
                         {
-                            _logger.LogError("Dashboard load failed after {Attempts} attempts - falling back to sample data", MaxRetryAttempts);
-                            LoadSampleDashboardData();
-                            ErrorMessage = "Failed to load data, showing sample";
-                            HasError = true;
+                            _logger.LogWarning("Dashboard load failed after {Attempts} attempts - using empty dashboard state", MaxRetryAttempts);
+                            await InvokeOnUiThreadAsync(() =>
+                            {
+                                ResetDashboardToEmptyState("Unable to load dashboard data yet");
+                            }, CancellationToken.None).ConfigureAwait(false);
                             break; // Exit retry loop
                         }
                     }
                     finally
                     {
-                        IsLoading = false;
+                        await InvokeOnUiThreadAsync(() =>
+                        {
+                            IsLoading = false;
+                        }, CancellationToken.None).ConfigureAwait(false);
                     }
                 }
             }
@@ -554,7 +572,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private async Task RefreshDashboardDataAsync(CancellationToken cancellationToken = default)
         {
-            await LoadDashboardDataAsync();
+            await LoadDashboardDataAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -564,12 +582,19 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                IsLoading = true;
-                ErrorMessage = null;
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    IsLoading = true;
+                    ErrorMessage = null;
+                }, cancellationToken).ConfigureAwait(false);
 
                 if (_budgetRepository == null || _accountRepository == null)
                 {
-                    ErrorMessage = "Dashboard repositories are not available";
+                    _logger.LogWarning("Fiscal year load skipped because repositories are not configured.");
+                    await InvokeOnUiThreadAsync(() =>
+                    {
+                        ResetDashboardToEmptyState("No fiscal year data available yet");
+                    }, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
@@ -578,12 +603,14 @@ namespace WileyWidget.WinForms.ViewModels
                 var fiscalYearStart = new DateTime(fiscalYear - 1, 7, 1);
                 var fiscalYearEnd = new DateTime(fiscalYear, 6, 30);
 
-                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd);
+                var analysis = await _budgetRepository.GetBudgetSummaryAsync(fiscalYearStart, fiscalYearEnd).ConfigureAwait(false);
 
                 if (analysis != null)
                 {
-                    // All property and collection updates must be on UI thread
-                    var updateAction = new System.Action(() =>
+                    var fundList = analysis.FundSummaries.ToList();
+                    var departmentList = analysis.DepartmentSummaries.ToList();
+
+                    await InvokeOnUiThreadAsync(() =>
                     {
                         BudgetAnalysis = analysis;
                         TotalBudgeted = analysis.TotalBudgeted;
@@ -592,25 +619,24 @@ namespace WileyWidget.WinForms.ViewModels
                         VariancePercentage = analysis.TotalVariancePercentage;
 
                         FundSummaries.Clear();
-                        foreach (var fund in analysis.FundSummaries)
+                        foreach (var fund in fundList)
                         {
                             FundSummaries.Add(fund);
                         }
 
                         DepartmentSummaries.Clear();
-                        foreach (var dept in analysis.DepartmentSummaries)
+                        foreach (var dept in departmentList)
                         {
                             DepartmentSummaries.Add(dept);
                         }
+
+                        ActiveDepartments = departmentList.Count;
 
                         UpdateMetricsCollection();
 
                         FiscalYear = $"FY {fiscalYear}";
                         LastUpdated = DateTime.Now;
-                    });
-
-                    // Already on UI thread - call directly
-                    updateAction();
+                    }, cancellationToken).ConfigureAwait(false);
                 }
 
                 _logger.LogInformation("Dashboard data for FY {FiscalYear} loaded successfully", fiscalYear);
@@ -623,11 +649,17 @@ namespace WileyWidget.WinForms.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading dashboard data for fiscal year {FiscalYear}", fiscalYear);
-                ErrorMessage = $"Failed to load fiscal year data: {ex.Message}";
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    ErrorMessage = $"Failed to load fiscal year data: {ex.Message}";
+                }, CancellationToken.None).ConfigureAwait(false);
             }
             finally
             {
-                IsLoading = false;
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    IsLoading = false;
+                }, CancellationToken.None).ConfigureAwait(false);
             }
         }
 
@@ -636,6 +668,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         private void UpdateMetricsCollection()
         {
+            AssertUiThreadBoundMutation();
             _logger.LogDebug("UpdateMetricsCollection: Starting metrics update");
             Metrics.Clear();
 
@@ -728,23 +761,30 @@ namespace WileyWidget.WinForms.ViewModels
         private async Task PopulateMonthlyRevenueDataAsync(int fiscalYear, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("PopulateMonthlyRevenueData: Starting for FY {FiscalYear}", fiscalYear);
-            MonthlyRevenueData.Clear();
+            await InvokeOnUiThreadAsync(() =>
+            {
+                MonthlyRevenueData.Clear();
+            }, cancellationToken).ConfigureAwait(false);
 
             try
             {
                 if (_budgetRepository == null)
                 {
-                    _logger.LogWarning("PopulateMonthlyRevenueData: Budget repository unavailable - using fallback data");
-                    PopulateMonthlyRevenueDataFallback(fiscalYear);
+                    _logger.LogWarning("PopulateMonthlyRevenueData: Budget repository unavailable; leaving monthly revenue data empty.");
+                    await InvokeOnUiThreadAsync(() =>
+                    {
+                        ClearMonthlyRevenueData();
+                    }, cancellationToken).ConfigureAwait(false);
                     return;
                 }
 
                 // Query actual monthly revenue data from repository
                 // Revenue accounts typically start with "4" (4000-4999 range)
                 var fiscalYearStart = new DateTime(fiscalYear - 1, 7, 1);
-                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear, cancellationToken);
+                var budgetEntries = await _budgetRepository.GetByFiscalYearAsync(fiscalYear, cancellationToken).ConfigureAwait(false);
 
                 var monthNames = new[] { "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
+                var monthValues = new List<MonthlyRevenue>(12);
 
                 // Group revenue entries by month (July = month 0, June = month 11)
                 for (int i = 0; i < 12; i++)
@@ -759,7 +799,7 @@ namespace WileyWidget.WinForms.ViewModels
                         .Where(be => be.StartPeriod >= monthStart && be.StartPeriod <= monthEnd)
                         .Sum(be => be.ActualAmount);
 
-                    MonthlyRevenueData.Add(new MonthlyRevenue
+                    monthValues.Add(new MonthlyRevenue
                     {
                         Month = monthNames[i],
                         MonthNumber = i + 1,
@@ -767,85 +807,103 @@ namespace WileyWidget.WinForms.ViewModels
                     });
                 }
 
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    MonthlyRevenueData.Clear();
+                    foreach (var monthValue in monthValues)
+                    {
+                        MonthlyRevenueData.Add(monthValue);
+                    }
+                }, cancellationToken).ConfigureAwait(false);
+
                 _logger.LogInformation("PopulateMonthlyRevenueData: Real data loaded - {Count} months, Total: {Total:C}",
                     MonthlyRevenueData.Count, MonthlyRevenueData.Sum(m => m.Amount));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "PopulateMonthlyRevenueData: Failed to load real data - using fallback");
-                PopulateMonthlyRevenueDataFallback(fiscalYear);
-            }
-        }
-
-        /// <summary>
-        /// Fallback method using distributed revenue data when repository query fails
-        /// </summary>
-        private void PopulateMonthlyRevenueDataFallback(int fiscalYear)
-        {
-            var monthNames = new[] { "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-
-            // Distribute total revenue evenly across 12 months (better than random)
-            var monthlyAverage = TotalRevenue > 0 ? TotalRevenue / 12 : 0m;
-
-            for (int i = 0; i < 12; i++)
-            {
-                MonthlyRevenueData.Add(new MonthlyRevenue
+                _logger.LogError(ex, "PopulateMonthlyRevenueData: Failed to load real data; leaving monthly revenue data empty");
+                await InvokeOnUiThreadAsync(() =>
                 {
-                    Month = monthNames[i],
-                    MonthNumber = i + 1,
-                    Amount = monthlyAverage
-                });
+                    ClearMonthlyRevenueData();
+                }, CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Clears monthly revenue collections when real monthly data is unavailable.
+        /// </summary>
+        private void ClearMonthlyRevenueData()
+        {
+            AssertUiThreadBoundMutation();
+            MonthlyRevenueData.Clear();
+            _logger.LogInformation("PopulateMonthlyRevenueData: no monthly revenue rows loaded.");
+        }
+
+        /// <summary>
+        /// Design-time initializer keeps dashboard in an empty state.
+        /// </summary>
+        private void InitializeEmptyData()
+        {
+            ResetDashboardToEmptyState("Designer initialized with empty dashboard data");
+        }
+
+        /// <summary>
+        /// Resets dashboard metrics and collections to a safe empty state.
+        /// </summary>
+        private void ResetDashboardToEmptyState(string emptyStatusText)
+        {
+            AssertUiThreadBoundMutation();
+            Metrics.Clear();
+            FundSummaries.Clear();
+            DepartmentSummaries.Clear();
+            TopVariances.Clear();
+            MonthlyRevenueData.Clear();
+            MonthlySummaries.Clear();
+
+            BudgetAnalysis = null;
+            TotalBudgeted = 0m;
+            TotalActual = 0m;
+            TotalVariance = 0m;
+            VariancePercentage = 0m;
+            TotalRevenue = 0m;
+            TotalExpenses = 0m;
+            NetIncome = 0m;
+            AccountCount = 0;
+            ActiveDepartments = 0;
+            TotalBudgetGauge = 0f;
+            RevenueGauge = 0f;
+            ExpensesGauge = 0f;
+            NetPositionGauge = 0f;
+
+            ErrorMessage = null;
+            HasError = false;
+            StatusText = emptyStatusText;
+            LastUpdated = DateTime.Now;
+        }
+
+        private async Task InvokeOnUiThreadAsync(Action action, CancellationToken cancellationToken = default)
+        {
+            if (_uiDispatcher.CheckAccess())
+            {
+                AssertUiThreadBoundMutation();
+                action();
+                return;
             }
 
-            _logger.LogWarning("PopulateMonthlyRevenueData: Using fallback data - {Count} months", MonthlyRevenueData.Count);
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                AssertUiThreadBoundMutation();
+                action();
+            }, cancellationToken).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Design-time initializer is disabled in production builds.
-        /// Clears any temporary collections and logs a warning instead of populating hard-coded sample data.
-        /// </summary>
-        private void InitializeSampleData()
+        [System.Diagnostics.Conditional("DEBUG")]
+        private void AssertUiThreadBoundMutation([CallerMemberName] string? memberName = null)
         {
-            _logger.LogWarning("InitializeSampleData called: design-time/sample population disabled. Ensure design-time tooling handles sample data separately.");
-
-            // Clear any existing collections to avoid revealing hard-coded values
-            Metrics.Clear();
-            FundSummaries.Clear();
-            DepartmentSummaries.Clear();
-            TopVariances.Clear();
-            MonthlyRevenueData.Clear();
-            MonthlySummaries.Clear();
-
-            // Indicate missing production data to the UI
-            ErrorMessage = "Design/sample data disabled; no production data loaded.";
-            HasError = true;
-            StatusText = "No production data loaded";
-            LastUpdated = DateTime.Now;
-        }
-
-        /// <summary>
-        /// Production-only behavior: sample data is disabled.
-        /// This method clears any temporary collections and signals that no production data
-        /// has been loaded. Real data should be provided by the configured repositories
-        /// or dashboard services via `LoadDashboardDataAsync`.
-        /// </summary>
-        private void LoadSampleDashboardData()
-        {
-            _logger.LogWarning("LoadSampleDashboardData called: sample data is disabled in this build. Ensure repositories are configured to provide production data.");
-
-            // Clear any partial/failed real data to avoid showing hard-coded values
-            Metrics.Clear();
-            FundSummaries.Clear();
-            DepartmentSummaries.Clear();
-            TopVariances.Clear();
-            MonthlyRevenueData.Clear();
-            MonthlySummaries.Clear();
-
-            // Indicate to the UI that production data was not loaded
-            ErrorMessage = "Production data unavailable; sample data disabled.";
-            HasError = true;
-            StatusText = "No production data loaded";
-            LastUpdated = DateTime.Now;
+            if (!_uiDispatcher.CheckAccess())
+            {
+                throw new InvalidOperationException($"UI-bound mutation must occur on the UI thread ({memberName ?? "unknown"}).");
+            }
         }
 
     }
@@ -894,8 +952,19 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 if (disposing)
                 {
-                    _loadCancellationTokenSource?.Cancel();
-                    _loadCancellationTokenSource?.Dispose();
+                    var source = Interlocked.Exchange(ref _loadCancellationTokenSource, null);
+                    if (source != null)
+                    {
+                        try
+                        {
+                            source.Cancel();
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                        }
+
+                        source.Dispose();
+                    }
                 }
                 _disposed = true;
             }
@@ -926,62 +995,44 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         /// <summary>
-        /// Validates all critical dependencies before async data loading operations.
-        /// This prevents null reference exceptions during dashboard load.
-        /// Sets error state if dependencies are missing instead of throwing.
+        /// Validates critical dependencies in non-blocking mode.
+        /// Missing dependencies are logged, but the dashboard continues in an empty state.
         /// </summary>
         private void ValidateCriticalDependencies()
         {
             _logger.LogDebug("=== ValidateCriticalDependencies STARTED ===");
             ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: ENTRY");
 
-            // _logger is always valid (falls back to NullLogger)
-            // But verify repositories which are required for data loading
             if (_budgetRepository == null)
             {
-                var message = "BudgetRepository is null - dashboard will show error state";
+                var message = "BudgetRepository is null - dashboard will display empty/zero budget metrics until configured";
                 _logger.LogWarning(message);
                 ConsoleOutputHelper.WriteLineSafe($"[WARNING] {message}");
-                ErrorMessage = "Budget data unavailable - repository not configured";
-                HasError = true;
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null BudgetRepository");
             }
             else
             {
                 _logger.LogDebug("BudgetRepository is available");
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: BudgetRepository OK");
             }
 
             if (_accountRepository == null)
             {
-                var message = "AccountRepository is null - dashboard will show error state";
+                var message = "AccountRepository is null - dashboard will display limited account metrics until configured";
                 _logger.LogWarning(message);
                 ConsoleOutputHelper.WriteLineSafe($"[WARNING] {message}");
-                if (!HasError)
-                {
-                    ErrorMessage = "Account data unavailable - repository not configured";
-                }
-                HasError = true;
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: Set HasError=true due to null AccountRepository");
             }
             else
             {
                 _logger.LogDebug("AccountRepository is available");
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: AccountRepository OK");
             }
 
-            if (HasError)
+            if (_dashboardService == null)
             {
-                _logger.LogError("Critical dependencies validation failed - HasError=true, ErrorMessage: {ErrorMessage}", ErrorMessage);
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: FAILED - HasError=true, ErrorMessage: {ErrorMessage}");
-            }
-            else
-            {
-                _logger.LogDebug("All critical dependencies validated successfully");
-                ConsoleOutputHelper.WriteLineSafe($"[{DateTime.Now:HH:mm:ss.fff}] ValidateCriticalDependencies: SUCCESS - All dependencies OK");
+                var message = "DashboardService is null - some aggregated metrics may be unavailable";
+                _logger.LogWarning(message);
+                ConsoleOutputHelper.WriteLineSafe($"[WARNING] {message}");
             }
 
-            _logger.LogDebug("=== ValidateCriticalDependencies COMPLETED ===");
+            _logger.LogDebug("=== ValidateCriticalDependencies COMPLETED (non-blocking) ===");
         }
 
         #endregion

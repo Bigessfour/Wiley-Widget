@@ -10,10 +10,7 @@
   "x-cdm-host-versions": "10",
   "x-cdm-codecs": "vp8,vp09,avc1,av01",
   "x-cdm-persistent-license-support": true,
-  "x-cdm-supported-encryption-schemes": [
-    "cenc",
-    "cbcs"
-  ],
+  "x-cdm-supported-encryption-schemes": ["cenc", "cbcs"],
   "icons": {
     "16": "imgs/icon-128x128.png",
     "128": "imgs/icon-128x128.png"
@@ -35,9 +32,5 @@
       "sub_package_path": "_platform_specific/win_arm64/"
     }
   ],
-  "accept_arch": [
-    "x64",
-    "x86_64",
-    "x86_64h"
-  ]
+  "accept_arch": ["x64", "x86_64", "x86_64h"]
 }

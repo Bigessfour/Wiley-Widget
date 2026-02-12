@@ -18,9 +18,6 @@ namespace WileyWidget.WinForms.Helpers;
 /// </summary>
 public static class UIThreadHelper
 {
-    private const int MessagePumpSleepDelayMs = 1;
-    private static readonly TimeSpan MessagePumpTimeout = TimeSpan.FromSeconds(60);
-
     /// <summary>
     /// Marshals the action to the UI thread if necessary.
     /// Safe to call even if control is disposing/closed.
@@ -34,14 +31,9 @@ public static class UIThreadHelper
         try
         {
             // If handle isn't created, we can't marshal via Invoke.
-            // If we're on the UI thread, we can just execute.
-            // If we're on a background thread, we must wait or fail.
+            // Avoid creating handles on background threads.
             if (!control.IsHandleCreated)
             {
-                if (Thread.CurrentThread.ManagedThreadId == 1) // Heuristic for UI thread
-                {
-                    action();
-                }
                 return;
             }
 
@@ -198,7 +190,7 @@ public static class UIThreadHelper
                     ?? throw new InvalidOperationException("Async action returned null task");
             }
 
-            await AwaitWithOptionalMessagePumpAsync(task, logger);
+            await task.ConfigureAwait(false);
         }
         catch (ObjectDisposedException ex)
         {
@@ -243,7 +235,7 @@ public static class UIThreadHelper
                     ?? throw new InvalidOperationException("Async function returned null task");
             }
 
-            return await AwaitWithOptionalMessagePumpAsync(task, logger);
+            return await task.ConfigureAwait(false);
         }
         catch (ObjectDisposedException ex)
         {
@@ -612,70 +604,4 @@ public static class UIThreadHelper
         return WaitForHandleAsync(control, timeoutMs).GetAwaiter().GetResult();
     }
 
-    private static async System.Threading.Tasks.Task AwaitWithOptionalMessagePumpAsync(
-        System.Threading.Tasks.Task task,
-        ILogger? logger)
-    {
-        if (task == null) throw new ArgumentNullException(nameof(task));
-
-        if (RequiresLocalMessagePump())
-        {
-            logger?.LogTrace("UIThreadHelper engaged a temporary message pump for async Task execution.");
-            PumpMessagesUntilCompleted(task);
-        }
-
-        await task.ConfigureAwait(true);
-    }
-
-    private static async System.Threading.Tasks.Task<T> AwaitWithOptionalMessagePumpAsync<T>(
-        System.Threading.Tasks.Task<T> task,
-        ILogger? logger)
-    {
-        if (task == null) throw new ArgumentNullException(nameof(task));
-
-        if (RequiresLocalMessagePump())
-        {
-            logger?.LogTrace("UIThreadHelper engaged a temporary message pump for async Task<T> execution.");
-            PumpMessagesUntilCompleted(task);
-        }
-
-        return await task.ConfigureAwait(true);
-    }
-
-    private static bool RequiresLocalMessagePump()
-    {
-        if (System.Windows.Forms.Application.MessageLoop)
-        {
-            return false;
-        }
-
-        if (System.Threading.Thread.CurrentThread.GetApartmentState() != System.Threading.ApartmentState.STA)
-        {
-            return false;
-        }
-
-        return System.Threading.SynchronizationContext.Current is System.Windows.Forms.WindowsFormsSynchronizationContext;
-    }
-
-    private static void PumpMessagesUntilCompleted(System.Threading.Tasks.Task task)
-    {
-        var expiration = DateTime.UtcNow + MessagePumpTimeout;
-
-        while (!task.IsCompleted)
-        {
-            System.Windows.Forms.Application.DoEvents();
-
-            if (task.IsCompleted)
-            {
-                break;
-            }
-
-            System.Threading.Thread.Sleep(MessagePumpSleepDelayMs);
-
-            if (DateTime.UtcNow > expiration)
-            {
-                throw new TimeoutException("UIThreadHelper timed out while waiting for async UI work to complete.");
-            }
-        }
-    }
 }

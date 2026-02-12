@@ -24,7 +24,7 @@ public sealed class DockingHostFactoryIntegrationTests
         _ = form.Handle;
 
         var (dockingManager, left, right, central, _, _, layoutManager) =
-            DockingHostFactory.CreateDockingHost(form, provider, null, logger);
+            DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
 
         dockingManager.Should().NotBeNull();
         dockingManager.HostControl.Should().Be(form);

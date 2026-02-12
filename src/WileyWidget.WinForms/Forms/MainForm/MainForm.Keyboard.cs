@@ -267,6 +267,8 @@ public partial class MainForm
     /// </summary>
     private bool TryShowPanel<TPanel>(string panelName, DockingStyle style) where TPanel : UserControl
     {
+        EnsurePanelNavigatorInitialized();
+
         if (_panelNavigator == null)
         {
             _logger?.LogWarning("TryShowPanel<{PanelType}> failed: PanelNavigator is null - navigation system not initialized", typeof(TPanel).Name);
@@ -296,6 +298,8 @@ public partial class MainForm
     /// </summary>
     private bool TryShowForm<TForm>(string panelName, DockingStyle style) where TForm : Form
     {
+        EnsurePanelNavigatorInitialized();
+
         if (_panelNavigator == null)
         {
             _logger?.LogWarning("TryShowForm<{PanelType}> failed: PanelNavigator is null - navigation system not initialized", typeof(TForm).Name);

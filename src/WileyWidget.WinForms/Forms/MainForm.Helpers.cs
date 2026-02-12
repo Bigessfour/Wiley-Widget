@@ -49,41 +49,26 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogDebug("[NAVIGATION] ShowPanel<{PanelType}> requested: Name={PanelName}, DockingStyle={DockingStyle}",
                     typeof(TPanel).Name, panelName, dockingStyle);
 
+                if (string.IsNullOrWhiteSpace(panelName))
+                {
+                    _logger?.LogWarning("[NAVIGATION] Panel name is empty for type {PanelType}", typeof(TPanel).Name);
+                    return;
+                }
+
+                EnsurePanelNavigatorInitialized();
+
                 if (_panelNavigator == null)
                 {
                     _logger?.LogError("[NAVIGATION] PanelNavigationService is null - cannot show panel {PanelName}", panelName);
-                    MessageBox.Show(
-                        $"Navigation service not initialized. Cannot open {panelName}.",
-                        "Navigation Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
                     return;
                 }
 
-                // Verify panel type is registered in DI container
-                var panel = _serviceProvider?.GetService(typeof(TPanel));
-                if (panel == null)
-                {
-                    _logger?.LogError("[NAVIGATION] Panel type {PanelType} not registered in DI container", typeof(TPanel).Name);
-                    MessageBox.Show(
-                        $"Panel type {typeof(TPanel).Name} is not available. Please check application configuration.",
-                        "Navigation Error",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                    return;
-                }
-
-                _panelNavigator.ShowPanel<TPanel>(panelName, dockingStyle);
+                _panelNavigator.ShowPanel<TPanel>(panelName, dockingStyle, allowFloating: true);
                 _logger?.LogInformation("[NAVIGATION] Successfully navigated to {PanelType}: {PanelName}", typeof(TPanel).Name, panelName);
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[NAVIGATION] Failed to show panel {PanelType}: {PanelName}", typeof(TPanel).Name, panelName);
-                MessageBox.Show(
-                    $"Failed to open {panelName}: {ex.Message}",
-                    "Navigation Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
             }
         }
 

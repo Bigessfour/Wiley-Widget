@@ -1,7 +1,7 @@
 # Wiley Widget Project-Specific Profile
 # Loaded only when working in the Wiley Widget project directory
 
-#Requires -Version 7.5
+#Requires -Version 7.5.4
 
 # Project-specific environment
 $env:WILEY_WIDGET_ROOT = $PSScriptRoot

@@ -267,7 +267,7 @@ internal class FallbackDepartmentRepository : IDepartmentRepository
     public Task<IEnumerable<Department>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         _ = cancellationToken;
-        // Sample/fallback data is disabled. Return empty collection so production repositories must provide data.
+        // Return empty collection so production repositories provide authoritative data.
         _ = NullLogger<DepartmentSummaryViewModel>.Instance; // ensure logger dependency available for diagnostics
         return Task.FromResult<IEnumerable<Department>>(Array.Empty<Department>());
     }
