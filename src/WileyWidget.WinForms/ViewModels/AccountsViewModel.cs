@@ -260,7 +260,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
                     AccountName = account.Name,
                     Description = account.FundDescription ?? string.Empty,
                     AccountType = account.Type.ToString(),
-                    FundName = account.Fund.ToString(),
+                    FundName = account.Fund?.Name ?? account.FundType.ToString(),
                     CurrentBalance = account.Balance,
                     BudgetAmount = account.BudgetAmount,
                     Department = account.Department?.Name ?? "N/A",
@@ -361,10 +361,20 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     }
 
     /// <summary>
+    /// Persists a new account submitted from the account editor view.
+    /// </summary>
+    public Task CreateAccountFromEditorAsync(MunicipalAccount newAccount, CancellationToken cancellationToken = default)
+    {
+        return CreateAccountInternalAsync(newAccount, cancellationToken);
+    }
+
+    /// <summary>
     /// Gets the command to update an existing account.
     /// </summary>
-    [RelayCommand]
-    private async Task UpdateAccountAsync(MunicipalAccount updatedAccount, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Persists updates submitted from the account editor view.
+    /// </summary>
+    public async Task UpdateAccountFromEditorAsync(MunicipalAccount updatedAccount, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -390,6 +400,12 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         {
             IsLoading = false;
         }
+    }
+
+    [RelayCommand]
+    private Task UpdateAccountAsync(MunicipalAccount updatedAccount, CancellationToken cancellationToken = default)
+    {
+        return UpdateAccountFromEditorAsync(updatedAccount, cancellationToken);
     }
 
     /// <summary>
@@ -502,32 +518,8 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             using var dialog = new AccountEditDialog(editModel, _logger);
             if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK || !dialog.IsSaved) return;
 
-            var updatedAccount = editModel.ToEntity();
-            await _municipalAccountRepository.UpdateAsync(updatedAccount);
-
-            // Update the display model by replacing it with a new instance (init-only properties)
-            var index = Accounts.IndexOf(display);
-            if (index >= 0)
-            {
-                var updatedDisplay = new MunicipalAccountDisplay
-                {
-                    Id = updatedAccount.Id,
-                    AccountNumber = updatedAccount.AccountNumber?.Value ?? string.Empty,
-                    AccountName = updatedAccount.Name,
-                    Description = updatedAccount.FundDescription,
-                    AccountType = updatedAccount.Type.ToString(),
-                    FundName = updatedAccount.Fund.ToString(),
-                    CurrentBalance = updatedAccount.Balance,
-                    BudgetAmount = updatedAccount.BudgetAmount,
-                    Department = updatedAccount.Department?.Name ?? string.Empty,
-                    IsActive = updatedAccount.IsActive,
-                    HasParent = updatedAccount.ParentAccountId.HasValue
-                };
-                Accounts[index] = updatedDisplay;
-                SelectedAccount = updatedDisplay;
-            }
-
-            UpdateSummaries();
+            await LoadAccountsAsync();
+            SelectedAccount = Accounts.FirstOrDefault(a => a.Id == display.Id);
             StatusText = "Account updated successfully.";
             _logger?.LogInformation("Account {Id} updated", display.Id);
         }
@@ -547,29 +539,9 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             using var dialog = new AccountEditDialog(editModel, _logger);
             if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK || !dialog.IsSaved) return;
 
-            var newAccount = editModel.ToEntity();
-            await _municipalAccountRepository.AddAsync(newAccount);
-
-            var display = new MunicipalAccountDisplay
-            {
-                Id = newAccount.Id,
-                AccountNumber = newAccount.AccountNumber?.Value ?? string.Empty,
-                AccountName = newAccount.Name,
-                Description = newAccount.FundDescription,
-                AccountType = newAccount.Type.ToString(),
-                FundName = newAccount.Fund.ToString(),
-                CurrentBalance = newAccount.Balance,
-                BudgetAmount = newAccount.BudgetAmount,
-                Department = newAccount.Department?.Name ?? string.Empty,
-                IsActive = newAccount.IsActive,
-                HasParent = newAccount.ParentAccountId.HasValue
-            };
-
-            Accounts.Add(display);
-            SelectedAccount = display;
-            UpdateSummaries();
+            await LoadAccountsAsync();
             StatusText = "New account created.";
-            _logger?.LogInformation("New account {Id} created", display.Id);
+            _logger?.LogInformation("New account created via AccountEditDialog");
         }
         catch (Exception ex)
         {

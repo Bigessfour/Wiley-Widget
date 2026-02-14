@@ -15,6 +15,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -124,7 +125,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 AutoGenerateColumns = true,
                 ShowRowHeader = false,
                 AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill
-            };
+            }.PreventStringRelationalFilters(_logger);
             mainTable.Controls.Add(_previewGrid, 0, 0);
 
             var rightPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };

@@ -82,7 +82,7 @@ public class AccountsRepository : IAccountsRepository
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var result = await context.Set<MunicipalAccount>()
                 .AsNoTracking()
-                .Where(a => a.Fund == fundType)
+                .Where(a => a.FundType == fundType)
                 .OrderBy(a => a.AccountNumber_Value)
                 .ToListAsync(cancellationToken);
 
@@ -129,7 +129,7 @@ public class AccountsRepository : IAccountsRepository
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
-            .Where(a => a.Fund == fundType && a.Type == accountType)
+            .Where(a => a.FundType == fundType && a.Type == accountType)
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
     }
@@ -145,6 +145,7 @@ public class AccountsRepository : IAccountsRepository
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
+            .OrderByDescending(a => a.Id)
             .FirstOrDefaultAsync(a => a.Id == accountId, cancellationToken);
     }
 

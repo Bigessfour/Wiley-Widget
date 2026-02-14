@@ -15,6 +15,7 @@ using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
@@ -227,7 +228,7 @@ public partial class OverviewTabControl : UserControl
             AllowGrouping = true,
             AutoGenerateColumns = false,
             ThemeName = themeName  // Apply theme to grid
-        };
+        }.PreventStringRelationalFilters(null, "DepartmentName");
 
         var columns = new GridColumn[]
         {

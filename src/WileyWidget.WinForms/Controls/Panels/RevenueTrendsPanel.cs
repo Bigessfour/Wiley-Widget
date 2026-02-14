@@ -257,7 +257,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             // CHANGE 14: Enhanced accessibility for grid
             AccessibleName = "Monthly revenue breakdown data grid",
             AccessibleDescription = "Sortable, filterable table displaying detailed monthly revenue data including transaction count and average transaction value. Use arrow keys to navigate."
-        };
+        }.PreventStringRelationalFilters(Logger, nameof(RevenueMonthlyData.MonthLabel));
 
         ConfigureGridColumns();
         ConfigureGridStyling(_metricsGrid);

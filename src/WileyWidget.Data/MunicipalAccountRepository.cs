@@ -42,7 +42,7 @@ namespace WileyWidget.Data
             EF.CompileQuery((AppDbContext ctx, MunicipalFundType fund) =>
                 ctx.MunicipalAccounts
                    .AsNoTracking()
-                   .Where(ma => ma.Fund == fund && ma.IsActive)
+                   .Where(ma => ma.FundType == fund && ma.IsActive)
                    .OrderBy(ma => ma.AccountNumber!.Value)
                    .ToList());
 
@@ -71,7 +71,11 @@ namespace WileyWidget.Data
         // For single row lookups, compiled sync query is the most efficient form
         private static readonly Func<AppDbContext, int, MunicipalAccount?> CQ_GetById_NoTracking =
             EF.CompileQuery((AppDbContext ctx, int id) =>
-                ctx.MunicipalAccounts.AsNoTracking().SingleOrDefault(ma => ma.Id == id));
+                ctx.MunicipalAccounts
+                    .AsNoTracking()
+                    .Where(ma => ma.Id == id)
+                    .OrderByDescending(ma => ma.Id)
+                    .SingleOrDefault());
 
         private readonly IDbContextFactory<AppDbContext> _contextFactory;
         private readonly IMemoryCache _cache;
@@ -268,6 +272,8 @@ namespace WileyWidget.Data
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             return await context.MunicipalAccounts
                 .AsNoTracking()
+                .OrderByDescending(ma => ma.LastSyncDate)
+                .ThenByDescending(ma => ma.Id)
                 .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber, cancellationToken);
         }
 
@@ -286,18 +292,18 @@ namespace WileyWidget.Data
             IQueryable<MunicipalAccount> query = fundClass switch
             {
                 FundClass.Governmental => context.MunicipalAccounts.AsNoTracking().Where(ma =>
-                    (ma.Fund == MunicipalFundType.General ||
-                     ma.Fund == MunicipalFundType.SpecialRevenue ||
-                     ma.Fund == MunicipalFundType.CapitalProjects ||
-                     ma.Fund == MunicipalFundType.DebtService) && ma.IsActive),
+                    (ma.FundType == MunicipalFundType.General ||
+                     ma.FundType == MunicipalFundType.SpecialRevenue ||
+                     ma.FundType == MunicipalFundType.CapitalProjects ||
+                     ma.FundType == MunicipalFundType.DebtService) && ma.IsActive),
 
                 FundClass.Proprietary => context.MunicipalAccounts.AsNoTracking().Where(ma =>
-                    (ma.Fund == MunicipalFundType.Enterprise ||
-                     ma.Fund == MunicipalFundType.InternalService) && ma.IsActive),
+                    (ma.FundType == MunicipalFundType.Enterprise ||
+                     ma.FundType == MunicipalFundType.InternalService) && ma.IsActive),
 
                 FundClass.Fiduciary => context.MunicipalAccounts.AsNoTracking().Where(ma =>
-                    (ma.Fund == MunicipalFundType.Trust ||
-                     ma.Fund == MunicipalFundType.Agency) && ma.IsActive),
+                    (ma.FundType == MunicipalFundType.Trust ||
+                     ma.FundType == MunicipalFundType.Agency) && ma.IsActive),
 
                 _ => context.MunicipalAccounts.AsNoTracking().Where(ma => false)
             };
@@ -380,6 +386,8 @@ namespace WileyWidget.Data
 
             // Check for duplicate account number
             var existingAccount = await context.MunicipalAccounts
+                .OrderByDescending(a => a.LastSyncDate)
+                .ThenByDescending(a => a.Id)
                 .FirstOrDefaultAsync(a => a.AccountNumber != null && account.AccountNumber != null && a.AccountNumber.Value == account.AccountNumber.Value, cancellationToken);
 
             if (existingAccount != null)
@@ -421,6 +429,7 @@ namespace WileyWidget.Data
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             var account = await context.MunicipalAccounts
                 .Include(a => a.AccountNumber)
+                .OrderByDescending(a => a.Id)
                 .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
             if (account != null)
@@ -460,6 +469,8 @@ namespace WileyWidget.Data
             {
                 var acctNum = qbAccount.AcctNum ?? string.Empty;
                 var existingAccount = await context.MunicipalAccounts
+                    .OrderByDescending(ma => ma.LastSyncDate)
+                    .ThenByDescending(ma => ma.Id)
                     .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == acctNum, cancellationToken);
 
                 if (existingAccount == null)
@@ -469,7 +480,7 @@ namespace WileyWidget.Data
                         AccountNumber = new AccountNumber(!string.IsNullOrEmpty(acctNum) ? acctNum : $"QB-{qbAccount.Id}"),
                         Name = qbAccount.Name,
                         Type = MapQuickBooksAccountType(qbAccount.AccountType),
-                        Fund = DetermineFundFromAccount(qbAccount),
+                        FundType = DetermineFundFromAccount(qbAccount),
                         Balance = qbAccount.CurrentBalance,
                         QuickBooksId = qbAccount.Id,
                         LastSyncDate = DateTime.UtcNow,
@@ -548,6 +559,9 @@ namespace WileyWidget.Data
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
             return await context.BudgetPeriods
                 .AsNoTracking()
+                .OrderByDescending(bp => bp.Year)
+                .ThenByDescending(bp => bp.CreatedDate)
+                .ThenByDescending(bp => bp.Id)
                 .FirstOrDefaultAsync(bp => bp.IsActive, cancellationToken);
         }
 
@@ -665,6 +679,8 @@ namespace WileyWidget.Data
 
             // Check if account already exists
             var existingAccount = await context.MunicipalAccounts
+                .OrderByDescending(ma => ma.LastSyncDate)
+                .ThenByDescending(ma => ma.Id)
                 .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber);
 
             if (existingAccount != null)
@@ -672,7 +688,7 @@ namespace WileyWidget.Data
                 // Update existing account
                 existingAccount.Name = qbAccount.Name ?? existingAccount.Name;
                 existingAccount.Type = MapQuickBooksAccountType(qbAccount.AccountType);
-                existingAccount.Fund = DetermineFundFromAccount(qbAccount);
+                existingAccount.FundType = DetermineFundFromAccount(qbAccount);
                 existingAccount.Balance = qbAccount.CurrentBalance;
                 existingAccount.LastSyncDate = DateTime.UtcNow;
                 existingAccount.IsActive = qbAccount.Active;
@@ -684,6 +700,9 @@ namespace WileyWidget.Data
             {
                 // Get the current active budget period
                 var currentBudgetPeriod = await context.BudgetPeriods
+                    .OrderByDescending(bp => bp.Year)
+                    .ThenByDescending(bp => bp.CreatedDate)
+                    .ThenByDescending(bp => bp.Id)
                     .FirstOrDefaultAsync(bp => bp.IsActive);
 
                 if (currentBudgetPeriod == null)
@@ -697,7 +716,7 @@ namespace WileyWidget.Data
                     AccountNumber = new AccountNumber(accountNumber),
                     Name = qbAccount.Name ?? $"QB Account {accountNumber}",
                     Type = MapQuickBooksAccountType(qbAccount.AccountType),
-                    Fund = DetermineFundFromAccount(qbAccount),
+                    FundType = DetermineFundFromAccount(qbAccount),
                     Balance = qbAccount.CurrentBalance,
                     QuickBooksId = qbAccount.Id,
                     LastSyncDate = DateTime.UtcNow,
@@ -707,7 +726,7 @@ namespace WileyWidget.Data
                 };
 
                 newAccount.TypeDescription = newAccount.Type.ToString();
-                newAccount.FundDescription = newAccount.Fund.ToString();
+                newAccount.FundDescription = newAccount.FundType.ToString();
 
                 context.MunicipalAccounts.Add(newAccount);
                 await context.SaveChangesAsync();

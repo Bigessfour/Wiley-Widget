@@ -73,10 +73,10 @@ namespace WileyWidget.WinForms.Dialogs
         private void InitializeDialog()
         {
             Text = _editModel.Id == 0 ? "Create Municipal Account" : "Edit Municipal Account";
-            Size = new Size(700, 820);  // Increased from 600x680 to accommodate larger panel
-            MinimumSize = new Size(680, 820);  // Increased from 580x680
+            Size = new Size(670, 760);
+            MinimumSize = new Size(640, 740);
             StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.Sizable;  // Allow resizing for better usability
+            FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             AutoScaleMode = AutoScaleMode.Dpi;

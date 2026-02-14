@@ -21,7 +21,6 @@
     "^licenses/",
     "^\\.github/",
     "^\\.vscode/",
-    "^\\.continue/",
     "^wwwroot/",
     "^schemas/"
   ],

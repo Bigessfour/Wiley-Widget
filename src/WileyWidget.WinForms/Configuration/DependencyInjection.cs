@@ -665,7 +665,7 @@ namespace WileyWidget.WinForms.Configuration
             // Advanced Search Service (Singleton - cross-grid search capability)
             services.AddSingleton<AdvancedSearchService>();
 
-            // FloatingPanelManager and DockingKeyboardNavigator are UI-scoped helpers that depend
+            // FloatingPanelManager and similar UI-scoped helpers depend
             // on runtime UI objects (MainForm, Syncfusion DockingManager). Registering them at
             // the root DI container causes ValidateOnBuild to attempt resolution of framework
             // UI types and fail during host build. Instantiate these classes at runtime after

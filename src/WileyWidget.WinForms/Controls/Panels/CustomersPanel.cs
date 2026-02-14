@@ -120,6 +120,10 @@ public partial class CustomersPanel : ScopedPanelBase
         ILogger<ScopedPanelBase> logger)
         : base(scopeFactory, logger)
     {
+        // Set preferred size for proper docking display (matches PreferredDockSize extension)
+        Size = new Size(580, 380);
+        MinimumSize = new Size(420, 360);
+
         // NOTE: InitializeControls() moved to OnViewModelResolved()
         ApplySyncfusionTheme();
 
@@ -700,7 +704,17 @@ public partial class CustomersPanel : ScopedPanelBase
             RowHeight = 32,
             // AutoSizeColumnsMode for better column management
             AutoSizeColumnsMode = AutoSizeColumnsMode.None
-        };
+        }.PreventStringRelationalFilters(
+            _logger,
+            nameof(UtilityCustomer.AccountNumber),
+            nameof(UtilityCustomer.DisplayName),
+            nameof(UtilityCustomer.CustomerTypeDescription),
+            nameof(UtilityCustomer.ServiceAddress),
+            nameof(UtilityCustomer.ServiceCity),
+            nameof(UtilityCustomer.ServiceLocationDescription),
+            nameof(UtilityCustomer.PhoneNumber),
+            nameof(UtilityCustomer.StatusDescription)
+        );
 
         // Apply professional styling
         ConfigureGridStyling(_customersGrid);

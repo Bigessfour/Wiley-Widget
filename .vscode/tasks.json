@@ -168,6 +168,40 @@
 			"problemMatcher": []
 		},
 		{
+			"label": "🤖 Copilot CLI: Install/Update",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"if (-not (Get-Command winget -ErrorAction SilentlyContinue)) { Write-Error 'winget is required to install GitHub Copilot CLI on Windows.'; exit 1 }; winget install --id GitHub.Copilot -e --accept-package-agreements --accept-source-agreements"
+			],
+			"type": "shell",
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "🤖 Copilot CLI: Launch (Experimental)",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$copilot = Get-Command copilot -ErrorAction SilentlyContinue; if ($copilot) { copilot --experimental } else { npx -y @github/copilot --experimental }"
+			],
+			"type": "shell",
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "dedicated"
+			}
+		},
+		{
 			"label": "publish",
 			"command": "dotnet",
 			"args": [
@@ -1306,6 +1340,37 @@
 			},
 			"group": "test",
 			"dependsOn": []
+		},
+		{
+			"label": "🧹 Trunk: Auto-fix New Issues",
+			"type": "shell",
+			"command": "pwsh",
+			"options": {
+				"env": {
+					"PATH": "${env:Path}",
+					"Path": "${env:Path}"
+				}
+			},
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/.trunk/plugins/trunk/trunk.ps1",
+				"check",
+				"--fix",
+				"--filter=black,ruff,shfmt,taplo",
+				"--no-progress",
+				"--print-failures"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"focus": false,
+				"clear": true
+			},
+			"group": "test"
 		},
 		{
 			"label": "🔍 Analyze Panel for Unused/Underdeveloped Elements",

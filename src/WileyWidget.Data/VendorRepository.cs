@@ -54,6 +54,7 @@ public class VendorRepository : IVendorRepository
         _logger.LogDebug("VendorRepository: Getting vendor by ID {Id}", id);
         return await _context.Vendors
             .AsNoTracking()
+            .OrderByDescending(v => v.Id)
             .FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
     }
 
@@ -69,6 +70,7 @@ public class VendorRepository : IVendorRepository
 
         return await _context.Vendors
             .AsNoTracking()
+            .OrderByDescending(v => v.Id)
             .FirstOrDefaultAsync(v => v.Name.ToLower() == normalized.ToLower(), cancellationToken);
     }
 

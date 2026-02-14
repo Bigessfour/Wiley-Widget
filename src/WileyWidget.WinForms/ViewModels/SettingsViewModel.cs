@@ -76,7 +76,9 @@ namespace WileyWidget.WinForms.ViewModels
             "Office2016Colorful",
             "Office2016White",
             "Office2016Black",
-            "Office2016DarkGray"
+            "Office2016DarkGray",
+            "HighContrastBlack",
+            "HighContrastWhite"
         };
 
         [ObservableProperty]

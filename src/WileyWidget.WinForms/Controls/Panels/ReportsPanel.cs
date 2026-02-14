@@ -290,7 +290,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             EditMode = EditMode.SingleClick,
             SelectionMode = GridSelectionMode.Single,
             Margin = new Padding(0, 0, 0, 10)
-        };
+        }.PreventStringRelationalFilters(Logger, "Name", "Value", "Type");
 
         // Configure parameter grid columns
         _parametersGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn

@@ -21,6 +21,7 @@ using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.Input.Enums;
 
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Extensions;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 
@@ -40,7 +41,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
-using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 // using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
@@ -130,8 +130,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         this.SuspendLayout();
 
         Name = "AuditLogPanel";
-        // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        // Set preferred size for proper docking display (matches PreferredDockSize extension)
+        Size = new Size(520, 380);
+        MinimumSize = new Size(420, 360);
         AutoScroll = true;
         Padding = new Padding(8);
         Dock = DockStyle.Fill;
@@ -367,7 +368,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             AllowTriStateSorting = true,
             AccessibleName = "Audit log entries grid",
             AccessibleDescription = "Grid displaying audit log entries with timestamp, user, action, and details"
-        };
+        }.PreventStringRelationalFilters(_logger, "User", "Action", "EntityType", "EntityId", "Changes");
 
         ConfigureGridColumns();
         _mainSplit.Panel1.Controls.Add(_auditGrid);

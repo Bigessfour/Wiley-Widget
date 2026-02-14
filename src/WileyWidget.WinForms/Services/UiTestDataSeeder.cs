@@ -28,7 +28,10 @@ namespace WileyWidget.WinForms.Services
             {
                 await db.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 
-                var department = await db.Departments.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                var department = await db.Departments
+                    .OrderByDescending(d => d.Id)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 if (department == null)
                 {
                     department = new Department
@@ -40,7 +43,12 @@ namespace WileyWidget.WinForms.Services
                     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 }
 
-                var period = await db.BudgetPeriods.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                var period = await db.BudgetPeriods
+                    .OrderByDescending(bp => bp.Year)
+                    .ThenByDescending(bp => bp.CreatedDate)
+                    .ThenByDescending(bp => bp.Id)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 if (period == null)
                 {
                     var year = DateTime.UtcNow.Year;
@@ -69,7 +77,7 @@ namespace WileyWidget.WinForms.Services
                             Name = "General Fund Cash",
                             Type = AccountType.Asset,
                             TypeDescription = "Asset",
-                            Fund = MunicipalFundType.General,
+                            FundType = MunicipalFundType.General,
                             FundDescription = "General Fund",
                             Balance = 125000m,
                             BudgetAmount = 150000m,
@@ -83,7 +91,7 @@ namespace WileyWidget.WinForms.Services
                             Name = "Utility Revenue",
                             Type = AccountType.Revenue,
                             TypeDescription = "Revenue",
-                            Fund = MunicipalFundType.Enterprise,
+                            FundType = MunicipalFundType.Enterprise,
                             FundDescription = "Enterprise Fund",
                             Balance = 89000m,
                             BudgetAmount = 120000m,

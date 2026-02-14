@@ -22,6 +22,7 @@ using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.Models;
+using WileyWidget.Models.Entities;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
@@ -29,9 +30,8 @@ using WileyWidget.WinForms.ViewModels;
 using Action = System.Action;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.Services;
-
-
-
+using WileyWidget.Data;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -107,6 +107,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private BindingSource _bindingSource = null!;
         private DpiAwareImageService? _imageService;
         private bool _isNew;
+        private BindingList<Fund>? _fundBindingList;
 
         // === EVENT HANDLER STORAGE FOR CLEANUP ===
         private EventHandler? _saveHandler;
@@ -218,7 +219,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             cmbFund.DataBindings.Add(
                 "SelectedValue",
                 _bindingSource,
-                nameof(MunicipalAccountEditModel.Fund),
+                nameof(MunicipalAccountEditModel.FundType),
                 true,
                 DataSourceUpdateMode.OnPropertyChanged);
 
@@ -374,11 +375,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _toolTip = new ToolTip();
-            this.Padding = new Padding(12);  // Increased padding
+            this.Padding = new Padding(8);
             this.AutoScroll = true;
-            this.MinimumSize = new Size(1300, 1500);  // 2x larger for better readability
-            this.Size = new Size(1300, 1500);         // 2x larger for better readability
-            this.Font = new Font("Segoe UI", 12F, FontStyle.Regular);  // 2x larger font
+            this.MinimumSize = new Size(640, 720);
+            this.Size = new Size(640, 720);
 
             // === CREATE MAIN TABLE LAYOUT ===
             _mainLayout = new TableLayoutPanel
@@ -387,36 +387,36 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ColumnCount = 2,
                 RowCount = 11, // Title + 9 fields + button panel
                 AutoSize = false,
-                Padding = new Padding(8)  // Reduced padding to maximize space
+                Padding = new Padding(6)
             };
 
-            // Set column widths: label (360px) + control (remaining) + padding
-            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 360));
-            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            // Responsive columns: labels auto-size, editor column takes remaining width
+            _mainLayout.ColumnStyles.Clear();
+            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            // Set row styles: 2x larger heights for better readability
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80)); // Title
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Account Number
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Name
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 200)); // Description (taller)
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Department
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Fund
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Type
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Balance
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Budget
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Active
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 120)); // Button Panel (taller)
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56)); // Title
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Account Number
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Name
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 104)); // Description
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Department
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Fund
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Type
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Balance
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Budget
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); // Active
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68)); // Button Panel
 
             // === TITLE ROW (Row 0) ===
             lblTitle = new Label
             {
                 Text = _isNew ? "Create New Account" : "Edit Account",
                 AutoSize = false,
-                Height = 72,  // 2x larger
+                Height = 32,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 0, 12),
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold)  // Large title font
+                Margin = new Padding(0, 0, 0, 8),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
             };
             _mainLayout.Controls.Add(lblTitle, 0, 0);
             _mainLayout.SetColumnSpan(lblTitle, 2);
@@ -428,8 +428,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
 
@@ -441,10 +441,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleDescription = "Enter the unique account number",
                 Enabled = _isNew,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 1,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
             _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
@@ -456,8 +456,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblName, 0, 2);
 
@@ -468,10 +468,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Account Name",
                 AccessibleDescription = "Enter the descriptive name for this account",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 2,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtName, 1, 2);
             _toolTip.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
@@ -483,8 +483,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.TopRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblDescription, 0, 3);
 
@@ -495,13 +495,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Description",
                 AccessibleDescription = "Enter optional description",
                 Multiline = true,
-                Height = 190,  // 2x larger
                 ScrollBars = ScrollBars.Vertical,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 5, 0, 5),
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 3,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtDescription, 1, 3);
             _toolTip.SetToolTip(txtDescription, "Optional detailed description");
@@ -513,8 +512,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblDepartment, 0, 4);
 
@@ -525,13 +524,14 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 MaxDropDownItems = 10,
+                DropDownWidth = 300,
                 AccessibleName = "Department",
                 AccessibleDescription = "Select the department this account belongs to",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 4,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbDepartment, 1, 4);
             _toolTip.SetToolTip(cmbDepartment, "Select owning department");
@@ -543,28 +543,29 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblFund, 0, 5);
 
             cmbFund = new SfComboBox
             {
                 Name = "cmbFund",
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown,
                 ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 MaxDropDownItems = 10,
+                DropDownWidth = 300,
                 AccessibleName = "Fund Type",
-                AccessibleDescription = "Select the municipal fund type for this account",
+                AccessibleDescription = "Select a municipal fund type for this account",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 5,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbFund, 1, 5);
-            _toolTip.SetToolTip(cmbFund, "Select fund type (General, Enterprise, etc.)");
+            _toolTip.SetToolTip(cmbFund, "Select existing fund from database");
 
             // === TYPE (Row 6) ===
             lblType = new Label
@@ -573,8 +574,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblType, 0, 6);
 
@@ -585,13 +586,14 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
                 MaxDropDownItems = 10,
+                DropDownWidth = 250,
                 AccessibleName = "Account Type",
                 AccessibleDescription = "Select the account type",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 6,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbType, 1, 6);
             _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
@@ -603,8 +605,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblBalance, 0, 7);
 
@@ -618,12 +620,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Balance",
                 AccessibleDescription = "Enter the current account balance",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 7,
                 ThemeName = themeName,
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             // Set decimal digits via NumberFormatInfo
             numBalance.NumberFormatInfo.CurrencyDecimalDigits = 2;
@@ -637,8 +639,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 10, 5),
-                Font = new Font("Segoe UI", 12F, FontStyle.Regular)
+                Margin = new Padding(0, 3, 10, 3),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblBudget, 0, 8);
 
@@ -652,12 +654,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Budget Amount",
                 AccessibleDescription = "Enter the budgeted amount for this account",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 5, 0, 5),
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 8,
                 ThemeName = themeName,
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             // Set decimal digits via NumberFormatInfo
             numBudget.NumberFormatInfo.CurrencyDecimalDigits = 2;
@@ -677,15 +679,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             chkActive = new CheckBoxAdv
             {
                 Name = "chkActive",
-                Text = "Active",
+                Text = "Is Active",
                 Checked = true,
-                AutoSize = true,
+                AutoSize = false,
+                Height = 30,
                 AccessibleName = "Active Status",
                 AccessibleDescription = "Check to mark this account as active",
-                Margin = new Padding(0, 5, 0, 5),
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 9,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Regular)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(chkActive, 1, 9);
             _toolTip.SetToolTip(chkActive, "Indicates whether this account is currently active");
@@ -694,22 +698,22 @@ namespace WileyWidget.WinForms.Controls.Panels
             _buttonPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(0, 10, 0, 0)
+                Padding = new Padding(0, 8, 0, 0)
             };
 
             btnSave = new SfButton
             {
                 Name = "btnSave",
                 Text = _isNew ? "&Create" : "&Save",
-                Width = 200,  // 2x larger
-                Height = 80,  // 2x larger
+                Width = 112,
+                Height = 36,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 AccessibleName = _isNew ? "Create Account" : "Save Account",
                 AccessibleDescription = "Save the account changes",
                 TabIndex = 10,
                 ThemeName = themeName,
                 Margin = new Padding(0, 0, 10, 0),
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _saveHandler = BtnSave_Click;
             btnSave.Click += _saveHandler;
@@ -718,14 +722,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "btnCancel",
                 Text = "&Cancel",
-                Width = 200,  // 2x larger
-                Height = 80,  // 2x larger
+                Width = 112,
+                Height = 36,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 AccessibleName = "Cancel",
                 AccessibleDescription = "Cancel and discard changes",
                 TabIndex = 11,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _cancelHandler = BtnCancel_Click;
             btnCancel.Click += _cancelHandler;
@@ -742,15 +746,15 @@ namespace WileyWidget.WinForms.Controls.Panels
             // === ICON ASSIGNMENT FOR DIALOG BUTTONS (Optional Polish) ===
             try
             {
-                // Get 32x32 scaled icons for dialog buttons
-                btnSave.Image = _imageService?.GetScaledImage("save", new Size(32, 32));
-                btnCancel.Image = _imageService?.GetScaledImage("close", new Size(32, 32));
+                // Get compact icons for dialog buttons
+                btnSave.Image = _imageService?.GetScaledImage("save", new Size(16, 16));
+                btnCancel.Image = _imageService?.GetScaledImage("close", new Size(16, 16));
 
-                // Layout: icon above text for visual prominence
-                btnSave.TextImageRelation = TextImageRelation.ImageAboveText;
-                btnCancel.TextImageRelation = TextImageRelation.ImageAboveText;
-                btnSave.ImageAlign = ContentAlignment.TopCenter;
-                btnCancel.ImageAlign = ContentAlignment.TopCenter;
+                // Layout: compact horizontal button content
+                btnSave.TextImageRelation = TextImageRelation.ImageBeforeText;
+                btnCancel.TextImageRelation = TextImageRelation.ImageBeforeText;
+                btnSave.ImageAlign = ContentAlignment.MiddleLeft;
+                btnCancel.ImageAlign = ContentAlignment.MiddleLeft;
 
                 Logger?.LogDebug("[ACCOUNT_EDIT_ICONS] ✅ Dialog button icons assigned successfully");
             }
@@ -845,11 +849,39 @@ namespace WileyWidget.WinForms.Controls.Panels
                     Logger?.LogWarning("AccountEditPanel: Using sample departments (repository returned no data)");
                 }
 
-                // Set fund types
-                cmbFund.DataSource = Enum.GetValues(typeof(MunicipalFundType));
-                if (_existingAccount != null)
+                // Load funds from database with BindingList for dynamic updates
+                List<Fund> funds = new();
+                if (ServiceProvider != null)
                 {
-                    cmbFund.SelectedItem = _existingAccount.Fund;
+                    using var scope = ServiceProvider.CreateScope();
+                    var dbContextFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDbContextFactory<AppDbContext>>(scope.ServiceProvider);
+                    if (dbContextFactory != null)
+                    {
+                        using var context = await dbContextFactory.CreateDbContextAsync();
+                        funds = await context.Funds.OrderBy(f => f.Name).ToListAsync();
+                    }
+                }
+
+                if (funds.Count > 0)
+                {
+                    // Wrap in BindingList for dynamic add/remove capability
+                    _fundBindingList = new BindingList<Fund>(funds);
+                    cmbFund.DataSource = _fundBindingList;
+                    cmbFund.DisplayMember = "Name";
+                    cmbFund.ValueMember = "Id";
+                    if (_existingAccount?.FundId != null)
+                    {
+                        cmbFund.SelectedValue = _existingAccount.FundId.Value;
+                    }
+                }
+                else
+                {
+                    // Fallback to enum if database load fails
+                    cmbFund.DataSource = Enum.GetValues(typeof(MunicipalFundType));
+                    if (_existingAccount != null)
+                    {
+                        cmbFund.SelectedItem = _existingAccount.FundType;
+                    }
                 }
 
                 // Set account types
@@ -884,6 +916,80 @@ namespace WileyWidget.WinForms.Controls.Panels
             BeginInvoke(new Func<Task>(BtnSave_ClickAsync));
         }
 
+        private void SyncEditModelFromControls()
+        {
+            _bindingSource?.EndEdit();
+
+            if (txtAccountNumber != null)
+            {
+                _editModel.AccountNumber = txtAccountNumber.Text?.Trim() ?? string.Empty;
+            }
+
+            if (txtName != null)
+            {
+                _editModel.Name = txtName.Text?.Trim() ?? string.Empty;
+            }
+
+            if (txtDescription != null)
+            {
+                _editModel.Description = string.IsNullOrWhiteSpace(txtDescription.Text)
+                    ? null
+                    : txtDescription.Text.Trim();
+            }
+
+            if (cmbDepartment != null)
+            {
+                if (cmbDepartment.SelectedValue is int deptId && deptId > 0)
+                {
+                    _editModel.DepartmentId = deptId;
+                }
+                else if (cmbDepartment.SelectedItem is Department department && department.Id > 0)
+                {
+                    _editModel.DepartmentId = department.Id;
+                }
+            }
+
+            if (cmbFund != null)
+            {
+                if (cmbFund.SelectedValue is int fundId && fundId > 0)
+                {
+                    _editModel.FundId = fundId;
+                }
+                else if (cmbFund.SelectedItem is MunicipalFundType fundType)
+                {
+                    _editModel.FundId = null;
+                    _editModel.FundType = fundType;
+                }
+            }
+
+            if (cmbType != null)
+            {
+                if (cmbType.SelectedItem is AccountType accountType)
+                {
+                    _editModel.Type = accountType;
+                }
+                else if (cmbType.SelectedValue is AccountType selectedType)
+                {
+                    _editModel.Type = selectedType;
+                }
+            }
+
+            if (numBalance?.Value != null)
+            {
+                _editModel.Balance = Convert.ToDecimal(numBalance.Value, CultureInfo.InvariantCulture);
+            }
+
+            if (numBudget?.Value != null)
+            {
+                _editModel.BudgetAmount = Convert.ToDecimal(numBudget.Value, CultureInfo.InvariantCulture);
+            }
+
+            if (chkActive != null)
+            {
+                _editModel.IsActive = chkActive.Checked;
+            }
+        }
+
         /// <summary>
         /// Executes save operation with proper state management and error handling.
         /// Updates ICompletablePanel state (IsBusy, HasUnsavedChanges) throughout lifecycle.
@@ -897,6 +1003,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 var ct = RegisterOperation(); // Get cancellation token
 
                 Logger?.LogInformation("AccountEditPanel: Save initiated (Mode: {Mode})", _isNew ? "Create" : "Edit");
+
+                SyncEditModelFromControls();
 
                 // Run validation via ICompletablePanel interface
                 var validationResult = await ValidateAsync(ct);
@@ -966,11 +1074,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Save via view model command (viewmodel performs server-side validation/uniqueness)
                 if (_isNew)
                 {
-                    await ViewModel.CreateAccountCommand.ExecuteAsync(account);
+                    await ViewModel.CreateAccountFromEditorAsync(account, ct);
                 }
                 else
                 {
-                    await ViewModel.UpdateAccountCommand.ExecuteAsync(account);
+                    await ViewModel.UpdateAccountFromEditorAsync(account, ct);
                 }
 
                 // Check for errors reported by the viewmodel
@@ -1046,6 +1154,50 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 // Default to first editable control if no errors set
                 txtAccountNumber.Focus();
+            }
+        }
+
+        /// <summary>
+        /// Adds a new fund to the dropdown list dynamically at runtime.
+        /// </summary>
+        /// <param name="fund">The fund to add</param>
+        public void AddFundToDropdown(Fund fund)
+        {
+            if (_fundBindingList != null && fund != null)
+            {
+                _fundBindingList.Add(fund);
+                // Select the newly added fund
+                cmbFund.SelectedValue = fund.Id;
+                Logger?.LogInformation("Added fund '{FundName}' (ID: {FundId}) to dropdown", fund.Name, fund.Id);
+            }
+            else
+            {
+                Logger?.LogWarning("Cannot add fund - BindingList not initialized or fund is null");
+            }
+        }
+
+        /// <summary>
+        /// Removes a fund from the dropdown list dynamically at runtime.
+        /// </summary>
+        /// <param name="fundId">The ID of the fund to remove</param>
+        public void RemoveFundFromDropdown(int fundId)
+        {
+            if (_fundBindingList != null)
+            {
+                var fund = _fundBindingList.FirstOrDefault(f => f.Id == fundId);
+                if (fund != null)
+                {
+                    _fundBindingList.Remove(fund);
+                    Logger?.LogInformation("Removed fund '{FundName}' (ID: {FundId}) from dropdown", fund.Name, fundId);
+                }
+                else
+                {
+                    Logger?.LogWarning("Fund with ID {FundId} not found in dropdown", fundId);
+                }
+            }
+            else
+            {
+                Logger?.LogWarning("Cannot remove fund - BindingList not initialized");
             }
         }
 

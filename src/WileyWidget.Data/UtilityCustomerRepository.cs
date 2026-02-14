@@ -145,6 +145,7 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
             .AsNoTracking()
+            .OrderByDescending(c => c.Id)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 
@@ -156,6 +157,8 @@ public class UtilityCustomerRepository : IUtilityCustomerRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.UtilityCustomers
             .AsNoTracking()
+            .OrderByDescending(c => c.LastModifiedDate)
+            .ThenByDescending(c => c.Id)
             .FirstOrDefaultAsync(c => c.AccountNumber == accountNumber);
     }
 

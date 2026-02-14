@@ -26,7 +26,7 @@ namespace WileyWidget.WinForms.Themes
     internal static class ThemeColors
     {
         // Theme name for Syncfusion v32.1.19+ (configurable via appsettings.json UI:Theme)
-        // Available themes: "Office2019Colorful", "Office2019Black", "Office2019White", "Office2019DarkGray", "Office2019Dark"
+        // Available themes: Office2019, Office2016, and HighContrast families
         // Note: "Fluent" and "Material" themes require additional NuGet packages which are not currently installed.
         // To change theme: Edit appsettings.json UI:Theme property OR set via IThemeService at runtime
         public const string DefaultTheme = "Office2019Colorful";
@@ -45,6 +45,8 @@ namespace WileyWidget.WinForms.Themes
             "Office2016White",
             "Office2016Black",
             "Office2016DarkGray",
+            "HighContrastBlack",
+            "HighContrastWhite",
             "Default"
         };
 
@@ -139,8 +141,8 @@ namespace WileyWidget.WinForms.Themes
 
             try
             {
-                // Ensure Office2019Theme assembly is loaded (idempotent)
-                EnsureThemeAssemblyLoaded();
+                // Ensure theme assembly for selected family is loaded (idempotent)
+                EnsureThemeAssemblyLoadedForTheme(theme);
 
                 // Core theming call - applies theme to form and cascades to all Syncfusion child controls
                 // Per Syncfusion docs: SetVisualStyle on form is sufficient, theme cascades to all children
@@ -184,79 +186,166 @@ namespace WileyWidget.WinForms.Themes
         }
 
         private static readonly object ThemeLoadLock = new();
-        private static volatile bool _themeAssemblyLoaded;
+        private static volatile bool _office2016ThemeAssemblyLoaded;
+        private static volatile bool _office2019ThemeAssemblyLoaded;
+        private static volatile bool _highContrastThemeAssemblyLoaded;
 
         /// <summary>
-        /// Ensures the Office2019Theme assembly is loaded into SfSkinManager.
+        /// Ensures the theme assembly for a specific theme family is loaded.
+        /// </summary>
+        internal static void EnsureThemeAssemblyLoadedForTheme(string? themeName, ILogger? logger = null)
+        {
+            if (string.IsNullOrWhiteSpace(themeName))
+            {
+                EnsureThemeAssemblyLoaded(logger);
+                return;
+            }
+
+            if (themeName.StartsWith("Office2016", System.StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureOffice2016ThemeAssemblyLoaded(logger);
+                return;
+            }
+
+            if (themeName.StartsWith("HighContrast", System.StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureHighContrastThemeAssemblyLoaded(logger);
+                return;
+            }
+
+            if (themeName.StartsWith("Office2019", System.StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureOffice2019ThemeAssemblyLoaded(logger);
+                return;
+            }
+
+            EnsureThemeAssemblyLoaded(logger);
+        }
+
+        /// <summary>
+        /// Ensures all supported WinForms theme assemblies are loaded into SfSkinManager.
         /// Thread-safe and idempotent for multi-threaded initialization paths.
         /// </summary>
         internal static void EnsureThemeAssemblyLoaded(ILogger? logger = null)
         {
-            if (_themeAssemblyLoaded)
-            {
-                return;
-            }
+            EnsureOffice2019ThemeAssemblyLoaded(logger);
+            EnsureOffice2016ThemeAssemblyLoaded(logger);
+            EnsureHighContrastThemeAssemblyLoaded(logger);
+        }
 
-            var isTestEnvironment = string.Equals(
-                Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"),
-                "true",
-                StringComparison.OrdinalIgnoreCase);
-
-            if (IsOffice2019ThemeAssemblyLoaded())
+        private static void EnsureOffice2019ThemeAssemblyLoaded(ILogger? logger)
+        {
+            if (_office2019ThemeAssemblyLoaded || IsOffice2019ThemeAssemblyLoaded())
             {
-                _themeAssemblyLoaded = true;
-                return;
-            }
-
-            if (isTestEnvironment)
-            {
-                logger?.LogDebug("Theme assembly not loaded yet in test environment; skipping LoadAssembly to avoid theme provider mutation.");
+                _office2019ThemeAssemblyLoaded = true;
                 return;
             }
 
             lock (ThemeLoadLock)
             {
-                if (_themeAssemblyLoaded)
+                if (_office2019ThemeAssemblyLoaded || IsOffice2019ThemeAssemblyLoaded())
                 {
+                    _office2019ThemeAssemblyLoaded = true;
                     return;
                 }
 
-                if (IsOffice2019ThemeAssemblyLoaded())
+                TryLoadThemeAssembly(typeof(Office2019Theme).Assembly, "Office2019Theme", logger);
+                _office2019ThemeAssemblyLoaded = IsOffice2019ThemeAssemblyLoaded();
+            }
+        }
+
+        private static void EnsureOffice2016ThemeAssemblyLoaded(ILogger? logger)
+        {
+            if (_office2016ThemeAssemblyLoaded || IsOffice2016ThemeAssemblyLoaded())
+            {
+                _office2016ThemeAssemblyLoaded = true;
+                return;
+            }
+
+            lock (ThemeLoadLock)
+            {
+                if (_office2016ThemeAssemblyLoaded || IsOffice2016ThemeAssemblyLoaded())
                 {
-                    _themeAssemblyLoaded = true;
+                    _office2016ThemeAssemblyLoaded = true;
                     return;
                 }
 
+                TryLoadThemeAssembly(typeof(Syncfusion.WinForms.Themes.Office2016Theme).Assembly, "Office2016Theme", logger);
+                _office2016ThemeAssemblyLoaded = IsOffice2016ThemeAssemblyLoaded();
+            }
+        }
+
+        private static void EnsureHighContrastThemeAssemblyLoaded(ILogger? logger)
+        {
+            if (_highContrastThemeAssemblyLoaded || IsHighContrastThemeAssemblyLoaded())
+            {
+                _highContrastThemeAssemblyLoaded = true;
+                return;
+            }
+
+            lock (ThemeLoadLock)
+            {
+                if (_highContrastThemeAssemblyLoaded || IsHighContrastThemeAssemblyLoaded())
+                {
+                    _highContrastThemeAssemblyLoaded = true;
+                    return;
+                }
+
+                TryLoadThemeAssembly("Syncfusion.HighContrastTheme.WinForms", "HighContrastTheme", logger);
+                _highContrastThemeAssemblyLoaded = IsHighContrastThemeAssemblyLoaded();
+            }
+        }
+
+        private static void TryLoadThemeAssembly(System.Reflection.Assembly assembly, string themeFamilyName, ILogger? logger)
+        {
+            try
+            {
+                SfSkinManager.LoadAssembly(assembly);
+                logger?.LogDebug("{ThemeFamily} assembly loaded into SfSkinManager", themeFamilyName);
+            }
+            catch (Exception ex)
+            {
                 try
                 {
-                    // Load theme assembly into SfSkinManager (modern API, v6.0+)
-                    // Per Syncfusion documentation: SfSkinManager is the recommended API for Windows Forms v32+
-                    // Legacy SkinManager is not needed for modern Syncfusion controls
-                    SfSkinManager.LoadAssembly(typeof(Office2019Theme).Assembly);
-                    _themeAssemblyLoaded = true;
-                    logger?.LogDebug("Office2019Theme assembly loaded into SfSkinManager");
+                    Serilog.Log.Debug(ex, "{ThemeFamily} assembly load skipped (may already be loaded)", themeFamilyName);
                 }
-                catch (Exception ex)
+                catch
                 {
-                    // Assembly may already be loaded (not an error)
-                    try
-                    {
-                        if (IsOffice2019ThemeAssemblyLoaded())
-                        {
-                            _themeAssemblyLoaded = true;
-                        }
-                        Serilog.Log.Debug(ex, "Office2019Theme assembly load skipped (may already be loaded)");
-                    }
-                    catch
-                    {
-                        System.Diagnostics.Debug.WriteLine($"ThemeColors.EnsureThemeAssemblyLoaded: Logging failed: {ex.Message}");
-                    }
+                    System.Diagnostics.Debug.WriteLine($"ThemeColors.TryLoadThemeAssembly({themeFamilyName}): Logging failed: {ex.Message}");
+                }
+            }
+        }
+
+        private static void TryLoadThemeAssembly(string assemblyName, string themeFamilyName, ILogger? logger)
+        {
+            try
+            {
+                var assembly = System.Reflection.Assembly.Load(assemblyName);
+                SfSkinManager.LoadAssembly(assembly);
+                logger?.LogDebug("{ThemeFamily} assembly loaded into SfSkinManager", themeFamilyName);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Serilog.Log.Debug(ex, "{ThemeFamily} assembly load skipped (may already be loaded)", themeFamilyName);
+                }
+                catch
+                {
+                    System.Diagnostics.Debug.WriteLine($"ThemeColors.TryLoadThemeAssembly({themeFamilyName}): Logging failed: {ex.Message}");
                 }
             }
         }
 
         private static bool IsOffice2019ThemeAssemblyLoaded() =>
             AppDomain.CurrentDomain.GetAssemblies().Any(a => a == typeof(Office2019Theme).Assembly);
+
+        private static bool IsOffice2016ThemeAssemblyLoaded() =>
+            AppDomain.CurrentDomain.GetAssemblies().Any(a => a == typeof(Syncfusion.WinForms.Themes.Office2016Theme).Assembly);
+
+        private static bool IsHighContrastThemeAssemblyLoaded() =>
+            AppDomain.CurrentDomain.GetAssemblies().Any(a =>
+                string.Equals(a.GetName().Name, "Syncfusion.HighContrastTheme.WinForms", System.StringComparison.OrdinalIgnoreCase));
 
         // NOTE: The following methods were deprecated and removed.
         // SfSkinManager should be used exclusively for theme management.

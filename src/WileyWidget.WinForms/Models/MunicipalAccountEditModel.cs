@@ -19,7 +19,8 @@ namespace WileyWidget.WinForms.Models
                 Name = account.Name;
                 Description = account.FundDescription;
                 Type = account.Type;
-                Fund = account.Fund;
+                FundType = account.FundType;
+                FundId = account.FundId;
                 DepartmentId = account.DepartmentId;
                 Balance = account.Balance;
                 BudgetAmount = account.BudgetAmount;
@@ -51,7 +52,12 @@ namespace WileyWidget.WinForms.Models
         public AccountType Type { get; set; }
 
         [Required]
-        public MunicipalFundType Fund { get; set; }
+        public MunicipalFundType FundType { get; set; }
+
+        /// <summary>
+        /// Foreign key to Fund table (optional, takes precedence over FundType enum)
+        /// </summary>
+        public int? FundId { get; set; }
 
         [Required(ErrorMessage = "Department is required")]
         [Range(1, int.MaxValue, ErrorMessage = "Please select a valid department")]
@@ -78,7 +84,8 @@ namespace WileyWidget.WinForms.Models
                 Name = account.Name,
                 Description = account.FundDescription,
                 Type = account.Type,
-                Fund = account.Fund,
+                FundType = account.FundType,
+                FundId = account.FundId,
                 DepartmentId = account.DepartmentId,
                 Balance = account.Balance,
                 BudgetAmount = account.BudgetAmount,
@@ -102,7 +109,8 @@ namespace WileyWidget.WinForms.Models
                 Name = this.Name,
                 FundDescription = Description ?? string.Empty,
                 Type = this.Type,
-                Fund = this.Fund,
+                FundType = this.FundType,
+                FundId = this.FundId,
                 DepartmentId = this.DepartmentId.Value,
                 Balance = this.Balance,
                 BudgetAmount = this.BudgetAmount,

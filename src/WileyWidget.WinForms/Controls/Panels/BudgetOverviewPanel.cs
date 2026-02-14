@@ -953,7 +953,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             try
             {
-                // Defensive checks
+                // Defensive checks for required binding objects.
                 if (_fiscalYearBindingSource == null)
                 {
                     Serilog.Log.Warning("BudgetOverviewPanel: BindFiscalYearData called but _fiscalYearBindingSource is null");
@@ -972,57 +972,111 @@ namespace WileyWidget.WinForms.Controls.Panels
                     return;
                 }
 
-                // Create a sorted snapshot of years to ensure consistent ordering
+                if (_comboFiscalYear.IsDisposed)
+                {
+                    Serilog.Log.Debug("BudgetOverviewPanel: BindFiscalYearData skipped because combo is disposed");
+                    return;
+                }
+
+                // Create a sorted snapshot to preserve existing ascending year ordering.
                 var yearsList = new List<int>(ViewModel.AvailableFiscalYears);
+                yearsList.Sort();
 
-                if (yearsList.Count == 0)
+                // Suppress selection-changed side effects while rebinding items and setting defaults.
+                if (_fiscalYearSelectedChangedHandler != null)
                 {
-                    Serilog.Log.Debug("BudgetOverviewPanel: No fiscal years available to bind");
-                    _comboFiscalYear.SelectedIndex = -1;
-                    return;
+                    _comboFiscalYear.SelectedIndexChanged -= _fiscalYearSelectedChangedHandler;
                 }
 
-                yearsList.Sort(); // Ensure years are in ascending order for better UX
-
-                // Set data source (will reset existing selection)
-                _fiscalYearBindingSource.DataSource = yearsList;
-
-                // Validate binding source is properly populated
-                if (_fiscalYearBindingSource.List == null || _fiscalYearBindingSource.List.Count == 0)
+                try
                 {
-                    Serilog.Log.Warning("BudgetOverviewPanel: BindingSource List is empty after DataSource assignment");
-                    _comboFiscalYear.SelectedIndex = -1;
-                    return;
-                }
+                    // Empty source: no selection and disable selector to avoid invalid index operations.
+                    if (yearsList.Count == 0)
+                    {
+                        _fiscalYearBindingSource.DataSource = yearsList;
+                        _comboFiscalYear.Enabled = false;
+                        _comboFiscalYear.SelectedIndex = -1;
 
-                // Select current or first available year
-                var selectedYear = ViewModel.SelectedFiscalYear;
-                var selectedIndex = yearsList.IndexOf(selectedYear);
+                        Serilog.Log.Debug("BudgetOverviewPanel: No fiscal years available; combo disabled with no selection");
+                        return;
+                    }
 
-                if (selectedIndex >= 0)
-                {
-                    _comboFiscalYear.SelectedIndex = selectedIndex;
-                    Serilog.Log.Debug("BudgetOverviewPanel: Selected fiscal year {Year} at index {Index}", selectedYear, selectedIndex);
-                }
-                else if (yearsList.Count > 0)
-                {
-                    // Default to first available year if current selection not found
-                    _comboFiscalYear.SelectedIndex = 0;
-                    Serilog.Log.Debug("BudgetOverviewPanel: Selected first available fiscal year (not found: {Year})", selectedYear);
-                }
-                else
-                {
-                    _comboFiscalYear.SelectedIndex = -1;
-                    Serilog.Log.Warning("BudgetOverviewPanel: No fiscal years available to select");
-                }
+                    _comboFiscalYear.Enabled = true;
 
-                Serilog.Log.Debug("BudgetOverviewPanel: Fiscal year binding complete. Available years: {Years}, Selected: {SelectedYear}",
-                    string.Join(", ", yearsList), _comboFiscalYear.SelectedItem);
+                    // Assign data source (this resets internal item/display collections).
+                    _fiscalYearBindingSource.DataSource = yearsList;
+
+                    // Safety check: never attempt selection unless the bound list has items.
+                    // SfComboBox in this project does not expose an Items collection API.
+                    var boundItemCount = _fiscalYearBindingSource.List?.Count ?? 0;
+                    if (boundItemCount == 0)
+                    {
+                        _comboFiscalYear.SelectedIndex = -1;
+                        Serilog.Log.Warning("BudgetOverviewPanel: Fiscal year bound list is empty after binding; selection cleared");
+                        return;
+                    }
+
+                    // Preserve existing intent: prefer ViewModel selection.
+                    // If missing, prefer current calendar year; otherwise fallback to first available item.
+                    var selectedYear = ViewModel.SelectedFiscalYear;
+                    var targetIndex = yearsList.IndexOf(selectedYear);
+
+                    if (targetIndex < 0)
+                    {
+                        var currentYear = DateTime.Now.Year;
+                        targetIndex = yearsList.IndexOf(currentYear);
+                    }
+
+                    if (targetIndex < 0)
+                    {
+                        targetIndex = 0;
+                    }
+
+                    // Final guard against ArgumentOutOfRangeException:
+                    // only use the computed index when it is valid for the currently bound item count.
+                    // Selection is applied via SelectedItem to avoid index/display race conditions.
+                    if (targetIndex >= 0 && targetIndex < boundItemCount)
+                    {
+                        var targetYear = yearsList[targetIndex];
+                        _comboFiscalYear.SelectedItem = targetYear;
+                        Serilog.Log.Debug("BudgetOverviewPanel: Selected fiscal year {Year} at index {Index}", targetYear, targetIndex);
+                    }
+                    else if (boundItemCount > 0)
+                    {
+                        _comboFiscalYear.SelectedItem = yearsList[0];
+                        Serilog.Log.Warning(
+                            "BudgetOverviewPanel: Target index {TargetIndex} invalid for item count {ItemCount}; selected first item instead",
+                            targetIndex,
+                            boundItemCount);
+                    }
+                    else
+                    {
+                        _comboFiscalYear.SelectedIndex = -1;
+                        Serilog.Log.Warning("BudgetOverviewPanel: No combo items available for fiscal year selection");
+                    }
+
+                    Serilog.Log.Debug(
+                        "BudgetOverviewPanel: Fiscal year binding complete. Available years: {Years}, Selected: {SelectedYear}",
+                        string.Join(", ", yearsList),
+                        _comboFiscalYear.SelectedItem);
+                }
+                finally
+                {
+                    if (_fiscalYearSelectedChangedHandler != null && _comboFiscalYear != null && !_comboFiscalYear.IsDisposed)
+                    {
+                        _comboFiscalYear.SelectedIndexChanged += _fiscalYearSelectedChangedHandler;
+                    }
+                }
             }
             catch (Exception ex)
             {
                 Serilog.Log.Error(ex, "BudgetOverviewPanel: Error binding fiscal year data");
-                _comboFiscalYear.SelectedIndex = -1; // Clear selection on error
+
+                if (_comboFiscalYear != null && !_comboFiscalYear.IsDisposed)
+                {
+                    _comboFiscalYear.SelectedIndex = -1; // Clear selection on error
+                    _comboFiscalYear.Enabled = false;
+                }
             }
         }
 

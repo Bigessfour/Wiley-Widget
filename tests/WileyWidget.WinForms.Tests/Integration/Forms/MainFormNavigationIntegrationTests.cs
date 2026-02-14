@@ -1,4 +1,5 @@
 using System.Windows.Forms;
+using System.Collections.Generic;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ using Xunit;
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
 [Trait("Category", "Integration")]
+[Collection("SyncfusionTheme")]
 public sealed class MainFormNavigationIntegrationTests
 {
     private sealed class TestPanel : UserControl
@@ -25,11 +27,54 @@ public sealed class MainFormNavigationIntegrationTests
         }
     }
 
+    private static ServiceProvider BuildNavigationProvider()
+    {
+        return IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:IsUiTestHarness"] = "true",
+            ["UI:ShowRibbon"] = "false",
+            ["UI:ShowStatusBar"] = "false",
+            ["UI:AutoShowDashboard"] = "false",
+            ["UI:UseSyncfusionDocking"] = "true"
+        });
+    }
+
+    private static void CleanupForm(MainForm form)
+    {
+        if (form.IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Hide();
+                form.Close();
+                PumpDoEvents(4);
+            }
+        }
+        finally
+        {
+            form.Dispose();
+            PumpDoEvents(4);
+        }
+    }
+
+    private static void PumpDoEvents(int iterations)
+    {
+        for (var index = 0; index < iterations; index++)
+        {
+            Application.DoEvents();
+        }
+    }
+
     [WinFormsFact]
     public void ShowPanel_AddsPanelAndSetsActiveName()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         _ = form.Handle;
@@ -46,11 +91,7 @@ public sealed class MainFormNavigationIntegrationTests
         }
         finally
         {
-            if (form.IsHandleCreated)
-            {
-                form.Close();
-                form.Dispose();
-            }
+            CleanupForm(form);
         }
     }
 
@@ -58,7 +99,7 @@ public sealed class MainFormNavigationIntegrationTests
     public void ShowPanel_WithDifferentDockingStyles_Works()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         _ = form.Handle;
@@ -80,11 +121,7 @@ public sealed class MainFormNavigationIntegrationTests
         }
         finally
         {
-            if (form.IsHandleCreated)
-            {
-                form.Close();
-                form.Dispose();
-            }
+            CleanupForm(form);
         }
     }
 
@@ -92,65 +129,86 @@ public sealed class MainFormNavigationIntegrationTests
     public void ShowPanel_FloatingPanel_CanBeCreated()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         _ = form.Handle;
 
-        var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
-        var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
+        try
+        {
+            var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
+            var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
 
-        navigator.ShowPanel<TestPanel>("Floating Panel", DockingStyle.Right, allowFloating: true);
+            navigator.ShowPanel<TestPanel>("Floating Panel", DockingStyle.Right, allowFloating: true);
 
-        navigator.GetActivePanelName().Should().Be("Floating Panel");
-        // Note: Floating behavior may not be testable in headless mode
+            navigator.GetActivePanelName().Should().Be("Floating Panel");
+            // Note: Floating behavior may not be testable in headless mode
+        }
+        finally
+        {
+            CleanupForm(form);
+        }
     }
 
     [WinFormsFact]
     public void PanelNavigationService_CanNavigateBetweenPanels()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         _ = form.Handle;
 
-        var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
-        var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
+        try
+        {
+            var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
+            var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
 
-        navigator.ShowPanel<TestPanel>("Panel 1", DockingStyle.Right);
-        navigator.GetActivePanelName().Should().Be("Panel 1");
+            navigator.ShowPanel<TestPanel>("Panel 1", DockingStyle.Right);
+            navigator.GetActivePanelName().Should().Be("Panel 1");
 
-        navigator.ShowPanel<TestPanel>("Panel 2", DockingStyle.Left);
-        navigator.GetActivePanelName().Should().Be("Panel 2");
+            navigator.ShowPanel<TestPanel>("Panel 2", DockingStyle.Left);
+            navigator.GetActivePanelName().Should().Be("Panel 2");
 
-        // Switch back to first panel
-        navigator.ShowPanel<TestPanel>("Panel 1", DockingStyle.Right);
-        navigator.GetActivePanelName().Should().Be("Panel 1");
+            // Switch back to first panel
+            navigator.ShowPanel<TestPanel>("Panel 1", DockingStyle.Right);
+            navigator.GetActivePanelName().Should().Be("Panel 1");
+        }
+        finally
+        {
+            CleanupForm(form);
+        }
     }
 
     [StaFact]
     public void PanelNavigationService_HandlesPanelActivation()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         _ = form.Handle;
 
-        var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
-        var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
+        try
+        {
+            var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
+            var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
 
-        // Add multiple panels
-        navigator.ShowPanel<TestPanel>("Dashboard", DockingStyle.Fill);
-        navigator.ShowPanel<TestPanel>("Settings", DockingStyle.Right);
+            // Add multiple panels
+            navigator.ShowPanel<TestPanel>("Dashboard", DockingStyle.Fill);
+            navigator.ShowPanel<TestPanel>("Settings", DockingStyle.Right);
 
-        // Active should be the last shown
-        navigator.GetActivePanelName().Should().Be("Settings");
+            // Active should be the last shown
+            navigator.GetActivePanelName().Should().Be("Settings");
 
-        // Show dashboard again
-        navigator.ShowPanel<TestPanel>("Dashboard", DockingStyle.Fill);
-        navigator.GetActivePanelName().Should().BeOneOf("Dashboard", "Settings");
+            // Show dashboard again
+            navigator.ShowPanel<TestPanel>("Dashboard", DockingStyle.Fill);
+            navigator.GetActivePanelName().Should().BeOneOf("Dashboard", "Settings");
+        }
+        finally
+        {
+            CleanupForm(form);
+        }
     }
 
     private static Control? FindControl(Control root, string name)
@@ -175,46 +233,54 @@ public sealed class MainFormNavigationIntegrationTests
     [StaFact]
     public void MainForm_ShowPanel_IntegratesWithNavigationService()
     {
-        // Force headless mode to prevent UI hangs
-        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         _ = form.Handle;
 
-        form.CreateControl();
-        form.InvokeOnLoad();
+        try
+        {
+            form.CreateControl();
+            form.InvokeOnLoad();
 
-        // Show panel through MainForm method
-        form.ShowPanel<TestPanel>("Integration Test Panel");
+            // Show panel through MainForm method
+            form.ShowPanel<TestPanel>("Integration Test Panel");
 
-        // Verify panel navigator was updated
-        var panelNavigator = form.PanelNavigator;
-        panelNavigator.Should().NotBeNull();
-        panelNavigator!.GetActivePanelName().Should().Be("Integration Test Panel");
+            // Verify panel navigator was updated
+            var panelNavigator = form.PanelNavigator;
+            panelNavigator.Should().NotBeNull();
+            panelNavigator!.GetActivePanelName().Should().Be("Integration Test Panel");
+        }
+        finally
+        {
+            CleanupForm(form);
+        }
     }
 
     [StaFact]
     public void PanelNavigation_FloatingPanels_Work()
     {
-        // Force headless mode to prevent UI hangs
-        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = BuildNavigationProvider();
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<PanelNavigationService>>(provider);
         _ = form.Handle;
 
-        var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
-        var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
+        try
+        {
+            var (dockingManager, _, _, _, _, _, _) = DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
+            var navigator = new PanelNavigationService(dockingManager, form, provider, logger);
 
-        // Show floating panel
-        navigator.ShowPanel<TestPanel>("Floating Panel", DockingStyle.Fill, allowFloating: true);
+            // Show floating panel
+            navigator.ShowPanel<TestPanel>("Floating Panel", DockingStyle.Fill, allowFloating: true);
 
-        // In headless test runs, floating windows may not register as active in the host hierarchy.
-        // Validate that the operation completed without tearing down the host form.
-        form.IsDisposed.Should().BeFalse();
+            // In headless test runs, floating windows may not register as active in the host hierarchy.
+            // Validate that the operation completed without tearing down the host form.
+            form.IsDisposed.Should().BeFalse();
+        }
+        finally
+        {
+            CleanupForm(form);
+        }
     }
 }

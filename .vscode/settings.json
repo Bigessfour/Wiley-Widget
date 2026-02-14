@@ -2,10 +2,10 @@
   "github.copilot.chat.localeOverride": "en",
   "chat.useAgentSkills": true,
   "chat.agentSkillsLocations": [
-    ".agents/skills"
+    ".agents/skills",
+    ".vscode/skills"
   ],
   "github.copilot.advanced": {
-    "debug.overrideEngine": "gpt-4o-2024-11-20",
     "debug.useNodeFetcher": true,
     "inlineSuggest.enable": true
   },
@@ -18,6 +18,7 @@
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
+  "github.copilot.chat.tools.changes.enabled": false,
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
@@ -70,7 +71,7 @@
       "command": "npx",
       "args": ["-y", "@syncfusion/winforms-assistant@latest"],
       "env": {
-        "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
+        "Syncfusion_API_Key": "${env:SYNCFUSION_MCP_API_KEY}"
       }
     },
     "mcp-debugger": {
@@ -101,6 +102,7 @@
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
+    "source.fixAll.trunk": "always",
     "source.organizeImports": "explicit",
     "source.fixAll.powershell": "explicit"
   },
@@ -312,20 +314,6 @@
   "debug.internalConsoleOptions": "openOnSessionStart",
 
   // ============================================================================
-  // Continue/Grok 4.1 Integration (Updated 2025-12-05)
-  // Models: grok-4-1-fast-reasoning (agentic), grok-4-1-fast-non-reasoning (speed)
-  // Ref: https://docs.x.ai/docs/models | https://x.ai/news/grok-4-1-fast/
-  // ============================================================================
-  "continue.defaultModel": "grok-4-1-fast-reasoning",
-  "continue.chat.model": "grok-4-1-fast-reasoning",
-  "continue.maxTokens": 8192,
-  "continue.temperature": 0.7,
-  "continue.enableExperimentalFeatures": true,
-  "continue.telemetryLevel": "off",
-  "continue.contextProviders.codebase.nRetrieve": 15,
-  "continue.experimental.modelessChat": true,
-
-  // ============================================================================
   // Docker Configuration
   // ============================================================================
   "docker.showStartPage": false,
@@ -349,6 +337,7 @@
   // ============================================================================
   // Default terminals to PowerShell 7.5.4 (`pwsh`) to match the PowerShell VS Code extension.
   "terminal.integrated.defaultProfile.windows": "PowerShell 7.5.4",
+  "terminal.integrated.automationProfile.windows": "PowerShell 7.5.4",
   "terminal.integrated.profiles.windows": {
     "PowerShell 7.5.4": {
       "path": [
@@ -368,13 +357,6 @@
         "${env:windir}\\System32\\cmd.exe"
       ],
       "icon": "terminal-cmd"
-    }
-  },
-  "chat.mcp.serverSampling": {
-    "Wiley-Widget/.vscode/mcp.json: mssql": {
-      "allowedModels": [
-        "copilot/auto"
-      ]
     }
   },
   "trunk.addToolsToPath": true

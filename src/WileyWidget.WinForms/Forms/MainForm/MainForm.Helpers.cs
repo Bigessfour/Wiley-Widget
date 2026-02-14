@@ -174,7 +174,6 @@ public partial class MainForm
     private void ApplyTheme()
     {
         // Delay applying theme until central panel is ready.
-        // In MinimalMode, Left/Right panels may be null by design.
         if (_centralDocumentPanel == null)
         {
             _logger?.LogDebug("Theme apply skipped: CentralDocumentPanel is not initialized yet");
@@ -536,16 +535,12 @@ public partial class MainForm
     /// </summary>
     private void ApplyThemeForFutureControls()
     {
-        var themeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-
-        if (!ThemeApplicationHelper.ValidateTheme(themeName, _logger))
-        {
-            _logger?.LogWarning("Theme '{Theme}' failed validation. Falling back to Default.", themeName);
-            themeName = "Default";
-        }
+        var themeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+        themeName = AppThemeColors.ValidateTheme(themeName, _logger);
 
         try
         {
+            SfSkinManager.ApplicationVisualTheme = themeName;
             SfSkinManager.SetVisualStyle(this, themeName);
         }
         catch (Exception ex)
@@ -555,7 +550,6 @@ public partial class MainForm
             SfSkinManager.SetVisualStyle(this, themeName);
         }
 
-        ApplyThemeRecursive(this, themeName);
         RegisterThemeTracking(this, themeName);
     }
 
@@ -596,11 +590,7 @@ public partial class MainForm
         }
 
         var themeName = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
-
-        if (!ThemeApplicationHelper.ValidateTheme(themeName, _logger))
-        {
-            themeName = "Default";
-        }
+        themeName = AppThemeColors.ValidateTheme(themeName, _logger);
 
         ApplyThemeRecursive(e.Control, themeName);
         RegisterThemeTracking(e.Control, themeName);
@@ -619,7 +609,7 @@ public partial class MainForm
             var layoutDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "WileyWidget", "Layouts");
-            var layoutPath = Path.Combine(layoutDirectory, "DockingLayout.bin");
+            var layoutPath = Path.Combine(layoutDirectory, "DockingLayoutV2.bin");
 
             Directory.CreateDirectory(layoutDirectory);
 
@@ -633,7 +623,7 @@ public partial class MainForm
 
             // Create serializer with BinaryFmtStream mode (avoids FontStyle serialization issues)
             // XMLFile mode causes SerializationException with System.Drawing.FontStyle not in KnownTypes
-            // BinaryFmtStream is consistent with DockingLayoutManager and handles all .NET types
+            // BinaryFmtStream handles all .NET types used by layout serializer state
             _layoutSerializer = new AppStateSerializer(SerializeMode.BinaryFmtStream, _layoutSerializerStream)
             {
                 Enabled = true // Explicitly enable serialization/deserialization
@@ -692,10 +682,13 @@ public partial class MainForm
             if (_dockingManager == null)
             {
                 _logger?.LogWarning("[MAINFORM] DockingManager invalid, aborting persist");
-                if (sender is AppStateSerializer serializer)
-                {
-                    serializer.Enabled = false; // Temporarily disable to skip this save
-                }
+                return;
+            }
+
+            if (sender is AppStateSerializer serializer && !serializer.Enabled)
+            {
+                _logger?.LogDebug("[MAINFORM] Serializer was disabled before persist - re-enabling for save operation");
+                serializer.Enabled = true;
             }
         }
         catch (Exception ex)
@@ -730,16 +723,16 @@ public partial class MainForm
 
             if (!serializer.Enabled)
             {
-                _logger?.LogWarning("[MAINFORM] Serializer disabled, skipping save");
-                return;
+                _logger?.LogWarning("[MAINFORM] Serializer disabled before save - forcing enable");
+                serializer.Enabled = true;
             }
 
-            // Serialize DockingManager state with error handling for theme/font serialization issues
+            // Persist DockingManager state using Syncfusion's native serialization API.
             try
             {
                 ResetLayoutSerializerStream(truncate: true);
 
-                serializer.SerializeObject(LayoutSerializerKey, _dockingManager);
+                _dockingManager.SaveDockState(serializer);
 
                 // Persist immediately to disk
                 serializer.PersistNow();
@@ -754,6 +747,7 @@ public partial class MainForm
             catch (System.Runtime.Serialization.SerializationException serEx)
             {
                 _logger?.LogError(serEx, "[MAINFORM] Serialization failed - FontStyle/theme incompatibility");
+                RecoverDockingStateForNavigation("SaveCurrentLayout", serEx);
                 MessageBox.Show("Layout save failed due to theme/font serialization issue. Try resetting the layout.",
                     "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -761,6 +755,7 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogError(ex, "[MAINFORM] Failed to save layout");
+            RecoverDockingStateForNavigation("SaveCurrentLayout", ex);
             MessageBox.Show($"Failed to save layout: {ex.Message}", "Save Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -786,12 +781,10 @@ public partial class MainForm
 
             if (!serializer.Enabled)
             {
-                _logger?.LogWarning("[MAINFORM] Serializer disabled, skipping load");
-                return;
+                _logger?.LogWarning("[MAINFORM] Serializer disabled before load - forcing enable");
+                serializer.Enabled = true;
             }
 
-            // Attempt to deserialize layout with error handling for theme parsing issues
-            object? layoutState = null;
             try
             {
                 ResetLayoutSerializerStream(truncate: false);
@@ -799,15 +792,21 @@ public partial class MainForm
                 if (_layoutSerializerStream != null && _layoutSerializerStream.CanRead && _layoutSerializerStream.Length == 0)
                 {
                     _logger?.LogInformation("[MAINFORM] No saved layout stream data found, using default");
+                    RecoverDockingStateForNavigation("LoadLayout:NoSavedState", null);
                     return;
                 }
 
-                layoutState = serializer.DeserializeObject(LayoutSerializerKey);
+                // Apply layout to DockingManager with error handling for theme parsing
+                SetDockingPanelsVisibility(false, "LoadLayout:PreLoadDockState");
+                _dockingManager.LoadDockState(serializer);
+                EnsureDockingSurfaceVisibleForNavigation("LoadLayout:SerializedState");
+                _logger?.LogInformation("[MAINFORM] Layout loaded successfully");
             }
             catch (ArgumentException argEx) when (argEx.Message.Contains("Office2019Colorful") || argEx.Message.Contains("was not found"))
             {
                 // TreeViewAdv.ApplyControlTheme fails to parse Office2019Colorful as VisualStyle enum
                 _logger?.LogError(argEx, "[MAINFORM] Theme parsing error during deserialization - TreeViewAdv incompatibility");
+                RecoverDockingStateForNavigation("LoadLayout:ThemeParse", argEx);
                 MessageBox.Show("Saved layout has theme compatibility issues. Using default layout.",
                     "Layout Load Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -815,50 +814,34 @@ public partial class MainForm
             catch (System.Runtime.Serialization.SerializationException serEx)
             {
                 _logger?.LogError(serEx, "[MAINFORM] FontStyle/theme serialization error during load");
+                RecoverDockingStateForNavigation("LoadLayout:Serialization", serEx);
                 MessageBox.Show("Saved layout is incompatible. Using default layout.",
                     "Layout Load Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-
-            if (layoutState != null)
+            catch (Exception layoutEx)
             {
-                // Check version compatibility
-                var savedVersion = serializer.DeserializedInfoApplicationVersion;
-                _logger?.LogInformation("[MAINFORM] Layout loaded from version {Version}",
-                    string.IsNullOrEmpty(savedVersion) ? "(unknown)" : savedVersion);
-
-                // Apply layout to DockingManager with error handling for theme parsing
-                try
-                {
-                    _dockingManager.LoadDockState(serializer);
-                    _logger?.LogInformation("[MAINFORM] Layout loaded successfully");
-                }
-                catch (ArgumentException argEx) when (argEx.Message.Contains("Office2019Colorful") || argEx.Message.Contains("was not found"))
-                {
-                    // TreeViewAdv.ApplyControlTheme fails during LoadDockState
-                    _logger?.LogError(argEx, "[MAINFORM] TreeViewAdv theme parsing error in LoadDockState");
-                    MessageBox.Show("Layout theme incompatibility detected. Using default layout.",
-                        "Layout Load Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-                catch (Exception layoutEx)
-                {
-                    // Catch Syncfusion's internal layout validation failures (e.g., "The layout you tried to load is not valid")
-                    _logger?.LogWarning(layoutEx, "[MAINFORM] Saved layout invalid or corrupted - falling back to default layout");
-                    // Let Syncfusion fall back to default automatically
-                }
+                // Catch Syncfusion internal validation failures (e.g., invalid/corrupted layout)
+                _logger?.LogWarning(layoutEx, "[MAINFORM] Saved layout invalid or corrupted - falling back to default layout");
+                RecoverDockingStateForNavigation("LoadLayout:InvalidDockState", layoutEx);
             }
-            else
+            finally
             {
-                _logger?.LogInformation("[MAINFORM] No saved layout found, using default");
+                EnsureDockingSurfaceVisibleForNavigation("LoadLayout:Finalize");
+                ConfigureDockingManagerChromeLayout();
+                PerformLayout();
+                Invalidate(true);
             }
         }
         catch (FileNotFoundException)
         {
             _logger?.LogInformation("[MAINFORM] No saved layout file found, using default layout");
+            RecoverDockingStateForNavigation("LoadLayout:FileNotFound", null);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "[MAINFORM] Failed to load layout, using default");
+            RecoverDockingStateForNavigation("LoadLayout:Unhandled", ex);
         }
     }
 
@@ -897,7 +880,28 @@ public partial class MainForm
                     }
 
                     // Reload default layout
-                    _dockingManager.LoadDockState();
+                    SetDockingPanelsVisibility(false, "ResetLayout:PreLoadDockState");
+                    try
+                    {
+                        var serializer = GetLayoutSerializer();
+                        ResetLayoutSerializerStream(truncate: false);
+                        if (_layoutSerializerStream != null && _layoutSerializerStream.CanRead && _layoutSerializerStream.Length > 0)
+                        {
+                            _dockingManager.LoadDockState(serializer);
+                        }
+                    }
+                    catch (Exception layoutEx)
+                    {
+                        _logger?.LogWarning(layoutEx, "[MAINFORM] Failed to load default dock state during reset");
+                        RecoverDockingStateForNavigation("ResetLayout:LoadDockState", layoutEx);
+                    }
+                    finally
+                    {
+                        EnsureDockingSurfaceVisibleForNavigation("ResetLayout:Finalize");
+                        ConfigureDockingManagerChromeLayout();
+                        PerformLayout();
+                        Invalidate(true);
+                    }
                 }
 
                 // Delete persisted layout state
@@ -908,6 +912,7 @@ public partial class MainForm
                     _logger?.LogDebug("[MAINFORM] Persisted layout state flushed");
                 }
 
+                RecoverDockingStateForNavigation("ResetLayout:Completed", null);
                 _logger?.LogInformation("[MAINFORM] Layout reset completed");
                 MessageBox.Show("Layout reset to default!", "Layout Reset",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -916,6 +921,7 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogError(ex, "[MAINFORM] Failed to reset layout");
+            RecoverDockingStateForNavigation("ResetLayout:Unhandled", ex);
             MessageBox.Show($"Failed to reset layout: {ex.Message}", "Reset Error",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }

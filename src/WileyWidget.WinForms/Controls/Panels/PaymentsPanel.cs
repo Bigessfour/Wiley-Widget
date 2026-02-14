@@ -16,6 +16,7 @@ using Syncfusion.WinForms.DataGrid.Events;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
@@ -133,7 +134,7 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             ThemeName = themeName,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             RowHeight = 40  // Increased for better readability
-        };
+        }.PreventStringRelationalFilters(_logger, "Status", "CheckNumber", "Payee", "Description");
 
         // Status icon column
         _paymentsGrid.Columns.Add(new GridTextColumn

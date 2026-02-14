@@ -481,7 +481,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             TabIndex = 10,
             AccessibleName = "Department Rates Grid",
             AccessibleDescription = "Editable grid showing monthly charges, expenses, and recommendations per department"
-        };
+        }.PreventStringRelationalFilters(Logger, "Department");
 
         // Configure department grid columns
         _departmentsGrid.Columns.Add(new GridTextColumn
@@ -598,7 +598,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             TabIndex = 11,
             AccessibleName = "Benchmarks Grid",
             AccessibleDescription = "State and national benchmark data for comparison"
-        };
+        }.PreventStringRelationalFilters(Logger, "Department");
 
         // Configure benchmark grid columns
         _benchmarksGrid.Columns.Add(new GridTextColumn

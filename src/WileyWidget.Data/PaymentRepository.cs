@@ -60,6 +60,7 @@ public class PaymentRepository : IPaymentRepository
             .Include(p => p.Vendor)
             .Include(p => p.Invoice)
             .AsNoTracking()
+            .OrderByDescending(p => p.Id)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
 

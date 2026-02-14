@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "total_issues": 1,
+    "critical": 0,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "auto_fixable": 0,
+    "docking_system": "DockingHostFactory (factory pattern)",
+    "panels_created": [],
+    "theme_timing": "Post-docking (ideal)"
+  },
+  "issues": [
+    {
+      "severity": "high",
+      "category": "z_order",
+      "file": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Docking.cs",
+      "line": 0,
+      "code": "",
+      "description": "Docking host not sent to back - may be covered by other controls",
+      "fix": "Add '_dockingHost?.SendToBack();' after docking host creation",
+      "auto_fixable": false
+    }
+  ]
+}

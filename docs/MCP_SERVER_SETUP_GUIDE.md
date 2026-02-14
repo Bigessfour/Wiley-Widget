@@ -19,21 +19,25 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
 ## 📋 Available MCP Servers
 
 ### 1. **Filesystem Server** (`@modelcontextprotocol/server-filesystem`)
+
 - **Purpose:** Enables MCP-compliant file operations (read, write, search, list)
 - **Required By:** `.vscode/copilot-mcp-rules.md` enforcement
 - **Usage:** All file operations should use MCP tools instead of direct shell commands
 
 ### 2. **MCP Debugger** (`@debugmcp/mcp-debugger`)
+
 - **Purpose:** Logs MCP protocol traffic to diagnose tool invocation issues
 - **Log Location:** `logs/mcp-debugger.log`
 - **Usage:** Troubleshooting when MCP tools aren't being called correctly
 
 ### 3. **Syncfusion WinForms Assistant** (`@syncfusion/winforms-assistant`)
+
 - **Purpose:** Official Syncfusion documentation and code generation for WinForms
 - **Required:** Syncfusion API Key (get from https://syncfusion.com/account/api-key)
 - **Usage:** Query Syncfusion API docs, resolve package issues, generate control code
 
 ### 4. **WileyWidget UI MCP** (Custom)
+
 - **Purpose:** Project-specific UI component helpers and patterns
 - **Location:** `tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/`
 - **Usage:** Project-specific scaffolding and UI conventions
@@ -53,7 +57,15 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
     },
     "mcp-debugger": {
       "command": "npx",
-      "args": ["-y", "@debugmcp/mcp-debugger@0.17.0", "stdio", "--log-level", "info", "--log-file", "${workspaceFolder}\\logs\\mcp-debugger.log"]
+      "args": [
+        "-y",
+        "@debugmcp/mcp-debugger@0.17.0",
+        "stdio",
+        "--log-level",
+        "info",
+        "--log-file",
+        "${workspaceFolder}\\logs\\mcp-debugger.log"
+      ]
     },
     "syncfusion-winforms-assistant": {
       "type": "stdio",
@@ -78,6 +90,7 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
 ```
 
 **Key Features:**
+
 - ✅ Uses `${workspaceFolder}` variable (auto-resolved by VS Code)
 - ✅ Trailing commas allowed (VS Code JSON parser is lenient)
 - ✅ Environment variables: `${env:VARIABLE_NAME}`
@@ -92,11 +105,7 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
     "filesystem": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "C:\\Users\\biges\\Desktop\\Wiley-Widget"
-      ]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\biges\\Desktop\\Wiley-Widget"]
     },
     "mcp-debugger": {
       "type": "stdio",
@@ -114,10 +123,7 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
     "syncfusion-winforms-assistant": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@syncfusion/winforms-assistant@latest"
-      ],
+      "args": ["-y", "@syncfusion/winforms-assistant@latest"],
       "env": {
         "Syncfusion_API_Key": "${env:SYNCFUSION_MCP_API_KEY}"
       }
@@ -137,6 +143,7 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
 ```
 
 **Key Differences from VS Code:**
+
 - ⚠️ **MUST use absolute paths** (no `${workspaceFolder}` variable support)
 - ⚠️ **No trailing commas** (strict JSON parser)
 - ⚠️ **Explicit `"type": "stdio"`** required for all servers
@@ -149,6 +156,7 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
 ### Option 1: User Environment Variable (Recommended)
 
 **Windows (PowerShell):**
+
 ```powershell
 # Set for current user (persists across sessions)
 [System.Environment]::SetEnvironmentVariable("SYNCFUSION_MCP_API_KEY", "your-api-key-here", "User")
@@ -157,6 +165,7 @@ This project uses **Model Context Protocol (MCP) servers** to enhance AI-assiste
 ```
 
 **Verify:**
+
 ```powershell
 $env:SYNCFUSION_MCP_API_KEY
 ```
@@ -164,6 +173,7 @@ $env:SYNCFUSION_MCP_API_KEY
 ### Option 2: Session Environment Variable (Temporary)
 
 **PowerShell:**
+
 ```powershell
 # Set for current session only
 $env:SYNCFUSION_MCP_API_KEY = "your-api-key-here"
@@ -179,6 +189,7 @@ devenv .
 **⚠️ Security Warning:** Hardcoding API keys in JSON files exposes them in version control.
 
 If you must use this method:
+
 1. Add `.vs/mcp.json` to `.gitignore`
 2. Replace `${env:SYNCFUSION_MCP_API_KEY}` with your key directly
 3. Never commit this file
@@ -215,6 +226,7 @@ If you must use this method:
    - `wileywidget-ui-mcp`
 
 4. **Ask questions:**
+
    ```
    @SyncfusionWinFormsAssistant What packages do I need for SfDataGrid in .NET 10?
    ```
@@ -232,6 +244,7 @@ If you must use this method:
 **Cause:** npm package not installed or Node.js version mismatch
 
 **Fix:**
+
 ```powershell
 # Check Node.js version (must be >= 18)
 node --version
@@ -252,6 +265,7 @@ npm cache clean --force
 **Cause:** Environment variable not set or incorrect key
 
 **Fix:**
+
 ```powershell
 # Verify environment variable exists
 Get-ChildItem Env: | Where-Object Name -like "*SYNCFUSION*"
@@ -266,6 +280,7 @@ Get-ChildItem Env: | Where-Object Name -like "*SYNCFUSION*"
 ```
 
 **Get a new API key:**
+
 1. Visit https://syncfusion.com/account/api-key
 2. Login with Syncfusion account
 3. Generate new key
@@ -278,6 +293,7 @@ Get-ChildItem Env: | Where-Object Name -like "*SYNCFUSION*"
 **Cause:** Custom MCP server project not built
 
 **Fix:**
+
 ```powershell
 # Build the custom MCP server
 dotnet build tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj
@@ -293,9 +309,10 @@ dotnet run --project tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer/WileyW
 **Cause:** MCP rules require activator calls first
 
 **Fix:** Copilot must call these functions before file operations:
+
 ```javascript
-activate_file_reading_tools()  // Before reads
-activate_directory_and_file_creation_tools()  // Before writes
+activate_file_reading_tools(); // Before reads
+activate_directory_and_file_creation_tools(); // Before writes
 ```
 
 **Check:** Look in `logs/mcp-debugger.log` for activator calls
@@ -307,6 +324,7 @@ activate_directory_and_file_creation_tools()  // Before writes
 **Cause:** Absolute paths may differ across machines
 
 **Fix:** Update paths in `.vs/mcp.json` to match your system:
+
 ```powershell
 # Get current workspace path
 $workspacePath = (Get-Location).Path
@@ -316,6 +334,7 @@ $workspacePath = (Get-Location).Path
 ```
 
 **Better:** Create a script to generate `.vs/mcp.json` dynamically:
+
 ```powershell
 # scripts/generate-vs-mcp-config.ps1
 $workspacePath = (Get-Location).Path -replace '\\', '\\'
@@ -331,12 +350,14 @@ $vsConfig | Set-Content .vs/mcp.json
 ### Example 1: Query Syncfusion API
 
 **VS Code:**
+
 ```
 #SyncfusionWinFormsAssistant
 How do I bind data to SfDataGrid in .NET 10?
 ```
 
 **Visual Studio:**
+
 ```
 @SyncfusionWinFormsAssistant
 Show me how to implement paging in SfDataGrid
@@ -347,11 +368,13 @@ Show me how to implement paging in SfDataGrid
 ### Example 2: File Operations via MCP
 
 **Copilot follows MCP rules automatically:**
+
 ```
 Read the WarRoomPanel.cs file and analyze its databinding approach
 ```
 
 **Behind the scenes:**
+
 1. Copilot calls `activate_file_reading_tools()`
 2. Calls `mcp_filesystem_read_text_file(path: "src/WileyWidget.WinForms/Controls/WarRoomPanel.cs")`
 3. Returns file content in MCP-compliant format
@@ -361,11 +384,13 @@ Read the WarRoomPanel.cs file and analyze its databinding approach
 ### Example 3: Debug MCP Traffic
 
 **Check logs:**
+
 ```powershell
 Get-Content logs/mcp-debugger.log -Tail 50
 ```
 
 **Look for:**
+
 - Tool invocations: `filesystem/read_text_file`
 - Parameter values: `{"path": "..."}`
 - Errors: `EISDIR`, `ENOENT`, etc.
@@ -377,15 +402,18 @@ Get-Content logs/mcp-debugger.log -Tail 50
 ### Git Strategy
 
 **Commit to version control:**
+
 - ✅ `.vscode/mcp.json` (uses variables, safe to share)
 - ❌ `.vs/mcp.json` (contains absolute paths, user-specific)
 
 **Add to `.gitignore`:**
+
 ```gitignore
 .vs/mcp.json
 ```
 
 **Document in README:**
+
 ```markdown
 ## Setup for New Developers
 
@@ -400,17 +428,21 @@ Get-Content logs/mcp-debugger.log -Tail 50
 ## 📚 Additional Resources
 
 ### MCP Protocol Documentation
+
 - Official Docs: https://modelcontextprotocol.io/docs
 - GitHub: https://github.com/modelcontextprotocol
 
 ### Syncfusion MCP Server
+
 - NPM: https://www.npmjs.com/package/@syncfusion/winforms-assistant
 - Docs: https://help.syncfusion.com/windowsforms/ai-coding-assistant/mcp-server
 
 ### VS Code MCP Integration
+
 - GitHub Copilot MCP: https://code.visualstudio.com/docs/copilot/customization/mcp-servers
 
 ### Visual Studio MCP Integration
+
 - MCP in VS 2026: https://learn.microsoft.com/visualstudio/ide/mcp-servers
 
 ---

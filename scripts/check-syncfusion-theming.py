@@ -4,8 +4,9 @@ Syncfusion Theming Compliance Checker
 Scans for forbidden manual color assignments in WinForms C# code.
 Blocks BackColor/ForeColor/Color.FromArgb except for semantic status colors (Red/Green/Orange).
 """
-import sys
+
 import re
+import sys
 from pathlib import Path
 
 FORBIDDEN_PATTERNS = [
@@ -49,6 +50,7 @@ def main():
         print(f"::error ::{failed} file(s) have forbidden manual color assignments.")
         sys.exit(1)
     print(f"Syncfusion theming check passed: {total} files scanned, 0 violations.")
+
 
 if __name__ == "__main__":
     main()

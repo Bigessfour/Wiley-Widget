@@ -20,7 +20,7 @@ namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
 /// Factory for creating and managing the right-docked panel container.
-/// Hosts Activity Log (JARVIS is now a separate fixed non-dockable sidebar).
+/// Hosts Activity Log while JARVIS is managed via DockingManager panel navigation.
 /// Enforces SfSkinManager theme cascade on all docked panels.
 /// </summary>
 public static class RightDockPanelFactory
@@ -28,7 +28,7 @@ public static class RightDockPanelFactory
 
     /// <summary>
     /// Create the right-docked panel container with Activity Log tab.
-    /// JARVIS Chat is now a separate fixed non-dockable sidebar (see JarvisDockPanelFactory).
+    /// JARVIS Chat is shown through panel navigation inside DockingManager.
     /// </summary>
     /// <param name="mainForm">Parent MainForm instance</param>
     /// <param name="serviceProvider">Service provider for dependency resolution</param>
@@ -51,7 +51,7 @@ public static class RightDockPanelFactory
         if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
 
         var sw = Stopwatch.StartNew();
-        logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel with Activity Log (JARVIS is now a separate fixed sidebar)");
+        logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel with Activity Log");
 
         ThemeColors.EnsureThemeAssemblyLoaded(logger);
         var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;

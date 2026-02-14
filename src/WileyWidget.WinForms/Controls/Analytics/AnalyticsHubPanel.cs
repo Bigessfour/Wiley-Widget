@@ -94,6 +94,10 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         ILogger<ScopedPanelBase<AnalyticsHubViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        // Set preferred size for proper docking display (matches PreferredDockSize extension)
+        Size = new Size(560, 400);
+        MinimumSize = new Size(420, 360);
+
         // NOTE: InitializeControls() moved to OnViewModelResolved()
     }
 

@@ -35,7 +35,7 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 - **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
 - **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
 - **Git**: Never reset or amend without explicit approval.
-- **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy.
+- **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy. Also validate Syncfusion method usage and control configuration against local Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19`.
 
 ### MCP Filesystem Command Quick Reference
 
@@ -107,7 +107,7 @@ PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem edit-file --params
 
 The `.vscode/*.md` files are the authoritative, IDE-visible rules for GitHub Copilot, Grok Code Agent, or any VS Code-based code assistant. These files are directly consulted for all workflow decisions, MCP usage, and code generation. No separate canonical folder or sync process is required.
 
-Agents must **never** attempt to read or reference `.continue/` paths. If `.continue/` exists, it should be archived or deleted to prevent confusion.
+Agents must use `.vscode/*.md` and workspace-native settings as the only rules/config source for agent behavior to prevent legacy configuration drift.
 
 Copilot Code Agent MUST consult `.vscode/*.md` before making or suggesting changes to scripts or language-specific files.
 
@@ -792,6 +792,7 @@ Before executing ANY code generation or file operation:
 8. [ ] Apply language-specific standards (C#/Python/PowerShell)
 9. [ ] Run validation (build/test tasks) before presenting results
 10. [ ] Check Problems panel for errors
+11. [ ] Enforce build/test serialization: run only one active build/test process at a time in this workspace
 
 **These are not suggestions - they are mandatory architectural rules. Violations must be fixed immediately.**
 
@@ -827,20 +828,33 @@ These guidelines provide guardrails without blocking progress when tools are una
 
 ## Terminal Guidance
 
-- PowerShell 7.5.4 syntax is preferred when running terminal commands.
+- PowerShell 7.5.4 is mandatory for interactive terminal and script execution.
+- Always use `pwsh` (PowerShell 7) rather than Windows PowerShell (`powershell`).
+- Script/tooling preflight should fail fast when `$PSVersionTable.PSVersion` is not `7.5.4`.
 - If a tool executes commands or uses tasks, treat syntax guidance as best-effort.
 - Use VS Code tasks for build/test when available.
 
 ## Syncfusion Documentation Rule (Scope)
 
 - Required when modifying Syncfusion controls or docking/ribbon behavior.
+- Recommended: Validate method/property usage against local Syncfusion Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19` in addition to MCP/docs.
 - Not required for unrelated business logic, configuration-only changes, or non-UI edits.
 
 ## C# Language and Framework Targets
 
 - Target C# 14 and net10.0-windows when the project supports them.
+- Set project language version explicitly to C# 14 (no preview language features in production code).
 - Do not introduce features that exceed the project language version.
 - Follow existing analyzers and .editorconfig even when using newer syntax.
+
+## Architecture Enforcement Addendum
+
+- **Syncfusion-first UI path:** When `UI:ShowRibbon` is true, `RibbonControlAdv` is the primary navigation surface. Do not introduce a competing native menu/navigation path for the same workflow.
+- **No competing theme systems:** Use `SfSkinManager` as the single source of truth. Do not add alternate theme managers, color palette systems, or ad-hoc per-control theme engines.
+- **Native control guardrail:** Native WinForms controls are allowed for container/layout primitives only. Do not use native controls to replace required Syncfusion control behavior when Syncfusion equivalents exist.
+- **Avoid reflection-based Syncfusion APIs:** Do not use reflection/dynamic property writes for Syncfusion control configuration in normal code paths. Prefer strongly typed APIs; if compatibility shims are needed, isolate them in one adapter with justification.
+- **Single startup composition path:** Keep one deterministic initialization order: license/theme initialization in `Program` first, then chrome, then docking, then deferred async work. Avoid duplicate fallback pipelines that reinitialize the same subsystem.
+- **No parallel builds/tests:** Do not run `dotnet build` or `dotnet test` concurrently in separate terminals; serialize validation runs and wait for the active run to finish.
 
 ## Hard No-Go (Still Strict)
 

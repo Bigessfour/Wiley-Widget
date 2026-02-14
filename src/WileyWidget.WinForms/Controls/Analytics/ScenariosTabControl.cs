@@ -9,6 +9,7 @@ using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
@@ -184,7 +185,7 @@ public partial class ScenariosTabControl : UserControl
             Dock = DockStyle.Fill,
             AllowEditing = false,
             AutoGenerateColumns = false
-        };
+        }.PreventStringRelationalFilters(null, "Description");
 
         // Configure columns for scenario results
         var columns = new GridColumn[]

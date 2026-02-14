@@ -210,7 +210,7 @@ public partial class MainForm
         }
 
         // [PERF] Alt+Left/Right/Up/Down: Keyboard Navigation Support
-        // Reserved for future DockingKeyboardNavigator integration
+        // Reserved for future keyboard navigation integration
         if ((keyData & Keys.Alt) == Keys.Alt &&
             (keyData & (Keys.Left | Keys.Right | Keys.Up | Keys.Down)) != 0)
         {
@@ -231,7 +231,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.D))
         {
-            return TryShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Top);
+            return TryShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.R))
@@ -267,22 +267,9 @@ public partial class MainForm
     /// </summary>
     private bool TryShowPanel<TPanel>(string panelName, DockingStyle style) where TPanel : UserControl
     {
-        EnsurePanelNavigatorInitialized();
-
-        if (_panelNavigator == null)
-        {
-            _logger?.LogWarning("TryShowPanel<{PanelType}> failed: PanelNavigator is null - navigation system not initialized", typeof(TPanel).Name);
-            MessageBox.Show(
-                $"The {panelName} panel is not ready. Please try again in a moment.",
-                "Panel Not Ready",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return false;
-        }
-
         try
         {
-            _panelNavigator.ShowPanel<TPanel>(panelName, style, true);
+            ShowPanel<TPanel>(panelName, style, true);
             return true;
         }
         catch (Exception ex)
@@ -298,22 +285,9 @@ public partial class MainForm
     /// </summary>
     private bool TryShowForm<TForm>(string panelName, DockingStyle style) where TForm : Form
     {
-        EnsurePanelNavigatorInitialized();
-
-        if (_panelNavigator == null)
-        {
-            _logger?.LogWarning("TryShowForm<{PanelType}> failed: PanelNavigator is null - navigation system not initialized", typeof(TForm).Name);
-            MessageBox.Show(
-                $"The {panelName} view is not ready. Please try again in a moment.",
-                "View Not Ready",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return false;
-        }
-
         try
         {
-            _panelNavigator.ShowForm<TForm>(panelName, style, true);
+            ShowForm<TForm>(panelName, style, true);
             return true;
         }
         catch (Exception ex)

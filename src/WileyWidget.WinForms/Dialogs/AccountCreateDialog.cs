@@ -250,7 +250,7 @@ namespace WileyWidget.WinForms.Dialogs
                     Id = 0, // Will be assigned by DB
                     AccountNumber = new AccountNumber(_accountNumberTextBox!.Text.Trim()),
                     Name = _accountNameTextBox!.Text.Trim(),
-                    Fund = fundType,
+                    FundType = fundType,
                     Type = accountType,
                     FundDescription = string.IsNullOrWhiteSpace(_descriptionTextBox?.Text) ? string.Empty : _descriptionTextBox.Text.Trim(),
                     Department = new Department { Name = _departmentTextBox?.Text?.Trim() ?? string.Empty },

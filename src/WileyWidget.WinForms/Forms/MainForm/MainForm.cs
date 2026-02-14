@@ -38,9 +38,6 @@ using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms
 {
-    /// <summary>
-    /// Resource strings used by <see cref="MainForm"/> for labels, titles and navigation text.
-    /// </summary>
     internal static class MainFormResources
     {
         /// <summary>Professional window title with product branding.</summary>
@@ -129,7 +126,6 @@ namespace WileyWidget.WinForms.Forms
         private AppStateSerializer? _layoutSerializer;
         private FileStream? _layoutSerializerStream;
         private bool _panelsLocked = false;
-        private const string LayoutSerializerKey = "DockingManagerState";
 
         // [PERF] Theme tracking for dynamically added controls
         private readonly HashSet<Control> _themeTrackedControls = new HashSet<Control>();
@@ -182,7 +178,7 @@ namespace WileyWidget.WinForms.Forms
                 var cp = base.CreateParams;
                 try
                 {
-                    if (_uiConfig != null && !_uiConfig.IsUiTestHarness)
+                    if (_uiConfig != null && !_uiConfig.IsUiTestHarness && !IsUiTestEnvironment())
                     {
                         cp.ExStyle |= WS_EX_COMPOSITED;
                     }
@@ -193,6 +189,14 @@ namespace WileyWidget.WinForms.Forms
                 }
                 return cp;
             }
+        }
+
+        private static bool IsUiTestEnvironment()
+        {
+            return string.Equals(
+                Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -278,11 +282,17 @@ namespace WileyWidget.WinForms.Forms
             // [PERF] Ensure reasonable default size for complex layouts
             this.Size = new Size(1280, 800);
             this.MinimumSize = new Size(800, 600);
-            this.StartPosition = FormStartPosition.CenterScreen;
+            // [FIX] Use Manual positioning to prevent flickering - RestoreWindowState will set actual position in OnLoad
+            this.StartPosition = FormStartPosition.Manual;
+            // Set default centered location (will be overridden by RestoreWindowState if saved state exists)
+            var screen = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+            this.Location = new Point(
+                (screen.Width - 1280) / 2 + screen.Left,
+                (screen.Height - 800) / 2 + screen.Top);
             this.WindowState = System.Windows.Forms.FormWindowState.Normal;
 
             // [PERF] Set form size constraints
-            if (_uiConfig.IsUiTestHarness)
+            if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
             {
                 MaximumSize = new Size(1920, 1080);
             }
@@ -317,7 +327,7 @@ namespace WileyWidget.WinForms.Forms
             }
 
             // [PERF] Optimize painting for heavy Syncfusion UI (non-test-harness only)
-            if (!_uiConfig.IsUiTestHarness)
+            if (!_uiConfig.IsUiTestHarness && !IsUiTestEnvironment())
             {
                 try
                 {
@@ -348,11 +358,14 @@ namespace WileyWidget.WinForms.Forms
             SuspendLayout();
 
             Log.Debug("[DIAGNOSTIC] MainForm constructor: COMPLETED");
+
+            // [FIX] Resume layout to match SuspendLayout call
+            ResumeLayout(false); // false to avoid immediate layout pass - OnLoad will handle it
         }
 
         /// <summary>
-        /// OnLoad: Initialize UI chrome, load MRU, restore window state.
-        /// Defers docking initialization to OnShown for safer timing.
+        /// OnLoad: Initialize UI chrome, load MRU, restore window state,
+        /// and initialize docking before first visible paint.
         /// </summary>
         protected override void OnLoad(EventArgs e)
         {
@@ -407,36 +420,18 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Loading MRU list");
             LoadMruList();
 
-            // [FIX] Restore window state with validation
+            // [FIX] Restore window state (validation is handled by WindowStateService)
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Restoring window state");
             try
             {
                 _windowStateService.RestoreWindowState(this);
-
-                // [FIX] Validate restored position is on a visible screen
-                bool isOnScreen = false;
-                foreach (var screen in Screen.AllScreens)
-                {
-                    if (screen.WorkingArea.IntersectsWith(this.Bounds))
-                    {
-                        isOnScreen = true;
-                        break;
-                    }
-                }
-
-                if (!isOnScreen)
-                {
-                    _logger?.LogWarning("Restored window position is off-screen - resetting to defaults");
-                    StartPosition = FormStartPosition.CenterScreen;
-                    WindowState = System.Windows.Forms.FormWindowState.Normal;
-                    Size = new Size(1280, 800);
-                }
+                // RestoreWindowState validates position is on-screen before applying
+                // If no saved state or position is invalid, constructor defaults (centered) are used
             }
             catch (Exception wsEx)
             {
-                _logger?.LogWarning(wsEx, "Failed to restore window state - using defaults");
-                StartPosition = FormStartPosition.CenterScreen;
-                WindowState = System.Windows.Forms.FormWindowState.Normal;
+                _logger?.LogWarning(wsEx, "Failed to restore window state - using constructor defaults (centered)");
+                // Form will use the default centered position set in constructor
             }
 
             // [PERF] Initialize UI chrome in OnLoad (before form is shown)
@@ -459,8 +454,47 @@ namespace WileyWidget.WinForms.Forms
                 throw;
             }
 
-            // [PERF] Z-order management deferred to OnShown
-            _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Z-order management deferred to OnShown");
+            if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
+            {
+                SuspendLayout();
+                try
+                {
+                    _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Starting Syncfusion docking initialization");
+                    ValidateInitializationState();
+
+                    InitializeSyncfusionDocking();
+                    ConfigureDockingManagerChromeLayout();
+                    _syncfusionDockingInitialized = true;
+
+                    _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Initializing panel navigator");
+                    EnsurePanelNavigatorInitialized();
+
+                    if (_panelNavigator != null)
+                    {
+                        _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Panel navigator successfully initialized");
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("[DIAGNOSTIC] OnLoad: Panel navigator initialization returned null");
+                    }
+
+                    _ribbon?.BringToFront();
+                    _statusBar?.BringToFront();
+                    _logger?.LogInformation("[DIAGNOSTIC] OnLoad: Syncfusion docking initialized");
+                }
+                catch (Exception dockingEx)
+                {
+                    _logger?.LogError(dockingEx,
+                        "[DIAGNOSTIC] OnLoad: Syncfusion docking initialization FAILED - {Type}: {Message}\nStack: {Stack}",
+                        dockingEx.GetType().Name,
+                        dockingEx.Message,
+                        dockingEx.StackTrace);
+                }
+                finally
+                {
+                    ResumeLayout(true);
+                }
+            }
 
             _logger?.LogInformation("[DIAGNOSTIC] OnLoad: UI initialization COMPLETED SUCCESSFULLY");
         }
@@ -500,6 +534,7 @@ namespace WileyWidget.WinForms.Forms
                     _ribbon.SelectedTab = _homeTab;
                     _ribbon.DisplayOption = RibbonDisplayOption.ShowTabsAndCommands;
                     _ribbon.PerformLayout();
+                    UpdateChromePadding(forceLayout: true);
                     _logger?.LogInformation("[RIBBON] Re-asserted SelectedTab and DisplayOption in OnShown");
                 }
                 catch (Exception ex)
@@ -539,9 +574,11 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "InitializeAsyncDiagnosticsLogger failed during OnShown startup - continuing");
             }
 
-            // [PERF] Phase 1: Initialize Syncfusion docking
+            // [PERF] Fallback only: initialize Syncfusion docking if OnLoad path did not complete
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
+                _logger?.LogWarning("[DIAGNOSTIC] OnShown: Docking was not initialized in OnLoad - running fallback initialization");
+
                 try
                 {
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validating initialization state");
@@ -581,9 +618,8 @@ namespace WileyWidget.WinForms.Forms
 
                     _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
                     // RibbonForm handles sizing natively via AutoSize
-                    AdjustDockingHostBounds();
 
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI chrome initialization completed in OnLoad");
+                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI chrome initialization was completed in OnLoad");
                     _ribbon?.BringToFront();
                     _statusBar?.BringToFront();
                     this.Refresh();
@@ -600,47 +636,12 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: base.OnShown completed");
             _logger?.LogInformation("MainForm Shown: Visible={Visible}, Bounds={Bounds}", Visible, Bounds);
 
-            // [FIX] Ensure window is visible and on-screen
-            if (!Visible)
-            {
-                Visible = true;
-            }
-
-            // [FIX] Validate window is on a visible screen (prevents off-screen issues)
-            try
-            {
-                var currentScreen = Screen.FromControl(this);
-                if (!currentScreen.WorkingArea.IntersectsWith(this.Bounds))
-                {
-                    _logger?.LogWarning("Window is off-screen - resetting to center of primary screen");
-                    this.StartPosition = FormStartPosition.CenterScreen;
-                    this.Location = new System.Drawing.Point(
-                        (Screen.PrimaryScreen.WorkingArea.Width - this.Width) / 2,
-                        (Screen.PrimaryScreen.WorkingArea.Height - this.Height) / 2
-                    );
-                }
-            }
-            catch (Exception posEx)
-            {
-                _logger?.LogWarning(posEx, "Failed to validate window position - using center screen");
-                this.StartPosition = FormStartPosition.CenterScreen;
-            }
-
-            // [FIX] Force window to foreground with multiple strategies
-            this.Show();
-            this.BringToFront();
-            this.Focus();
-            Activate();
-
-            // [FIX] Temporarily set TopMost to ensure visibility, then reset
-            this.TopMost = true;
-            System.Windows.Forms.Application.DoEvents();
-            this.TopMost = false;
+            EnsureVisibleOnScreen();
 
             // Headless / UI test harness: skip all deferred/background initialization.
             // This prevents WebView2 prewarm, async warmups, and other background tasks from running
             // in environments like MCP stdio servers where native components can destabilize the process.
-            if (_uiConfig != null && _uiConfig.IsUiTestHarness)
+            if ((_uiConfig != null && _uiConfig.IsUiTestHarness) || IsUiTestEnvironment())
             {
                 _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI test harness mode - skipping deferred initialization");
                 return;
@@ -697,7 +698,8 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                BeginInvoke(new System.Action(async () =>
+                // [FIX] Use Func<Task> instead of Action to properly handle async exceptions
+                BeginInvoke(new Func<Task>(async () =>
                 {
                     try
                     {
@@ -705,15 +707,30 @@ namespace WileyWidget.WinForms.Forms
                         await Task.Delay(100, cancellationToken).ConfigureAwait(true);
 
                         // [PERF] Run deferred initialization tasks (health check, ViewModel, dashboard)
-                        _deferredInitializationTask = RunDeferredInitializationAsync(cancellationToken);
+                        // Capture the task for test observability before awaiting
+                        var deferredTask = RunDeferredInitializationAsync(cancellationToken);
+                        _deferredInitializationTask = deferredTask;
+                        await deferredTask.ConfigureAwait(true);
                     }
                     catch (OperationCanceledException)
                     {
-                        _logger?.LogDebug("Deferred initialization scheduling canceled");
+                        _logger?.LogDebug("Deferred initialization canceled");
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Failed to schedule deferred initialization");
+                        _logger?.LogError(ex, "Deferred initialization failed");
+                        // Show error to user if form is still valid
+                        if (!IsDisposed && IsHandleCreated)
+                        {
+                            try
+                            {
+                                UIHelper.ShowErrorOnUI(this,
+                                    $"Initialization error: {ex.Message}\n\nPlease check the logs.",
+                                    "Startup Error",
+                                    _logger);
+                            }
+                            catch { /* Suppress UI errors during error reporting */ }
+                        }
                     }
                 }));
             }
@@ -722,6 +739,31 @@ namespace WileyWidget.WinForms.Forms
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] MainForm.OnShown EXIT - Form should now be visible and responsive");
             _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnShown COMPLETED - form visible and ready");
+        }
+
+        private void EnsureVisibleOnScreen()
+        {
+            if (!Visible)
+            {
+                Visible = true;
+            }
+
+            // [FIX] Position validation already handled in OnLoad - no need to reposition after form is visible
+            // This prevents flickering when the form is already displayed
+            try
+            {
+                var currentScreen = Screen.FromControl(this);
+                if (!currentScreen.WorkingArea.IntersectsWith(this.Bounds))
+                {
+                    _logger?.LogWarning("Window is off-screen after initial display - bounds={Bounds}, screen={Screen}",
+                        this.Bounds, currentScreen.WorkingArea);
+                    // Position was already set in OnLoad; log the issue but don't change position after form is visible
+                }
+            }
+            catch (Exception posEx)
+            {
+                _logger?.LogWarning(posEx, "Failed to validate window position after display");
+            }
         }
 
         /// <summary>
@@ -746,19 +788,9 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
-            BeginInvoke(new System.Action(async () =>
+            // [FIX] Use Func<Task> instead of Action to properly handle async exceptions
+            BeginInvoke(new Func<Task>(async () =>
             {
-                // [FIX] If the fixed JARVIS sidebar already exists (from MainForm.Docking),
-                // just show and activate it instead of spawning a second conflicting instance.
-                // This prevents multiple BlazorWebView instances from fighting over the same UserDataFolder.
-                if (_jarvisDockPanel != null && _jarvisChatUserControl != null && !_jarvisDockPanel.IsDisposed)
-                {
-                    _logger?.LogInformation("[AUTOMATION] Activating existing stable JARVIS sidebar for UI automation");
-                    _jarvisDockPanel.Visible = true;
-                    _jarvisDockPanel.BringToFront();
-                    return;
-                }
-
                 const int maxAttempts = 20;
                 for (var attempt = 1; attempt <= maxAttempts; attempt++)
                 {
@@ -802,7 +834,8 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
-            BeginInvoke(new System.Action(async () =>
+            // [FIX] Use Func<Task> instead of Action to properly handle async exceptions
+            BeginInvoke(new Func<Task>(async () =>
             {
                 const int maxAttempts = 20;
                 for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -855,24 +888,16 @@ namespace WileyWidget.WinForms.Forms
                 // [PERF] Stop timers before disposal
                 try
                 {
+                    if (_ribbon != null && !_ribbon.IsDisposed)
+                    {
+                        _ribbon.Visible = false;
+                        _ribbon.SuspendLayout();
+                    }
+
                     _statusTimer?.Stop();
                     _logger?.LogDebug("Form closing: timers stopped");
                 }
                 catch { }
-
-                // [PERF] Save docking layout (synchronous, non-blocking)
-                if (_dockingManager != null)
-                {
-                    try
-                    {
-                        _dockingLayoutManager?.SaveDockingLayout(_dockingManager);
-                        _logger?.LogDebug("Form closing: docking layout saved");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogWarning(ex, "Failed to save docking layout");
-                    }
-                }
 
                 // [PERF] Save window state and MRU (synchronous, non-blocking)
                 try
@@ -886,8 +911,7 @@ namespace WileyWidget.WinForms.Forms
                     _logger?.LogWarning(ex, "Failed to save window state");
                 }
 
-                // [PERF] Dispose docking resources
-                DisposeSyncfusionDockingResources();
+                // [PERF] Docking resources are disposed in OnHandleDestroyed (prevents Paint NRE)
 
                 // [PERF] Unsubscribe from theme service
                 if (_themeService != null)
@@ -921,12 +945,38 @@ namespace WileyWidget.WinForms.Forms
             base.OnDpiChanged(e);
             if (_themeService != null)
             {
-                ApplyThemeRecursive(this, _themeService.CurrentTheme);  // Re-apply on DPI change
+                var themeName = WileyWidget.WinForms.Themes.ThemeColors.ValidateTheme(_themeService.CurrentTheme, _logger);
+                SfSkinManager.ApplicationVisualTheme = themeName;
+                SfSkinManager.SetVisualStyle(this, themeName);
             }
             // RibbonForm handles DPI scaling natively via AutoSize
             UpdateChromePadding();
-            AdjustDockingHostBounds();
             PerformLayout();
+        }
+
+        /// <summary>
+        /// Handles window handle destruction.
+        /// Disposes DockingManager AFTER handle is destroyed to prevent Paint NRE.
+        /// This is the recommended pattern from Syncfusion to avoid paint events on disposed controls.
+        /// </summary>
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            try
+            {
+                if (_ribbon != null && !_ribbon.IsDisposed)
+                {
+                    _ribbon.Visible = false;
+                }
+            }
+            catch
+            {
+                // Best-effort shutdown only
+            }
+
+            // Dispose docking resources after handle is destroyed (prevents Paint NRE)
+            DisposeSyncfusionDockingResources();
+
+            base.OnHandleDestroyed(e);
         }
 
         /// </summary>
@@ -969,6 +1019,22 @@ namespace WileyWidget.WinForms.Forms
                 _statusTimer?.Stop();
                 _statusTimer?.Dispose();
 
+                if (_ribbon != null)
+                {
+                    try
+                    {
+                        _ribbon.Visible = false;
+                        _ribbon.Dispose();
+                    }
+                    catch
+                    {
+                        // Best-effort only during dispose
+                    }
+
+                    _ribbon = null;
+                    _homeTab = null;
+                }
+
                 // [PERF] Dispose scoped services (CRITICAL for DbContext)
                 _mainViewModelScope?.Dispose();
 
@@ -987,7 +1053,7 @@ namespace WileyWidget.WinForms.Forms
                         if (_layoutSerializer.Enabled && _dockingManager != null)
                         {
                             ResetLayoutSerializerStream(truncate: true);
-                            _layoutSerializer.SerializeObject(LayoutSerializerKey, _dockingManager);
+                            _dockingManager.SaveDockState(_layoutSerializer);
                             _layoutSerializer.PersistNow();
                             _logger?.LogDebug("[MAINFORM] Layout auto-saved on dispose");
                         }
@@ -1122,12 +1188,23 @@ namespace WileyWidget.WinForms.Forms
                 }
             }
 
+            // Suppress Syncfusion string comparison errors (relational operators on strings in filter expressions)
+            // These are prevented by FilterChanging handlers but may still appear as first-chance exceptions
             if (ex is InvalidOperationException invalidOperationException &&
-                invalidOperationException.Message.Contains("The binary operator GreaterThan is not defined for the types 'System.String' and 'System.String'", StringComparison.Ordinal) &&
-                invalidOperationException.StackTrace?.Contains("Syncfusion.WinForms.DataGrid.CalculationExtensions.GetExpression", StringComparison.OrdinalIgnoreCase) == true)
+                (invalidOperationException.Message.Contains("The binary operator GreaterThan is not defined for the types 'System.String' and 'System.String'", StringComparison.Ordinal) ||
+                 invalidOperationException.Message.Contains("The binary operator LessThan is not defined for the types 'System.String' and 'System.String'", StringComparison.Ordinal) ||
+                 invalidOperationException.Message.Contains("The binary operator GreaterThanOrEqual is not defined for the types 'System.String' and 'System.String'", StringComparison.Ordinal) ||
+                 invalidOperationException.Message.Contains("The binary operator LessThanOrEqual is not defined for the types 'System.String' and 'System.String'", StringComparison.Ordinal)))
             {
-                _logger?.LogDebug("Ignored Syncfusion first-chance filter expression mismatch on string column comparison");
-                return;
+                // Check if it's from Syncfusion grid filtering (stack trace may vary by version)
+                var stackTrace = invalidOperationException.StackTrace ?? string.Empty;
+                if (stackTrace.Contains("Syncfusion.WinForms.DataGrid", StringComparison.OrdinalIgnoreCase) ||
+                    stackTrace.Contains("Syncfusion.Data", StringComparison.OrdinalIgnoreCase) ||
+                    stackTrace.Contains("Expression.GetUserDefinedBinaryOperatorOrThrow", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger?.LogDebug("Suppressed Syncfusion first-chance filter expression error on string column (relational operator not supported)");
+                    return;
+                }
             }
 
             // Filter benign IOException related to HTTP transport connection cancellations

@@ -15,6 +15,7 @@ using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.WinForms.Input.Enums;
 using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms
@@ -251,7 +252,7 @@ namespace WileyWidget.WinForms.Forms
                 SelectionMode = GridSelectionMode.Single,
                 ShowRowHeader = false, // Plain look – no row index column
                 AutoSizeColumnsMode = AutoSizeColumnsMode.Fill // Responsive – columns fill available width, no horizontal scroll needed
-            };
+            }.PreventStringRelationalFilters(null, "EnterpriseName");
 
             // Force header visibility and height
             _sfDataGrid.HeaderRowHeight = 38;

@@ -1,0 +1,60 @@
+{
+  "summary": {
+    "total_issues": 4,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 0,
+    "auto_fixable": 0,
+    "docking_system": "MainForm.Docking.cs (direct initialization)",
+    "panels_created": [
+      "leftDockPanel",
+      "rightDockPanel",
+      "centralDocumentPanel",
+      "dockingHost"
+    ],
+    "theme_timing": "Post-docking (ideal)"
+  },
+  "issues": [
+    {
+      "severity": "high",
+      "category": "architecture",
+      "file": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Docking.cs",
+      "line": 0,
+      "code": "",
+      "description": "MainForm.Docking.cs does NOT use DockingHostFactory - creates panels directly",
+      "fix": "Consider migrating to DockingHostFactory.CreateDockingHost for consistency and testability",
+      "auto_fixable": false
+    },
+    {
+      "severity": "high",
+      "category": "layout_suspend",
+      "file": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.cs",
+      "line": 0,
+      "code": "",
+      "description": "SuspendLayout/ResumeLayout imbalance: 1 suspends, 0 resumes - controls won't render",
+      "fix": "Ensure every SuspendLayout() has matching ResumeLayout(true)",
+      "auto_fixable": false
+    },
+    {
+      "severity": "medium",
+      "category": "layout_refresh",
+      "file": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Docking.cs",
+      "line": 0,
+      "code": "",
+      "description": "Controls added but PerformLayout() never called - layout may not refresh",
+      "fix": "Call PerformLayout() after adding all controls to force layout refresh",
+      "auto_fixable": false
+    },
+    {
+      "severity": "medium",
+      "category": "event_handler",
+      "file": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Docking.cs",
+      "line": 0,
+      "code": "",
+      "description": "NewDockStateEndLoad event not handled - layout may not apply correctly",
+      "fix": "Subscribe to dockingManager.NewDockStateEndLoad to ensure layout is applied",
+      "auto_fixable": false
+    }
+  ]
+}

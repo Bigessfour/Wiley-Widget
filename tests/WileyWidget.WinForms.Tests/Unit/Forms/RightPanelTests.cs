@@ -25,7 +25,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
     public class RightPanelTests
     {
         // NOTE: These tests are obsolete. RightDockPanelFactory was refactored to remove JARVIS chat.
-        // JARVIS is now a separate fixed non-dockable sidebar (see JarvisDockPanelFactory).
+        // JARVIS is managed through DockingManager panel navigation.
         // The right panel now only contains ActivityLogPanel directly, no tabs or mode switching.
         // These tests need to be rewritten to test the new simplified architecture.
         private static ServiceProvider BuildProvider(Dictionary<string, string?>? overrides = null)

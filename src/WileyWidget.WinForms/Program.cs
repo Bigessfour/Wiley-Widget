@@ -503,19 +503,15 @@ namespace WileyWidget.WinForms
                 themeName = AppThemeColors.DefaultTheme;
             }
 
-            if (!ThemeApplicationHelper.ValidateTheme(themeName))
-            {
-                Log.Warning("Theme '{Theme}' failed validation. Falling back to Default.", themeName);
-                themeName = "Default";
-            }
+            themeName = AppThemeColors.ValidateTheme(themeName);
 
             // Load Office2019Theme assembly (required for Office2019Colorful and related themes)
             // Per Syncfusion best practices: Load assembly early, apply theme to individual forms
             // Note: ApplicationVisualTheme is optional - theme cascade from form.SetVisualStyle is sufficient
             try
             {
-                AppThemeColors.EnsureThemeAssemblyLoaded();
-                Log.Information("✅ Office2019Theme assembly loaded - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray, Office2019Dark");
+                AppThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName);
+                Log.Information("✅ Syncfusion theme assemblies loaded - supports Office2019, Office2016, and HighContrast WinForms themes");
 
                 // Optional: Set global theme property (not required per official demos, but useful for dynamic control creation)
                 SfSkinManager.ApplicationVisualTheme = themeName;

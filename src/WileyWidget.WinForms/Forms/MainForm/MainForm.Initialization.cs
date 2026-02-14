@@ -38,7 +38,7 @@ public partial class MainForm
     /// <summary>
     /// Implements IAsyncInitializable.InitializeAsync.
     /// Called after MainForm is shown to perform heavy/async initialization work.
-    /// Optimized for docking layout restoration and ViewModel initialization.
+    /// Optimized for fixed docking layout readiness and ViewModel initialization.
     /// </summary>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -73,45 +73,9 @@ public partial class MainForm
                 return;
             }
 
-            // Apply theme to UI controls after chrome is initialized
-            if (_themeService != null)
-            {
-                try
-                {
-                    _themeService.ApplyTheme(_themeService.CurrentTheme);
-
-                    // Explicitly set ThemeName on key Syncfusion controls for robustness
-                    try
-                    {
-                        var currentTheme = _themeService.CurrentTheme;
-                        if (_ribbon != null && !_ribbon.IsDisposed && _ribbon.IsHandleCreated)
-                        {
-                            _ribbon.ThemeName = currentTheme;
-                        }
-                        if (_navigationStrip != null && !_navigationStrip.IsDisposed && _navigationStrip.IsHandleCreated)
-                        {
-                            _navigationStrip.ThemeName = currentTheme;
-                        }
-                    }
-                    catch (ArgumentException argEx)
-                    {
-                        _logger?.LogWarning(argEx, "Failed to set ThemeName on Syncfusion controls - controls may not be ready");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogWarning(ex, "Failed to set explicit ThemeName on Syncfusion controls");
-                    }
-                }
-                catch (ArgumentOutOfRangeException aorEx)
-                {
-                    _logger?.LogWarning(aorEx, "ArgumentOutOfRangeException during theme application - controls may not be fully initialized");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to apply theme");
-                }
-            }
-            else
+            // Theme is initialized in Program.cs via SfSkinManager.ApplicationVisualTheme.
+            // Keep startup path free of redundant re-application to avoid competing theme paths.
+            if (_themeService == null)
             {
                 _logger?.LogWarning("[DIAGNOSTIC] _themeService is null in InitializeAsync");
             }
@@ -142,8 +106,7 @@ public partial class MainForm
 
             if (_uiConfig.UseSyncfusionDocking)
             {
-                _logger?.LogInformation("InitializeAsync: Loading docking layout");
-                await LoadAndApplyDockingLayout(GetDockingLayoutPath(), cancellationToken).ConfigureAwait(true);
+                _logger?.LogInformation("InitializeAsync: Docking layout mode active (dock/float/auto-hide enabled)");
             }
 
             // Defensive: Ensure panel navigator is initialized before trying to show panels
@@ -166,7 +129,13 @@ public partial class MainForm
             _logger?.LogInformation("[DIAGNOSTIC] _panelNavigator is null? {IsNull}", _panelNavigator == null);
             _logger?.LogInformation("[DIAGNOSTIC] _dockingManager is null? {IsNull}", _dockingManager == null);
 
-            if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && _uiConfig.AutoShowDashboard)
+            var dockingReadyForPanels = true;
+            if (_uiConfig.UseSyncfusionDocking)
+            {
+                dockingReadyForPanels = await WaitForDockingManagerReadyAsync(cancellationToken).ConfigureAwait(true);
+            }
+
+            if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && _uiConfig.AutoShowDashboard && dockingReadyForPanels)
             {
                 _logger?.LogInformation("Showing priority panels for faster startup");
                 try
@@ -219,34 +188,53 @@ public partial class MainForm
             }
             else
             {
-                _logger?.LogWarning("[DIAGNOSTIC] Skipping dashboard: UseSyncfusionDocking={Docking}, AutoShowDashboard={AutoShow}, _panelNavigator={Nav}", _uiConfig.UseSyncfusionDocking, _uiConfig.AutoShowDashboard, _panelNavigator != null ? "set" : "null");
+                _logger?.LogWarning("[DIAGNOSTIC] Skipping dashboard: UseSyncfusionDocking={Docking}, AutoShowDashboard={AutoShow}, DockingReady={DockingReady}, _panelNavigator={Nav}",
+                    _uiConfig.UseSyncfusionDocking,
+                    _uiConfig.AutoShowDashboard,
+                    dockingReadyForPanels,
+                    _panelNavigator != null ? "set" : "null");
 
-                // Fallback: Show default panel when AutoShowDashboard is false to prevent blank initial view
-                if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && !_uiConfig.AutoShowDashboard && !_dashboardAutoShown)
+                if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && !_uiConfig.AutoShowDashboard && !_dashboardAutoShown && dockingReadyForPanels)
                 {
-                    _logger?.LogInformation("[FALLBACK] AutoShowDashboard is false, showing default RevenueTrends panel to prevent blank initial view");
-                    try
-                    {
-                        _panelNavigator.ShowPanel<RevenueTrendsPanel>("Revenue Trends", DockingStyle.Right, allowFloating: false);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogError(ex, "Failed to show fallback RevenueTrends panel");
-                    }
+                    _logger?.LogInformation("[FALLBACK] AutoShowDashboard is false - startup remains on clean docking surface until user navigation");
                 }
             }
 
+            if (_uiConfig.UseSyncfusionDocking && _dockingManager != null)
+            {
+                ApplyStartupDockingStateIfReady();
+            }
+
             // Phase 2: Notify ViewModels of initial visibility for lazy loading
-            if (_dockingManager != null)
+            if (_dockingManager != null && IsDockingManagerReadyForMutatingOperations())
             {
                 _logger?.LogInformation("Triggering initial visibility notifications for all docked panels");
                 foreach (Control control in this.Controls)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (_dockingManager.GetEnableDocking(control))
+                    bool isDocked;
+                    try
                     {
-                        await NotifyPanelVisibilityChangedAsync(control);
+                        isDocked = _dockingManager.GetEnableDocking(control);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogDebug(ex, "Skipping visibility notification for control {ControlName} due to docking state read failure", control?.Name ?? "unknown");
+                        continue;
+                    }
+
+                    if (isDocked)
+                    {
+                        var visibilityTask = NotifyPanelVisibilityChangedAsync(control);
+                        var completedTask = await Task.WhenAny(visibilityTask, Task.Delay(750, cancellationToken)).ConfigureAwait(true);
+                        if (!ReferenceEquals(completedTask, visibilityTask))
+                        {
+                            _logger?.LogWarning("Visibility notification timed out for control {ControlName}; continuing initialization", control?.Name ?? "unknown");
+                            continue;
+                        }
+
+                        await visibilityTask.ConfigureAwait(true);
                     }
                 }
             }
@@ -414,9 +402,7 @@ public partial class MainForm
 
                 _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
                 InitializeSyncfusionDocking();
-                AdjustDockingHostBounds();
                 PerformLayout();
-                ConfigureDockingManagerChromeLayout();
                 _syncfusionDockingInitialized = true;
             }).ConfigureAwait(true);
         }
@@ -426,11 +412,34 @@ public partial class MainForm
 
             _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
             InitializeSyncfusionDocking();
-            AdjustDockingHostBounds();
             PerformLayout();
-            ConfigureDockingManagerChromeLayout();
             _syncfusionDockingInitialized = true;
         }
+    }
+
+    private async Task<bool> WaitForDockingManagerReadyAsync(CancellationToken cancellationToken, int maxAttempts = 20, int delayMilliseconds = 100)
+    {
+        if (_dockingManager == null)
+        {
+            return false;
+        }
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (IsDockingManagerReadyForMutatingOperations())
+            {
+                ApplyStartupDockingStateIfReady();
+                return true;
+            }
+
+            await Task.Delay(delayMilliseconds, cancellationToken).ConfigureAwait(true);
+            ApplyStartupDockingStateIfReady();
+        }
+
+        _logger?.LogWarning("DockingManager did not reach ready state after {Attempts} attempts; startup panel auto-show will be skipped", maxAttempts);
+        return false;
     }
 
     /// <summary>
@@ -630,15 +639,22 @@ public partial class MainForm
             {
                 try
                 {
-                    _logger?.LogInformation("Showing initial dashboard panel...");
-                    ShowForm<BudgetDashboardForm>("Dashboard", null, DockingStyle.Top);
-                    _dashboardAutoShown = true;
-                    _logger?.LogInformation("Initial dashboard panel shown successfully");
+                    var readyForAutoShow = await WaitForDockingManagerReadyAsync(cancellationToken, maxAttempts: 10, delayMilliseconds: 100).ConfigureAwait(true);
+                    if (!readyForAutoShow)
+                    {
+                        _logger?.LogWarning("Skipping deferred dashboard auto-show because DockingManager is not ready");
+                    }
+                    else
+                    {
+                        _logger?.LogInformation("Showing initial dashboard panel...");
+                        ShowForm<BudgetDashboardForm>("Dashboard", null, DockingStyle.Right, allowFloating: false);
+                        _dashboardAutoShown = true;
+                        _logger?.LogInformation("Initial dashboard panel shown successfully");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Failed to show initial dashboard panel");
-                    ShowErrorDialog("Startup Error", "Could not load dashboard. Check logs.");
+                    _logger?.LogWarning(ex, "Deferred dashboard auto-show failed; startup will continue");
                 }
             }
             else

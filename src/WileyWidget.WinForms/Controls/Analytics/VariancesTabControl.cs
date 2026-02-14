@@ -9,6 +9,7 @@ using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
 
@@ -141,7 +142,7 @@ public partial class VariancesTabControl : UserControl
             AllowSorting = true,
             AllowFiltering = true,
             AutoGenerateColumns = false
-        };
+        }.PreventStringRelationalFilters(null, "Department", "Account");
 
         // Configure columns for variance data
         var columns = new GridColumn[]

@@ -94,6 +94,104 @@ public static class RibbonFactory
         {
             logger?.LogError(argEx, "[RIBBON_FACTORY] {OperationName} failed - invalid argument: {Message}", operationName, argEx.Message);
         }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "[RIBBON_FACTORY] {OperationName} failed - unexpected error: {Message}", operationName, ex.Message);
+        }
+    }
+
+    private static void SafeNavigate(
+        WileyWidget.WinForms.Forms.MainForm form,
+        string navigationTarget,
+        System.Action navigateAction,
+        ILogger? logger)
+    {
+        if (form == null)
+        {
+            logger?.LogWarning("[RIBBON_FACTORY] Navigation to '{Target}' skipped because form is null", navigationTarget);
+            return;
+        }
+
+        if (form.IsDisposed || form.Disposing)
+        {
+            logger?.LogWarning("[RIBBON_FACTORY] Navigation to '{Target}' skipped because form is disposing/disposed", navigationTarget);
+            return;
+        }
+
+        SafeExecute(() =>
+        {
+            if (form.WindowState == FormWindowState.Minimized)
+            {
+                form.WindowState = FormWindowState.Normal;
+            }
+
+            if (!form.Visible)
+            {
+                form.Visible = true;
+            }
+
+            form.BringToFront();
+            form.Activate();
+
+            const int maxNavigationAttempts = 2;
+            for (var attempt = 1; attempt <= maxNavigationAttempts; attempt++)
+            {
+                navigateAction();
+
+                if (IsNavigationTargetActive(form, navigationTarget, logger))
+                {
+                    logger?.LogDebug("[RIBBON_FACTORY] Navigation target '{Target}' activated on attempt {Attempt}/{MaxAttempts}",
+                        navigationTarget,
+                        attempt,
+                        maxNavigationAttempts);
+                    return;
+                }
+
+                logger?.LogWarning("[RIBBON_FACTORY] Navigation target '{Target}' not active on attempt {Attempt}/{MaxAttempts}",
+                    navigationTarget,
+                    attempt,
+                    maxNavigationAttempts);
+
+                form.PerformLayout();
+                form.Invalidate(true);
+                form.Refresh();
+            }
+        }, $"Navigate:{navigationTarget}", logger);
+    }
+
+    private static bool IsNavigationTargetActive(
+        WileyWidget.WinForms.Forms.MainForm form,
+        string navigationTarget,
+        ILogger? logger)
+    {
+        try
+        {
+            var panelNavigator = form.PanelNavigator;
+            if (panelNavigator == null)
+            {
+                return true;
+            }
+
+            var activePanelName = panelNavigator.GetActivePanelName();
+            if (string.IsNullOrWhiteSpace(activePanelName))
+            {
+                return false;
+            }
+
+            if (string.Equals(activePanelName, navigationTarget, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var normalizedActive = activePanelName.Replace(" ", string.Empty, StringComparison.Ordinal);
+            var normalizedTarget = navigationTarget.Replace(" ", string.Empty, StringComparison.Ordinal);
+            return string.Equals(normalizedActive, normalizedTarget, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_FACTORY] Failed verifying navigation target '{Target}'", navigationTarget);
+            return false;
+        }
     }
 
     private static void SafeBeginInvoke(Control control, System.Action action, ILogger? logger)
@@ -251,7 +349,9 @@ public static class RibbonFactory
 
         ConfigureRibbonAppearance(ribbon, logger);
 
-        var currentThemeString = ribbon.ThemeName;
+        var currentThemeString = ResolveRibbonThemeName(SfSkinManager.ApplicationVisualTheme ?? ribbon.ThemeName, logger);
+        ribbon.ThemeName = currentThemeString;
+        SfSkinManager.SetVisualStyle(ribbon, currentThemeString);
         var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
 
         logger?.LogDebug("[RIBBON_FACTORY] HomeTab created: Text={Text}, Name={Name}", homeTab.Text, homeTab.Name);
@@ -360,7 +460,7 @@ public static class RibbonFactory
             if (homeTab.Panel != null)
             {
                 homeTab.Panel.PerformLayout();
-                homeTab.Panel.Refresh();
+                homeTab.Panel.Invalidate();
             }
             logger?.LogDebug("[RIBBON_FACTORY] HomeTab panel layout performed and refreshed");
         }
@@ -387,8 +487,8 @@ public static class RibbonFactory
             logger?.LogWarning(ex, "[RIBBON_FACTORY] Could not select Home tab");
         }
 
-        // Final visual refresh
-        ribbon.Refresh();
+        // Final visual invalidation (defer paint until parent/handle state is stable)
+        ribbon.Invalidate();
 
         // ✅ NEW: Log ribbon state verification after initialization (Syncfusion sample pattern)
         logger?.LogDebug("[RIBBON_FACTORY] Ribbon initialization complete: " +
@@ -441,8 +541,8 @@ public static class RibbonFactory
 
         logger?.LogDebug("[RIBBON_FACTORY] Ribbon initialized with Office 2019 Demo styling (header items={ItemCount})", ribbon.Header.MainItems.Count);
 
-        // Final refresh to ensure all visual updates are applied
-        ribbon.Refresh();
+        // Final invalidation to ensure visual updates are queued safely
+        ribbon.Invalidate();
 
         logger?.LogInformation("[RIBBON_FACTORY] CreateRibbon: Completed successfully");
 
@@ -1016,7 +1116,7 @@ public static class RibbonFactory
                     {
                         backStageView.BackStage.Visible = false;
                     }
-                    form?.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right);
+                    SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger);
                 }, "ShowSettings", logger);
             };
 
@@ -1113,8 +1213,9 @@ public static class RibbonFactory
             var themeName = ribbon.ThemeName ?? string.Empty;
             ApplyRibbonStyleForTheme(ribbon, themeName, logger);
 
-            // [VISIBILITY] Add visible definition to the ribbon control
-            ribbon.BorderStyle = ToolStripBorderStyle.Etched;
+            // Avoid non-client etched frame rendering path that can throw in RibbonPanelThemeRenderer
+            // during startup/dispose churn in integration test hosts.
+            ribbon.BorderStyle = ToolStripBorderStyle.None;
 
             // OFFICE COMPATIBILITY: Enable modern features found in Syncfusion "Office" demos
             ribbon.ShowCaption = true;
@@ -1220,13 +1321,15 @@ public static class RibbonFactory
 
         try
         {
+            var resolvedTheme = ResolveRibbonThemeName(theme, logger);
+
             // Ensure theme assembly is loaded before applying themes
             AppThemeColors.EnsureThemeAssemblyLoaded(logger);
 
             // Apply theme to the panel if it's a control
             if (tab.Panel is Control panelControl)
             {
-                SfSkinManager.SetVisualStyle(panelControl, theme);
+                SfSkinManager.SetVisualStyle(panelControl, resolvedTheme);
 
                 // Also ensure the strip is visible through the Control hierarchy.
                 // Some Syncfusion versions track strips internally but do not expose them via Panel.Controls,
@@ -1240,7 +1343,7 @@ public static class RibbonFactory
             // Ensure strip is visible, enabled, and themed BEFORE adding to the panel
             strip.Visible = true;
             strip.Enabled = true;
-            strip.ThemeName = theme;
+            strip.ThemeName = resolvedTheme;
 
             // Apply theme to the strip's items and ensure they are visible and enabled
             EnsureToolStripItemsVisibleAndEnabled(strip, logger);
@@ -1248,7 +1351,7 @@ public static class RibbonFactory
             // Syncfusion: AddToolStrip handles the internal layout for Ribbon groups
             tab.Panel.AddToolStrip(strip);
 
-            logger?.LogDebug("[RIBBON_FACTORY] ToolStripEx '{StripName}' added to panel with theme '{Theme}'", strip.Name, theme);
+            logger?.LogDebug("[RIBBON_FACTORY] ToolStripEx '{StripName}' added to panel with theme '{Theme}'", strip.Name, resolvedTheme);
         }
         catch (Exception ex)
         {
@@ -1377,14 +1480,10 @@ public static class RibbonFactory
             return;
         }
 
-        var styleName = themeName?.Contains("Office2019", StringComparison.OrdinalIgnoreCase) == true
-            ? "Office2019"
-            : "Office2016";
-
-        if (!Enum.TryParse(styleName, true, out RibbonStyle ribbonStyle))
-        {
-            ribbonStyle = RibbonStyle.Office2016;
-        }
+        // Keep RibbonStyle on Office2016 even for Office2019 themes.
+        // Office2019 theme resources are still applied via SfSkinManager,
+        // while Office2016 ribbon style avoids legacy renderer null states in test hosts.
+        var ribbonStyle = RibbonStyle.Office2016;
 
         try
         {
@@ -1415,6 +1514,39 @@ public static class RibbonFactory
         }
     }
 
+    private static string ResolveRibbonThemeName(string? candidateTheme, ILogger? logger)
+    {
+        var applicationTheme = SfSkinManager.ApplicationVisualTheme;
+        var resolvedTheme = string.IsNullOrWhiteSpace(candidateTheme)
+            ? applicationTheme
+            : candidateTheme;
+
+        if (string.IsNullOrWhiteSpace(resolvedTheme))
+        {
+            resolvedTheme = AppThemeColors.DefaultTheme;
+        }
+
+        if (!resolvedTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(applicationTheme)
+            && applicationTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase))
+        {
+            logger?.LogDebug(
+                "[RIBBON_FACTORY] Replacing ribbon theme '{Theme}' with application theme '{ApplicationTheme}' to keep Syncfusion renderers consistent.",
+                resolvedTheme,
+                applicationTheme);
+            resolvedTheme = applicationTheme;
+        }
+
+        resolvedTheme = AppThemeColors.ValidateTheme(resolvedTheme, logger);
+
+        if (resolvedTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase))
+        {
+            AppThemeColors.EnsureThemeAssemblyLoaded(logger);
+        }
+
+        return resolvedTheme;
+    }
+
     /// <summary>
     /// Creates a ToolStripEx group with Office2019-style layout and theming.
     /// Uses StackWithOverflow for proper button arrangement in square groups.
@@ -1426,10 +1558,8 @@ public static class RibbonFactory
         {
             throw new ArgumentException("Group name cannot be null or empty", nameof(name));
         }
-        if (string.IsNullOrWhiteSpace(theme))
-        {
-            throw new ArgumentException("Theme cannot be null or empty", nameof(theme));
-        }
+
+        var resolvedTheme = ResolveRibbonThemeName(theme, logger);
 
         var safeTitle = string.IsNullOrWhiteSpace(title) ? " " : title;
         var groupMinHeight = (int)DpiAware.LogicalToDeviceUnits(100f);
@@ -1447,7 +1577,7 @@ public static class RibbonFactory
             LauncherStyle = LauncherStyle.Metro,
             ShowLauncher = true, // VISIBILITY: Shows the group dialog launcher for better definition
             ImageScalingSize = new Size(32, 32),  // 32px icons for large buttons
-            ThemeName = theme,
+            ThemeName = resolvedTheme,
             CanOverflow = false,
             Dock = DockStyle.None,
             LayoutStyle = ToolStripLayoutStyle.StackWithOverflow, // Better for alignment
@@ -1464,7 +1594,7 @@ public static class RibbonFactory
         // Apply SfSkinManager theming for consistency with project rules
         try
         {
-            SfSkinManager.SetVisualStyle(strip, theme);
+            SfSkinManager.SetVisualStyle(strip, resolvedTheme);
         }
         catch (Exception ex)
         {
@@ -1491,7 +1621,7 @@ public static class RibbonFactory
             }
         };
 
-        logger?.LogDebug("[RIBBON_FACTORY] Created ribbon group '{GroupName}' with theme '{Theme}'", name, theme);
+        logger?.LogDebug("[RIBBON_FACTORY] Created ribbon group '{GroupName}' with theme '{Theme}'", name, resolvedTheme);
 
         return strip;
     }
@@ -1516,7 +1646,7 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("File", "FileGroup", theme, logger);
 
         // Launcher: open Settings/Options (closest equivalent to Office "Options" for this app).
-        strip.Tag = (System.Action)(() => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right));
+        strip.Tag = (System.Action)(() => SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger));
 
         // New Budget
         var newBudgetBtn = CreateLargeNavButton(
@@ -1619,11 +1749,11 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("Core Navigation", "CoreNavigationGroup", theme, logger);
 
         // Launcher: open Dashboard.
-        strip.Tag = (System.Action)(() => form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Fill));
+        strip.Tag = (System.Action)(() => SafeNavigate(form, "Dashboard", () => form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Fill), logger));
 
         var dashboardBtn = CreateLargeNavButton(
             "Nav_Dashboard", "Dashboard", "dashboard", theme,
-            () => form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Fill), logger);
+            () => SafeNavigate(form, "Dashboard", () => form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Fill), logger), logger);
         dashboardBtn.Tag = "Nav:Dashboard";
         dashboardBtn.Enabled = true;  // Changed from false to true
 
@@ -1637,35 +1767,35 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("Financials", "FinancialsGroup", theme, logger);
 
         // Launcher: open Accounts.
-        strip.Tag = (System.Action)(() => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right));
+        strip.Tag = (System.Action)(() => SafeNavigate(form, "Municipal Accounts", () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right), logger));
 
         var accountsBtn = CreateLargeNavButton(
             "Nav_Accounts", "Accounts", "accounts", theme,
-            () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Municipal Accounts", () => form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Right), logger), logger);
         accountsBtn.Tag = "Nav:Accounts";
         accountsBtn.Enabled = true;
 
         var paymentsBtn = CreateLargeNavButton(
             "Nav_Payments", "Payments", "quickbooks", theme,
-            () => form.ShowPanel<PaymentsPanel>("Payments", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Payments", () => form.ShowPanel<PaymentsPanel>("Payments", DockingStyle.Right), logger), logger);
         paymentsBtn.Tag = "Nav:Payments";
         paymentsBtn.Enabled = true;
 
         var budgetBtn = CreateLargeNavButton(
             "Nav_Budget", "Budget", "budget", theme,
-            () => form.ShowPanel<BudgetPanel>("Budget", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Budget", () => form.ShowPanel<BudgetPanel>("Budget", DockingStyle.Right), logger), logger);
         budgetBtn.Tag = "Nav:Budget";
         budgetBtn.Enabled = true;
 
         var ratesBtn = CreateLargeNavButton(
             "Nav_Rates", "Rates", "rates", theme,
-            () => form.ShowForm<RatesPage>("Rates", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Rates", () => form.ShowForm<RatesPage>("Rates", DockingStyle.Right), logger), logger);
         ratesBtn.Tag = "Nav:Rates";
         ratesBtn.Enabled = true;
 
         var budgetOverviewBtn = CreateLargeNavButton(
             "Nav_BudgetOverview", "Budget\nOverview", "budgetoverview", theme,
-            () => form.ShowForm<BudgetDashboardForm>(asModal: false), logger);
+            () => SafeNavigate(form, "Budget Overview", () => form.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Right), logger), logger);
         budgetOverviewBtn.Tag = "Nav:BudgetOverview";
         budgetOverviewBtn.Enabled = true;
 
@@ -1685,17 +1815,17 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("Reporting", "ReportingGroup", theme, logger);
 
         // Launcher: open Reports.
-        strip.Tag = (System.Action)(() => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right));
+        strip.Tag = (System.Action)(() => SafeNavigate(form, "Reports", () => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right), logger));
 
         var analyticsBtn = CreateLargeNavButton(
             "Nav_Analytics", "Analytics", "analytics", theme,
-            () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Analytics Hub", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right), logger), logger);
         analyticsBtn.Tag = "Nav:Analytics";
         analyticsBtn.Enabled = true;
 
         var reportsBtn = CreateLargeNavButton(
             "Nav_Reports", "Reports", "reports", theme,
-            () => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Reports", () => form.ShowPanel<ReportsPanel>("Reports", DockingStyle.Right), logger), logger);
         reportsBtn.Tag = "Nav:Reports";
         reportsBtn.Enabled = true;
 
@@ -1711,29 +1841,29 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("Tools", "ToolsGroup", theme);
 
         // Launcher: open Settings.
-        strip.Tag = (System.Action)(() => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right));
+        strip.Tag = (System.Action)(() => SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger));
 
         // Settings button
         var settingsBtn = CreateLargeNavButton(
             "Nav_Settings", "Settings", "settings", theme,
-            () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger), logger);
         settingsBtn.Tag = "Nav:Settings";
         settingsBtn.Enabled = true;
 
         // JARVIS Chat button (docked to right panel)
         var jarvisBtn = CreateLargeNavButton(
             "Nav_JARVIS", "JARVIS\nChat", "jarvis", theme,
-            () => form.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
+            () => SafeNavigate(form, "JARVIS Chat", () => form.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
                 "JARVIS Chat",
                 DockingStyle.Right,
-                allowFloating: false), logger);
+                allowFloating: false), logger), logger);
         jarvisBtn.Tag = "Nav:JARVIS";
         jarvisBtn.Enabled = true;
 
         // QuickBooks button
         var quickBooksBtn = CreateLargeNavButton(
             "Nav_QuickBooks", "QuickBooks", "quickbooks", theme,
-            () => form.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right), logger);
+            () => SafeNavigate(form, "QuickBooks", () => form.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right), logger), logger);
         quickBooksBtn.Tag = "Nav:QuickBooks";
         quickBooksBtn.Enabled = true;
 
@@ -1808,22 +1938,24 @@ public static class RibbonFactory
         var strip = CreateRibbonGroup("Views", "MorePanelsGroup", theme);
 
         // Launcher: open War Room (acts as a hub for secondary views).
-        strip.Tag = (System.Action)(() => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true));
+        strip.Tag = (System.Action)(() => SafeNavigate(form, "War Room", () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true), logger));
 
         // Create gallery items for dynamic, Office-like presentation
-        strip.Items.Add(CreateGalleryItem("War Room", "warroom", () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true), logger));
+        strip.Items.Add(CreateGalleryItem("War Room", "warroom", () => SafeNavigate(form, "War Room", () => form.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true), logger), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(CreateGalleryItem("Customers", "customers", () => form.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right), logger));
-        strip.Items.Add(CreateGalleryItem("Utility Bills", "utilitybill", () => form.ShowPanel<UtilityBillPanel>("Utility Bills", DockingStyle.Right), logger));
+        strip.Items.Add(CreateGalleryItem("Customers", "customers", () => SafeNavigate(form, "Customers", () => form.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right), logger), logger));
+        strip.Items.Add(CreateGalleryItem("Utility Bills", "utilitybill", () => SafeNavigate(form, "Utility Bills", () => form.ShowPanel<UtilityBillPanel>("Utility Bills", DockingStyle.Right), logger), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(CreateGalleryItem("Revenue Trends", "revenuetrends", () => form.ShowPanel<RevenueTrendsPanel>("Revenue Trends", DockingStyle.Right), logger));
-        strip.Items.Add(CreateGalleryItem("Recommended Charge", "recommendedcharge", () => form.ShowPanel<RecommendedMonthlyChargePanel>("Recommended Monthly Charge", DockingStyle.Right), logger));
+        strip.Items.Add(CreateGalleryItem("Revenue Trends", "revenuetrends", () => SafeNavigate(form, "Revenue Trends", () => form.ShowPanel<RevenueTrendsPanel>("Revenue Trends", DockingStyle.Right), logger), logger));
+        strip.Items.Add(CreateGalleryItem("Recommended Charge", "recommendedcharge", () => SafeNavigate(form, "Recommended Monthly Charge", () => form.ShowPanel<RecommendedMonthlyChargePanel>("Recommended Monthly Charge", DockingStyle.Right), logger), logger));
+        strip.Items.Add(CreateGalleryItem("Budget Overview", "budgetoverview", () => SafeNavigate(form, "Budget Overview", () => form.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true), logger), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(CreateGalleryItem("Dept Summary", "deptsummary", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>("Department Summary", DockingStyle.Right), logger));
-        strip.Items.Add(CreateGalleryItem("Insight Feed", "insightfeed", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.InsightFeedPanel>("Insight Feed", DockingStyle.Right), logger));
+        strip.Items.Add(CreateGalleryItem("Dept Summary", "deptsummary", () => SafeNavigate(form, "Department Summary", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>("Department Summary", DockingStyle.Right), logger), logger));
+        strip.Items.Add(CreateGalleryItem("Insight Feed", "insightfeed", () => SafeNavigate(form, "Insight Feed", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.InsightFeedPanel>("Insight Feed", DockingStyle.Right), logger), logger));
+        strip.Items.Add(CreateGalleryItem("Proactive Insights", "insights", () => SafeNavigate(form, "Proactive Insights", () => form.ShowPanel<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>("Proactive Insights", DockingStyle.Right), logger), logger));
         strip.Items.Add(CreateRibbonSeparator());
-        strip.Items.Add(CreateGalleryItem("Activity Log", "activitylog", () => form.ShowPanel<ActivityLogPanel>("Activity Log", DockingStyle.Bottom, allowFloating: true), logger));
-        strip.Items.Add(CreateGalleryItem("Audit Log", "auditlog", () => form.ShowPanel<AuditLogPanel>("Audit Log", DockingStyle.Bottom), logger));
+        strip.Items.Add(CreateGalleryItem("Activity Log", "activitylog", () => SafeNavigate(form, "Activity Log", () => form.ShowPanel<ActivityLogPanel>("Activity Log", DockingStyle.Bottom, allowFloating: true), logger), logger));
+        strip.Items.Add(CreateGalleryItem("Audit Log", "auditlog", () => SafeNavigate(form, "Audit Log", () => form.ShowPanel<AuditLogPanel>("Audit Log", DockingStyle.Bottom), logger), logger));
 
         return strip;
     }
@@ -1924,7 +2056,7 @@ public static class RibbonFactory
             Width = (int)DpiAware.LogicalToDeviceUnits(140f),
             AccessibleName = "Theme Selection",
             AccessibleRole = AccessibleRole.ComboBox,
-            AccessibleDescription = "Select application theme (Office2019Colorful, Office2019White, Office2019Black, Office2016Colorful, Office2016White)"
+            AccessibleDescription = "Select application theme (Office2019, Office2016, HighContrast)"
         };
 
         // Add available themes to combo
@@ -1938,7 +2070,9 @@ public static class RibbonFactory
             "Office2016Colorful",
             "Office2016White",
             "Office2016Black",
-            "Office2016DarkGray"
+            "Office2016DarkGray",
+            "HighContrastBlack",
+            "HighContrastWhite"
         });
 
         // Set default theme to the current application theme when possible
@@ -1976,10 +2110,7 @@ public static class RibbonFactory
                 else
                 {
                     // Fallback when DI isn't available (tests / early startup): apply directly.
-                    if (selectedTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase))
-                    {
-                        AppThemeColors.EnsureThemeAssemblyLoaded(logger);
-                    }
+                    AppThemeColors.EnsureThemeAssemblyLoadedForTheme(selectedTheme, logger);
 
                     SfSkinManager.ApplicationVisualTheme = selectedTheme;
                     SfSkinManager.SetVisualStyle(form, selectedTheme);
@@ -2577,7 +2708,7 @@ public static class RibbonFactory
         try
         {
             // Check the application theme to determine if flat icons are appropriate
-            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
             // Use flat icons for Office2013, Office2016, and Office2019 themes
             return currentTheme.Contains("Office2013", StringComparison.OrdinalIgnoreCase) ||

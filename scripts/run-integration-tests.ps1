@@ -7,6 +7,7 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$overallExitCode = 0
 
 # Ensure working directory is repository root (script location's parent)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -128,9 +129,10 @@ foreach ($proj in $testProjects) {
 
     if ($exitCode -ne 0) { Write-Host "dotnet test exit code: $exitCode" }
 
-    if (-not $global:overallExitCode) { $global:overallExitCode = $exitCode } elseif ($exitCode -ne 0) { $global:overallExitCode = $exitCode }
+    if ($exitCode -ne 0) { $overallExitCode = $exitCode }
 
     Write-Host "Finished project $projName; check $resultsDir for TRX/diag/job-output.txt"
 }
 
 Write-Host "\nAll done. Summary: check ./TestResults for per-project outputs."
+exit $overallExitCode

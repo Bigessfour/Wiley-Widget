@@ -20,7 +20,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Forms;
 public sealed class JarvisPanelIntegrationTests
 {
     // NOTE: These tests are obsolete. RightDockPanelFactory was refactored to remove JARVIS chat.
-    // JARVIS is now a separate fixed non-dockable sidebar (see JarvisDockPanelFactory).
+    // JARVIS is managed through DockingManager panel navigation.
     // These tests need to be rewritten to test the new architecture.
 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]

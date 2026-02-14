@@ -149,6 +149,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> logger)
             : base(scopeFactory, logger)
         {
+            // Set preferred size for proper docking display (matches PreferredDockSize extension)
+            Size = new Size(500, 360);
+            MinimumSize = new Size(420, 360);
         }
 
         /// <summary>

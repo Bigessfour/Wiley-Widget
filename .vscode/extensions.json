@@ -1,4 +1,13 @@
 {
-  "recommendations": [],
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp",
+    "ms-vscode.powershell",
+    "github.copilot",
+    "github.copilot-chat",
+    "eamodio.gitlens",
+    "sonarsource.sonarlint-vscode",
+    "streetsidesoftware.code-spell-checker"
+  ],
   "unwantedRecommendations": []
 }

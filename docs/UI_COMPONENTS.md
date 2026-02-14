@@ -630,7 +630,7 @@ foreach (var control in GetAllControls(form))
 **Root Cause:** `OnResize` calculation uses `Width - 40` with negative results
 
 **Fix:**
-eme Not Applying to Controls**
+eme Not Applying to Controls\*\*
 
 **Symptom:** Some controls show old theme colors
 

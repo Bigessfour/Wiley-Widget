@@ -69,11 +69,12 @@ namespace WileyWidget.WinForms.Controls.Analytics
         /// </summary>
         private void InitializeComponent()
         {
-            // Control-level padding and minimums for breathing room (requirement 4,5)
-            this.Padding = new Padding(8);
-            this.MinimumSize = new Size(320, 240);
-            this.AccessibleName = "Proactive Insights Panel";
-            this.AccessibleDescription = "Displays proactive AI insights with header and actions";
+            // Set preferred size for proper docking display (matches PreferredDockSize extension)
+            Size = new Size(560, 400);
+            MinimumSize = new Size(420, 360);
+            Padding = new Padding(8);
+            AccessibleName = "Proactive Insights Panel";
+            AccessibleDescription = "Displays proactive AI insights with header and actions";
 
             // Create gradient top panel with header
             _topPanel = new LegacyGradientPanel

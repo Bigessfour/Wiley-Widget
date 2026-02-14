@@ -214,18 +214,19 @@ INTERFACE_PROPERTIES = {
     ],
 }
 
+
 def generate_interface_file(viewmodel_name: str, properties: list) -> str:
     """Generate interface code for a ViewModel."""
     interface_name = f"I{viewmodel_name}"
-    
+
     # Extract property types and names
     props_code = []
     for prop in properties:
         props_code.append(f"        {prop} {{ get; set; }}")
-    
+
     properties_section = "\n".join(props_code)
-    
-    interface_code = f'''#nullable enable
+
+    interface_code = f"""#nullable enable
 
 using System;
 using System.Collections.ObjectModel;
@@ -242,34 +243,36 @@ namespace WileyWidget.WinForms.ViewModels
 {properties_section}
     }}
 }}
-'''
+"""
     return interface_code
+
 
 def main():
     """Generate all ViewModel interfaces."""
     workspace_root = Path("src/WileyWidget.WinForms/ViewModels")
-    
+
     if not workspace_root.exists():
         print(f"Error: ViewModels directory not found: {workspace_root}")
         sys.exit(1)
-    
+
     generated_count = 0
     for viewmodel_name, properties in INTERFACE_PROPERTIES.items():
         interface_name = f"I{viewmodel_name}.cs"
         interface_path = workspace_root / interface_name
-        
+
         # Skip if already exists
         if interface_path.exists():
             print(f"⊘ {interface_name} already exists - skipping")
             continue
-        
+
         code = generate_interface_file(viewmodel_name, properties)
         interface_path.write_text(code, encoding="utf-8")
         print(f"✓ Generated {interface_name}")
         generated_count += 1
-    
+
     print(f"\n{generated_count} interfaces generated successfully")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

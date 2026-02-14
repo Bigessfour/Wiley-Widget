@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
@@ -62,6 +64,8 @@ internal static class SyncfusionTestBootstrapper
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException, false);
             Application.ThreadException += static (_, e) =>
             {
+                LogUnhandledException("Application.ThreadException", e.Exception);
+
                 if (e.Exception is NullReferenceException && IsKnownSyncfusionPaintException(e.Exception))
                 {
                     Console.WriteLine($"[TEST-BOOTSTRAP] Ignored known Syncfusion paint exception: {e.Exception.Message}");
@@ -69,6 +73,20 @@ internal static class SyncfusionTestBootstrapper
                 }
 
                 ExceptionDispatchInfo.Capture(e.Exception).Throw();
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += static (_, e) =>
+            {
+                var exception = e.ExceptionObject as Exception
+                    ?? new InvalidOperationException($"Non-Exception unhandled object: {e.ExceptionObject}");
+
+                LogUnhandledException("AppDomain.UnhandledException", exception);
+            };
+
+            TaskScheduler.UnobservedTaskException += static (_, e) =>
+            {
+                LogUnhandledException("TaskScheduler.UnobservedTaskException", e.Exception);
+                e.SetObserved();
             };
         }
         catch
@@ -88,5 +106,24 @@ internal static class SyncfusionTestBootstrapper
         return stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanelThemeRenderer.DrawFrame", StringComparison.OrdinalIgnoreCase)
             || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanel.OnNcPaint", StringComparison.OrdinalIgnoreCase)
             || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.DockingManager.HostControl_Paint", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void LogUnhandledException(string source, Exception exception)
+    {
+        try
+        {
+            var artifactsDir = Path.Combine(AppContext.BaseDirectory, "artifacts");
+            Directory.CreateDirectory(artifactsDir);
+
+            var logPath = Path.Combine(artifactsDir, "testhost-unhandled-exceptions.log");
+            var entry = $"[{DateTime.UtcNow:O}] {source}{Environment.NewLine}{exception}{Environment.NewLine}{new string('-', 80)}{Environment.NewLine}";
+
+            File.AppendAllText(logPath, entry);
+            Console.WriteLine($"[TEST-BOOTSTRAP] Captured unhandled exception from {source}. Log: {logPath}");
+        }
+        catch
+        {
+            // Swallow logging failures to avoid recursive exception handling.
+        }
     }
 }

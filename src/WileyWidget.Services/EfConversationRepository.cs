@@ -39,6 +39,8 @@ public sealed class EfConversationRepository : IConversationRepository
         await using var context = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
 
         var existing = await context.ConversationHistories
+            .OrderByDescending(c => c.UpdatedAt)
+            .ThenByDescending(c => c.Id)
             .FirstOrDefaultAsync(c => c.ConversationId == history.ConversationId)
             .ConfigureAwait(false);
 
@@ -77,6 +79,8 @@ public sealed class EfConversationRepository : IConversationRepository
 
         var conversation = await context.ConversationHistories
             .AsNoTracking()
+            .OrderByDescending(c => c.UpdatedAt)
+            .ThenByDescending(c => c.Id)
             .FirstOrDefaultAsync(c => c.ConversationId == id)
             .ConfigureAwait(false);
 
@@ -115,6 +119,8 @@ public sealed class EfConversationRepository : IConversationRepository
         await using var context = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
 
         var existing = await context.ConversationHistories
+            .OrderByDescending(c => c.UpdatedAt)
+            .ThenByDescending(c => c.Id)
             .FirstOrDefaultAsync(c => c.ConversationId == conversationId)
             .ConfigureAwait(false);
 

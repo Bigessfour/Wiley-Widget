@@ -140,10 +140,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     {
         SuspendLayout();
 
-        // Set up panel properties
+        // Set up panel properties (matches PreferredDockSize extension)
         Text = "Utility Bills";
-        Size = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1400f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(900f));
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1000f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        Size = new Size(560, 400);
+        MinimumSize = new Size(420, 360);
         AutoScroll = true;
         Padding = new Padding(8);
 
@@ -422,7 +422,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             TabIndex = 8,
             AccessibleName = "Utility Bills Grid",
             AccessibleDescription = "Grid displaying utility bills with filtering and sorting capabilities"
-        };
+        }.PreventStringRelationalFilters(Logger, "BillNumber", "Customer.DisplayName");
 
         // Configure columns
         _billsGrid.Columns.Add(new GridTextColumn
@@ -701,7 +701,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             TabIndex = 12,
             AccessibleName = "Customers Grid",
             AccessibleDescription = "Grid displaying utility customers"
-        };
+        }.PreventStringRelationalFilters(Logger, "AccountNumber", "DisplayName", "ServiceAddress", "PhoneNumber");
 
         _customersGrid.Columns.Add(new GridTextColumn
         {

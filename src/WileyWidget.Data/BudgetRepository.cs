@@ -248,6 +248,7 @@ public class BudgetRepository : IBudgetRepository
             .Include(be => be.Fund)
             .Include(be => be.MunicipalAccount)
             .AsNoTracking()
+            .OrderByDescending(be => be.Id)
             .FirstOrDefaultAsync(be => be.Id == id, cancellationToken);
     }
 

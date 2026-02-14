@@ -46,6 +46,8 @@ public partial class MainForm
     private System.Windows.Forms.Timer? _statusTimer;
     private ToolStripTextBox? _globalSearchTextBox;
     private bool _chromeInitialized;
+    private bool _chromeLayoutUpdating;
+    private int _lastChromeTopInset = -1;
 
     /// <summary>
     /// Initialize UI chrome elements (Ribbon, Status Bar, Navigation).
@@ -98,9 +100,12 @@ public partial class MainForm
             // Establish default Escape key behavior
             EnsureDefaultActionButtons();
 
-            // Initialize Menu Bar
-            InitializeMenuBar();
-            _logger?.LogInformation("Menu bar initialized");
+            // Single chrome path: Ribbon is primary. Use native menu only when ribbon is disabled.
+            if (!_uiConfig.ShowRibbon)
+            {
+                InitializeMenuBar();
+                _logger?.LogInformation("Menu bar initialized (ribbon disabled)");
+            }
 
             if (_uiConfig.ShowRibbon)
             {
@@ -216,29 +221,9 @@ public partial class MainForm
             return;
         }
 
-        void ForceCreateRibbonHandle()
-        {
-            if (_ribbon == null || _ribbon.IsHandleCreated)
-            {
-                return;
-            }
-
-            try
-            {
-                _logger?.LogDebug("InitializeRibbon: Forcing ribbon handle creation before attachment");
-                _ribbon.CreateControl();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "InitializeRibbon: Forced CreateControl failed");
-            }
-        }
-
-        ForceCreateRibbonHandle();
-
         if (!_ribbon.IsHandleCreated)
         {
-            _logger?.LogWarning("InitializeRibbon: Ribbon handle not created immediately - may need deferred attachment");
+            _logger?.LogDebug("InitializeRibbon: Ribbon handle not created yet (expected before parent attachment)");
         }
 
         // ✅ CRITICAL: Set OfficeColorScheme and ThemeName (required by Syncfusion)
@@ -339,7 +324,6 @@ public partial class MainForm
             if (!Controls.Contains(_ribbon))
             {
                 _ribbon.Dock = DockStyleEx.Top;
-                _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
                 _ribbon.Width = ClientSize.Width;
                 // [VISIBILITY] Allow BorderStyle from RibbonFactory to persist for better definition
                 Controls.Add(_ribbon);
@@ -352,25 +336,13 @@ public partial class MainForm
             _logger?.LogDebug(ex, "InitializeRibbon: failed to attach ribbon to form");
         }
 
-        // Wire ribbon resize events to adjust docking host bounds
-        try
-        {
-            _ribbon.SizeChanged += OnRibbonSizeChanged;
-            _logger?.LogDebug("InitializeRibbon: Ribbon resize events wired");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "InitializeRibbon: Failed to wire ribbon resize events");
-        }
-
         // RibbonForm handles sizing natively via AutoSize
-        UpdateChromePadding();
-        AdjustDockingHostBounds();
+        UpdateChromePadding(forceLayout: true);
 
         try
         {
             _ribbon.PerformLayout();
-            _ribbon.Refresh();
+            _ribbon.Invalidate();
             _ribbon.BringToFront();
         }
         catch (Exception ex)
@@ -384,29 +356,100 @@ public partial class MainForm
         _logger?.LogInformation("Ribbon/Chrome init completed in {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
     }
 
-    private void UpdateChromePadding()
+    private void UpdateChromePadding(bool forceLayout = false)
     {
-        if (IsDisposed) return;
+        if (IsDisposed || Disposing || _chromeLayoutUpdating)
+        {
+            return;
+        }
 
+        try
+        {
+            _chromeLayoutUpdating = true;
+
+            var top = CalculateChromeTopInset();
+            var paddingChanged = Padding.Top != top;
+
+            if (paddingChanged)
+            {
+                Padding = new Padding(Padding.Left, top, Padding.Right, Padding.Bottom);
+            }
+
+            if (forceLayout || paddingChanged || _lastChromeTopInset != top)
+            {
+                _lastChromeTopInset = top;
+                EnsureChromeZOrder();
+                PerformLayout();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "UpdateChromePadding: failed to update chrome layout");
+        }
+        finally
+        {
+            _chromeLayoutUpdating = false;
+        }
+    }
+
+    private int CalculateChromeTopInset()
+    {
         var top = 0;
-        if (_menuStrip != null)
+        top = Math.Max(top, GetVisibleBottom(_menuStrip));
+        top = Math.Max(top, GetVisibleBottom(_ribbon));
+        top = Math.Max(top, GetVisibleBottom(_navigationStrip));
+
+        if (top > 0)
         {
-            top = Math.Max(top, _menuStrip.Bottom);
+            var dockGap = (int)DpiAware.LogicalToDeviceUnits(4f);
+            top += Math.Max(1, dockGap);
         }
 
-        if (_ribbon != null)
+        return Math.Max(0, top);
+    }
+
+    private static int GetVisibleBottom(Control? control)
+    {
+        if (control == null || control.IsDisposed || !control.Visible)
         {
-            top = Math.Max(top, _ribbon.Bottom);
+            return 0;
         }
 
-        if (_navigationStrip != null)
+        if (control.Height <= 0)
         {
-            top = Math.Max(top, _navigationStrip.Bottom);
+            return 0;
         }
 
-        if (Padding.Top != top)
+        return Math.Max(0, control.Bottom);
+    }
+
+    private void EnsureChromeZOrder()
+    {
+        try
         {
-            Padding = new Padding(Padding.Left, top, Padding.Right, Padding.Bottom);
+            if (_menuStrip != null && !_menuStrip.IsDisposed && _menuStrip.Visible)
+            {
+                _menuStrip.BringToFront();
+            }
+
+            if (_ribbon != null && !_ribbon.IsDisposed && _ribbon.Visible)
+            {
+                _ribbon.BringToFront();
+            }
+
+            if (_navigationStrip != null && !_navigationStrip.IsDisposed && _navigationStrip.Visible)
+            {
+                _navigationStrip.BringToFront();
+            }
+
+            if (_statusBar != null && !_statusBar.IsDisposed && _statusBar.Visible)
+            {
+                _statusBar.BringToFront();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "EnsureChromeZOrder: failed to enforce chrome z-order");
         }
     }
 
@@ -420,24 +463,16 @@ public partial class MainForm
                 // RibbonForm handles sizing natively via AutoSize
                 _ribbon.Width = ClientSize.Width;
                 _ribbon.PerformLayout();
-                _ribbon.BringToFront();
             }
 
-            _statusBar?.BringToFront();
+            UpdateChromePadding(forceLayout: true);
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "OnResize: failed to reassert ribbon z-order");
         }
 
-        try
-        {
-            AdjustDockingHostBounds();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "OnResize: failed to adjust docking host bounds");
-        }
+        // DockingHostFactory handles host bounds automatically
     }
 
     private void ThemeToggleFromRibbon(object? sender, EventArgs e)
@@ -541,6 +576,8 @@ public partial class MainForm
                 TabStop = true
             };
 
+            _navigationStrip.SizeChanged += (_, __) => UpdateChromePadding(forceLayout: true);
+
             // Ensure theme assembly is loaded before applying themes
             AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
             try
@@ -562,7 +599,7 @@ public partial class MainForm
             // Just pasting the logic from UI.cs
 
             var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = true };
-            dashboardBtn.Click += (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Top, allowFloating: true);
+            dashboardBtn.Click += (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
             accountsBtn.Click += (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
@@ -743,6 +780,8 @@ public partial class MainForm
                 TabStop = true
             };
 
+            _menuStrip.SizeChanged += (_, __) => UpdateChromePadding(forceLayout: true);
+
             // Apply professional color scheme with theme colors
             if (_menuStrip.Renderer is ToolStripProfessionalRenderer professionalRenderer)
             {
@@ -766,7 +805,7 @@ public partial class MainForm
             // View Menu
             var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View", Image = CreateIconFromText("\uE8A7", 16) };
             // View > Dashboard
-            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Top, allowFloating: true)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
+            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
 
             // View > Accounts
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true)) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
@@ -866,7 +905,7 @@ public partial class MainForm
         try
         {
             var dropdown = (ToolStripDropDownMenu)menuItem.DropDown;
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful"); } catch { }
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme); } catch { }
             foreach (ToolStripItem item in dropdown.Items) if (item is ToolStripMenuItem child) ApplyMenuTheme(child);
         }
         catch { }
@@ -1327,9 +1366,4 @@ public partial class MainForm
         }
     }
 
-    private void OnRibbonSizeChanged(object? sender, EventArgs e)
-    {
-        AdjustDockingHostBounds();
-        _dockingHostPanel?.PerformLayout();
-    }
 }

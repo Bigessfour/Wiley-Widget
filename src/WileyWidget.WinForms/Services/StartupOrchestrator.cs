@@ -107,12 +107,14 @@ namespace WileyWidget.WinForms.Services
                     var themeName = _themeService.CurrentTheme;
                     if (string.IsNullOrWhiteSpace(themeName))
                     {
-                        themeName = "Office2019Colorful";
+                        themeName = AppThemeColors.DefaultTheme;
                     }
+
+                    themeName = AppThemeColors.ValidateTheme(themeName, _logger);
 
                     try
                     {
-                        AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
+                        AppThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName, _logger);
                         SfSkinManager.ApplicationVisualTheme = themeName;
                         _logger.LogInformation("Pre-UI theme applied: {ThemeName}", themeName);
                     }
@@ -337,7 +339,7 @@ namespace WileyWidget.WinForms.Services
         /// <summary>
         /// Phase 6: Data Load and Activation Phase (Async Post-Shown)
         /// Async load data (e.g., DB health check, RefreshDashboardAsync).
-        /// Restore layout via DockingLayoutManager.LoadLayoutAsync.
+        /// Apply fixed docking layout and activate default content panel.
         /// Guard: Timeout StartupOptions.PhaseTimeouts.DataLoadMs.
         /// Configuration: ActivateControl(centralPanel), Refresh form.
         /// On timeout, log HandleInitializationTimeout.
@@ -349,7 +351,7 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
-                _logger.LogInformation("Phase 6 (Load and Activate Layout): starting async data load and layout restoration");
+                _logger.LogInformation("Phase 6 (Load and Activate Layout): starting async data load and fixed layout activation");
 
                 var timeoutMs = _startupOptions.PhaseTimeouts?.DataLoadMs ?? 30000; // Default 30s
                 using var cts = new CancellationTokenSource(timeoutMs);

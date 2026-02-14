@@ -8,6 +8,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using GridCheckBoxColumn = Syncfusion.WinForms.DataGrid.GridCheckBoxColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
@@ -34,6 +35,8 @@ using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
 using Syncfusion.WinForms.DataGrid.Enums;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.Models;
+using WileyWidget.Models.Entities;
+using WileyWidget.Data;
 using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
@@ -1407,9 +1410,30 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 9,
+                RowCount = 11,
                 Padding = new Padding(10)
             };
+
+            // Load Departments and Funds from database
+            var departments = new List<Department>();
+            var funds = new List<Fund>();
+            try
+            {
+                if (ServiceProvider != null)
+                {
+                    var contextFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDbContextFactory<AppDbContext>>(ServiceProvider);
+                    if (contextFactory != null)
+                    {
+                        using var context = contextFactory.CreateDbContext();
+                        departments = context.Departments.OrderBy(d => d.Name).ToList();
+                        funds = context.Funds.OrderBy(f => f.Name).ToList();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to load departments and funds");
+            }
 
             // Account Number
             tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
@@ -1431,17 +1455,26 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             var txtActual = new TextBox { Dock = DockStyle.Fill, Text = "0.00" };
             tableLayout.Controls.Add(txtActual, 1, 3);
 
-            // Department ID
-            tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
-            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = "1" };
-            tableLayout.Controls.Add(txtDepartmentId, 1, 4);
+            // Department Dropdown
+            tableLayout.Controls.Add(new Label { Text = "Department:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
+            var cmbDepartment = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, DisplayMember = "Name", ValueMember = "Id" };
+            cmbDepartment.DataSource = departments;
+            if (departments.Count > 0) cmbDepartment.SelectedIndex = 0;
+            tableLayout.Controls.Add(cmbDepartment, 1, 4);
+
+            // Fund Dropdown
+            tableLayout.Controls.Add(new Label { Text = "Fund:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
+            var cmbFund = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, DisplayMember = "Name", ValueMember = "Id" };
+            cmbFund.DataSource = funds;
+            if (funds.Count > 0) cmbFund.SelectedIndex = 0;
+            tableLayout.Controls.Add(cmbFund, 1, 5);
 
             // Fund Type
-            tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
+            tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 6);
             var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
             cmbFundType.SelectedIndex = 0;
-            tableLayout.Controls.Add(cmbFundType, 1, 5);
+            tableLayout.Controls.Add(cmbFundType, 1, 6);
 
             // Buttons
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
@@ -1449,7 +1482,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             var btnCancel = new Syncfusion.WinForms.Controls.SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
-            tableLayout.Controls.Add(btnPanel, 1, 8);
+            tableLayout.Controls.Add(btnPanel, 1, 10);
             tableLayout.SetColumnSpan(btnPanel, 2);
 
             form.Controls.Add(tableLayout);
@@ -1459,8 +1492,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             if (form.ShowDialog() == DialogResult.OK)
             {
                 if (!decimal.TryParse(txtBudgeted.Text, out var budgeted) ||
-                    !decimal.TryParse(txtActual.Text, out var actual) ||
-                    !int.TryParse(txtDepartmentId.Text, out var deptId))
+                    !decimal.TryParse(txtActual.Text, out var actual))
                 {
                     MessageBox.Show("Invalid input values. Please check your entries.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
@@ -1470,6 +1502,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 if (viewModel == null)
                 {
                     MessageBox.Show("Budget data is not loaded yet. Please try again shortly.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var selectedDepartment = cmbDepartment.SelectedItem as Department;
+                var selectedFund = cmbFund.SelectedItem as Fund;
+                if (selectedDepartment == null || selectedFund == null)
+                {
+                    MessageBox.Show("Please select both Department and Fund.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -1483,7 +1523,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     Description = txtDescription.Text.Trim(),
                     BudgetedAmount = budgeted,
                     ActualAmount = actual,
-                    DepartmentId = deptId,
+                    DepartmentId = selectedDepartment.Id,
+                    FundId = selectedFund.Id,
                     FiscalYear = fiscalYear,
                     FundType = fundType,
                     Variance = budgeted - actual,
@@ -1505,7 +1546,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                             return;
                         }
 
-                        var entryValidation = ValidateBudgetEntry(entry, txtAccountNumber, txtDescription, txtBudgeted, txtActual, txtDepartmentId);
+                        var entryValidation = ValidateBudgetEntry(entry, txtAccountNumber, txtDescription, txtBudgeted, txtActual, null);
                         if (!entryValidation.IsValid)
                         {
                             ShowValidationDialog(entryValidation);
@@ -1619,9 +1660,30 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 9,
+                RowCount = 11,
                 Padding = new Padding(10)
             };
+
+            // Load Departments and Funds from database
+            var departments = new List<Department>();
+            var funds = new List<Fund>();
+            try
+            {
+                if (ServiceProvider != null)
+                {
+                    var contextFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDbContextFactory<AppDbContext>>(ServiceProvider);
+                    if (contextFactory != null)
+                    {
+                        using var context = contextFactory.CreateDbContext();
+                        departments = context.Departments.OrderBy(d => d.Name).ToList();
+                        funds = context.Funds.OrderBy(f => f.Name).ToList();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to load departments and funds");
+            }
 
             // Pre-populate fields
             tableLayout.Controls.Add(new Label { Text = "Account Number:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 0);
@@ -1640,22 +1702,41 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             var txtActual = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.ActualAmount.ToString("F2", System.Globalization.CultureInfo.CurrentCulture) };
             tableLayout.Controls.Add(txtActual, 1, 3);
 
-            tableLayout.Controls.Add(new Label { Text = "Department ID:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
-            var txtDepartmentId = new TextBox { Dock = DockStyle.Fill, Text = selectedEntry.DepartmentId.ToString(System.Globalization.CultureInfo.CurrentCulture) };
-            tableLayout.Controls.Add(txtDepartmentId, 1, 4);
+            // Department Dropdown
+            tableLayout.Controls.Add(new Label { Text = "Department:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 4);
+            var cmbDepartment = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, DisplayMember = "Name", ValueMember = "Id" };
+            cmbDepartment.DataSource = departments;
+            if (departments.Any())
+            {
+                var selectedDept = departments.FirstOrDefault(d => d.Id == selectedEntry.DepartmentId);
+                if (selectedDept != null) cmbDepartment.SelectedItem = selectedDept;
+            }
+            tableLayout.Controls.Add(cmbDepartment, 1, 4);
 
-            tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
+            // Fund Dropdown
+            tableLayout.Controls.Add(new Label { Text = "Fund:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 5);
+            var cmbFund = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, DisplayMember = "Name", ValueMember = "Id" };
+            cmbFund.DataSource = funds;
+            if (funds.Any() && selectedEntry.FundId.HasValue)
+            {
+                var selectedFund = funds.FirstOrDefault(f => f.Id == selectedEntry.FundId.Value);
+                if (selectedFund != null) cmbFund.SelectedItem = selectedFund;
+            }
+            tableLayout.Controls.Add(cmbFund, 1, 5);
+
+            // Fund Type
+            tableLayout.Controls.Add(new Label { Text = "Fund Type:", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight }, 0, 6);
             var cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
             cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
             cmbFundType.SelectedItem = selectedEntry.FundType.ToString();
-            tableLayout.Controls.Add(cmbFundType, 1, 5);
+            tableLayout.Controls.Add(cmbFundType, 1, 6);
 
             var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
             var btnOK = new Syncfusion.WinForms.Controls.SfButton { Text = "OK", DialogResult = DialogResult.OK, Width = 80 };
             var btnCancel = new Syncfusion.WinForms.Controls.SfButton { Text = "Cancel", DialogResult = DialogResult.Cancel, Width = 80 };
             btnPanel.Controls.Add(btnCancel);
             btnPanel.Controls.Add(btnOK);
-            tableLayout.Controls.Add(btnPanel, 1, 8);
+            tableLayout.Controls.Add(btnPanel, 1, 10);
             tableLayout.SetColumnSpan(btnPanel, 2);
 
             form.Controls.Add(tableLayout);
@@ -1665,10 +1746,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             if (form.ShowDialog() == DialogResult.OK)
             {
                 if (!decimal.TryParse(txtBudgeted.Text, out var budgeted) ||
-                    !decimal.TryParse(txtActual.Text, out var actual) ||
-                    !int.TryParse(txtDepartmentId.Text, out var deptId))
+                    !decimal.TryParse(txtActual.Text, out var actual))
                 {
                     MessageBox.Show("Invalid input values. Please check your entries.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var selectedDepartment = cmbDepartment.SelectedItem as Department;
+                var selectedFund = cmbFund.SelectedItem as Fund;
+                if (selectedDepartment == null || selectedFund == null)
+                {
+                    MessageBox.Show("Please select both Department and Fund.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
@@ -1676,7 +1764,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 selectedEntry.Description = txtDescription.Text.Trim();
                 selectedEntry.BudgetedAmount = budgeted;
                 selectedEntry.ActualAmount = actual;
-                selectedEntry.DepartmentId = deptId;
+                selectedEntry.DepartmentId = selectedDepartment.Id;
+                selectedEntry.FundId = selectedFund.Id;
                 selectedEntry.FundType = Enum.Parse<FundType>(cmbFundType.SelectedItem?.ToString() ?? "GeneralFund");
                 selectedEntry.Variance = budgeted - actual;
                 selectedEntry.UpdatedAt = DateTime.UtcNow;

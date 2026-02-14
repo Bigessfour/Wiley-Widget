@@ -222,6 +222,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             foreach (var dept in Departments)
             {
                 var existing = await context.DepartmentCurrentCharges
+                    .OrderByDescending(d => d.LastUpdated)
+                    .ThenByDescending(d => d.Id)
                     .FirstOrDefaultAsync(d => d.Department == dept.Department)
                     .ConfigureAwait(false);
 

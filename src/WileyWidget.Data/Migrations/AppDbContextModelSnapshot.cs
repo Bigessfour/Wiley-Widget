@@ -329,7 +329,7 @@ namespace WileyWidget.Data.Migrations
                             UseFiscalYearForReporting = true,
                             XaiApiEndpoint = "https://api.x.ai/v1",
                             XaiMaxTokens = 2000,
-                            XaiModel = "grok-4.1",
+                            XaiModel = "grok-4-1-fast-reasoning",
                             XaiTemperature = 0.69999999999999996,
                             XaiTimeout = 30
                         });
@@ -1373,6 +1373,13 @@ namespace WileyWidget.Data.Migrations
                             FundCode = "600-REC",
                             Name = "Recreation Fund",
                             Type = 3
+                        },
+                        new
+                        {
+                            Id = 7,
+                            FundCode = "700-WSD",
+                            Name = "Wiley Sanitation District",
+                            Type = 2
                         });
                 });
 
@@ -1484,12 +1491,15 @@ namespace WileyWidget.Data.Migrations
                     b.Property<int>("DepartmentId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Fund")
-                        .HasColumnType("int");
-
                     b.Property<string>("FundDescription")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("FundId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FundType")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -1534,9 +1544,11 @@ namespace WileyWidget.Data.Migrations
 
                     b.HasIndex("DepartmentId");
 
+                    b.HasIndex("FundId");
+
                     b.HasIndex("ParentAccountId");
 
-                    b.HasIndex("Fund", "Type");
+                    b.HasIndex("FundType", "Type");
 
                     b.ToTable("MunicipalAccounts");
 
@@ -1548,8 +1560,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "CASH IN BANK",
                             RowVersion = new byte[0],
@@ -1563,8 +1575,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "CASH-BASEBALL FIELD PROJECT",
                             RowVersion = new byte[0],
@@ -1578,8 +1590,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "INVESTMENTS",
                             RowVersion = new byte[0],
@@ -1593,8 +1605,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "INTERGOVERNMENTAL RECEIVABLE",
                             RowVersion = new byte[0],
@@ -1608,8 +1620,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "GRANT RECEIVABLE",
                             RowVersion = new byte[0],
@@ -1623,8 +1635,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "ACCOUNTS PAYABLE",
                             RowVersion = new byte[0],
@@ -1638,8 +1650,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "BASEBALL FIELD PROJECT LOAN",
                             RowVersion = new byte[0],
@@ -1653,8 +1665,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "WALKING TRAIL LOAN",
                             RowVersion = new byte[0],
@@ -1668,8 +1680,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "DUE TO/FROM TOW GENERAL FUND",
                             RowVersion = new byte[0],
@@ -1683,8 +1695,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "DUE TO/FROM TOW UTILITY FUND",
                             RowVersion = new byte[0],
@@ -1698,8 +1710,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "FUND BALANCE",
                             RowVersion = new byte[0],
@@ -1713,8 +1725,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "Opening Bal Equity",
                             RowVersion = new byte[0],
@@ -1728,8 +1740,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "Retained Earnings",
                             RowVersion = new byte[0],
@@ -1743,8 +1755,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "STATE APPORTIONMENT",
                             RowVersion = new byte[0],
@@ -1758,8 +1770,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "WALKING TRAIL DONATION",
                             RowVersion = new byte[0],
@@ -1773,8 +1785,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "BASEBALL FIELD DONATIONS",
                             RowVersion = new byte[0],
@@ -1788,8 +1800,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "GRANT REVENUES",
                             RowVersion = new byte[0],
@@ -1803,8 +1815,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "MISC REVENUE",
                             RowVersion = new byte[0],
@@ -1818,8 +1830,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "WALKING TRAIL REVENUE",
                             RowVersion = new byte[0],
@@ -1833,8 +1845,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "INTEREST ON INVESTMENTS",
                             RowVersion = new byte[0],
@@ -1848,8 +1860,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "TRANSFER FROM REC FUND",
                             RowVersion = new byte[0],
@@ -1863,8 +1875,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "BALLFIELD ACCRUED INTEREST",
                             RowVersion = new byte[0],
@@ -1878,8 +1890,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "WALKING TRAIL ACCRUED INTEREST",
                             RowVersion = new byte[0],
@@ -1893,8 +1905,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "CAPITAL IMP - BALL COMPLEX",
                             RowVersion = new byte[0],
@@ -1908,8 +1920,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "General Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "PARKS - DEVELOPMENT",
                             RowVersion = new byte[0],
@@ -1923,8 +1935,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "Conservation Trust Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "MISC EXPENSE",
                             RowVersion = new byte[0],
@@ -1938,8 +1950,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "Conservation Trust Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "TRAIL MAINTENANCE",
                             RowVersion = new byte[0],
@@ -1953,8 +1965,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "Conservation Trust Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "PARK IMPROVEMENTS",
                             RowVersion = new byte[0],
@@ -1968,8 +1980,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "Conservation Trust Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "EQUIPMENT PURCHASES",
                             RowVersion = new byte[0],
@@ -1983,8 +1995,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "Conservation Trust Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "PROJECTS - SMALL",
                             RowVersion = new byte[0],
@@ -1998,8 +2010,8 @@ namespace WileyWidget.Data.Migrations
                             BudgetAmount = 0m,
                             BudgetPeriodId = 1,
                             DepartmentId = 1,
-                            Fund = 8,
                             FundDescription = "Conservation Trust Fund",
+                            FundType = 8,
                             IsActive = true,
                             Name = "RESERVES ALLOCATION",
                             RowVersion = new byte[0],
@@ -2660,6 +2672,9 @@ namespace WileyWidget.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("MailingAddressCity")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -2684,6 +2699,11 @@ namespace WileyWidget.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -2691,14 +2711,6 @@ namespace WileyWidget.Data.Migrations
                     b.Property<string>("QuickBooksId")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -2880,6 +2892,11 @@ namespace WileyWidget.Data.Migrations
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("WileyWidget.Models.Entities.Fund", "Fund")
+                        .WithMany()
+                        .HasForeignKey("FundId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("WileyWidget.Models.MunicipalAccount", "ParentAccount")
                         .WithMany("ChildAccounts")
@@ -3068,6 +3085,8 @@ namespace WileyWidget.Data.Migrations
                     b.Navigation("BudgetPeriod");
 
                     b.Navigation("Department");
+
+                    b.Navigation("Fund");
 
                     b.Navigation("ParentAccount");
                 });

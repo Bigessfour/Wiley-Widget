@@ -122,6 +122,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Lightweight initialization for Visual Studio designer
             _logger?.LogDebug("WarRoomPanel (design-time) initializing");
 
+            // Set preferred size for proper docking display (matches PreferredDockSize extension)
+            Size = new Size(560, 420);
+            MinimumSize = new Size(420, 360);
+
             _errorProvider = new ErrorProvider();
 
             InitializeComponent();
@@ -160,6 +164,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             : base(scopeFactory, logger)
         {
             _logger?.LogDebug("WarRoomPanel initializing");
+
+            // Set preferred size for proper docking display (matches PreferredDockSize extension)
+            Size = new Size(560, 420);
+            MinimumSize = new Size(420, 360);
 
             _errorProvider = new ErrorProvider();
 

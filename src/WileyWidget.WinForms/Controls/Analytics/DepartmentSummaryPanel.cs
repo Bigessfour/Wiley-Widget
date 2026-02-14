@@ -64,6 +64,10 @@ namespace WileyWidget.WinForms.Controls.Analytics
             ILogger<ScopedPanelBase<DepartmentSummaryViewModel>> logger)
             : base(scopeFactory, logger)
         {
+            // Set preferred size for proper docking display (matches PreferredDockSize extension)
+            Size = new Size(540, 400);
+            MinimumSize = new Size(420, 360);
+
             // Apply theme via SfSkinManager (single source of truth)
             try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
             SetupUI();

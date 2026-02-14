@@ -26,6 +26,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.Services.Abstractions;
@@ -37,7 +38,6 @@ using Syncfusion.WinForms.Input;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using Syncfusion.WinForms.DataGrid.Enums;
-using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 // using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
@@ -292,6 +292,10 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        // Set preferred size for proper docking display (matches PreferredDockSize extension)
+        Size = new Size(620, 400);
+        MinimumSize = new Size(420, 360);
+
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
         InitializeComponent();
     }
@@ -739,34 +743,108 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void ApplySplitterMinSizesWithConstraintCheck(SplitContainerAdv splitter, int requestedMin1, int requestedMin2, string splitterName)
     {
-        if (splitter == null || !splitter.IsHandleCreated)
+        if (splitter == null || splitter.IsDisposed || !splitter.IsHandleCreated)
             return;
 
         int containerDim = splitter.Orientation == Orientation.Horizontal ? splitter.Height : splitter.Width;
-        int totalRequired = requestedMin1 + requestedMin2 + splitter.SplitterWidth;
+        int splitterThickness = Math.Max(0, splitter.SplitterWidth);
+        int availableDim = Math.Max(0, containerDim - splitterThickness);
 
-        // If constraint violated, scale both down proportionally
-        int actualMin1 = requestedMin1;
-        int actualMin2 = requestedMin2;
+        int safeRequestedMin1 = Math.Max(0, requestedMin1);
+        int safeRequestedMin2 = Math.Max(0, requestedMin2);
+        int actualMin1 = safeRequestedMin1;
+        int actualMin2 = safeRequestedMin2;
 
-        if (totalRequired > containerDim)
+        // Narrow-container scenario:
+        // If requested minimum sizes cannot fit into the available panel space (container minus splitter),
+        // reduce both values before touching Syncfusion setters so Panel1MinSize/Panel2MinSize never violate constraints.
+        if (actualMin1 + actualMin2 > availableDim)
         {
-            // Calculate reduction ratio
-            float scale = (float)containerDim / totalRequired;
-            actualMin1 = Math.Max(30, (int)(requestedMin1 * scale * 0.9f)); // 0.9f adds safety margin
-            actualMin2 = Math.Max(30, (int)(requestedMin2 * scale * 0.9f));
+            int totalRequested = Math.Max(1, actualMin1 + actualMin2);
+            actualMin1 = (int)Math.Round((double)actualMin1 * availableDim / totalRequested);
+            actualMin1 = Math.Clamp(actualMin1, 0, availableDim);
+            actualMin2 = Math.Max(0, availableDim - actualMin1);
+
+            // Emergency ratio fallback if proportional rounding still produces an unusable split.
+            if (availableDim > 1 && (actualMin1 == 0 || actualMin2 == 0) && safeRequestedMin1 > 0 && safeRequestedMin2 > 0)
+            {
+                actualMin1 = Math.Clamp((int)Math.Round(availableDim * 0.30), 1, availableDim - 1);
+                actualMin2 = Math.Max(1, availableDim - actualMin1);
+            }
 
             Logger.LogDebug(
-                "ApplySplitterMinSizesWithConstraintCheck: {Name} splitter constraint violated. " +
-                "Requested=[{Req1}, {Req2}], Container={Container}, Adjusted=[{Act1}, {Act2}]",
-                splitterName, requestedMin1, requestedMin2, containerDim, actualMin1, actualMin2);
+                "ApplySplitterMinSizesWithConstraintCheck: {Name} splitter constraint adjusted. " +
+                "Requested=[{Req1}, {Req2}], Available={Available}, Adjusted=[{Act1}, {Act2}]",
+                splitterName, requestedMin1, requestedMin2, availableDim, actualMin1, actualMin2);
         }
 
-        // Set Panel2MinSize first so Panel1MinSize has valid context
-        if (splitter.Panel2MinSize != actualMin2)
-            splitter.Panel2MinSize = actualMin2;
-        if (splitter.Panel1MinSize != actualMin1)
-            splitter.Panel1MinSize = actualMin1;
+        actualMin1 = Math.Clamp(actualMin1, 0, availableDim);
+        actualMin2 = Math.Clamp(actualMin2, 0, Math.Max(0, availableDim - actualMin1));
+
+        int currentMin1 = Math.Max(0, splitter.Panel1MinSize);
+        int currentMin2 = Math.Max(0, splitter.Panel2MinSize);
+
+        bool canSetPanel1First = actualMin1 + currentMin2 <= availableDim;
+        bool canSetPanel2First = currentMin1 + actualMin2 <= availableDim;
+
+        try
+        {
+            if (canSetPanel1First)
+            {
+                if (splitter.Panel1MinSize != actualMin1)
+                    splitter.Panel1MinSize = actualMin1;
+                if (splitter.Panel2MinSize != actualMin2)
+                    splitter.Panel2MinSize = actualMin2;
+                return;
+            }
+
+            if (canSetPanel2First)
+            {
+                if (splitter.Panel2MinSize != actualMin2)
+                    splitter.Panel2MinSize = actualMin2;
+                if (splitter.Panel1MinSize != actualMin1)
+                    splitter.Panel1MinSize = actualMin1;
+                return;
+            }
+
+            int bridgePanel1 = Math.Max(0, availableDim - currentMin2);
+            if (splitter.Panel1MinSize != bridgePanel1)
+                splitter.Panel1MinSize = bridgePanel1;
+
+            if (splitter.Panel2MinSize != actualMin2)
+                splitter.Panel2MinSize = actualMin2;
+            if (splitter.Panel1MinSize != actualMin1)
+                splitter.Panel1MinSize = actualMin1;
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            Logger.LogWarning(ex,
+                "ApplySplitterMinSizesWithConstraintCheck: {Name} splitter min-size constraint rejected. " +
+                "Requested=[{Req1}, {Req2}], Available={Available}. Keeping safe fallback values.",
+                splitterName, requestedMin1, requestedMin2, availableDim);
+
+            try
+            {
+                int fallbackMin1 = Math.Clamp((int)Math.Round(availableDim * 0.30), 0, availableDim);
+                int fallbackMin2 = Math.Max(0, availableDim - fallbackMin1);
+
+                int maxPanel1WithCurrentPanel2 = Math.Max(0, availableDim - splitter.Panel2MinSize);
+                if (splitter.Panel1MinSize > maxPanel1WithCurrentPanel2)
+                    splitter.Panel1MinSize = maxPanel1WithCurrentPanel2;
+
+                if (splitter.Panel2MinSize != fallbackMin2)
+                    splitter.Panel2MinSize = fallbackMin2;
+                if (splitter.Panel1MinSize != fallbackMin1)
+                    splitter.Panel1MinSize = fallbackMin1;
+            }
+            catch (ArgumentOutOfRangeException fallbackEx)
+            {
+                Logger.LogWarning(fallbackEx,
+                    "ApplySplitterMinSizesWithConstraintCheck: {Name} splitter emergency fallback could not be fully applied. " +
+                    "Deferring to existing splitter clamping logic.",
+                    splitterName);
+            }
+        }
     }
 
     private void DeferSizeValidation()
@@ -1767,7 +1845,14 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AccessibleDescription = "Grid displaying QuickBooks sync history records with sortable columns and status indicators",
             TabIndex = 10,
             TabStop = true
-        };
+        }.PreventStringRelationalFilters(
+            _logger,
+            nameof(QuickBooksSyncHistoryRecord.FormattedTimestamp),
+            nameof(QuickBooksSyncHistoryRecord.Operation),
+            nameof(QuickBooksSyncHistoryRecord.Status),
+            nameof(QuickBooksSyncHistoryRecord.FormattedDuration),
+            nameof(QuickBooksSyncHistoryRecord.Message)
+        );
 
         // Suspend updates during column configuration for performance
         _syncHistoryGrid.BeginUpdate();

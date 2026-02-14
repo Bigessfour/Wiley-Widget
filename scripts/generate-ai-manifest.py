@@ -21,6 +21,7 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 from git import Repo
 
 
@@ -252,7 +253,19 @@ class AIManifestGenerator:
                 language = self._detect_language(file_path)
 
                 # Categorize - expanded to include more source file types
-                if file_path.suffix in [".cs", ".xaml", ".razor", ".razorjs", ".py", ".js", ".ts", ".tsx", ".json", ".xml", ".ps1"]:
+                if file_path.suffix in [
+                    ".cs",
+                    ".xaml",
+                    ".razor",
+                    ".razorjs",
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".tsx",
+                    ".json",
+                    ".xml",
+                    ".ps1",
+                ]:
                     category = "source_code"
                 elif "test" in str(relative_path).lower():
                     category = "test"
@@ -327,7 +340,11 @@ class AIManifestGenerator:
                     stripped = line.strip()
                     total_lines += 1
 
-                    if not stripped or stripped.startswith("#") or stripped.startswith("//"):
+                    if (
+                        not stripped
+                        or stripped.startswith("#")
+                        or stripped.startswith("//")
+                    ):
                         if not stripped:
                             blank_lines += 1
                         else:
@@ -336,21 +353,26 @@ class AIManifestGenerator:
                         code_lines += 1
 
                 # Estimate cyclomatic complexity for C# files (docking factories priority)
-                if file_path.suffix == ".cs" and ("Factory" in file_path.name or "Docking" in str(rel_path)):
+                if file_path.suffix == ".cs" and (
+                    "Factory" in file_path.name or "Docking" in str(rel_path)
+                ):
                     content = "".join(lines)
                     # Count decision points: if, else, switch, case, catch, for, foreach, while, &&, ||, ?:
                     complexity = (
-                        content.count(" if ") + content.count(" if(") +
-                        content.count(" else ") +
-                        content.count(" switch ") +
-                        content.count(" case ") +
-                        content.count(" catch ") +
-                        content.count(" for ") + content.count(" for(") +
-                        content.count(" foreach ") +
-                        content.count(" while ") +
-                        content.count(" && ") +
-                        content.count(" || ") +
-                        content.count("?") + 1  # Base complexity
+                        content.count(" if ")
+                        + content.count(" if(")
+                        + content.count(" else ")
+                        + content.count(" switch ")
+                        + content.count(" case ")
+                        + content.count(" catch ")
+                        + content.count(" for ")
+                        + content.count(" for(")
+                        + content.count(" foreach ")
+                        + content.count(" while ")
+                        + content.count(" && ")
+                        + content.count(" || ")
+                        + content.count("?")
+                        + 1  # Base complexity
                     )
                     complexity_sum += complexity
                     complexity_count += 1
@@ -396,10 +418,11 @@ class AIManifestGenerator:
         test_coverage = 0.0
         if metrics["total_code_lines"] > 0:
             test_lines = sum(
-                1 for f in files
-                if "test" in f["metadata"]["path"].lower()
+                1 for f in files if "test" in f["metadata"]["path"].lower()
             )
-            test_coverage = round((test_lines / max(metrics["total_code_lines"], 1)) * 100, 1)
+            test_coverage = round(
+                (test_lines / max(metrics["total_code_lines"], 1)) * 100, 1
+            )
 
         manifest = {
             "$schema": "https://raw.githubusercontent.com/Bigessfour/Wiley-Widget/main/schemas/ai-manifest-schema.json",
@@ -423,7 +446,7 @@ class AIManifestGenerator:
                     "docking_factories_analyzed": True,
                     "estimated_code_to_test_ratio": round(
                         metrics["total_code_lines"] / max(metrics["test_count"], 1), 2
-                    )
+                    ),
                 },
             },
             "security": {

@@ -127,6 +127,7 @@ public class DepartmentRepository : IDepartmentRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Departments
             .AsNoTracking()
+            .OrderByDescending(d => d.Id)
             .FirstOrDefaultAsync(d => d.Id == id);
     }
 
@@ -141,6 +142,7 @@ public class DepartmentRepository : IDepartmentRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Departments
             .AsNoTracking()
+            .OrderByDescending(d => d.Id)
             .FirstOrDefaultAsync(d => d.DepartmentCode == code);
     }
 

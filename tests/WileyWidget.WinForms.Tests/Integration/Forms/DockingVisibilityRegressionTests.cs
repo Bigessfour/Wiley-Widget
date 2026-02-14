@@ -26,7 +26,7 @@ public sealed class DockingVisibilityRegressionTests
     }
 
     [StaFact]
-    public void CreateDockingHost_MinimalMode_UsesCentralOnlyLayout()
+    public void CreateDockingHost_MinimalMode_StillCreatesFullDockingSurfaces()
     {
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
         TestThemeHelper.EnsureOffice2019Colorful();
@@ -57,15 +57,15 @@ public sealed class DockingVisibilityRegressionTests
 
         dockingManager.Should().NotBeNull();
         dockingManager.HostControl.Should().Be(dockingHost);
-        leftDockPanel.Should().BeNull();
-        rightDockPanel.Should().BeNull();
+        leftDockPanel.Should().NotBeNull();
+        rightDockPanel.Should().NotBeNull();
         centralDocumentPanel.Should().NotBeNull();
         centralDocumentPanel.Parent.Should().Be(dockingHost);
         centralDocumentPanel.Visible.Should().BeTrue();
     }
 
     [StaFact]
-    public void RightDockRequest_WithoutRightSidePanel_FallsBackToVisibleDockedPanel()
+    public void RightDockRequest_WithFullDockingSurface_ShowsVisibleDockedPanel()
     {
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
         TestThemeHelper.EnsureOffice2019Colorful();
@@ -95,8 +95,8 @@ public sealed class DockingVisibilityRegressionTests
         var (dockingManager, leftDockPanel, rightDockPanel, _, _, _, _) =
             DockingHostFactory.CreateDockingHost(form, provider, null, dockingHost, dockingLogger);
 
-        leftDockPanel.Should().BeNull();
-        rightDockPanel.Should().BeNull();
+        leftDockPanel.Should().NotBeNull();
+        rightDockPanel.Should().NotBeNull();
 
         using var panelNavigationService = new PanelNavigationService(dockingManager, dockingHost, provider, navigationLogger);
 
@@ -115,7 +115,7 @@ public sealed class DockingVisibilityRegressionTests
         probePanel.Bounds.Width.Should().BeGreaterThan(0);
         probePanel.Bounds.Height.Should().BeGreaterThan(0);
         dockingHost.ClientRectangle.IntersectsWith(probePanel.Bounds).Should().BeTrue();
-        FindChildByName(dockingHost, "RightDockPanel").Should().BeNull();
+        FindChildByName(dockingHost, "RightDockPanel").Should().NotBeNull();
     }
 
     private static Control? FindChildByName(Control root, string name)

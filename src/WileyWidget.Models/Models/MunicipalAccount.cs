@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Models;
 
@@ -238,21 +239,35 @@ public partial class MunicipalAccount : INotifyPropertyChanged
     }
     public string FundDescription { get; set; } = "General Fund";
 
-    private MunicipalFundType _fund;
+    private MunicipalFundType _fundType;
 
-    public MunicipalFundType Fund
+    /// <summary>
+    /// Fund type classification (enum-based, for backward compatibility)
+    /// </summary>
+    public MunicipalFundType FundType
     {
-        get => _fund;
+        get => _fundType;
         set
         {
-            if (_fund != value)
+            if (_fundType != value)
             {
-                _fund = value;
+                _fundType = value;
                 // Do not overwrite persisted FundDescription here; notify fund-related properties
-                OnPropertyChanged(nameof(Fund), nameof(FundDescription));
+                OnPropertyChanged(nameof(FundType), nameof(FundDescription));
             }
         }
     }
+
+    /// <summary>
+    /// Foreign key to Fund table (database relationship)
+    /// </summary>
+    public int? FundId { get; set; }
+
+    /// <summary>
+    /// Navigation property to Fund entity
+    /// </summary>
+    [ForeignKey("FundId")]
+    public Fund? Fund { get; set; }
 
     /// <summary>
     /// Derived fund class for broader categorization (Governmental, Proprietary, Fiduciary)
@@ -263,7 +278,7 @@ public partial class MunicipalAccount : INotifyPropertyChanged
     {
         get
         {
-            return _fund switch
+            return _fundType switch
             {
                 MunicipalFundType.General or MunicipalFundType.SpecialRevenue or MunicipalFundType.CapitalProjects or MunicipalFundType.DebtService => global::WileyWidget.Models.FundClass.Governmental,
                 MunicipalFundType.Enterprise or MunicipalFundType.InternalService => global::WileyWidget.Models.FundClass.Proprietary,

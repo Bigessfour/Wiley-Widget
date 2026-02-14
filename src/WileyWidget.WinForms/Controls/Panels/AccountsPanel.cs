@@ -81,6 +81,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         // Add padding for proper spacing
         this.Padding = new Padding(12);
 
+        // Set preferred size for proper docking display (matches PreferredDockSize extension)
+        this.Size = new Size(620, 380);
+        this.MinimumSize = new Size(420, 360);
+
         InitializeControls();
         Load += AccountsPanel_Load;
 
@@ -196,7 +200,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AutoSize = false
         };
         _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F)); // Fixed height for toolbar row
+        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88F)); // Increased height for toolbar row (allows 2 rows of controls)
         _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         // Toolbar panel - use explicit Height instead of Dock.Fill for proper sizing in TableLayoutPanel
@@ -204,8 +208,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         {
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = 44,
-            Padding = new Padding(4)
+            Height = 84,
+            Padding = new Padding(4),
+            WrapContents = true,
+            AutoScroll = false
         };
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar panel configured: Height={Height}", _toolbarPanel.Height);
 
@@ -229,10 +235,22 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "New Account"
         };
         _createButton.AccessibleDescription = "Create a new municipal account";
-        _createButton.Click += (s, e) =>
+        _createButton.Click += async (s, e) =>
         {
-            Logger?.LogInformation("[BUTTON_CLICK] ✅ New Account button clicked!");
-            CreateAccount();
+            try
+            {
+                Logger?.LogInformation("[BUTTON_CLICK] ✅ New Account button clicked!");
+                if (ViewModel?.CreateAccountCommand?.CanExecute(null) ?? false)
+                {
+                    await ViewModel.CreateAccountCommand.ExecuteAsync(null);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating account from toolbar click");
+                MessageBox.Show($"Error creating account: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         };
 
         // Edit Button - fully configured
@@ -253,7 +271,23 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Edit"
         };
         _editButton.AccessibleDescription = "Edit the selected account";
-        _editButton.Click += (s, e) => EditAccount();
+        _editButton.Click += async (s, e) =>
+        {
+            try
+            {
+                var selectedAccount = ResolveSelectedAccountForCommands();
+                if (selectedAccount != null && (ViewModel?.EditAccountCommand?.CanExecute(selectedAccount) ?? false))
+                {
+                    await ViewModel!.EditAccountCommand.ExecuteAsync(selectedAccount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error editing account from toolbar click");
+                MessageBox.Show($"Error editing account: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        };
 
         // Delete Button - fully configured
         _deleteButton = new SfButton
@@ -273,7 +307,23 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Delete"
         };
         _deleteButton.AccessibleDescription = "Delete the selected account";
-        _deleteButton.Click += DeleteButton_Click;
+        _deleteButton.Click += async (s, e) =>
+        {
+            try
+            {
+                var selectedAccount = ResolveSelectedAccountForCommands();
+                if (selectedAccount != null && (ViewModel?.DeleteAccountCommand?.CanExecute(selectedAccount) ?? false))
+                {
+                    await ViewModel!.DeleteAccountCommand.ExecuteAsync(selectedAccount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting account from toolbar click");
+                MessageBox.Show($"Error deleting account: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        };
 
         // Refresh Button - fully configured
         _refreshButton = new SfButton
@@ -292,7 +342,22 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Refresh"
         };
         _refreshButton.AccessibleDescription = "Refresh account list from database";
-        _refreshButton.Click += RefreshButton_Click;
+        _refreshButton.Click += async (s, e) =>
+        {
+            try
+            {
+                if (ViewModel?.RefreshCommand?.CanExecute(null) ?? false)
+                {
+                    await ViewModel.RefreshCommand.ExecuteAsync(null);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error refreshing accounts from toolbar click");
+                MessageBox.Show($"Error refreshing accounts: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        };
 
         // === ICON ASSIGNMENT FOR TOOLBAR BUTTONS (Optional Polish) ===
         try
@@ -430,7 +495,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Search",
             Margin = new Padding(0, 8, 4, 8)
         };
-        _searchBox.AccessibleDescription = "Type to search accounts by number, name, or fund";
+        _searchBox.AccessibleDescription = "Type to search accounts by account number, name, description, fund, or department";
         _searchBox.TextChanged += SearchBox_TextChanged;
 
         // Configure tooltips for buttons (accessibility enhancement)
@@ -448,7 +513,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _buttonToolTips.SetToolTip(_fundFilterComboBox, "Filter accounts by fund type");
         _buttonToolTips.SetToolTip(_accountTypeFilterComboBox, "Filter accounts by account type");
         _buttonToolTips.SetToolTip(_departmentFilterComboBox, "Filter accounts by department");
-        _buttonToolTips.SetToolTip(_searchBox, "Type to filter accounts in real-time (Ctrl+F)");
+        _buttonToolTips.SetToolTip(_searchBox, "Search by account number, name, description, fund, or department (Ctrl+F)");
 
         _toolbarPanel.Controls.AddRange(new Control[] {
             _createButton, _editButton, _deleteButton, _refreshButton,
@@ -637,9 +702,17 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
     /// <summary>
     /// Handles search box text changes to filter the accounts grid.
-    /// Filters by Account Number, Account Name, or Fund Name.
+    /// Filters by Account Number, Account Name, Description, Fund Name, or Department.
     /// </summary>
     private void SearchBox_TextChanged(object? sender, EventArgs e)
+    {
+        ApplySearchFilter();
+    }
+
+    /// <summary>
+    /// Applies real-time search filter to the accounts grid using Syncfusion View.Filter.
+    /// </summary>
+    private void ApplySearchFilter()
     {
         try
         {
@@ -657,13 +730,14 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             }
             else
             {
-                // Apply filter - search in AccountNumber, AccountName, FundName
+                // Apply filter - search in AccountNumber, AccountName, Description, FundName, Department
                 _accountsGrid.View.Filter = (item) =>
                 {
                     if (item is MunicipalAccountDisplay account)
                     {
                         return (account.AccountNumber?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
                                (account.AccountName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                               (account.Description?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
                                (account.FundName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
                                (account.Department?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false);
                     }
@@ -774,6 +848,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 _accountsGrid.DataSource?.GetType().Name ?? "null",
                 _accountsGrid.RowCount);
 
+            ApplySearchFilter();
+
             _accountsGrid.EndUpdate();
         }
 
@@ -826,6 +902,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 _accountsGrid.DataSource = ViewModel?.Accounts;
                 _accountsGrid.Refresh();
                 _logger.LogDebug("[BINDING] Accounts collection changed, rebound grid with {Count} items", ViewModel?.Accounts?.Count ?? 0);
+                ApplySearchFilter();
                 _accountsGrid.EndUpdate();
             }
         }
@@ -862,8 +939,31 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         if (_accountsGrid?.SelectedItem is MunicipalAccountDisplay selectedAccount)
         {
-            EditAccount();  // Use the existing EditAccount method
+            if (ViewModel != null)
+            {
+                ViewModel.SelectedAccount = selectedAccount;
+            }
+
+            if (ViewModel?.EditAccountCommand?.CanExecute(selectedAccount) ?? false)
+            {
+                _ = ViewModel.EditAccountCommand.ExecuteAsync(selectedAccount);
+            }
         }
+    }
+
+    private MunicipalAccountDisplay? ResolveSelectedAccountForCommands()
+    {
+        if (_accountsGrid?.SelectedItem is MunicipalAccountDisplay selectedFromGrid)
+        {
+            if (ViewModel != null)
+            {
+                ViewModel.SelectedAccount = selectedFromGrid;
+            }
+
+            return selectedFromGrid;
+        }
+
+        return ViewModel?.SelectedAccount;
     }
 
     private async void CreateAccount(object? sender = null, EventArgs? e = null)
@@ -1000,14 +1100,14 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// <summary>
     /// Handles Refresh button click - reloads accounts from repository.
     /// </summary>
-    private void RefreshButton_Click(object? sender, EventArgs e)
+    private async void RefreshButton_Click(object? sender, EventArgs e)
     {
         try
         {
             _logger.LogDebug("Refresh button clicked");
-            if (ViewModel?.FilterAccountsCommand.CanExecute(null) ?? false)
+            if (ViewModel?.RefreshCommand?.CanExecute(null) ?? false)
             {
-                ViewModel.FilterAccountsCommand.Execute(null);
+                await ViewModel.RefreshCommand.ExecuteAsync(null);
             }
         }
         catch (Exception ex)
