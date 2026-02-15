@@ -1520,22 +1520,20 @@ public partial class MainForm
     {
         if (form == null || form.IsDisposed || form.Disposing)
         {
+            logger?.LogDebug("[SAFENAV] Skipping navigation - form is null or disposed");
             return;
         }
 
-        var deferredDockingAttempts = 0;
-        var maxDeferralAttempts = 5; // Increased from 3
-        var deferralDelayMs = 200; // Slightly longer delay
-
         void PerformNavigation()
         {
-            SafeExecute(() =>
+            try
             {
                 if (form.IsDisposed || form.Disposing)
                 {
                     return;
                 }
 
+                // Ensure form is visible and active
                 if (form.WindowState == FormWindowState.Minimized)
                 {
                     form.WindowState = FormWindowState.Normal;
@@ -1549,120 +1547,26 @@ public partial class MainForm
                 form.BringToFront();
                 form.Activate();
 
-                // Enhanced DockingManager readiness check (Issue 2 fix)
-                if (form._dockingManager == null)
-                {
-                    if (deferredDockingAttempts < maxDeferralAttempts)
-                    {
-                        deferredDockingAttempts++;
-                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because DockingManager is null (attempt {Attempt}/{Max})",
-                            navigationTarget, deferredDockingAttempts, maxDeferralAttempts);
-
-                        var retryTimer = new System.Windows.Forms.Timer { Interval = deferralDelayMs };
-                        retryTimer.Tick += (_, _) =>
-                        {
-                            retryTimer.Stop();
-                            retryTimer.Dispose();
-
-                            if (!form.IsDisposed && !form.Disposing)
-                            {
-                                PerformNavigation();
-                            }
-                        };
-                        retryTimer.Start();
-                    }
-                    else
-                    {
-                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because DockingManager remained null after {Max} attempts", 
-                            navigationTarget, maxDeferralAttempts);
-                    }
-
-                    return;
-                }
-
-                // Additional readiness checks
-                if (form._dockingManager.HostControl == null || !form._dockingManager.HostControl.IsHandleCreated)
-                {
-                    if (deferredDockingAttempts < maxDeferralAttempts)
-                    {
-                        deferredDockingAttempts++;
-                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because DockingManager HostControl handle not created (attempt {Attempt}/{Max})",
-                            navigationTarget, deferredDockingAttempts, maxDeferralAttempts);
-
-                        var retryTimer = new System.Windows.Forms.Timer { Interval = deferralDelayMs };
-                        retryTimer.Tick += (_, _) =>
-                        {
-                            retryTimer.Stop();
-                            retryTimer.Dispose();
-
-                            if (!form.IsDisposed && !form.Disposing)
-                            {
-                                PerformNavigation();
-                            }
-                        };
-                        retryTimer.Start();
-                    }
-                    else
-                    {
-                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because DockingManager HostControl handle was never created", navigationTarget);
-                    }
-
-                    return;
-                }
-
-                // Check if PanelNavigator is initialized
+                // Ensure PanelNavigator is initialized (required for floating panel navigation)
                 form.EnsurePanelNavigatorInitialized();
+
                 if (form._panelNavigator == null)
                 {
-                    if (deferredDockingAttempts < maxDeferralAttempts)
-                    {
-                        deferredDockingAttempts++;
-                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because PanelNavigator is null (attempt {Attempt}/{Max})",
-                            navigationTarget, deferredDockingAttempts, maxDeferralAttempts);
-
-                        var retryTimer = new System.Windows.Forms.Timer { Interval = deferralDelayMs };
-                        retryTimer.Tick += (_, _) =>
-                        {
-                            retryTimer.Stop();
-                            retryTimer.Dispose();
-
-                            if (!form.IsDisposed && !form.Disposing)
-                            {
-                                PerformNavigation();
-                            }
-                        };
-                        retryTimer.Start();
-                    }
-                    else
-                    {
-                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because PanelNavigator remained null after {Max} attempts", 
-                            navigationTarget, maxDeferralAttempts);
-                    }
-
+                    logger?.LogError("[SAFENAV] Navigation blocked - PanelNavigator is null for target '{Target}'", navigationTarget);
                     return;
                 }
 
-                // Single navigation execution only.
-                // MainForm.ExecuteDockedNavigation already owns retry/recovery behavior.
+                logger?.LogDebug("[SAFENAV] Executing navigation action for '{Target}'", navigationTarget);
+
+                // Execute the navigation command (opens floating panel via PanelNavigationService)
                 navigateAction();
 
-                if (!IsNavigationTargetActive(form, navigationTarget, logger))
-                {
-                    logger?.LogWarning("Ribbon navigation target '{Target}' was not activated on first attempt - retrying once", navigationTarget);
-                    navigateAction();
-
-                    if (!IsNavigationTargetActive(form, navigationTarget, logger))
-                    {
-                        logger?.LogWarning("Ribbon navigation target '{Target}' remained inactive after retry", navigationTarget);
-                        form.PerformLayout();
-                        if (!IsUiTestEnvironment())
-                        {
-                            form.Invalidate(true);
-                            form.Refresh();
-                        }
-                    }
-                }
-            }, $"Navigate:{navigationTarget}", logger);
+                logger?.LogInformation("[SAFENAV] Navigation completed for '{Target}'", navigationTarget);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "[SAFENAV] Navigation failed for '{Target}'", navigationTarget);
+            }
         }
 
         try
@@ -1678,8 +1582,7 @@ public partial class MainForm
         }
         catch (Exception ex)
         {
-            logger?.LogDebug(ex, "Failed to dispatch navigation for '{Target}'", navigationTarget);
-            PerformNavigation();
+            logger?.LogError(ex, "[SAFENAV] Failed to dispatch navigation for '{Target}'", navigationTarget);
         }
     }
 
