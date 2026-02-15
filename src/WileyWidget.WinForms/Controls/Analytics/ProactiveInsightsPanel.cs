@@ -229,7 +229,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
                 {
-                    dockingManager.SetDockVisibility(this, false);
+                    dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "ProactiveInsightsPanel.ClosePanel");
                 }
                 else
                 {

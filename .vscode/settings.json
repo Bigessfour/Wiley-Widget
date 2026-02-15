@@ -44,8 +44,12 @@
       "url": "https://learn.microsoft.com/api/mcp"
     },
     "csharp-mcp": {
-      "command": "InfinityFlow.CSharp.Eval",
-      "args": [],
+      "command": "dotnet",
+      "args": [
+        "tool",
+        "run",
+        "InfinityFlow.CSharp.Eval"
+      ],
       "env": {
         "CSX_ALLOWED_PATH": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
         "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
@@ -61,7 +65,7 @@
     },
     "mssql": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-mssql"],
+      "args": ["-y", "mssql-mcp"],
       "env": {
         "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
       },

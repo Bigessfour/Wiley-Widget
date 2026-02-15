@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Syncfusion.Office2016Theme.WinForms</name>
+    </assembly>
+    <members>
+        <member name="T:Syncfusion.WinForms.Themes.Office2016Theme">
+            <summary>
+            The class for the Office2016Theme theme
+            </summary>
+        </member>
+    </members>
+</doc>

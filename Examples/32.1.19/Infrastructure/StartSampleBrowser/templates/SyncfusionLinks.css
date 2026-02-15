@@ -1,0 +1,44 @@
+<style type="text/css">
+
+BODY 
+{ background: url("LINKS.jpg") 
+}
+#menu{
+margin: 0;
+padding: 0;
+}
+
+#menu ul{
+margin:0;
+margin-bottom: 1em;
+padding-left: 0;
+float: Top-left;
+font-weight: bold;
+}
+
+* html #menu ul{ /*IE only rule. Delete extra margin-bottom*/
+margin-bottom: 0;
+}
+
+td1{
+float: left;
+color: #666E98;
+font-weight: bold;
+display: inline;
+}
+
+
+#menu td{
+float: left;
+color: #666E98;
+font-weight: bold;
+text-decoration: none;
+
+}
+
+a:hover{
+color: #EE7A03;
+padding-bottom: 0;
+}
+
+</style>

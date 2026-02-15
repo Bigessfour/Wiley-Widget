@@ -40,7 +40,9 @@ public sealed class DockingIntegrationTests
 
         // Validate docking manager is attached to form
         dockingManager.HostForm.Should().Be(form);
-        dockingManager.HostControl.Should().Be(form);
+        dockingManager.HostControl.Should().NotBeNull();
+        dockingManager.HostControl.Should().NotBe(form);
+        dockingManager.HostControl.Name.Should().Be("_dockingClientPanel");
 
         // Validate panels are registered for docking
         dockingManager.GetEnableDocking(leftPanel!).Should().BeTrue();

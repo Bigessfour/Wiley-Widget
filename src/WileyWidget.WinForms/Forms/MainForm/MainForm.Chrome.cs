@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -46,8 +47,6 @@ public partial class MainForm
     private System.Windows.Forms.Timer? _statusTimer;
     private ToolStripTextBox? _globalSearchTextBox;
     private bool _chromeInitialized;
-    private bool _chromeLayoutUpdating;
-    private int _lastChromeTopInset = -1;
 
     /// <summary>
     /// Initialize UI chrome elements (Ribbon, Status Bar, Navigation).
@@ -116,8 +115,7 @@ public partial class MainForm
                 _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
                 if (_ribbon == null)
                 {
-                    _logger?.LogWarning("Ribbon initialization returned null - creating fallback ribbon");
-                    CreateFallbackRibbon();
+                    _logger?.LogError("Ribbon initialization returned null");
                 }
                 else
                 {
@@ -135,6 +133,10 @@ public partial class MainForm
             statusBarStopwatch.Stop();
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
+
+            // Initialize vertical chrome layout before docking starts so the docking host
+            // is always constrained to row 1 below the ribbon.
+            InitializeMainLayout();
 
             // Initialize Navigation Strip (alternative to Ribbon for test harness)
             if (_uiConfig.IsUiTestHarness)
@@ -166,261 +168,253 @@ public partial class MainForm
     {
         if (_ribbon != null && !_ribbon.IsDisposed)
         {
-            try
-            {
-                if (!Controls.Contains(_ribbon) && IsHandleCreated)
-                {
-                    _ribbon.Dock = DockStyleEx.Top;
-                    _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
-                    _ribbon.Width = ClientSize.Width;
-                    Controls.Add(_ribbon);
-                    _ribbon.BringToFront();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "InitializeRibbon: failed to re-attach existing ribbon");
-            }
-
             _logger?.LogDebug("InitializeRibbon skipped - existing ribbon already initialized");
             return;
         }
 
         _logger?.LogInformation("InitializeRibbon: Starting ribbon initialization");
         var ribbonStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        // Create ribbon via factory and be defensive about non-critical failures
+
         try
         {
-            var ribbonResult = RibbonFactory.CreateRibbon(this, _logger);
-            _ribbon = ribbonResult.Ribbon;
-            _homeTab = ribbonResult.HomeTab;
-            _logger?.LogDebug("InitializeRibbon: Ribbon created successfully, HomeTab={HomeTab}", _homeTab?.Text);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "RibbonFactory failed to create ribbon");
-            _ribbon = null;
-            ribbonStopwatch.Stop();
-            _logger?.LogWarning("InitializeRibbon: Ribbon creation failed after {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
-            return;
-        }
+            AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
 
-        if (_ribbon == null)
-        {
-            ribbonStopwatch.Stop();
-            _logger?.LogWarning("InitializeRibbon: Ribbon creation failed after {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
-            return;
-        }
-
-        // ✅ NEW: Validate ribbon state after creation (hardening pattern from Syncfusion sample)
-        if (_ribbon.IsDisposed || _ribbon.Disposing)
-        {
-            _logger?.LogError("InitializeRibbon: Ribbon disposed immediately after creation");
-            _ribbon = null;
-            ribbonStopwatch.Stop();
-            return;
-        }
-
-        if (!_ribbon.IsHandleCreated)
-        {
-            _logger?.LogDebug("InitializeRibbon: Ribbon handle not created yet (expected before parent attachment)");
-        }
-
-        // ✅ CRITICAL: Set OfficeColorScheme and ThemeName (required by Syncfusion)
-        // Use the current theme rather than hard-coding Office2019Colorful so Office2016 schemes can be applied.
-        try
-        {
-            var currentTheme = _themeService?.CurrentTheme
-                ?? SfSkinManager.ApplicationVisualTheme
-                ?? AppThemeColors.DefaultTheme;
-
-            _ribbon.OfficeColorScheme = ToolStripEx.ColorScheme.Silver;
-            _ribbon.ThemeName = currentTheme;
-            _logger?.LogDebug("InitializeRibbon: Set OfficeColorScheme=Silver, ThemeName={Theme}", currentTheme);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "InitializeRibbon: Failed to set ribbon theme properties");
-        }
-
-        try { _ribbon.AccessibleName = "Ribbon_Main"; } catch (Exception ex) { _logger?.LogDebug(ex, "Setting ribbon AccessibleName failed"); }
-        try { _ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools"; } catch { }
-        try { _ribbon.TabIndex = 1; _ribbon.TabStop = true; } catch { }
-
-        // Ensure theme toggle is wired to the live theme switcher (defensive)
-        try
-        {
-            var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
-            if (themeToggle != null)
+            var ribbon = new RibbonControlAdv
             {
-                try { themeToggle.Click -= ThemeToggleFromRibbon; } catch { }
-                try { themeToggle.Click += ThemeToggleFromRibbon; } catch { }
+                Name = "Ribbon_Main",
+                Dock = DockStyleEx.Top,
+                Location = new Point(0, 0),
+                LauncherStyle = LauncherStyle.Metro,
+                RibbonStyle = RibbonStyle.Office2016,
+                ShowRibbonDisplayOptionButton = true,
+                EnableSimplifiedLayoutMode = true,
+                LayoutMode = RibbonLayoutMode.Normal,
+                AutoSize = false,
+                Size = new Size(ClientSize.Width, (int)DpiAware.LogicalToDeviceUnits(180f)),
+                MinimumSize = new Size(0, (int)DpiAware.LogicalToDeviceUnits(120f)),
+                MenuButtonVisible = true,
+                MenuButtonText = "File"
+            };
+
+            ribbon.BeginInit();
+            ribbon.SuspendLayout();
+
+            if (ribbon.IsDisposed || ribbon.Disposing)
+            {
+                throw new InvalidOperationException("Ribbon control disposed during initialization");
             }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Wiring theme toggle failed");
-        }
 
-        // NOTE: JARVIS button click handler is already wired in RibbonFactory.CreateToolsGroup()
-        // Duplicate wiring here caused double-firing and docking race conditions
-
-        try
-        {
-            _logger?.LogInformation("Ribbon initialized via RibbonFactory");
-            _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
-        }
-        catch { }
-
-        CacheGlobalSearchTextBox();
-        EnsureRibbonAccessibility();
-
-        // [PERF] Heavy image validation (converting animated images to static) is now deferred
-        // to DeferChromeOptimizationAsync in MainForm.Initialization.cs. This avoids
-        // blocking the UI thread during OnLoad (~200-400ms saved).
-
-        try
-        {
-            // ✅ NEW: Check if form handle is created before adding ribbon (hardening pattern)
-            if (!IsHandleCreated)
+            try
             {
-                _logger?.LogDebug("InitializeRibbon: Form handle not created yet, deferring ribbon attachment");
-                // Wait for handle to be created, then attach ribbon
-                void AttachRibbonWhenReady()
+                var appTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+                if (appTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (_ribbon != null && !Controls.Contains(_ribbon) && !_ribbon.IsDisposed)
-                    {
-                        try
-                        {
-                            _ribbon.Dock = DockStyleEx.Top;
-                            _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
-                            _ribbon.Width = ClientSize.Width;
-                            Controls.Add(_ribbon);
-                            _ribbon.BringToFront();
-                            _logger?.LogDebug("InitializeRibbon: Ribbon deferred-attached to form");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogDebug(ex, "InitializeRibbon: deferred attachment failed");
-                        }
-                    }
+                    AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
                 }
 
-                // Hook HandleCreated event to run attachment when form is ready
-                EventHandler? handler = null;
-                handler = (_, __) =>
+                ribbon.ThemeName = appTheme;
+                SfSkinManager.SetVisualStyle(ribbon, appTheme);
+                ApplyRibbonStyleForTheme(ribbon, appTheme, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: Theme load failed, falling back to default theme");
+                ribbon.ThemeName = AppThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(ribbon, AppThemeColors.DefaultTheme);
+                ApplyRibbonStyleForTheme(ribbon, ribbon.ThemeName, _logger);
+            }
+
+            Syncfusion.Windows.Forms.BackStageView? backStageView = null;
+            try
+            {
+                ribbon.MenuButtonEnabled = true;
+                backStageView = CreateBackStage(this, ribbon, _logger);
+                if (backStageView == null)
                 {
-                    this.HandleCreated -= handler;
-                    if (!IsDisposed && !Disposing)
-                    {
-                        AttachRibbonWhenReady();
-                    }
-                };
-                this.HandleCreated += handler;
-                return;  // Exit - attachment will happen via event
+                    ribbon.MenuButtonEnabled = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: BackStage initialization failed; disabling File menu");
+                ribbon.MenuButtonEnabled = false;
+                backStageView = null;
             }
 
-            // Form handle is ready - safe to add ribbon directly
-            if (!Controls.Contains(_ribbon))
+            if (backStageView != null)
             {
+                ribbon.BackStageView = backStageView;
+            }
+
+            ConfigureRibbonAppearance(ribbon, _logger);
+
+            var currentThemeString = ResolveRibbonThemeName(SfSkinManager.ApplicationVisualTheme ?? ribbon.ThemeName, _logger);
+            ribbon.ThemeName = currentThemeString;
+            SfSkinManager.SetVisualStyle(ribbon, currentThemeString);
+
+            var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
+            CompleteToolStripTabItemAPI(homeTab, _logger);
+
+            var (dashboardStrip, _) = CreateCoreNavigationGroup(this, currentThemeString, _logger);
+            var (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
+            var reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
+            var (toolsStrip, _, _) = CreateToolsGroup(this, currentThemeString, _logger);
+            var (layoutStrip, _, _, lockLayoutBtn) = CreateLayoutGroup(this, currentThemeString, _logger);
+            var moreStrip = CreateMoreGroup(this, currentThemeString, _logger);
+            var searchAndGridStrip = CreateSearchAndGridGroup(this, currentThemeString, _logger);
+            var fileStrip = CreateFileGroup(this, currentThemeString, _logger);
+
+            ribbon.Header.AddMainItem(homeTab);
+
+            ToolStripTabItem? layoutContextTab = null;
+            ToolStripTabGroup? layoutTabGroup = null;
+            try
+            {
+                (layoutContextTab, layoutTabGroup) = TryCreateLayoutContextualTabGroup(this, ribbon, currentThemeString, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to create layout contextual tab group");
+            }
+
+            try
+            {
+                lockLayoutBtn.Click += (_, _) => ToggleLayoutContextualTab(ribbon, homeTab, layoutContextTab, layoutTabGroup, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to attach LockPanels contextual toggle");
+            }
+
+            AddToolStripToTabPanel(homeTab, fileStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, financialsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, reportingStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, toolsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, layoutStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, moreStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, searchAndGridStrip, currentThemeString, _logger);
+
+            // Launcher handlers must be attached after tabs/groups exist.
+            AttachRibbonLauncherHandlers(this, ribbon, _logger);
+
+            if (homeTab.Panel != null)
+            {
+                homeTab.Panel.AutoSize = true;
+                homeTab.Panel.Padding = new Padding(6, 4, 6, 4);
+            }
+
+            try
+            {
+                ApplyThemeRecursively(ribbon, currentThemeString, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Theme recursion failed");
+            }
+
+            try
+            {
+                if (homeTab.Panel != null)
+                {
+                    homeTab.Panel.PerformLayout();
+                    homeTab.Panel.Invalidate();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Home tab panel refresh failed");
+            }
+
+            ((System.ComponentModel.ISupportInitialize)ribbon).EndInit();
+            ribbon.ResumeLayout(false);
+            ribbon.PerformLayout();
+
+            try
+            {
+                ribbon.SelectedTab = homeTab;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: Could not select Home tab");
+            }
+
+            ribbon.Invalidate();
+
+            if (ribbon.Header.MainItems.Count == 0)
+            {
+                var fallbackTab = new ToolStripTabItem { Text = "Home", Name = "FallbackHomeTab" };
+                ribbon.Header.AddMainItem(fallbackTab);
+            }
+
+            try
+            {
+                var qatButtons = CreateDefaultQuickAccessToolbarButtons(this, currentThemeString, _logger);
+                InitializeQuickAccessToolbar(ribbon, _logger, qatButtons);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: QAT initialization failed");
+            }
+
+            try
+            {
+                AttachRibbonLayoutHandlers(this, ribbon, homeTab, layoutContextTab, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to attach ribbon layout handlers");
+            }
+
+            try
+            {
+                _logger?.LogDebug("InitializeRibbon: Ribbon HomeTab groups loaded: {GroupCount}", homeTab.Panel?.Controls.OfType<ToolStripEx>().Count() ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to log ribbon group count");
+            }
+
+            try { ribbon.AccessibleName = "Ribbon_Main"; } catch (Exception ex) { _logger?.LogDebug(ex, "InitializeRibbon: setting ribbon AccessibleName failed"); }
+            try { ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools"; } catch { }
+            try { ribbon.TabIndex = 1; ribbon.TabStop = true; } catch { }
+
+            _ribbon = ribbon;
+            _homeTab = homeTab;
+
+            CacheGlobalSearchTextBox();
+            EnsureRibbonAccessibility();
+
+            if (_dockingManager != null && IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
+            }
+
+            // Add ribbon to form if not already present
+            if (!_ribbon.IsDisposed && !this.Controls.Contains(_ribbon))
+            {
+                this.Controls.Add(_ribbon);
                 _ribbon.Dock = DockStyleEx.Top;
-                _ribbon.Width = ClientSize.Width;
-                // [VISIBILITY] Allow BorderStyle from RibbonFactory to persist for better definition
-                Controls.Add(_ribbon);
-            }
+                _ribbon.SendToBack(); // Ensure it is below any future fill-docked controls
+                _ribbon.BringToFront(); // But visually on top of content
 
-            _ribbon.BringToFront();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "InitializeRibbon: failed to attach ribbon to form");
-        }
-
-        // RibbonForm handles sizing natively via AutoSize
-        UpdateChromePadding(forceLayout: true);
-
-        try
-        {
-            _ribbon.PerformLayout();
-            _ribbon.Invalidate();
-            _ribbon.BringToFront();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "InitializeRibbon: batch refresh failed");
-        }
-
-        var ribbonTabCount = _ribbon.Header?.MainItems.Count ?? 0;
-        _logger?.LogInformation("Ribbon created in {Ms}ms | Tabs={Count}", ribbonStopwatch.ElapsedMilliseconds, ribbonTabCount);
-        ribbonStopwatch.Stop();
-        _logger?.LogInformation("Ribbon/Chrome init completed in {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
-    }
-
-    private void UpdateChromePadding(bool forceLayout = false)
-    {
-        if (IsDisposed || Disposing || _chromeLayoutUpdating)
-        {
-            return;
-        }
-
-        try
-        {
-            _chromeLayoutUpdating = true;
-
-            var top = CalculateChromeTopInset();
-            var paddingChanged = Padding.Top != top;
-
-            if (paddingChanged)
-            {
-                Padding = new Padding(Padding.Left, top, Padding.Right, Padding.Bottom);
-            }
-
-            if (forceLayout || paddingChanged || _lastChromeTopInset != top)
-            {
-                _lastChromeTopInset = top;
-                EnsureChromeZOrder();
-                PerformLayout();
+                _ribbon.PerformLayout();
+                _ribbon.Refresh();
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogDebug(ex, "UpdateChromePadding: failed to update chrome layout");
+            _logger?.LogError(ex, "InitializeRibbon failed to create ribbon");
+            _ribbon = null;
+            _homeTab = null;
         }
         finally
         {
-            _chromeLayoutUpdating = false;
+            ribbonStopwatch.Stop();
+            var ribbonTabCount = _ribbon?.Header?.MainItems.Count ?? 0;
+            _logger?.LogInformation("Ribbon created in {Ms}ms | Tabs={Count}", ribbonStopwatch.ElapsedMilliseconds, ribbonTabCount);
+            _logger?.LogInformation("Ribbon/Chrome init completed in {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
         }
-    }
-
-    private int CalculateChromeTopInset()
-    {
-        var top = 0;
-        top = Math.Max(top, GetVisibleBottom(_menuStrip));
-        top = Math.Max(top, GetVisibleBottom(_ribbon));
-        top = Math.Max(top, GetVisibleBottom(_navigationStrip));
-
-        if (top > 0)
-        {
-            var dockGap = (int)DpiAware.LogicalToDeviceUnits(4f);
-            top += Math.Max(1, dockGap);
-        }
-
-        return Math.Max(0, top);
-    }
-
-    private static int GetVisibleBottom(Control? control)
-    {
-        if (control == null || control.IsDisposed || !control.Visible)
-        {
-            return 0;
-        }
-
-        if (control.Height <= 0)
-        {
-            return 0;
-        }
-
-        return Math.Max(0, control.Bottom);
     }
 
     private void EnsureChromeZOrder()
@@ -458,14 +452,13 @@ public partial class MainForm
         base.OnResize(e);
         try
         {
-            if (_ribbon != null)
-            {
-                // RibbonForm handles sizing natively via AutoSize
-                _ribbon.Width = ClientSize.Width;
-                _ribbon.PerformLayout();
-            }
+            _ribbon?.PerformLayout();
+            EnsureChromeZOrder();
 
-            UpdateChromePadding(forceLayout: true);
+            if (_dockingManager != null && IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
+            }
         }
         catch (Exception ex)
         {
@@ -503,8 +496,12 @@ public partial class MainForm
             var statusBar = StatusBarFactory.CreateStatusBar(this, _logger, useSyncfusionDocking: _uiConfig.UseSyncfusionDocking);
             _statusBar = statusBar;
 
+            statusBar.Dock = DockStyle.Bottom;
+            statusBar.Margin = Padding.Empty;
+
             // Add status bar to form controls
             Controls.Add(statusBar);
+            statusBar.BringToFront();
 
             _logger?.LogInformation("StatusBarFactory returned StatusBarAdv with {PanelCount} panels in Panels collection, and {ControlCount} in Controls collection",
                 statusBar.Panels?.Length ?? 0, statusBar.Controls.Count);
@@ -575,8 +572,6 @@ public partial class MainForm
                 TabIndex = 2,
                 TabStop = true
             };
-
-            _navigationStrip.SizeChanged += (_, __) => UpdateChromePadding(forceLayout: true);
 
             // Ensure theme assembly is loaded before applying themes
             AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
@@ -686,77 +681,6 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Create a minimal fallback ribbon with a GlobalSearch textbox and ThemeToggle button.
-    /// Used when the full RibbonFactory cannot initialize (safe for test environments).
-    /// </summary>
-    private void CreateFallbackRibbon()
-    {
-        try
-        {
-            var ribbon = new RibbonControlAdv
-            {
-                Name = "Ribbon_Main",
-                Dock = DockStyleEx.Top,
-                Height = 120
-            };
-
-            var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
-
-            var strip = new ToolStripEx
-            {
-                Name = "FallbackActionGroup",
-                GripStyle = ToolStripGripStyle.Hidden,
-                AutoSize = true,
-                ImageScalingSize = new System.Drawing.Size(32, 32)
-            };
-
-            var searchBox = new ToolStripTextBox
-            {
-                Name = "GlobalSearch",
-                Width = 180,
-                BorderStyle = BorderStyle.FixedSingle,
-                ToolTipText = "Search panels (Enter to search)",
-                AccessibleName = "Global search",
-                AccessibleDescription = "Enter a search term and press Enter to search across modules"
-            };
-            searchBox.KeyDown += SearchBox_KeyDown;
-            _globalSearchTextBox = searchBox;
-
-            var searchPanel = new ToolStripPanelItem { RowCount = 1, AutoSize = true, Transparent = true };
-            searchPanel.Items.Add(new ToolStripLabel("Global Search:"));
-            searchPanel.Items.Add(searchBox);
-
-            var themeBtn = new ToolStripButton
-            {
-                Name = "ThemeToggle",
-                Text = GetThemeButtonText(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme),
-                AutoSize = true,
-                ToolTipText = "Switch application theme (Ctrl+T)",
-                AccessibleName = "Theme Toggle",
-                AccessibleDescription = "Toggle between light and dark themes"
-            };
-            themeBtn.Click += ThemeToggleFromRibbon;
-
-            strip.Items.Add(searchPanel);
-            strip.Items.Add(new ToolStripSeparator());
-            strip.Items.Add(themeBtn);
-
-            homeTab.Panel.AddToolStrip(strip);
-            ribbon.Header.AddMainItem(homeTab);
-
-            _ribbon = ribbon;
-            _homeTab = homeTab;
-            EnsureRibbonAccessibility();
-
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Fallback ribbon creation failed");
-            _ribbon = null;
-        }
-    }
-
-    /// <summary>
     /// Initialize MenuStrip for navigation and commands.
     /// Provides a traditional menu bar with File, View, Tools, and Help menus.
     /// Enhanced with Syncfusion theming, Segoe MDL2 Assets icons, and proper renderer configuration.
@@ -779,8 +703,6 @@ public partial class MainForm
                 TabIndex = 0,
                 TabStop = true
             };
-
-            _menuStrip.SizeChanged += (_, __) => UpdateChromePadding(forceLayout: true);
 
             // Apply professional color scheme with theme colors
             if (_menuStrip.Renderer is ToolStripProfessionalRenderer professionalRenderer)

@@ -193,7 +193,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         // }
 
         // [Fact]
-        // public void RibbonFactory_EnsuresNonEmptyHeaderItems_PreventsPaintException()
+        // public void Ribbon_EnsuresNonEmptyHeaderItems_PreventsPaintException()
         // {
         //     // Test disabled due to API issues
         // }

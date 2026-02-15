@@ -58,8 +58,6 @@ public partial class MainForm
             // Check for cancellation early
             cancellationToken.ThrowIfCancellationRequested();
 
-            await InitializeDockingAsync(cancellationToken).ConfigureAwait(true);
-
             // Chrome initialization is now done in OnLoad, not here
 
             // [PERF] Allow structures time to develop before applying theme
@@ -95,7 +93,7 @@ public partial class MainForm
                 _logger?.LogWarning(ex, "Deferred chrome optimization failed - UI formatting may be suboptimal");
             }
 
-            // CRITICAL: DockingManager is initialized in OnShown Phase 1.
+            // DockingManager is initialized in OnLoad (canonical startup path).
             // Verify it exists before proceeding with panel operations.
             if (_dockingManager == null)
             {
@@ -198,11 +196,6 @@ public partial class MainForm
                 {
                     _logger?.LogInformation("[FALLBACK] AutoShowDashboard is false - startup remains on clean docking surface until user navigation");
                 }
-            }
-
-            if (_uiConfig.UseSyncfusionDocking && _dockingManager != null)
-            {
-                ApplyStartupDockingStateIfReady();
             }
 
             // Phase 2: Notify ViewModels of initial visibility for lazy loading
@@ -385,44 +378,15 @@ public partial class MainForm
         }
     }
 
-    private async Task InitializeDockingAsync(CancellationToken cancellationToken)
-    {
-        if (_syncfusionDockingInitialized || _uiConfig?.UseSyncfusionDocking != true)
-        {
-            return;
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (this.InvokeRequired)
-        {
-            await this.InvokeAsync(() =>
-            {
-                if (this.IsDisposed || _syncfusionDockingInitialized) return;
-
-                _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
-                InitializeSyncfusionDocking();
-                PerformLayout();
-                _syncfusionDockingInitialized = true;
-            }).ConfigureAwait(true);
-        }
-        else
-        {
-            if (_syncfusionDockingInitialized) return;
-
-            _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
-            InitializeSyncfusionDocking();
-            PerformLayout();
-            _syncfusionDockingInitialized = true;
-        }
-    }
-
-    private async Task<bool> WaitForDockingManagerReadyAsync(CancellationToken cancellationToken, int maxAttempts = 20, int delayMilliseconds = 100)
+    private async Task<bool> WaitForDockingManagerReadyAsync(CancellationToken cancellationToken, int maxAttempts = 50, int delayMilliseconds = 100)
     {
         if (_dockingManager == null)
         {
+            _logger?.LogWarning("[DOCKING_WAIT] DockingManager is null");
             return false;
         }
+
+        _logger?.LogInformation("[DOCKING_WAIT] Waiting for DockingManager to reach ready state (max {Attempts} attempts, {DelayMs}ms between attempts)", maxAttempts, delayMilliseconds);
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -430,15 +394,19 @@ public partial class MainForm
 
             if (IsDockingManagerReadyForMutatingOperations())
             {
-                ApplyStartupDockingStateIfReady();
+                _logger?.LogInformation("[DOCKING_WAIT] DockingManager ready after {Attempts} attempts", attempt);
                 return true;
             }
 
+            if (attempt % 5 == 0 && attempt < maxAttempts)
+            {
+                _logger?.LogDebug("[DOCKING_WAIT] Still waiting (attempt {Attempt}/{MaxAttempts})", attempt, maxAttempts);
+            }
+
             await Task.Delay(delayMilliseconds, cancellationToken).ConfigureAwait(true);
-            ApplyStartupDockingStateIfReady();
         }
 
-        _logger?.LogWarning("DockingManager did not reach ready state after {Attempts} attempts; startup panel auto-show will be skipped", maxAttempts);
+        _logger?.LogWarning("[DOCKING_WAIT] DockingManager did not reach ready state after {Attempts} attempts ({TotalMs}ms); startup panel auto-show will be skipped", maxAttempts, maxAttempts * delayMilliseconds);
         return false;
     }
 
@@ -634,33 +602,7 @@ public partial class MainForm
                 _logger?.LogWarning("MainViewModel not available in service provider");
             }
 
-            // [PERF] Auto-show initial dashboard panel
-            if (!_dashboardAutoShown && _panelNavigator != null && _uiConfig != null && _uiConfig.AutoShowDashboard)
-            {
-                try
-                {
-                    var readyForAutoShow = await WaitForDockingManagerReadyAsync(cancellationToken, maxAttempts: 10, delayMilliseconds: 100).ConfigureAwait(true);
-                    if (!readyForAutoShow)
-                    {
-                        _logger?.LogWarning("Skipping deferred dashboard auto-show because DockingManager is not ready");
-                    }
-                    else
-                    {
-                        _logger?.LogInformation("Showing initial dashboard panel...");
-                        ShowForm<BudgetDashboardForm>("Dashboard", null, DockingStyle.Right, allowFloating: false);
-                        _dashboardAutoShown = true;
-                        _logger?.LogInformation("Initial dashboard panel shown successfully");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Deferred dashboard auto-show failed; startup will continue");
-                }
-            }
-            else
-            {
-                _logger?.LogInformation("[PANEL] Skipping auto-show dashboard in RunDeferredInitializationAsync: AutoShown={Shown}, ConfigEnabled={Enabled}", _dashboardAutoShown, _uiConfig?.AutoShowDashboard);
-            }
+            _logger?.LogDebug("[PANEL] Dashboard auto-show is handled by MainForm.InitializeAsync canonical path");
 
             ApplyStatus("Ready");
             _logger?.LogInformation("OnShown: Deferred initialization completed");

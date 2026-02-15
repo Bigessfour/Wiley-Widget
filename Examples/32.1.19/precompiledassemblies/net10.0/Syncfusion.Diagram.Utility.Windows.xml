@@ -1,0 +1,469 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Syncfusion.Diagram.Utility.Windows</name>
+    </assembly>
+    <members>
+        <member name="T:Syncfusion.DiagramUtilityAssembly">
+            <summary>
+            This class holds the name of the Syncfusion.Diagram.Windows assembly and provides a helper 
+            routine that helps with resolving types when loading a serialization stream and when 
+            the framework probes for assemblies by reflection. 
+            </summary>
+        </member>
+        <member name="F:Syncfusion.DiagramUtilityAssembly.Name">
+            <summary>
+            The full name of this assembly without version information: "Syncfusion.Diagram.Windows"
+            </summary>
+        </member>
+        <member name="F:Syncfusion.DiagramUtilityAssembly.Assembly">
+            <summary>
+            A reference to the <see cref="T:System.Reflection.Assembly"/> for the grid assembly.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.DiagramUtilityAssembly.RootNamespace">
+            <summary>
+            The root namespace of this assembly. Used internally for locating resources within the assembly.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.DiagramUtilityAssembly.AssemblyResolver(System.Object,System.ResolveEventArgs)">
+            <summary>
+            Assemblies the resolver.
+            </summary>
+            <param name="sender">The sender.</param>
+            <param name="e">The <see cref="T:System.ResolveEventArgs"/> instance containing the event data.</param>
+            <returns></returns>
+        </member>
+        <member name="T:Syncfusion.DiagramUtilityAssembly.Binder">
+            <summary>
+            The Binder class helps with the resolution of Diagram types between different versions of the Syncfusion assemblies.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.DiagramUtilityAssembly.Binder.BindToType(System.String,System.String)">
+            <summary>
+            When overridden in a derived class, controls the binding of a serialized object to a type.
+            </summary>
+            <param name="assemblyName">Specifies the <see cref="T:System.Reflection.Assembly"/> name of the serialized object.</param>
+            <param name="typeName">Specifies the <see cref="T:System.Type"/> name of the serialized object.</param>
+            <returns>
+            The type of the object the formatter creates a new instance of.
+            </returns>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.CallBack">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.BrowserFolderCallback">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.HIWORD(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.LOWORD(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.LOWORD(System.IntPtr)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.HIWORD(System.IntPtr)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.MAKELONG(System.Int32,System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.MAKELPARAM(System.Int32,System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.RGBToCOLORREF(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.COLORREFToRGB(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.GetRValue(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.GetGValue(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.WinAPI.Macros.GetBValue(System.Int32)">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.POINT">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.SIZE">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.RECT">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.COMRECT">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.Window.HookProc">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Runtime.InteropServices.WinAPI.Window.DrawStateProc">
+            <internalonly/>
+        </member>
+        <member name="T:Syncfusion.Windows.Forms.Diagram.ProgressDialog">
+            <summary>
+            Progress form used to display the visio palette conversion.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.ProgressDialog.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syncfusion.Windows.Forms.Diagram.ProgressDialog"/> class.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.ProgressDialog.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.ProgressDialog.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.ProgressDialog.CloseForm">
+            <summary>
+            Closes the form.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Windows.Forms.Diagram.IStop">
+            <summary>
+            Interface to stop the progress form.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.IStop.CloseForm">
+            <summary>
+            Closes the form.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv">
+            <summary>
+            RichTextBoxAdv class.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor">
+            <summary>
+            Underline Colors
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Default">
+            <summary>
+            Default underline color
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Blue">
+            <summary>
+            Blue color
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Aqua">
+            <summary>
+            Aqua color
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Lime">
+            <summary>
+            Lime color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Fuchsia">
+            <summary>
+            Fuchsia color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Red">
+            <summary>
+            Red color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Yellow">
+            <summary>
+            Yellow color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.White">
+            <summary>
+            White color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Navy">
+            <summary>
+            Navy color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Teal">
+            <summary>
+            Teal color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Green">
+            <summary>
+            Green color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Purple">
+            <summary>
+            Purple color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Maroon">
+            <summary>
+            Maroon color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Olive">
+            <summary>
+            Olive color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Gray">
+            <summary>
+            Gray color.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor.Silver">
+            <summary>
+            Silver color.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle">
+            <summary>
+            Underline styles.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.None">
+            <summary>
+            No underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.Underline">
+            <summary>
+            Single underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineDouble">
+            <summary>
+            Double underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineDotted">
+            <summary>
+            Dotted underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineDash">
+            <summary>
+            Dash underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineDashDot">
+            <summary>
+            Dash dot underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineDashDotDot">
+            <summary>
+            Dash dot dot underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineWave">
+            <summary>
+            Wave underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineThick">
+            <summary>
+            Thick underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineHairline">
+            <summary>
+            Hairline underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineDoubleWave">
+            <summary>
+            Double wave underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineHeavyWave">
+            <summary>
+            Heavy wave underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineLongDash">
+            <summary>
+            Long dash underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineThickDash">
+            <summary>
+            Thick dash underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineThickDashDot">
+            <summary>
+            Thich dash dot underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineThickDashDotDot">
+            <summary>
+            Thich dash dot dot underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineThickDotted">
+            <summary>
+            Thick dotted underline.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle.UnderlineThickLongDash">
+            <summary>
+            Thick long dash underline.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.TextAlign">
+            <summary>
+            Specifies how text is horizontally aligned.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.TextAlign.Left">
+            <summary>
+            The text is aligned to the left.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.TextAlign.Right">
+            <summary>
+            The text is aligned to the right.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.TextAlign.Center">
+            <summary>
+            The text is aligned in the center.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.TextAlign.Justify">
+            <summary>
+            The text is justified.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.m_iLockCounter">
+            <summary>
+            Redrawing locking calls counter. Allow to ignore unneeded control (un)locking.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.m_iEventMask">
+            <summary>
+            Special mask of Richedit control. It stored by BeginUpdate method and required
+            for proper unlocking. User must not change it.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.SelectionBackColor">
+            <summary>
+            Gets or sets the selections background color
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.SelectionAlignment">
+            <summary>
+            Gets or sets the alignment to apply to the current
+            selection or insertion point.
+            </summary>
+            <remarks>
+            Replaces the SelectionAlignment from
+            <see cref="T:System.Windows.Forms.RichTextBox"/>.
+            </remarks>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.Rtf">
+            <summary>
+            Gets or sets the Rtf string.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.Text">
+            <summary>
+            Gets or sets the text.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.TextLength">
+            <summary>
+            Gets the string length.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.SelectionUnderlineColor">
+            <summary>
+            Gets or sets the underline color to apply to the
+            current selection or insertion point.
+            </summary>
+            <remarks>
+            Underline colors can be set to any value of the
+            <see cref="T:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor"/> enumeration.
+            </remarks>
+        </member>
+        <member name="P:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.SelectionUnderlineStyle">
+            <summary>
+            Gets or sets the underline style to apply to the
+            current selection or insertion point.
+            </summary>
+            <remarks>
+            Underline styles can be set to any value of the
+            <see cref="T:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle"/> enumeration.
+            </remarks>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.BeginUpdate">
+            <summary>
+            Lock control updating till proper call of EndUpdate Method. Each call 
+            of BeginUpdate must be corresponding EndUpdate, otherwise control redrawing
+            will be locked
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.EndUpdate">
+            <summary>
+            UnLock control update 
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.OnRtfChanged(System.EventArgs)">
+            <summary>
+            Raises the <see cref="E:RtfChanged"/> event.
+            </summary>
+            <param name="args">The <see cref="T:System.EventArgs"/> instance containing the event data.</param>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineSelection(System.Int32,System.Int32,Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineStyle,Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.UnderlineColor)">
+            <summary>
+            Underlines the selection.
+            </summary>
+            <param name="position">The position.</param>
+            <param name="length">The length.</param>
+            <param name="style">The style.</param>
+            <param name="color">The color.</param>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.GetCharFormat">
+            <summary>
+            Gets the char format.
+            </summary>
+            <returns>CHAR format.</returns>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.ToggleSelectionFontStyle(System.Drawing.FontStyle)">
+            <summary>
+            Toggles the selection font style.
+            </summary>
+            <param name="value">The value.</param>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.OnHandleCreated(System.EventArgs)">
+            <summary>
+            This member overrides
+            <see cref="T:System.Windows.Forms.Control"/>.OnHandleCreated.
+            </summary>
+            <param name="e">Event args.</param>
+        </member>
+        <member name="M:Syncfusion.Windows.Forms.Diagram.RichTextBoxAdv.RemoveTheme">
+            <summary> 
+            Removes the themed style from the specified window. 
+            </summary> 
+        </member>
+    </members>
+</doc>

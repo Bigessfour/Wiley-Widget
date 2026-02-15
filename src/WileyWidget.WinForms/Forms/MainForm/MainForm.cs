@@ -126,6 +126,7 @@ namespace WileyWidget.WinForms.Forms
         private AppStateSerializer? _layoutSerializer;
         private FileStream? _layoutSerializerStream;
         private bool _panelsLocked = false;
+        private TableLayoutPanel? _mainLayoutPanel;
 
         // [PERF] Theme tracking for dynamically added controls
         private readonly HashSet<Control> _themeTrackedControls = new HashSet<Control>();
@@ -534,7 +535,11 @@ namespace WileyWidget.WinForms.Forms
                     _ribbon.SelectedTab = _homeTab;
                     _ribbon.DisplayOption = RibbonDisplayOption.ShowTabsAndCommands;
                     _ribbon.PerformLayout();
-                    UpdateChromePadding(forceLayout: true);
+                    EnsureChromeZOrder();
+                    if (_dockingManager != null && IsHandleCreated && !IsDisposed)
+                    {
+                        BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
+                    }
                     _logger?.LogInformation("[RIBBON] Re-asserted SelectedTab and DisplayOption in OnShown");
                 }
                 catch (Exception ex)
@@ -574,61 +579,9 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "InitializeAsyncDiagnosticsLogger failed during OnShown startup - continuing");
             }
 
-            // [PERF] Fallback only: initialize Syncfusion docking if OnLoad path did not complete
             if (!_syncfusionDockingInitialized && _uiConfig?.UseSyncfusionDocking == true)
             {
-                _logger?.LogWarning("[DIAGNOSTIC] OnShown: Docking was not initialized in OnLoad - running fallback initialization");
-
-                try
-                {
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validating initialization state");
-                    ValidateInitializationState();
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Validation state check PASSED");
-                }
-                catch (InvalidOperationException valEx)
-                {
-                    _logger?.LogError(valEx, "[DIAGNOSTIC] OnShown: Initialization state validation FAILED - {Message}", valEx.Message);
-                    _logger?.LogCritical("[DIAGNOSTIC] Application.Exit() will be called - validation failure during OnShown");
-                    UIHelper.ShowErrorOnUI(this,
-                        $"Application initialization failed: {valEx.Message}\n\nThe application cannot continue.",
-                        "Initialization Error", _logger);
-                    Application.Exit();
-                    return;
-                }
-
-                try
-                {
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Starting Syncfusion docking initialization");
-                    InitializeSyncfusionDocking();
-                    ConfigureDockingManagerChromeLayout();
-                    _syncfusionDockingInitialized = true;
-
-                    // [FIX] Initialize panel navigator immediately after DockingManager is ready
-                    // This prevents race condition where ribbon buttons can be clicked before navigator exists
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Initializing panel navigator");
-                    EnsurePanelNavigatorInitialized();
-                    if (_panelNavigator != null)
-                    {
-                        _logger?.LogInformation("[DIAGNOSTIC] OnShown: Panel navigator successfully initialized");
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("[DIAGNOSTIC] OnShown: Panel navigator initialization returned null");
-                    }
-
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: Syncfusion docking initialized, refreshing UI");
-                    // RibbonForm handles sizing natively via AutoSize
-
-                    _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI chrome initialization was completed in OnLoad");
-                    _ribbon?.BringToFront();
-                    _statusBar?.BringToFront();
-                    this.Refresh();
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "[DIAGNOSTIC] OnShown: Syncfusion docking initialization FAILED - {Type}: {Message}\nStack: {Stack}",
-                        ex.GetType().Name, ex.Message, ex.StackTrace);
-                }
+                _logger?.LogError("[DIAGNOSTIC] OnShown: Docking is not initialized. OnLoad is the canonical initialization path and fallback re-initialization is disabled.");
             }
 
             _logger?.LogInformation("[DIAGNOSTIC] OnShown: Calling base.OnShown");
@@ -949,8 +902,13 @@ namespace WileyWidget.WinForms.Forms
                 SfSkinManager.ApplicationVisualTheme = themeName;
                 SfSkinManager.SetVisualStyle(this, themeName);
             }
-            // RibbonForm handles DPI scaling natively via AutoSize
-            UpdateChromePadding();
+
+            EnsureChromeZOrder();
+            if (_dockingManager != null && IsHandleCreated && !IsDisposed)
+            {
+                BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
+            }
+
             PerformLayout();
         }
 

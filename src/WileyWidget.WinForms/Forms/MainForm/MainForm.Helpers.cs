@@ -876,7 +876,7 @@ public partial class MainForm
 
                     foreach (var control in controls)
                     {
-                        _dockingManager.SetDockVisibility(control, false);
+                        TrySetDockVisibilitySafe(control, false, "ResetLayout");
                     }
 
                     // Reload default layout

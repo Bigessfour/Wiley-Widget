@@ -507,7 +507,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
                 {
                     var dockedHost = FindDockedHost(dockingManager);
-                    dockingManager.SetDockVisibility(dockedHost ?? this, false);
+                    dockingManager.TrySetDockVisibilitySafe(dockedHost ?? this, false, Logger, "ActivityLogPanel.ClosePanel");
                     Logger?.LogDebug("ActivityLogPanel closed via DockingManager");
                     return;
                 }

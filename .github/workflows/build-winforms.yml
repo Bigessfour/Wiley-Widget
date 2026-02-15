@@ -188,3 +188,40 @@ jobs:
             src/WileyWidget.WinForms/Services/ThemeService.cs
             src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
           retention-days: 7
+
+  ribbon-stress:
+    name: Ribbon Stress Script (net10)
+    runs-on: windows-2022
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore solution
+        run: dotnet restore WileyWidget.sln --verbosity minimal
+
+      - name: Build MCP server project
+        run: dotnet build tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration Release --no-restore --verbosity minimal
+
+      - name: Run strict ribbon stress script
+        shell: pwsh
+        run: |
+          dotnet run --project tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration Release --no-build -- --run-script tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/Tests/MainForm_RibbonControlAdv_Navigation.net10.csx *>&1 | Tee-Object -FilePath ribbon-stress.log
+          if ($LASTEXITCODE -ne 0) { Write-Error "Ribbon stress script failed. See ribbon-stress.log" }
+
+      - name: Upload ribbon stress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ribbon-stress-net10
+          path: |
+            ribbon-stress.log
+          retention-days: 7

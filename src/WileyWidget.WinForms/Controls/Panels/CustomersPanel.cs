@@ -1486,7 +1486,7 @@ public partial class CustomersPanel : ScopedPanelBase
         var dockingManager = FindDockingManager(this);
         if (dockingManager != null)
         {
-            dockingManager.SetDockVisibility(this, false);
+            dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "CustomersPanel.ClosePanel");
         }
         else
         {

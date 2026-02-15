@@ -717,8 +717,6 @@ namespace WileyWidget.WinForms.Configuration
             // Rates panel ViewModel and expense provider (RatesPage is form-hosted)
             services.AddScoped<RatesPageViewModel>();
             services.AddScoped<IExpenseProvider, DefaultExpenseProvider>();
-            // Example panels' ViewModels - sometimes omitted during refactor
-            services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
             // JARVIS Chat ViewModel for docked chat control
             services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
 

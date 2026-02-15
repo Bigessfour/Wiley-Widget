@@ -1140,7 +1140,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     var dockingManagerField = parentForm.GetType().GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     if (dockingManagerField?.GetValue(parentForm) is Syncfusion.Windows.Forms.Tools.DockingManager dm)
                     {
-                        dm.SetDockVisibility(this, false);
+                        dm.TrySetDockVisibilitySafe(this, false, context: "SettingsPanel.BtnClose_Click");
                         return;
                     }
                 }

@@ -1070,7 +1070,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 var dockingManager = FindDockingManager(form);
                 if (dockingManager != null)
                 {
-                    dockingManager.SetDockVisibility(this, false);
+                    dockingManager.TrySetDockVisibilitySafe(this, false, Logger, "ReportsPanel.ClosePanel");
                     Logger.LogDebug("Panel hidden via DockingManager");
                 }
                 else

@@ -23,7 +23,7 @@ src/WileyWidget.WinForms/
 │   ├── Factories/
 │   │   ├── DockingFactoryBase.cs   # Base docking orchestration
 │   │   ├── DockingInitializer.cs   # Docking layout restoration
-│   │   ├── RibbonFactory.cs        # Ribbon initialization
+│   │   ├── MainForm.RibbonHelpers.cs # Ribbon helper methods
 │   │   ├── StatusBarFactory.cs     # Status bar setup
 │   │   └── DashboardFactory.cs     # Dashboard panel creation
 │   ├── Components/
@@ -272,7 +272,7 @@ public class DockingInitializer
 
 - `DockingManager_MaintainsNonEmptyChildCollection_PreventsPaintException()`
 - `DockingInitializer_CreatesControlsBeforeSuspendingLayout_AvoidsPaintRaceCondition()`
-- `RibbonFactory_EnsuresNonEmptyHeaderItems_PreventsPaintException()`
+- `Ribbon_EnsuresNonEmptyHeaderItems_PreventsPaintException()`
 - `DockingManager_HandlesVisibilityToggle_MaintainsNonEmptyState()`
 
 ### **Layout Persistence (DockingLayoutManager)**
@@ -560,7 +560,7 @@ Located in: `tests/WileyWidget.WinForms.Tests/Unit/Forms/`
 |------|-------|
 | `DockingTests.cs` | Docking manager, layout persistence, paint bug mitigation |
 | `MainFormTests.cs` | Form initialization, theme application, ribbon/status bar setup |
-| `RibbonFactoryTests.cs` | Ribbon structure, tab creation, commands |
+| `MainFormRibbonTests.cs` | Ribbon structure, tab creation, commands |
 | `DashboardFactoryTests.cs` | Dashboard panel creation, grid binding |
 
 ### **UI Validation Checklist**

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<FileReference>
+	<FileName active="true">Windows</FileName>
+	<FileName active="false">Document SDK</FileName>
+	<FileName active="false">PDF Viewer SDK</FileName>
+	<FileName active="false">Spreadsheet Editor SDK</FileName>
+</FileReference>

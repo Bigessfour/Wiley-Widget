@@ -248,11 +248,8 @@ public partial class MainForm
 
             if (_dockingManager == null)
             {
-                if (!TryInitializeBasicDocking())
-                {
-                    _logger?.LogWarning("[EXEC_NAV] Docking manager is unavailable after recovery attempt for '{Target}'", navigationTarget);
-                    return;
-                }
+                _logger?.LogWarning("[EXEC_NAV] Docking manager is unavailable during recovery for '{Target}'", navigationTarget);
+                return;
             }
 
             var dockStateReloaded = TryReloadDockStateForNavigationRecovery(navigationTarget);
@@ -327,22 +324,10 @@ public partial class MainForm
             return;
         }
 
-        try
-        {
-            if (_dockingManager != null)
-            {
-                _dockingManager.SetDockVisibility(dockSurface, true);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex,
-                "[EXEC_NAV] Failed restoring SetDockVisibility(true) for {SurfaceName} while handling '{Target}'",
-                surfaceName,
-                navigationTarget);
-        }
-
-        dockSurface.Visible = true;
+        TrySetDockVisibilitySafe(
+            dockSurface,
+            true,
+            $"RestoreDockSurfaceVisibility:{surfaceName}:{navigationTarget}");
     }
 
     private void EnsureControlAndParentsVisible(Control? control)
@@ -489,13 +474,8 @@ public partial class MainForm
             // Try to initialize basic docking if not already done
             if (_dockingManager == null)
             {
-                _logger?.LogInformation("[ENSURE_NAV] DockingManager is null - attempting basic docking initialization");
-                if (!TryInitializeBasicDocking())
-                {
-                    _logger?.LogWarning("[ENSURE_NAV] ❌ Basic docking initialization failed - skipping panel navigator initialization");
-                    return;
-                }
-                _logger?.LogInformation("[ENSURE_NAV] ✅ Basic docking initialization succeeded");
+                _logger?.LogWarning("[ENSURE_NAV] DockingManager is null - skipping panel navigator initialization");
+                return;
             }
             else
             {
@@ -512,11 +492,12 @@ public partial class MainForm
 
                 try
                 {
-                    Control navigationHost = _dockingManager?.HostControl ?? _centralDocumentPanel ?? (Control)this;
+                    // _dockingManager is guaranteed to be non-null at this point (initialized in InitializeSyncfusionDocking)
+                    Control navigationHost = _dockingManager.HostControl ?? _centralDocumentPanel ?? (Control)this;
                     _logger?.LogDebug("[ENSURE_NAV] Navigation host selected: {HostType}",
                         navigationHost.GetType().Name);
 
-                    _panelNavigator = new PanelNavigationService(_dockingManager!, navigationHost, _serviceProvider, navLogger);
+                    _panelNavigator = new PanelNavigationService(_dockingManager, navigationHost, _serviceProvider, navLogger);
                     _logger?.LogInformation("[ENSURE_NAV] ✅ PanelNavigationService created successfully with DockingManager");
 
                     // Subscribe to activation events to keep ribbon/navigation selection in sync

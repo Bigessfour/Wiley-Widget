@@ -64,6 +64,7 @@ namespace WileyWidget.WinForms.Services
     {
         private readonly DockingManager _dockingManager;
         private readonly Control _contentContainer;
+        private readonly Control? _centralDocumentContainer;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<PanelNavigationService> _logger;
 
@@ -71,6 +72,7 @@ namespace WileyWidget.WinForms.Services
         private readonly HashSet<UserControl> _registeredPanels = new();
         private readonly Dictionary<string, (DockingStyle PreferredStyle, bool AllowFloating)> _panelPreferences = new(StringComparer.OrdinalIgnoreCase);
         private string? _activePanelName;
+        private bool _disableDockingMutations;
 
         public event EventHandler<PanelActivatedEventArgs>? PanelActivated;
 
@@ -82,10 +84,20 @@ namespace WileyWidget.WinForms.Services
         {
             _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
             _contentContainer = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
+            _centralDocumentContainer = ResolveCentralDocumentContainer(parentControl);
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+            // Enable proper Syncfusion docking - exception handling in RegisterAndDockPanel() and EnsurePreferredDockSize()
+            // will automatically fall back to safe mode if Syncfusion encounters instability.
+            _disableDockingMutations = false;
+
             EnsureContainerVisible();
+            if (_centralDocumentContainer != null)
+            {
+                _logger.LogDebug("PanelNavigationService detected central document container '{ContainerName}'", _centralDocumentContainer.Name);
+            }
+            _logger.LogInformation("PanelNavigationService initialized with full Syncfusion DockingManager support");
             _logger.LogDebug("PanelNavigationService initialized with DockingManager navigation");
         }
 
@@ -200,15 +212,7 @@ namespace WileyWidget.WinForms.Services
             {
                 if (_registeredPanels.Contains(panel))
                 {
-                    try
-                    {
-                        _dockingManager.SetDockVisibility(panel, false);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "Failed to hide docked panel {PanelName}; using Visible=false fallback", panelName);
-                        panel.Visible = false;
-                    }
+                    TrySetDockVisibilitySafe(panel, false, panelName, "HidePanel");
                 }
                 else
                 {
@@ -250,10 +254,14 @@ namespace WileyWidget.WinForms.Services
 
             panel.Name = panelName.Replace(" ", string.Empty, StringComparison.Ordinal);
 
-            if (panel.Parent == null || panel.Parent.IsDisposed)
+            if (panel.Parent != null &&
+                !ReferenceEquals(panel.Parent, _contentContainer) &&
+                (_centralDocumentContainer == null || !ReferenceEquals(panel.Parent, _centralDocumentContainer)))
             {
-                _contentContainer.Controls.Add(panel);
+                panel.Parent.Controls.Remove(panel);
             }
+
+            panel.Margin = Padding.Empty;
 
             var normalizedStyle = NormalizeDockingStyle(preferredStyle);
             var shouldRedock = !_registeredPanels.Contains(panel) ||
@@ -267,18 +275,20 @@ namespace WileyWidget.WinForms.Services
             }
             else
             {
-                EnsurePreferredDockSize(panel, normalizedStyle);
+                EnsurePreferredDockSize(panel, panelName, normalizedStyle, allowFloating);
             }
 
-            try
+            if (_registeredPanels.Contains(panel))
             {
-                _dockingManager.SetDockVisibility(panel, true);
+                TrySetDockVisibilitySafe(panel, true, panelName, "ShowInDockingManager");
             }
-            catch
+            else
             {
                 panel.Visible = true;
             }
 
+            ResetScrollableViewport(panel);
+            EnsureControlHierarchyVisible(panel);
             panel.Visible = true;
             panel.BringToFront();
 
@@ -293,8 +303,47 @@ namespace WileyWidget.WinForms.Services
                 allowFloating);
         }
 
+        private static void ResetScrollableViewport(Control root)
+        {
+            if (root == null || root.IsDisposed)
+            {
+                return;
+            }
+
+            if (root is ScrollableControl rootScrollable && rootScrollable.AutoScroll)
+            {
+                try
+                {
+                    rootScrollable.AutoScrollPosition = System.Drawing.Point.Empty;
+                }
+                catch
+                {
+                }
+            }
+
+            foreach (Control child in root.Controls)
+            {
+                if (child is ScrollableControl scrollable && scrollable.AutoScroll)
+                {
+                    try
+                    {
+                        scrollable.AutoScrollPosition = System.Drawing.Point.Empty;
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
         private void RegisterAndDockPanel(UserControl panel, string panelName, DockingStyle preferredStyle, bool allowFloating)
         {
+            if (_disableDockingMutations)
+            {
+                AttachPanelWithoutDocking(panel, panelName);
+                return;
+            }
+
             try
             {
                 _dockingManager.SetEnableDocking(panel, true);
@@ -313,41 +362,149 @@ namespace WileyWidget.WinForms.Services
 
                 var dockingHost = ResolveDockHost(panel, preferredStyle, out var resolvedStyle);
                 var size = GetPreferredDockSize(resolvedStyle, _contentContainer, panel);
-                _dockingManager.DockControl(panel, dockingHost, resolvedStyle, size);
+                ApplyDockMinimumSize(panel, resolvedStyle);
+
+                // CRITICAL: Ensure panel has at least one child before docking to prevent DockHost paint crashes
+                if (panel.Controls.Count == 0)
+                {
+                    var placeholder = new Label
+                    {
+                        Text = "",
+                        Dock = DockStyle.Fill,
+                        AutoSize = false
+                    };
+                    panel.Controls.Add(placeholder);
+                    _logger.LogDebug("Added placeholder control to panel {PanelName} before docking", panel.Name);
+                }
+
+                // CRITICAL: Suspend layout on host control to prevent paint during docking operations
+                var hostControl = _dockingManager.HostControl;
+                hostControl?.SuspendLayout();
+                try
+                {
+                    _dockingManager.DockControl(panel, dockingHost, resolvedStyle, size);
+                }
+                finally
+                {
+                    hostControl?.ResumeLayout(performLayout: false);
+                }
                 _registeredPanels.Add(panel);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                _disableDockingMutations = true;
+                _logger.LogError(ex,
+                    "[CRITICAL] DockingManager entered unstable state while docking panel {PanelName} (style={Style}). Safe mode activated. Stack: {Stack}. " +
+                    "This usually indicates docking system not ready or corrupted layout state. NavService will use fallback host.",
+                    panelName,
+                    preferredStyle,
+                    ex.StackTrace ?? "none");
+
+                _registeredPanels.Remove(panel);
+                AttachPanelWithoutDocking(panel, panelName);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "Failed docking panel {PanelName} with style {Style}; retrying with Right dock on host container",
+                    "Failed docking panel {PanelName} with style {Style}; retrying with Tabbed dock on central container",
                     panelName,
                     preferredStyle);
 
                 try
                 {
-                    _dockingManager.DockControl(panel, _contentContainer, DockingStyle.Right, GetPreferredDockSize(DockingStyle.Right, _contentContainer, panel));
+                    var fallbackHost = _centralDocumentContainer ?? _contentContainer;
+                    var fallbackStyle = ReferenceEquals(fallbackHost, _contentContainer) ? DockingStyle.Right : DockingStyle.Tabbed;
+
+                    // CRITICAL: Suspend layout on host control to prevent paint during fallback docking
+                    var hostControl = _dockingManager.HostControl;
+                    hostControl?.SuspendLayout();
+                    try
+                    {
+                        _dockingManager.DockControl(panel, fallbackHost, fallbackStyle, GetPreferredDockSize(fallbackStyle, fallbackHost, panel));
+                    }
+                    finally
+                    {
+                        hostControl?.ResumeLayout(performLayout: false);
+                    }
                     _registeredPanels.Add(panel);
+                }
+                catch (ArgumentOutOfRangeException fallbackAoorEx)
+                {
+                    _disableDockingMutations = true;
+                    _logger.LogError(fallbackAoorEx,
+                        "[CRITICAL] Fallback docking entered unstable state for panel {PanelName}. Safe mode activated. Stack: {Stack}. " +
+                        "Docking system appears fundamentally unstable - using host fallback for all panels.",
+                        panelName,
+                        fallbackAoorEx.StackTrace ?? "none");
+
+                    _registeredPanels.Remove(panel);
+                    AttachPanelWithoutDocking(panel, panelName);
                 }
                 catch (Exception fallbackEx)
                 {
                     _logger.LogError(fallbackEx, "Fallback docking failed for panel {PanelName}", panelName);
+
+                    AttachPanelWithoutDocking(panel, panelName);
                 }
             }
         }
 
-        private void EnsurePreferredDockSize(UserControl panel, DockingStyle preferredStyle)
+        private void EnsurePreferredDockSize(UserControl panel, string panelName, DockingStyle preferredStyle, bool allowFloating)
         {
+            if (_disableDockingMutations || !_registeredPanels.Contains(panel))
+            {
+                AttachPanelWithoutDocking(panel, panelName);
+                return;
+            }
+
             try
             {
                 var dockingHost = ResolveDockHost(panel, preferredStyle, out var resolvedStyle);
                 var targetSize = GetPreferredDockSize(resolvedStyle, _contentContainer, panel);
-                _dockingManager.DockControl(panel, dockingHost, resolvedStyle, targetSize);
+                ApplyDockMinimumSize(panel, resolvedStyle);
+
+                // CRITICAL: Suspend layout on host control to prevent paint during re-docking
+                var hostControl = _dockingManager.HostControl;
+                hostControl?.SuspendLayout();
+                try
+                {
+                    _dockingManager.DockControl(panel, dockingHost, resolvedStyle, targetSize);
+                }
+                finally
+                {
+                    hostControl?.ResumeLayout(performLayout: false);
+                }
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                _disableDockingMutations = true;
+                _logger.LogError(ex,
+                    "[CRITICAL] DockingManager became unstable while resizing panel {PanelName} (style={Style}). Safe mode activated. Stack: {Stack}. " +
+                    "This indicates DockingManager.GetControlsSequence() or similar failed - likely corrupted internal state.",
+                    panelName,
+                    preferredStyle,
+                    ex.StackTrace ?? "none");
+
+                _registeredPanels.Remove(panel);
+                AttachPanelWithoutDocking(panel, panelName);
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex,
-                    "Failed to re-apply preferred dock size for panel {PanelName}",
-                    panel.Name);
+                _logger.LogWarning(ex,
+                    "Failed to re-apply preferred dock size for panel {PanelName}; forcing full re-dock recovery",
+                    panelName);
+
+                try
+                {
+                    _registeredPanels.Remove(panel);
+                    RegisterAndDockPanel(panel, panelName, preferredStyle, allowFloating);
+                }
+                catch (Exception recoveryEx)
+                {
+                    _logger.LogError(recoveryEx,
+                        "Failed re-dock recovery for panel {PanelName}",
+                        panelName);
+                }
             }
         }
 
@@ -365,6 +522,12 @@ namespace WileyWidget.WinForms.Services
 
             if (style == DockingStyle.Fill)
             {
+                if (_centralDocumentContainer != null && !_centralDocumentContainer.IsDisposed)
+                {
+                    resolvedStyle = DockingStyle.Tabbed;
+                    return _centralDocumentContainer;
+                }
+
                 resolvedStyle = DockingStyle.Right;
                 return _contentContainer;
             }
@@ -389,15 +552,6 @@ namespace WileyWidget.WinForms.Services
 
         private static int GetPreferredDockSize(DockingStyle style, Control host, Control panel)
         {
-            var baseSize = style switch
-            {
-                DockingStyle.Left => 320,
-                DockingStyle.Right => 380,
-                DockingStyle.Top => 280,
-                DockingStyle.Bottom => 320,
-                _ => 320
-            };
-
             var hostExtent = style switch
             {
                 DockingStyle.Left or DockingStyle.Right => host.ClientSize.Width,
@@ -405,19 +559,81 @@ namespace WileyWidget.WinForms.Services
                 _ => 0
             };
 
+            var minimumSize = style is DockingStyle.Left or DockingStyle.Right ? 260 : 220;
+            var preferredRatio = style switch
+            {
+                DockingStyle.Left => 0.28,
+                DockingStyle.Right => 0.32,
+                DockingStyle.Top => 0.30,
+                DockingStyle.Bottom => 0.34,
+                _ => 0.30
+            };
+
             var panelDesignedSize = GetDesignedDockSize(style, panel);
-            var desiredSize = Math.Max(baseSize, panelDesignedSize);
+            var hostPreferredSize = hostExtent > 0
+                ? Math.Max(minimumSize, (int)Math.Round(hostExtent * preferredRatio))
+                : minimumSize;
+            var desiredSize = Math.Max(hostPreferredSize, panelDesignedSize);
 
             if (hostExtent <= 0)
             {
                 return desiredSize;
             }
 
-            var maxRatio = style is DockingStyle.Left or DockingStyle.Right ? 0.90 : 0.85;
-            var minimumSize = style is DockingStyle.Left or DockingStyle.Right ? 260 : 220;
+            var maxRatio = style is DockingStyle.Left or DockingStyle.Right ? 0.75 : 0.70;
             var cappedSize = Math.Max(minimumSize, (int)(hostExtent * maxRatio));
 
             return Math.Min(desiredSize, cappedSize);
+        }
+
+        private static Control? ResolveCentralDocumentContainer(Control root)
+        {
+            if (root == null || root.IsDisposed)
+            {
+                return null;
+            }
+
+            if (string.Equals(root.Name, "CentralDocumentPanel", StringComparison.Ordinal))
+            {
+                return root;
+            }
+
+            foreach (Control child in root.Controls)
+            {
+                var resolved = ResolveCentralDocumentContainer(child);
+                if (resolved != null)
+                {
+                    return resolved;
+                }
+            }
+
+            return null;
+        }
+
+        private void ApplyDockMinimumSize(Control panel, DockingStyle style)
+        {
+            try
+            {
+                var minimum = style switch
+                {
+                    DockingStyle.Left => new System.Drawing.Size(260, 0),
+                    DockingStyle.Right => new System.Drawing.Size(300, 0),
+                    DockingStyle.Top => new System.Drawing.Size(0, 220),
+                    DockingStyle.Bottom => new System.Drawing.Size(0, 240),
+                    _ => System.Drawing.Size.Empty
+                };
+
+                if (minimum == System.Drawing.Size.Empty)
+                {
+                    return;
+                }
+
+                _dockingManager.SetControlMinimumSize(panel, minimum);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to apply docking minimum size for panel {PanelName}", panel.Name);
+            }
         }
 
         private static int GetDesignedDockSize(DockingStyle style, Control panel)
@@ -459,6 +675,117 @@ namespace WileyWidget.WinForms.Services
             return designedSize;
         }
 
+        private bool TrySetDockVisibilitySafe(Control panel, bool visible, string panelName, string operation)
+        {
+            if (panel == null || panel.IsDisposed)
+            {
+                return false;
+            }
+
+            if (_disableDockingMutations || panel is not UserControl userControlPanel || !_registeredPanels.Contains(userControlPanel))
+            {
+                panel.Visible = visible;
+                return false;
+            }
+
+            var hostControl = _dockingManager.HostControl;
+            if (hostControl == null || hostControl.IsDisposed || !hostControl.IsHandleCreated)
+            {
+                panel.Visible = visible;
+                return false;
+            }
+
+            if (panel.Parent == null || panel.Parent.IsDisposed)
+            {
+                panel.Visible = visible;
+                return false;
+            }
+
+            try
+            {
+                // CRITICAL: Suspend layout during visibility changes to prevent paint crashes
+                panel.Parent?.SuspendLayout();
+                try
+                {
+                    _dockingManager.SetDockVisibility(panel, visible);
+                    panel.Visible = visible;
+                    return true;
+                }
+                finally
+                {
+                    panel.Parent?.ResumeLayout(performLayout: false);
+                }
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                _disableDockingMutations = true;
+                _logger.LogWarning(ex,
+                    "SetDockVisibility failed with unstable docking state for panel {PanelName} during {Operation}; disabling docking mutations and applying Visible fallback",
+                    panelName,
+                    operation);
+                panel.Visible = visible;
+                return false;
+            }
+            catch (DockingManagerException ex)
+            {
+                _logger.LogDebug(ex,
+                    "SetDockVisibility failed for panel {PanelName} during {Operation}; applying Visible fallback",
+                    panelName,
+                    operation);
+                panel.Visible = visible;
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex,
+                    "Unexpected SetDockVisibility failure for panel {PanelName} during {Operation}; applying Visible fallback",
+                    panelName,
+                    operation);
+                panel.Visible = visible;
+                return false;
+            }
+        }
+
+        private void AttachPanelWithoutDocking(UserControl panel, string panelName)
+        {
+            var fallbackParent = _centralDocumentContainer ?? _contentContainer;
+
+            if (panel.Parent != null && !ReferenceEquals(panel.Parent, fallbackParent))
+            {
+                panel.Parent.Controls.Remove(panel);
+            }
+
+            if (!ReferenceEquals(panel.Parent, fallbackParent))
+            {
+                fallbackParent.Controls.Add(panel);
+            }
+
+            HideOtherFallbackPanels(fallbackParent, panel);
+
+            panel.Dock = DockStyle.Fill;
+            EnsureControlHierarchyVisible(panel);
+            panel.Visible = true;
+            panel.BringToFront();
+
+            _logger.LogWarning("Panel {PanelName} displayed via non-docking fallback host due to docking instability", panelName);
+        }
+
+        private void HideOtherFallbackPanels(Control host, Control activePanel)
+        {
+            foreach (Control child in host.Controls)
+            {
+                if (ReferenceEquals(child, activePanel) || child.IsDisposed)
+                {
+                    continue;
+                }
+
+                if (child is UserControl && _cachedPanels.ContainsValue((UserControl)child))
+                {
+                    child.Visible = false;
+                }
+            }
+        }
+
         /// <summary>
         /// Ensures the content container and its entire parent chain are visible.
         /// Fixes issue where panels are added but container hierarchy is hidden.
@@ -473,6 +800,16 @@ namespace WileyWidget.WinForms.Services
                     _logger.LogWarning("Container '{Name}' was hidden - making visible", current.Name);
                     current.Visible = true;
                 }
+                current = current.Parent;
+            }
+        }
+
+        private static void EnsureControlHierarchyVisible(Control control)
+        {
+            var current = control;
+            while (current != null && !current.IsDisposed)
+            {
+                current.Visible = true;
                 current = current.Parent;
             }
         }

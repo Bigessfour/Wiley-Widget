@@ -27,13 +27,17 @@ public sealed class DockingHostFactoryIntegrationTests
             DockingHostFactory.CreateDockingHost(form, provider, null, form, logger);
 
         dockingManager.Should().NotBeNull();
-        dockingManager.HostControl.Should().Be(form);
+        dockingManager.HostControl.Should().NotBeNull();
+        dockingManager.HostControl.Should().NotBe(form);
+        dockingManager.HostControl.Name.Should().Be("_dockingClientPanel");
         left!.Name.Should().Be("LeftDockPanel");
         right!.Name.Should().Be("RightDockPanel");
         central!.Name.Should().Be("CentralDocumentPanel");
-        form.Controls.Contains(left).Should().BeTrue();
-        form.Controls.Contains(right).Should().BeTrue();
-        form.Controls.Contains(central).Should().BeTrue();
-        layoutManager.Should().NotBeNull();
+
+        var hostControl = dockingManager.HostControl;
+        hostControl.Controls.Contains(left).Should().BeTrue();
+        hostControl.Controls.Contains(right).Should().BeTrue();
+        hostControl.Controls.Contains(central).Should().BeTrue();
+        layoutManager.Should().BeNull();
     }
 }

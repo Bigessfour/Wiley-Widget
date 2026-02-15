@@ -35,6 +35,9 @@ namespace WileyWidget.WinForms.Forms;
 public static class DockingHostFactory
 {
     private const string SegoeUiFontName = "Segoe UI";
+    private const string DockingClientPanelName = "_dockingClientPanel";
+    private const int LeftDockMinimumWidth = 280;
+    private const int RightDockMinimumWidth = 300;
 
     public static (
         DockingManager dockingManager,
@@ -84,6 +87,8 @@ public static class DockingHostFactory
         if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
         if (dockingHostPanel == null) throw new ArgumentNullException(nameof(dockingHostPanel));
 
+        ContainerControl hostControl = ResolveDockingHostControl(mainForm, dockingHostPanel, logger);
+
         var sw = Stopwatch.StartNew();
         logger?.LogInformation("CreateDockingHost: Starting docking creation");
         logger?.LogDebug("CreateDockingHost: MainForm={MainForm}, PanelNavigator={PanelNavigator}",
@@ -101,7 +106,7 @@ public static class DockingHostFactory
             // Create DockingManager with Syncfusion-standard interactive defaults.
             var dockingManager = new DockingManager
             {
-                ShowCaption = true,
+                ShowCaption = false,
                 DockToFill = false,
                 CloseEnabled = true,
                 PersistState = false,
@@ -117,21 +122,13 @@ public static class DockingHostFactory
             SfSkinManager.SetVisualStyle(dockingManager, themeName);
             dockingManager.DragProviderStyle = DragProviderStyle.VS2012;
             dockingManager.EnableDocumentMode = false;
-            TrySetDockingManagerBoolProperty(dockingManager, "AllowFloating", true, logger);
-            TrySetDockingManagerBoolProperty(dockingManager, "AllowAutoHide", true, logger);
-            TrySetDockingManagerBoolProperty(dockingManager, "AllowDocumentFloating", true, logger);
-            TrySetDockingManagerBoolProperty(dockingManager, "AllowDockDragAndDrop", true, logger);
-            TrySetDockingManagerBoolProperty(dockingManager, "AllowClose", true, logger);
-            TrySetDockingManagerBoolProperty(dockingManager, "AllowTabDragAndDrop", true, logger);
 
             try
             {
-                var hostControl = dockingHostPanel;
-
                 // Assignment of HostForm + HostControl to the dedicated docking host panel
                 dockingManager.HostForm = mainForm;
                 dockingManager.HostControl = hostControl;
-                // hostControl initially visible - visibility managed by ApplyFixedLayoutSafe() after docking
+                // hostControl initially visible - layout finalized after docking configuration
                 logger?.LogDebug("CreateDockingHost: HostControl set to dedicated docking host container");
 
                 // Suspend layout during bulk control creation for performance
@@ -145,7 +142,7 @@ public static class DockingHostFactory
                     BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
                     Name = "CentralDocumentPanel",
                     Visible = false, // Defer visibility until docking completes
-                    Padding = new Padding(0, 0, 0, 0), // No padding - MainForm handles ribbon clearance via Padding and AdjustDockingHostBounds
+                    Padding = new Padding(0, 0, 0, 0),
                     AccessibleName = "Central Document Area",
                     AccessibleDescription = "Main content area container"
                 };
@@ -233,94 +230,21 @@ public static class DockingHostFactory
                 }
                 finally
                 {
-                    hostControl.ResumeLayout(false); // false - ApplyFixedLayoutSafe will handle layout
+                    hostControl.ResumeLayout(false); // false - docking layout finalization follows
                 }
 
                 ArgumentNullException.ThrowIfNull(centralDocumentPanel);
 
-                const int maxDockRetryAttempts = 3;
-                var dockRetryAttempts = 0;
-                var fixedLayoutInitialized = false;
-
-                bool ApplyFixedLayoutSafe()
+                try
                 {
-                    try
-                    {
-                        ConfigureFixedDockingPanels(dockingManager, hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        fixedLayoutInitialized = true;
-                        return true;
-                    }
-                    catch (ArgumentOutOfRangeException ex) when (string.Equals(ex.ParamName, "index", StringComparison.OrdinalIgnoreCase))
-                    {
-                        dockRetryAttempts++;
-                        logger?.LogWarning(ex,
-                            "Fixed docking layout deferred due to Syncfusion internal collection timing; attempt {Attempt}/{MaxAttempts}",
-                            dockRetryAttempts,
-                            maxDockRetryAttempts);
-
-                        EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        if (dockRetryAttempts >= maxDockRetryAttempts)
-                        {
-                            logger?.LogWarning("Applying emergency panel layout after docking retries exhausted");
-                            ApplyEmergencyPanelLayout(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        }
-
-                        return false;
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.LogError(ex, "Failed applying fixed docking layout");
-                        EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        ApplyEmergencyPanelLayout(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        return false;
-                    }
+                    ConfigureFixedDockingPanels(dockingManager, hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
+                    EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
                 }
-
-                void ScheduleLayoutRetry(string reason)
+                catch (Exception ex)
                 {
-                    if (dockRetryAttempts >= maxDockRetryAttempts || mainForm.IsDisposed)
-                    {
-                        return;
-                    }
-
-                    try
-                    {
-                        mainForm.BeginInvoke((Action)(() =>
-                        {
-                            if (mainForm.IsDisposed)
-                            {
-                                return;
-                            }
-
-                            logger?.LogDebug("Retrying fixed docking layout after {Reason}; next attempt {Attempt}/{MaxAttempts}",
-                                reason,
-                                dockRetryAttempts + 1,
-                                maxDockRetryAttempts);
-
-                            if (!ApplyFixedLayoutSafe() && dockRetryAttempts >= maxDockRetryAttempts)
-                            {
-                                ApplyEmergencyPanelLayout(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                            }
-                        }));
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.LogDebug(ex, "Unable to schedule docking layout retry");
-                    }
-                }
-
-                bool RequiresDockRegistration()
-                {
-                    if (hostControl.IsDisposed || leftDockPanel.IsDisposed || rightDockPanel.IsDisposed)
-                    {
-                        return false;
-                    }
-
-                    return leftDockPanel.Parent == null ||
-                           rightDockPanel.Parent == null ||
-                           ReferenceEquals(leftDockPanel.Parent, hostControl) ||
-                           ReferenceEquals(rightDockPanel.Parent, hostControl);
+                    logger?.LogError(ex, "Failed applying fixed docking layout");
+                    EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
+                    ApplyEmergencyPanelLayout(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
                 }
 
                 dockingManager.NewDockStateEndLoad += (_, _) =>
@@ -330,22 +254,16 @@ public static class DockingHostFactory
                         return;
                     }
 
-                    if (fixedLayoutInitialized && !RequiresDockRegistration())
+                    try
                     {
                         EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
-                        return;
                     }
-
-                    if (!ApplyFixedLayoutSafe())
+                    catch (Exception ex)
                     {
-                        ScheduleLayoutRetry("NewDockStateEndLoad");
+                        logger?.LogWarning(ex, "Failed stabilizing panel visibility after state load");
+                        EnsurePanelsVisible(hostControl, leftDockPanel, rightDockPanel, centralDocumentPanel, logger);
                     }
                 };
-
-                if (!ApplyFixedLayoutSafe())
-                {
-                    ScheduleLayoutRetry("InitialCreateDockingHost");
-                }
 
                 leftDockPanel.Refresh();
                 centralDocumentPanel.Refresh();
@@ -354,7 +272,7 @@ public static class DockingHostFactory
                 logger?.LogDebug("Docking panels created and docked (left, center, right) with empty containers");
                 activityRefreshTimer = null;
 
-                logger?.LogInformation("Docking layout initialized (Left=300px, Right=350px, Center=Fill) with dock/float/auto-hide enabled");
+                logger?.LogInformation("Docking layout initialized with adaptive sizing (dock/float/auto-hide enabled)");
 
                 mainForm.RegisterDockingResources(
                     dockingManager,
@@ -413,15 +331,15 @@ public static class DockingHostFactory
                 });
             }
 
-            ApplyEmergencyPanelLayout(dockingHostPanel, fallbackLeft, fallbackRight, fallbackCenter, logger);
+            ApplyEmergencyPanelLayout(hostControl, fallbackLeft, fallbackRight, fallbackCenter, logger);
 
             // Fallback: Return safe minimal instances to prevent downstream null refs
             var fallbackManager = new DockingManager
             {
                 HostForm = mainForm,
-                HostControl = dockingHostPanel, // CRITICAL: Ensure HostControl is set
+                HostControl = hostControl, // CRITICAL: Ensure HostControl is set
                 DockToFill = false,
-                ShowCaption = true,
+                ShowCaption = false,
                 PersistState = false
             };
 
@@ -446,6 +364,79 @@ public static class DockingHostFactory
                 null,
                 null
             );
+        }
+    }
+
+    private static ContainerControl ResolveDockingHostControl(MainForm mainForm, ContainerControl requestedHost, ILogger? logger)
+    {
+        if (!ReferenceEquals(requestedHost, mainForm))
+        {
+            EnsureHostPanelLayout(requestedHost);
+            return requestedHost;
+        }
+
+        UserControl? dockingClientPanel = null;
+        foreach (Control child in mainForm.Controls)
+        {
+            if (string.Equals(child.Name, DockingClientPanelName, StringComparison.Ordinal))
+            {
+                dockingClientPanel = child as UserControl;
+                break;
+            }
+        }
+
+        if (dockingClientPanel == null)
+        {
+            dockingClientPanel = new UserControl
+            {
+                Name = DockingClientPanelName,
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                TabStop = false
+            };
+
+            mainForm.Controls.Add(dockingClientPanel);
+            logger?.LogDebug("CreateDockingHost: Created dedicated docking client panel host");
+        }
+        else if (!ReferenceEquals(dockingClientPanel.Parent, mainForm))
+        {
+            dockingClientPanel.Parent?.Controls.Remove(dockingClientPanel);
+            mainForm.Controls.Add(dockingClientPanel);
+        }
+        else if (!mainForm.Controls.Contains(dockingClientPanel))
+        {
+            mainForm.Controls.Add(dockingClientPanel);
+        }
+
+        EnsureHostPanelLayout(dockingClientPanel);
+        dockingClientPanel.SendToBack();
+
+        // Keep top/bottom chrome (Ribbon/StatusBar) layered above DockingManager host.
+        foreach (Control child in mainForm.Controls)
+        {
+            if (ReferenceEquals(child, dockingClientPanel) || child.IsDisposed)
+            {
+                continue;
+            }
+
+            if (child.Dock == DockStyle.Top || child.Dock == DockStyle.Bottom)
+            {
+                child.BringToFront();
+            }
+        }
+
+        return dockingClientPanel;
+    }
+
+    private static void EnsureHostPanelLayout(Control hostControl)
+    {
+        hostControl.Dock = DockStyle.Fill;
+
+        if (hostControl is ScrollableControl scrollableControl)
+        {
+            scrollableControl.Margin = Padding.Empty;
+            scrollableControl.Padding = Padding.Empty;
         }
     }
 
@@ -521,13 +512,15 @@ public static class DockingHostFactory
                 hostControl.Controls.Add(centralDocumentPanel);
             }
 
+            var leftFallbackWidth = CalculateDockSize(hostControl, DockingStyle.Left, LeftDockMinimumWidth, 0.28f, 0.52f);
             leftDockPanel.Dock = DockStyle.Left;
-            leftDockPanel.Width = Math.Max(leftDockPanel.Width, 300);
-            leftDockPanel.MinimumSize = new Size(280, 0);
+            leftDockPanel.Width = Math.Max(leftDockPanel.Width, leftFallbackWidth);
+            leftDockPanel.MinimumSize = new Size(LeftDockMinimumWidth, 0);
 
+            var rightFallbackWidth = CalculateDockSize(hostControl, DockingStyle.Right, RightDockMinimumWidth, 0.30f, 0.56f);
             rightDockPanel.Dock = DockStyle.Right;
-            rightDockPanel.Width = Math.Max(rightDockPanel.Width, 350);
-            rightDockPanel.MinimumSize = new Size(300, 0);
+            rightDockPanel.Width = Math.Max(rightDockPanel.Width, rightFallbackWidth);
+            rightDockPanel.MinimumSize = new Size(RightDockMinimumWidth, 0);
 
             centralDocumentPanel.Dock = DockStyle.Fill;
 
@@ -574,8 +567,11 @@ public static class DockingHostFactory
             dockingManager.SetEnableDocking(rightDockPanel, true);
             dockingManager.SetEnableDocking(centralDocumentPanel, true);
 
-            var leftDocked = EnsureDockedControlRegistered(dockingManager, leftDockPanel, hostControl, DockingStyle.Left, 300, logger);
-            var rightDocked = EnsureDockedControlRegistered(dockingManager, rightDockPanel, hostControl, DockingStyle.Right, 350, logger);
+            var leftDockWidth = CalculateDockSize(hostControl, DockingStyle.Left, LeftDockMinimumWidth, 0.28f, 0.50f);
+            var rightDockWidth = CalculateDockSize(hostControl, DockingStyle.Right, RightDockMinimumWidth, 0.30f, 0.56f);
+
+            var leftDocked = EnsureDockedControlRegistered(dockingManager, leftDockPanel, hostControl, DockingStyle.Left, leftDockWidth, logger);
+            var rightDocked = EnsureDockedControlRegistered(dockingManager, rightDockPanel, hostControl, DockingStyle.Right, rightDockWidth, logger);
 
             if (!leftDocked || !rightDocked)
             {
@@ -583,14 +579,14 @@ public static class DockingHostFactory
             }
 
             dockingManager.SetDockLabel(leftDockPanel, "Navigation");
-            dockingManager.SetControlMinimumSize(leftDockPanel, new Size(280, 0));
-            leftDockPanel.MinimumSize = new Size(280, 0);
-            // Visibility set by ApplyFixedLayoutSafe after successful docking
+            dockingManager.SetControlMinimumSize(leftDockPanel, new Size(LeftDockMinimumWidth, 0));
+            dockingManager.SetControlSize(leftDockPanel, new Size(leftDockWidth, Math.Max(hostControl.ClientSize.Height, 1)));
+            // Visibility is applied after successful docking configuration
 
             dockingManager.SetDockLabel(rightDockPanel, "Activity");
-            dockingManager.SetControlMinimumSize(rightDockPanel, new Size(300, 0));
-            rightDockPanel.MinimumSize = new Size(300, 0);
-            // Visibility set by ApplyFixedLayoutSafe after successful docking
+            dockingManager.SetControlMinimumSize(rightDockPanel, new Size(RightDockMinimumWidth, 0));
+            dockingManager.SetControlSize(rightDockPanel, new Size(rightDockWidth, Math.Max(hostControl.ClientSize.Height, 1)));
+            // Visibility is applied after successful docking configuration
 
             centralDocumentPanel.Dock = DockStyle.Fill;
             if (!ReferenceEquals(centralDocumentPanel.Parent, hostControl))
@@ -599,7 +595,7 @@ public static class DockingHostFactory
             }
 
             centralDocumentPanel.BackColor = SystemColors.Window;
-            // Visibility set by ApplyFixedLayoutSafe after successful docking
+            // Visibility is applied after successful docking configuration
             centralDocumentPanel.SendToBack();
 
             logger?.LogInformation("Fixed docking panels configured safely after dock state load");
@@ -611,6 +607,27 @@ public static class DockingHostFactory
             hostControl.PerformLayout();
             hostControl.Invalidate(true);
         }
+    }
+
+    private static int CalculateDockSize(
+        Control host,
+        DockingStyle style,
+        int minimumSize,
+        float preferredRatio,
+        float maxRatio)
+    {
+        var extent = style is DockingStyle.Left or DockingStyle.Right
+            ? host.ClientSize.Width
+            : host.ClientSize.Height;
+
+        if (extent <= 0)
+        {
+            return minimumSize;
+        }
+
+        var preferredSize = (int)Math.Round(extent * preferredRatio);
+        var maxSize = Math.Max(minimumSize, (int)Math.Round(extent * maxRatio));
+        return Math.Clamp(preferredSize, minimumSize, maxSize);
     }
 
     private static bool EnsureDockedControlRegistered(
@@ -653,22 +670,6 @@ public static class DockingHostFactory
         });
 
         logger?.LogWarning("Panel {PanelName} had no children; added fallback placeholder {PlaceholderName}", panel.Name, placeholderName);
-    }
-
-    private static void TrySetDockingManagerBoolProperty(DockingManager dockingManager, string propertyName, bool value, ILogger? logger)
-    {
-        try
-        {
-            var property = dockingManager.GetType().GetProperty(propertyName);
-            if (property?.CanWrite == true && property.PropertyType == typeof(bool))
-            {
-                property.SetValue(dockingManager, value);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug(ex, "Failed setting DockingManager property {PropertyName}", propertyName);
-        }
     }
 
     private static Button CreateNavButton(string text, Action onClick)
@@ -723,7 +724,30 @@ public static class DockingHostFactory
                 dockingStyle = DockingStyle.Fill;
             }
 
-            dockingManager.DockControl(control, host, dockingStyle, size);
+            // CRITICAL: Ensure control has at least one child before docking to prevent DockHost paint crashes
+            if (control.Controls.Count == 0)
+            {
+                var placeholder = new Label
+                {
+                    Text = "",
+                    Dock = DockStyle.Fill,
+                    AutoSize = false
+                };
+                control.Controls.Add(placeholder);
+                logger?.LogDebug("Added placeholder control to {ControlName} before docking", control.Name);
+            }
+
+            // CRITICAL: Suspend layout on host control to prevent paint during docking operations
+            var hostControl = dockingManager.HostControl;
+            hostControl?.SuspendLayout();
+            try
+            {
+                dockingManager.DockControl(control, host, dockingStyle, size);
+            }
+            finally
+            {
+                hostControl?.ResumeLayout(performLayout: false);
+            }
             control.SafeInvoke(() => control.Visible = true);
 
             logger?.LogInformation("TryDockControl: Successfully docked {ControlName} to {HostName} with style {Style}",

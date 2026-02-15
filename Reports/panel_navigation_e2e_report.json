@@ -1,0 +1,145 @@
+{
+  "timestamp": "2026-02-14 16:27:21",
+  "panels_registered": 19,
+  "panels": [
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.AccountEditPanel",
+      "display_name": "Account Editor",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.ActivityLogPanel",
+      "display_name": "Activity Log",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel",
+      "display_name": "Analytics Hub",
+      "default_dock_style": "Right",
+      "group": "Reporting",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.AuditLogPanel",
+      "display_name": "Audit Log & Activity",
+      "default_dock_style": "Bottom",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.BudgetPanel",
+      "display_name": "Budget Management & Analysis",
+      "default_dock_style": "Right",
+      "group": "Financials",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.CustomersPanel",
+      "display_name": "Customers",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.FormHostPanel",
+      "display_name": "Dashboard",
+      "default_dock_style": "Top",
+      "group": "Core Navigation",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel",
+      "display_name": "Data Mapper",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel",
+      "display_name": "Department Summary",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.AccountsPanel",
+      "display_name": "Municipal Accounts",
+      "default_dock_style": "Left",
+      "group": "Financials",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel",
+      "display_name": "Proactive AI Insights",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.QuickBooksPanel",
+      "display_name": "QuickBooks",
+      "default_dock_style": "Right",
+      "group": "Tools",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel",
+      "display_name": "Recommended Monthly Charge",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.FormHostPanel",
+      "display_name": "Rates",
+      "default_dock_style": "Right",
+      "group": "Financials",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.ReportsPanel",
+      "display_name": "Reports",
+      "default_dock_style": "Right",
+      "group": "Reporting",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel",
+      "display_name": "Revenue Trends",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.SettingsPanel",
+      "display_name": "Settings",
+      "default_dock_style": "Right",
+      "group": "Tools",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.UtilityBillPanel",
+      "display_name": "Utility Bills",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    },
+    {
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.WarRoomPanel",
+      "display_name": "War Room",
+      "default_dock_style": "Right",
+      "group": "Views",
+      "verified_visible": false
+    }
+  ],
+  "summary": {
+    "total_panels": 19,
+    "verified_visible": 0,
+    "missing_from_ui": 19,
+    "groups_mapped": 5
+  }
+}

@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     public partial class MainForm
     {
-        #region Internal Methods for RibbonFactory
+        #region Internal Methods for Ribbon
 
         /// <summary>
         /// Shows a panel of specified type with the given name.
@@ -31,7 +31,7 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="panelName">Name identifier for the panel</param>
         public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
         {
-            ShowPanel<TPanel>(panelName, DockingStyle.Right);
+            ShowPanel<TPanel>(panelName, preferredStyle: DockingStyle.Right, allowFloating: true);
         }
 
         /// <summary>
@@ -44,32 +44,16 @@ namespace WileyWidget.WinForms.Forms
         /// <param name="dockingStyle">Docking style for the panel</param>
         public void ShowPanel<TPanel>(string panelName, DockingStyle dockingStyle) where TPanel : UserControl
         {
-            try
+            if (string.IsNullOrWhiteSpace(panelName))
             {
-                _logger?.LogDebug("[NAVIGATION] ShowPanel<{PanelType}> requested: Name={PanelName}, DockingStyle={DockingStyle}",
-                    typeof(TPanel).Name, panelName, dockingStyle);
-
-                if (string.IsNullOrWhiteSpace(panelName))
-                {
-                    _logger?.LogWarning("[NAVIGATION] Panel name is empty for type {PanelType}", typeof(TPanel).Name);
-                    return;
-                }
-
-                EnsurePanelNavigatorInitialized();
-
-                if (_panelNavigator == null)
-                {
-                    _logger?.LogError("[NAVIGATION] PanelNavigationService is null - cannot show panel {PanelName}", panelName);
-                    return;
-                }
-
-                _panelNavigator.ShowPanel<TPanel>(panelName, dockingStyle, allowFloating: true);
-                _logger?.LogInformation("[NAVIGATION] Successfully navigated to {PanelType}: {PanelName}", typeof(TPanel).Name, panelName);
+                _logger?.LogWarning("[NAVIGATION] Panel name is empty for type {PanelType}", typeof(TPanel).Name);
+                return;
             }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "[NAVIGATION] Failed to show panel {PanelType}: {PanelName}", typeof(TPanel).Name, panelName);
-            }
+
+            _logger?.LogDebug("[NAVIGATION] Routing ShowPanel<{PanelType}> through ExecuteDockedNavigation path: Name={PanelName}, DockingStyle={DockingStyle}",
+                typeof(TPanel).Name, panelName, dockingStyle);
+
+            ShowPanel<TPanel>(panelName, preferredStyle: dockingStyle, allowFloating: true);
         }
 
         /// <summary>

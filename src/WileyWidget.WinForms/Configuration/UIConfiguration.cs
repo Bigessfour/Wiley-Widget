@@ -111,6 +111,20 @@ public sealed record UIConfiguration
             return bool.TryParse(rawValue, out var parsedValue) ? parsedValue : defaultValue;
         }
 
+        static bool GetBooleanWithAliases(IConfiguration config, bool defaultValue, params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                var rawValue = config[key];
+                if (bool.TryParse(rawValue, out var parsedValue))
+                {
+                    return parsedValue;
+                }
+            }
+
+            return defaultValue;
+        }
+
         static int GetInteger(IConfiguration config, string key, int defaultValue)
         {
             var rawValue = config[key];
@@ -127,7 +141,7 @@ public sealed record UIConfiguration
 
         return new UIConfiguration
         {
-            UseSyncfusionDocking = GetBoolean(configuration, "UI:UseSyncfusionDocking", true),
+            UseSyncfusionDocking = GetBooleanWithAliases(configuration, true, "UI:UseSyncfusionDocking", "UI:UseDockingManager"),
             IsUiTestHarness = isTestHarness,
             DefaultTheme = configuration.GetValue<string?>("UI:DefaultTheme") ?? "Office2019Colorful",
             ShowRibbon = GetBoolean(configuration, "UI:ShowRibbon", !isTestHarness),

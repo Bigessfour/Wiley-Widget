@@ -1,0 +1,1234 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Syncfusion.Scripting.Windows</name>
+    </assembly>
+    <members>
+        <member name="M:Syncfusion.Runtime.InteropServices.NativeMethods.Util.GetPInvokeStringLength(System.String)">
+            <summary>
+            omputes the string size that should be passed to a typical Win32 call.
+            his will be the character count under NT, and the ubyte count for Win95.
+            </summary>
+            <param EntryPoint="s">
+            he string to get the size of.
+            </param>
+            <returns>
+            he count of characters or bytes, depending on what the pinvoke
+            all wants
+            </returns>
+        </member>
+        <member name="M:Syncfusion.Runtime.InteropServices.NativeMethods.GetUserDefaultLCID">
+            <summary>
+            Interop call to get the LCID of the current culture.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.ErrorDescriptor">
+            <summary>
+            Represents item for error listBox
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ErrorDescriptor.m_line">
+            <summary>
+            Line number where occuring error
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ErrorDescriptor.m_col">
+            <summary>
+            Column where occuring error
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ErrorDescriptor.m_errMessage">
+            <summary>
+            The error message
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ErrorDescriptor.#ctor">
+            <summary>
+            Disabled default constructor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ErrorDescriptor.#ctor(System.String,System.Int32,System.Int32)">
+            <summary>
+            Initialized class properties.
+            </summary>
+            <param name="errMessage"></param>
+            <param name="line"></param>
+            <param name="col"></param>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ErrorDescriptor.Message">
+            <summary>
+            Error Message
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ErrorDescriptor.Line">
+            <summary>
+            Error line
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ErrorDescriptor.Column">
+            <summary>
+            Error colum number
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ErrorDescriptor.ToString">
+            <summary>
+            Returns the error message associated with this <see cref="T:Syncfusion.Scripting.Design.ErrorDescriptor"/>.
+            </summary>
+            <returns>A string containing the error message.</returns>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs">
+            <summary>
+            Provides data for a tree node double-click event.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs.m_name">
+            <summary>
+            The node name.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs.m_tag">
+            <summary>
+            The tag container which attached to node.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs.NodeName">
+            <summary>
+            Gets node name.
+            </summary>
+            <value>The node name.</value>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs.TagContainer">
+            <summary>
+            Gets node tag container.
+            </summary>
+            <value>The tag container associated with the node.</value>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs.#ctor">
+            <summary>
+            Disabled default constructor
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.NodeDoubleClickEventArgs.#ctor(System.String,Syncfusion.Scripting.Design.TagContainer)">
+            <summary>
+            Initializes a new instance of the NodeDoubleClickEventArgs class.
+            </summary>
+            <param name="name">The name of the node that was double-clicked.</param>
+            <param name="tag">The TagContainer associated with the node.</param>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.NodeDoubleClickEventHandler">
+            <summary>
+            Represents the method that will handle a node double-click event.
+            </summary>
+            <param name="sender">The source of the event.</param>
+            <param name="e">An object that contains the event data.</param>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.TreeNodeType">
+            <summary>
+            Indicated a node type which must be created.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.TreeNodeType.Object">
+            <summary>
+            For creating "object" type of tree node.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.TreeNodeType.Property">
+            <summary>
+            For creating "property" type of tree node.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.TreeNodeType.Item">
+            <summary>
+            For creating "item" type of tree node.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.TreeNodeType.Event">
+            <summary>
+            For creating "event" type of tree node.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.TreeNodeType.EventHandler">
+            <summary>
+            Already created event handler.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.TagContainer">
+            <summary>
+            Represents metadata associated with a tree node in the script editor.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.TagContainer.Property">
+            <summary>
+            Gets the property or value associated with the node.
+            </summary>
+            <value>The property or value associated with the node.</value>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.TagContainer.EventInfo">
+            <summary>
+            Gets the event metadata associated with the node.
+            </summary>
+            <value>The event metadata for the node.</value>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.TagContainer.Name">
+            <summary>
+            Gets the display name of the node.
+            </summary>
+            <value>The display name.</value>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.TagContainer.NodeType">
+            <summary>
+            Gets the type of the node.
+            </summary>
+            <value>The node type.</value>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.TagContainer.#ctor(System.Object,System.String,Syncfusion.Scripting.Design.TreeNodeType)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syncfusion.Scripting.Design.TagContainer"/> class for non-event nodes.
+            </summary>
+            <param name="prop">The property or object associated with the node.</param>
+            <param name="name">The display name of the node.</param>
+            <param name="nodeType">The type of the node. Must not be <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.Event"/> or <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.EventHandler"/>.</param>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="nodeType"/> is <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.Event"/> or <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.EventHandler"/> for this constructor.</exception>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.TagContainer.#ctor(System.Reflection.EventInfo,System.String,Syncfusion.Scripting.Design.TreeNodeType)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syncfusion.Scripting.Design.TagContainer"/> class for event-related nodes.
+            </summary>
+            <param name="evInfo">The <see cref="P:Syncfusion.Scripting.Design.TagContainer.EventInfo"/> describing the event.</param>
+            <param name="name">The display name of the node.</param>
+            <param name="nodeType">The type of the node. Must be <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.Event"/> or <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.EventHandler"/>.</param>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="nodeType"/> is not <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.Event"/> or <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.EventHandler"/> for this constructor.</exception>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.TagEventContainer">
+            <summary>
+            Represents a tag container specialized for event-related nodes and handlers.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.TagEventContainer.ClassName">
+            <summary>
+            Gets or sets the fully qualified class name that contains the event handler.
+            </summary>
+            <value>The fully qualified class name that contains the event handler.</value>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.TagEventContainer.#ctor(System.Reflection.EventInfo,System.String,Syncfusion.Scripting.Design.TreeNodeType)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syncfusion.Scripting.Design.TagEventContainer"/> class.
+            </summary>
+            <param name="evInfo">The <see cref="T:System.Reflection.EventInfo"/> describing the event.</param>
+            <param name="name">The display name of the node.</param>
+            <param name="nodeType">The type of the node. Must be <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.Event"/> or <see cref="F:Syncfusion.Scripting.Design.TreeNodeType.EventHandler"/>.</param>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.AssemblyTypeMap">
+            <summary>
+            Provides a cache for resolving <see cref="T:System.Type"/> instances from loaded assemblies by fully qualified type name.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.AssemblyTypeMap.GetType(System.String)">
+            <summary>
+            Gets the <see cref="T:System.Type"/> for the specified fully qualified type name by probing loaded assemblies and caching the result.
+            </summary>
+            <param name="typename">The fully qualified type name to resolve.</param>
+            <returns>The resolved <see cref="T:System.Type"/>, or <c>null</c> if the type cannot be found.</returns>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.ScriptEditControl">
+            <summary>
+            Script Engine control. Support writing multi-language script.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.DEF_HEIGHT_MIN">
+            <summary>
+            Minimal height for hiding box.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.DEF_WIDTH_MIN">
+            <summary>
+            Minimal width for hiding box.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.DEF_HEIGHT_ERRORMESSWIND">
+            <summary>
+            Default height for expand ErrorMessage window.
+            </summary>
+        </member>
+        <member name="E:Syncfusion.Scripting.Design.ScriptEditControl.ScriptChanged">
+            <summary>
+            Send when script is changed.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.nameSpaceDefine">
+            <summary>
+            Defines the namespace for the generated script code.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.assemblyDirectives">
+            <summary>
+            Holds assembly directive text (e.g., using/imports) for the script.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.globalCode">
+            <summary>
+            Global code snippet injected into the generated script.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.strScriptStart">
+            <summary>
+            Script initialization code inserted into the wrapper’s start section.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.strScriptStop">
+            <summary>
+            Script cleanup code inserted into the wrapper’s stop section.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.htTypeMap">
+            <summary>
+            Cache for type lookups by name across loaded assemblies.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.scriptManager">
+            <summary>
+            Scripting manager responsible for compiling and running scripts.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.bExternalCompile">
+            <summary>
+            Indicates whether compilation is delegated to an external manager.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.bExternalRun">
+            <summary>
+            Indicates whether execution is delegated to an external manager.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditControl.bPendingSave">
+            <summary>
+            Tracks whether the editor has unsaved changes.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.ScriptName">
+            <summary>
+            Gets or sets the display name of the script.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.ScriptLanguage">
+            <summary>
+            Gets or sets the scripting language used by the editor.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.BaseClass">
+            <summary>
+            Gets the base class type used when generating wrapper code for the script.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.RootMoniker">
+            <summary>
+            Gets or sets the root moniker that uniquely identifies the script instance.
+            </summary>
+            <summary>
+            Gets or sets the unique root moniker used to identify the script instance.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.RootNamespace">
+            <summary>
+            Gets or sets the root namespace to use in generated wrapper code.
+            </summary>
+            <summary>
+            Gets or sets the root namespace used in generated wrapper code.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.EntryPoint">
+            <summary>
+            Gets or sets the entry point method name to invoke when running the script.
+            </summary>
+            <summary>
+            Gets or sets the entry point method name to invoke when running the script.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.ScriptText">
+            <summary>
+            Gets or sets script source code.
+            </summary>
+            <summary>
+            Gets or sets the current script source code displayed in the editor.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.Script">
+            <summary>
+            Gets or sets the Script object that contains the source and its metadata.
+            </summary>
+            <summary>
+            Gets or sets the <see cref="P:Syncfusion.Scripting.Design.ScriptEditControl.Script"/> object that encapsulates the source code and metadata.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.SelectedItem">
+            <summary>
+            Gets or sets the currently selected scriptable object in the object browser.
+            </summary>
+            <summary>
+            Gets or sets the currently selected object in the object browser.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.AssemblyReferences">
+            <summary>
+            Gets the collection of assembly reference paths configured for the script.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.EnableExternalCompile">
+            <summary>
+            Indicates if the ScriptingManager is being used for external compilation of the script.
+            </summary>
+            <summary>
+            Gets or sets a value indicating whether the editor will delegate compilation to an external <see cref="P:Syncfusion.Scripting.Design.ScriptEditControl.ScriptingManager"/> instance.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.EnableExternalRun">
+            <summary>
+            Gets or sets a value indicating whether running the script is handled externally.
+            Enabling this option also enables external compilation.
+            </summary>
+            <summary>
+            Gets or sets a value indicating whether the editor will delegate script execution to an external <see cref="P:Syncfusion.Scripting.Design.ScriptEditControl.ScriptingManager"/> instance.
+            Enabling this option also enables external compilation.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.ScriptingManager">
+            <summary>
+            Gets or sets the scripting manager used to compile and execute scripts.
+            </summary>
+            <summary>
+            Gets or sets the scripting manager used to compile and execute the script.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditControl.PendingSave">
+            <summary>
+            Gets a value indicating whether the editor contains unsaved changes.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.#ctor">
+            <summary>
+            Provides a user control host for editing multi-language scripts with object browser integration.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.Dispose(System.Boolean)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Syncfusion.Scripting.Design.ScriptEditControl"/> class.
+            </summary>
+            <summary>
+            Releases unmanaged resources and optionally releases managed resources.
+            </summary>
+            <param name="disposing">True to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.InitializeComponent">
+            <summary>
+            Initializes the component and its child controls.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.SetCompileButtonsState">
+            <summary>
+            Updates the enabled state of the compile-related buttons based on the current configuration.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.AddScriptableObject(Syncfusion.Scripting.ScriptObject)">
+            <summary>
+            Adds a scriptable object to the object browser and exposes it to the script.
+            </summary>
+            <param name="scriptableitem">The object to expose to the script.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="scriptableitem"/> is null.</exception>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.RemoveScriptableObject(Syncfusion.Scripting.ScriptObject)">
+            <summary>
+            Removes a previously added scriptable object from the editor.
+            </summary>
+            <param name="scriptableitem">The object to remove.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.New">
+            <summary>
+            Creates a new blank script document in the editor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.GetFileDialogFilter(Syncfusion.Scripting.ScriptLanguages)">
+            <summary>
+            Gets a file dialog filter string that matches the specified scripting language.
+            </summary>
+            <param name="language">The scripting language.</param>
+            <returns>A filter string for selecting files of that language.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.SaveToFile">
+            <summary>
+            Saves the current script to disk as source code or as an Essential Suite Scripting (.ess) file.
+            </summary>
+            <summary>
+            Saves the script to disk either as source code or as an Essential Suite scripting file.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.OpenFile">
+            <summary>
+            Opens a script file from disk and loads it into the editor.
+            </summary>
+            <summary>
+            Opens a script file from disk and loads it into the editor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.CompileScript">
+            <summary>
+            Compiles the current script using the configured scripting manager.
+            </summary>
+            <returns>True if compilation succeeded; otherwise, false.</returns>
+            <summary>
+            Compiles the current script using the configured scripting manager.
+            </summary>
+            <returns><c>true</c> if compilation succeeds; otherwise, <c>false</c>.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.RunScript">
+            <summary>
+            Runs the compiled script using the external scripting manager.
+            </summary>
+            <summary>
+            Executes the compiled script using the configured scripting manager.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.StopScript">
+            <summary>
+            Stops the running script and resets the scripting engine.
+            </summary>
+            <summary>
+            Stops the running script and resets the scripting engine.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.scriptingManager_CompileError(System.Object,Syncfusion.Scripting.VsaErrorEventArgs)">
+            <summary>
+            Handles compile errors raised by the scripting manager and populates the error list.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="eventargs">The error data provided by the scripting manager.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.toolOperations_ButtonClick(System.Object,System.Windows.Forms.ToolBarButtonClickEventArgs)">
+            <summary>
+            Handles toolbar button clicks and executes the associated command.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.miSaveScript_Click(System.Object,System.EventArgs)">
+            <summary>
+            Saves the current script when the Save Script menu item is selected.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.miSaveScriptAs_Click(System.Object,System.EventArgs)">
+            <summary>
+            Prompts the user to save the current script under a different name.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.cbLanguage_SelectedIndexChanged(System.Object,System.EventArgs)">
+            <summary>
+            Handles changes to the selected scripting language.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.comboObjects_SelectedIndexChanged(System.Object,System.EventArgs)">
+            <summary>
+            Updates the selected object in the browser when a new item is chosen from the combo box.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.dockingManager1_DockVisibilityChanged(System.Object,Syncfusion.Windows.Forms.Tools.DockVisibilityChangedEventArgs)">
+            <summary>
+            Synchronizes toolbar toggle states when dock visibility changes.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.listErrorMessages_DoubleClick(System.Object,System.EventArgs)">
+            <summary>
+            Navigates the editor to the line and column referenced by the selected error message.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.mniShowTooltip_Click(System.Object,System.EventArgs)">
+            <summary>
+            Toggles whether toolbar button tooltips and text are displayed.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.cntrlEdit_TextChanged(System.Object,System.EventArgs)">
+            <summary>
+            Marks the document as dirty when the editor text changes and raises the <see cref="E:Syncfusion.Scripting.Design.ScriptEditControl.ScriptChanged"/> event.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.ObjectBrowser_NodeDoubleClick(System.Object,Syncfusion.Scripting.Design.NodeDoubleClickEventArgs)">
+            <summary>
+            Handles double-clicks in the object browser to insert event handler code.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">Information about the double-clicked node.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.OnLanguageChange(Syncfusion.Scripting.ScriptLanguages)">
+            <summary>
+            Called when the scripting language changes to update the editor configuration and defaults.
+            </summary>
+            <param name="language">The new scripting language.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.OnScriptChange">
+            <summary>
+            Called when the script text changes to synchronize the editor view.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.SaveCurrentScript">
+            <summary>
+            Saved current script from EditControl.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.UpdateEdit">
+            <summary>
+            Copy script code to Edit control.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.SetConfiguration(Syncfusion.Scripting.ScriptLanguages)">
+            <summary>
+            Loads the specified configuration settings to the Edit Control.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.AddAssemblyReference(System.String)">
+            <summary>
+            Adds the assembly to the list of referenced assemblies.
+            </summary>
+            <param name="assembly">New assembly to reference.</param>
+            <exception cref="T:System.ArgumentException">
+            When assembly is null.
+            </exception>	
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.ClearAssemblyReferences">
+            <summary>
+            Removes all assembly references from the list.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.btnAddAssemblyRef_Click(System.Object,System.EventArgs)">
+            <summary>
+            Prompts the user to select an assembly reference and adds it to the list.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.btnRemoveAssemblyRef_Click(System.Object,System.EventArgs)">
+            <summary>
+            Removes the currently selected assembly reference from the list.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.btnMoveAssemblyRefUp_Click(System.Object,System.EventArgs)">
+            <summary>
+            Moves the selected assembly reference up one position in the list.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.btnMoveAssemblyRefDown_Click(System.Object,System.EventArgs)">
+            <summary>
+            Moves the selected assembly reference down one position in the list.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.folderBrowser1_BrowseCallback(System.Object,Syncfusion.Windows.Forms.FolderBrowserCallbackEventArgs)">
+            <summary>
+            Renames the folder browser dialog to indicate an assembly reference is being selected.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.tbGeneralPanel_TextChanged(System.Object,System.EventArgs)">
+            <summary>
+            Marks the document as dirty when a general panel textbox changes.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.tbScriptName_TextChanged(System.Object,System.EventArgs)">
+            <summary>
+            Marks the document as dirty when the script name text box changes.
+            </summary>
+            <param name="sender">The event source.</param>
+            <param name="e">The event data.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.InitializeScriptEditor(Syncfusion.Scripting.ScriptingManager)">
+            <summary>
+            Associates the editor with the specified scripting manager and loads its script.
+            </summary>
+            <param name="scriptmanager">The scripting manager to use.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.InitializeScriptEditor(Syncfusion.Scripting.Script)">
+            <summary>
+            Loads the specified script into the editor.
+            </summary>
+            <param name="script">The script to load.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.UpdateScript(Syncfusion.Scripting.Script)">
+            <summary>
+            Updates the provided script instance with the current values from the editor.
+            </summary>
+            <param name="script">The script to update.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditControl.GetButton(System.Windows.Forms.ToolBarButtonClickEventArgs)">
+            <summary>
+            Returns the appropriate button element.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.ScriptObjectBrowser">
+            <summary>
+            Displays a browsable object tree (objects, properties, items, and events) and supports drag-and-drop and event handler creation.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.DEF_HEIGHT_MIN">
+            <summary>
+            Minimal height for hiding box.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.DEF_NONE">
+            <summary>
+            Placeholder text used for nodes that have not yet been populated.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.selectedObject">
+            <summary>
+            The object which will be browsed in TreeView
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.m_language">
+            <summary>
+            Language for create drag-and-drop string.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.m_dragDropX">
+            <summary>
+            The x coordinate of mouse cursor
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.m_dragDropY">
+            <summary>
+            The y coordinate of mouse cursor
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.m_isDragDropStart">
+            <summary>
+            Indicated that drag-and-drop process began.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptObjectBrowser.m_isDragDropEnd">
+            <summary>
+            Indicated that drag-and-drop process finished.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptObjectBrowser.SelectedObject">
+            <summary>
+            Displays a browsable object tree (objects, properties, items, and events) and supports drag-and-drop and event handler creation.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptObjectBrowser.BrowserTreeView">
+            <summary>
+            Gets the underlying TreeView used to display browsable objects and members.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptObjectBrowser.ScriptLanguage">
+            <summary>
+            Gets or sets the current scripting language used for drag-and-drop string generation.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptObjectBrowser.ScriptSite">
+            <summary>
+            Gets or sets the script site used to resolve event source instances.
+            </summary>
+        </member>
+        <member name="E:Syncfusion.Scripting.Design.ScriptObjectBrowser.NodeDoubleClick">
+            <summary>
+            Send when user is double click by tree node.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.#ctor">
+            <summary>
+            Initializes a new instance of the ScriptObjectBrowser control.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.CreateTreeNode(System.String,Syncfusion.Scripting.Design.TreeNodeType,System.Object,System.String)">
+            <summary>
+            Create Tree node with Tag information
+            </summary>
+            <param name="label">Label of TreeNode</param>
+            <param name="nodeType">Type of node</param>
+            <param name="obj">value of item</param>
+            <param name="name">Text used for Drag and Drop names creation</param>
+            <returns></returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.DragNodeToString(System.Windows.Forms.TreeNode)">
+            <summary>
+            Gets the property path represented by a tree node, e.g., Root.Property["Item"].
+            </summary>
+            <param name="node">The node for which to build the path.</param>
+            <returns>The property path represented by the node.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.OnNodeDoubleClick">
+            <summary>
+            Raises the NodeDoubleClick event for the currently selected node when appropriate.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.treeMain_Click(System.Object,System.EventArgs)">
+            <summary>
+            Shows the context menu for creating an event handler when the user right-clicks an event node.
+            </summary>
+            <param name="sender">The source of the event.</param>
+            <param name="e">Event arguments.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.treeMain_DoubleClick(System.Object,System.EventArgs)">
+            <summary>
+            Handles double-clicks on a tree node and raises NodeDoubleClick if applicable.
+            </summary>
+            <param name="sender">The source of the event.</param>
+            <param name="e">Event arguments.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.menuItem1_Click(System.Object,System.EventArgs)">
+            <summary>
+            Creates an event handler for the selected event node when the context menu item is clicked.
+            </summary>
+            <param name="sender">The source of the event.</param>
+            <param name="e">Event arguments.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.treeMain_BeforeExpand(System.Object,System.Windows.Forms.TreeViewCancelEventArgs)">
+            <summary>
+            Lazily populates a node's children when it is expanded.
+            </summary>
+            <param name="sender">The source of the event.</param>
+            <param name="e">Provides data for TreeView before-expand operations.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.BuildTreeNodeItem(System.Windows.Forms.TreeNode,System.Object)">
+            <summary>
+            Populates the specified node with properties, collection items, and events from the given value.
+            </summary>
+            <param name="node">The tree node to populate.</param>
+            <param name="value">The object whose members are used to build the tree.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.BuildItemsCollection(System.Windows.Forms.TreeNode,System.Collections.ICollection)">
+            <summary>
+            Adds collection items as child nodes if the collection is marked as script-browsable.
+            </summary>
+            <param name="node">The parent tree node.</param>
+            <param name="collection">The collection to enumerate.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.BuildPropertiesList(System.Windows.Forms.TreeNode,System.Reflection.PropertyInfo[],System.Object)">
+            <summary>
+            Adds properties that are script-browsable as child nodes of the specified node.
+            </summary>
+            <param name="node">The parent node.</param>
+            <param name="properties">The list of properties to inspect.</param>
+            <param name="value">The object instance whose properties are evaluated.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.BuildEventsList(System.Windows.Forms.TreeNode,System.Reflection.EventInfo[])">
+            <summary>
+            Adds event nodes for events that are script-browsable.
+            </summary>
+            <param name="node">The parent node.</param>
+            <param name="events">The list of events to add.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.IsScriptBrowsable(System.Reflection.MemberInfo)">
+            <summary>
+            Determines whether the specified member is marked with ScriptBrowsableAttribute.
+            </summary>
+            <param name="type">The member to inspect.</param>
+            <returns>True if the member has ScriptBrowsableAttribute; otherwise, false.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.IsScriptBrowsable(System.Reflection.MemberInfo,Syncfusion.Scripting.ScriptBrowsableAttribute[]@)">
+            <summary>
+            Determines whether the specified member is marked with ScriptBrowsableAttribute and returns the attribute(s).
+            </summary>
+            <param name="type">The member to inspect.</param>
+            <param name="attr">When this method returns, contains the retrieved ScriptBrowsableAttribute array, if present.</param>
+            <returns>True if the attribute is present; otherwise, false.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.IsBrowsableCollection(System.Reflection.MemberInfo)">
+            <summary>
+            Determines whether the specified member is a script-browsable collection.
+            </summary>
+            <param name="type">The member to inspect.</param>
+            <returns>True if the member is a collection marked with ScriptBrowsableAttribute and PropertyType.Collection; otherwise, false.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.treeMain_MouseDown(System.Object,System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            Called when mouse button will be pressed. Mark a start of drag-and-drop process.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.treeMain_MouseUp(System.Object,System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            Called when mouse button will be released. Break the drag-and-drop process.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptObjectBrowser.treeMain_MouseMove(System.Object,System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            Called when mouse will be move. Run drag-and-drop process.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.ScriptWrapper">
+            <summary>
+            Provides helpers to wrap and unwrap user scripts with language-specific boilerplate, namespaces, using/import directives, and event handler wiring.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_CLASS_NAME">
+            <summary>
+            This construction must be replaced for real class name
+            when class wraps user script.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_OBJECT_NAME">
+            <summary>
+            This construction must be replaced for real object name
+            when class wraps user script.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_EVENT_NAME">
+            <summary>
+            This construction must be replaced for real event name
+            when class wraps user script.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_CS_CLASS_HEADER">
+            <summary>
+            Class header for CSharp.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_CS_CLASS_FOOTER">
+            <summary>
+            Class footer for CSharp.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_VB_CLASS_HEADER">
+            <summary>
+            Class header for Visual Basic Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_VB_CLASS_FOOTER">
+            <summary>
+            Class footer for Visual Basic Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_JS_CLASS_HEADER">
+            <summary>
+            Class header for Java Script Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_JS_CLASS_FOOTER">
+            <summary>
+            Class footer for Java Script Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_CS_USING">
+            <summary>
+            Using directive for CSharp.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_VB_USING">
+            <summary>
+            Using directive for Visual Basic Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_JS_USING">
+            <summary>
+            Using directive for Java Script Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_CS_USINGDELIM">
+            <summary>
+            Delimeter between using directives in CSharp.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_VB_USINGDELIM">
+            <summary>
+            Delimeter between using directives in Visual Basic Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_JS_USINGDELIM">
+            <summary>
+            Delimeter between using directives in Java Script Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_CS_INHERITSDELIM">
+            <summary>
+            Delimiter before inherited class.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_VB_INHERITSDELIM">
+            <summary>
+            Delimiter before inherited class in Visual Basic Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_JS_INHERITSDELIM">
+            <summary>
+            Delimiter before inherited class in Java Script Net.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptWrapper.DEF_GLOBAL_NAME">
+            <summary>
+            Name of the global class for accessing to global objects.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetWrappedScript(Syncfusion.Scripting.ScriptLanguages,System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Wraps plain script code into a full compilable unit for the specified language, including using/imports, namespace, and class wrapper.
+            </summary>
+            <param name="language">Target script language.</param>
+            <param name="script">Raw script source to wrap.</param>
+            <param name="namespacedirective">Optional namespace name to wrap the class in.</param>
+            <param name="directives">Prepend using/import directives.</param>
+            <param name="globalcode">Additional global code to append after the class.</param>
+            <param name="classname">Class name placeholder to substitute.</param>
+            <param name="baseclassname">Base class name (currently unused).</param>
+            <returns>Wrapped, compilable script text.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetUnwrappedScript(Syncfusion.Scripting.ScriptLanguages,System.String,System.String@,System.String@,System.String@,System.String,System.String)">
+            <summary>
+            Extracts raw script from a wrapped unit, returning the inner class body and separating namespace, directives, and global code.
+            </summary>
+            <param name="language">The script language.</param>
+            <param name="script">The full wrapped code.</param>
+            <param name="namespacedirective">Outputs the detected namespace name.</param>
+            <param name="directives">Outputs collected using/import directives.</param>
+            <param name="globalcode">Outputs remaining code outside the class (if any).</param>
+            <param name="classname">The class name used to detect the wrapper.</param>
+            <param name="baseclassname">The base class name (currently unused).</param>
+            <returns>The unwrapped inner script body.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetEventHandlerScriptByType(Syncfusion.Scripting.ScriptLanguages,System.String,System.Reflection.EventInfo)">
+            <summary>
+            Builds an event handler method signature for the event specified by reflection metadata.
+            </summary>
+            <param name="language">The target script language.</param>
+            <param name="classname">The class name hosting the handler.</param>
+            <param name="evInfo">The event to create a handler for.</param>
+            <returns>Handler code for the given language.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetEventHandlerScript(Syncfusion.Scripting.ScriptLanguages,System.String,System.String,System.String)">
+            <summary>
+            Builds an event handler method for a known event and argument type.
+            </summary>
+            <param name="language">The target script language.</param>
+            <param name="classname">The class name hosting the handler.</param>
+            <param name="eventname">The event name.</param>
+            <param name="argsType">The event args type name.</param>
+            <returns>Handler code for the given language.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetEventSubscriberScript(Syncfusion.Scripting.ScriptLanguages,System.String,System.String,System.String,System.Reflection.EventInfo)">
+            <summary>
+            Builds subscription code that wires the handler to the event.
+            </summary>
+            <param name="language">The target script language.</param>
+            <param name="nmespace">The namespace containing the Global class for C#.</param>
+            <param name="scriptclass">The wrapper class name.</param>
+            <param name="classname">The event source class name.</param>
+            <param name="evinfo">The event metadata.</param>
+            <returns>Subscription code for the given language.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetEventUnsubscriberScript(Syncfusion.Scripting.ScriptLanguages,System.String,System.String,System.String,System.Reflection.EventInfo)">
+            <summary>
+            Builds unsubscription code that detaches the handler from the event.
+            </summary>
+            <param name="language">The target script language.</param>
+            <param name="nmespace">The namespace containing the Global class for C#.</param>
+            <param name="scriptclass">The wrapper class name.</param>
+            <param name="classname">The event source class name.</param>
+            <param name="evinfo">The event metadata.</param>
+            <returns>Unsubscription code for the given language.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.AddEventSubscriptionToScript(Syncfusion.Scripting.ScriptLanguages,System.String,System.String,System.String)">
+            <summary>
+            Inserts event subscription code into a method body; creates the method if it does not exist.
+            </summary>
+            <param name="language">The target language.</param>
+            <param name="scriptcode">The full script code to modify.</param>
+            <param name="methodname">The method name where the subscription will be inserted.</param>
+            <param name="eventscript">The subscription code to insert.</param>
+            <returns>The modified script code.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetNewMethodScript(Syncfusion.Scripting.ScriptLanguages,System.String)">
+            <summary>
+            Builds an empty method for the specified language.
+            </summary>
+            <param name="language">The target language.</param>
+            <param name="methodname">The method name.</param>
+            <returns>Empty method text for the given language.</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptWrapper.GetLanguageKeywords(Syncfusion.Scripting.ScriptLanguages,System.String@,System.String@,System.String@,System.String@,System.String@)">
+            <summary>
+            Returns language-specific keywords and delimiters used when wrapping code.
+            </summary>
+            <param name="language">The target language.</param>
+            <param name="usingWord">Outputs the using/import keyword.</param>
+            <param name="usingDelimiter">Outputs the delimiter used to separate imports.</param>
+            <param name="classHeader">Outputs the class header template.</param>
+            <param name="classFooter">Outputs the class footer template.</param>
+            <param name="inheritDelimiter">Outputs the inherits/extends delimiter.</param>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.ScriptEditForm">
+            <summary>
+            Hosts the ScriptEditControl in a Windows Form and provides IScriptEditor integration.
+            </summary>
+        </member>
+        <member name="F:Syncfusion.Scripting.Design.ScriptEditForm.components">
+            <summary>
+            Required designer variable.
+            </summary>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditForm.ScriptEditControl">
+            <summary>
+            Gets the embedded script editor control.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditForm.#ctor">
+            <summary>
+            Initializes a new instance of the ScriptEditForm class.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditForm.Dispose(System.Boolean)">
+            <summary>
+            Clean up any resources being used.
+            </summary>
+            <summary>
+            Releases unmanaged resources and optionally releases managed resources.
+            </summary>
+            <param name="disposing">True to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditForm.InitializeComponent">
+            <summary>
+            Required method for Designer support - do not modify
+            the contents of this method with the code editor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditForm.UpdateEditor(Syncfusion.Scripting.Script)">
+            <summary>
+            Loads the specified script into the editor UI.
+            </summary>
+            <param name="script">The script to load.</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditForm.UpdateScript(Syncfusion.Scripting.Script)">
+            <summary>
+            Updates the provided script instance with the current values from the editor UI.
+            </summary>
+            <param name="script">The script instance to update.</param>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.ScriptEditForm.Form">
+            <summary>
+            Gets the underlying Windows Form for this editor.
+            </summary>
+            <value>The current form instance.</value>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptEditForm.SetManager(Syncfusion.Scripting.ScriptingManager)">
+            <summary>
+            Associates a scripting manager with the embedded editor.
+            </summary>
+            <param name="manager">The scripting manager to use.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="manager"/> is null.</exception>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.IScriptEditor">
+            <summary>
+            Interface to script editors.
+            </summary>
+            <remarks>
+            <para>
+            This interface is implemented by classes that edit script objects.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.IScriptEditor.UpdateEditor(Syncfusion.Scripting.Script)">
+            <summary>
+            Loads the data from the script into the editor.
+            </summary>
+            <param name="script">Script to load into the editor</param>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.IScriptEditor.UpdateScript(Syncfusion.Scripting.Script)">
+            <summary>
+            Updates the script object with the current values in the editor.
+            </summary>
+            <param name="script">Script to update</param>
+        </member>
+        <member name="P:Syncfusion.Scripting.Design.IScriptEditor.Form">
+            <summary>
+            The Form object that implements the user interface.
+            </summary>
+        </member>
+        <member name="T:Syncfusion.Scripting.Design.ScriptUITypeEditor">
+            <summary>
+            Implements a UITypeEditor for editing Script objects.
+            </summary>
+            <remarks>
+            <para>
+            This class is the design-time editor for the Script property of
+            the ScriptingManager />
+            class.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptUITypeEditor.#ctor">
+            <summary>
+            Default constructor.
+            </summary>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptUITypeEditor.GetEditStyle(System.ComponentModel.ITypeDescriptorContext)">
+            <summary>
+            Returns the editor style.
+            </summary>
+            <param name="context">Designer host context</param>
+            <returns>Always returns UITypeEditorEditStyle.Modal as the editor style</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptUITypeEditor.EditValue(System.ComponentModel.ITypeDescriptorContext,System.IServiceProvider,System.Object)">
+            <summary>
+            Called by the designer to edit a script.
+            </summary>
+            <param name="context"></param>
+            <param name="provider"></param>
+            <param name="value"></param>
+            <returns>Returns the updated value of the Script</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptUITypeEditor.GetPaintValueSupported(System.ComponentModel.ITypeDescriptorContext)">
+            <summary>
+            Determines if the editor manually draws the value in the property grid.
+            </summary>
+            <param name="context"></param>
+            <returns>Always returns false</returns>
+        </member>
+        <member name="M:Syncfusion.Scripting.Design.ScriptUITypeEditor.PaintValue(System.Drawing.Design.PaintValueEventArgs)">
+            <summary>
+            Handles painting the value for the editor.
+            </summary>
+            <param name="e"></param>
+            <remarks>
+            <para>
+            Does nothing except call the base class PaintValue method.
+            </para>
+            </remarks>
+        </member>
+    </members>
+</doc>
