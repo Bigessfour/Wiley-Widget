@@ -183,8 +183,10 @@ namespace WileyWidget.WinForms.Services
             host.ShowInTaskbar = false;
             host.Owner = _owner;
             host.TopMost = true;  // Ensure floating panels are visible on top
+            host.WindowState = FormWindowState.Normal;  // Ensure it's not minimized
             host.Show();
             host.BringToFront();
+            host.Activate();  // Ensure it's active and focused
 
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));

@@ -32,7 +32,7 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel), "Dashboard", "Core Navigation", DockingStyle.Top, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel), "Data Mapper", "Views", DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel), "Department Summary", "Views", DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel), "Municipal Accounts", "Financials", DockingStyle.Left, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel), "Municipal Accounts", "Financials", DockingStyle.Left, true),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel), "Proactive AI Insights", "Views", DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel), "QuickBooks", "Tools", DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel), "Recommended Monthly Charge", "Views", DockingStyle.Right),
