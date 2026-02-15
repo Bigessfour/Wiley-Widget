@@ -18,6 +18,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Services.Http;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Plugins;
 using WileyWidget.WinForms.ViewModels;
@@ -761,6 +762,15 @@ namespace WileyWidget.WinForms.Configuration
 
             // ViewModels (Transient - lightweight data models)
             services.AddTransient<IDashboardViewModel, DashboardViewModel>();
+
+            // Syncfusion Control Factory (Scoped - same lifetime as MainForm)
+            // Use factory pattern to handle optional IThemeService dependency
+            services.AddScoped<SyncfusionControlFactory>(sp =>
+            {
+                var logger = DI.ServiceProviderServiceExtensions.GetRequiredService<ILogger<SyncfusionControlFactory>>(sp);
+                var themeService = DI.ServiceProviderServiceExtensions.GetService<IThemeService>(sp);
+                return new SyncfusionControlFactory(logger, themeService);
+            });
 
             // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)
             services.AddScoped<MainForm>();

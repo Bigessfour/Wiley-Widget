@@ -346,6 +346,10 @@ namespace WileyWidget.WinForms.Controls.Panels
         private void InitializeComponent()
         {
             SuspendLayout();
+            
+            // Set automation ID for UI testing
+            this.Name = "Panel_Settings";
+            
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.Transparent;
             Padding = new Padding(GROUP_PADDING);

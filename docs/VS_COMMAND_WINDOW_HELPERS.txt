@@ -1,0 +1,131 @@
+# Quick Navigation Debug Commands
+# Run these from Visual Studio's Command Window (Ctrl+Alt+A or View -> Other Windows -> Command Window)
+
+# ============================================
+# SETUP: Run this first to register helpers
+# ============================================
+alias navstatus .\scripts\Debug-Navigation.ps1 -Action Status
+alias navenable .\scripts\Debug-Navigation.ps1 -Action Enable
+alias navdisable .\scripts\Debug-Navigation.ps1 -Action Disable
+
+# ============================================
+# USAGE EXAMPLES
+# ============================================
+
+# Check breakpoint status:
+#   > Tools.Shell navstatus
+
+# Enable all breakpoints:
+#   > Tools.Shell navenable
+
+# Disable optional breakpoints (keep only critical):
+#   > Tools.Shell navdisable
+
+# ============================================
+# WHILE DEBUGGING (Immediate Window)
+# ============================================
+
+# Validate navigation infrastructure:
+#   ? NavigationDebugger.ValidateNavigationInfrastructure(this, out var err)
+#   ? err
+
+# Get navigation state dump:
+#   ? NavigationDebugger.LogNavigationState(this, "Check")
+
+# Test showing a panel:
+#   this.ShowPanel<SettingsPanel>("Test")
+
+# Check if panel navigator exists:
+#   ? this.PanelNavigator != null
+
+# Get active panel name:
+#   ? this.PanelNavigator?.GetActivePanelName()
+
+# Check docking manager:
+#   ? this.GetDockingManager() != null
+
+# ============================================
+# KEYBOARD SHORTCUTS (while debugging)
+# ============================================
+
+# F5           - Continue execution
+# F10          - Step Over (execute current line)
+# F11          - Step Into (go inside method)
+# Shift+F11    - Step Out (finish current method)
+# F9           - Toggle manual breakpoint on current line
+# Ctrl+Shift+F9 - Delete all manual breakpoints
+# Ctrl+Alt+I   - Open Immediate Window
+# Ctrl+Alt+O   - Open Output Window
+# Ctrl+Alt+V,L - Open Locals Window
+# Ctrl+Alt+W,1 - Open Watch Window
+# Ctrl+Alt+C   - Open Call Stack
+# Ctrl+Alt+E   - Open Exception Settings
+
+# ============================================
+# DEBUGGING WORKFLOW
+# ============================================
+
+# 1. START:
+#    - Press F5 to start debugging
+#    - Click a Ribbon button to show a panel
+
+# 2. WHEN BREAKPOINT HITS:
+#    - Check Locals window (Ctrl+Alt+V,L)
+#    - Check Output window (Ctrl+Alt+O) for [BP1], [BP2] messages
+#    - Use Immediate window (Ctrl+Alt+I) to run diagnostic commands
+
+# 3. STEP THROUGH:
+#    - F10 to step line by line
+#    - F11 to go into methods
+#    - F5 to continue to next breakpoint
+
+# 4. DIAGNOSE:
+#    - If BP3 hits: PanelNavigator is null - initialization problem
+#    - If BP6 hits: Navigation failed - panel not activated
+#    - If BP7 hits: Exception occurred - check exception details
+
+# ============================================
+# QUICK TESTS (from Immediate Window)
+# ============================================
+
+# Test if infrastructure is ready:
+#   ? NavigationDebugger.ValidateNavigationInfrastructure(this, out var error)
+#   ? error  // Shows problem if validation fails
+
+# Get diagnostic report:
+#   NavigationDebugger.LogNavigationState(this, "Manual Test")
+#   // Check Output window for full report
+
+# Try showing different panels:
+#   this.ShowPanel<SettingsPanel>("Test Settings")
+#   this.ShowPanel<AccountsPanel>("Test Accounts")
+#   this.ShowPanel<BudgetPanel>("Test Budget")
+
+# Check active panel:
+#   ? this.PanelNavigator?.GetActivePanelName()
+
+# ============================================
+# COMMON ISSUES
+# ============================================
+
+# Issue: "PanelNavigator is null" (BP3 breaks)
+#   Check: _dockingManager, _serviceProvider, _centralDocumentPanel
+#   Likely: Initialization order problem in MainForm.OnLoad/OnShown
+
+# Issue: "Navigation failed" (BP6 breaks)
+#   Check: navigationTarget vs activePanelName
+#   Likely: Panel not registered in DockingManager
+
+# Issue: "No breakpoints hit"
+#   Check: Debug mode (not Release)
+#   Check: Debugger is attached
+#   Run: navstatus to see breakpoint status
+
+# ============================================
+# MORE HELP
+# ============================================
+
+# Full documentation: docs/DEBUG_NAVIGATION_BREAKPOINTS.md
+# Quick start: README_BREAKPOINTS_INSTALLED.md
+# Control script: scripts/Debug-Navigation.ps1
+# Source code: src/WileyWidget.WinForms/Diagnostics/NavigationDebugger.cs

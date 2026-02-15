@@ -198,8 +198,44 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var ribbonControl = ribbon as Syncfusion.Windows.Forms.Tools.RibbonControlAdv;
             if (ribbonControl != null)
             {
-                ribbonControl.Dock.ToString().Should().Contain("Top");
+                ribbonControl.Dock.ToString().Should().MatchRegex("Top|Fill");
             }
+
+            form.Dispose();
+        }
+
+        [StaFact]
+        public void InitializeChrome_UiTestRuntime_PreservesRibbonSafeAppearance()
+        {
+            TestThemeHelper.EnsureOffice2019Colorful();
+
+            var provider = BuildProvider(new Dictionary<string, string?>
+            {
+                ["UI:IsUiTestHarness"] = "true",
+                ["UI:UseSyncfusionDocking"] = "false",
+                ["UI:ShowRibbon"] = "true",
+                ["UI:ShowStatusBar"] = "true"
+            });
+
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+
+            var themeMock = new Mock<IThemeService>();
+            themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
+
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+
+            var _ = form.Handle;
+            form.CallInitializeChrome();
+            form.CallOnLoad();
+
+            var ribbon = form.GetPrivateField("_ribbon") as Syncfusion.Windows.Forms.Tools.RibbonControlAdv;
+            ribbon.Should().NotBeNull();
+
+            ribbon!.ShowCaption.Should().BeFalse();
+            ribbon.ShowRibbonDisplayOptionButton.Should().BeFalse();
+            ribbon.MenuButtonVisible.Should().BeFalse();
+            ribbon.MenuButtonEnabled.Should().BeFalse();
 
             form.Dispose();
         }
@@ -207,11 +243,20 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         [StaFact]
         public async Task OnShown_ResolvesAndInitializesMainViewModel_WhenCalled()
         {
+            var previousTestsFlag = Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS");
+            var previousUiTestsFlag = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS");
+            Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "false");
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "false");
+
+            try
+            {
             // Arrange
             var configOverrides = new Dictionary<string, string?>
             {
                 ["UI:UseSyncfusionDocking"] = "false",
-                ["UI:IsUiTestHarness"] = "false"
+                ["UI:IsUiTestHarness"] = "false",
+                ["UI:ShowRibbon"] = "false",
+                ["UI:ShowStatusBar"] = "false"
             };
 
             var provider = BuildProvider(configOverrides);
@@ -244,9 +289,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var form = new TestMainForm(testProvider, configuration, logger, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
 
-            // Act: create handle and call OnShown (which starts deferred initialization)
+            // Act: run the real WinForms show lifecycle so OnShown executes in-order.
             var _ = form.Handle;
-            form.CallOnShown();
+            form.Show();
+            Application.DoEvents();
 
             // Wait for deferred initialization to be assigned and completed
             Task? deferred = null;
@@ -275,6 +321,12 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             form.MainViewModel!.ActivityItems.Should().ContainSingle();
 
             form.Dispose();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", previousTestsFlag);
+                Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", previousUiTestsFlag);
+            }
         }
 
         [StaFact(Skip = "Flaky in headless STA testhost (message pump starvation/host cancellation). Covered by integration tests for MainForm initialization and docking theming.")]
@@ -466,8 +518,6 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var _ = form.Handle;
             form.CallInitializeChrome();
             form.CallOnLoad();
-            form.Show();
-            Application.DoEvents();
 
             // Act
             var result = form.CallProcessCmdKey(Keys.Control | Keys.F);

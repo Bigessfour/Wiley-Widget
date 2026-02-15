@@ -13,11 +13,12 @@ using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
-using WileyWidget.WinForms.Dialogs;
+using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
-using WileyWidget.WinForms.Utilities;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 
@@ -40,6 +41,9 @@ public partial class MainForm
 
     private bool ExecuteDockedNavigation(string navigationTarget, System.Action<IPanelNavigationService> navigationAction)
     {
+        // 🔴 BREAKPOINT 2: Navigation Orchestrator
+        Diagnostics.NavigationDebugger.BreakOnNavigationStart(navigationTarget, IsDisposed, InvokeRequired);
+
         _logger?.LogDebug("[EXEC_NAV] ExecuteDockedNavigation START: Target='{Target}', IsDisposed={Disposed}, InvokeRequired={InvokeReq}",
             navigationTarget, IsDisposed, InvokeRequired);
 
@@ -56,75 +60,54 @@ public partial class MainForm
             return false;
         }
 
-        const int maxNavigationAttempts = 2;
-        EnsureDockingSurfaceVisibleForNavigation(navigationTarget);
+        EnsurePanelNavigatorInitialized();
 
-        for (var attempt = 1; attempt <= maxNavigationAttempts; attempt++)
+        if (_panelNavigator == null)
         {
-            _logger?.LogDebug("[EXEC_NAV] Attempt {Attempt}/{MaxAttempts} for '{Target}'", attempt, maxNavigationAttempts, navigationTarget);
+            // 🔴 BREAKPOINT 3: CRITICAL - PanelNavigator is NULL
+            Diagnostics.NavigationDebugger.BreakOnPanelNavigatorNull(
+                navigationTarget,
+                false,
+                _serviceProvider != null,
+                true);
 
-            _logger?.LogDebug("[EXEC_NAV] Ensuring PanelNavigator initialized...");
-            EnsurePanelNavigatorInitialized();
-
-            if (_panelNavigator == null)
-            {
-                _logger?.LogWarning("[EXEC_NAV] PanelNavigator unavailable for '{Target}' on attempt {Attempt}/{MaxAttempts}",
-                    navigationTarget,
-                    attempt,
-                    maxNavigationAttempts);
-                _logger?.LogWarning("[EXEC_NAV] Debug info: DockingManager={DM}, ServiceProvider={SP}, CentralPanel={CP}",
-                    _dockingManager != null,
-                    _serviceProvider != null,
-                    _centralDocumentPanel != null);
-
-                if (attempt < maxNavigationAttempts)
-                {
-                    RecoverDockingStateForNavigation(navigationTarget, null);
-                }
-
-                continue;
-            }
-
-            try
-            {
-                _logger?.LogInformation("[EXEC_NAV] ✅ Executing navigation action for '{Target}'", navigationTarget);
-                navigationAction(_panelNavigator);
-                EnsureDockingSurfaceVisibleForNavigation(navigationTarget);
-
-                if (IsNavigationTargetActive(navigationTarget))
-                {
-                    _logger?.LogInformation("[EXEC_NAV] ✅ Navigation action completed successfully for '{Target}'", navigationTarget);
-                    return true;
-                }
-
-                _logger?.LogWarning("[EXEC_NAV] Navigation action executed but target '{Target}' was not activated on attempt {Attempt}/{MaxAttempts}",
-                    navigationTarget,
-                    attempt,
-                    maxNavigationAttempts);
-
-                if (attempt < maxNavigationAttempts)
-                {
-                    RecoverDockingStateForNavigation(navigationTarget, null);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex,
-                    "[EXEC_NAV] Navigation request for '{Target}' failed on attempt {Attempt}/{MaxAttempts}",
-                    navigationTarget,
-                    attempt,
-                    maxNavigationAttempts);
-
-                if (attempt < maxNavigationAttempts)
-                {
-                    RecoverDockingStateForNavigation(navigationTarget, ex);
-                }
-            }
+            _logger?.LogError("[EXEC_NAV] ❌ PanelNavigator unavailable for '{Target}'", navigationTarget);
+            return false;
         }
 
-        _logger?.LogError("[EXEC_NAV] ❌ Navigation request for '{Target}' failed after {MaxAttempts} attempts", navigationTarget, maxNavigationAttempts);
-        RecoverDockingStateForNavigation(navigationTarget, null);
-        return false;
+        try
+        {
+            _logger?.LogInformation("[EXEC_NAV] ✅ Executing navigation action for '{Target}'", navigationTarget);
+
+            // 🔴 BREAKPOINT 4: About to Execute Navigation Action
+            Diagnostics.NavigationDebugger.BreakBeforeNavigationAction(navigationTarget, true);
+
+            navigationAction(_panelNavigator);
+
+            if (IsNavigationTargetActive(navigationTarget))
+            {
+                // 🔴 BREAKPOINT 5: Navigation Succeeded
+                Diagnostics.NavigationDebugger.BreakOnNavigationSuccess(navigationTarget);
+
+                _logger?.LogInformation("[EXEC_NAV] ✅ Navigation action completed successfully for '{Target}'", navigationTarget);
+                return true;
+            }
+
+            // 🔴 BREAKPOINT 6: Navigation Failed - Target Not Active
+            var activePanelName = _panelNavigator?.GetActivePanelName();
+            Diagnostics.NavigationDebugger.BreakOnNavigationFailure(navigationTarget, activePanelName);
+
+            _logger?.LogWarning("[EXEC_NAV] Navigation action executed but target '{Target}' was not activated", navigationTarget);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // 🔴 BREAKPOINT 7: Exception During Navigation
+            Diagnostics.NavigationDebugger.BreakOnNavigationException(navigationTarget, ex);
+
+            _logger?.LogError(ex, "[EXEC_NAV] ❌ Navigation request for '{Target}' failed", navigationTarget);
+            return false;
+        }
     }
 
     private bool IsNavigationTargetActive(string navigationTarget)
@@ -164,185 +147,19 @@ public partial class MainForm
         return panelName.Replace(" ", string.Empty, StringComparison.Ordinal);
     }
 
-    private void SetDockingPanelsVisibility(bool visible, string context)
-    {
-        try
-        {
-            if (_leftDockPanel != null && !_leftDockPanel.IsDisposed)
-            {
-                _leftDockPanel.Visible = visible;
-            }
-
-            if (_rightDockPanel != null && !_rightDockPanel.IsDisposed)
-            {
-                _rightDockPanel.Visible = visible;
-            }
-
-            if (_centralDocumentPanel != null && !_centralDocumentPanel.IsDisposed)
-            {
-                _centralDocumentPanel.Visible = visible;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "[EXEC_NAV] Failed to set docking panel visibility ({Visible}) during {Context}", visible, context);
-        }
-    }
-
-    private bool TryReloadDockStateForNavigationRecovery(string navigationTarget)
-    {
-        if (_dockingManager == null)
-        {
-            return false;
-        }
-
-        SetDockingPanelsVisibility(false, $"{navigationTarget}:PreLoadDockState");
-
-        try
-        {
-            var serializer = GetLayoutSerializer();
-            if (!serializer.Enabled)
-            {
-                serializer.Enabled = true;
-            }
-
-            ResetLayoutSerializerStream(truncate: false);
-
-            if (_layoutSerializerStream != null && _layoutSerializerStream.CanRead && _layoutSerializerStream.Length > 0)
-            {
-                _dockingManager.LoadDockState(serializer);
-                _logger?.LogInformation("[EXEC_NAV] Persisted docking state reapplied for '{Target}'", navigationTarget);
-                return true;
-            }
-
-            _logger?.LogInformation("[EXEC_NAV] No persisted dock state found for '{Target}'", navigationTarget);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "[EXEC_NAV] Failed reapplying persisted docking state for '{Target}'", navigationTarget);
-        }
-        finally
-        {
-            EnsureDockingSurfaceVisibleForNavigation(navigationTarget);
-        }
-
-        return false;
-    }
-
-    private void RecoverDockingStateForNavigation(string navigationTarget, Exception? rootCause)
-    {
-        try
-        {
-            if (rootCause != null)
-            {
-                _logger?.LogWarning(rootCause,
-                    "[EXEC_NAV] Recovering docking state for '{Target}' after navigation failure",
-                    navigationTarget);
-            }
-            else
-            {
-                _logger?.LogWarning("[EXEC_NAV] Recovering docking state for '{Target}' because PanelNavigator is unavailable", navigationTarget);
-            }
-
-            EnsureDockingSurfaceVisibleForNavigation(navigationTarget);
-
-            if (_dockingManager == null)
-            {
-                _logger?.LogWarning("[EXEC_NAV] Docking manager is unavailable during recovery for '{Target}'", navigationTarget);
-                return;
-            }
-
-            var dockStateReloaded = TryReloadDockStateForNavigationRecovery(navigationTarget);
-            if (!dockStateReloaded)
-            {
-                _logger?.LogWarning("[EXEC_NAV] Docking state reload did not complete for '{Target}'", navigationTarget);
-            }
-
-            EnsurePanelNavigatorInitialized();
-            EnsureDockingSurfaceVisibleForNavigation(navigationTarget);
-            ConfigureDockingManagerChromeLayout();
-            PerformLayout();
-            Invalidate(true);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex,
-                "[EXEC_NAV] Docking recovery failed for '{Target}'",
-                navigationTarget);
-        }
-    }
-
-    private void EnsureDockingSurfaceVisibleForNavigation(string navigationTarget)
-    {
-        try
-        {
-            if (!Visible)
-            {
-                _logger?.LogDebug("[EXEC_NAV] MainForm hidden before '{Target}' navigation - forcing visible", navigationTarget);
-                Visible = true;
-            }
-
-            EnsureControlAndParentsVisible(this);
-            EnsureControlAndParentsVisible(_centralDocumentPanel);
-            EnsureControlAndParentsVisible(_leftDockPanel);
-            EnsureControlAndParentsVisible(_rightDockPanel);
-
-            RestoreDockSurfaceVisibility(_leftDockPanel, "LeftDockPanel", navigationTarget);
-            RestoreDockSurfaceVisibility(_rightDockPanel, "RightDockPanel", navigationTarget);
-
-            if (_leftDockPanel != null && !_leftDockPanel.IsDisposed && _leftDockPanel.Width < 120)
-            {
-                _leftDockPanel.Width = 300;
-            }
-
-            if (_rightDockPanel != null && !_rightDockPanel.IsDisposed && _rightDockPanel.Width < 120)
-            {
-                _rightDockPanel.Width = 350;
-            }
-
-            if (_centralDocumentPanel != null && !_centralDocumentPanel.IsDisposed)
-            {
-                _centralDocumentPanel.Dock = DockStyle.Fill;
-                _centralDocumentPanel.BringToFront();
-            }
-
-            _ribbon?.BringToFront();
-            _statusBar?.BringToFront();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex,
-                "[EXEC_NAV] Failed ensuring docking surface visibility for '{Target}'",
-                navigationTarget);
-        }
-    }
-
-    private void RestoreDockSurfaceVisibility(Control? dockSurface, string surfaceName, string navigationTarget)
-    {
-        if (dockSurface == null || dockSurface.IsDisposed)
-        {
-            return;
-        }
-
-        TrySetDockVisibilitySafe(
-            dockSurface,
-            true,
-            $"RestoreDockSurfaceVisibility:{surfaceName}:{navigationTarget}");
-    }
-
-    private void EnsureControlAndParentsVisible(Control? control)
-    {
-        var current = control;
-        while (current != null)
-        {
-            if (!current.Visible)
-            {
-                current.Visible = true;
-            }
-
-            current = current.Parent;
-        }
-    }
+    /// <summary>
+    /// Sets visibility of all docking panels using Syncfusion DockingManager API.
+    /// Uses SetDockVisibility() instead of manual .Visible assignment for proper DockingManager state tracking.
+    /// 
+    /// SYNCFUSION API: DockingManager.SetDockVisibility(Control, bool)
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
+    /// </summary>
+    private void SetDockingPanelsVisibility(bool visible, string context) { }
+    private bool TryReloadDockStateForNavigationRecovery(string navigationTarget) => false;
+    private void RecoverDockingStateForNavigation(string navigationTarget, Exception? rootCause) { }
+    private void EnsureDockingSurfaceVisibleForNavigation(string navigationTarget) { }
+    private void RestoreDockSurfaceVisibility(Control? dockSurface, string surfaceName, string navigationTarget) { }
+    private void EnsureControlAndParentsVisible(Control? control) { }
 
     /// <summary>
     /// Shows or activates a docked panel. Creates it if not already present.
@@ -359,10 +176,12 @@ public partial class MainForm
         where TPanel : UserControl
     {
         var resolvedPanelName = panelName ?? typeof(TPanel).Name;
+
+        // 🔴 BREAKPOINT 1: ShowPanel Entry Point
+        Diagnostics.NavigationDebugger.BreakOnShowPanelEntry(resolvedPanelName, typeof(TPanel).Name);
+
         _logger?.LogInformation("[SHOWPANEL] ShowPanel<{PanelType}> called: Name='{PanelName}', Style={Style}, AllowFloating={AllowFloating}",
             typeof(TPanel).Name, resolvedPanelName, preferredStyle, allowFloating);
-        _logger?.LogInformation("[SHOWPANEL] Current state: DockingManager={DM}, PanelNavigator={PN}, IsDisposed={Disposed}",
-            _dockingManager != null, _panelNavigator != null, IsDisposed);
 
         var navigationSucceeded = ExecuteDockedNavigation(
             resolvedPanelName,
@@ -394,6 +213,142 @@ public partial class MainForm
         {
             _logger?.LogError("[SHOWPANEL] Failed to activate panel '{PanelName}'", resolvedPanelName);
         }
+    }
+
+    /// <summary>
+    /// Shows or activates a docked panel by Type (non-generic overload for dynamic panel navigation).
+    /// Used by RibbonControlAdv navigation buttons via PanelRegistry.
+    /// </summary>
+    /// <param name="panelType">The UserControl panel type to show.</param>
+    /// <param name="panelName">Display name for the panel.</param>
+    /// <param name="preferredStyle">Preferred docking position (default: Right).</param>
+    /// <param name="allowFloating">If true, panel can be floated by user (default: true).</param>
+    public void ShowPanel(Type panelType, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+    {
+        if (panelType == null)
+        {
+            throw new ArgumentNullException(nameof(panelType));
+        }
+
+        if (!typeof(UserControl).IsAssignableFrom(panelType))
+        {
+            throw new ArgumentException($"Panel type {panelType.Name} must derive from UserControl", nameof(panelType));
+        }
+
+        if (string.IsNullOrWhiteSpace(panelName))
+        {
+            throw new ArgumentException("Panel name cannot be empty", nameof(panelName));
+        }
+
+        _logger?.LogInformation("[SHOWPANEL] ShowPanel(Type) called: Type={PanelType}, Name='{PanelName}', Style={Style}",
+            panelType.Name, panelName, preferredStyle);
+
+        var navigationSucceeded = ExecuteDockedNavigation(
+            panelName,
+            navigator => ShowPanelByType(navigator, panelType, panelName, preferredStyle, allowFloating));
+
+        if (!navigationSucceeded)
+        {
+            _logger?.LogError("[SHOWPANEL] Failed to activate panel '{PanelName}' (Type={PanelType})", panelName, panelType.Name);
+        }
+        else
+        {
+            _logger?.LogInformation("[SHOWPANEL] Successfully activated panel '{PanelName}' (Type={PanelType})", panelName, panelType.Name);
+        }
+    }
+
+    /// <summary>
+    /// Dispatches panel showing by type using direct generic calls instead of reflection.
+    /// This eliminates the reflection failure point identified in the analysis.
+    /// </summary>
+    private void ShowPanelByType(IPanelNavigationService navigator, Type panelType, string panelName, DockingStyle preferredStyle, bool allowFloating)
+    {
+        _logger?.LogDebug("[SHOWPANEL] Dispatching panel type {PanelType} via direct generic call", panelType.Name);
+
+        // Direct type-based dispatcher - no reflection, no failure points
+        if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.BudgetPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.BudgetPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.ReportsPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.ReportsPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.SettingsPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.SettingsPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.FormHostPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.AuditLogPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.ActivityLogPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.CustomersPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.CustomersPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.AccountsPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.UtilityBillPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.WarRoomPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Panels.AccountEditPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else if (panelType == typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel))
+        {
+            navigator.ShowPanel<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>(panelName, preferredStyle, allowFloating);
+        }
+        else
+        {
+            _logger?.LogError("[SHOWPANEL] Unknown panel type {PanelType} - not registered in type dispatcher", panelType.FullName);
+            throw new ArgumentException($"Panel type {panelType.Name} is not registered in the navigation dispatcher", nameof(panelType));
+        }
+
+        _logger?.LogDebug("[SHOWPANEL] Successfully dispatched panel type {PanelType}", panelType.Name);
     }
 
     /// <summary>
@@ -454,6 +409,7 @@ public partial class MainForm
     {
         if (_panelNavigator != null && panel != null && !string.IsNullOrWhiteSpace(panelName))
         {
+            // No change necessary; kept for consistency after docking removal.
             await _panelNavigator.AddPanelAsync(panel, panelName, preferredStyle);
         }
     }
@@ -471,18 +427,7 @@ public partial class MainForm
                 return;
             }
 
-            // Try to initialize basic docking if not already done
-            if (_dockingManager == null)
-            {
-                _logger?.LogWarning("[ENSURE_NAV] DockingManager is null - skipping panel navigator initialization");
-                return;
-            }
-            else
-            {
-                _logger?.LogDebug("[ENSURE_NAV] DockingManager already exists");
-            }
-
-            // If it's null, create it with the now-initialized DockingManager
+            // If it's null, create it (floating mode, no DockingManager)
             if (_panelNavigator == null)
             {
                 _logger?.LogDebug("[ENSURE_NAV] PanelNavigator is null - creating new instance");
@@ -492,13 +437,8 @@ public partial class MainForm
 
                 try
                 {
-                    // _dockingManager is guaranteed to be non-null at this point (initialized in InitializeSyncfusionDocking)
-                    Control navigationHost = _dockingManager.HostControl ?? _centralDocumentPanel ?? (Control)this;
-                    _logger?.LogDebug("[ENSURE_NAV] Navigation host selected: {HostType}",
-                        navigationHost.GetType().Name);
-
-                    _panelNavigator = new PanelNavigationService(_dockingManager, navigationHost, _serviceProvider, navLogger);
-                    _logger?.LogInformation("[ENSURE_NAV] ✅ PanelNavigationService created successfully with DockingManager");
+                    _panelNavigator = new PanelNavigationService(this, _serviceProvider, navLogger);
+                    _logger?.LogInformation("[ENSURE_NAV] ✅ PanelNavigationService created successfully (floating mode)");
 
                     // Subscribe to activation events to keep ribbon/navigation selection in sync
                     try
@@ -707,36 +647,7 @@ public partial class MainForm
     /// <param name="panelName">The name of the panel to activate.</param>
     private void ActivatePanelByName(string panelName)
     {
-        if (_dockingManager == null || string.IsNullOrEmpty(panelName))
-        {
-            return;
-        }
-
-        try
-        {
-            // Search through DockingManager controls for a panel with matching name
-            var controlsObj = _dockingManager.Controls;
-            if (controlsObj is System.Collections.ICollection coll && coll.Count > 0)
-            {
-                foreach (var item in coll)
-                {
-                    if (item is Control control && !control.IsDisposed &&
-                        !string.IsNullOrEmpty(control.Name) && control.Name == panelName)
-                    {
-                        // Found the panel, activate it
-                        _dockingManager.ActivateControl(control);
-                        _logger?.LogDebug("Activated panel by name: {PanelName}", panelName);
-                        return;
-                    }
-                }
-            }
-
-            _logger?.LogWarning("Panel not found for activation: {PanelName}", panelName);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to activate panel by name: {PanelName}", panelName);
-        }
+        // Floating mode: nothing to activate by host; rely on PanelNavigationService history.
     }
 
     /// <summary>

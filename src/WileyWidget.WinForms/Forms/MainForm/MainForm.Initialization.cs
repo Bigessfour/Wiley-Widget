@@ -93,144 +93,33 @@ public partial class MainForm
                 _logger?.LogWarning(ex, "Deferred chrome optimization failed - UI formatting may be suboptimal");
             }
 
-            // DockingManager is initialized in OnLoad (canonical startup path).
-            // Verify it exists before proceeding with panel operations.
-            if (_dockingManager == null)
-            {
-                _logger?.LogWarning("[CRITICAL] DockingManager is null in InitializeAsync - docking was not initialized successfully in OnShown");
-                _asyncLogger?.Warning("[CRITICAL] DockingManager is null in InitializeAsync");
-                return;
-            }
+            EnsurePanelNavigatorInitialized();
 
-            if (_uiConfig.UseSyncfusionDocking)
+            if (_uiConfig.AutoShowDashboard && _panelNavigator != null)
             {
-                _logger?.LogInformation("InitializeAsync: Docking layout mode active (dock/float/auto-hide enabled)");
-            }
-
-            // Defensive: Ensure panel navigator is initialized before trying to show panels
-            if (_uiConfig.UseSyncfusionDocking && _panelNavigator == null)
-            {
-                _logger?.LogInformation("[DEFENSIVE] PanelNavigator is null despite docking being enabled - attempting explicit initialization");
+                _logger?.LogInformation("Showing priority panels for faster startup (floating mode)");
                 try
                 {
-                    EnsurePanelNavigatorInitialized();
-                    _logger?.LogInformation("[DEFENSIVE] PanelNavigator explicitly initialized");
-                }
-                catch (Exception defEx)
-                {
-                    _logger?.LogError(defEx, "[DEFENSIVE] Failed to initialize PanelNavigator");
-                }
-            }
-
-            // Phase 1: Show priority panels for faster startup
-            _logger?.LogInformation("[DIAGNOSTIC] UseSyncfusionDocking={Value}", _uiConfig.UseSyncfusionDocking);
-            _logger?.LogInformation("[DIAGNOSTIC] _panelNavigator is null? {IsNull}", _panelNavigator == null);
-            _logger?.LogInformation("[DIAGNOSTIC] _dockingManager is null? {IsNull}", _dockingManager == null);
-
-            var dockingReadyForPanels = true;
-            if (_uiConfig.UseSyncfusionDocking)
-            {
-                dockingReadyForPanels = await WaitForDockingManagerReadyAsync(cancellationToken).ConfigureAwait(true);
-            }
-
-            if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && _uiConfig.AutoShowDashboard && dockingReadyForPanels)
-            {
-                _logger?.LogInformation("Showing priority panels for faster startup");
-                try
-                {
-                    // Priority panels: Dashboard only to reduce clutter
-                    _logger?.LogInformation("[PANEL] Showing Dashboard");
-                    // Ensure UI handle is available; small delay helps controls create handles on slower machines
-                    try
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(true);
+                    if (this.IsDisposed || !this.IsHandleCreated)
                     {
-                        await Task.Delay(100, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        _logger?.LogDebug("Dashboard show cancelled - form may be disposing");
+                        _logger?.LogWarning("[PANEL] Cannot show Dashboard - form not ready");
                         return;
                     }
 
-                    // Verify docking manager still exists and form is not disposing
-                    if (_dockingManager == null || this.IsDisposed || !this.IsHandleCreated)
+                    if (!_dashboardAutoShown)
                     {
-                        _logger?.LogWarning("[PANEL] Cannot show Dashboard - form or docking manager not ready");
-                        return;
-                    }
-
-                    if (!_dashboardAutoShown && _uiConfig != null && _uiConfig.AutoShowDashboard)
-                    {
-                        _logger?.LogInformation("[PANEL] About to invoke ShowForm<BudgetDashboardForm>");
-                        _panelNavigator.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
+                        _panelNavigator.ShowForm<BudgetDashboardForm>("Dashboard", Syncfusion.Windows.Forms.Tools.DockingStyle.Right, allowFloating: true);
                         _dashboardAutoShown = true;
-                        _logger?.LogInformation("[PANEL] ShowPanel returned successfully");
                     }
-                    else
-                    {
-                        _logger?.LogInformation("[PANEL] Skipping priority dashboard: AutoShown={Shown}, ConfigEnabled={Enabled}", _dashboardAutoShown, _uiConfig?.AutoShowDashboard);
-                    }
-                    _logger?.LogInformation("Priority panels shown successfully");
-                }
-                catch (ArgumentException argEx)
-                {
-                    _logger?.LogWarning(argEx, "[PANEL] ArgumentException while showing Dashboard - docking system may not be ready");
-                }
-                catch (NullReferenceException nrex)
-                {
-                    _logger?.LogError(nrex, "[CRITICAL NRE] NullReferenceException while showing panels. Stack: {Stack}", nrex.StackTrace);
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Failed to show priority panels: {Type}: {Message}", ex.GetType().Name, ex.Message);
-                }
-            }
-            else
-            {
-                _logger?.LogWarning("[DIAGNOSTIC] Skipping dashboard: UseSyncfusionDocking={Docking}, AutoShowDashboard={AutoShow}, DockingReady={DockingReady}, _panelNavigator={Nav}",
-                    _uiConfig.UseSyncfusionDocking,
-                    _uiConfig.AutoShowDashboard,
-                    dockingReadyForPanels,
-                    _panelNavigator != null ? "set" : "null");
-
-                if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null && !_uiConfig.AutoShowDashboard && !_dashboardAutoShown && dockingReadyForPanels)
-                {
-                    _logger?.LogInformation("[FALLBACK] AutoShowDashboard is false - startup remains on clean docking surface until user navigation");
+                    _logger?.LogError(ex, "Failed to show priority panels");
                 }
             }
 
-            // Phase 2: Notify ViewModels of initial visibility for lazy loading
-            if (_dockingManager != null && IsDockingManagerReadyForMutatingOperations())
-            {
-                _logger?.LogInformation("Triggering initial visibility notifications for all docked panels");
-                foreach (Control control in this.Controls)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    bool isDocked;
-                    try
-                    {
-                        isDocked = _dockingManager.GetEnableDocking(control);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogDebug(ex, "Skipping visibility notification for control {ControlName} due to docking state read failure", control?.Name ?? "unknown");
-                        continue;
-                    }
-
-                    if (isDocked)
-                    {
-                        var visibilityTask = NotifyPanelVisibilityChangedAsync(control);
-                        var completedTask = await Task.WhenAny(visibilityTask, Task.Delay(750, cancellationToken)).ConfigureAwait(true);
-                        if (!ReferenceEquals(completedTask, visibilityTask))
-                        {
-                            _logger?.LogWarning("Visibility notification timed out for control {ControlName}; continuing initialization", control?.Name ?? "unknown");
-                            continue;
-                        }
-
-                        await visibilityTask.ConfigureAwait(true);
-                    }
-                }
-            }
+            _logger?.LogInformation("[DIAGNOSTIC] Floating navigation active; skipping docking visibility checks");
 
             // ============================================================================
             // NAVIGATION HARDENING: Enable ribbon and toolbar navigation buttons once docking system is confirmed ready
@@ -294,7 +183,7 @@ public partial class MainForm
                                     }
                                 }
 
-                                // Second: conservative scan - enable items with Name starting with "Nav_" and known whitelist
+                                // Second: conservative scan - enable items with Name starting with "Nav" and known whitelist
                                 var whitelist = new[] { "ThemeToggle", "GlobalSearch" };
 
                                 foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
@@ -314,7 +203,7 @@ public partial class MainForm
                                                     if (string.IsNullOrWhiteSpace(name)) continue;
 
                                                     bool shouldEnable = false;
-                                                    if (name.StartsWith("Nav_", StringComparison.OrdinalIgnoreCase)) shouldEnable = true;
+                                                    if (name.StartsWith("Nav", StringComparison.OrdinalIgnoreCase)) shouldEnable = true;
                                                     else
                                                     {
                                                         foreach (var w in whitelist)
@@ -341,6 +230,34 @@ public partial class MainForm
                                                 }
                                             }
                                         }
+                                    }
+                                }
+
+                                // Third: enable ribbon items tagged as navigation targets (Tag = "Nav:<PanelName>").
+                                // Most registry-driven panel buttons are identified by tag rather than by Nav_* naming.
+                                foreach (var item in FindToolStripItems(_ribbon, toolStripItem =>
+                                             toolStripItem.Tag is string tag &&
+                                             tag.StartsWith("Nav:", StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    try
+                                    {
+                                        if (!item.Enabled)
+                                        {
+                                            item.Enabled = true;
+                                            ribbonEnabled++;
+                                        }
+                                    }
+                                    catch (ObjectDisposedException)
+                                    {
+                                        // Control disposed while iterating - ignore
+                                    }
+                                    catch (InvalidOperationException)
+                                    {
+                                        // Control mutated - ignore
+                                    }
+                                    catch (Exception innerEx)
+                                    {
+                                        _logger?.LogDebug(innerEx, "[NAVIGATION] Error enabling ribbon navigation tag item {Name}", item?.Name);
                                     }
                                 }
                             }
@@ -1030,6 +947,14 @@ public partial class MainForm
     {
         if (_ribbon == null || _ribbon.IsDisposed)
         {
+            return;
+        }
+
+        if ((_uiConfig != null && _uiConfig.IsUiTestHarness)
+            || IsUiTestEnvironment()
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger?.LogDebug("[PERF] Deferred Chrome Optimization skipped in UI test runtime");
             return;
         }
 

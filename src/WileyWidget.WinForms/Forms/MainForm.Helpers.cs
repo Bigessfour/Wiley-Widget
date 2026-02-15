@@ -1,16 +1,7 @@
-using System.Threading;
-using System;
-using System.Collections;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using Syncfusion.WinForms.DataGrid;
-using Syncfusion.WinForms.DataGridConverter;
-using Syncfusion.Data;
-using Syncfusion.Windows.Forms.Tools;
 using Microsoft.Extensions.Logging;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.DataGrid;
+using System.Collections;
 using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Forms
@@ -32,28 +23,6 @@ namespace WileyWidget.WinForms.Forms
         public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
         {
             ShowPanel<TPanel>(panelName, preferredStyle: DockingStyle.Right, allowFloating: true);
-        }
-
-        /// <summary>
-        /// Shows a panel of specified type with the given name and docking style.
-        /// Delegates to PanelNavigationService for centralized panel management.
-        /// Enhanced with diagnostic logging for troubleshooting navigation failures.
-        /// </summary>
-        /// <typeparam name="TPanel">Type of panel control to show (must derive from UserControl)</typeparam>
-        /// <param name="panelName">Name identifier for the panel</param>
-        /// <param name="dockingStyle">Docking style for the panel</param>
-        public void ShowPanel<TPanel>(string panelName, DockingStyle dockingStyle) where TPanel : UserControl
-        {
-            if (string.IsNullOrWhiteSpace(panelName))
-            {
-                _logger?.LogWarning("[NAVIGATION] Panel name is empty for type {PanelType}", typeof(TPanel).Name);
-                return;
-            }
-
-            _logger?.LogDebug("[NAVIGATION] Routing ShowPanel<{PanelType}> through ExecuteDockedNavigation path: Name={PanelName}, DockingStyle={DockingStyle}",
-                typeof(TPanel).Name, panelName, dockingStyle);
-
-            ShowPanel<TPanel>(panelName, preferredStyle: dockingStyle, allowFloating: true);
         }
 
         /// <summary>

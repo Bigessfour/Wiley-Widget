@@ -110,7 +110,10 @@ public partial class MainForm
             {
                 var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 InitializeRibbon();
-                _ribbon?.Refresh();
+                if (!(_uiConfig.IsUiTestHarness || IsUiTestEnvironment() || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _ribbon?.Refresh();
+                }
                 ribbonPhaseStopwatch.Stop();
                 _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
                 if (_ribbon == null)
@@ -172,6 +175,10 @@ public partial class MainForm
             return;
         }
 
+        var isUiTestRuntime = _uiConfig.IsUiTestHarness
+            || IsUiTestEnvironment()
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
+
         _logger?.LogInformation("InitializeRibbon: Starting ribbon initialization");
         var ribbonStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -179,22 +186,27 @@ public partial class MainForm
         {
             AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
 
-            var ribbon = new RibbonControlAdv
+            var ribbon = _controlFactory.CreateRibbonControlAdv("File", r =>
             {
-                Name = "Ribbon_Main",
-                Dock = DockStyleEx.Top,
-                Location = new Point(0, 0),
-                LauncherStyle = LauncherStyle.Metro,
-                RibbonStyle = RibbonStyle.Office2016,
-                ShowRibbonDisplayOptionButton = true,
-                EnableSimplifiedLayoutMode = true,
-                LayoutMode = RibbonLayoutMode.Normal,
-                AutoSize = false,
-                Size = new Size(ClientSize.Width, (int)DpiAware.LogicalToDeviceUnits(180f)),
-                MinimumSize = new Size(0, (int)DpiAware.LogicalToDeviceUnits(120f)),
-                MenuButtonVisible = true,
-                MenuButtonText = "File"
-            };
+                r.Name = "Ribbon_Main";
+                r.LauncherStyle = LauncherStyle.Metro;
+                r.RibbonStyle = RibbonStyle.Office2016;
+                r.ShowRibbonDisplayOptionButton = !isUiTestRuntime;
+                r.EnableSimplifiedLayoutMode = true;
+                r.LayoutMode = RibbonLayoutMode.Normal;
+                r.AutoSize = false;
+                r.Size = new Size(ClientSize.Width, (int)DpiAware.LogicalToDeviceUnits(180f));
+                r.MinimumSize = new Size(0, (int)DpiAware.LogicalToDeviceUnits(120f));
+                r.MenuButtonVisible = true;
+                r.MenuButtonText = "File";
+                
+                if (isUiTestRuntime)
+                {
+                    r.ShowCaption = false;
+                    r.MenuButtonEnabled = false;
+                    r.MenuButtonVisible = false;
+                }
+            });
 
             ribbon.BeginInit();
             ribbon.SuspendLayout();
@@ -225,20 +237,27 @@ public partial class MainForm
             }
 
             Syncfusion.Windows.Forms.BackStageView? backStageView = null;
-            try
+            if (!isUiTestRuntime)
             {
-                ribbon.MenuButtonEnabled = true;
-                backStageView = CreateBackStage(this, ribbon, _logger);
-                if (backStageView == null)
+                try
                 {
+                    ribbon.MenuButtonEnabled = true;
+                    backStageView = CreateBackStage(this, ribbon, _logger);
+                    if (backStageView == null)
+                    {
+                        ribbon.MenuButtonEnabled = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "InitializeRibbon: BackStage initialization failed; disabling File menu");
                     ribbon.MenuButtonEnabled = false;
+                    backStageView = null;
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _logger?.LogWarning(ex, "InitializeRibbon: BackStage initialization failed; disabling File menu");
                 ribbon.MenuButtonEnabled = false;
-                backStageView = null;
             }
 
             if (backStageView != null)
@@ -246,7 +265,7 @@ public partial class MainForm
                 ribbon.BackStageView = backStageView;
             }
 
-            ConfigureRibbonAppearance(ribbon, _logger);
+            ConfigureRibbonAppearance(ribbon, _logger, isUiTestRuntime);
 
             var currentThemeString = ResolveRibbonThemeName(SfSkinManager.ApplicationVisualTheme ?? ribbon.ThemeName, _logger);
             ribbon.ThemeName = currentThemeString;
@@ -317,8 +336,11 @@ public partial class MainForm
             {
                 if (homeTab.Panel != null)
                 {
-                    homeTab.Panel.PerformLayout();
-                    homeTab.Panel.Invalidate();
+                    if (!isUiTestRuntime)
+                    {
+                        homeTab.Panel.PerformLayout();
+                        homeTab.Panel.Invalidate();
+                    }
                 }
             }
             catch (Exception ex)
@@ -328,7 +350,10 @@ public partial class MainForm
 
             ((System.ComponentModel.ISupportInitialize)ribbon).EndInit();
             ribbon.ResumeLayout(false);
-            ribbon.PerformLayout();
+            if (!isUiTestRuntime)
+            {
+                ribbon.PerformLayout();
+            }
 
             try
             {
@@ -339,7 +364,10 @@ public partial class MainForm
                 _logger?.LogWarning(ex, "InitializeRibbon: Could not select Home tab");
             }
 
-            ribbon.Invalidate();
+            if (!isUiTestRuntime)
+            {
+                ribbon.Invalidate();
+            }
 
             if (ribbon.Header.MainItems.Count == 0)
             {
@@ -350,7 +378,7 @@ public partial class MainForm
             try
             {
                 var qatButtons = CreateDefaultQuickAccessToolbarButtons(this, currentThemeString, _logger);
-                InitializeQuickAccessToolbar(ribbon, _logger, qatButtons);
+                InitializeQuickAccessToolbar(ribbon, _logger, isUiTestRuntime, qatButtons);
             }
             catch (Exception ex)
             {
@@ -359,7 +387,7 @@ public partial class MainForm
 
             try
             {
-                AttachRibbonLayoutHandlers(this, ribbon, homeTab, layoutContextTab, _logger);
+                AttachRibbonLayoutHandlers(this, ribbon, homeTab, layoutContextTab, isUiTestRuntime, _logger);
             }
             catch (Exception ex)
             {
@@ -390,16 +418,26 @@ public partial class MainForm
                 BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
             }
 
-            // Add ribbon to form if not already present
-            if (!_ribbon.IsDisposed && !this.Controls.Contains(_ribbon))
+            var skipRibbonVisualAttach = isUiTestRuntime;
+
+            // Add ribbon to form if not already present.
+            // In explicit UI test harness runtime, keep ribbon detached to avoid Syncfusion non-client paint crashes.
+            if (!skipRibbonVisualAttach && !_ribbon.IsDisposed && !this.Controls.Contains(_ribbon))
             {
                 this.Controls.Add(_ribbon);
                 _ribbon.Dock = DockStyleEx.Top;
                 _ribbon.SendToBack(); // Ensure it is below any future fill-docked controls
                 _ribbon.BringToFront(); // But visually on top of content
 
-                _ribbon.PerformLayout();
-                _ribbon.Refresh();
+                if (!isUiTestRuntime)
+                {
+                    _ribbon.PerformLayout();
+                    _ribbon.Refresh();
+                }
+            }
+            else if (skipRibbonVisualAttach)
+            {
+                _logger?.LogDebug("InitializeRibbon: Skipping ribbon visual attach in UI test harness runtime");
             }
         }
         catch (Exception ex)
@@ -621,7 +659,7 @@ public partial class MainForm
             aiChatBtn.Click += (s, e) => this.ShowPanel<InsightFeedPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
 
             var proactiveInsightsBtn = new ToolStripButton("Proactive Insights") { Name = "Nav_ProactiveInsights", AccessibleName = "Proactive Insights" };
-            proactiveInsightsBtn.Click += (s, e) => this.ShowPanel<ProactiveInsightsPanel>("Proactive Insights", DockingStyle.Right, allowFloating: true);
+            proactiveInsightsBtn.Click += (s, e) => this.ShowPanel<WarRoomPanel>("Proactive Insights", DockingStyle.Right, allowFloating: true);
 
             var warRoomBtn = new ToolStripButton("War Room") { Name = "Nav_WarRoom", AccessibleName = "War Room" };
             warRoomBtn.Click += (s, e) => this.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);

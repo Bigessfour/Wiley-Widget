@@ -118,6 +118,52 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         }
 
         [StaFact]
+        public void EnsureDockedControlRegistered_FillStyle_UsesDirectFillLayoutFallback()
+        {
+            var provider = BuildProvider();
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
+
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+            _ = form.Handle;
+
+            var hostPanel = new UserControl
+            {
+                Name = "DockingHostPanel",
+                Dock = DockStyle.Fill
+            };
+            form.Controls.Add(hostPanel);
+
+            var dockingManager = new DockingManager
+            {
+                HostForm = form,
+                HostControl = hostPanel,
+                DockToFill = false,
+                ShowCaption = false
+            };
+
+            var centralPanel = new LegacyGradientPanel
+            {
+                Name = "CentralDocumentPanel"
+            };
+
+            var ensureDockedControlRegisteredMethod = typeof(DockingHostFactory)
+                .GetMethod("EnsureDockedControlRegistered", BindingFlags.NonPublic | BindingFlags.Static);
+            ensureDockedControlRegisteredMethod.Should().NotBeNull();
+
+            var invocationResult = ensureDockedControlRegisteredMethod!.Invoke(
+                null,
+                new object?[] { dockingManager, centralPanel, hostPanel, DockingStyle.Fill, 0, logger });
+
+            invocationResult.Should().BeOfType<bool>();
+            ((bool)invocationResult!).Should().BeTrue();
+            centralPanel.Parent.Should().Be(hostPanel);
+            centralPanel.Dock.Should().Be(DockStyle.Fill);
+            centralPanel.Controls.Count.Should().BeGreaterThan(0);
+        }
+
+        [StaFact]
         public async Task SaveAndLoadLayout_CompressedRoundtrip_WritesCompressedFileAndRestores()
         {
             var provider = BuildProvider();

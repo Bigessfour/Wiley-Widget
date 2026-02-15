@@ -152,6 +152,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.Controls.Add(this._noDataOverlay);
 
             // Final control properties
+            this.Name = "Panel_QuickBooks";
             this.AutoScaleMode = AutoScaleMode.Font;
             this.Font = new Font("Segoe UI", 9F);
             this.MinimumSize = new Size(720, 520);

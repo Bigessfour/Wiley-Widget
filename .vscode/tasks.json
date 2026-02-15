@@ -1396,6 +1396,48 @@
 				"kind": "test",
 				"isDefault": false
 			}
+		},
+		{
+			"label": "temp: test ribbon init",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~WileyWidget.WinForms.Tests.Unit.Forms.MainFormTests.InitializeChrome_CreatesRibbonAndStatusBar",
+				"--no-restore"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "temp: test ribbon toggle",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~WileyWidget.WinForms.Tests.Unit.Forms.MainFormTests.ToggleTheme_UpdatesThemeButtonText_WhenThemeServiceRaised",
+				"--no-restore"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "temp: test ribbon toggle no-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~WileyWidget.WinForms.Tests.Unit.Forms.MainFormTests.ToggleTheme_UpdatesThemeButtonText_WhenThemeServiceRaised",
+				"--no-build",
+				"--no-restore",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false
 		}
 	]
 }

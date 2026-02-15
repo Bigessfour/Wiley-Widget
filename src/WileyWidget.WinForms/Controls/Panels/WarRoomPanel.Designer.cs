@@ -247,7 +247,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             //
             this.Controls.Add(this._contentPanel);
             this.Controls.Add(this._topPanel);
-            this.Name = "WarRoomPanel";
+            this.Name = "Panel_WarRoom";
             this.Size = new System.Drawing.Size(800, 600);
             this._topPanel.ResumeLayout(false);
             this._contentPanel.ResumeLayout(false);

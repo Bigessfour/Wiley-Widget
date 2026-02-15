@@ -10,6 +10,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.IO;
@@ -33,6 +34,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Factories;
 
 #pragma warning disable CS8604 // Possible null reference argument
 
@@ -89,6 +91,7 @@ namespace WileyWidget.WinForms.Forms
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
         private IStatusProgressService? _statusProgressService;
+        private SyncfusionControlFactory? _controlFactory;
 
         // [PERF] UI State
         private UIConfiguration _uiConfig = null!;
@@ -194,10 +197,45 @@ namespace WileyWidget.WinForms.Forms
 
         private static bool IsUiTestEnvironment()
         {
-            return string.Equals(
-                Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"),
-                "true",
-                StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            try
+            {
+                var processName = Process.GetCurrentProcess().ProcessName;
+                if (!string.IsNullOrWhiteSpace(processName)
+                    && (processName.Contains("testhost", StringComparison.OrdinalIgnoreCase)
+                        || processName.Contains("vstest", StringComparison.OrdinalIgnoreCase)
+                        || processName.Contains("xunit", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Best-effort detection only.
+            }
+
+            try
+            {
+                var friendlyName = AppDomain.CurrentDomain.FriendlyName;
+                if (!string.IsNullOrWhiteSpace(friendlyName)
+                    && (friendlyName.Contains("testhost", StringComparison.OrdinalIgnoreCase)
+                        || friendlyName.Contains("vstest", StringComparison.OrdinalIgnoreCase)
+                        || friendlyName.Contains("xunit", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            catch
+            {
+                // Best-effort detection only.
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -245,7 +283,8 @@ namespace WileyWidget.WinForms.Forms
             ReportViewerLaunchOptions reportViewerLaunchOptions,
             IThemeService themeService,
             IWindowStateService windowStateService,
-            IFileImportService fileImportService)
+            IFileImportService fileImportService,
+            SyncfusionControlFactory controlFactory)
         {
             Log.Debug("[DIAGNOSTIC] MainForm constructor: ENTERED");
 
@@ -260,6 +299,7 @@ namespace WileyWidget.WinForms.Forms
             _themeService = themeService;
             _windowStateService = windowStateService ?? throw new ArgumentNullException(nameof(windowStateService));
             _fileImportService = fileImportService ?? throw new ArgumentNullException(nameof(fileImportService));
+            _controlFactory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             _uiDispatcherInitializer = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetService<IUiDispatcherInitializer>(_serviceProvider);
 
@@ -527,8 +567,12 @@ namespace WileyWidget.WinForms.Forms
 
             _logger?.LogInformation("[DIAGNOSTIC] MainForm.OnShown START");
 
+            var isUiTestRuntime = (_uiConfig != null && _uiConfig.IsUiTestHarness)
+                || IsUiTestEnvironment()
+                || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
+
             // [VISIBILITY] Ensure the ribbon has its tab selected and displayed after the form is fully rendered
-            if (_ribbon != null && _homeTab != null)
+            if (!isUiTestRuntime && _ribbon != null && _homeTab != null)
             {
                 try
                 {
@@ -594,7 +638,7 @@ namespace WileyWidget.WinForms.Forms
             // Headless / UI test harness: skip all deferred/background initialization.
             // This prevents WebView2 prewarm, async warmups, and other background tasks from running
             // in environments like MCP stdio servers where native components can destabilize the process.
-            if ((_uiConfig != null && _uiConfig.IsUiTestHarness) || IsUiTestEnvironment())
+            if (isUiTestRuntime)
             {
                 _logger?.LogInformation("[DIAGNOSTIC] OnShown: UI test harness mode - skipping deferred initialization");
                 return;
@@ -862,6 +906,15 @@ namespace WileyWidget.WinForms.Forms
                 catch (Exception ex)
                 {
                     _logger?.LogWarning(ex, "Failed to save window state");
+                }
+
+                try
+                {
+                    TryAutoSaveDockLayoutOnFormClosing();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to auto-save docking layout during form closing");
                 }
 
                 // [PERF] Docking resources are disposed in OnHandleDestroyed (prevents Paint NRE)

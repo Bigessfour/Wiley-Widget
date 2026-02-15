@@ -484,20 +484,27 @@ public class BudgetRepository : IBudgetRepository
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Filter by budget period dates (StartPeriod/EndPeriod), not creation date
-        var budgetEntries = await context.BudgetEntries
-            .Include(be => be.Department)
-            .Include(be => be.Fund)
-            .Include(be => be.MunicipalAccount)
-            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate)
-            .ToListAsync(cancellationToken);
+        // Server-side aggregation to avoid materializing all BudgetEntry entities
+        var baseQuery = context.BudgetEntries
+            .AsNoTracking()
+            .Where(be => be.StartPeriod >= startDate && be.EndPeriod <= endDate);
+
+        // Aggregate totals (single server-side query)
+        var totals = await baseQuery
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalBudgeted = g.Sum(be => be.BudgetedAmount),
+                TotalActual = g.Sum(be => be.ActualAmount)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         var analysis = new BudgetVarianceAnalysis
         {
             AnalysisDate = DateTime.UtcNow,
             BudgetPeriod = $"{startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}",
-            TotalBudgeted = budgetEntries.Sum(be => be.BudgetedAmount),
-            TotalActual = budgetEntries.Sum(be => be.ActualAmount),
+            TotalBudgeted = totals?.TotalBudgeted ?? 0m,
+            TotalActual = totals?.TotalActual ?? 0m,
         };
 
         analysis.TotalVariance = analysis.TotalBudgeted - analysis.TotalActual;
@@ -505,21 +512,22 @@ public class BudgetRepository : IBudgetRepository
             ? (analysis.TotalVariance / analysis.TotalBudgeted) * 100
             : 0;
 
-        // Group by funds
-        analysis.FundSummaries = budgetEntries
-            .GroupBy(be => be.Fund)
-            .Where(g => g.Key != null)
+        // Group by fund using server-side grouping and projection
+        var fundSummaries = await baseQuery
+            .Where(be => be.FundId != null)
+            .GroupBy(be => new { be.FundId, FundCode = be.Fund!.FundCode, FundName = be.Fund!.Name })
             .Select(g => new FundSummary
             {
-                Fund = new BudgetFundType { Code = g.Key!.FundCode, Name = g.Key.Name },
-                FundName = g.Key?.Name ?? "Unknown",
+                Fund = new BudgetFundType { Code = g.Key.FundCode, Name = g.Key.FundName },
+                FundName = g.Key.FundName ?? "Unknown",
                 TotalBudgeted = g.Sum(be => be.BudgetedAmount),
                 TotalActual = g.Sum(be => be.ActualAmount),
                 AccountCount = g.Count()
             })
-            .ToList();
+            .ToListAsync(cancellationToken);
 
-        // Calculate variances for fund summaries
+        analysis.FundSummaries = fundSummaries;
+
         foreach (var fundSummary in analysis.FundSummaries)
         {
             fundSummary.Variance = fundSummary.TotalBudgeted - fundSummary.TotalActual;

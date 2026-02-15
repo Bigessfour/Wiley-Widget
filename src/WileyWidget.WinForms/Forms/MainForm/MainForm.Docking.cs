@@ -3,6 +3,7 @@
 // https://help.syncfusion.com/windowsforms/docking-manager/getting-started
 
 using System;
+using System.ComponentModel;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
@@ -15,13 +16,15 @@ public partial class MainForm
 {
     // Core docking components (managed by DockingHostFactory)
     private DockingManager? _dockingManager;
-    private UserControl? _dockingHostContainer;
+    // NOTE: DockingClientPanel is created by DockingHostFactory and accessed via _dockingManager.HostControl
+    // No separate field needed - Syncfusion manages the client panel automatically via SizeToFit
     private LegacyGradientPanel? _leftDockPanel;         // Navigation
     private LegacyGradientPanel? _centralDocumentPanel;  // Main content area (can host TabControl later)
     private LegacyGradientPanel? _rightDockPanel;        // Activity Log container
     private ActivityLogPanel? _activityLogPanel; // Activity Log panel instance
     private System.Windows.Forms.Timer? _activityRefreshTimer; // Activity log refresh timer
     private bool _dockStateLoadCompleted; // Tracks when NewDockStateEndLoad fires - signals docking is ready for mutations
+    private Control? _dockingHostControl; // Cached DockingClientPanel host used for layout integration
 
     /// <summary>
     /// Initialize Syncfusion DockingManager using DockingHostFactory.
@@ -39,30 +42,45 @@ public partial class MainForm
 
         try
         {
-            EnsureDockingHostContainer();
-            ContainerControl dockingHost = this;
-            if (_dockingHostContainer != null && !_dockingHostContainer.IsDisposed)
+            // Pass MainForm as dockingHost - DockingHostFactory will create DockingClientPanel automatically
+            // This ensures SizeToFit integration and proper Syncfusion docking architecture
+            SuspendLayout();
+            try
             {
-                dockingHost = _dockingHostContainer;
-            }
+                // Use DockingHostFactory for consistent initialization (same path as integration tests)
+                // Passing 'this' (MainForm) triggers DockingClientPanel creation with SizeToFit=true
+                (_dockingManager, _leftDockPanel, _rightDockPanel, _centralDocumentPanel, _activityLogPanel, _activityRefreshTimer, _) =
+                    DockingHostFactory.CreateDockingHost(
+                        this,
+                        _serviceProvider ?? throw new InvalidOperationException("ServiceProvider required for docking initialization"),
+                        _panelNavigator,
+                        this, // Pass MainForm directly - factory will create DockingClientPanel
+                        _logger);
 
-            // Use DockingHostFactory for consistent initialization (same path as integration tests)
-            (_dockingManager, _leftDockPanel, _rightDockPanel, _centralDocumentPanel, _activityLogPanel, _activityRefreshTimer, _) =
-                DockingHostFactory.CreateDockingHost(
-                    this,
-                    _serviceProvider ?? throw new InvalidOperationException("ServiceProvider required for docking initialization"),
-                    _panelNavigator,
-                    dockingHost,
-                    _logger);
+                _dockingHostControl = _dockingManager?.HostControl;
+            }
+            finally
+            {
+                ResumeLayout(performLayout: true);
+            }
 
             _logger?.LogInformation("[DOCKING] DockingManager created via factory with all panels");
 
-            // Subscribe to NewDockStateEndLoad for layout state management
+            // Subscribe to available DockingManager events per Syncfusion API
+            // Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
             if (_dockingManager != null)
             {
+                // State change events (confirmed available in Syncfusion.Windows.Forms.Tools)
                 _dockingManager.NewDockStateEndLoad += OnDockStateEndLoad;
-                _logger?.LogDebug("[DOCKING] Subscribed to NewDockStateEndLoad event");
+                _dockingManager.DockStateChanged += OnDockStateChanged;
+                _dockingManager.DockVisibilityChanged += OnDockVisibilityChanged;
+                _dockingManager.DockControlActivated += OnDockControlActivated;
+                _dockingManager.DockMenuClick += OnDockMenuClick;
+                
+                _logger?.LogInformation("[DOCKING] Subscribed to 5 DockingManager events (state, visibility, activation, menu)");
             }
+
+            var persistedLayoutLoaded = TryLoadPersistedDockLayoutOnStartup();
 
             // Apply global theme to all docking components
             ApplyDockingTheme();
@@ -94,6 +112,11 @@ public partial class MainForm
                 BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
             }
 
+            if (!persistedLayoutLoaded)
+            {
+                MarkDockingReadyForDefaultLayout();
+            }
+
             _logger?.LogInformation("[DOCKING] Syncfusion DockingManager initialization completed successfully");
         }
         catch (Exception ex)
@@ -121,6 +144,7 @@ public partial class MainForm
         _centralDocumentPanel = centralDocumentPanel;
         _activityLogPanel = activityLogPanel;
         _activityRefreshTimer = activityRefreshTimer;
+        _dockingHostControl = dockingManager?.HostControl;
     }
 
     /// <summary>
@@ -136,7 +160,8 @@ public partial class MainForm
 
         try
         {
-            _logger?.LogDebug("[DOCKING] NewDockStateEndLoad fired - ensuring layout consistency");
+            var context = _dockStateLoadCompleted ? "runtime" : "initialization";
+            _logger?.LogInformation("[DOCKING] NewDockStateEndLoad fired ({Context}) - docking ready for mutations", context);
             _dockStateLoadCompleted = true; // Signal that docking is ready for mutations
 
             // Re-assert chrome z-order/layout after dock-state transitions.
@@ -145,6 +170,49 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "[DOCKING] Exception during NewDockStateEndLoad handler");
+        }
+    }
+
+    private void MarkDockingReadyForDefaultLayout()
+    {
+        if (IsDisposed || _dockingManager == null || _dockStateLoadCompleted)
+        {
+            return;
+        }
+
+        try
+        {
+            var hostControl = _dockingManager.HostControl;
+            if (hostControl == null || hostControl.IsDisposed || !hostControl.IsHandleCreated || hostControl.Controls.Count == 0)
+            {
+                return;
+            }
+
+            _dockStateLoadCompleted = true;
+            _logger?.LogInformation("[DOCKING] No persisted dock-state loaded; marking docking ready after default layout initialization");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "[DOCKING] Default-layout readiness check failed");
+        }
+    }
+
+    /// <summary>
+    /// Force-marks docking as ready when DockingManager is operationally ready but NewDockStateEndLoad hasn't fired.
+    /// Called from navigation paths as a safety measure to unblock navigation.
+    /// </summary>
+    private void ForceMarkDockingReadyIfOperational()
+    {
+        if (_dockStateLoadCompleted || _dockingManager == null || IsDisposed)
+        {
+            return;
+        }
+
+        var hostControl = _dockingManager.HostControl;
+        if (hostControl != null && !hostControl.IsDisposed && hostControl.IsHandleCreated && hostControl.Controls.Count > 0)
+        {
+            _dockStateLoadCompleted = true;
+            _logger?.LogWarning("[DOCKING] Force-marked docking as ready - NewDockStateEndLoad did not fire but DockingManager is operational");
         }
     }
 
@@ -219,17 +287,10 @@ public partial class MainForm
                 _statusBar.Dock = DockStyle.Fill;
             }
 
-            // Docking host container goes in the middle row
-            if (_dockingHostContainer != null && !_dockingHostContainer.IsDisposed)
-            {
-                _logger?.LogDebug("[LAYOUT] Moving docking host container to TableLayoutPanel row 1");
-                if (Controls.Contains(_dockingHostContainer))
-                {
-                    Controls.Remove(_dockingHostContainer);
-                }
-                _mainLayoutPanel.Controls.Add(_dockingHostContainer, 0, 1);
-                _dockingHostContainer.Dock = DockStyle.Fill;
-            }
+            // DockingClientPanel (accessed via DockingManager.HostControl) goes in the middle row
+            // Note: DockingClientPanel is added later during InitializeSyncfusionDocking
+            // This section ensures it's in the correct TableLayoutPanel cell
+            // SizeToFit=true handles automatic layout, no manual Dock assignment needed
 
             // Bring layout panel to back so chrome can paint over if needed (usually not required)
             _mainLayoutPanel.SendToBack();
@@ -254,6 +315,14 @@ public partial class MainForm
     /// NOTE: With TableLayoutPanel-based layout, complex z-order manipulation is no longer needed.
     /// This method now performs minimal layout validation and refresh.
     /// </summary>
+    /// <summary>
+    /// Finalizes chrome layout for ribbon, status bar, and docking integration.
+    /// DockingClientPanel (accessed via DockingManager.HostControl) uses SizeToFit for automatic layout.
+    /// No manual z-order or Dock assignments needed - Syncfusion handles this.
+    /// 
+    /// SYNCFUSION INTEGRATION: DockingClientPanel.SizeToFit automatically manages layout
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-client-panel
+    /// </summary>
     private void FinalizeDockingChromeLayout()
     {
         if (IsDisposed)
@@ -263,16 +332,19 @@ public partial class MainForm
 
         try
         {
+            // Access DockingClientPanel via HostControl (with validation/fallback)
+            var hostControl = GetValidDockingHostControl();
+
             // If using TableLayoutPanel, ensure docking host is in the layout
             if (_mainLayoutPanel != null && !_mainLayoutPanel.IsDisposed)
             {
-                if (_dockingHostContainer != null && !_dockingHostContainer.IsDisposed)
+                if (hostControl != null && !hostControl.IsDisposed)
                 {
-                    if (!_mainLayoutPanel.Controls.Contains(_dockingHostContainer))
+                    if (!_mainLayoutPanel.Controls.Contains(hostControl))
                     {
-                        _logger?.LogDebug("[DOCKING] Adding docking host container to TableLayoutPanel row 1");
-                        _mainLayoutPanel.Controls.Add(_dockingHostContainer, 0, 1);
-                        _dockingHostContainer.Dock = DockStyle.Fill;
+                        _logger?.LogDebug("[DOCKING] Adding DockingClientPanel to TableLayoutPanel row 1");
+                        _mainLayoutPanel.Controls.Add(hostControl, 0, 1);
+                        // No Dock assignment needed - DockingClientPanel.SizeToFit handles layout
                     }
                 }
 
@@ -281,19 +353,19 @@ public partial class MainForm
                 PerformLayout();
                 Invalidate(true);
 
-                _logger?.LogDebug("[DOCKING] Layout finalized using TableLayoutPanel");
+                _logger?.LogDebug("[DOCKING] Layout finalized using TableLayoutPanel with DockingClientPanel.SizeToFit");
                 return;
             }
 
-            // Fallback: Legacy z-order approach if TableLayoutPanel is not initialized
-            // (should not happen in normal flow, but kept for safety)
-            if (_dockingHostContainer != null && !_dockingHostContainer.IsDisposed)
+            // Fallback: Add DockingClientPanel directly to form if TableLayoutPanel not available
+            if (hostControl != null && !hostControl.IsDisposed)
             {
-                if (!Controls.Contains(_dockingHostContainer))
+                if (!Controls.Contains(hostControl))
                 {
-                    Controls.Add(_dockingHostContainer);
-                    _dockingHostContainer.Dock = DockStyle.Fill;
+                    Controls.Add(hostControl);
+                    _logger?.LogDebug("[DOCKING] Added DockingClientPanel directly to MainForm (TableLayoutPanel fallback)");
                 }
+                // No Dock assignment needed - SizeToFit=true handles automatic layout
             }
 
             // Bring chrome elements to visual front for painting
@@ -317,17 +389,51 @@ public partial class MainForm
                 _navigationStrip.BringToFront();
             }
 
-            // Final layout pass
-            _dockingHostContainer?.PerformLayout();
+            // Final layout pass - trigger on HostControl
+            hostControl?.PerformLayout();
             PerformLayout();
             Invalidate(true);
 
-            _logger?.LogDebug("[DOCKING] Layout finalized (legacy mode)");
+            _logger?.LogDebug("[DOCKING] Layout finalized with DockingClientPanel.SizeToFit (legacy mode)");
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "[DOCKING] FinalizeDockingChromeLayout failed");
         }
+    }
+
+    /// <summary>
+    /// Returns a usable DockingClientPanel host for layout and repairs HostControl if it was reset to a top-level form.
+    /// </summary>
+    private Control? GetValidDockingHostControl()
+    {
+        var hostControl = _dockingHostControl ?? _dockingManager?.HostControl;
+
+        if (hostControl is Form)
+        {
+            _logger?.LogWarning("[DOCKING] HostControl is a top-level form; skipping layout attachment to avoid invalid parentage");
+            return null;
+        }
+
+        if (hostControl != null && !hostControl.IsDisposed)
+        {
+            _dockingHostControl = hostControl;
+            return hostControl;
+        }
+
+        // Recover by locating the DockingClientPanel already created by DockingHostFactory
+        foreach (Control child in Controls)
+        {
+            if (child is DockingClientPanel panel && !panel.IsDisposed)
+            {
+                _dockingHostControl = panel;
+                _logger?.LogInformation("[DOCKING] Recovered DockingClientPanel host for layout integration");
+                return panel;
+            }
+        }
+
+        _logger?.LogWarning("[DOCKING] No valid DockingClientPanel host found; skipping layout update");
+        return null;
     }
 
     // Panel creation, configuration, and layout methods removed - now handled by DockingHostFactory
@@ -518,11 +624,8 @@ public partial class MainForm
             _activityLogPanel?.Dispose();
             _activityLogPanel = null;
 
-            if (_dockingHostContainer != null)
-            {
-                _dockingHostContainer.Dispose();
-                _dockingHostContainer = null;
-            }
+            // DockingClientPanel is owned by DockingManager and will be disposed automatically
+            // No manual disposal needed - Syncfusion manages this
 
             _logger?.LogInformation("[DOCKING] All Syncfusion docking resources disposed successfully");
         }
@@ -551,53 +654,14 @@ public partial class MainForm
         }
     }
 
-    private void EnsureDockingHostContainer()
-    {
-        if (_dockingHostContainer != null && !_dockingHostContainer.IsDisposed)
-        {
-            if (!Controls.Contains(_dockingHostContainer))
-            {
-                // Add to Controls but DON'T set Dock yet
-                Controls.Add(_dockingHostContainer);
-            }
-
-            // Set Dock property after it's in the collection
-            _dockingHostContainer.Dock = DockStyle.Fill;
-            _dockingHostContainer.Margin = Padding.Empty;
-            _dockingHostContainer.Padding = Padding.Empty;
-            // Don't call SendToBack here - z-order will be set explicitly in FinalizeDockingChromeLayout
-            return;
-        }
-
-        _dockingHostContainer = new UserControl
-        {
-            Name = "_dockingClientPanel",
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            Padding = Padding.Empty,
-            TabStop = false,
-            BackColor = SystemColors.Control
-        };
-
-        Controls.Add(_dockingHostContainer);
-
-        // Permanent hidden placeholder ensures HostControl is never empty (prevents Syncfusion paint NRE)
-        var hostPlaceholder = new Panel
-        {
-            Name = "DockingHostPermanentPlaceholder",
-            Dock = DockStyle.Fill,
-            Visible = false,
-            BackColor = SystemColors.Control
-        };
-        _dockingHostContainer.Controls.Add(hostPlaceholder);
-        hostPlaceholder.SendToBack();
-
-        _dockingHostContainer.SendToBack();
-    }
+    // REMOVED: EnsureDockingHostContainer() - obsolete, DockingClientPanel now created by DockingHostFactory
 
     /// <summary>
     /// Attempts to update dock visibility only when DockingManager is fully ready.
-    /// Falls back to plain Control.Visible assignment if manager state is not stable.
+    /// Uses Syncfusion SetDockVisibility API for all docked panels.
+    /// 
+    /// SYNCFUSION API: DockingManager.SetDockVisibility(Control, bool)
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
     /// </summary>
     private bool TrySetDockVisibilitySafe(Control control, bool visible, string context)
     {
@@ -606,17 +670,11 @@ public partial class MainForm
             return false;
         }
 
-        if (ReferenceEquals(control, _leftDockPanel) ||
-            ReferenceEquals(control, _rightDockPanel) ||
-            ReferenceEquals(control, _centralDocumentPanel))
-        {
-            control.Visible = visible;
-            return false;
-        }
-
         if (!IsDockingManagerReadyForMutatingOperations() || _dockingManager == null)
         {
+            // Fallback to manual visibility when DockingManager not ready
             control.Visible = visible;
+            _logger?.LogDebug("[DOCKING] Fallback to manual visibility for {ControlName} - DockingManager not ready", control.Name);
             return false;
         }
 
@@ -637,9 +695,29 @@ public partial class MainForm
 
         try
         {
-            _dockingManager.SetDockVisibility(control, visible);
-            control.Visible = visible;
-            return true;
+            // Use Syncfusion API for all docked controls (left, right, and dynamically docked panels)
+            // Central panel (Fill style) is not managed by DockingManager, handle separately
+            if (ReferenceEquals(control, _centralDocumentPanel))
+            {
+                control.Visible = visible;
+                _logger?.LogDebug("[DOCKING] Central panel visibility set to {Visible} (not docked)", visible);
+                return false;
+            }
+
+            // Use Syncfusion SetDockVisibility for left, right, and all docked panels
+            if (_dockingManager.GetEnableDocking(control))
+            {
+                _dockingManager.SetDockVisibility(control, visible);
+                _logger?.LogDebug("[DOCKING] SetDockVisibility({Visible}) called for {ControlName} via Syncfusion API", visible, control.Name);
+                return true;
+            }
+            else
+            {
+                // Control not docked, use manual visibility
+                control.Visible = visible;
+                _logger?.LogDebug("[DOCKING] Manual visibility for {ControlName} (not docked)", control.Name);
+                return false;
+            }
         }
         catch (ArgumentOutOfRangeException ex)
         {
@@ -685,14 +763,111 @@ public partial class MainForm
             return false;
         }
 
-        // CRITICAL: Wait for NewDockStateEndLoad to fire before allowing mutations
-        // This prevents race conditions where panels dock before internal docking state is ready
-        if (!_dockStateLoadCompleted)
+        var hostControl = _dockingManager.HostControl;
+        if (hostControl == null || hostControl.IsDisposed || !hostControl.IsHandleCreated)
         {
             return false;
         }
 
+        if (hostControl.Controls.Count == 0)
+        {
+            return false;
+        }
+
+        // RELAXED: Allow navigation even if _dockStateLoadCompleted is false
+        // The flag is advisory only - DockingManager can handle operations after HostControl is ready
+        // Original strict check was preventing navigation when docking was actually ready
+        // Keep the flag for logging purposes but don't block navigation
+        if (!_dockStateLoadCompleted)
+        {
+            _logger?.LogDebug("[DOCKING] Navigation proceeding before NewDockStateEndLoad fired - DockingManager is operationally ready");
+        }
+
         return true;
     }
+
+    #region Syncfusion DockingManager Event Handlers
+
+    /// <summary>
+    /// Event handler for DockingManager.DockStateChanged.
+    /// Tracks when docked controls change state (docked/floating/auto-hidden).
+    /// 
+    /// SYNCFUSION EVENT: DockStateChanged
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
+    /// </summary>
+    private void OnDockStateChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogDebug("[DOCKING_EVENT] DockStateChanged fired");
+            // Event args properties are accessed dynamically if needed
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[DOCKING_EVENT] DockStateChanged handler failed");
+        }
+    }
+
+    /// <summary>
+    /// Event handler for DockingManager.DockVisibilityChanged.
+    /// Tracks when docked controls visibility changes.
+    /// 
+    /// SYNCFUSION EVENT: DockVisibilityChanged
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
+    /// </summary>
+    private void OnDockVisibilityChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogDebug("[DOCKING_EVENT] DockVisibilityChanged fired");
+            // Event args properties are accessed dynamically if needed
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[DOCKING_EVENT] DockVisibilityChanged handler failed");
+        }
+    }
+
+    /// <summary>
+    /// Event handler for DockingManager.DockControlActivated.
+    /// Tracks when docked controls are activated (gain focus).
+    /// 
+    /// SYNCFUSION EVENT: DockControlActivated
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
+    /// </summary>
+    private void OnDockControlActivated(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogDebug("[DOCKING_EVENT] DockControlActivated fired");
+            // Event args properties are accessed dynamically if needed
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[DOCKING_EVENT] DockControlActivated handler failed");
+        }
+    }
+
+    /// <summary>
+    /// Event handler for DockingManager.DockMenuClick.
+    /// Handles context menu item clicks on docked panels.
+    /// 
+    /// SYNCFUSION EVENT: DockMenuClick
+    /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
+    /// </summary>
+    private void OnDockMenuClick(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogDebug("[DOCKING_EVENT] DockMenuClick fired");
+            // Optional: Custom context menu actions, logging, etc.
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[DOCKING_EVENT] DockMenuClick handler failed");
+        }
+    }
+
+    #endregion
 
 }

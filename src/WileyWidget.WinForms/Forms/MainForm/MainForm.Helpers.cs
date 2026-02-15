@@ -79,9 +79,9 @@ public partial class MainForm
                     continue;
                 }
 
-                if (IsBackStageControl(control))
+                if (IsBackStageControl(control) || IsRibbonPanelControl(control))
                 {
-                    _logger?.LogDebug("Skipped theme application for BackStage control {ControlType}", controlType.Name);
+                    _logger?.LogDebug("Skipped theme application for sensitive Syncfusion container {ControlType}", controlType.Name);
                     continue;
                 }
 
@@ -163,6 +163,12 @@ public partial class MainForm
             or "BackStageTab"
             or "BackStageButton"
             or "BackStageSeparator";
+    }
+
+    private static bool IsRibbonPanelControl(Control control)
+    {
+        Type type = control.GetType();
+        return type.Name is "RibbonPanel";
     }
 
     /// <summary>
@@ -600,16 +606,14 @@ public partial class MainForm
 
     /// <summary>
     /// Gets or initializes the AppStateSerializer instance for layout persistence.
-    /// Uses XMLFile mode with full property configuration per Syncfusion API.
+    /// Uses BinaryFmtStream mode with explicit property configuration for robust Syncfusion layout persistence.
     /// </summary>
     private AppStateSerializer GetLayoutSerializer()
     {
         if (_layoutSerializer == null)
         {
-            var layoutDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "WileyWidget", "Layouts");
-            var layoutPath = Path.Combine(layoutDirectory, "DockingLayoutV2.bin");
+            var layoutDirectory = GetLayoutSerializerDirectory();
+            var layoutPath = GetLayoutSerializerPath();
 
             Directory.CreateDirectory(layoutDirectory);
 
@@ -644,6 +648,19 @@ public partial class MainForm
         return _layoutSerializer;
     }
 
+    private static string GetLayoutSerializerDirectory()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WileyWidget",
+            "Layouts");
+    }
+
+    private static string GetLayoutSerializerPath()
+    {
+        return Path.Combine(GetLayoutSerializerDirectory(), "DockingLayoutV2.bin");
+    }
+
     private void ResetLayoutSerializerStream(bool truncate)
     {
         if (_layoutSerializerStream == null)
@@ -667,6 +684,119 @@ public partial class MainForm
         {
             _logger?.LogWarning(ex, "[MAINFORM] Failed to reset layout serializer stream");
         }
+    }
+
+    private bool TryPrepareLayoutStreamForRead(string context, out long layoutLength)
+    {
+        layoutLength = 0;
+
+        if (_layoutSerializerStream == null || !_layoutSerializerStream.CanRead)
+        {
+            _logger?.LogDebug("[MAINFORM] Layout stream unavailable for read in {Context}", context);
+            return false;
+        }
+
+        try
+        {
+            layoutLength = _layoutSerializerStream.Length;
+            if (layoutLength <= 0)
+            {
+                return false;
+            }
+
+            const long minimumLayoutBytes = 32;
+            const long maximumLayoutBytes = 8L * 1024 * 1024;
+
+            if (layoutLength < minimumLayoutBytes)
+            {
+                _logger?.LogWarning(
+                    "[MAINFORM] Persisted docking layout is too small ({Length} bytes) in {Context}; resetting state",
+                    layoutLength,
+                    context);
+                ResetInvalidDockLayoutState(context, null);
+                return false;
+            }
+
+            if (layoutLength > maximumLayoutBytes)
+            {
+                _logger?.LogWarning(
+                    "[MAINFORM] Persisted docking layout is too large ({Length} bytes) in {Context}; resetting state",
+                    layoutLength,
+                    context);
+                ResetInvalidDockLayoutState(context, null);
+                return false;
+            }
+
+            ResetLayoutSerializerStream(truncate: false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[MAINFORM] Failed to prepare layout stream for read in {Context}", context);
+            return false;
+        }
+    }
+
+    private void ResetInvalidDockLayoutState(string context, Exception? reason)
+    {
+        try
+        {
+            BackupLayoutStateIfPossible(context);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "[MAINFORM] Failed to backup invalid layout state in {Context}", context);
+        }
+
+        try
+        {
+            if (_layoutSerializer != null)
+            {
+                _layoutSerializer.FlushSerializer();
+            }
+
+            ResetLayoutSerializerStream(truncate: true);
+
+            if (reason != null)
+            {
+                _logger?.LogWarning(reason,
+                    "[MAINFORM] Invalid persisted docking layout was reset in {Context}",
+                    context);
+            }
+            else
+            {
+                _logger?.LogWarning("[MAINFORM] Persisted docking layout was reset in {Context}", context);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[MAINFORM] Failed to reset invalid layout state in {Context}", context);
+        }
+    }
+
+    private void BackupLayoutStateIfPossible(string context)
+    {
+        var layoutPath = GetLayoutSerializerPath();
+        if (!File.Exists(layoutPath))
+        {
+            return;
+        }
+
+        var corruptedDirectory = Path.Combine(GetLayoutSerializerDirectory(), "Corrupted");
+        Directory.CreateDirectory(corruptedDirectory);
+
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
+        var backupPath = Path.Combine(corruptedDirectory, $"DockingLayoutV2-{timestamp}.bin");
+
+        using var sourceStream = new FileStream(layoutPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (sourceStream.Length <= 0)
+        {
+            return;
+        }
+
+        using var backupStream = new FileStream(backupPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        sourceStream.CopyTo(backupStream);
+        _logger?.LogWarning("[MAINFORM] Backed up invalid persisted docking layout from {Context} to {BackupPath}", context, backupPath);
     }
 
     /// <summary>
@@ -761,10 +891,109 @@ public partial class MainForm
         }
     }
 
+    private void TryAutoSaveDockLayoutOnFormClosing()
+    {
+        if (_dockingManager == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var serializer = GetLayoutSerializer();
+            if (!serializer.Enabled)
+            {
+                serializer.Enabled = true;
+            }
+
+            ResetLayoutSerializerStream(truncate: true);
+            _dockingManager.SaveDockState(serializer);
+            serializer.PersistNow();
+            _layoutSerializerStream?.Flush(true);
+
+            _logger?.LogDebug("[MAINFORM] Docking layout auto-saved during form closing");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[MAINFORM] Failed to auto-save docking layout during form closing");
+        }
+    }
+
     /// <summary>
     /// Loads the saved docking layout from user preferences.
     /// Checks DeserializedInfoApplicationVersion for compatibility.
     /// </summary>
+    private bool TryLoadDockStateSafely(AppStateSerializer serializer, string context)
+    {
+        try
+        {
+            var loaded = _dockingManager.LoadDockState(serializer);
+            if (!loaded)
+            {
+                _logger?.LogWarning("[DOCKING] LoadDockState returned false in {Context}; falling back to designer layout", context);
+                ResetInvalidDockLayoutState(context, null);
+                _dockingManager.LoadDesignerDockState();
+                return false;
+            }
+
+            return true;
+        }
+        catch (ArgumentNullException ex) when (string.Equals(ex.ParamName, "s", StringComparison.Ordinal))
+        {
+            ResetInvalidDockLayoutState(context, ex);
+            _logger?.LogWarning(ex,
+                "[DOCKING] Corrupt/empty dock-state payload in {Context}. Falling back to designer layout.",
+                context);
+            _dockingManager.LoadDesignerDockState();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            ResetInvalidDockLayoutState(context, ex);
+            _logger?.LogError(ex,
+                "[DOCKING] LoadDockState failed in {Context}. Falling back to designer layout.",
+                context);
+            _dockingManager.LoadDesignerDockState();
+            return false;
+        }
+    }
+
+    private bool TryLoadPersistedDockLayoutOnStartup()
+    {
+        if (_dockingManager == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var serializer = GetLayoutSerializer();
+            if (!serializer.Enabled)
+            {
+                serializer.Enabled = true;
+            }
+
+            if (!TryPrepareLayoutStreamForRead("InitializeSyncfusionDocking", out var layoutLength))
+            {
+                _logger?.LogDebug("[MAINFORM] No persisted docking layout found during startup");
+                return false;
+            }
+
+            var loaded = TryLoadDockStateSafely(serializer, "InitializeSyncfusionDocking");
+            _logger?.LogInformation(
+                "[MAINFORM] Startup dock layout load result: Loaded={Loaded}, LayoutBytes={LayoutBytes}",
+                loaded,
+                layoutLength);
+
+            return loaded;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "[MAINFORM] Failed to load persisted docking layout during startup; continuing with default layout");
+            return false;
+        }
+    }
+
     public void LoadLayout()
     {
         try
@@ -787,9 +1016,7 @@ public partial class MainForm
 
             try
             {
-                ResetLayoutSerializerStream(truncate: false);
-
-                if (_layoutSerializerStream != null && _layoutSerializerStream.CanRead && _layoutSerializerStream.Length == 0)
+                if (!TryPrepareLayoutStreamForRead("LoadLayout", out _))
                 {
                     _logger?.LogInformation("[MAINFORM] No saved layout stream data found, using default");
                     RecoverDockingStateForNavigation("LoadLayout:NoSavedState", null);
@@ -798,7 +1025,7 @@ public partial class MainForm
 
                 // Apply layout to DockingManager with error handling for theme parsing
                 SetDockingPanelsVisibility(false, "LoadLayout:PreLoadDockState");
-                _dockingManager.LoadDockState(serializer);
+                _ = TryLoadDockStateSafely(serializer, "LoadLayout");
                 EnsureDockingSurfaceVisibleForNavigation("LoadLayout:SerializedState");
                 _logger?.LogInformation("[MAINFORM] Layout loaded successfully");
             }
@@ -884,10 +1111,9 @@ public partial class MainForm
                     try
                     {
                         var serializer = GetLayoutSerializer();
-                        ResetLayoutSerializerStream(truncate: false);
-                        if (_layoutSerializerStream != null && _layoutSerializerStream.CanRead && _layoutSerializerStream.Length > 0)
+                        if (TryPrepareLayoutStreamForRead("ResetLayout", out _))
                         {
-                            _dockingManager.LoadDockState(serializer);
+                            _ = TryLoadDockStateSafely(serializer, "ResetLayout");
                         }
                     }
                     catch (Exception layoutEx)

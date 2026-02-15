@@ -13,41 +13,305 @@ using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms;
 
+/// <summary>
+/// MainForm partial class containing RibbonControlAdv configuration and helper methods.
+/// 
+/// SYNCFUSION API REFERENCE: RibbonControlAdv (Syncfusion.Windows.Forms.Tools)
+/// Documentation: https://help.syncfusion.com/windowsforms/ribbon/overview
+/// Local Samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Samples\Ribbon
+/// 
+/// RIBBONCONTROLADV KEY PROPERTIES (configured in this file):
+/// ================================================================
+/// 
+/// CORE PROPERTIES:
+/// - Name                              : Control identifier for automation/testing
+/// - Dock                              : DockStyleEx.Top (ribbon docking position)
+/// - Size, MinimumSize, MaximumSize    : DPI-aware sizing
+/// - AutoSize                          : false (manual control)
+/// - Visible, Enabled                  : Visibility and interaction state
+/// - TabIndex, TabStop                 : Keyboard navigation order
+/// 
+/// APPEARANCE PROPERTIES:
+/// - RibbonStyle                       : Office2016 (visual style)
+/// - LauncherStyle                     : Metro (group launcher icon style)
+/// - BorderStyle                       : None (frameless appearance)
+/// - ShowCaption                       : true (show title bar)
+/// - CaptionHeight                     : DPI-aware height for title bar
+/// - RibbonHeaderImage                 : None (no custom header image)
+/// - QuickPanelImageLayout             : StretchImage (QAT icon layout)
+/// - TouchMode                         : false (optimize for mouse/keyboard)
+/// - OfficeColorScheme                 : Derived from theme (Blue/White/Black/DarkGray)
+/// 
+/// LAYOUT PROPERTIES:
+/// - LayoutMode                        : Normal/Simplified (ribbon layout mode)
+/// - EnableSimplifiedLayoutMode        : true (allow simplified mode switching)
+/// - ShowRibbonDisplayOptionButton     : true (show layout mode dropdown)
+/// - AutoLayoutToolStrip               : true (automatic strip layout)
+/// - AllowCollapse                     : true (allow ribbon collapse)
+/// - AllowMinimize                     : true (allow ribbon minimize)
+/// - IsMinimized                       : false (initial expanded state)
+/// 
+/// MENU BUTTON PROPERTIES (FILE MENU):
+/// - MenuButtonVisible                 : true (show File button)
+/// - MenuButtonEnabled                 : true (enable File button)
+/// - MenuButtonText                    : "File"
+/// - MenuButtonWidth                   : DPI-aware width (min 56px)
+/// - MenuButtonFont                    : Segoe UI 9.75pt
+/// - MenuButtonBackColor               : Office blue (#0072C6)
+/// 
+/// QUICK ACCESS TOOLBAR PROPERTIES:
+/// - QuickPanelVisible                 : true (show QAT)
+/// - ShowQuickItemsDropDownButton      : true (show QAT dropdown)
+/// - QuickPanelImageLayout             : StretchImage
+/// 
+/// SYSTEM TEXT PROPERTIES (LOCALIZATION):
+/// - SystemText.QuickAccessDialogDropDownName      : "Start menu"
+/// - SystemText.RenameDisplayLabelText             : "&Display Name:"
+/// - SystemText.AutoHideRibbon                     : "Auto-hide Ribbon"
+/// - SystemText.ShowTabs                           : "Show Tabs"
+/// - SystemText.ShowTabsAndCommands                : "Show Tabs and Commands"
+/// - SystemText.AddToQuickAccessToolBarText        : "&Add to Quick Access Toolbar"
+/// - SystemText.CustomizeQuickAccessToolBarText    : "&Customize Quick Access Toolbar..."
+/// - SystemText.MinimizeTheRibbon                  : "&Minimize the Ribbon"
+/// - SystemText.RemoveFromQuickAccessToolBarText   : "&Remove from Quick Access Toolbar"
+/// 
+/// ACCESSIBILITY PROPERTIES:
+/// - AccessibleName                    : "Ribbon_Main"
+/// - AccessibleDescription             : "Main application ribbon for navigation and tools"
+/// - AccessibleRole                    : MenuBar
+/// 
+/// BEHAVIOR PROPERTIES:
+/// - HideMenuButton                    : false (show File button)
+/// - ShowKeyTips                       : true (show keyboard shortcuts)
+/// 
+/// THEME PROPERTIES:
+/// - ThemeName                         : Office2019Colorful/Dark/Black/White (SfSkinManager theme)
+/// - ThemeStyle                        : Office2019ColorfulTheme (loaded theme assembly)
+/// 
+/// OFFICE MENU PROPERTIES:
+/// - OfficeMenu                        : Initialized but not populated (legacy)
+/// 
+/// HEADER PROPERTIES:
+/// - Header.MainItems                  : Collection of ToolStripTabItem (tabs)
+/// - Header.AddMainItem(tab)           : Add tab to ribbon
+/// - Header.RemoveMainItem(tab)        : Remove tab from ribbon
+/// 
+/// BACKSTAGE PROPERTIES:
+/// - BackStageView                     : BackStageView instance (File menu backstage)
+/// - MenuButtonEnabled                 : true (enable backstage activation)
+/// 
+/// KEY EVENTS (available for subscription):
+/// ================================================================
+/// - RibbonClick                       : Fired when any ribbon item clicked
+/// - LayoutModeChanged                 : Fired when layout mode changes (Normal/Simplified)
+/// - IsMinimizedChanged                : Fired when ribbon minimize state changes
+/// - OfficeMenuShown                   : Fired when Office menu (File) shown
+/// - OfficeMenuHidden                  : Fired when Office menu (File) hidden
+/// - LauncherClick                     : Fired when group launcher button clicked
+/// 
+/// KEY METHODS (available for invocation):
+/// ================================================================
+/// - PerformLayout()                   : Force layout recalculation
+/// - Refresh()                         : Redraw ribbon
+/// - BeginInit() / EndInit()           : Suspend/resume initialization
+/// - SuspendLayout() / ResumeLayout()  : Suspend/resume layout updates
+/// - ShowOfficeMenu()                  : Show File menu backstage
+/// - HideOfficeMenu()                  : Hide File menu backstage
+/// - Header.AddMainItem(tab)           : Add tab to ribbon
+/// - Header.RemoveMainItem(tab)        : Remove tab from ribbon
+/// 
+/// IMPLEMENTATION NOTES:
+/// ================================================================
+/// - InitializeRibbon() in MainForm.Chrome.cs creates the RibbonControlAdv
+/// - This file contains configuration helpers and group creation methods
+/// - All properties configured in ConfigureRibbonAppearance()
+/// - Navigation commands use PanelRegistry for panel discovery
+/// - Theme applied via SfSkinManager.SetVisualStyle()
+/// - DPI scaling via Syncfusion.Windows.Forms.DpiAware
+/// </summary>
 public partial class MainForm
 {
     private delegate void RibbonCommand();
 
+    /// <summary>
+    /// Segoe MDL2 Assets icon glyph mappings for common ribbon buttons.
+    /// Reference: https://learn.microsoft.com/windows/apps/design/style/segoe-ui-symbol-font
+    /// </summary>
+    private static readonly Dictionary<string, string> RibbonIconGlyphs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Core Navigation
+        ["Dashboard"] = "\uE80F",           // View Dashboard
+        ["War Room"] = "\uE7EF",            // Org chart/Strategy
+        ["Activity Log"] = "\uE81C",        // Recent history
+
+        // Financials
+        ["Budget"] = "\uE8F0",              // Money/Calculator
+        ["Accounts"] = "\uE7EE",            // Contact list
+        ["Municipal Accounts"] = "\uE7EE",  // Contact list
+        ["Rates"] = "\uE8AB",               // Chart bars
+
+        // Reporting
+        ["Reports"] = "\uE8A1",             // Document
+        ["Analytics Hub"] = "\uEA24",       // Analytics chart
+        ["Revenue Trends"] = "\uE8E5",      // Line chart trending
+
+        // Tools
+        ["Settings"] = "\uE713",            // Settings gear
+        ["QuickBooks"] = "\uE8F1",          // Cloud/Sync
+        ["Data Mapper"] = "\uE8B7",         // Map
+
+        // File Operations
+        ["New"] = "\uE8A5",                 // New document
+        ["Open"] = "\uE8E5",                // Open folder
+        ["Save"] = "\uE74E",                // Save
+        ["Export"] = "\uEDE1",              // Export/Share
+
+        // Layout
+        ["Save Layout"] = "\uE74E",         // Save
+        ["Reset Layout"] = "\uE7A7",        // Refresh/Reset
+        ["Lock Panels"] = "\uE72E",         // Lock
+
+        // Actions
+        ["Sort Asc"] = "\uE74A",            // Sort ascending
+        ["Sort Desc"] = "\uE74B"            // Sort descending
+    };
+
+    /// <summary>
+    /// Loads a colorful icon from Syncfusion's built-in resources or embedded project resources.
+    /// Falls back to Segoe MDL2 Assets glyph if resource not found.
+    /// 
+    /// ICON SOURCES (in priority order):
+    /// 1. Syncfusion Essential Studio icons: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Icons\
+    /// 2. Embedded project resources: WileyWidget.WinForms.Resources.Icons.*
+    /// 3. Segoe MDL2 Assets font glyphs (fallback)
+    /// </summary>
+    /// <param name="iconName">Icon name (e.g., "Dashboard", "Budget", "Settings")</param>
+    /// <param name="size">Icon size in pixels (16, 32, 48, etc.)</param>
+    /// <param name="fallbackGlyph">Segoe MDL2 glyph to use if icon not found</param>
+    /// <returns>Icon image or null if not found</returns>
+    private static Image? LoadRibbonIcon(string iconName, int size, string? fallbackGlyph)
+    {
+        if (string.IsNullOrWhiteSpace(iconName))
+        {
+            return fallbackGlyph != null ? CreateIconFromSegoeGlyph(fallbackGlyph, size, SystemColors.HotTrack) : null;
+        }
+
+        try
+        {
+            // Try loading from Syncfusion Essential Studio installation
+            var syncfusionBasePath = @"C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Icons\";
+            if (Directory.Exists(syncfusionBasePath))
+            {
+                // Try exact size match
+                var iconPath = Path.Combine(syncfusionBasePath, $"{iconName}_{size}x{size}.png");
+                if (File.Exists(iconPath))
+                {
+                    return Image.FromFile(iconPath);
+                }
+
+                // Try common variations
+                var variations = new[] { iconName, iconName.Replace(" ", ""), iconName.ToLowerInvariant() };
+                foreach (var variant in variations)
+                {
+                    iconPath = Path.Combine(syncfusionBasePath, $"{variant}_{size}x{size}.png");
+                    if (File.Exists(iconPath))
+                    {
+                        return Image.FromFile(iconPath);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Continue to next method
+        }
+
+        try
+        {
+            // Try loading from embedded project resources
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var resourceName = $"WileyWidget.WinForms.Resources.Icons.{iconName}_{size}x{size}.png";
+            using var stream = assembly.GetManifestResourceStream(resourceName);
+            if (stream != null)
+            {
+                return Image.FromStream(stream);
+            }
+        }
+        catch
+        {
+            // Continue to fallback
+        }
+
+        // Fallback: Use Segoe MDL2 Assets glyph with Office blue color for visual appeal
+        if (!string.IsNullOrWhiteSpace(fallbackGlyph))
+        {
+            return CreateIconFromSegoeGlyph(fallbackGlyph, size, SystemColors.HotTrack);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Creates a navigation command delegate for a panel from PanelRegistry.
+    /// Uses type-based ShowPanel() method for direct navigation without reflection.
+    /// 
+    /// NAVIGATION FLOW:
+    /// 1. User clicks ribbon button
+    /// 2. RibbonCommand delegate invoked
+    /// 3. ShowPanel(Type, string, DockingStyle) called
+    /// 4. Panel instantiated via DI
+    /// 5. Panel docked in DockingManager
+    /// 6. Panel visible on screen
+    /// 
+    /// PATTERN: Direct Type-based navigation (no reflection, no string lookup)
+    /// 
+    /// </summary>
+    /// <param name="form">MainForm instance</param>
+    /// <param name="entry">Panel registry entry with Type, DisplayName, and DefaultDock</param>
+    /// <param name="logger">Logger for diagnostics</param>
+    /// <returns>RibbonCommand delegate that navigates to the panel</returns>
     private static RibbonCommand CreatePanelNavigationCommand(MainForm form, PanelRegistry.PanelEntry entry, ILogger? logger)
     {
-        // Returns a command that dynamically invokes ShowPanel<T> with the entry's PanelType
+        // Direct navigation using Type-based ShowPanel overload (no reflection needed)
         return () =>
         {
             try
             {
-                var showPanelMethod = typeof(MainForm)
-                    .GetMethod(nameof(MainForm.ShowPanel),
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance,
-                        null,
-                        new[] { typeof(string), typeof(DockingStyle) },
-                        null);
+                logger?.LogDebug("[RIBBON_NAV] Navigating to panel {PanelName} (Type={PanelType}, Dock={DockStyle})",
+                    entry.DisplayName, entry.PanelType.Name, entry.DefaultDock);
 
-                if (showPanelMethod != null)
-                {
-                    var genericMethod = showPanelMethod.MakeGenericMethod(entry.PanelType);
-                    genericMethod.Invoke(form, new object[] { entry.DisplayName, entry.DefaultDock });
-                }
-                else
-                {
-                    logger?.LogWarning("ShowPanel method not found for {PanelName}", entry.DisplayName);
-                }
+                // Call the non-generic ShowPanel(Type, string, DockingStyle) method directly
+                form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
+                
+                logger?.LogInformation("[RIBBON_NAV] Navigation command executed for {PanelName}", entry.DisplayName);
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "Failed to navigate to panel {PanelName} from registry", entry.DisplayName);
+                logger?.LogError(ex, "[RIBBON_NAV] Failed to navigate to panel {PanelName} (Type={PanelType})", 
+                    entry.DisplayName, entry.PanelType.Name);
             }
         };
     }
 
+    /// <summary>
+    /// Applies the appropriate RibbonStyle based on the current theme.
+    /// 
+    /// RIBBON STYLES AVAILABLE (Syncfusion.Windows.Forms.RibbonStyle):
+    /// - Office2007        : Classic Office 2007 appearance
+    /// - Office2010        : Office 2010 appearance (flatter design)
+    /// - Office2013        : Office 2013 appearance (flat, minimal)
+    /// - Office2016        : Office 2016 appearance (modern, flat) ✓ USED
+    /// - TouchStyle        : Touch-optimized large buttons
+    /// - Metro             : Modern Metro/Modern UI style
+    /// 
+    /// CURRENT IMPLEMENTATION: Always uses Office2016 style regardless of theme.
+    /// This provides consistent modern appearance across all Office2019 themes.
+    /// 
+    /// API REFERENCE: RibbonControlAdv.RibbonStyle property
+    /// </summary>
+    /// <param name="ribbon">RibbonControlAdv instance</param>
+    /// <param name="themeName">Theme name (e.g., "Office2019Colorful")</param>
+    /// <param name="logger">Logger for diagnostics</param>
     private static void ApplyRibbonStyleForTheme(RibbonControlAdv ribbon, string themeName, ILogger? logger)
     {
         if (ribbon == null)
@@ -57,7 +321,10 @@ public partial class MainForm
 
         try
         {
+            // Always use Office2016 style for modern appearance
             ribbon.RibbonStyle = RibbonStyle.Office2016;
+            
+            logger?.LogDebug("RibbonStyle set to Office2016 for theme: {Theme}", themeName);
         }
         catch (Exception ex)
         {
@@ -79,7 +346,31 @@ public partial class MainForm
         return AppThemeColors.ValidateTheme(resolvedTheme, logger);
     }
 
-    private static void ConfigureRibbonAppearance(RibbonControlAdv ribbon, ILogger? logger)
+    /// <summary>
+    /// Configures all RibbonControlAdv appearance and behavior properties per Syncfusion API.
+    /// 
+    /// CONFIGURED PROPERTIES:
+    /// - BorderStyle                      : ToolStripBorderStyle.None
+    /// - ShowCaption                      : true (false in test mode)
+    /// - QuickPanelVisible                : true (QAT visibility)
+    /// - ShowQuickItemsDropDownButton     : true (QAT dropdown)
+    /// - ShowRibbonDisplayOptionButton    : true (layout mode dropdown)
+    /// - AutoLayoutToolStrip              : true (automatic strip layout)
+    /// - QuickPanelImageLayout            : StretchImage (QAT icon sizing)
+    /// - RibbonHeaderImage                : None (no custom header)
+    /// - MenuButtonVisible                : true (File button)
+    /// - MenuButtonEnabled                : true (File button interactive)
+    /// - MenuButtonWidth                  : 56px minimum (DPI-aware)
+    /// - TouchMode                        : false (optimized for mouse/keyboard)
+    /// - AllowCollapse                    : true (ribbon can collapse)
+    /// - SystemText.*                     : Localized strings for UI elements
+    /// 
+    /// API REFERENCE: Syncfusion.Windows.Forms.Tools.RibbonControlAdv
+    /// </summary>
+    /// <param name="ribbon">RibbonControlAdv instance to configure</param>
+    /// <param name="logger">Logger for diagnostics</param>
+    /// <param name="isUiTestRuntime">Whether running in UI test mode (disables interactive features)</param>
+    private static void ConfigureRibbonAppearance(RibbonControlAdv ribbon, ILogger? logger, bool isUiTestRuntime)
     {
         if (ribbon == null)
         {
@@ -88,33 +379,54 @@ public partial class MainForm
 
         try
         {
+            // === BORDER AND CAPTION ===
             ribbon.BorderStyle = ToolStripBorderStyle.None;
-            ribbon.ShowCaption = true;
-            ribbon.QuickPanelVisible = true;
-            ribbon.ShowQuickItemsDropDownButton = true;
-            ribbon.ShowRibbonDisplayOptionButton = true;
-            ribbon.AutoLayoutToolStrip = true;
+            ribbon.ShowCaption = !isUiTestRuntime;
+
+            // === QUICK ACCESS TOOLBAR ===
+            ribbon.QuickPanelVisible = !isUiTestRuntime;
+            ribbon.ShowQuickItemsDropDownButton = !isUiTestRuntime;
             ribbon.QuickPanelImageLayout = PictureBoxSizeMode.StretchImage;
+
+            // === LAYOUT AND DISPLAY OPTIONS ===
+            ribbon.ShowRibbonDisplayOptionButton = !isUiTestRuntime;
+            ribbon.AutoLayoutToolStrip = true;
+            
+            // === BEHAVIOR ===
+            ribbon.AllowCollapse = true;
+            
+            // === HEADER IMAGE ===
             ribbon.RibbonHeaderImage = RibbonHeaderImage.None;
-            ribbon.MenuButtonVisible = true;
+            
+            // === MENU BUTTON (FILE MENU) ===
+            ribbon.MenuButtonVisible = !isUiTestRuntime;
+            ribbon.MenuButtonEnabled = !isUiTestRuntime;
             ribbon.MenuButtonWidth = Math.Max(56, ribbon.MenuButtonWidth);
+            
+            // === TOUCH MODE ===
             ribbon.TouchMode = false;
 
+            // === SYSTEM TEXT (LOCALIZATION) ===
             if (ribbon.SystemText != null)
             {
+                // Quick Access Toolbar text
                 if (string.IsNullOrWhiteSpace(ribbon.SystemText.QuickAccessDialogDropDownName))
                 {
                     ribbon.SystemText.QuickAccessDialogDropDownName = "Start menu";
                 }
 
+                // Display options text
                 if (string.IsNullOrWhiteSpace(ribbon.SystemText.RenameDisplayLabelText))
                 {
                     ribbon.SystemText.RenameDisplayLabelText = "&Display Name:";
                 }
             }
 
+            // === INITIALIZE COLLECTIONS (ensure properties are accessed) ===
             _ = ribbon.OfficeMenu;
             _ = ribbon.Header?.MainItems;
+            
+            logger?.LogDebug("RibbonControlAdv appearance configured successfully");
         }
         catch (Exception ex)
         {
@@ -176,6 +488,27 @@ public partial class MainForm
         }
     }
 
+    /// <summary>
+    /// Accesses all key ToolStripTabItem API properties to ensure complete initialization.
+    /// Workaround for Syncfusion lazy initialization issues where properties aren't set until accessed.
+    /// 
+    /// TOOLSTRIPTABITEM KEY PROPERTIES (Syncfusion.Windows.Forms.Tools.ToolStripTabItem):
+    /// - Font               : Tab text font
+    /// - Padding            : Interior padding around tab content
+    /// - Panel              : RibbonControlAdvPanel container for ribbon groups
+    /// - Position           : Tab position (Left/Right/Top/Bottom)
+    /// - Selected           : Whether tab is currently selected
+    /// - GetPreferredSize() : Calculate minimum required size for tab content
+    /// 
+    /// WHY THIS METHOD EXISTS:
+    /// Syncfusion's RibbonControlAdv uses lazy initialization for performance.
+    /// Some properties (especially Panel) aren't created until first access.
+    /// This method forces initialization by accessing all key properties.
+    /// 
+    /// API REFERENCE: Syncfusion.Windows.Forms.Tools.ToolStripTabItem
+    /// </summary>
+    /// <param name="tabItem">ToolStripTabItem to initialize</param>
+    /// <param name="logger">Logger for diagnostics</param>
     private static void CompleteToolStripTabItemAPI(ToolStripTabItem tabItem, ILogger? logger)
     {
         if (tabItem == null)
@@ -185,12 +518,15 @@ public partial class MainForm
 
         try
         {
+            // Access properties to force initialization
             _ = tabItem.Font;
             _ = tabItem.Padding;
             _ = tabItem.Panel;
             _ = tabItem.Position;
             _ = tabItem.Selected;
             _ = tabItem.GetPreferredSize(new Size(200, 100));
+            
+            logger?.LogDebug("ToolStripTabItem API initialization completed for tab: {TabText}", tabItem.Text);
         }
         catch (Exception ex)
         {
@@ -290,7 +626,8 @@ public partial class MainForm
             Name = name,
             Text = title,
             GripStyle = ToolStripGripStyle.Hidden,
-            AutoSize = true,
+            AutoSize = false,
+            Height = (int)DpiAware.LogicalToDeviceUnits(92f),
             LauncherStyle = LauncherStyle.Metro,
             ShowLauncher = true,
             ImageScalingSize = new Size(32, 32),
@@ -328,20 +665,159 @@ public partial class MainForm
         };
     }
 
-    private static ToolStripButton CreateLargeNavButton(string name, string text, RibbonCommand onClick, ILogger? logger, string? navigationTarget = null)
+    /// <summary>
+    /// Creates an icon from a Segoe MDL2 Assets glyph character with Office-style blue gradient.
+    /// Used as fallback when Syncfusion colorful icons are not available.
+    /// </summary>
+    /// <param name="glyph">Unicode glyph (e.g., "\uE8A5" for Dashboard)</param>
+    /// <param name="size">Icon size in pixels</param>
+    /// <param name="color">Icon color (defaults to Office blue if not provided)</param>
+    /// <returns>Bitmap image of the icon</returns>
+    private static Bitmap? CreateIconFromSegoeGlyph(string glyph, int size, Color color)
+    {
+        if (string.IsNullOrWhiteSpace(glyph) || size <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var bitmap = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+
+                using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
+                {
+                    // Use Office blue color for professional appearance
+                    var iconColor = color.IsEmpty || color == SystemColors.ControlText 
+                        ? Color.FromArgb(255, 0, 120, 215) // Office blue
+                        : color;
+
+                    using (var brush = new SolidBrush(iconColor))
+                    {
+                        var format = new StringFormat
+                        {
+                            Alignment = StringAlignment.Center,
+                            LineAlignment = StringAlignment.Center
+                        };
+                        graphics.DrawString(glyph, font, brush, new RectangleF(0, 0, size, size), format);
+                    }
+                }
+            }
+            return bitmap;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Converts Keys enumeration to keyboard shortcut display text.
+    /// </summary>
+    /// <param name="keys">Keyboard shortcut keys</param>
+    /// <returns>Human-readable shortcut text (e.g., "Ctrl+Shift+D")</returns>
+    private static string GetKeyboardShortcutText(Keys keys)
+    {
+        if (keys == Keys.None)
+        {
+            return string.Empty;
+        }
+
+        var parts = new List<string>();
+
+        if ((keys & Keys.Control) == Keys.Control)
+        {
+            parts.Add("Ctrl");
+        }
+
+        if ((keys & Keys.Shift) == Keys.Shift)
+        {
+            parts.Add("Shift");
+        }
+
+        if ((keys & Keys.Alt) == Keys.Alt)
+        {
+            parts.Add("Alt");
+        }
+
+        var keyCode = keys & ~Keys.Modifiers;
+        if (keyCode != Keys.None)
+        {
+            parts.Add(keyCode.ToString());
+        }
+
+        return string.Join("+", parts);
+    }
+
+    /// <summary>
+    /// Creates a large ribbon navigation button with icon, tooltip, and keyboard shortcut support.
+    /// </summary>
+    /// <param name="name">Button name for automation</param>
+    /// <param name="text">Button display text</param>
+    /// <param name="onClick">Command to execute on click</param>
+    /// <param name="logger">Logger for diagnostics</param>
+    /// <param name="navigationTarget">Navigation target panel name</param>
+    /// <param name="iconGlyph">Segoe MDL2 Assets icon glyph (e.g., "\uE8A5")</param>
+    /// <param name="tooltip">Tooltip text (keyboard shortcut auto-appended)</param>
+    /// <param name="shortcutKeys">Keyboard shortcut keys</param>
+    /// <returns>Configured ToolStripButton</returns>
+    private static ToolStripButton CreateLargeNavButton(
+        string name, 
+        string text, 
+        RibbonCommand onClick, 
+        ILogger? logger, 
+        string? navigationTarget = null,
+        string? iconGlyph = null,
+        string? tooltip = null,
+        Keys shortcutKeys = Keys.None)
     {
         var button = new ToolStripButton(text)
         {
             Name = name,
             AutoSize = false,
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
+            DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph) ? ToolStripItemDisplayStyle.Text : ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageAboveText,
             Padding = new Padding(8, 4, 8, 4),
-            Size = new Size((int)DpiAware.LogicalToDeviceUnits(85f), (int)DpiAware.LogicalToDeviceUnits(80f)),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(92f), (int)DpiAware.LogicalToDeviceUnits(84f)),
             TextAlign = ContentAlignment.BottomCenter,
-            Margin = new Padding(4, 2, 4, 2),
-            Font = new Font("Segoe UI", 9F)
+            ImageAlign = ContentAlignment.TopCenter,
+            Margin = new Padding(3, 2, 3, 2),
+            ImageScaling = ToolStripItemImageScaling.None,
+            AutoToolTip = true,
+            Overflow = ToolStripItemOverflow.Never,
+            Font = new Font("Segoe UI", 9F),
+            AccessibleName = text,
+            AccessibleRole = AccessibleRole.PushButton
         };
+
+        // Create icon from Syncfusion resources or Segoe MDL2 Assets glyph
+        if (!string.IsNullOrWhiteSpace(iconGlyph))
+        {
+            try
+            {
+                // Try to load colorful Syncfusion icon first, fall back to glyph
+                button.Image = LoadRibbonIcon(text, 32, iconGlyph);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "Failed to create icon for button {ButtonName}", name);
+            }
+        }
+
+        // Build comprehensive tooltip with keyboard shortcut
+        var tooltipText = tooltip ?? text;
+        if (shortcutKeys != Keys.None)
+        {
+            var shortcutText = GetKeyboardShortcutText(shortcutKeys);
+            tooltipText = $"{tooltipText} ({shortcutText})";
+        }
+        button.ToolTipText = tooltipText;
+        button.AccessibleDescription = tooltipText;
 
         if (!string.IsNullOrWhiteSpace(navigationTarget))
         {
@@ -363,16 +839,53 @@ public partial class MainForm
         return button;
     }
 
-    private static ToolStripButton CreateSmallNavButton(string name, string text, RibbonCommand onClick, ILogger? logger)
+    /// <summary>
+    /// Creates a small ribbon button with icon and tooltip support.
+    /// </summary>
+    private static ToolStripButton CreateSmallNavButton(
+        string name, 
+        string text, 
+        RibbonCommand onClick, 
+        ILogger? logger,
+        string? iconGlyph = null,
+        string? tooltip = null,
+        Keys shortcutKeys = Keys.None)
     {
         var button = new ToolStripButton(text)
         {
             Name = name,
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
+            DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph) ? ToolStripItemDisplayStyle.Text : ToolStripItemDisplayStyle.ImageAndText,
+            TextImageRelation = TextImageRelation.ImageBeforeText,
             AutoSize = true,
             Padding = new Padding(4, 2, 4, 2),
-            Margin = new Padding(2, 1, 2, 1)
+            Margin = new Padding(2, 1, 2, 1),
+            AccessibleName = text,
+            AccessibleRole = AccessibleRole.PushButton
         };
+
+        // Create icon from Syncfusion resources or Segoe MDL2 Assets glyph
+        if (!string.IsNullOrWhiteSpace(iconGlyph))
+        {
+            try
+            {
+                // Try to load colorful Syncfusion icon first, fall back to glyph
+                button.Image = LoadRibbonIcon(text, 16, iconGlyph);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "Failed to create icon for small button {ButtonName}", name);
+            }
+        }
+
+        // Build tooltip
+        var tooltipText = tooltip ?? text;
+        if (shortcutKeys != Keys.None)
+        {
+            var shortcutText = GetKeyboardShortcutText(shortcutKeys);
+            tooltipText = $"{tooltipText} ({shortcutText})";
+        }
+        button.ToolTipText = tooltipText;
+        button.AccessibleDescription = tooltipText;
 
         button.Click += (_, _) =>
         {
@@ -434,12 +947,18 @@ public partial class MainForm
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+
+            // Look up icon glyph for this panel
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+
             var button = CreateLargeNavButton(
                 $"Nav_{sanitizedName}",
                 panel.DisplayName,
                 () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
                 logger,
-                navigationTarget: panel.DisplayName);
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
 
             strip.Items.Add(button);
             firstButton ??= button;
@@ -461,12 +980,18 @@ public partial class MainForm
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+
+            // Look up icon glyph for this panel
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+
             var button = CreateLargeNavButton(
                 $"Nav_{sanitizedName}",
                 panel.DisplayName,
                 () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
                 logger,
-                navigationTarget: panel.DisplayName);
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
 
             strip.Items.Add(button);
             firstButton ??= button;
@@ -487,12 +1012,18 @@ public partial class MainForm
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+
+            // Look up icon glyph for this panel
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+
             var button = CreateLargeNavButton(
                 $"Nav_{sanitizedName}",
                 panel.DisplayName,
                 () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
                 logger,
-                navigationTarget: panel.DisplayName);
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
 
             strip.Items.Add(button);
         }
@@ -516,12 +1047,27 @@ public partial class MainForm
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+
+            // Look up icon glyph for this panel
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+
+            // Assign keyboard shortcuts for common tools
+            var shortcutKeys = panel.DisplayName switch
+            {
+                "Settings" => Keys.Control | Keys.Alt | Keys.S,
+                "QuickBooks" => Keys.Control | Keys.Q,
+                _ => Keys.None
+            };
+
             var button = CreateLargeNavButton(
                 $"Nav_{sanitizedName}",
                 panel.DisplayName,
                 () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
                 logger,
-                navigationTarget: panel.DisplayName);
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel",
+                shortcutKeys: shortcutKeys);
 
             strip.Items.Add(button);
             firstButton ??= button;
@@ -544,9 +1090,30 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Layout", "LayoutGroup", theme, logger);
 
-        var saveLayoutBtn = CreateLargeNavButton("Nav_SaveLayout", "Save\nLayout", () => SafeExecute(form.SaveCurrentLayout, "SaveLayout", logger), logger);
-        var resetLayoutBtn = CreateLargeNavButton("Nav_ResetLayout", "Reset\nLayout", () => SafeExecute(form.ResetLayout, "ResetLayout", logger), logger);
-        var lockLayoutBtn = CreateLargeNavButton("Nav_LockPanels", "Lock\nPanels", () => SafeExecute(form.TogglePanelLocking, "LockPanels", logger), logger);
+        var saveLayoutBtn = CreateLargeNavButton(
+            "Nav_SaveLayout", 
+            "Save\nLayout", 
+            () => SafeExecute(form.SaveCurrentLayout, "SaveLayout", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Save Layout"),
+            tooltip: "Save current panel layout",
+            shortcutKeys: Keys.Control | Keys.Shift | Keys.S);
+
+        var resetLayoutBtn = CreateLargeNavButton(
+            "Nav_ResetLayout", 
+            "Reset\nLayout", 
+            () => SafeExecute(form.ResetLayout, "ResetLayout", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Reset Layout"),
+            tooltip: "Reset panel layout to default");
+
+        var lockLayoutBtn = CreateLargeNavButton(
+            "Nav_LockPanels", 
+            "Lock\nPanels", 
+            () => SafeExecute(form.TogglePanelLocking, "LockPanels", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Lock Panels"),
+            tooltip: "Lock/unlock panel positions");
 
         strip.Items.Add(saveLayoutBtn);
         strip.Items.Add(resetLayoutBtn);
@@ -590,8 +1157,21 @@ public partial class MainForm
             Transparent = true
         };
 
-        var sortAscBtn = CreateSmallNavButton("Grid_SortAsc", "Sort Asc", () => SafeExecute(() => form.SortActiveGridByFirstSortableColumn(false), "SortAscending", logger), logger);
-        var sortDescBtn = CreateSmallNavButton("Grid_SortDesc", "Sort Desc", () => SafeExecute(() => form.SortActiveGridByFirstSortableColumn(true), "SortDescending", logger), logger);
+        var sortAscBtn = CreateSmallNavButton(
+            "Grid_SortAsc", 
+            "Sort Asc", 
+            () => SafeExecute(() => form.SortActiveGridByFirstSortableColumn(false), "SortAscending", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Sort Asc"),
+            tooltip: "Sort grid ascending");
+
+        var sortDescBtn = CreateSmallNavButton(
+            "Grid_SortDesc", 
+            "Sort Desc", 
+            () => SafeExecute(() => form.SortActiveGridByFirstSortableColumn(true), "SortDescending", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Sort Desc"),
+            tooltip: "Sort grid descending");
 
         gridStack.Items.Add(sortAscBtn);
         gridStack.Items.Add(sortDescBtn);
@@ -694,7 +1274,10 @@ public partial class MainForm
                     SfSkinManager.SetVisualStyle(form, selectedTheme);
                     ApplyThemeRecursively(form, selectedTheme, logger);
                     form.PerformLayout();
-                    form.Refresh();
+                    if (!IsUiTestEnvironment())
+                    {
+                        form.Refresh();
+                    }
                 }
             }
             catch (Exception ex)
@@ -715,10 +1298,41 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("File", "FileGroup", theme, logger);
 
-        var newBudgetBtn = CreateLargeNavButton("File_NewBudget", "New\nBudget", () => SafeExecute(form.CreateNewBudget, "NewBudget", logger), logger);
-        var openBudgetBtn = CreateLargeNavButton("File_OpenBudget", "Open\nBudget", () => SafeExecute(form.OpenBudget, "OpenBudget", logger), logger);
-        var saveLayoutBtn = CreateLargeNavButton("File_SaveLayout", "Save\nLayout", () => SafeExecute(form.SaveCurrentLayout, "SaveLayout", logger), logger);
-        var exportBtn = CreateLargeNavButton("File_ExportData", "Export\nData", () => SafeExecute(form.ExportData, "ExportData", logger), logger);
+        var newBudgetBtn = CreateLargeNavButton(
+            "File_NewBudget", 
+            "New\nBudget", 
+            () => SafeExecute(form.CreateNewBudget, "NewBudget", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("New"),
+            tooltip: "Create new budget",
+            shortcutKeys: Keys.Control | Keys.N);
+
+        var openBudgetBtn = CreateLargeNavButton(
+            "File_OpenBudget", 
+            "Open\nBudget", 
+            () => SafeExecute(form.OpenBudget, "OpenBudget", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Open"),
+            tooltip: "Open existing budget",
+            shortcutKeys: Keys.Control | Keys.O);
+
+        var saveLayoutBtn = CreateLargeNavButton(
+            "File_SaveLayout", 
+            "Save\nLayout", 
+            () => SafeExecute(form.SaveCurrentLayout, "SaveLayout", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Save Layout"),
+            tooltip: "Save current layout",
+            shortcutKeys: Keys.Control | Keys.Shift | Keys.S);
+
+        var exportBtn = CreateLargeNavButton(
+            "File_ExportData", 
+            "Export\nData", 
+            () => SafeExecute(form.ExportData, "ExportData", logger), 
+            logger,
+            iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Export"),
+            tooltip: "Export data to file",
+            shortcutKeys: Keys.Control | Keys.E);
 
         strip.Items.Add(newBudgetBtn);
         strip.Items.Add(openBudgetBtn);
@@ -744,8 +1358,8 @@ public partial class MainForm
             strip.ThemeName = resolvedTheme;
             SfSkinManager.SetVisualStyle(strip, resolvedTheme);
 
-            // Theme the tab panel container
-            if (tab.Panel is Control panelControl)
+            // Avoid direct styling of RibbonPanel internals; RibbonControlAdv theme cascades safely.
+            if (tab.Panel is Control panelControl && !IsRibbonPanelControl(panelControl) && !IsBackStageControl(panelControl))
             {
                 SfSkinManager.SetVisualStyle(panelControl, resolvedTheme);
             }
@@ -770,7 +1384,12 @@ public partial class MainForm
 
     private static void ApplyThemeRecursively(Control root, string themeName, ILogger? logger)
     {
-        if (root == null || string.IsNullOrWhiteSpace(themeName))
+        if (root == null || root.IsDisposed || root.Disposing || string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        if (IsRibbonPanelControl(root) || IsBackStageControl(root))
         {
             return;
         }
@@ -863,6 +1482,8 @@ public partial class MainForm
         }
 
         var deferredDockingAttempts = 0;
+        var maxDeferralAttempts = 5; // Increased from 3
+        var deferralDelayMs = 200; // Slightly longer delay
 
         void PerformNavigation()
         {
@@ -886,16 +1507,16 @@ public partial class MainForm
                 form.BringToFront();
                 form.Activate();
 
+                // Enhanced DockingManager readiness check (Issue 2 fix)
                 if (form._dockingManager == null)
                 {
-                    if (deferredDockingAttempts < 3)
+                    if (deferredDockingAttempts < maxDeferralAttempts)
                     {
                         deferredDockingAttempts++;
-                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because docking manager is not ready (attempt {Attempt}/3)",
-                            navigationTarget,
-                            deferredDockingAttempts);
+                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because DockingManager is null (attempt {Attempt}/{Max})",
+                            navigationTarget, deferredDockingAttempts, maxDeferralAttempts);
 
-                        var retryTimer = new System.Windows.Forms.Timer { Interval = 150 };
+                        var retryTimer = new System.Windows.Forms.Timer { Interval = deferralDelayMs };
                         retryTimer.Tick += (_, _) =>
                         {
                             retryTimer.Stop();
@@ -910,13 +1531,74 @@ public partial class MainForm
                     }
                     else
                     {
-                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because docking manager is still unavailable", navigationTarget);
+                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because DockingManager remained null after {Max} attempts", 
+                            navigationTarget, maxDeferralAttempts);
                     }
 
                     return;
                 }
 
+                // Additional readiness checks
+                if (form._dockingManager.HostControl == null || !form._dockingManager.HostControl.IsHandleCreated)
+                {
+                    if (deferredDockingAttempts < maxDeferralAttempts)
+                    {
+                        deferredDockingAttempts++;
+                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because DockingManager HostControl handle not created (attempt {Attempt}/{Max})",
+                            navigationTarget, deferredDockingAttempts, maxDeferralAttempts);
+
+                        var retryTimer = new System.Windows.Forms.Timer { Interval = deferralDelayMs };
+                        retryTimer.Tick += (_, _) =>
+                        {
+                            retryTimer.Stop();
+                            retryTimer.Dispose();
+
+                            if (!form.IsDisposed && !form.Disposing)
+                            {
+                                PerformNavigation();
+                            }
+                        };
+                        retryTimer.Start();
+                    }
+                    else
+                    {
+                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because DockingManager HostControl handle was never created", navigationTarget);
+                    }
+
+                    return;
+                }
+
+                // Check if PanelNavigator is initialized
                 form.EnsurePanelNavigatorInitialized();
+                if (form._panelNavigator == null)
+                {
+                    if (deferredDockingAttempts < maxDeferralAttempts)
+                    {
+                        deferredDockingAttempts++;
+                        logger?.LogDebug("Ribbon navigation target '{Target}' deferred because PanelNavigator is null (attempt {Attempt}/{Max})",
+                            navigationTarget, deferredDockingAttempts, maxDeferralAttempts);
+
+                        var retryTimer = new System.Windows.Forms.Timer { Interval = deferralDelayMs };
+                        retryTimer.Tick += (_, _) =>
+                        {
+                            retryTimer.Stop();
+                            retryTimer.Dispose();
+
+                            if (!form.IsDisposed && !form.Disposing)
+                            {
+                                PerformNavigation();
+                            }
+                        };
+                        retryTimer.Start();
+                    }
+                    else
+                    {
+                        logger?.LogWarning("Ribbon navigation target '{Target}' could not run because PanelNavigator remained null after {Max} attempts", 
+                            navigationTarget, maxDeferralAttempts);
+                    }
+
+                    return;
+                }
 
                 // Single navigation execution only.
                 // MainForm.ExecuteDockedNavigation already owns retry/recovery behavior.
@@ -931,8 +1613,11 @@ public partial class MainForm
                     {
                         logger?.LogWarning("Ribbon navigation target '{Target}' remained inactive after retry", navigationTarget);
                         form.PerformLayout();
-                        form.Invalidate(true);
-                        form.Refresh();
+                        if (!IsUiTestEnvironment())
+                        {
+                            form.Invalidate(true);
+                            form.Refresh();
+                        }
                     }
                 }
             }, $"Navigate:{navigationTarget}", logger);
@@ -988,7 +1673,7 @@ public partial class MainForm
         }
     }
 
-    private static void InitializeQuickAccessToolbar(RibbonControlAdv ribbon, ILogger? logger, params ToolStripButton[] buttons)
+    private static void InitializeQuickAccessToolbar(RibbonControlAdv ribbon, ILogger? logger, bool isUiTestRuntime, params ToolStripButton[] buttons)
     {
         if (ribbon?.Header == null)
         {
@@ -997,6 +1682,13 @@ public partial class MainForm
 
         try
         {
+            if (isUiTestRuntime)
+            {
+                ribbon.QuickPanelVisible = false;
+                ribbon.ShowQuickItemsDropDownButton = false;
+                return;
+            }
+
             ribbon.QuickPanelVisible = true;
             ribbon.ShowQuickItemsDropDownButton = true;
 
@@ -1018,42 +1710,87 @@ public partial class MainForm
         }
     }
 
+    /// <summary>
+    /// Creates default Quick Access Toolbar buttons with icons and tooltips.
+    /// QAT provides one-click access to frequently used commands.
+    /// </summary>
     private static ToolStripButton[] CreateDefaultQuickAccessToolbarButtons(MainForm form, string theme, ILogger? logger)
     {
+        // Save Layout button
         var saveButton = new ToolStripButton
         {
             Name = "QAT_Save",
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
-            Text = "Save",
+            DisplayStyle = ToolStripItemDisplayStyle.Image,
+            Image = CreateIconFromSegoeGlyph("\uE74E", 16, SystemColors.ControlText), // Save icon
             ToolTipText = "Save layout (Ctrl+Shift+S)",
+            AutoSize = true,
             Enabled = true
         };
         saveButton.Click += (_, _) => SafeExecute(form.SaveCurrentLayout, "QAT_SaveLayout", logger);
 
-        var undoButton = new ToolStripButton
+        // Dashboard button
+        var dashboardButton = new ToolStripButton
         {
-            Name = "QAT_Undo",
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
-            Text = "Undo",
-            ToolTipText = "Undo (not available yet)",
-            Enabled = false
+            Name = "QAT_Dashboard",
+            DisplayStyle = ToolStripItemDisplayStyle.Image,
+            Image = CreateIconFromSegoeGlyph("\uE80F", 16, SystemColors.ControlText), // Dashboard icon
+            ToolTipText = "Open Dashboard",
+            AutoSize = true,
+            Enabled = true
+        };
+        dashboardButton.Click += (_, _) =>
+        {
+            var dashboardEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Dashboard");
+            if (dashboardEntry != null)
+            {
+                SafeNavigate(form, "Dashboard", CreatePanelNavigationCommand(form, dashboardEntry, logger), logger);
+            }
         };
 
-        var redoButton = new ToolStripButton
+        // Settings button
+        var settingsButton = new ToolStripButton
         {
-            Name = "QAT_Redo",
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
-            Text = "Redo",
-            ToolTipText = "Redo (not available yet)",
-            Enabled = false
+            Name = "QAT_Settings",
+            DisplayStyle = ToolStripItemDisplayStyle.Image,
+            Image = CreateIconFromSegoeGlyph("\uE713", 16, SystemColors.ControlText), // Settings gear
+            ToolTipText = "Settings (Ctrl+Alt+S)",
+            AutoSize = true,
+            Enabled = true
+        };
+        settingsButton.Click += (_, _) =>
+        {
+            var settingsEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Settings");
+            if (settingsEntry != null)
+            {
+                SafeNavigate(form, "Settings", CreatePanelNavigationCommand(form, settingsEntry, logger), logger);
+            }
         };
 
-        return new[] { saveButton, undoButton, redoButton };
+        // Budget button
+        var budgetButton = new ToolStripButton
+        {
+            Name = "QAT_Budget",
+            DisplayStyle = ToolStripItemDisplayStyle.Image,
+            Image = CreateIconFromSegoeGlyph("\uE8F0", 16, SystemColors.ControlText), // Budget/Money icon
+            ToolTipText = "Budget Management",
+            AutoSize = true,
+            Enabled = true
+        };
+        budgetButton.Click += (_, _) =>
+        {
+            var budgetEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Budget Management & Analysis");
+            if (budgetEntry != null)
+            {
+                SafeNavigate(form, "Budget Management & Analysis", CreatePanelNavigationCommand(form, budgetEntry, logger), logger);
+            }
+        };
+
+        return new[] { saveButton, dashboardButton, budgetButton, settingsButton };
     }
 
-    private static void AttachRibbonLayoutHandlers(MainForm form, RibbonControlAdv ribbon, ToolStripTabItem homeTab, ToolStripTabItem? layoutContextTab, ILogger? logger)
+    private static void AttachRibbonLayoutHandlers(MainForm form, RibbonControlAdv ribbon, ToolStripTabItem homeTab, ToolStripTabItem? layoutContextTab, bool isUiTestRuntime, ILogger? logger)
     {
-        if (form == null || ribbon == null)
+        if (form == null || ribbon == null || isUiTestRuntime)
         {
             return;
         }
