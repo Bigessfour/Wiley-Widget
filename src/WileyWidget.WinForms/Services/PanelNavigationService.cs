@@ -182,6 +182,7 @@ namespace WileyWidget.WinForms.Services
             host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
             host.ShowInTaskbar = false;
             host.Owner = _owner;
+            host.TopMost = true;  // Ensure floating panels are visible on top
             host.Show();
             host.BringToFront();
 

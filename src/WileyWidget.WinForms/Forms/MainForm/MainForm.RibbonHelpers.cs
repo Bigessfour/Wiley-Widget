@@ -843,14 +843,13 @@ public partial class MainForm
         // Create icon from Syncfusion resources or Segoe MDL2 Assets glyph
         if (!string.IsNullOrWhiteSpace(iconGlyph))
         {
-
             button.Image = LoadRibbonIcon(text, 32, iconGlyph);
         }
 
-        // Set display style based on whether image is available
-        button.DisplayStyle = button.Image != null 
-            ? ToolStripItemDisplayStyle.ImageAndText 
-            : ToolStripItemDisplayStyle.Text;
+        // Set display style based on whether icon glyph was provided (not actual image load success)
+        button.DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph) 
+            ? ToolStripItemDisplayStyle.Text 
+            : ToolStripItemDisplayStyle.ImageAndText;
 
         // Build comprehensive tooltip with keyboard shortcut
         var tooltipText = tooltip ?? text;
