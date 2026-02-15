@@ -843,16 +843,14 @@ public partial class MainForm
         // Create icon from Syncfusion resources or Segoe MDL2 Assets glyph
         if (!string.IsNullOrWhiteSpace(iconGlyph))
         {
-            try
-            {
-                // Try to load colorful Syncfusion icon first, fall back to glyph
-                button.Image = LoadRibbonIcon(text, 32, iconGlyph);
-            }
-            catch (Exception ex)
-            {
-                logger?.LogDebug(ex, "Failed to create icon for button {ButtonName}", name);
-            }
+
+            button.Image = LoadRibbonIcon(text, 32, iconGlyph);
         }
+
+        // Set display style based on whether image is available
+        button.DisplayStyle = button.Image != null 
+            ? ToolStripItemDisplayStyle.ImageAndText 
+            : ToolStripItemDisplayStyle.Text;
 
         // Build comprehensive tooltip with keyboard shortcut
         var tooltipText = tooltip ?? text;
