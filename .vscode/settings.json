@@ -17,6 +17,12 @@
   "github.copilot.editor.enableAutoCompletions": true,
 
   // ============================================================================
+  // Custom Copilot Agents Configuration
+  // ============================================================================
+  "github.copilot.chat.agent.autoStartMcpServers": true,
+  "github.copilot.chat.agentDirectory": "${workspaceFolder}/.vscode/agents",
+
+  // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": false,
