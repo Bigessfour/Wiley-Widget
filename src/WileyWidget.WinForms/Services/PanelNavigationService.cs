@@ -202,13 +202,20 @@ namespace WileyWidget.WinForms.Services
 
             var host = new Form
             {
-                FormBorderStyle = FormBorderStyle.SizableToolWindow,
+                FormBorderStyle = FormBorderStyle.Sizable,
                 ShowIcon = false,
                 ShowInTaskbar = false,
                 StartPosition = FormStartPosition.Manual,
                 Location = CascadeLocation(),
-                Size = panel?.PreferredSize.IsEmpty == false ? panel.PreferredSize : new Size(900, 600),
-                Text = panelName
+                Size = panel?.Size.IsEmpty == false && panel.Size.Width > 0 && panel.Size.Height > 0 
+                    ? panel.Size 
+                    : new Size(900, 600),
+                MinimumSize = panel?.MinimumSize.IsEmpty == false && panel.MinimumSize.Width > 0 && panel.MinimumSize.Height > 0
+                    ? panel.MinimumSize
+                    : new Size(400, 300),
+                Text = panelName,
+                AutoScaleMode = AutoScaleMode.Dpi,
+                AutoScroll = true
             };
 
             EnsurePanelAttached(host, panel);
@@ -231,6 +238,15 @@ namespace WileyWidget.WinForms.Services
                 panel.Dock = DockStyle.Fill;
                 host.Controls.Clear();
                 host.Controls.Add(panel);
+
+                // Force handle creation to trigger OnHandleCreated and ViewModel resolution
+                if (!panel.IsHandleCreated)
+                {
+                    _ = panel.Handle;
+                }
+
+                // Trigger Load event explicitly if handle already exists
+                panel.PerformLayout();
             }
         }
 

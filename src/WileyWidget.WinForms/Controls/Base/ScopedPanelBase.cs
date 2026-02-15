@@ -632,6 +632,32 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
     }
 
     /// <summary>
+    /// Closes the panel. If hosted in a floating form, closes the form. Otherwise, hides the panel.
+    /// </summary>
+    protected virtual void ClosePanel()
+    {
+        try
+        {
+            // If this panel is hosted in a floating Form, close the Form
+            var parentForm = FindForm();
+            if (parentForm != null && parentForm != Parent && parentForm.GetType() == typeof(Form))
+            {
+                _logger.LogDebug("[CLOSEPANEL] Closing floating form host for {PanelType}", GetType().Name);
+                parentForm.Close();
+                return;
+            }
+
+            // Fallback: Hide the panel itself
+            _logger.LogDebug("[CLOSEPANEL] Hiding panel {PanelType}", GetType().Name);
+            Hide();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CLOSEPANEL] Error closing panel {PanelType}", GetType().Name);
+        }
+    }
+
+    /// <summary>
     /// Disposes the service scope and releases all managed resources.
     /// </summary>
     /// <param name="disposing">True if called from Dispose(); false if called from finalizer.</param>
