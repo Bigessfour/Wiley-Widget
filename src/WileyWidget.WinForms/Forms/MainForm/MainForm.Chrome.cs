@@ -281,7 +281,6 @@ public partial class MainForm
             var (layoutStrip, _, _, lockLayoutBtn) = CreateLayoutGroup(this, currentThemeString, _logger);
             var moreStrip = CreateMoreGroup(this, currentThemeString, _logger);
             var searchAndGridStrip = CreateSearchAndGridGroup(this, currentThemeString, _logger);
-            var fileStrip = CreateFileGroup(this, currentThemeString, _logger);
 
             ribbon.Header.AddMainItem(homeTab);
 
@@ -305,7 +304,6 @@ public partial class MainForm
                 _logger?.LogDebug(ex, "InitializeRibbon: Failed to attach LockPanels contextual toggle");
             }
 
-            AddToolStripToTabPanel(homeTab, fileStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, financialsStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, reportingStrip, currentThemeString, _logger);

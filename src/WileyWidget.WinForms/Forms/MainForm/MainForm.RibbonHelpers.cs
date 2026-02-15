@@ -590,6 +590,51 @@ public partial class MainForm
             optionsPanel.Controls.Add(settingsButton);
             optionsTab.Controls.Add(optionsPanel);
 
+            // File backstage tab: move common file operations here (New/Open/Save/Export)
+            var fileTab = new Syncfusion.Windows.Forms.BackStageTab
+            {
+                Text = "File",
+                Name = "BackStage_File",
+                ThemesEnabled = true
+            };
+
+            var filePanel = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Padding = new Padding(20)
+            };
+
+            var newBudgetButton = new SfButton { Text = "New Budget", Width = 220, Height = 40 };
+            newBudgetButton.Click += (_, _) => SafeExecute(form.CreateNewBudget, "BackStage_NewBudget", logger);
+
+            var openBudgetButton = new SfButton { Text = "Open Budget", Width = 220, Height = 40 };
+            openBudgetButton.Click += (_, _) => SafeExecute(form.OpenBudget, "BackStage_OpenBudget", logger);
+
+            var saveLayoutButton = new SfButton { Text = "Save Layout", Width = 220, Height = 40 };
+            saveLayoutButton.Click += (_, _) => SafeExecute(form.SaveCurrentLayout, "BackStage_SaveLayout", logger);
+
+            var exportButton = new SfButton { Text = "Export Data", Width = 220, Height = 40 };
+            exportButton.Click += (_, _) => SafeExecute(form.ExportData, "BackStage_ExportData", logger);
+
+            // Apply theme to backstage buttons
+            try
+            {
+                var theme = ResolveRibbonThemeName(SfSkinManager.ApplicationVisualTheme, logger);
+                SfSkinManager.SetVisualStyle(newBudgetButton, theme);
+                SfSkinManager.SetVisualStyle(openBudgetButton, theme);
+                SfSkinManager.SetVisualStyle(saveLayoutButton, theme);
+                SfSkinManager.SetVisualStyle(exportButton, theme);
+            }
+            catch { }
+
+            filePanel.Controls.Add(newBudgetButton);
+            filePanel.Controls.Add(openBudgetButton);
+            filePanel.Controls.Add(saveLayoutButton);
+            filePanel.Controls.Add(exportButton);
+            fileTab.Controls.Add(filePanel);
+
             var separator = new Syncfusion.Windows.Forms.BackStageSeparator
             {
                 Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom
