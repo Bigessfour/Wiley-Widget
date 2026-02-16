@@ -45,6 +45,11 @@ public partial class MainForm
     /// </summary>
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        if (HandleDocumentSwitcherCmdKey(ref msg, keyData))
+        {
+            return true;
+        }
+
         // [PERF] Standard keyboard shortcuts
         if (keyData == Keys.Enter)
         {

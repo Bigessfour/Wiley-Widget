@@ -93,11 +93,14 @@ public partial class MainForm
                 _logger?.LogWarning(ex, "Deferred chrome optimization failed - UI formatting may be suboptimal");
             }
 
+            // Initialize professional UI enhancements before panel navigation
+            InitializeProfessionalFeatures();
+
             EnsurePanelNavigatorInitialized();
 
             if (_uiConfig.AutoShowDashboard && _panelNavigator != null)
             {
-                _logger?.LogInformation("Showing priority panels for faster startup (floating mode)");
+                _logger?.LogInformation("Showing priority panels for faster startup (MDI mode)");
                 try
                 {
                     await Task.Delay(100, cancellationToken).ConfigureAwait(true);
@@ -119,7 +122,7 @@ public partial class MainForm
                 }
             }
 
-            _logger?.LogInformation("[DIAGNOSTIC] Floating navigation active; skipping docking visibility checks");
+            _logger?.LogInformation("[DIAGNOSTIC] Navigation active; skipping docking visibility checks");
 
             // ============================================================================
             // NAVIGATION HARDENING: Enable ribbon and toolbar navigation buttons once docking system is confirmed ready
@@ -292,6 +295,36 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "Error during InitializeAsync deferred initialization");
             _asyncLogger?.Error(ex, "InitializeAsync failed");
+        }
+    }
+
+    /// <summary>
+    /// Initializes professional UI features: MDI, QAT, Status Bar, etc.
+    /// Called during async initialization after chrome is ready.
+    /// </summary>
+    private void InitializeProfessionalFeatures()
+    {
+        try
+        {
+            _logger?.LogInformation("Initializing professional UI features");
+
+            // Initialize TabbedMDI Manager for document tabs
+            InitializeMDIManager();
+
+            // Initialize Quick Access Toolbar
+            InitializeQuickAccessToolbar();
+
+            // Initialize Professional Status Bar
+            InitializeProfessionalStatusBar();
+
+            // Auto-load last workspace layout
+            // AutoLoadLayoutOnShown(); // Uncomment to enable auto-restore
+
+            _logger?.LogInformation("Professional UI features initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error initializing professional UI features");
         }
     }
 

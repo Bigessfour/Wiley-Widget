@@ -351,8 +351,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.Name = "Panel_Settings";
             
             AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.Transparent;
-            Padding = new Padding(GROUP_PADDING);
+            Padding = Padding.Empty;
 
             // Panel header
             _panelHeader = new PanelHeader
@@ -390,26 +389,26 @@ namespace WileyWidget.WinForms.Controls.Panels
             var appearanceGroup = new GroupBox { Text = SettingsPanelResources.AppearanceGroup, AutoSize = true };
             var appearanceTable = CreateTableLayoutPanel(3, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));  // 3 rows, 2 columns (label + control)
             appearanceTable.Controls.Add(new Label { Text = SettingsPanelResources.AppTitleLabel, Anchor = AnchorStyles.Left }, 0, 0);
-            appearanceTable.Controls.Add(_txtAppTitle = new TextBoxExt
+            _txtAppTitle = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtAppTitle",
-                Width = 300,
-                MaxLength = 100,
-                Font = new Font("Segoe UI", 10F),
-                AccessibleName = "Application Title",
-                AccessibleDescription = "Set the friendly application title"
-            }, 1, 0);
+                textBox.Name = "txtAppTitle";
+                textBox.Width = 300;
+                textBox.MaxLength = 100;
+                textBox.Font = new Font("Segoe UI", 10F);
+                textBox.AccessibleName = "Application Title";
+                textBox.AccessibleDescription = "Set the friendly application title";
+            });
+            appearanceTable.Controls.Add(_txtAppTitle, 1, 0);
             _tooltip?.SetToolTip(_txtAppTitle, "Enter a custom title for the application window");
             appearanceTable.Controls.Add(new Label { Text = "Theme:", Anchor = AnchorStyles.Left }, 0, 1);
-            appearanceTable.Controls.Add(_themeCombo = new Syncfusion.WinForms.ListView.SfComboBox
+            _themeCombo = ControlFactory.CreateSfComboBox(combo =>
             {
-                Name = "themeCombo",
-                Size = new Size(220, 24),
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AllowDropDownResize = false,
-                MaxDropDownItems = 5,
-                ThemeName = _themeName
-            }, 1, 1);
+                combo.Name = "themeCombo";
+                combo.Size = new Size(220, 24);
+                combo.AllowDropDownResize = false;
+                combo.MaxDropDownItems = 5;
+            });
+            appearanceTable.Controls.Add(_themeCombo, 1, 1);
             _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             try
             {
@@ -427,15 +426,14 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Logger.LogError(ex, "SettingsPanel: Error populating theme dropdown");
             }
             appearanceTable.Controls.Add(new Label { Text = "Font:", Anchor = AnchorStyles.Left }, 0, 2);
-            appearanceTable.Controls.Add(_fontCombo = new Syncfusion.WinForms.ListView.SfComboBox
+            _fontCombo = ControlFactory.CreateSfComboBox(combo =>
             {
-                Name = "fontCombo",
-                Size = new Size(220, 24),
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AllowDropDownResize = false,
-                MaxDropDownItems = 10,
-                ThemeName = _themeName
-            }, 1, 2);
+                combo.Name = "fontCombo";
+                combo.Size = new Size(220, 24);
+                combo.AllowDropDownResize = false;
+                combo.MaxDropDownItems = 10;
+            });
+            appearanceTable.Controls.Add(_fontCombo, 1, 2);
             _fontCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             _fontCombo.DataSource = GetAvailableFonts();
             appearanceGroup.Controls.Add(appearanceTable);
@@ -445,22 +443,24 @@ namespace WileyWidget.WinForms.Controls.Panels
             var generalGroup = new GroupBox { Text = "General Settings", AutoSize = true };
             var generalTable = CreateTableLayoutPanel(2, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
             generalTable.Controls.Add(new Label { Text = "Open edit forms docked:", Anchor = AnchorStyles.Left }, 0, 0);
-            generalTable.Controls.Add(_chkOpenEditFormsDocked = new CheckBoxAdv
+            _chkOpenEditFormsDocked = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
-                AutoSize = true,
-                Checked = ViewModel?.OpenEditFormsDocked ?? false,
-                Font = new Font("Segoe UI", 9),
-                AccessibleName = "Open edit forms docked"
-            }, 1, 0);
+                checkBox.AutoSize = true;
+                checkBox.Checked = ViewModel?.OpenEditFormsDocked ?? false;
+                checkBox.Font = new Font("Segoe UI", 9);
+                checkBox.AccessibleName = "Open edit forms docked";
+            });
+            generalTable.Controls.Add(_chkOpenEditFormsDocked, 1, 0);
             _tooltip?.SetToolTip(_chkOpenEditFormsDocked, "Open account edit forms as dockable floating windows instead of modal dialogs");
             generalTable.Controls.Add(new Label { Text = "Use demo data:", Anchor = AnchorStyles.Left }, 0, 1);
-            generalTable.Controls.Add(_chkUseDemoData = new CheckBoxAdv
+            _chkUseDemoData = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
-                AutoSize = true,
-                Checked = ViewModel?.UseDemoData ?? false,
-                Font = new Font("Segoe UI", 9),
-                AccessibleName = "Use demo data"
-            }, 1, 1);
+                checkBox.AutoSize = true;
+                checkBox.Checked = ViewModel?.UseDemoData ?? false;
+                checkBox.Font = new Font("Segoe UI", 9);
+                checkBox.AccessibleName = "Use demo data";
+            });
+            generalTable.Controls.Add(_chkUseDemoData, 1, 1);
             _tooltip?.SetToolTip(_chkUseDemoData, "Enable demo mode to display sample data instead of real database data.");
             generalGroup.Controls.Add(generalTable);
             mainFlowPanel.Controls.Add(generalGroup);
@@ -469,25 +469,25 @@ namespace WileyWidget.WinForms.Controls.Panels
             var exportGroup = new GroupBox { Text = "Data Export", AutoSize = true };
             var exportTable = CreateTableLayoutPanel(1, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F), new ColumnStyle(SizeType.Absolute, 50));
             exportTable.Controls.Add(new Label { Text = "Path:", Anchor = AnchorStyles.Left }, 0, 0);
-            exportTable.Controls.Add(_txtExportPath = new TextBoxExt
+            _txtExportPath = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtExportPath",
-                Width = 200,
-                MaxLength = 260,
-                AccessibleName = "Export path"
-            }, 1, 0);
+                textBox.Name = "txtExportPath";
+                textBox.Width = 200;
+                textBox.MaxLength = 260;
+                textBox.AccessibleName = "Export path";
+            });
+            exportTable.Controls.Add(_txtExportPath, 1, 0);
             if (ViewModel != null && !string.IsNullOrEmpty(ViewModel.DefaultExportPath))
             {
                 _txtExportPath.Text = ViewModel.DefaultExportPath;
             }
             _tooltip?.SetToolTip(_txtExportPath, "Directory where exported data files will be saved");
-            exportTable.Controls.Add(_btnBrowseExportPath = new Syncfusion.WinForms.Controls.SfButton
+            _btnBrowseExportPath = ControlFactory.CreateSfButton("...", button =>
             {
-                Name = "btnBrowseExportPath",
-                Text = "...",
-                Size = new Size(40, 24),
-                ThemeName = _themeName
-            }, 2, 0);
+                button.Name = "btnBrowseExportPath";
+                button.Size = new Size(40, 24);
+            });
+            exportTable.Controls.Add(_btnBrowseExportPath, 2, 0);
             _tooltip?.SetToolTip(_btnBrowseExportPath, "Open folder browser to select export directory");
             exportGroup.Controls.Add(exportTable);
             mainFlowPanel.Controls.Add(exportGroup);
@@ -496,24 +496,23 @@ namespace WileyWidget.WinForms.Controls.Panels
             var behaviorGroup = new GroupBox { Text = "Behavior & Logging", AutoSize = true };
             var behaviorTable = CreateTableLayoutPanel(2, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
             behaviorTable.Controls.Add(new Label { Text = "Auto-save (min):", Anchor = AnchorStyles.Left }, 0, 0);
-            behaviorTable.Controls.Add(_numAutoSaveInterval = new Syncfusion.WinForms.Input.SfNumericTextBox
+            _numAutoSaveInterval = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
-                Name = "numAutoSaveInterval",
-                Size = new Size(80, 24),
-                MinValue = 1,
-                MaxValue = 60,
-                Value = ViewModel != null ? ViewModel.AutoSaveIntervalMinutes : 5,
-                ThemeName = _themeName
-            }, 1, 0);
+                textBox.Name = "numAutoSaveInterval";
+                textBox.Size = new Size(80, 24);
+                textBox.MinValue = 1;
+                textBox.MaxValue = 60;
+                textBox.Value = ViewModel != null ? ViewModel.AutoSaveIntervalMinutes : 5;
+            });
+            behaviorTable.Controls.Add(_numAutoSaveInterval, 1, 0);
             _tooltip?.SetToolTip(_numAutoSaveInterval, "How often data is auto-saved (1-60 minutes)");
             behaviorTable.Controls.Add(new Label { Text = "Log Level:", Anchor = AnchorStyles.Left }, 0, 1);
-            behaviorTable.Controls.Add(_cmbLogLevel = new Syncfusion.WinForms.ListView.SfComboBox
+            _cmbLogLevel = ControlFactory.CreateSfComboBox(combo =>
             {
-                Name = "cmbLogLevel",
-                Size = new Size(150, 24),
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                ThemeName = _themeName
-            }, 1, 1);
+                combo.Name = "cmbLogLevel";
+                combo.Size = new Size(150, 24);
+            });
+            behaviorTable.Controls.Add(_cmbLogLevel, 1, 1);
             var logLevels = new[] { "Verbose", "Debug", "Information", "Warning", "Error", "Fatal" }.ToList();
             _cmbLogLevel.DataSource = logLevels;
             _cmbLogLevel.SelectedItem = ViewModel != null ? ViewModel.LogLevel : "Information";
@@ -525,30 +524,31 @@ namespace WileyWidget.WinForms.Controls.Panels
             var aiGroup = new GroupBox { Text = "AI / xAI Settings", AutoSize = true };
             var aiTable = CreateTableLayoutPanel(8, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
             aiTable.Controls.Add(new Label { Text = "Enable AI:", Anchor = AnchorStyles.Left }, 0, 0);
-            aiTable.Controls.Add(_chkEnableAi = new CheckBoxAdv
+            _chkEnableAi = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
-                AutoSize = true,
-                Checked = ViewModel?.EnableAi ?? false,
-                Font = new Font("Segoe UI", 9)
-            }, 1, 0);
+                checkBox.AutoSize = true;
+                checkBox.Checked = ViewModel?.EnableAi ?? false;
+                checkBox.Font = new Font("Segoe UI", 9);
+            });
+            aiTable.Controls.Add(_chkEnableAi, 1, 0);
             _aiToolTip?.SetToolTip(_chkEnableAi, "Enable or disable AI features.");
             aiTable.Controls.Add(new Label { Text = "Endpoint:", Anchor = AnchorStyles.Left }, 0, 1);
-            aiTable.Controls.Add(_txtXaiApiEndpoint = new TextBoxExt
+            _txtXaiApiEndpoint = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtXaiApiEndpoint",
-                Width = 250,
-                MaxLength = 500,
-                Text = ViewModel?.XaiApiEndpoint ?? string.Empty
-            }, 1, 1);
+                textBox.Name = "txtXaiApiEndpoint";
+                textBox.Width = 250;
+                textBox.MaxLength = 500;
+                textBox.Text = ViewModel?.XaiApiEndpoint ?? string.Empty;
+            });
+            aiTable.Controls.Add(_txtXaiApiEndpoint, 1, 1);
             _aiToolTip?.SetToolTip(_txtXaiApiEndpoint, "API endpoint for xAI Grok.");
             aiTable.Controls.Add(new Label { Text = "Model:", Anchor = AnchorStyles.Left }, 0, 2);
-            aiTable.Controls.Add(_cmbXaiModel = new Syncfusion.WinForms.ListView.SfComboBox
+            _cmbXaiModel = ControlFactory.CreateSfComboBox(combo =>
             {
-                Name = "cmbXaiModel",
-                Size = new Size(220, 24),
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                ThemeName = _themeName
-            }, 1, 2);
+                combo.Name = "cmbXaiModel";
+                combo.Size = new Size(220, 24);
+            });
+            aiTable.Controls.Add(_cmbXaiModel, 1, 2);
             try
             {
                 _cmbXaiModel.DataSource = new[] { "grok-4.1", "grok-4-1-fast", "grok-4-1-fast-reasoning", "grok-4-1-fast-non-reasoning", "grok-3-2024" }.ToList();
@@ -558,54 +558,54 @@ namespace WileyWidget.WinForms.Controls.Panels
             _aiToolTip?.SetToolTip(_cmbXaiModel, "Select model used for recommendations.");
             aiTable.Controls.Add(new Label { Text = "API Key:", Anchor = AnchorStyles.Left }, 0, 3);
             var apiKeyPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
-            apiKeyPanel.Controls.Add(_txtXaiApiKey = new TextBoxExt
+            _txtXaiApiKey = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtXaiApiKey",
-                Width = 180,
-                MaxLength = 500,
-                UseSystemPasswordChar = true,
-                Text = ViewModel?.XaiApiKey ?? string.Empty
+                textBox.Name = "txtXaiApiKey";
+                textBox.Width = 180;
+                textBox.MaxLength = 500;
+                textBox.UseSystemPasswordChar = true;
+                textBox.Text = ViewModel?.XaiApiKey ?? string.Empty;
             });
-            apiKeyPanel.Controls.Add(_btnShowApiKey = new Syncfusion.WinForms.Controls.SfButton
+            apiKeyPanel.Controls.Add(_txtXaiApiKey);
+            _btnShowApiKey = ControlFactory.CreateSfButton("Show", button =>
             {
-                Name = "btnShowApiKey",
-                Text = "Show",
-                Size = new Size(50, 24),
-                ThemeName = _themeName
+                button.Name = "btnShowApiKey";
+                button.Size = new Size(50, 24);
             });
+            apiKeyPanel.Controls.Add(_btnShowApiKey);
             aiTable.Controls.Add(apiKeyPanel, 1, 3);
             _aiToolTip?.SetToolTip(_txtXaiApiKey, "API key stored securely (not logged).");
             aiTable.Controls.Add(new Label { Text = "Timeout (s):", Anchor = AnchorStyles.Left }, 0, 4);
-            aiTable.Controls.Add(_numXaiTimeout = new Syncfusion.WinForms.Input.SfNumericTextBox
+            _numXaiTimeout = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
-                Name = "numXaiTimeout",
-                Size = new Size(80, 24),
-                MinValue = 1,
-                MaxValue = 300,
-                Value = ViewModel?.XaiTimeout ?? 30,
-                ThemeName = _themeName
-            }, 1, 4);
+                textBox.Name = "numXaiTimeout";
+                textBox.Size = new Size(80, 24);
+                textBox.MinValue = 1;
+                textBox.MaxValue = 300;
+                textBox.Value = ViewModel?.XaiTimeout ?? 30;
+            });
+            aiTable.Controls.Add(_numXaiTimeout, 1, 4);
             _aiToolTip?.SetToolTip(_numXaiTimeout, "Maximum time (seconds) to wait for response.");
             aiTable.Controls.Add(new Label { Text = "Max tokens:", Anchor = AnchorStyles.Left }, 0, 5);
-            aiTable.Controls.Add(_numXaiMaxTokens = new Syncfusion.WinForms.Input.SfNumericTextBox
+            _numXaiMaxTokens = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
-                Name = "numXaiMaxTokens",
-                Size = new Size(100, 24),
-                MinValue = 1,
-                MaxValue = 65536,
-                Value = ViewModel?.XaiMaxTokens ?? 2000,
-                ThemeName = _themeName
-            }, 1, 5);
+                textBox.Name = "numXaiMaxTokens";
+                textBox.Size = new Size(100, 24);
+                textBox.MinValue = 1;
+                textBox.MaxValue = 65536;
+                textBox.Value = ViewModel?.XaiMaxTokens ?? 2000;
+            });
+            aiTable.Controls.Add(_numXaiMaxTokens, 1, 5);
             aiTable.Controls.Add(new Label { Text = "Temperature:", Anchor = AnchorStyles.Left }, 0, 6);
-            aiTable.Controls.Add(_numXaiTemperature = new Syncfusion.WinForms.Input.SfNumericTextBox
+            _numXaiTemperature = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
-                Name = "numXaiTemperature",
-                Size = new Size(80, 24),
-                MinValue = 0.0,
-                MaxValue = 1.0,
-                Value = ViewModel?.XaiTemperature ?? 0.7,
-                ThemeName = _themeName
-            }, 1, 6);
+                textBox.Name = "numXaiTemperature";
+                textBox.Size = new Size(80, 24);
+                textBox.MinValue = 0.0;
+                textBox.MaxValue = 1.0;
+                textBox.Value = ViewModel?.XaiTemperature ?? 0.7;
+            });
+            aiTable.Controls.Add(_numXaiTemperature, 1, 6);
             _aiToolTip?.SetToolTip(_numXaiTemperature, "Response randomness (0=deterministic, 1=varied).");
             aiTable.Controls.Add(new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Anchor = AnchorStyles.Left }, 0, 7);
             aiTable.Controls.Add(_lnkAiLearnMore = new LinkLabel
@@ -621,21 +621,23 @@ namespace WileyWidget.WinForms.Controls.Panels
             var formatGroup = new GroupBox { Text = "Display Formats", AutoSize = true };
             var formatTable = CreateTableLayoutPanel(1, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Absolute, 130), new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Absolute, 90));
             formatTable.Controls.Add(new Label { Text = "Date:", Anchor = AnchorStyles.Left }, 0, 0);
-            formatTable.Controls.Add(_txtDateFormat = new TextBoxExt
+            _txtDateFormat = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtDateFormat",
-                Width = 120,
-                MaxLength = 50,
-                Text = ViewModel?.DateFormat ?? "yyyy-MM-dd"
-            }, 1, 0);
+                textBox.Name = "txtDateFormat";
+                textBox.Width = 120;
+                textBox.MaxLength = 50;
+                textBox.Text = ViewModel?.DateFormat ?? "yyyy-MM-dd";
+            });
+            formatTable.Controls.Add(_txtDateFormat, 1, 0);
             formatTable.Controls.Add(new Label { Text = "Currency:", Anchor = AnchorStyles.Left }, 2, 0);
-            formatTable.Controls.Add(_txtCurrencyFormat = new TextBoxExt
+            _txtCurrencyFormat = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtCurrencyFormat",
-                Width = 80,
-                MaxLength = 10,
-                Text = ViewModel?.CurrencyFormat ?? "C2"
-            }, 3, 0);
+                textBox.Name = "txtCurrencyFormat";
+                textBox.Width = 80;
+                textBox.MaxLength = 10;
+                textBox.Text = ViewModel?.CurrencyFormat ?? "C2";
+            });
+            formatTable.Controls.Add(_txtCurrencyFormat, 3, 0);
             formatGroup.Controls.Add(formatTable);
             mainFlowPanel.Controls.Add(formatGroup);
 
@@ -659,24 +661,22 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Bottom Buttons
             var buttonFlow = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = true };
-            buttonFlow.Controls.Add(_btnClose = new Syncfusion.WinForms.Controls.SfButton
+            _btnClose = ControlFactory.CreateSfButton("Close", button =>
             {
-                Name = "btnClose",
-                Text = "Close",
-                Width = 100,
-                Height = 36,
-                ThemeName = _themeName
+                button.Name = "btnClose";
+                button.Width = 100;
+                button.Height = 36;
             });
+            buttonFlow.Controls.Add(_btnClose);
             _tooltip?.SetToolTip(_btnClose, "Close this settings panel");
-            buttonFlow.Controls.Add(_btnSave = new Syncfusion.WinForms.Controls.SfButton
+            _btnSave = ControlFactory.CreateSfButton("Save Settings", button =>
             {
-                Name = "btnSave",
-                Text = "Save Settings",
-                Width = 140,
-                Height = 36,
-                ThemeName = _themeName,
-                Enabled = false
+                button.Name = "btnSave";
+                button.Width = 140;
+                button.Height = 36;
+                button.Enabled = false;
             });
+            buttonFlow.Controls.Add(_btnSave);
             _tooltip?.SetToolTip(_btnSave, "Save all changes (validation runs first)");
             mainFlowPanel.Controls.Add(buttonFlow);
 

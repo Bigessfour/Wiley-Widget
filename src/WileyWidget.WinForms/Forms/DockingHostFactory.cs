@@ -36,6 +36,7 @@ public static class DockingHostFactory
 {
     private const string SegoeUiFontName = "Segoe UI";
     private const string DockingClientPanelName = "_dockingClientPanel";
+    private const string DockingHostContainerName = "_dockingHostContainer";
     private const int LeftDockMinimumWidth = 280;
     private const int RightDockMinimumWidth = 300;
 
@@ -87,7 +88,7 @@ public static class DockingHostFactory
         if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
         if (dockingHostPanel == null) throw new ArgumentNullException(nameof(dockingHostPanel));
 
-        Control hostControl = ResolveDockingHostControl(mainForm, dockingHostPanel, logger);
+        var hostControl = ResolveDockingHostControl(mainForm, dockingHostPanel, logger);
 
         var sw = Stopwatch.StartNew();
         logger?.LogInformation("CreateDockingHost: Starting docking creation");
@@ -128,10 +129,7 @@ public static class DockingHostFactory
                 // Assignment of HostForm + HostControl to the dedicated docking host panel
                 dockingManager.HostForm = mainForm;
 
-                var hostContainer = hostControl as ContainerControl
-                    ?? throw new InvalidOperationException($"HostControl must be ContainerControl-compatible, got {hostControl.GetType().Name}");
-
-                dockingManager.HostControl = hostContainer;
+                dockingManager.HostControl = hostControl;
                 
                 // hostControl initially visible - layout finalized after docking configuration
                 logger?.LogDebug("CreateDockingHost: HostControl set to dedicated docking host container");
@@ -411,75 +409,54 @@ public static class DockingHostFactory
 
     /// <summary>
     /// Resolves or creates the docking host control for the DockingManager.
-    /// Uses Syncfusion's DockingClientPanel for automatic layout management and DockingManager integration.
-    /// 
-    /// SYNCFUSION PATTERN: DockingClientPanel with SizeToFit
-    /// - DockingClientPanel automatically interacts with DockingManager's docking architecture
-    /// - SizeToFit=true forces automatic resize/reposition to fill unoccupied form area
-    /// - Eliminates need for manual z-order and chrome layering management
-    /// 
-    /// API REFERENCE: https://help.syncfusion.com/windowsforms/docking-manager/docking-client-panel
+    /// Uses a ContainerControl-compatible host to satisfy DockingManager requirements.
     /// </summary>
-    private static Control ResolveDockingHostControl(MainForm mainForm, Control requestedHost, ILogger? logger)
+    private static ContainerControl ResolveDockingHostControl(MainForm mainForm, Control requestedHost, ILogger? logger)
     {
-        if (!ReferenceEquals(requestedHost, mainForm))
+        if (requestedHost is ContainerControl container && !ReferenceEquals(requestedHost, mainForm))
         {
-            EnsureHostPanelLayout(requestedHost);
-            return requestedHost;
+            EnsureHostPanelLayout(container);
+            return container;
         }
 
-        // Search for existing DockingClientPanel
-        DockingClientPanel? dockingClientPanel = null;
+        ContainerControl? hostContainer = null;
         foreach (Control child in mainForm.Controls)
         {
-            if (string.Equals(child.Name, DockingClientPanelName, StringComparison.Ordinal))
+            if (string.Equals(child.Name, DockingHostContainerName, StringComparison.Ordinal)
+                && child is ContainerControl containerControl)
             {
-                dockingClientPanel = child as DockingClientPanel;
+                hostContainer = containerControl;
                 break;
             }
         }
 
-        if (dockingClientPanel == null)
+        if (hostContainer == null)
         {
-            // Create Syncfusion DockingClientPanel with SizeToFit integration
-            dockingClientPanel = new DockingClientPanel
+            hostContainer = new UserControl
             {
-                Name = DockingClientPanelName,
-                SizeToFit = true,  // KEY: Automatic DockingManager integration
-                BorderStyle = BorderStyle.None,
-                AutoScroll = true,
-                AutoScrollMargin = new Size(0, 0),
-                AutoScrollMinSize = new Size(0, 0),
+                Name = DockingHostContainerName,
+                Dock = DockStyle.Fill,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty,
                 TabStop = false,
                 BackColor = Color.Transparent
             };
 
-            mainForm.Controls.Add(dockingClientPanel);
-            logger?.LogInformation("Created Syncfusion DockingClientPanel with SizeToFit=true for automatic layout management");
+            mainForm.Controls.Add(hostContainer);
+            logger?.LogInformation("Created docking host container for DockingManager");
         }
-        else if (!ReferenceEquals(dockingClientPanel.Parent, mainForm))
+        else if (!ReferenceEquals(hostContainer.Parent, mainForm))
         {
-            dockingClientPanel.Parent?.Controls.Remove(dockingClientPanel);
-            mainForm.Controls.Add(dockingClientPanel);
+            hostContainer.Parent?.Controls.Remove(hostContainer);
+            mainForm.Controls.Add(hostContainer);
         }
-        else if (!mainForm.Controls.Contains(dockingClientPanel))
+        else if (!mainForm.Controls.Contains(hostContainer))
         {
-            mainForm.Controls.Add(dockingClientPanel);
+            mainForm.Controls.Add(hostContainer);
         }
 
-        // Ensure SizeToFit is always enabled for automatic layout
-        if (!dockingClientPanel.SizeToFit)
-        {
-            dockingClientPanel.SizeToFit = true;
-            logger?.LogDebug("Enabled SizeToFit on existing DockingClientPanel");
-        }
-
-        // No manual z-order management needed - DockingClientPanel handles this via SizeToFit
-        // No manual chrome layering needed - Syncfusion manages this automatically
-
-        return dockingClientPanel;
+        EnsureHostPanelLayout(hostContainer);
+        return hostContainer;
     }
 
     /// <summary>

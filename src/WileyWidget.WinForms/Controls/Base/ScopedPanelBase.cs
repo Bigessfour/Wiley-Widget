@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 
@@ -35,6 +36,7 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
     private bool _isBusy;
     private IThemeService? _themeService;
     private IServiceScope? _scope;
+    private SyncfusionControlFactory? _controlFactory;
 
     // ICompletablePanel backing fields
     protected bool _isLoaded;
@@ -63,6 +65,30 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
     {
         get => _viewModel;
         set => _viewModel = value;
+    }
+
+    /// <summary>
+    /// Gets the Syncfusion control factory for creating fully configured controls.
+    /// Lazily resolved from the scoped service provider.
+    /// </summary>
+    protected SyncfusionControlFactory ControlFactory
+    {
+        get
+        {
+            if (_controlFactory == null && _scope != null)
+            {
+                _controlFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(_scope.ServiceProvider);
+            }
+
+            if (_controlFactory == null)
+            {
+                _controlFactory = new SyncfusionControlFactory(
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncfusionControlFactory>.Instance,
+                    _themeService);
+            }
+
+            return _controlFactory;
+        }
     }
 
     /// <summary>
@@ -174,6 +200,7 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
     {
         _scopeFactory = new DesignTimeServiceScopeFactory();
         _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        Margin = Padding.Empty;
     }
 
     // Minimal IServiceScopeFactory implementation for design-time to avoid requiring runtime DI in the designer.
@@ -253,6 +280,9 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
             {
                 _logger.LogDebug("Using manually assigned ViewModel for {PanelType}", GetType().Name);
             }
+
+            // Resolve Syncfusion control factory for this scope
+            _controlFactory ??= Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(_scope.ServiceProvider);
 
             // Populate DataContext (base + derived new DataContext via reflection)
             TrySetDataContext(_viewModel);

@@ -237,6 +237,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
         public PanelHeader(DpiAwareImageService? imageService)
         {
             _imageService = imageService;
+            Margin = Padding.Empty;
+            Padding = Padding.Empty;
 
             // Apply Syncfusion theme to header
             try

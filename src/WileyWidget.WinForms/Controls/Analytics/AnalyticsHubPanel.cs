@@ -330,21 +330,22 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         // Fiscal Year
         var fyLabel = new Label { Text = "Fiscal Year:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _fiscalYearComboBox = new SfComboBox
+        _fiscalYearComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            DisplayMember = null,  // Use default ToString for List<int> integers
-            ValueMember = null,    // Use value itself without explicit member mapping
-            AllowNull = false,     // Require selection
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            ThemeName = themeName  // Apply theme to combobox
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.DisplayMember = null;  // Use default ToString for List<int> integers
+            combo.ValueMember = null;    // Use value itself without explicit member mapping
+            combo.AllowNull = false;     // Require selection
+        });
         _fiscalYearSelectedIndexChangedHandler = FiscalYear_SelectedIndexChanged;
         _fiscalYearComboBox.SelectedIndexChanged += _fiscalYearSelectedIndexChangedHandler;
 
         // Search
         var searchLabel = new Label { Text = "Search:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _searchTextBox = new TextBoxExt { Dock = DockStyle.Fill };
+        _searchTextBox = ControlFactory.CreateTextBoxExt(textBox =>
+        {
+            textBox.Dock = DockStyle.Fill;
+        });
         _searchTextChangedHandler = (s, e) =>
         {
             if (ViewModel != null)
@@ -356,21 +357,17 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         // Buttons
         var buttonsPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
-        _globalRefreshButton = new SfButton
+        _globalRefreshButton = ControlFactory.CreateSfButton("Refresh All", button =>
         {
-            Text = "Refresh All",
-            Width = 90,
-            ThemeName = themeName  // Apply theme to button
-        };
+            button.Width = 90;
+        });
         _globalRefreshClickHandler = async (s, e) => await ViewModel?.RefreshAllCommand.ExecuteAsync(null);
         _globalRefreshButton.Click += _globalRefreshClickHandler;
 
-        _globalExportButton = new SfButton
+        _globalExportButton = ControlFactory.CreateSfButton("Export Hub", button =>
         {
-            Text = "Export Hub",
-            Width = 90,
-            ThemeName = themeName  // Apply theme to button
-        };
+            button.Width = 90;
+        });
         _globalExportClickHandler = (s, e) => ExportHub();
         _globalExportButton.Click += _globalExportClickHandler;
 
@@ -388,12 +385,11 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private void InitializeTabControl()
     {
-        _tabControl = new TabControlAdv
+        _tabControl = ControlFactory.CreateTabControlAdv(tab =>
         {
-            Dock = DockStyle.Fill,
-            Multiline = true
-        };
-        SfSkinManager.SetVisualStyle(_tabControl, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+            tab.Dock = DockStyle.Fill;
+            tab.Multiline = true;
+        });
 
         // Create tabs
         var overviewTabPage = new TabPageAdv { Text = "Overview" };

@@ -208,8 +208,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         AccessibleName = "Reports"; // Panel title for UI automation
         Size = new Size(1400, 900);
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-        AutoScroll = true;
-        Padding = new Padding(8);
+        AutoScroll = false;
+        Padding = Padding.Empty;
         // DockingManager will handle docking; do not set Dock here.
         // BackColor will be set by ApplyTheme
 
@@ -235,12 +235,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         Controls.Add(_panelHeader);
 
         // Main layout container with parameters panel support
-        _parametersSplitContainer = new SplitContainerAdv
+        _parametersSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            Panel2Collapsed = true // Initially hidden
-        };
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = Orientation.Horizontal;
+            splitter.Panel2Collapsed = true; // Initially hidden
+        });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_parametersSplitContainer, 200);
 
         // Parameters panel (top, initially collapsed)
@@ -280,17 +280,18 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         parametersLayout.Controls.Add(parametersLabel, 0, 0);
 
         // Parameters grid (SfDataGrid for parameter input)
-        _parametersGrid = new SfDataGrid
+        _parametersGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Name = "parametersGrid",
-            AccessibleName = "Report Parameters Grid",
-            Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowEditing = true,
-            EditMode = EditMode.SingleClick,
-            SelectionMode = GridSelectionMode.Single,
-            Margin = new Padding(0, 0, 0, 10)
-        }.PreventStringRelationalFilters(Logger, "Name", "Value", "Type");
+            grid.Name = "parametersGrid";
+            grid.AccessibleName = "Report Parameters Grid";
+            grid.Dock = DockStyle.Fill;
+            grid.AutoGenerateColumns = false;
+            grid.AllowEditing = true;
+            grid.EditMode = EditMode.SingleClick;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.Margin = new Padding(0, 0, 0, 10);
+        });
+        _parametersGrid.PreventStringRelationalFilters(Logger, "Name", "Value", "Type");
 
         // Configure parameter grid columns
         _parametersGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn
@@ -328,34 +329,32 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Padding = new Padding(0)
         };
 
-        _closeParametersButton = new SfButton
+        _closeParametersButton = ControlFactory.CreateSfButton("&Close", button =>
         {
-            Text = "&Close",
-            Name = "closeParametersButton",
-            AccessibleName = "Close Parameters Panel",
-            AccessibleDescription = "Hides the report parameters panel",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(80, 30),
-            Margin = new Padding(0),
-            TabIndex = 7
-        };
+            button.Name = "closeParametersButton";
+            button.AccessibleName = "Close Parameters Panel";
+            button.AccessibleDescription = "Hides the report parameters panel";
+            button.AutoSize = true;
+            button.MinimumSize = new System.Drawing.Size(80, 30);
+            button.Margin = new Padding(0);
+            button.TabIndex = 7;
+        });
         var closeParamsTooltip = new ToolTip();
         closeParamsTooltip.SetToolTip(_closeParametersButton, "Hide parameters panel");
         _closeParametersButtonClickHandler = (s, e) => ToggleParametersPanel();
         _closeParametersButton.Click += _closeParametersButtonClickHandler;
         parametersButtonPanel.Controls.Add(_closeParametersButton);
 
-        _applyParametersButton = new SfButton
+        _applyParametersButton = ControlFactory.CreateSfButton("&Apply", button =>
         {
-            Text = "&Apply",
-            Name = "applyParametersButton",
-            AccessibleName = "Apply Parameters",
-            AccessibleDescription = "Applies selected parameters to the report",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(80, 30),
-            Margin = new Padding(0, 0, 10, 0),
-            TabIndex = 6
-        };
+            button.Name = "applyParametersButton";
+            button.AccessibleName = "Apply Parameters";
+            button.AccessibleDescription = "Applies selected parameters to the report";
+            button.AutoSize = true;
+            button.MinimumSize = new System.Drawing.Size(80, 30);
+            button.Margin = new Padding(0, 0, 10, 0);
+            button.TabIndex = 6;
+        });
         var applyParamsTooltip = new ToolTip();
         applyParamsTooltip.SetToolTip(_applyParametersButton, "Apply parameters to report");
         _applyParametersButtonClickHandler = async (s, e) => await ApplyParametersAsync();
@@ -368,11 +367,11 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _parametersSplitContainer.Panel1.Controls.Add(_parametersPanel);
 
         // Main content split container (toolbar + report viewer)
-        _mainSplitContainer = new SplitContainerAdv
+        _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal
-        };
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = Orientation.Horizontal;
+        });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 60);
 
         // Top panel: Toolbar
@@ -409,15 +408,15 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         toolbarFlow.Controls.Add(reportLabel);
 
         // Report selector (SfComboBox)
-        _reportSelector = new SfComboBox
+        _reportSelector = ControlFactory.CreateSfComboBox(combo =>
         {
-            Name = "reportSelector",
-            AccessibleName = "Report Selector",
-            AccessibleDescription = "Select a report template from the dropdown",
-            AutoSize = true,
-            TabIndex = 1,
-            Margin = new Padding(0, 0, 10, 0)
-        };
+            combo.Name = "reportSelector";
+            combo.AccessibleName = "Report Selector";
+            combo.AccessibleDescription = "Select a report template from the dropdown";
+            combo.AutoSize = true;
+            combo.TabIndex = 1;
+            combo.Margin = new Padding(0, 0, 10, 0);
+        });
         _reportSelector.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
         var reportSelectorTooltip = new ToolTip();
         reportSelectorTooltip.SetToolTip(_reportSelector, "Select report template to load");
@@ -426,17 +425,16 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         toolbarFlow.Controls.Add(_reportSelector);
 
         // Load/Generate button
-        _loadReportButton = new SfButton
+        _loadReportButton = ControlFactory.CreateSfButton("&Generate", button =>
         {
-            Text = "&Generate",
-            Name = "Toolbar_Generate",
-            AccessibleName = "Generate Report",
-            AccessibleDescription = "Load and generate the selected report",
-            AutoSize = true,
-            Enabled = false,
-            TabIndex = 2,
-            Margin = new Padding(0, 0, 10, 0)
-        };
+            button.Name = "Toolbar_Generate";
+            button.AccessibleName = "Generate Report";
+            button.AccessibleDescription = "Load and generate the selected report";
+            button.AutoSize = true;
+            button.Enabled = false;
+            button.TabIndex = 2;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
         var generateTooltip = new ToolTip();
         generateTooltip.SetToolTip(_loadReportButton, "Load and generate selected report (Alt+G)");
         _loadReportButtonClickHandler = async (s, e) => await LoadSelectedReportAsync();
@@ -444,18 +442,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         toolbarFlow.Controls.Add(_loadReportButton);
 
         // Parameters button
-        _parametersButton = new SfButton
+        _parametersButton = ControlFactory.CreateSfButton("&Parameters", button =>
         {
-            Text = "&Parameters",
-            Name = "parametersButton",
-            AccessibleName = "Toggle Parameters",
-            AccessibleDescription = "Show or hide the report parameters panel",
-            AutoSize = true,
-            MinimumSize = new System.Drawing.Size(100, 30),
-            Enabled = false,
-            Margin = new Padding(0, 0, 10, 0),
-            TabIndex = 3
-        };
+            button.Name = "parametersButton";
+            button.AccessibleName = "Toggle Parameters";
+            button.AccessibleDescription = "Show or hide the report parameters panel";
+            button.AutoSize = true;
+            button.MinimumSize = new System.Drawing.Size(100, 30);
+            button.Enabled = false;
+            button.Margin = new Padding(0, 0, 10, 0);
+            button.TabIndex = 3;
+        });
         var parametersTooltip = new ToolTip();
         parametersTooltip.SetToolTip(_parametersButton, "Show/hide parameters panel (Alt+P)");
         _parametersButtonClickHandler = (s, e) => ToggleParametersPanel();
@@ -463,34 +460,32 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         toolbarFlow.Controls.Add(_parametersButton);
 
         // Export buttons
-        _exportPdfButton = new SfButton
+        _exportPdfButton = ControlFactory.CreateSfButton("Export &PDF", button =>
         {
-            Text = "Export &PDF",
-            Name = "Toolbar_ExportPdf",
-            AccessibleName = "Export PDF",
-            AccessibleDescription = "Export the report to PDF file",
-            AutoSize = true,
-            Enabled = false,
-            TabIndex = 4,
-            Margin = new Padding(0, 0, 10, 0)
-        };
+            button.Name = "Toolbar_ExportPdf";
+            button.AccessibleName = "Export PDF";
+            button.AccessibleDescription = "Export the report to PDF file";
+            button.AutoSize = true;
+            button.Enabled = false;
+            button.TabIndex = 4;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
         var exportPdfTooltip = new ToolTip();
         exportPdfTooltip.SetToolTip(_exportPdfButton, "Export report to PDF file (Alt+P)");
         _exportPdfButtonClickHandler = async (s, e) => await ExportToPdfAsync();
         _exportPdfButton.Click += _exportPdfButtonClickHandler;
         toolbarFlow.Controls.Add(_exportPdfButton);
 
-        _exportExcelButton = new SfButton
+        _exportExcelButton = ControlFactory.CreateSfButton("Export &Excel", button =>
         {
-            Text = "Export &Excel",
-            Name = "Toolbar_ExportExcel",
-            AccessibleName = "Export Excel",
-            AccessibleDescription = "Export the report to Excel spreadsheet",
-            AutoSize = true,
-            Enabled = false,
-            TabIndex = 5,
-            Margin = new Padding(0, 0, 10, 0)
-        };
+            button.Name = "Toolbar_ExportExcel";
+            button.AccessibleName = "Export Excel";
+            button.AccessibleDescription = "Export the report to Excel spreadsheet";
+            button.AutoSize = true;
+            button.Enabled = false;
+            button.TabIndex = 5;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
         var exportExcelTooltip = new ToolTip();
         exportExcelTooltip.SetToolTip(_exportExcelButton, "Export report to Excel file (Alt+E)");
         _exportExcelButtonClickHandler = async (s, e) => await ExportToExcelAsync();
@@ -498,17 +493,16 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         toolbarFlow.Controls.Add(_exportExcelButton);
 
         // Print button
-        _printButton = new SfButton
+        _printButton = ControlFactory.CreateSfButton("&Print", button =>
         {
-            Text = "&Print",
-            Name = "Toolbar_Print",
-            AccessibleName = "Print Report",
-            AccessibleDescription = "Print the current report",
-            AutoSize = true,
-            Enabled = false,
-            TabIndex = 6,
-            Margin = new Padding(0, 0, 10, 0)
-        };
+            button.Name = "Toolbar_Print";
+            button.AccessibleName = "Print Report";
+            button.AccessibleDescription = "Print the current report";
+            button.AutoSize = true;
+            button.Enabled = false;
+            button.TabIndex = 6;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
         var printTooltip = new ToolTip();
         printTooltip.SetToolTip(_printButton, "Print report (Alt+P)");
         _printButtonClickHandler = async (s, e) => await PrintReportAsync();

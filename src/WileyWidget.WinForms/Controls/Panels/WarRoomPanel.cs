@@ -718,31 +718,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void ClosePanel()
         {
-            try
-            {
-                var form = FindForm();
-                if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
-                {
-                    mainForm.PanelNavigator.HidePanel("War Room");
-                    return;
-                }
-
-                var dockingManagerField = form?.GetType()
-                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
-                {
-                    dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "WarRoomPanel.ClosePanel");
-                }
-                else
-                {
-                    Visible = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Failed to close WarRoomPanel via docking manager");
-                Visible = false;
-            }
+            base.ClosePanel();
         }
 
         #endregion Event Handlers - Input and Validation

@@ -573,7 +573,7 @@ public partial class MainForm
             var settingsButton = new SfButton { Text = "Application Settings", Width = 220, Height = 40 };
             settingsButton.Click += (_, _) =>
             {
-                SafeExecute(() => SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger), "BackStage_Settings", logger);
+                SafeExecute((RibbonCommand)(() => SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger)), "BackStage_Settings", logger);
                 if (backStageView.BackStage != null)
                 {
                     backStageView.BackStage.Visible = false;
@@ -607,16 +607,16 @@ public partial class MainForm
             };
 
             var newBudgetButton = new SfButton { Text = "New Budget", Width = 220, Height = 40 };
-            newBudgetButton.Click += (_, _) => SafeExecute(form.CreateNewBudget, "BackStage_NewBudget", logger);
+            newBudgetButton.Click += (_, _) => SafeExecute((RibbonCommand)form.CreateNewBudget, "BackStage_NewBudget", logger);
 
             var openBudgetButton = new SfButton { Text = "Open Budget", Width = 220, Height = 40 };
-            openBudgetButton.Click += (_, _) => SafeExecute(form.OpenBudget, "BackStage_OpenBudget", logger);
+            openBudgetButton.Click += (_, _) => SafeExecute((RibbonCommand)form.OpenBudget, "BackStage_OpenBudget", logger);
 
             var saveLayoutButton = new SfButton { Text = "Save Layout", Width = 220, Height = 40 };
-            saveLayoutButton.Click += (_, _) => SafeExecute(form.SaveCurrentLayout, "BackStage_SaveLayout", logger);
+            saveLayoutButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "BackStage_SaveLayout", logger);
 
             var exportButton = new SfButton { Text = "Export Data", Width = 220, Height = 40 };
-            exportButton.Click += (_, _) => SafeExecute(form.ExportData, "BackStage_ExportData", logger);
+            exportButton.Click += (_, _) => SafeExecute((RibbonCommand)form.ExportData, "BackStage_ExportData", logger);
 
             // Apply theme to backstage buttons
             try
@@ -646,7 +646,7 @@ public partial class MainForm
                 Name = "BackStage_Exit",
                 Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom
             };
-            exitButton.Click += (_, _) => SafeExecute(() => form.Close(), "BackStage_Exit", logger);
+            exitButton.Click += (_, _) => SafeExecute((RibbonCommand)(() => form.Close()), "BackStage_Exit", logger);
 
             backStage.Controls.Clear();
             backStage.Controls.Add(infoTab);
@@ -1135,7 +1135,7 @@ public partial class MainForm
         var saveLayoutBtn = CreateLargeNavButton(
             "Nav_SaveLayout", 
             "Save\nLayout", 
-            () => SafeExecute(form.SaveCurrentLayout, "SaveLayout", logger), 
+            () => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "SaveLayout", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Save Layout"),
             tooltip: "Save current panel layout",
@@ -1144,7 +1144,7 @@ public partial class MainForm
         var resetLayoutBtn = CreateLargeNavButton(
             "Nav_ResetLayout", 
             "Reset\nLayout", 
-            () => SafeExecute(form.ResetLayout, "ResetLayout", logger), 
+            () => SafeExecute((RibbonCommand)form.ResetLayout, "ResetLayout", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Reset Layout"),
             tooltip: "Reset panel layout to default");
@@ -1152,7 +1152,7 @@ public partial class MainForm
         var lockLayoutBtn = CreateLargeNavButton(
             "Nav_LockPanels", 
             "Lock\nPanels", 
-            () => SafeExecute(form.TogglePanelLocking, "LockPanels", logger), 
+            () => SafeExecute((RibbonCommand)form.TogglePanelLocking, "LockPanels", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Lock Panels"),
             tooltip: "Lock/unlock panel positions");
@@ -1202,7 +1202,7 @@ public partial class MainForm
         var sortAscBtn = CreateSmallNavButton(
             "Grid_SortAsc", 
             "Sort Asc", 
-            () => SafeExecute(() => form.SortActiveGridByFirstSortableColumn(false), "SortAscending", logger), 
+            () => SafeExecute((RibbonCommand)(() => form.SortActiveGridByFirstSortableColumn(false)), "SortAscending", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Sort Asc"),
             tooltip: "Sort grid ascending");
@@ -1210,7 +1210,7 @@ public partial class MainForm
         var sortDescBtn = CreateSmallNavButton(
             "Grid_SortDesc", 
             "Sort Desc", 
-            () => SafeExecute(() => form.SortActiveGridByFirstSortableColumn(true), "SortDescending", logger), 
+            () => SafeExecute((RibbonCommand)(() => form.SortActiveGridByFirstSortableColumn(true)), "SortDescending", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Sort Desc"),
             tooltip: "Sort grid descending");
@@ -1343,7 +1343,7 @@ public partial class MainForm
         var newBudgetBtn = CreateLargeNavButton(
             "File_NewBudget", 
             "New\nBudget", 
-            () => SafeExecute(form.CreateNewBudget, "NewBudget", logger), 
+            () => SafeExecute((RibbonCommand)form.CreateNewBudget, "NewBudget", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("New"),
             tooltip: "Create new budget",
@@ -1352,7 +1352,7 @@ public partial class MainForm
         var openBudgetBtn = CreateLargeNavButton(
             "File_OpenBudget", 
             "Open\nBudget", 
-            () => SafeExecute(form.OpenBudget, "OpenBudget", logger), 
+            () => SafeExecute((RibbonCommand)form.OpenBudget, "OpenBudget", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Open"),
             tooltip: "Open existing budget",
@@ -1361,7 +1361,7 @@ public partial class MainForm
         var saveLayoutBtn = CreateLargeNavButton(
             "File_SaveLayout", 
             "Save\nLayout", 
-            () => SafeExecute(form.SaveCurrentLayout, "SaveLayout", logger), 
+            () => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "SaveLayout", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Save Layout"),
             tooltip: "Save current layout",
@@ -1370,7 +1370,7 @@ public partial class MainForm
         var exportBtn = CreateLargeNavButton(
             "File_ExportData", 
             "Export\nData", 
-            () => SafeExecute(form.ExportData, "ExportData", logger), 
+            () => SafeExecute((RibbonCommand)form.ExportData, "ExportData", logger), 
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Export"),
             tooltip: "Export data to file",
@@ -1667,11 +1667,11 @@ public partial class MainForm
             Name = "QAT_Save",
             DisplayStyle = ToolStripItemDisplayStyle.Image,
             Image = CreateIconFromSegoeGlyph("\uE74E", 16, SystemColors.ControlText), // Save icon
-            ToolTipText = "Save layout (Ctrl+Shift+S)",
-            AutoSize = true,
-            Enabled = true
-        };
-        saveButton.Click += (_, _) => SafeExecute(form.SaveCurrentLayout, "QAT_SaveLayout", logger);
+                 ToolTipText = "Save layout (Ctrl+Shift+S)",
+                AutoSize = true,
+                Enabled = true
+            };
+            saveButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "QAT_SaveLayout", logger);
 
         // Dashboard button
         var dashboardButton = new ToolStripButton

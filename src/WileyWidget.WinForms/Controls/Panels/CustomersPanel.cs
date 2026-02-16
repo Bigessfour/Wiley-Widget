@@ -388,14 +388,14 @@ public partial class CustomersPanel : ScopedPanelBase
         searchFilterRow.Controls.Add(searchLabel);
 
         // Search textbox
-        _searchTextBox = new TextBoxExt
+        _searchTextBox = ControlFactory.CreateTextBoxExt(textBox =>
         {
-            Width = 220,
-            PlaceholderText = "Name, account #, or address...",
-            BorderStyle = BorderStyle.FixedSingle,
-            Anchor = AnchorStyles.Left,
-            Margin = new Padding(0, 5, 5, 0)
-        };
+            textBox.Width = 220;
+            textBox.PlaceholderText = "Name, account #, or address...";
+            textBox.BorderStyle = BorderStyle.FixedSingle;
+            textBox.Anchor = AnchorStyles.Left;
+            textBox.Margin = new Padding(0, 5, 5, 0);
+        });
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _searchTextBox.KeyPress += SearchTextBox_KeyPress;
         _searchTextBox.AccessibleName = "Customer search";
@@ -404,14 +404,12 @@ public partial class CustomersPanel : ScopedPanelBase
         searchFilterRow.Controls.Add(_searchTextBox);
 
         // Search button
-        _searchButton = new SfButton
+        _searchButton = ControlFactory.CreateSfButton("🔍 &Search", button =>
         {
-            Text = "🔍 &Search",
-            AutoSize = false,
-            Size = new Size(95, 32),
-            Margin = new Padding(0, 3, 5, 0)
-        };
-        SfSkinManager.SetVisualStyle(_searchButton, currentTheme);
+            button.AutoSize = false;
+            button.Size = new Size(95, 32);
+            button.Margin = new Padding(0, 3, 5, 0);
+        });
         _searchButton.AccessibleName = "Search Button";
         _searchButton.TabIndex = 11;
         _toolTip?.SetToolTip(_searchButton, "Execute search");
@@ -420,13 +418,11 @@ public partial class CustomersPanel : ScopedPanelBase
         searchFilterRow.Controls.Add(_searchButton);
 
         // Clear filters button
-        _clearFiltersButton = new SfButton
+        _clearFiltersButton = ControlFactory.CreateSfButton("Clear", button =>
         {
-            Text = "Clear",
-            AutoSize = true,
-            Margin = new Padding(0, 3, 10, 0)
-        };
-        SfSkinManager.SetVisualStyle(_clearFiltersButton, currentTheme);
+            button.AutoSize = true;
+            button.Margin = new Padding(0, 3, 10, 0);
+        });
         _clearFiltersButton.AccessibleName = "Clear Filters";
         _clearFiltersButton.TabIndex = 12;
         _toolTip?.SetToolTip(_clearFiltersButton, "Clear all filters");
@@ -452,16 +448,14 @@ public partial class CustomersPanel : ScopedPanelBase
         };
         searchFilterRow.Controls.Add(typeLabel);
 
-        _filterTypeComboBox = new SfComboBox
+        _filterTypeComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Width = 120,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" },
-            Margin = new Padding(0, 5, 5, 0)
-        };
+            combo.Width = 120;
+            combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            combo.DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" };
+            combo.Margin = new Padding(0, 5, 5, 0);
+        });
         _filterTypeComboBox.SelectedIndex = 0;
-        SfSkinManager.SetVisualStyle(_filterTypeComboBox, currentTheme);
         _filterTypeComboBox.AccessibleName = "Filter by Type";
         _filterTypeComboBox.TabIndex = 13;
         _toolTip?.SetToolTip(_filterTypeComboBox, "Filter customers by type");
@@ -477,16 +471,14 @@ public partial class CustomersPanel : ScopedPanelBase
         };
         searchFilterRow.Controls.Add(locationLabel);
 
-        _filterLocationComboBox = new SfComboBox
+        _filterLocationComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Width = 140,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" },
-            Margin = new Padding(0, 5, 10, 0)
-        };
+            combo.Width = 140;
+            combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            combo.DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" };
+            combo.Margin = new Padding(0, 5, 10, 0);
+        });
         _filterLocationComboBox.SelectedIndex = 0;
-        SfSkinManager.SetVisualStyle(_filterLocationComboBox, currentTheme);
         _filterLocationComboBox.AccessibleName = "Filter by Location";
         _filterLocationComboBox.TabIndex = 14;
         _toolTip?.SetToolTip(_filterLocationComboBox, "Filter customers by service location");
@@ -494,13 +486,11 @@ public partial class CustomersPanel : ScopedPanelBase
         searchFilterRow.Controls.Add(_filterLocationComboBox);
 
         // Show Active Only checkbox
-        _showActiveOnlyCheckBox = new CheckBoxAdv
+        _showActiveOnlyCheckBox = ControlFactory.CreateCheckBoxAdv("Active Only", checkBox =>
         {
-            Text = "Active Only",
-            AutoSize = true,
-            Checked = true,
-            Margin = new Padding(0, 7, 0, 0)
-        };
+            checkBox.Checked = true;
+            checkBox.Margin = new Padding(0, 7, 0, 0);
+        });
         _showActiveOnlyCheckBox.AccessibleName = "Show active only";
         _showActiveOnlyCheckBox.TabIndex = 15;
         _toolTip?.SetToolTip(_showActiveOnlyCheckBox, "Toggle to show only active customers");
@@ -520,14 +510,12 @@ public partial class CustomersPanel : ScopedPanelBase
         };
 
         // Add Customer button
-        _addCustomerButton = new SfButton
+        _addCustomerButton = ControlFactory.CreateSfButton("➕ &Add Customer", button =>
         {
-            Text = "➕ &Add Customer",
-            AutoSize = true,
-            Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold),
-            Margin = new Padding(0, 0, 5, 0)
-        };
-        SfSkinManager.SetVisualStyle(_addCustomerButton, currentTheme);
+            button.AutoSize = true;
+            button.Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold);
+            button.Margin = new Padding(0, 0, 5, 0);
+        });
         _addCustomerButton.AccessibleName = "Add Customer";
         _addCustomerButton.TabIndex = 20;
         _toolTip?.SetToolTip(_addCustomerButton, "Add a new customer");
@@ -536,14 +524,12 @@ public partial class CustomersPanel : ScopedPanelBase
         actionButtonsRow.Controls.Add(_addCustomerButton);
 
         // Edit Customer button
-        _editCustomerButton = new SfButton
+        _editCustomerButton = ControlFactory.CreateSfButton("✏️ &Edit", button =>
         {
-            Text = "✏️ &Edit",
-            AutoSize = true,
-            Enabled = false,
-            Margin = new Padding(0, 0, 5, 0)
-        };
-        SfSkinManager.SetVisualStyle(_editCustomerButton, currentTheme);
+            button.AutoSize = true;
+            button.Enabled = false;
+            button.Margin = new Padding(0, 0, 5, 0);
+        });
         _editCustomerButton.AccessibleName = "Edit Customer";
         _editCustomerButton.TabIndex = 21;
         _toolTip?.SetToolTip(_editCustomerButton, "Edit the selected customer");
@@ -552,15 +538,13 @@ public partial class CustomersPanel : ScopedPanelBase
         actionButtonsRow.Controls.Add(_editCustomerButton);
 
         // Delete Customer button
-        _deleteCustomerButton = new SfButton
+        _deleteCustomerButton = ControlFactory.CreateSfButton("🗑️ &Delete", button =>
         {
-            Text = "🗑️ &Delete",
-            AutoSize = false,
-            Size = new Size(95, 32),
-            Enabled = false,
-            Margin = new Padding(0, 0, 10, 0)
-        };
-        SfSkinManager.SetVisualStyle(_deleteCustomerButton, currentTheme);
+            button.AutoSize = false;
+            button.Size = new Size(95, 32);
+            button.Enabled = false;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
         _deleteCustomerButton.AccessibleName = "Delete Customer";
         _deleteCustomerButton.TabIndex = 22;
         _toolTip?.SetToolTip(_deleteCustomerButton, "Delete the selected customer");
@@ -569,14 +553,12 @@ public partial class CustomersPanel : ScopedPanelBase
         actionButtonsRow.Controls.Add(_deleteCustomerButton);
 
         // Refresh button
-        _refreshButton = new SfButton
+        _refreshButton = ControlFactory.CreateSfButton("🔄 &Refresh", button =>
         {
-            Text = "🔄 &Refresh",
-            AutoSize = false,
-            Size = new Size(100, 32),
-            Margin = new Padding(0, 0, 5, 0)
-        };
-        SfSkinManager.SetVisualStyle(_refreshButton, currentTheme);
+            button.AutoSize = false;
+            button.Size = new Size(100, 32);
+            button.Margin = new Padding(0, 0, 5, 0);
+        });
         _refreshButton.AccessibleName = "Refresh";
         _refreshButton.TabIndex = 23;
         _toolTip?.SetToolTip(_refreshButton, "Refresh the customer list");
@@ -585,14 +567,12 @@ public partial class CustomersPanel : ScopedPanelBase
         actionButtonsRow.Controls.Add(_refreshButton);
 
         // Sync QuickBooks button
-        _syncQuickBooksButton = new SfButton
+        _syncQuickBooksButton = ControlFactory.CreateSfButton("📊 Sync QB", button =>
         {
-            Text = "📊 Sync QB",
-            AutoSize = false,
-            Size = new Size(110, 32),
-            Margin = new Padding(0, 0, 5, 0)
-        };
-        SfSkinManager.SetVisualStyle(_syncQuickBooksButton, currentTheme);
+            button.AutoSize = false;
+            button.Size = new Size(110, 32);
+            button.Margin = new Padding(0, 0, 5, 0);
+        });
         _syncQuickBooksButton.AccessibleName = "Sync QuickBooks";
         _syncQuickBooksButton.TabIndex = 24;
         _toolTip?.SetToolTip(_syncQuickBooksButton, "Synchronize customers with QuickBooks");
@@ -601,14 +581,12 @@ public partial class CustomersPanel : ScopedPanelBase
         actionButtonsRow.Controls.Add(_syncQuickBooksButton);
 
         // Export button
-        _exportButton = new SfButton
+        _exportButton = ControlFactory.CreateSfButton("💾 E&xport", button =>
         {
-            Text = "💾 E&xport",
-            AutoSize = false,
-            Size = new Size(100, 32),
-            Margin = new Padding(0, 0, 0, 0)
-        };
-        SfSkinManager.SetVisualStyle(_exportButton, currentTheme);
+            button.AutoSize = false;
+            button.Size = new Size(100, 32);
+            button.Margin = new Padding(0, 0, 0, 0);
+        });
         _exportButton.AccessibleName = "Export Customers";
         _exportButton.TabIndex = 25;
         _toolTip?.SetToolTip(_exportButton, "Export customers to CSV");
@@ -690,21 +668,23 @@ public partial class CustomersPanel : ScopedPanelBase
     /// </summary>
     private void CreateDataGrid()
     {
-        _customersGrid = new SfDataGrid
+        _customersGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowEditing = false,
-            AllowFiltering = true,
-            AllowSorting = true,
-            AllowResizingColumns = true,
-            SelectionMode = GridSelectionMode.Single,
-            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
-            ShowRowHeader = true,
-            RowHeight = 32,
+            grid.Dock = DockStyle.Fill;
+            grid.AutoGenerateColumns = false;
+            grid.AllowEditing = false;
+            grid.AllowFiltering = true;
+            grid.AllowSorting = true;
+            grid.AllowResizingColumns = true;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
+            grid.ShowRowHeader = true;
+            grid.RowHeight = 32;
             // AutoSizeColumnsMode for better column management
-            AutoSizeColumnsMode = AutoSizeColumnsMode.None
-        }.PreventStringRelationalFilters(
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.None;
+        });
+
+        _customersGrid.PreventStringRelationalFilters(
             _logger,
             nameof(UtilityCustomer.AccountNumber),
             nameof(UtilityCustomer.DisplayName),
@@ -1481,37 +1461,7 @@ public partial class CustomersPanel : ScopedPanelBase
     private void ClosePanel()
     {
         _logger.LogDebug("Closing CustomersPanel");
-
-        // Find the parent docking manager and hide this panel
-        var dockingManager = FindDockingManager(this);
-        if (dockingManager != null)
-        {
-            dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "CustomersPanel.ClosePanel");
-        }
-        else
-        {
-            // Fallback: just hide the control
-            Visible = false;
-        }
-    }
-
-    /// <summary>
-    /// Finds the DockingManager in the control hierarchy.
-    /// </summary>
-    private Syncfusion.Windows.Forms.Tools.DockingManager? FindDockingManager(Control control)
-    {
-        while (control?.Parent != null)
-        {
-            control = control.Parent;
-
-            if (control is Form form)
-            {
-                return form.Controls
-                    .OfType<Syncfusion.Windows.Forms.Tools.DockingManager>()
-                    .FirstOrDefault();
-            }
-        }
-        return null;
+        base.ClosePanel();
     }
 
     /// <summary>

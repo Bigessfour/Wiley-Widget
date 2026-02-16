@@ -427,7 +427,24 @@ public partial class MainForm
                 return;
             }
 
-            // If it's null, create it (floating mode, no DockingManager)
+            InitializeMDIManager();
+
+            if (_panelNavigator is PanelNavigationService existingNavigator && IsMdiContainer && !existingNavigator.IsMdiEnabled)
+            {
+                _logger?.LogWarning("[ENSURE_NAV] PanelNavigator created before MDI initialization; recreating for MDI mode");
+                try
+                {
+                    existingNavigator.PanelActivated -= PanelNavigator_OnPanelActivated;
+                    existingNavigator.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "[ENSURE_NAV] Failed to dispose existing PanelNavigationService");
+                }
+                _panelNavigator = null;
+            }
+
+            // If it's null, create it (floating or MDI mode based on MdiContainer state)
             if (_panelNavigator == null)
             {
                 _logger?.LogDebug("[ENSURE_NAV] PanelNavigator is null - creating new instance");
@@ -438,7 +455,7 @@ public partial class MainForm
                 try
                 {
                     _panelNavigator = new PanelNavigationService(this, _serviceProvider, navLogger);
-                    _logger?.LogInformation("[ENSURE_NAV] ✅ PanelNavigationService created successfully (floating mode)");
+                    _logger?.LogInformation("[ENSURE_NAV] ✅ PanelNavigationService created successfully (MDI={UseMdi})", IsMdiContainer);
 
                     // Subscribe to activation events to keep ribbon/navigation selection in sync
                     try

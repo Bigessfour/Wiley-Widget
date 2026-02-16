@@ -287,7 +287,7 @@ public sealed class BudgetAnalyticsRepository : IBudgetAnalyticsRepository
                     OverBudget = g.Count(e => e.ActualAmount > e.BudgetedAmount),
                     UnderBudget = g.Count(e => e.ActualAmount < e.BudgetedAmount)
                 })
-                .FirstOrDefaultAsync(ct);
+                .SingleOrDefaultAsync(ct);
 
             if (overview == null)
             {
@@ -417,7 +417,7 @@ public sealed class BudgetAnalyticsRepository : IBudgetAnalyticsRepository
                     TotalActual = g.Sum(e => e.ActualAmount),
                     TotalEncumbrance = g.Sum(e => e.EncumbranceAmount)
                 })
-                .FirstOrDefaultAsync(ct);
+                .SingleOrDefaultAsync(ct);
 
             if (summary == null)
             {

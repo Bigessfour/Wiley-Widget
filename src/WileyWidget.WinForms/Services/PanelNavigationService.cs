@@ -44,6 +44,9 @@ namespace WileyWidget.WinForms.Services
         private readonly Dictionary<string, Form> _hosts = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Control> _cachedPanels = new(StringComparer.OrdinalIgnoreCase);
         private string? _activePanelName;
+        private readonly bool _useMDI;
+
+        public bool IsMdiEnabled => _useMDI;
 
         public event EventHandler<PanelActivatedEventArgs>? PanelActivated;
 
@@ -52,6 +55,10 @@ namespace WileyWidget.WinForms.Services
             _owner = owner ?? throw new ArgumentNullException(nameof(owner));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            // Check if owner is MDI container
+            _useMDI = owner.IsMdiContainer;
+            _logger.LogDebug("[PANEL_NAV] PanelNavigationService initialized - MDI mode: {UseMDI}", _useMDI);
         }
 
         public void ShowPanel<TPanel>(string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
@@ -168,7 +175,13 @@ namespace WileyWidget.WinForms.Services
         private void ShowFloating(Control panelOrForm, string panelName)
         {
             Form host;
-            if (panelOrForm is Form form)
+
+            // If owner is MDI container, create MDI child instead of floating window
+            if (_useMDI && panelOrForm is not Form)
+            {
+                host = CreateMDIChild(panelName, panelOrForm as UserControl);
+            }
+            else if (panelOrForm is Form form)
             {
                 host = form;
             }
@@ -177,16 +190,27 @@ namespace WileyWidget.WinForms.Services
                 host = GetOrCreateHost(panelName, panelOrForm as UserControl);
             }
 
-            host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
-            host.StartPosition = host.StartPosition == FormStartPosition.Manual ? FormStartPosition.Manual : FormStartPosition.CenterParent;
-            host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
-            host.ShowInTaskbar = false;
-            host.Owner = _owner;
-            host.TopMost = true;  // Ensure floating panels are visible on top
-            host.WindowState = FormWindowState.Normal;  // Ensure it's not minimized
-            host.Show();
+            // Configure and show
+            if (_useMDI)
+            {
+                host.MdiParent = _owner;
+                host.WindowState = FormWindowState.Maximized;
+                host.Show();
+            }
+            else
+            {
+                host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
+                host.StartPosition = host.StartPosition == FormStartPosition.Manual ? FormStartPosition.Manual : FormStartPosition.CenterParent;
+                host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
+                host.ShowInTaskbar = false;
+                host.Owner = _owner;
+                host.TopMost = true;
+                host.WindowState = FormWindowState.Normal;
+                host.Show();
+            }
+
             host.BringToFront();
-            host.Activate();  // Ensure it's active and focused
+            host.Activate();
 
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
@@ -215,7 +239,8 @@ namespace WileyWidget.WinForms.Services
                     : new Size(400, 300),
                 Text = panelName,
                 AutoScaleMode = AutoScaleMode.Dpi,
-                AutoScroll = true
+                AutoScroll = false,
+                Padding = Padding.Empty
             };
 
             EnsurePanelAttached(host, panel);
@@ -236,6 +261,8 @@ namespace WileyWidget.WinForms.Services
             if (!host.Controls.Contains(panel))
             {
                 panel.Dock = DockStyle.Fill;
+                panel.Margin = Padding.Empty;
+                host.Padding = Padding.Empty;
                 host.Controls.Clear();
                 host.Controls.Add(panel);
 
@@ -259,6 +286,46 @@ namespace WileyWidget.WinForms.Services
             var cascadeCount = _hosts.Count % 8;
             var location = new Point(baseX + cascadeCount * offset, baseY + cascadeCount * offset);
             return location;
+        }
+
+        /// <summary>
+        /// Creates an MDI child form to host a panel.
+        /// Used when owner is MDI container.
+        /// </summary>
+        private Form CreateMDIChild(string panelName, UserControl? panel)
+        {
+            if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
+            {
+                if (panel != null)
+                {
+                    EnsurePanelAttached(existing, panel);
+                }
+                return existing;
+            }
+
+            var mdiChild = new Form
+            {
+                Text = panelName,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                ShowIcon = false,
+                WindowState = FormWindowState.Maximized,
+                AutoScaleMode = AutoScaleMode.Dpi,
+                MinimumSize = panel?.MinimumSize.IsEmpty == false ? panel.MinimumSize : new Size(400, 300),
+                Padding = Padding.Empty
+            };
+
+            if (panel != null)
+            {
+                EnsurePanelAttached(mdiChild, panel);
+            }
+
+            _hosts[panelName] = mdiChild;
+
+            // Apply theme
+            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(mdiChild, currentTheme);
+
+            return mdiChild;
         }
 
         private void ExecuteOnUiThread(Action action)

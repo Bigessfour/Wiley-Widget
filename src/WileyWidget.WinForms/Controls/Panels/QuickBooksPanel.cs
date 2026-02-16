@@ -898,7 +898,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         Name = "QuickBooksPanel";
         Size = new Size(1400, 900);
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(640f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(480f));
-        Padding = new Padding(8);
+        Padding = Padding.Empty;
         Dock = DockStyle.Fill;
 
         // Shared tooltip for all controls
@@ -932,7 +932,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _mainPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10),
+            Padding = Padding.Empty,
             BorderStyle = BorderStyle.None,
             AutoScroll = true,
             AutoScrollMinSize = new Size(1000, 800),
@@ -948,39 +948,39 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Hierarchical SplitContainerAdv Layout:
         // Main (Horizontal Splitter) -> Top (Vertical Splitter: Conn vs Ops) + Bottom (Horizontal Splitter: Summary vs History)
 
-        _splitContainerTop = new SplitContainerAdv
+        _splitContainerTop = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Name = "SplitContainerTop",
-            Dock = DockStyle.Fill,
-            Orientation = System.Windows.Forms.Orientation.Vertical,
-            IsSplitterFixed = false,
-            SplitterWidth = 6,
-            BorderStyle = BorderStyle.FixedSingle
-        };
+            splitter.Name = "SplitContainerTop";
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = System.Windows.Forms.Orientation.Vertical;
+            splitter.IsSplitterFixed = false;
+            splitter.SplitterWidth = 6;
+            splitter.BorderStyle = BorderStyle.FixedSingle;
+        });
         _splitContainerTop.Panel1.Controls.Add(_connectionPanel!);
         _splitContainerTop.Panel2.Controls.Add(_operationsPanel!);
 
-        _splitContainerBottom = new SplitContainerAdv
+        _splitContainerBottom = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Name = "SplitContainerBottom",
-            Dock = DockStyle.Fill,
-            Orientation = System.Windows.Forms.Orientation.Horizontal, // Changed to Horizontal: Summary Top, History Bottom
-            IsSplitterFixed = false,
-            SplitterWidth = 6,
-            BorderStyle = BorderStyle.FixedSingle
-        };
+            splitter.Name = "SplitContainerBottom";
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = System.Windows.Forms.Orientation.Horizontal; // Changed to Horizontal: Summary Top, History Bottom
+            splitter.IsSplitterFixed = false;
+            splitter.SplitterWidth = 6;
+            splitter.BorderStyle = BorderStyle.FixedSingle;
+        });
         _splitContainerBottom.Panel1.Controls.Add(_summaryPanel!);
         _splitContainerBottom.Panel2.Controls.Add(_historyPanel!);
 
-        _splitContainerMain = new SplitContainerAdv
+        _splitContainerMain = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Name = "SplitContainerMain",
-            Dock = DockStyle.Fill,
-            Orientation = System.Windows.Forms.Orientation.Horizontal,
-            IsSplitterFixed = false,
-            SplitterWidth = 6,
-            BorderStyle = BorderStyle.None
-        };
+            splitter.Name = "SplitContainerMain";
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            splitter.IsSplitterFixed = false;
+            splitter.SplitterWidth = 6;
+            splitter.BorderStyle = BorderStyle.None;
+        });
         _splitContainerMain.Panel1.Controls.Add(_splitContainerTop);
         _splitContainerMain.Panel2.Controls.Add(_splitContainerBottom);
 
@@ -1289,17 +1289,17 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            Padding = new Padding(10)
+            Padding = Padding.Empty
         };
         SfSkinManager.SetVisualStyle(topPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
         // Vertical split: left = connection, right = operations (safe deferred sizing)
-        var splitTop = new SplitContainerAdv
+        var splitTop = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            FixedPanel = Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.None
-        };
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = Orientation.Vertical;
+            splitter.FixedPanel = Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.None;
+        });
 
         // Defer min sizes and splitter distance until the control has real dimensions
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(
@@ -1427,33 +1427,29 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Padding = new Padding(0, 2, 0, 0)
         };
 
-        _connectButton = new SfButton
+        _connectButton = ControlFactory.CreateSfButton("Connect", button =>
         {
-            Text = "Connect",
-            Size = new Size(DpiHeight(85f), DpiHeight(36f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Connect to QuickBooks",
-            AccessibleDescription = "Establishes connection to QuickBooks Online via OAuth",
-            TabIndex = 1,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(85f), DpiHeight(36f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Connect to QuickBooks";
+            button.AccessibleDescription = "Establishes connection to QuickBooks Online via OAuth";
+            button.TabIndex = 1;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_connectButton, "Click to authorize and connect to QuickBooks Online");
         _connectButtonClickHandler = async (s, e) => await InitiateQuickBooksOAuthFlowAsync();
         _connectButton.Click += _connectButtonClickHandler;
         buttonPanel.Controls.Add(_connectButton);
 
-        _disconnectButton = new SfButton
+        _disconnectButton = ControlFactory.CreateSfButton("Disconnect", button =>
         {
-            Text = "Disconnect",
-            Size = new Size(DpiHeight(100f), DpiHeight(36f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Disconnect from QuickBooks",
-            AccessibleDescription = "Terminates current QuickBooks Online connection",
-            TabIndex = 2,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(100f), DpiHeight(36f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Disconnect from QuickBooks";
+            button.AccessibleDescription = "Terminates current QuickBooks Online connection";
+            button.TabIndex = 2;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_disconnectButton, "Click to disconnect from QuickBooks");
         _disconnectButtonClickHandler = async (s, e) =>
         {
@@ -1465,17 +1461,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _disconnectButton.Click += _disconnectButtonClickHandler;
         buttonPanel.Controls.Add(_disconnectButton);
 
-        _testConnectionButton = new SfButton
+        _testConnectionButton = ControlFactory.CreateSfButton("Test Connection", button =>
         {
-            Text = "Test Connection",
-            Size = new Size(DpiHeight(120f), DpiHeight(36f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Test QuickBooks Connection",
-            AccessibleDescription = "Verifies QuickBooks Online connection status",
-            TabIndex = 3,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(120f), DpiHeight(36f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Test QuickBooks Connection";
+            button.AccessibleDescription = "Verifies QuickBooks Online connection status";
+            button.TabIndex = 3;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_testConnectionButton, "Click to test the current QuickBooks connection");
         _testConnectionButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.TestConnectionCommand);
         _testConnectionButton.Click += _testConnectionButtonClickHandler;
@@ -1551,18 +1545,16 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Margin = new Padding(0, 10, 0, 0)  // Added top margin for button spacing
         };
 
-        _syncDataButton = new SfButton
+        _syncDataButton = ControlFactory.CreateSfButton("🔄 Sync Data", button =>
         {
-            Text = "🔄 Sync Data",
-            Size = new Size(DpiHeight(120f), DpiHeight(36f)),
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Sync Data with QuickBooks",
-            AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online",
-            TabIndex = 4,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(120f), DpiHeight(36f));
+            button.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Sync Data with QuickBooks";
+            button.AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online";
+            button.TabIndex = 4;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_syncDataButton, "Click to synchronize data with QuickBooks");
         _syncDataButtonClickHandler = async (s, e) =>
         {
@@ -1574,17 +1566,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _syncDataButton.Click += _syncDataButtonClickHandler;
         buttonPanel.Controls.Add(_syncDataButton);
 
-        _importAccountsButton = new SfButton
+        _importAccountsButton = ControlFactory.CreateSfButton("📥 Import Chart of Accounts", button =>
         {
-            Text = "📥 Import Chart of Accounts",
-            Size = new Size(DpiHeight(170f), DpiHeight(36f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Import Chart of Accounts",
-            AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online",
-            TabIndex = 5,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(170f), DpiHeight(36f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Import Chart of Accounts";
+            button.AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online";
+            button.TabIndex = 5;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_importAccountsButton, "Click to import the chart of accounts from QuickBooks");
         _importAccountsButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
         _importAccountsButton.Click += _importAccountsButtonClickHandler;
@@ -1593,14 +1583,14 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         tableLayout.Controls.Add(buttonPanel, 0, 0);
 
         // Sync progress bar with professional styling
-        _syncProgressBar = new ProgressBarAdv
+        _syncProgressBar = ControlFactory.CreateProgressBarAdv(progress =>
         {
-            Dock = DockStyle.Fill,
-            Height = DpiHeight(25f),
-            MinimumSize = new Size(0, DpiHeight(25f)),
-            Visible = false,
-            ProgressStyle = ProgressBarStyles.WaitingGradient
-        };
+            progress.Dock = DockStyle.Fill;
+            progress.Height = DpiHeight(25f);
+            progress.MinimumSize = new Size(0, DpiHeight(25f));
+            progress.Visible = false;
+            progress.ProgressStyle = ProgressBarStyles.WaitingGradient;
+        });
         tableLayout.Controls.Add(_syncProgressBar, 0, 1);
 
         _operationsPanel.Controls.Add(tableLayout);
@@ -1672,15 +1662,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         toolbarPanel.Controls.Add(filterLabel);
 
         // Filter text box with professional sizing
-        _filterTextBox = new TextBoxExt
+        _filterTextBox = ControlFactory.CreateTextBoxExt(textBox =>
         {
-            Size = new Size(DpiHeight(220f), DpiHeight(28f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            AccessibleName = "Filter Sync History",
-            AccessibleDescription = "Enter text to filter sync history records",
-            TabIndex = 6,
-            TabStop = true
-        };
+            textBox.Size = new Size(DpiHeight(220f), DpiHeight(28f));
+            textBox.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            textBox.AccessibleName = "Filter Sync History";
+            textBox.AccessibleDescription = "Enter text to filter sync history records";
+            textBox.TabIndex = 6;
+            textBox.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_filterTextBox, "Type to filter the sync history by any field (Timestamp, Operation, Status, etc.)");
         _filterTextBoxTextChangedHandler = (s, e) =>
         {
@@ -1691,33 +1681,29 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         toolbarPanel.Controls.Add(_filterTextBox);
 
         // History toolbar buttons with professional sizing
-        _refreshHistoryButton = new SfButton
+        _refreshHistoryButton = ControlFactory.CreateSfButton("🔄 Refresh", button =>
         {
-            Text = "🔄 Refresh",
-            Size = new Size(DpiHeight(95f), DpiHeight(32f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Refresh Sync History",
-            AccessibleDescription = "Reloads sync history from database",
-            TabIndex = 7,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(95f), DpiHeight(32f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Refresh Sync History";
+            button.AccessibleDescription = "Reloads sync history from database";
+            button.TabIndex = 7;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_refreshHistoryButton, "Click to reload sync history from the database");
         _refreshHistoryButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.RefreshHistoryCommand);
         _refreshHistoryButton.Click += _refreshHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_refreshHistoryButton);
 
-        _clearHistoryButton = new SfButton
+        _clearHistoryButton = ControlFactory.CreateSfButton("🗑 Clear", button =>
         {
-            Text = "🗑 Clear",
-            Size = new Size(DpiHeight(75f), DpiHeight(32f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Clear Sync History",
-            AccessibleDescription = "Removes all sync history records from the display",
-            TabIndex = 8,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(75f), DpiHeight(32f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Clear Sync History";
+            button.AccessibleDescription = "Removes all sync history records from the display";
+            button.TabIndex = 8;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_clearHistoryButton, "Click to clear all sync history (cannot be undone)");
         _clearHistoryButtonClickHandler = async (s, e) =>
         {
@@ -1732,17 +1718,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _clearHistoryButton.Click += _clearHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_clearHistoryButton);
 
-        _exportHistoryButton = new SfButton
+        _exportHistoryButton = ControlFactory.CreateSfButton("📤 Export CSV", button =>
         {
-            Text = "📤 Export CSV",
-            Size = new Size(DpiHeight(105f), DpiHeight(32f)),
-            Anchor = AnchorStyles.Left | AnchorStyles.Top,
-            ThemeName = "Office2019Colorful",
-            AccessibleName = "Export History to CSV",
-            AccessibleDescription = "Exports sync history data to CSV file",
-            TabIndex = 9,
-            TabStop = true
-        };
+            button.Size = new Size(DpiHeight(105f), DpiHeight(32f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Export History to CSV";
+            button.AccessibleDescription = "Exports sync history data to CSV file";
+            button.TabIndex = 9;
+            button.TabStop = true;
+        });
         _sharedTooltip?.SetToolTip(_exportHistoryButton, "Click to export sync history as a CSV file");
         _exportHistoryButtonClickHandler = async (s, e) =>
         {
@@ -1828,24 +1812,25 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void CreateSyncHistoryGrid()
     {
-        _syncHistoryGrid = new SfDataGrid
+        _syncHistoryGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            AutoGenerateColumns = false,
-            AllowResizingColumns = true,
-            AllowSorting = true,
-            AllowFiltering = false,
-            ShowRowHeader = false,
-            SelectionMode = GridSelectionMode.Single,
-            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
-            RowHeight = DpiHeight(30f),
-            HeaderRowHeight = DpiHeight(36f),
-            ThemeName = "Office2019Colorful",
-            AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-            AccessibleName = "Sync History Grid",
-            AccessibleDescription = "Grid displaying QuickBooks sync history records with sortable columns and status indicators",
-            TabIndex = 10,
-            TabStop = true
-        }.PreventStringRelationalFilters(
+            grid.AutoGenerateColumns = false;
+            grid.AllowResizingColumns = true;
+            grid.AllowSorting = true;
+            grid.AllowFiltering = false;
+            grid.ShowRowHeader = false;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
+            grid.RowHeight = DpiHeight(30f);
+            grid.HeaderRowHeight = DpiHeight(36f);
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.AccessibleName = "Sync History Grid";
+            grid.AccessibleDescription = "Grid displaying QuickBooks sync history records with sortable columns and status indicators";
+            grid.TabIndex = 10;
+            grid.TabStop = true;
+        });
+
+        _syncHistoryGrid.PreventStringRelationalFilters(
             _logger,
             nameof(QuickBooksSyncHistoryRecord.FormattedTimestamp),
             nameof(QuickBooksSyncHistoryRecord.Operation),
@@ -3211,9 +3196,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     private void ClosePanel()
     {
-        var parent = Parent;
-        parent?.Controls.Remove(this);
-        Dispose();
+        base.ClosePanel();
     }
 
     #endregion

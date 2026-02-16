@@ -206,28 +206,28 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // SPLIT CONTAINER FOR CHART AND GRID (Dock.Fill, proportional)
         // ══════════════════════════════════════════════════════════════
         // CHANGE 8: Split container configured for proportional resizing
-        _mainSplit = new SplitContainerAdv
+        _mainSplit = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            SplitterWidth = 6,  // Slightly thicker splitter for better UX
-            Padding = new Padding(0),
-            AccessibleName = "Chart and grid split container",
-            AccessibleDescription = "Resizable container splitting chart visualization above and data grid below. Drag splitter to adjust proportions."
-        };
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = Orientation.Horizontal;
+            splitter.SplitterWidth = 6;  // Slightly thicker splitter for better UX
+            splitter.Padding = new Padding(0);
+            splitter.AccessibleName = "Chart and grid split container";
+            splitter.AccessibleDescription = "Resizable container splitting chart visualization above and data grid below. Drag splitter to adjust proportions.";
+        });
         // Defer setting min sizes and splitter distance until control is sized
         SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(_mainSplit, 200, 150, 350);
 
         // CHART CONTROL (Panel1, Dock.Fill)
         // ══════════════════════════════════════════════════════════════
         // CHANGE 11: Explicitly set Dock=Fill to ensure full panel coverage
-        _chartControl = new ChartControl
+        _chartControl = ControlFactory.CreateChartControl("Revenue Trends", chart =>
         {
-            Dock = DockStyle.Fill,
+            chart.Dock = DockStyle.Fill;
             // CHANGE 12: Added comprehensive accessibility information
-            AccessibleName = "Revenue trends line chart",
-            AccessibleDescription = "Line chart visualization showing monthly revenue trends over time. Y-axis shows revenue in currency, X-axis shows months."
-        };
+            chart.AccessibleName = "Revenue trends line chart";
+            chart.AccessibleDescription = "Line chart visualization showing monthly revenue trends over time. Y-axis shows revenue in currency, X-axis shows months.";
+        });
         try
         {
             var dbProp = typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
@@ -240,24 +240,25 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // DATA GRID (Panel2, Dock.Fill)
         // ══════════════════════════════════════════════════════════════
         // CHANGE 13: Explicitly set Dock=Fill for grid as well
-        _metricsGrid = new SfDataGrid
+        _metricsGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowFiltering = true,
-            AllowSorting = true,
-            AllowGrouping = false,
-            ShowRowHeader = false,
-            SelectionMode = GridSelectionMode.Single,
-            AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-            RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f),
-            HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f),
-            AllowResizingColumns = true,
-            AllowTriStateSorting = true,
+            grid.Dock = DockStyle.Fill;
+            grid.AutoGenerateColumns = false;
+            grid.AllowFiltering = true;
+            grid.AllowSorting = true;
+            grid.AllowGrouping = false;
+            grid.ShowRowHeader = false;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f);
+            grid.HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f);
+            grid.AllowResizingColumns = true;
+            grid.AllowTriStateSorting = true;
             // CHANGE 14: Enhanced accessibility for grid
-            AccessibleName = "Monthly revenue breakdown data grid",
-            AccessibleDescription = "Sortable, filterable table displaying detailed monthly revenue data including transaction count and average transaction value. Use arrow keys to navigate."
-        }.PreventStringRelationalFilters(Logger, nameof(RevenueMonthlyData.MonthLabel));
+            grid.AccessibleName = "Monthly revenue breakdown data grid";
+            grid.AccessibleDescription = "Sortable, filterable table displaying detailed monthly revenue data including transaction count and average transaction value. Use arrow keys to navigate.";
+        });
+        _metricsGrid.PreventStringRelationalFilters(Logger, nameof(RevenueMonthlyData.MonthLabel));
 
         ConfigureGridColumns();
         ConfigureGridStyling(_metricsGrid);

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
+using Syncfusion.WinForms.Input;
+using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.Windows.Forms.Tools;
@@ -263,6 +265,194 @@ public class SyncfusionControlFactory
         configure?.Invoke(ribbon);
 
         return ribbon;
+    }
+
+    #endregion
+
+    #region SfListView - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured SfListView with ALL essential properties set.
+    /// 
+    /// Mandatory Properties Checklist:
+    /// ✅ ThemeName
+    /// ✅ Dock/Size
+    /// ✅ View
+    /// ✅ SelectionMode
+    /// ✅ ShowColumnHeader
+    /// </summary>
+    public SfListView CreateSfListView(Action<SfListView>? configure = null)
+    {
+        _logger.LogDebug("Creating SfListView with full property configuration");
+
+        var listView = new SfListView
+        {
+            ThemeName = _currentTheme,
+            Dock = DockStyle.Fill,
+            ItemHeight = 28,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+        };
+
+        listView.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(listView);
+
+        return listView;
+    }
+
+    #endregion
+
+    #region TextBoxExt - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured TextBoxExt with ALL essential properties set.
+    /// 
+    /// Mandatory Properties Checklist:
+    /// ✅ ThemeName
+    /// ✅ Size
+    /// ✅ Font
+    /// ✅ BorderStyle
+    /// </summary>
+    public TextBoxExt CreateTextBoxExt(Action<TextBoxExt>? configure = null)
+    {
+        _logger.LogDebug("Creating TextBoxExt with full property configuration");
+
+        var textBox = new TextBoxExt
+        {
+            ThemeName = _currentTheme,
+            BorderStyle = BorderStyle.FixedSingle,
+            Size = new Size(200, 28),
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            CanOverrideStyle = false
+        };
+
+        textBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(textBox);
+
+        return textBox;
+    }
+
+    #endregion
+
+    #region SfComboBox - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured SfComboBox with ALL essential properties set.
+    /// </summary>
+    public SfComboBox CreateSfComboBox(Action<SfComboBox>? configure = null)
+    {
+        _logger.LogDebug("Creating SfComboBox with full property configuration");
+
+        var comboBox = new SfComboBox
+        {
+            ThemeName = _currentTheme,
+            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+            Width = 150,
+            Height = 28,
+            MaxDropDownItems = 10,
+            AllowDropDownResize = false
+        };
+
+        comboBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(comboBox);
+
+        return comboBox;
+    }
+
+    #endregion
+
+    #region SfNumericTextBox - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured SfNumericTextBox with ALL essential properties set.
+    /// </summary>
+    public SfNumericTextBox CreateSfNumericTextBox(Action<SfNumericTextBox>? configure = null)
+    {
+        _logger.LogDebug("Creating SfNumericTextBox with full property configuration");
+
+        var numericTextBox = new SfNumericTextBox
+        {
+            ThemeName = _currentTheme,
+            Size = new Size(80, 24),
+            FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Numeric
+        };
+
+        numericTextBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(numericTextBox);
+
+        return numericTextBox;
+    }
+
+    #endregion
+
+    #region CheckBoxAdv - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured CheckBoxAdv with ALL essential properties set.
+    /// </summary>
+    public CheckBoxAdv CreateCheckBoxAdv(string text, Action<CheckBoxAdv>? configure = null)
+    {
+        _logger.LogDebug("Creating CheckBoxAdv: {Text}", text);
+
+        var checkBox = new CheckBoxAdv
+        {
+            Text = text,
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+        };
+
+        checkBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(checkBox);
+
+        return checkBox;
+    }
+
+    #endregion
+
+    #region SplitContainerAdv - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured SplitContainerAdv with ALL essential properties set.
+    /// </summary>
+    public SplitContainerAdv CreateSplitContainerAdv(Action<SplitContainerAdv>? configure = null)
+    {
+        _logger.LogDebug("Creating SplitContainerAdv");
+
+        var splitContainer = new SplitContainerAdv
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            SplitterWidth = 6,
+            ThemeName = _currentTheme
+        };
+
+        splitContainer.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(splitContainer);
+
+        return splitContainer;
+    }
+
+    #endregion
+
+    #region ProgressBarAdv - Complete Configuration Template
+
+    /// <summary>
+    /// Creates a fully-configured ProgressBarAdv with ALL essential properties set.
+    /// </summary>
+    public ProgressBarAdv CreateProgressBarAdv(Action<ProgressBarAdv>? configure = null)
+    {
+        _logger.LogDebug("Creating ProgressBarAdv");
+
+        var progressBar = new ProgressBarAdv
+        {
+            ThemeName = _currentTheme,
+            Size = new Size(200, 16),
+            ProgressStyle = ProgressBarStyles.Metro
+        };
+
+        progressBar.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(progressBar);
+
+        return progressBar;
     }
 
     #endregion

@@ -144,8 +144,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Text = "Utility Bills";
         Size = new Size(560, 400);
         MinimumSize = new Size(420, 360);
-        AutoScroll = true;
-        Padding = new Padding(8);
+        AutoScroll = false;
+        Padding = Padding.Empty;
 
         // Initialize tooltip
         _toolTip = new ToolTip
@@ -176,12 +176,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Controls.Add(_panelHeader);
 
         // Main split container (bills top, customers bottom)
-        _mainSplitContainer = new SplitContainerAdv
+        _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Horizontal,
-            TabStop = false
-        };
+            splitter.Dock = DockStyle.Fill;
+            splitter.Orientation = Orientation.Horizontal;
+            splitter.TabStop = false;
+        });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, (int)DpiAware.LogicalToDeviceUnits(500f));
 
         InitializeTopPanel();
@@ -380,13 +380,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private SfButton CreateButton(string text, Size size, int tabIndex)
     {
-        return new SfButton
+        return ControlFactory.CreateSfButton(text, button =>
         {
-            Text = text,
-            Size = size,
-            TabIndex = tabIndex,
-            Margin = new Padding(0, 0, (int)DpiAware.LogicalToDeviceUnits(5f), 0)
-        };
+            button.Size = size;
+            button.TabIndex = tabIndex;
+            button.Margin = new Padding(0, 0, (int)DpiAware.LogicalToDeviceUnits(5f), 0);
+        });
     }
 
     private void InitializeBillsGrid()
@@ -401,28 +400,29 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         var theme4 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(_gridPanel, theme4);
 
-        _billsGrid = new SfDataGrid
+        _billsGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowEditing = false,
-            AllowGrouping = true,
-            AllowFiltering = true,
-            AllowSorting = true,
-            AllowResizingColumns = true,
-            AllowDraggingColumns = true,
-            ShowGroupDropArea = true,
-            AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-            SelectionMode = GridSelectionMode.Single,
-            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
-            ShowRowHeader = true,
-            HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f),
-            RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f),
-            AllowTriStateSorting = true,
-            TabIndex = 8,
-            AccessibleName = "Utility Bills Grid",
-            AccessibleDescription = "Grid displaying utility bills with filtering and sorting capabilities"
-        }.PreventStringRelationalFilters(Logger, "BillNumber", "Customer.DisplayName");
+            grid.Dock = DockStyle.Fill;
+            grid.AutoGenerateColumns = false;
+            grid.AllowEditing = false;
+            grid.AllowGrouping = true;
+            grid.AllowFiltering = true;
+            grid.AllowSorting = true;
+            grid.AllowResizingColumns = true;
+            grid.AllowDraggingColumns = true;
+            grid.ShowGroupDropArea = true;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
+            grid.ShowRowHeader = true;
+            grid.HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f);
+            grid.RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f);
+            grid.AllowTriStateSorting = true;
+            grid.TabIndex = 8;
+            grid.AccessibleName = "Utility Bills Grid";
+            grid.AccessibleDescription = "Grid displaying utility bills with filtering and sorting capabilities";
+        });
+        _billsGrid.PreventStringRelationalFilters(Logger, "BillNumber", "Customer.DisplayName");
 
         // Configure columns
         _billsGrid.Columns.Add(new GridTextColumn
@@ -521,58 +521,52 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         for (int i = 0; i < 6; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.67f));
 
-        _createBillButton = new SfButton
+        _createBillButton = ControlFactory.CreateSfButton("&Create Bill", button =>
         {
-            Text = "&Create Bill",
-            TabIndex = 2,
-            AccessibleName = "Create Bill",
-            AccessibleDescription = "Create a new utility bill for the selected customer"
-        };
+            button.TabIndex = 2;
+            button.AccessibleName = "Create Bill";
+            button.AccessibleDescription = "Create a new utility bill for the selected customer";
+        });
         _createBillButton.Click += async (s, e) => await ViewModel.CreateBillCommand.ExecuteAsync(null);
 
-        _saveBillButton = new SfButton
+        _saveBillButton = ControlFactory.CreateSfButton("&Save Bill", button =>
         {
-            Text = "&Save Bill",
-            TabIndex = 3,
-            AccessibleName = "Save Bill",
-            AccessibleDescription = "Save changes to the selected bill"
-        };
+            button.TabIndex = 3;
+            button.AccessibleName = "Save Bill";
+            button.AccessibleDescription = "Save changes to the selected bill";
+        });
         _saveBillButton.Click += async (s, e) => await ViewModel.SaveBillCommand.ExecuteAsync(null);
 
-        _deleteBillButton = new SfButton
+        _deleteBillButton = ControlFactory.CreateSfButton("&Delete Bill", button =>
         {
-            Text = "&Delete Bill",
-            TabIndex = 4,
-            AccessibleName = "Delete Bill",
-            AccessibleDescription = "Delete the selected bill"
-        };
+            button.TabIndex = 4;
+            button.AccessibleName = "Delete Bill";
+            button.AccessibleDescription = "Delete the selected bill";
+        });
         _deleteBillButton.Click += async (s, e) => await ViewModel.DeleteBillCommand.ExecuteAsync(null);
 
-        _markPaidButton = new SfButton
+        _markPaidButton = ControlFactory.CreateSfButton("&Mark Paid", button =>
         {
-            Text = "&Mark Paid",
-            TabIndex = 5,
-            AccessibleName = "Mark Paid",
-            AccessibleDescription = "Mark the selected bill as paid"
-        };
+            button.TabIndex = 5;
+            button.AccessibleName = "Mark Paid";
+            button.AccessibleDescription = "Mark the selected bill as paid";
+        });
         _markPaidButton.Click += async (s, e) => await ViewModel.MarkAsPaidCommand.ExecuteAsync(null);
 
-        _generateReportButton = new SfButton
+        _generateReportButton = ControlFactory.CreateSfButton("&Generate Report", button =>
         {
-            Text = "&Generate Report",
-            TabIndex = 6,
-            AccessibleName = "Generate Report",
-            AccessibleDescription = "Generate a report of utility bills"
-        };
+            button.TabIndex = 6;
+            button.AccessibleName = "Generate Report";
+            button.AccessibleDescription = "Generate a report of utility bills";
+        });
         _generateReportButton.Click += async (s, e) => await ViewModel.GenerateReportCommand.ExecuteAsync(null);
 
-        _refreshButton = new SfButton
+        _refreshButton = ControlFactory.CreateSfButton("&Refresh", button =>
         {
-            Text = "&Refresh",
-            TabIndex = 7,
-            AccessibleName = "Refresh",
-            AccessibleDescription = "Refresh the utility bill data"
-        };
+            button.TabIndex = 7;
+            button.AccessibleName = "Refresh";
+            button.AccessibleDescription = "Refresh the utility bill data";
+        });
         _refreshButton.Click += async (s, e) => await RefreshDataAsync();
 
         buttonTable.Controls.Add(_createBillButton, 0, 0);
@@ -621,25 +615,24 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15f));
 
-        _searchTextBox = new TextBoxExt
+        _searchTextBox = ControlFactory.CreateTextBoxExt(textBox =>
         {
-            Dock = DockStyle.Fill,
-            PlaceholderText = "Search bills or customers...",
-            TabIndex = 9,
-            AccessibleName = "Search",
-            AccessibleDescription = "Search utility bills by bill number or customer name"
-        };
+            textBox.Dock = DockStyle.Fill;
+            textBox.PlaceholderText = "Search bills or customers...";
+            textBox.TabIndex = 9;
+            textBox.AccessibleName = "Search";
+            textBox.AccessibleDescription = "Search utility bills by bill number or customer name";
+        });
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _toolTip!.SetToolTip(_searchTextBox, "Search by bill number, customer name, or account number");
 
-        _statusFilterComboBox = new SfComboBox
+        _statusFilterComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            TabIndex = 10,
-            AccessibleName = "Status Filter",
-            AccessibleDescription = "Filter bills by payment status"
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.TabIndex = 10;
+            combo.AccessibleName = "Status Filter";
+            combo.AccessibleDescription = "Filter bills by payment status";
+        });
         var statusItems = Enum.GetNames(typeof(BillStatus)).ToList();
         statusItems.Insert(0, "(All Statuses)");
         _statusFilterComboBox.DataSource = statusItems;
@@ -647,14 +640,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _statusFilterComboBox.SelectedIndexChanged += StatusFilterComboBox_SelectedIndexChanged;
         _toolTip.SetToolTip(_statusFilterComboBox, "Filter bills by status");
 
-        _overdueOnlyCheckBox = new CheckBoxAdv
+        _overdueOnlyCheckBox = ControlFactory.CreateCheckBoxAdv("Overdue Only", checkBox =>
         {
-            Text = "Overdue Only",
-            Dock = DockStyle.Fill,
-            TabIndex = 11,
-            AccessibleName = "Show Overdue Only",
-            AccessibleDescription = "Show only overdue bills"
-        };
+            checkBox.Dock = DockStyle.Fill;
+            checkBox.TabIndex = 11;
+            checkBox.AccessibleName = "Show Overdue Only";
+            checkBox.AccessibleDescription = "Show only overdue bills";
+        });
         _overdueOnlyCheckBox.CheckStateChanged += OverdueOnlyCheckBox_CheckedChanged;
         _toolTip.SetToolTip(_overdueOnlyCheckBox, "Show only bills that are past their due date");
 
@@ -684,24 +676,25 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(customersPanel, theme);
 
-        _customersGrid = new SfDataGrid
+        _customersGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowEditing = false,
-            AllowResizingColumns = true,
-            AllowSorting = true,
-            AllowFiltering = true,
-            AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-            SelectionMode = GridSelectionMode.Single,
-            NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row,
-            ShowRowHeader = false,
-            HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f),
-            RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f),
-            TabIndex = 12,
-            AccessibleName = "Customers Grid",
-            AccessibleDescription = "Grid displaying utility customers"
-        }.PreventStringRelationalFilters(Logger, "AccountNumber", "DisplayName", "ServiceAddress", "PhoneNumber");
+            grid.Dock = DockStyle.Fill;
+            grid.AutoGenerateColumns = false;
+            grid.AllowEditing = false;
+            grid.AllowResizingColumns = true;
+            grid.AllowSorting = true;
+            grid.AllowFiltering = true;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
+            grid.ShowRowHeader = false;
+            grid.HeaderRowHeight = (int)DpiAware.LogicalToDeviceUnits(35f);
+            grid.RowHeight = (int)DpiAware.LogicalToDeviceUnits(28f);
+            grid.TabIndex = 12;
+            grid.AccessibleName = "Customers Grid";
+            grid.AccessibleDescription = "Grid displaying utility customers";
+        });
+        _customersGrid.PreventStringRelationalFilters(Logger, "AccountNumber", "DisplayName", "ServiceAddress", "PhoneNumber");
 
         _customersGrid.Columns.Add(new GridTextColumn
         {

@@ -131,6 +131,7 @@
     <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="32.2.3" />
     <PackageVersion Include="Syncfusion.Gauge.Windows" Version="32.2.3" />
     <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Inputs.WinForms" Version="32.2.3" />
     <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="32.2.3" />
     <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="32.2.3" />
     <PackageVersion Include="Syncfusion.Office2016Theme.WinForms" Version="32.2.3" />

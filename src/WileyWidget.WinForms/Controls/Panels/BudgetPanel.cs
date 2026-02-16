@@ -192,12 +192,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Main split container - proportional sizing with SafeSplitterDistanceHelper
         // Ensures filter panel (Panel1) stays ≥120px while grid (Panel2) stays ≥50% of remaining height
-        _mainSplitContainer = new SplitContainerAdv
+        _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(split =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(150.0f)
-        };
+            split.Dock = DockStyle.Fill;
+            split.Orientation = Orientation.Vertical;
+            split.SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(150.0f);
+        });
         // Note: SafeSplitterDistanceHelper.ConfigureSafeSplitContainer is deferred to avoid sizing exceptions
         // during initialization. The helper will configure min sizes when the container is properly sized.
 
@@ -409,14 +409,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _searchTextBox = new TextBoxExt
+        _searchTextBox = ControlFactory.CreateTextBoxExt(textBox =>
         {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 1,
-            AccessibleName = "Search Budget Entries",
-            AccessibleDescription = "Search budget entries by account, description, or department"
-        };
+            textBox.Dock = DockStyle.Fill;
+            textBox.Margin = new Padding(5);
+            textBox.TabIndex = 1;
+            textBox.AccessibleName = "Search Budget Entries";
+            textBox.AccessibleDescription = "Search budget entries by account, description, or department";
+        });
         _searchTextChangedHandler = SearchTextBox_TextChanged;
         _searchTextBox.TextChanged += _searchTextChangedHandler;
 
@@ -430,16 +430,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _fiscalYearComboBox = new SfComboBox
+        _fiscalYearComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 2,
-            ThemeName = themeName,
-            AccessibleName = "Fiscal Year Filter",
-            AccessibleDescription = "Filter budget entries by fiscal year",
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.Margin = new Padding(5);
+            combo.TabIndex = 2;
+            combo.AccessibleName = "Fiscal Year Filter";
+            combo.AccessibleDescription = "Filter budget entries by fiscal year";
+        });
 
         // Populate fiscal years
         var years = new List<int>();
@@ -459,16 +457,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _entityComboBox = new SfComboBox
+        _entityComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 8,
-            ThemeName = themeName,
-            AccessibleName = "Entity Filter",
-            AccessibleDescription = "Filter budget entries by entity or fund",
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.Margin = new Padding(5);
+            combo.TabIndex = 8;
+            combo.AccessibleName = "Entity Filter";
+            combo.AccessibleDescription = "Filter budget entries by entity or fund";
+        });
 
         // Placeholder until data is loaded
         _entityComboBox.DataSource = new List<string> { "All Entities" };
@@ -487,16 +483,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _departmentComboBox = new SfComboBox
+        _departmentComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 3,
-            ThemeName = themeName,
-            AccessibleName = "Department Filter",
-            AccessibleDescription = "Filter budget entries by department",
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.Margin = new Padding(5);
+            combo.TabIndex = 3;
+            combo.AccessibleName = "Department Filter";
+            combo.AccessibleDescription = "Filter budget entries by department";
+        });
         _departmentComboBox.DataSource = new List<string> { "All Departments" };
         _departmentComboBox.SelectedIndex = 0;
         _departmentChangedHandler = DepartmentComboBox_SelectedIndexChanged;
@@ -509,16 +503,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _fundTypeComboBox = new SfComboBox
+        _fundTypeComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 4,
-            ThemeName = themeName,
-            AccessibleName = "Fund Type Filter",
-            AccessibleDescription = "Filter budget entries by fund type",
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.Margin = new Padding(5);
+            combo.TabIndex = 4;
+            combo.AccessibleName = "Fund Type Filter";
+            combo.AccessibleDescription = "Filter budget entries by fund type";
+        });
         var fundTypes = Enum.GetNames(typeof(FundType)).ToList();
         fundTypes.Insert(0, "All Fund Types");
         _fundTypeComboBox.DataSource = fundTypes;
@@ -534,39 +526,37 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             TextAlign = ContentAlignment.MiddleRight
         };
 
-        _varianceThresholdTextBox = new TextBoxExt
+        _varianceThresholdTextBox = ControlFactory.CreateTextBoxExt(textBox =>
         {
-            Text = "1000",
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 5,
-            AccessibleName = "Variance Threshold",
-            AccessibleDescription = "Filter entries with variance greater than this amount"
-        };
+            textBox.Text = "1000";
+            textBox.Dock = DockStyle.Fill;
+            textBox.Margin = new Padding(5);
+            textBox.TabIndex = 5;
+            textBox.AccessibleName = "Variance Threshold";
+            textBox.AccessibleDescription = "Filter entries with variance greater than this amount";
+        });
         _varianceThresholdChangedHandler = VarianceThresholdTextBox_TextChanged;
         _varianceThresholdTextBox.TextChanged += _varianceThresholdChangedHandler;
 
-        _overBudgetCheckBox = new CheckBoxAdv
+        _overBudgetCheckBox = ControlFactory.CreateCheckBoxAdv("Over Budget Only", checkBox =>
         {
-            Text = "Over Budget Only",
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 6,
-            AccessibleName = "Show Over Budget Only",
-            AccessibleDescription = "Show only entries that are over budget"
-        };
+            checkBox.Dock = DockStyle.Fill;
+            checkBox.Margin = new Padding(5);
+            checkBox.TabIndex = 6;
+            checkBox.AccessibleName = "Show Over Budget Only";
+            checkBox.AccessibleDescription = "Show only entries that are over budget";
+        });
         _overBudgetCheckChangedHandler = OverBudgetCheckBox_CheckedChanged;
         _overBudgetCheckBox.CheckStateChanged += _overBudgetCheckChangedHandler;
 
-        _underBudgetCheckBox = new CheckBoxAdv
+        _underBudgetCheckBox = ControlFactory.CreateCheckBoxAdv("Under Budget Only", checkBox =>
         {
-            Text = "Under Budget Only",
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            TabIndex = 7,
-            AccessibleName = "Show Under Budget Only",
-            AccessibleDescription = "Show only entries that are under budget"
-        };
+            checkBox.Dock = DockStyle.Fill;
+            checkBox.Margin = new Padding(5);
+            checkBox.TabIndex = 7;
+            checkBox.AccessibleName = "Show Under Budget Only";
+            checkBox.AccessibleDescription = "Show only entries that are under budget";
+        });
         _underBudgetCheckChangedHandler = UnderBudgetCheckBox_CheckedChanged;
         _underBudgetCheckBox.CheckStateChanged += _underBudgetCheckChangedHandler;
 
@@ -612,20 +602,19 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         SfSkinManager.SetVisualStyle(_gridPanel, themeName);
 
-        _budgetGrid = new SfDataGrid
+        _budgetGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AllowEditing = true,
-            AllowResizingColumns = true,
-            AllowSorting = true,
-            AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-            SelectionMode = GridSelectionMode.Single,
-            EditMode = EditMode.SingleClick,
-            TabIndex = 8,
-            ThemeName = themeName,
-            AccessibleName = "Budget Entries Grid",
-            AccessibleDescription = "Data grid displaying budget entries with account numbers, amounts, variances, and related budget information"
-        };
+            grid.Dock = DockStyle.Fill;
+            grid.AllowEditing = true;
+            grid.AllowResizingColumns = true;
+            grid.AllowSorting = true;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.EditMode = EditMode.SingleClick;
+            grid.TabIndex = 8;
+            grid.AccessibleName = "Budget Entries Grid";
+            grid.AccessibleDescription = "Data grid displaying budget entries with account numbers, amounts, variances, and related budget information";
+        });
 
         // Configure grid columns
         _budgetGrid.Columns.Add(new GridTextColumn
@@ -800,84 +789,68 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         for (int i = 0; i < 8; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f)));
 
-        _loadBudgetsButton = new SfButton
+        _loadBudgetsButton = ControlFactory.CreateSfButton("&Load Budgets", button =>
         {
-            Text = "&Load Budgets",
-            TabIndex = 9,
-            ThemeName = themeName,
-            AccessibleName = "Load Budgets",
-            AccessibleDescription = "Load budget entries for the selected fiscal year"
-        };
+            button.TabIndex = 9;
+            button.AccessibleName = "Load Budgets";
+            button.AccessibleDescription = "Load budget entries for the selected fiscal year";
+        });
         _loadBudgetsButton.Click += OnLoadBudgetsButtonClick;
 
-        _addEntryButton = new SfButton
+        _addEntryButton = ControlFactory.CreateSfButton("&Add Entry", button =>
         {
-            Text = "&Add Entry",
-            TabIndex = 10,
-            ThemeName = themeName,
-            AccessibleName = "Add Entry",
-            AccessibleDescription = "Add a new budget entry"
-        };
+            button.TabIndex = 10;
+            button.AccessibleName = "Add Entry";
+            button.AccessibleDescription = "Add a new budget entry";
+        });
         _addEntryButton.Click += AddEntryButton_Click;
 
-        _editEntryButton = new SfButton
+        _editEntryButton = ControlFactory.CreateSfButton("&Edit Entry", button =>
         {
-            Text = "&Edit Entry",
-            TabIndex = 11,
-            ThemeName = themeName,
-            AccessibleName = "Edit Entry",
-            AccessibleDescription = "Edit the selected budget entry"
-        };
+            button.TabIndex = 11;
+            button.AccessibleName = "Edit Entry";
+            button.AccessibleDescription = "Edit the selected budget entry";
+        });
         _editEntryButton.Click += EditEntryButton_Click;
 
-        _deleteEntryButton = new SfButton
+        _deleteEntryButton = ControlFactory.CreateSfButton("&Delete Entry", button =>
         {
-            Text = "&Delete Entry",
-            TabIndex = 12,
-            ThemeName = themeName,
-            AccessibleName = "Delete Entry",
-            AccessibleDescription = "Delete the selected budget entry"
-        };
+            button.TabIndex = 12;
+            button.AccessibleName = "Delete Entry";
+            button.AccessibleDescription = "Delete the selected budget entry";
+        });
         _deleteEntryButton.Click += async (s, e) => await DeleteEntryAsync();
 
-        _importCsvButton = new SfButton
+        _importCsvButton = ControlFactory.CreateSfButton("&Import CSV", button =>
         {
-            Text = "&Import CSV",
-            TabIndex = 13,
-            ThemeName = themeName,
-            AccessibleName = "Import CSV",
-            AccessibleDescription = "Import budget entries from CSV file"
-        };
+            button.TabIndex = 13;
+            button.AccessibleName = "Import CSV";
+            button.AccessibleDescription = "Import budget entries from CSV file";
+        });
         _importCsvButton.Click += ImportCsvButton_Click;
 
-        _exportCsvButton = new SfButton
+        _exportCsvButton = ControlFactory.CreateSfButton("Export &CSV", button =>
         {
-            Text = "Export &CSV",
-            TabIndex = 14,
-            ThemeName = themeName,
-            AccessibleName = "Export CSV",
-            AccessibleDescription = "Export budget entries to CSV file"
-        };
+            button.TabIndex = 14;
+            button.AccessibleName = "Export CSV";
+            button.AccessibleDescription = "Export budget entries to CSV file";
+        });
         _exportCsvButton.Click += ExportCsvButton_Click;
 
-        _exportPdfButton = new SfButton
+        _exportPdfButton = ControlFactory.CreateSfButton("Export &PDF", button =>
         {
-            Text = "Export &PDF",
-            TabIndex = 15,
-            ThemeName = themeName,
-            AccessibleName = "Export PDF",
-            AccessibleDescription = "Export budget entries to PDF file"
-        };
+            button.TabIndex = 15;
+            button.AccessibleName = "Export PDF";
+            button.AccessibleDescription = "Export budget entries to PDF file";
+        });
         _exportPdfButton.Click += ExportPdfButton_Click;
 
-        _exportExcelButton = new SfButton
+        _exportExcelButton = ControlFactory.CreateSfButton("Export &Excel", button =>
         {
-            Text = "Export &Excel",
-            TabIndex = 16,
-            ThemeName = themeName,
-            AccessibleName = "Export Excel",
-            AccessibleDescription = "Export budget entries to Excel file"
-        };
+            button.TabIndex = 16;
+            button.AccessibleName = "Export Excel";
+            button.AccessibleDescription = "Export budget entries to Excel file";
+        });
         _exportExcelButton.Click += ExportExcelButton_Click;
 
         buttonTable.Controls.Add(_loadBudgetsButton, 0, 0);
@@ -2467,8 +2440,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         this.Size = new Size(1400, 900);
         try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
         this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
-        this.AutoScroll = true;
-        this.Padding = new Padding(8);
+        this.AutoScroll = false;
+        this.Padding = Padding.Empty;
         this.ResumeLayout(false);
 
     }
