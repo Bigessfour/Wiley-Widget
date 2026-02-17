@@ -13,7 +13,7 @@ namespace WileyWidget.WinForms.Forms;
 /// <summary>
 /// Layout persistence for MainForm using Syncfusion AppStateSerializer.
 /// Saves and restores window state, ribbon layout, MDI documents, and panel positions.
-/// 
+///
 /// SYNCFUSION API: AppStateSerializer
 /// Reference: https://help.syncfusion.com/windowsforms/serialization/overview
 /// </summary>
@@ -23,7 +23,9 @@ public partial class MainForm
     private const string DefaultLayoutFile = "default.xml";
     private const string AutoSaveLayoutFile = "autosave.xml";
 
+#pragma warning disable CS0169 // Field is never used
     private AppStateSerializer? _workspaceSerializer;
+#pragma warning restore CS0169
     private readonly Dictionary<string, string> _namedWorkspaces = new();
 
     /// <summary>
@@ -419,7 +421,7 @@ public partial class MainForm
     {
         var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var layoutDir = Path.Combine(appDataPath, "WileyWidget", LayoutDirectory);
-        
+
         if (!Directory.Exists(layoutDir))
         {
             Directory.CreateDirectory(layoutDir);

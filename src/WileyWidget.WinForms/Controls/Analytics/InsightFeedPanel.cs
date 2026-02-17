@@ -395,7 +395,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
             }
         }
 
-        private void ClosePanel()
+        protected override void ClosePanel()
         {
             try
             {

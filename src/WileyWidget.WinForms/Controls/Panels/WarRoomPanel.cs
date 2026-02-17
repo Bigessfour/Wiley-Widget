@@ -716,7 +716,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
-        private void ClosePanel()
+        protected override void ClosePanel()
         {
             base.ClosePanel();
         }

@@ -1297,7 +1297,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         return field;
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         var parent = Parent;
         parent?.Controls.Remove(this);

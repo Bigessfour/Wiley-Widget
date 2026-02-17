@@ -805,7 +805,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

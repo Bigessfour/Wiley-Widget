@@ -1458,7 +1458,7 @@ public partial class CustomersPanel : ScopedPanelBase
     /// <summary>
     /// Closes this panel.
     /// </summary>
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         _logger.LogDebug("Closing CustomersPanel");
         base.ClosePanel();

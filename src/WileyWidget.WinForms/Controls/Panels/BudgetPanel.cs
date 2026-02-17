@@ -2116,7 +2116,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         });
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

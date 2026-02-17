@@ -1504,7 +1504,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         UpdateButtonState();
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

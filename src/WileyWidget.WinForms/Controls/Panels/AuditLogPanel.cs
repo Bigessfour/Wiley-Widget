@@ -1197,7 +1197,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         }
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

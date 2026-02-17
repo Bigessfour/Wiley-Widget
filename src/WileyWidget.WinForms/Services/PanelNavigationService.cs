@@ -72,9 +72,6 @@ namespace WileyWidget.WinForms.Services
         {
             if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            // 🔴 BREAKPOINT 1: ShowPanel Entry
-            NavigationDebugger.BreakOnShowPanelEntry(panelName, typeof(TPanel).Name);
-
             ExecuteOnUiThread(() =>
             {
                 if (!_cachedPanels.TryGetValue(panelName, out var panel) || panel.IsDisposed)
@@ -231,12 +228,10 @@ namespace WileyWidget.WinForms.Services
                 ShowInTaskbar = false,
                 StartPosition = FormStartPosition.Manual,
                 Location = CascadeLocation(),
-                Size = panel?.Size.IsEmpty == false && panel.Size.Width > 0 && panel.Size.Height > 0 
-                    ? panel.Size 
+                Size = panel?.Size.IsEmpty == false && panel.Size.Width > 0 && panel.Size.Height > 0
+                    ? panel.Size
                     : new Size(900, 600),
-                MinimumSize = panel?.MinimumSize.IsEmpty == false && panel.MinimumSize.Width > 0 && panel.MinimumSize.Height > 0
-                    ? panel.MinimumSize
-                    : new Size(400, 300),
+                MinimumSize = new Size(0, 0),
                 Text = panelName,
                 AutoScaleMode = AutoScaleMode.Dpi,
                 AutoScroll = false,
@@ -310,7 +305,7 @@ namespace WileyWidget.WinForms.Services
                 ShowIcon = false,
                 WindowState = FormWindowState.Maximized,
                 AutoScaleMode = AutoScaleMode.Dpi,
-                MinimumSize = panel?.MinimumSize.IsEmpty == false ? panel.MinimumSize : new Size(400, 300),
+                MinimumSize = new Size(0, 0),
                 Padding = Padding.Empty
             };
 

@@ -189,6 +189,10 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
 
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+
+        // Required for TabbedMDIManager compatibility: MDI child forms MUST have MinimumSize = (0, 0)
+        // when hosted in TabbedMDIManager mode, otherwise AddMdiChild throws ArgumentException.
+        MinimumSize = new System.Drawing.Size(0, 0);
     }
 
     /// <summary>
@@ -201,6 +205,9 @@ public abstract class ScopedPanelBase : UserControl, ICompletablePanel, INotifyP
         _scopeFactory = new DesignTimeServiceScopeFactory();
         _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         Margin = Padding.Empty;
+        // Required for TabbedMDIManager compatibility: MDI child forms MUST have MinimumSize = (0, 0)
+        // when hosted in TabbedMDIManager mode, otherwise AddMdiChild throws ArgumentException.
+        MinimumSize = new System.Drawing.Size(0, 0);
     }
 
     // Minimal IServiceScopeFactory implementation for design-time to avoid requiring runtime DI in the designer.

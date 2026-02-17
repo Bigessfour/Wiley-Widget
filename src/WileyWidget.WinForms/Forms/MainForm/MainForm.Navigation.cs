@@ -41,9 +41,6 @@ public partial class MainForm
 
     private bool ExecuteDockedNavigation(string navigationTarget, System.Action<IPanelNavigationService> navigationAction)
     {
-        // 🔴 BREAKPOINT 2: Navigation Orchestrator
-        Diagnostics.NavigationDebugger.BreakOnNavigationStart(navigationTarget, IsDisposed, InvokeRequired);
-
         _logger?.LogDebug("[EXEC_NAV] ExecuteDockedNavigation START: Target='{Target}', IsDisposed={Disposed}, InvokeRequired={InvokeReq}",
             navigationTarget, IsDisposed, InvokeRequired);
 
@@ -64,13 +61,6 @@ public partial class MainForm
 
         if (_panelNavigator == null)
         {
-            // 🔴 BREAKPOINT 3: CRITICAL - PanelNavigator is NULL
-            Diagnostics.NavigationDebugger.BreakOnPanelNavigatorNull(
-                navigationTarget,
-                false,
-                _serviceProvider != null,
-                true);
-
             _logger?.LogError("[EXEC_NAV] ❌ PanelNavigator unavailable for '{Target}'", navigationTarget);
             return false;
         }
@@ -79,32 +69,21 @@ public partial class MainForm
         {
             _logger?.LogInformation("[EXEC_NAV] ✅ Executing navigation action for '{Target}'", navigationTarget);
 
-            // 🔴 BREAKPOINT 4: About to Execute Navigation Action
-            Diagnostics.NavigationDebugger.BreakBeforeNavigationAction(navigationTarget, true);
-
             navigationAction(_panelNavigator);
 
             if (IsNavigationTargetActive(navigationTarget))
             {
-                // 🔴 BREAKPOINT 5: Navigation Succeeded
-                Diagnostics.NavigationDebugger.BreakOnNavigationSuccess(navigationTarget);
-
                 _logger?.LogInformation("[EXEC_NAV] ✅ Navigation action completed successfully for '{Target}'", navigationTarget);
                 return true;
             }
 
-            // 🔴 BREAKPOINT 6: Navigation Failed - Target Not Active
             var activePanelName = _panelNavigator?.GetActivePanelName();
-            Diagnostics.NavigationDebugger.BreakOnNavigationFailure(navigationTarget, activePanelName);
 
             _logger?.LogWarning("[EXEC_NAV] Navigation action executed but target '{Target}' was not activated", navigationTarget);
             return false;
         }
         catch (Exception ex)
         {
-            // 🔴 BREAKPOINT 7: Exception During Navigation
-            Diagnostics.NavigationDebugger.BreakOnNavigationException(navigationTarget, ex);
-
             _logger?.LogError(ex, "[EXEC_NAV] ❌ Navigation request for '{Target}' failed", navigationTarget);
             return false;
         }
@@ -150,7 +129,7 @@ public partial class MainForm
     /// <summary>
     /// Sets visibility of all docking panels using Syncfusion DockingManager API.
     /// Uses SetDockVisibility() instead of manual .Visible assignment for proper DockingManager state tracking.
-    /// 
+    ///
     /// SYNCFUSION API: DockingManager.SetDockVisibility(Control, bool)
     /// Reference: https://help.syncfusion.com/windowsforms/docking-manager/docking-events
     /// </summary>
@@ -176,9 +155,6 @@ public partial class MainForm
         where TPanel : UserControl
     {
         var resolvedPanelName = panelName ?? typeof(TPanel).Name;
-
-        // 🔴 BREAKPOINT 1: ShowPanel Entry Point
-        Diagnostics.NavigationDebugger.BreakOnShowPanelEntry(resolvedPanelName, typeof(TPanel).Name);
 
         _logger?.LogInformation("[SHOWPANEL] ShowPanel<{PanelType}> called: Name='{PanelName}', Style={Style}, AllowFloating={AllowFloating}",
             typeof(TPanel).Name, resolvedPanelName, preferredStyle, allowFloating);

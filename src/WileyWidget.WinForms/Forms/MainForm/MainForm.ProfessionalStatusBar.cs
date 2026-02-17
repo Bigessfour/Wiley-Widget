@@ -23,11 +23,13 @@ public partial class MainForm
     private System.Windows.Forms.Timer? _memoryUpdateTimer;
     private System.Windows.Forms.Timer? _clockUpdateTimer;
     private ToolTip? _statusBarToolTip;
+#pragma warning disable CS0169 // Field is never used
     private Button? _cancelOperationButton;
+#pragma warning restore CS0169
 
     /// <summary>
     /// Initializes professional status bar with system information panels.
-    /// 
+    ///
     /// SYNCFUSION API: StatusBarAdv, StatusBarAdvPanel
     /// Reference: https://help.syncfusion.com/windowsforms/statusbar/overview
     /// </summary>
@@ -249,14 +251,14 @@ public partial class MainForm
             {
                 _connectionPanel.Text = message ?? "● Connected";
                 _connectionPanel.ForeColor = Color.Green;
-                _statusBarToolTip?.SetToolTip(_connectionPanel, 
+                _statusBarToolTip?.SetToolTip(_connectionPanel,
                     $"Database: Connected\n{message ?? "Connection active"}");
             }
             else
             {
                 _connectionPanel.Text = message ?? "● Disconnected";
                 _connectionPanel.ForeColor = Color.Red;
-                _statusBarToolTip?.SetToolTip(_connectionPanel, 
+                _statusBarToolTip?.SetToolTip(_connectionPanel,
                     $"Database: Disconnected\n{message ?? "No connection"}");
             }
         }
@@ -299,7 +301,7 @@ Process ID: {process.Id}
 Start Time: {process.StartTime}
 CPU Time: {process.TotalProcessorTime}";
 
-            MessageBoxAdv.Show(this, diagnostics, "Memory Diagnostics", 
+            MessageBoxAdv.Show(this, diagnostics, "Memory Diagnostics",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             _logger?.LogDebug("Displayed memory diagnostics");
@@ -327,7 +329,7 @@ Provider: SQLite
 
 Click to refresh connection...";
 
-            var result = MessageBoxAdv.Show(this, details, "Connection Status", 
+            var result = MessageBoxAdv.Show(this, details, "Connection Status",
                 MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
 
             if (result == DialogResult.OK)
@@ -351,21 +353,21 @@ Click to refresh connection...";
         try
         {
             var userMenu = new ContextMenuStrip();
-            
+
             userMenu.Items.Add($"User: {Environment.UserName}").Enabled = false;
             userMenu.Items.Add(new ToolStripSeparator());
-            userMenu.Items.Add("Profile Settings", null, (s, args) => 
+            userMenu.Items.Add("Profile Settings", null, (s, args) =>
             {
                 _logger?.LogDebug("Profile settings clicked");
-                MessageBoxAdv.Show(this, "Profile settings not yet implemented", "Info", 
+                MessageBoxAdv.Show(this, "Profile settings not yet implemented", "Info",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             });
-            userMenu.Items.Add("Change Password", null, (s, args) => 
+            userMenu.Items.Add("Change Password", null, (s, args) =>
             {
                 _logger?.LogDebug("Change password clicked");
             });
             userMenu.Items.Add(new ToolStripSeparator());
-            userMenu.Items.Add("Sign Out", null, (s, args) => 
+            userMenu.Items.Add("Sign Out", null, (s, args) =>
             {
                 _logger?.LogDebug("Sign out clicked");
                 this.Close();

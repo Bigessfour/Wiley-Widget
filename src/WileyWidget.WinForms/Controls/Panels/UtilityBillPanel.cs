@@ -1265,7 +1265,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         }
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

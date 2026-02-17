@@ -346,10 +346,10 @@ namespace WileyWidget.WinForms.Controls.Panels
         private void InitializeComponent()
         {
             SuspendLayout();
-            
+
             // Set automation ID for UI testing
             this.Name = "Panel_Settings";
-            
+
             AutoScaleMode = AutoScaleMode.Font;
             Padding = Padding.Empty;
 
@@ -1276,7 +1276,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             });
         }
 
-        private void ClosePanel()
+        protected override void ClosePanel()
         {
             try
             {

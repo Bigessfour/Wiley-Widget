@@ -1053,7 +1053,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         return Task.CompletedTask;
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

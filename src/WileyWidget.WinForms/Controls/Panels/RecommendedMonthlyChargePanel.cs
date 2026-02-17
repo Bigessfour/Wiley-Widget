@@ -1090,7 +1090,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         try
         {

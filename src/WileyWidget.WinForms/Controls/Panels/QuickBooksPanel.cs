@@ -3194,7 +3194,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
     }
 
-    private void ClosePanel()
+    protected override void ClosePanel()
     {
         base.ClosePanel();
     }
