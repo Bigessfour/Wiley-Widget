@@ -20,24 +20,26 @@
   "github.copilot.chat.welcomeMessage": "first",
   "github.copilot.chat.tools.changes.enabled": false,
   "github.copilot.editor.enableAutoCompletions": true,
+  "github.copilot.chat.agent.autoStartMcpServers": false,
 
   // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": false,
   "task.autoClose": true,
+  "chat.tools.terminal.outputLocation": "terminal",
 
   // ============================================================================
   // MCP (Model Context Protocol) Server Configuration
   // ============================================================================
   "github.copilot.chat.mcpServers": {
     "filesystem": {
-      "command": "node_modules/.bin/mcp-server-filesystem.cmd",
-      "args": [],
-      "roots": ["."],
-      "env": {
-        "MCP_FILESYSTEM_ALLOWED_PATHS": "."
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
     },
     "microsoft-learn": {
       "type": "http",
@@ -86,7 +88,6 @@
 
   // ============================================================================
   // ============================================================================
-  "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
   "xamlDiag.autoDetectCompiler": true,
   "xamlDiag.defaultObjDir": "obj/Debug/net10.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
@@ -102,6 +103,7 @@
   // ============================================================================
   // Editor Configuration
   // ============================================================================
+  "editor.defaultFormatter": "trunk.io",
   "editor.formatOnSave": true,
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
@@ -155,6 +157,8 @@
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
+    "**/.vs/**": true,
+    "**/*.binlog": true,
     "**/node_modules/**": true,
     "**/bin/**": true,
     "**/obj/**": true,
@@ -163,6 +167,7 @@
     "**/.venv/**": true,
     "**/tests/.archive/**": true
   },
+  "search.followSymlinks": false,
 
   // ============================================================================
   // .NET & C# Configuration
@@ -176,6 +181,7 @@
   "dotnet.unitTests.showCodeLens": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
+  "omnisharp.enableLspDriver": true,
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
@@ -186,11 +192,34 @@
   "omnisharp.analyzeOpenDocumentsOnly": true,
 
   "csharp.suppressDotnetRestoreNotification": true,
+  "csharp.semanticHighlighting.enabled": true,
 
   "[csharp]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-dotnettools.csharp",
     "editor.formatOnSaveMode": "modifications"
+  },
+
+  "[python]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+
+  "[markdown]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": false
+  },
+
+  "[json]": {
+    "editor.defaultFormatter": "trunk.io"
+  },
+
+  "[yaml]": {
+    "editor.defaultFormatter": "trunk.io"
+  },
+
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell"
   },
 
   // ============================================================================
@@ -222,10 +251,10 @@
   // Python Configuration
   // ============================================================================
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-  "python.formatting.provider": "black",
+  "python.formatting.provider": "none",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
-  "python.linting.pylintEnabled": true,
+  "python.linting.pylintEnabled": false,
   "python.linting.pylintArgs": [
     "--disable=C0114,C0115,C0116",
     "--disable=W0611",
@@ -305,10 +334,6 @@
   // Markdown Linting - Disabled (MD lint clutters Problems panel)
   // ============================================================================
   "markdownlint.enable": false,
-  "[markdown]": {
-    "editor.defaultFormatter": null,
-    "editor.formatOnSave": false
-  },
 
   // ============================================================================
   // Debugging Configuration
@@ -323,9 +348,15 @@
   "docker.showStartPage": false,
 
   // ============================================================================
+  // Trunk Integration (Full)
+  // ============================================================================
+  "trunk.checkOnSave": true,
+  "trunk.formatOnSave": true,
+  "trunk.addToolsToPath": true,
+
+  // ============================================================================
   // Performance & UI
   // ============================================================================
-  "github.copilot.chat.agent.autoStartMcpServers": true,
   "extensions.autoUpdate": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
@@ -362,7 +393,6 @@
       ],
       "icon": "terminal-cmd"
     }
-  },
-  "trunk.addToolsToPath": true
+  }
 }
 

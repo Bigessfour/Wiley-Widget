@@ -22,7 +22,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from git import Repo
+try:
+    from git import Repo  # type: ignore[import-not-found]
+except ImportError:
+    Repo = None  # type: ignore[assignment,misc]
 
 
 class AIManifestGenerator:
@@ -43,6 +46,8 @@ class AIManifestGenerator:
 
     def _load_repo(self):
         """Load git repository using gitpython."""
+        if Repo is None:
+            raise RuntimeError("GitPython is not installed. Please install it with: pip install gitpython")
         try:
             return Repo(self.repo_root)
         except Exception as exc:

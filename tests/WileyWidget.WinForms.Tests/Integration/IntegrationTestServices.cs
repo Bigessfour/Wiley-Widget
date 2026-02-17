@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
+using BusinessInterfaces = WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Controls;
@@ -75,11 +76,42 @@ internal static class IntegrationTestServices
         services.AddSingleton<DpiAwareImageService>();
 
         services.AddScoped<IDashboardService>(_ => Mock.Of<IDashboardService>());
+        services.AddScoped<IAnalyticsService>(_ => Mock.Of<IAnalyticsService>());
+        services.AddScoped<IReportService>(_ => Mock.Of<IReportService>());
+        services.AddScoped<IAuditService>(_ => Mock.Of<IAuditService>());
+        services.AddScoped<IReportExportService>(_ => Mock.Of<IReportExportService>());
         services.AddScoped<IAILoggingService>(_ => Mock.Of<IAILoggingService>());
         services.AddScoped<IQuickBooksService>(_ => Mock.Of<IQuickBooksService>());
         services.AddScoped<IGlobalSearchService>(_ => Mock.Of<IGlobalSearchService>());
+
+        // Repository mocks required by ScopedPanelBase<TViewModel> panel activation paths in integration tests
+        services.AddScoped<BusinessInterfaces.IBudgetRepository>(_ => Mock.Of<BusinessInterfaces.IBudgetRepository>());
+        services.AddScoped<BusinessInterfaces.IEnterpriseRepository>(_ => Mock.Of<BusinessInterfaces.IEnterpriseRepository>());
+        services.AddScoped<BusinessInterfaces.IAccountsRepository>(_ => Mock.Of<BusinessInterfaces.IAccountsRepository>());
+        services.AddScoped<BusinessInterfaces.IMunicipalAccountRepository>(_ => Mock.Of<BusinessInterfaces.IMunicipalAccountRepository>());
+        services.AddScoped<BusinessInterfaces.IUtilityBillRepository>(_ => Mock.Of<BusinessInterfaces.IUtilityBillRepository>());
+        services.AddScoped<BusinessInterfaces.IUtilityCustomerRepository>(_ => Mock.Of<BusinessInterfaces.IUtilityCustomerRepository>());
+        services.AddScoped<BusinessInterfaces.IDepartmentRepository>(_ => Mock.Of<BusinessInterfaces.IDepartmentRepository>());
+        services.AddScoped<BusinessInterfaces.IActivityLogRepository>(_ => Mock.Of<BusinessInterfaces.IActivityLogRepository>());
+
+        // ViewModels needed by ribbon/nav panel activation in integration tests
+        services.AddScoped<IDashboardViewModel, DashboardViewModel>();
+        services.AddScoped<DashboardViewModel>();
         services.AddScoped<MainViewModel>();
+        services.AddScoped<AccountsViewModel>();
+        services.AddScoped<ActivityLogViewModel>();
+        services.AddScoped<AnalyticsHubViewModel>();
+        services.AddScoped<AuditLogViewModel>();
+        services.AddScoped<BudgetViewModel>();
+        services.AddScoped<CustomersViewModel>();
+        services.AddScoped<DepartmentSummaryViewModel>();
         services.AddScoped<QuickBooksViewModel>();
+        services.AddScoped<RecommendedMonthlyChargeViewModel>();
+        services.AddScoped<ReportsViewModel>();
+        services.AddScoped<RevenueTrendsViewModel>();
+        services.AddScoped<SettingsViewModel>();
+        services.AddScoped<UtilityBillViewModel>();
+        services.AddScoped<WarRoomViewModel>();
         services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
         services.AddWindowsFormsBlazorWebView();
 

@@ -157,11 +157,11 @@ def launch_app_and_wait_for_window(
     # Try to connect via pywinauto with UIA backend
     try:
         from pywinauto import Application
-        from pywinauto.timings import Timings
+        from pywinauto import timings as pywinauto_timings
 
         # Set longer timeout for UIA initialization
-        Timings.window_find_timeout = min(timeout_sec, 30)
-        Timings.app_start_timeout = timeout_sec
+        pywinauto_timings.Timings.window_find_timeout = min(timeout_sec, 30)
+        pywinauto_timings.Timings.app_start_timeout = timeout_sec
 
         # Retry loop: wait for main window to appear (UIA can be slow)
         start_time = time.time()

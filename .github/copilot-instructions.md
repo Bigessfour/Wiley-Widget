@@ -30,7 +30,7 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 ## Tooling Rules
 
-- **Filesystem**: it is preferred to Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Allowed, use at your discretion for small changes to files. Mcp is preferred as it is more effecient, but, you as the code agent have flexability to use whatever tool matches thejob.
+- **Filesystem**: it is preferred to Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Allowed, use at your discretion for small changes to files. Mcp is preferred as it is more efficient, but, you as the code agent have flexibility to use whatever tool matches the job.
 - **Search**: `mcp_filesystem_search_files` for file/code discovery.
 - **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
 - **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
@@ -364,6 +364,7 @@ This repository prefers modern, analyzer-friendly C# code for the Windows Forms/
 - Adhere to `.editorconfig` rules (for example, indent_size=4).
 - Target .NET 10+ (net10.0-windows) where possible and use newer features (e.g., records, file-scoped namespaces, primary constructors, required members).
 - For Windows Forms apps, prioritize event-driven patterns; consider MVVM-like data-binding with CommunityToolkit.Mvvm for complex forms if applicable.
+- Use the `override` keyword for methods that hide inherited members, as seen in panel ClosePanel fixes.
 
 These guidelines train Copilot to produce analyzer-friendly code and reduce noise from Roslyn/C# analyzers.
 
@@ -767,7 +768,7 @@ public class MyService : IAsyncInitializable
 {
     public async Task InitializeAsync(CancellationToken ct) { /* heavy I/O here */ }
 }
-`````
+````
 
 ## Code Review Checklist
 

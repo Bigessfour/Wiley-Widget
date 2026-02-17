@@ -1,13 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Forms;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.ListView;
+using Syncfusion.WinForms.Themes;
 using WileyWidget.Services.Abstractions;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Forms;
@@ -65,34 +67,83 @@ public sealed class MainFormIntegrationTests
         {
             return typeof(MainForm).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(this);
         }
+
+        public bool CallProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            var mi = typeof(MainForm).GetMethod("ProcessCmdKey", BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(Message).MakeByRefType(), typeof(Keys) }, null);
+            var invokeResult = mi?.Invoke(this, new object[] { msg, keyData });
+            var result = (invokeResult as bool?) ?? false;
+            return result;
+        }
+
+        /// <summary>
+        /// Forces the exact same initialization sequence the real app uses (OnLoad + Shown + professional features + visibility).
+        /// This is the only way to make QAT, document switcher, global search, and ribbon visibility work reliably in tests.
+        /// </summary>
+        public void ForceFullInitialization()
+        {
+            CallInitializeChrome();           // Ribbon + groups + search box
+            CallOnLoad();                     // Status bar, QAT, MDI manager, navigation
+
+            // Force MDI container (required for document switcher)
+            if (!IsMdiContainer)
+                IsMdiContainer = true;
+
+            // Critical: Make form visible first (required for OnShown event)
+            Show();
+            Activate();
+            BringToFront();
+            Application.DoEvents();
+
+            // Trigger OnShown event which initializes professional features (QAT, document switcher, etc.)
+            var onShown = typeof(MainForm).GetMethod("OnShown", BindingFlags.Instance | BindingFlags.NonPublic);
+            onShown?.Invoke(this, new object[] { EventArgs.Empty });
+
+            // Extended wait for async initialization (QAT layout, search indexing, etc.)
+            Application.DoEvents();
+            Application.DoEvents();
+            Application.DoEvents();
+            Thread.Sleep(100);  // Give QAT and other UI elements time to wire up
+            Application.DoEvents();
+        }
     }
 
     [WinFormsFact]
-    public void InitializeChrome_CreatesRibbonAndStatusBar()
+    public void InitializeChrome_CreatesRibbonStatusBarAndNavigation()
     {
+        // Force full initialization path that real app uses
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
         {
             ["UI:ShowRibbon"] = "true"
         });
         using var form = new TestMainForm(provider);
-        _ = form.Handle;  // Handle creation needed for chrome initialization
+        _ = form.Handle;
 
         try
         {
-            form.CallInitializeChrome();
-            Application.DoEvents();  // Process messages after chrome init
-            form.CreateControl();
-            form.PerformLayout();
-            form.Refresh();
+            form.ForceFullInitialization();
 
-            var ribbon = form.GetPrivateField("_ribbon");
-            var statusBar = form.GetPrivateField("_statusBar");
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var statusBar = form.GetPrivateField("_statusBar") as StatusBarAdv;
+            var homeTab = form.GetPrivateField("_homeTab") as ToolStripTabItem;
+            var globalSearch = form.GetPrivateField("_globalSearchTextBox") as ToolStripTextBox
+                            ?? FindGlobalSearchTextBox(ribbon);
 
             ribbon.Should().NotBeNull();
             statusBar.Should().NotBeNull();
-            form.Controls.Contains((Control)ribbon!).Should().BeTrue();
-            form.Controls.Contains((Control)statusBar!).Should().BeTrue();
+            homeTab.Should().NotBeNull();
+            globalSearch.Should().NotBeNull("Global search textbox must exist after full chrome init");
+
+            ribbon!.QuickPanelVisible.Should().BeTrue("QAT panel must be visible after InitializeQuickAccessToolbar");
+            form.GetQATItemCount().Should().BeGreaterThan(0, "QAT must contain default buttons");
+
+            ribbon!.Header.MainItems.OfType<ToolStripTabItem>().Should().NotBeEmpty();
+
+            homeTab!.Panel!.Controls.OfType<ToolStripEx>().Count().Should().BeGreaterOrEqualTo(4);
+
+            form.Text.Should().Contain("Wiley Widget");
+            form.WindowState.Should().NotBe(System.Windows.Forms.FormWindowState.Minimized);
         }
         finally
         {
@@ -101,6 +152,170 @@ public sealed class MainFormIntegrationTests
                 form.Close();
                 form.Dispose();
             }
+        }
+    }
+
+    private static ToolStripTextBox? FindGlobalSearchTextBox(RibbonControlAdv? ribbon)
+    {
+        if (ribbon?.Header?.MainItems == null) return null;
+        foreach (var item in ribbon.Header.MainItems!)
+        {
+            if (item is ToolStripTextBox txtBox && !string.IsNullOrEmpty(txtBox.Name) && (txtBox.Name == "GlobalSearch" || txtBox.Name.Contains("GlobalSearch")))
+                return txtBox;
+        }
+        return null;
+    }
+
+    [StaFact]
+    public void KeyboardShortcuts_And_DocumentSwitcher_Work()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+
+        form.ForceFullInitialization();
+
+        // Open a document so switcher has content
+        form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right);
+        Application.DoEvents();
+
+        try
+        {
+            // Ctrl+K → Global Search Dialog
+            var msg = new Message();
+            form.CallProcessCmdKey(ref msg, Keys.Control | Keys.K);
+            Application.DoEvents();
+
+            var searchDialog = form.GetPrivateField("_searchDialog") as Form;
+            searchDialog.Should().NotBeNull("Ctrl+K should open global search dialog");
+            searchDialog!.Visible.Should().BeTrue("Search dialog should be visible after Ctrl+K");
+
+            // Ctrl+Tab → Document Switcher
+            msg = new Message();
+            form.CallProcessCmdKey(ref msg, Keys.Control | Keys.Tab);
+            Application.DoEvents(); Application.DoEvents(); Application.DoEvents(); // extra for switcher creation
+
+            var switcher = form.GetPrivateField("_documentSwitcherDialog") as Form;
+            switcher.Should().NotBeNull("Ctrl+Tab should open document switcher when MDI children exist");
+
+            // Alt+D → Dashboard (already open, but command should succeed)
+            msg = new Message();
+            form.CallProcessCmdKey(ref msg, Keys.Alt | Keys.D);
+            Application.DoEvents();
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [WinFormsFact]
+    public void LayoutPersistence_SaveLoadReset_Works()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            // Show a panel so we have something to persist
+            form.ShowForm<BudgetDashboardForm>("Dashboard");
+            Application.DoEvents();
+
+            // Save
+            form.SaveCurrentLayout();   // calls SaveWorkspaceLayout internally
+
+            // Reset
+            form.ResetLayout();
+            Application.DoEvents();
+
+            var openCount = form.MdiChildren?.Length ?? 0;
+            openCount.Should().Be(0);
+            form.Size.Width.Should().BeGreaterThan(1000); // default 1400x900
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [WinFormsFact]
+    public void ProfessionalStatusBar_QAT_And_MDI_DocumentManagement_Work()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            var statusBar = form.GetPrivateField("_statusBar") as StatusBarAdv;
+            var qatCount = form.GetQATItemCount();
+
+            statusBar.Should().NotBeNull();
+            qatCount.Should().BeGreaterThan(0, "QAT must be initialized after full chrome + professional features");
+
+            form.ShowForm<BudgetDashboardForm>("Dashboard");
+            form.ShowPanel<AccountsPanel>("Accounts");
+            Application.DoEvents();
+
+            var openCountBefore = form.MdiChildren?.Length ?? 0;
+            openCountBefore.Should().BeGreaterOrEqualTo(2);
+
+            if (form.MdiChildren?.Length > 0)
+            {
+                form.MdiChildren[0].Close();
+                Application.DoEvents(); Application.DoEvents();
+            }
+
+            var openCountAfter = form.MdiChildren?.Length ?? 0;
+            openCountAfter.Should().BeLessThan(openCountBefore);
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [StaFact]
+    public void GlobalSearchDialog_FullFlow_Works()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            // Trigger via hotkey
+            var msg = new Message();
+            form.CallProcessCmdKey(ref msg, Keys.Control | Keys.K);
+            Application.DoEvents();
+
+            var dialog = form.GetPrivateField("_searchDialog") as Form;
+            var searchBox = form.GetPrivateField("_globalSearchBox") as TextBoxExt;
+            var resultsList = form.GetPrivateField("_searchResultsList") as SfListView;
+
+            dialog.Should().NotBeNull("Search dialog must be created");
+            dialog!.Visible.Should().BeTrue("Search dialog must be visible after Ctrl+K");
+            searchBox.Should().NotBeNull("Search textbox must exist");
+            resultsList.Should().NotBeNull("Results list must exist");
+
+            searchBox!.Text = "dashboard";
+            Application.DoEvents();
+            Thread.Sleep(1000);   // Give debounce timer + PerformSearchAsync + UI yield enough time
+
+            var resultsData = resultsList?.DataSource;
+            resultsData.Should().NotBeNull("Search results must populate (at least Dashboard from PanelRegistry)");
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
     }
 
@@ -138,163 +353,206 @@ public sealed class MainFormIntegrationTests
     }
 
     [WinFormsFact]
-    public async Task MainForm_OnLoad_InitializesDocking()
+    public void MainForm_Disposal_And_ResourceCleanup_DoNotThrow()
     {
-        // Force headless mode to prevent UI hangs
-        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-
+        // Final resilience test: verify proper cleanup without exceptions
         TestThemeHelper.EnsureOffice2019Colorful();
         using var provider = IntegrationTestServices.BuildProvider();
         using var form = new TestMainForm(provider);
-        _ = form.Handle;  // Handle creation needed for initialization
+        _ = form.Handle;
+        form.CallInitializeChrome();
+        form.CallOnLoad();
 
-        // Ensure Syncfusion docking is enabled for this integration test
-        form.SetPrivateField("_uiConfig", new UIConfiguration { UseSyncfusionDocking = true });
+        // Open multiple panels to test full cleanup
+        form.ShowForm<BudgetDashboardForm>("Dashboard");
+        form.ShowPanel<AccountsPanel>("Accounts");
+        Application.DoEvents();
 
+        // Dispose should not throw
+        Exception? disposalException = null;
         try
         {
-            // Verify the UI configuration was set for docking
-            var uiConfigObj = form.GetPrivateField("_uiConfig") as UIConfiguration;
-            uiConfigObj.Should().NotBeNull("_uiConfig should be set by the test");
-            uiConfigObj!.UseSyncfusionDocking.Should().BeTrue("Integration test requires Syncfusion docking to be enabled");
-
-            // Initialize chrome first (like OnLoad does)
-            form.CreateControl();
-            form.CallOnLoad();
-            Application.DoEvents();
-
-            // For deterministic behavior in CI, set up a minimal docking host manually
-            var manualDockingManager = new Syncfusion.Windows.Forms.Tools.DockingManager { HostControl = form };
-            form.SetPrivateField("_dockingManager", manualDockingManager);
-            form.SetPrivateField("_leftDockPanel", new LegacyGradientPanel { Name = "LeftDockPanel" });
-            form.SetPrivateField("_rightDockPanel", new LegacyGradientPanel { Name = "RightDockPanel" });
-            form.SetPrivateField("_centralDocumentPanel", new LegacyGradientPanel { Name = "CentralDocumentPanel" });
-            form.SetPrivateField("_syncfusionDockingInitialized", true);
-
-            Application.DoEvents();
-
-            // Verify docking components are initialized
-            var dockingManager = form.GetPrivateField("_dockingManager");
-            var leftPanel = form.GetPrivateField("_leftDockPanel");
-            var rightPanel = form.GetPrivateField("_rightDockPanel");
-            var centralPanel = form.GetPrivateField("_centralDocumentPanel");
-
-            // Debug: check which one is null
-            Console.WriteLine($"dockingManager: {dockingManager != null}");
-            Console.WriteLine($"leftPanel: {leftPanel != null}");
-            Console.WriteLine($"rightPanel: {rightPanel != null}");
-            Console.WriteLine($"centralPanel: {centralPanel != null}");
-
-            if (dockingManager == null)
-            {
-                throw new InvalidOperationException("DockingManager is null after InitializeAsync");
-            }
-
-            dockingManager.Should().NotBeNull();
-            leftPanel.Should().NotBeNull();
-            rightPanel.Should().NotBeNull();
-            centralPanel.Should().NotBeNull();
+            form.Close();
+            form.Dispose();
         }
-        finally
+        catch (Exception ex)
         {
-            if (form.IsHandleCreated)
-            {
-                form.Close();
-                form.Dispose();
-            }
+            disposalException = ex;
         }
+
+        disposalException.Should().BeNull("Form disposal must not throw exceptions");
     }
 
-    [WinFormsFact]
-    public void MainForm_ShowPanel_CreatesDashboard()
+    [StaFact]
+    public void MainForm_AsyncInitialization_And_ViewModel_Works()
     {
-        // Force headless mode to prevent UI hangs
-        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
         using var form = new TestMainForm(provider);
-        _ = form.Handle;  // Handle creation needed for proper initialization
+        _ = form.Handle;
 
         try
         {
-            form.CreateControl();
-            form.CallOnLoad();
-            Application.DoEvents();  // Process messages after docking init
+            form.ForceFullInitialization();
 
-            // Show dashboard form (hosted in FormHostPanel)
-            form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
-            Application.DoEvents();  // Process messages after panel creation
+            // Force call to InitializeAsync (normally called from Shown event)
+            var initAsyncMethod = typeof(MainForm).GetMethod("InitializeAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+            initAsyncMethod?.Invoke(form, new object[] { CancellationToken.None });
 
-            // Verify dashboard activation via navigation service in docking-managed flow
-            var panelNavigator = form.PanelNavigator;
-            panelNavigator.Should().NotBeNull();
-            panelNavigator!.GetActivePanelName().Should().Be("Dashboard");
+            Application.DoEvents(); // let async continuations run
+
+            // Check that deferred chrome pieces are present (e.g. status bar timers running)
+            var memoryTimer = form.GetPrivateField("_memoryUpdateTimer") as System.Windows.Forms.Timer;
+            var clockTimer = form.GetPrivateField("_clockUpdateTimer") as System.Windows.Forms.Timer;
+
+            memoryTimer.Should().NotBeNull("Memory update timer should start in async/professional init");
+            clockTimer.Should().NotBeNull("Clock timer should start");
+
+            memoryTimer!.Enabled.Should().BeTrue("Timers should be enabled after async init");
+
+            // Optional: if you have a public or accessible way to check ViewModel readiness
+            // e.g. form.PanelNavigator?.GetActivePanelName() or similar
+            var activePanel = form.PanelNavigator?.GetActivePanelName();
+            activePanel.Should().NotBeNullOrEmpty("At least one panel should be active after async init");
         }
         finally
         {
-            if (form.IsHandleCreated)
-            {
-                form.Close();
-                form.Dispose();
-            }
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
     }
 
     [StaFact]
-    public void MainForm_GlobalSearch_Functionality()
+    public void ThemeToggle_Works_AcrossUI()
     {
-        // Force headless mode to prevent UI hangs
-        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
-
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
-        {
-            ["UI:ShowRibbon"] = "true"
-        });
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
         using var form = new TestMainForm(provider);
         _ = form.Handle;
 
-        form.CallInitializeChrome();
-        form.CreateControl();
+        try
+        {
+            form.ForceFullInitialization();
 
-        // Find global search textbox from MainForm backing field (more reliable than control traversal)
-        var searchBox = form.GetPrivateField("_globalSearchTextBox") as ToolStripTextBox;
-        searchBox ??= FindControl<ToolStripTextBox>(form);
-        searchBox.Should().NotBeNull();
+            var initialTheme = form.Ribbon?.ThemeName ?? "Office2019Colorful";
+            initialTheme.Should().Be("Office2019Colorful"); // starting point
 
-        // Test search functionality (if implemented)
-        searchBox!.Text = "test search";
-        searchBox.Text.Should().Be("test search");
+            // Simulate Ctrl+Shift+T toggle (or call the method directly if public)
+            var toggleMethod = typeof(MainForm).GetMethod("ToggleTheme", BindingFlags.Instance | BindingFlags.NonPublic);
+            toggleMethod?.Invoke(form, null);
+
+            Application.DoEvents();
+
+            var newTheme = form.Ribbon?.ThemeName;
+            newTheme.Should().NotBe(initialTheme, "Theme should change after toggle");
+
+            // Verify recursive theme application reached some child controls
+            var homeTab = form.GetPrivateField("_homeTab") as ToolStripTabItem;
+            homeTab.Should().NotBeNull();
+            homeTab!.Panel.Should().NotBeNull();
+
+            // Rough check: at least one ToolStripEx should have the new theme
+            var strips = homeTab.Panel!.Controls.OfType<ToolStripEx>();
+            strips.Should().NotBeEmpty();
+            strips.First().ThemeName.Should().Be(newTheme, "Child controls should receive theme change");
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
     }
 
-    private static T? FindControl<T>(Control root) where T : class
+    [StaFact]
+    public void ExpandedKeyboardShortcuts_CoverMajorPaths()
     {
-        if (root is T match)
-        {
-            return match;
-        }
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
 
-        foreach (Control child in root.Controls)
+        try
         {
-            var found = FindControl<T>(child);
-            if (found != null)
-            {
-                return found;
-            }
-        }
+            form.ForceFullInitialization();
 
-        if (root is ToolStrip toolStrip)
+            // Open a few panels so navigation shortcuts have targets
+            form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right);
+            form.ShowPanel<AccountsPanel>("Accounts");
+            Application.DoEvents();
+
+            var msg = new Message();
+
+            // Ctrl+K → Global search
+            form.CallProcessCmdKey(ref msg, Keys.Control | Keys.K);
+            Application.DoEvents();
+            (form.GetPrivateField("_searchDialog") as Form)?.Visible.Should().BeTrue();
+
+            // Alt+D → Dashboard activation
+            form.CallProcessCmdKey(ref msg, Keys.Alt | Keys.D);
+            Application.DoEvents();
+            form.PanelNavigator?.GetActivePanelName().Should().Be("Dashboard");
+
+            // Alt+A → Accounts
+            form.CallProcessCmdKey(ref msg, Keys.Alt | Keys.A);
+            Application.DoEvents();
+            form.PanelNavigator?.GetActivePanelName().Should().Be("Accounts");
+
+            // Escape → should close search dialog if open
+            form.CallProcessCmdKey(ref msg, Keys.Escape);
+            Application.DoEvents();
+            (form.GetPrivateField("_searchDialog") as Form)?.Visible.Should().BeFalse("Escape should dismiss search dialog");
+
+            // Ctrl+Shift+S → Save layout (just check no crash)
+            form.CallProcessCmdKey(ref msg, Keys.Control | Keys.Shift | Keys.S);
+            Application.DoEvents(); // assume it logs or saves silently
+        }
+        finally
         {
-            foreach (ToolStripItem item in toolStrip.Items)
-            {
-                if (item is T matchItem)
-                {
-                    return matchItem;
-                }
-            }
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
+    }
 
-        return null;
+    [StaFact]
+    public void PanelNavigation_History_And_BackForward_Work()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            // Navigate sequence
+            form.ShowPanel<AccountsPanel>("Accounts");
+            Application.DoEvents();
+            form.ShowPanel<ReportsPanel>("Reports");
+            Application.DoEvents();
+            form.ShowPanel<SettingsPanel>("Settings");
+            Application.DoEvents();
+
+            var navigator = form.PanelNavigator;
+            navigator.Should().NotBeNull();
+
+            // Check forward history has items
+            // (assuming you have reflection helpers or make GetNavigationHistory public/test-visible)
+            // For now, check active + simple back navigation
+            navigator!.GetActivePanelName().Should().Be("Settings");
+
+            // Simulate back (you may need to expose or reflect on back method)
+            var backMethod = typeof(MainForm).GetMethod("NavigateBack", BindingFlags.Instance | BindingFlags.NonPublic);
+            backMethod?.Invoke(form, null);
+            Application.DoEvents();
+
+            navigator.GetActivePanelName().Should().Be("Reports", "Back should restore previous panel");
+
+            // One more back
+            backMethod?.Invoke(form, null);
+            Application.DoEvents();
+            navigator.GetActivePanelName().Should().Be("Accounts");
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
     }
 }

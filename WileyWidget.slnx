@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WileyWidget.Abstractions/WileyWidget.Abstractions.csproj" />
+    <Project Path="src/WileyWidget.Business/WileyWidget.Business.csproj" />
+    <Project Path="src/WileyWidget.Data/WileyWidget.Data.csproj" />
+    <Project Path="src/WileyWidget.Models/WileyWidget.Models.csproj" />
+    <Project Path="src/WileyWidget.Services.Abstractions/WileyWidget.Services.Abstractions.csproj" />
+    <Project Path="src/WileyWidget.Services/WileyWidget.Services.csproj" />
+    <Project Path="src/WileyWidget.Webhooks/WileyWidget.Webhooks.csproj" />
+    <Project Path="src/WileyWidget.WinForms/WileyWidget.WinForms.csproj" />
+  </Folder>
+</Solution>

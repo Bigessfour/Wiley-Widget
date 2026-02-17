@@ -1438,6 +1438,74 @@
 				"minimal"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "test: ribbon-navigation-with-trx",
+			"dependsOn": [
+				"maintenance: Kill Test Processes"
+			],
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"MainFormRibbonNavigationIntegrationTests",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"--no-build",
+				"-v",
+				"normal"
+			],
+			"type": "shell",
+			"group": "test",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "test: DI integration (final)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.DI.Tests/WileyWidget.DI.Tests.csproj",
+				"--no-restore",
+				"-v",
+				"normal"
+			],
+			"group": "test"
+		},
+		{
+			"label": "test: DI integration (fixed)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.DI.Tests/WileyWidget.DI.Tests.csproj",
+				"--no-restore",
+				"-v",
+				"minimal"
+			],
+			"group": "test"
+		},
+		{
+			"label": "test: DI integration (all 20)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.DI.Tests/WileyWidget.DI.Tests.csproj",
+				"--no-restore",
+				"--logger",
+				"console;verbosity=normal"
+			],
+			"group": "test"
 		}
 	]
 }
