@@ -122,10 +122,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             BindViewModel();
             ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-            BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
-
-            // Start async load - fire-and-forget with error handling
-            _ = LoadAsyncSafe();
+            // Defer handle-dependent operations until the panel's window handle is created
+            Load += (s, e) =>
+            {
+                SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _);
+                LoadAsyncSafe();
+            };
 
             Logger.LogDebug("[PANEL] {PanelName} content anchored and refreshed", Name);
         }
@@ -1262,27 +1264,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             try { this.InvokeIfRequired(() => { if (_statusLabel != null && !_statusLabel.IsDisposed) _statusLabel.Text = message ?? string.Empty; }); }
             catch { }
-        }
-    }
-
-    protected override void ClosePanel()
-    {
-        try
-        {
-            var parentForm = FindForm();
-            if (parentForm is Forms.MainForm mainForm)
-            {
-                mainForm.ClosePanel(Name);
-                return;
-            }
-
-            var method = parentForm?.GetType().GetMethod("ClosePanel",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            method?.Invoke(parentForm, new object[] { Name });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "UtilityBillPanel: ClosePanel failed");
         }
     }
 

@@ -17,7 +17,7 @@
       "verified_visible": false
     },
     {
-      "panel_type": "WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel",
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel",
       "display_name": "Analytics Hub",
       "default_dock_style": "Right",
       "group": "Reporting",
@@ -59,7 +59,7 @@
       "verified_visible": false
     },
     {
-      "panel_type": "WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel",
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel",
       "display_name": "Department Summary",
       "default_dock_style": "Right",
       "group": "Views",
@@ -73,7 +73,7 @@
       "verified_visible": false
     },
     {
-      "panel_type": "WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel",
+      "panel_type": "WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel",
       "display_name": "Proactive AI Insights",
       "default_dock_style": "Right",
       "group": "Views",

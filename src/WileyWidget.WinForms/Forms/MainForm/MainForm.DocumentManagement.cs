@@ -15,7 +15,7 @@ namespace WileyWidget.WinForms.Forms;
 /// <summary>
 /// MainForm document management using Syncfusion TabbedMDIManager.
 /// Provides Office-style tabbed document interface for panels.
-/// 
+///
 /// SYNCFUSION API: TabbedMDIManager
 /// Reference: https://help.syncfusion.com/windowsforms/tabbedmdi/overview
 /// </summary>
@@ -27,7 +27,7 @@ public partial class MainForm
     /// <summary>
     /// Initialize TabbedMDIManager for professional tabbed document interface.
     /// Replaces floating forms with Office-style tabs.
-    /// 
+    ///
     /// SYNCFUSION API PROPERTIES:
     /// - AttachedTo: Parent form
     /// - TabStyle: Visual style (Office2016Colorful, Metro, etc.)
@@ -37,8 +37,19 @@ public partial class MainForm
     /// </summary>
     private void InitializeMDIManager()
     {
+        if (_mdiManager == null && _tabbedMdi != null)
+        {
+            _mdiManager = _tabbedMdi;
+            _logger?.LogDebug("MDI Manager alias restored from _tabbedMdi field");
+        }
+
         if (_mdiManager != null)
         {
+            if (!ReferenceEquals(_tabbedMdi, _mdiManager))
+            {
+                _tabbedMdi = _mdiManager;
+            }
+
             _logger?.LogDebug("MDI Manager already initialized");
             return;
         }
@@ -56,6 +67,8 @@ public partial class MainForm
             {
                 AttachedTo = this
             };
+
+            _tabbedMdi = _mdiManager;
 
             // Configure appearance
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
@@ -79,6 +92,7 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "Failed to initialize TabbedMDI Manager");
             _mdiManager = null;
+            _tabbedMdi = null;
         }
     }
 

@@ -3,6 +3,8 @@ namespace WileyWidget.WinForms.Controls.Base;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
 
 /// <summary>
 /// DEPRECATED: This class exists only for backward compatibility with code
@@ -17,7 +19,7 @@ using System.Windows.Forms;
 /// </summary>
 public class LegacyGradientPanel : Panel
 {
-    // Backward-compatibility stubs — these do nothing
+    // Backward-compatibility members — retained as no-op surface area for legacy callers
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int CornerRadius { get; set; }
@@ -45,6 +47,37 @@ public class LegacyGradientPanel : Panel
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string? ThemeName { get; set; }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        ApplyCurrentTheme();
+    }
+
+    protected override void OnParentChanged(EventArgs e)
+    {
+        base.OnParentChanged(e);
+        ApplyCurrentTheme();
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            ThemeName = theme;
+            SfSkinManager.SetVisualStyle(this, theme);
+        }
+        catch
+        {
+            // Best-effort theming only.
+        }
+    }
 }
 
 [System.Obsolete("GradientPanelExt has been replaced by LegacyGradientPanel. Use LegacyGradientPanel or Panel for new code.", false)]

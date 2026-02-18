@@ -123,6 +123,17 @@ namespace WileyWidget.WinForms.Forms
             toolStrip.Items.Add(new ToolStripLabel("Fiscal Year:"));
             toolStrip.Items.Add(fiscalYearCombo);
 
+            // Close button – dismisses the dashboard panel
+            toolStrip.Items.Add(new ToolStripSeparator { Alignment = ToolStripItemAlignment.Right });
+            var closeBtn = new ToolStripButton("✕ Close")
+            {
+                Alignment = ToolStripItemAlignment.Right,
+                DisplayStyle = ToolStripItemDisplayStyle.Text,
+                ToolTipText = "Close Dashboard"
+            };
+            closeBtn.Click += (s, e) => this.Close();
+            toolStrip.Items.Add(closeBtn);
+
             headerPanel.Controls.Add(toolStrip);
             headerPanel.Controls.Add(headerLabel);
             _rootTable.Controls.Add(headerPanel, 0, 0);

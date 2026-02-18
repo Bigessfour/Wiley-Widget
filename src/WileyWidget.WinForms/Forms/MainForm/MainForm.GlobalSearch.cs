@@ -138,7 +138,7 @@ public partial class MainForm
                     Name = "Application Settings",
                     Type = "Command",
                     Description = "Open application settings panel",
-                    Action = () => ShowPanel<Controls.Panels.SettingsPanel>("Settings")
+                    Action = () => _panelNavigator?.ShowPanel<Controls.Panels.SettingsPanel>("Settings")
                 });
             }
 

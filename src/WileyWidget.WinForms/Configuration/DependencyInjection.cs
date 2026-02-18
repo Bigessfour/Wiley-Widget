@@ -34,7 +34,7 @@ using Syncfusion.Blazor;
 using Serilog;
 using Serilog.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Controls.Supporting;
@@ -347,6 +347,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
             services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IScenarioSnapshotRepository, ScenarioSnapshotRepository>();
             services.AddScoped<IVendorRepository, VendorRepository>();
             services.AddScoped<IUtilityBillRepository, UtilityBillRepository>();
             services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
@@ -509,7 +510,9 @@ namespace WileyWidget.WinForms.Configuration
             services.TryAddScoped<IDataAnonymizerService, DataAnonymizerService>();
             services.AddTransient<IChargeCalculatorService, ServiceChargeCalculatorService>();
             services.AddTransient<IAnalyticsService, AnalyticsService>();
+            services.TryAddTransient<IAnalyticsRepository, AnalyticsRepository>();
             services.AddTransient<IBudgetAnalyticsRepository, BudgetAnalyticsRepository>();
+            services.TryAddSingleton<ICircuitBreakerService, CircuitBreakerService>();
 
             // Analytics Pipeline (Scoped - may aggregate data across request)
             services.AddScoped<IAnalyticsPipeline, AnalyticsPipeline>();
@@ -681,7 +684,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<IWindowStateService, WindowStateService>();
 
             // File Import Service (Transient - async file import with JSON/XML parsing support)
-            // Registered in core via AddWileyWidgetCoreServices(configuration)
+            // Registered in core via AddWileyWidgetCoreServices(configuration), with fallback here
+            // so AddWinFormsServices(configuration) is independently valid in tests and tools.
+            services.TryAddTransient<IFileImportService, FileImportService>();
 
             // =====================================================================
             // VIEWMODELS (Scoped - One instance per panel scope)
@@ -696,13 +701,17 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<UtilityBillViewModel>();
             services.AddScoped<AccountsViewModel>();
             services.AddScoped<PaymentsViewModel>();
+            services.AddScoped<IDashboardViewModel, DashboardViewModel>();
             services.AddScoped<DashboardViewModel>();
+            services.AddScoped<IAnalyticsViewModel, AnalyticsViewModel>();
             services.AddScoped<AnalyticsViewModel>();
             services.AddScoped<IAnalyticsHubViewModel, AnalyticsHubViewModel>();
             services.AddScoped<AnalyticsHubViewModel>();
             services.AddScoped<ChartViewModel>();
             services.AddScoped<BudgetOverviewViewModel>();
+            services.AddScoped<IBudgetViewModel, BudgetViewModel>();
             services.AddScoped<BudgetViewModel>();
+            services.AddScoped<ICustomersViewModel, CustomersViewModel>();
             services.AddScoped<CustomersViewModel>();
             services.AddScoped<WileyWidget.WinForms.ViewModels.MainViewModel>();
             services.AddScoped<ReportsViewModel>();
@@ -719,7 +728,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<RatesPageViewModel>();
             services.AddScoped<IExpenseProvider, DefaultExpenseProvider>();
             // JARVIS Chat ViewModel for docked chat control
-            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatViewModel>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)
@@ -733,7 +742,7 @@ namespace WileyWidget.WinForms.Configuration
             // FormHostPanel is used to host standalone Forms (e.g., BudgetDashboardForm) inside docking panels.
             // Ensure it's registered so DI validation recognizes it and tests can resolve its dependencies.
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.FormHostPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>();
@@ -743,12 +752,12 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.PaymentsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.InsightFeedPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.InsightFeedPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>();
             // DashboardPanel removed in favor of BudgetDashboardForm (form-hosted). See migration.
             services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 
@@ -759,9 +768,6 @@ namespace WileyWidget.WinForms.Configuration
             //           The UI scope lives for the application lifetime but allows proper disposal chain.
             // Child Forms: Removed - application now uses panel-based navigation (see below)
             // =====================================================================
-
-            // ViewModels (Transient - lightweight data models)
-            services.AddTransient<IDashboardViewModel, DashboardViewModel>();
 
             // Syncfusion Control Factory (Scoped - same lifetime as MainForm)
             // Use factory pattern to handle optional IThemeService dependency

@@ -47,7 +47,7 @@ namespace WileyWidget.WinForms.Controls.Panels
     /// - Validation: ErrorProvider with field mapping, cross-thread safe
     /// - Lifecycle: Proper Dispose cleanup, event handler tracking, IsBusy/HasUnsavedChanges
     /// </summary>
-    public partial class AccountEditPanel : ScopedPanelBase
+    public partial class AccountEditPanel : ScopedPanelBase<AccountsViewModel>
     {
         // Strongly-typed ViewModel (this is what you use in your code)
         [System.ComponentModel.Browsable(false)]
@@ -130,7 +130,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// For new account creation, use the DI constructor.
         /// For editing, create via DI and call SetExistingAccount() to configure.
         /// </summary>
-        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger, DpiAwareImageService imageService)
+        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<AccountsViewModel>> logger, DpiAwareImageService imageService)
             : base(scopeFactory, logger)
         {
             _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
@@ -1247,21 +1247,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             base.Dispose(disposing);
         }
 
-        /// <summary>
-        /// Resolves the AccountsViewModel from the service provider.
-        /// </summary>
-        protected override object? ResolveViewModel(IServiceProvider serviceProvider)
-        {
-            var vm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<AccountsViewModel>(serviceProvider);
-            if (vm == null)
-            {
-                Logger?.LogWarning("AccountEditPanel: Failed to resolve AccountsViewModel from service provider");
-            }
-            else
-            {
-                Logger?.LogDebug("AccountEditPanel: Successfully resolved AccountsViewModel");
-            }
-            return vm;
-        }
+
     }
 }

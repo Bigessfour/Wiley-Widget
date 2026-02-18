@@ -150,7 +150,6 @@ public partial class MainForm
                 FormBorderStyle = FormBorderStyle.None,
                 ShowInTaskbar = false,
                 Size = new Size(400, 300),
-                BackColor = Color.White,
                 Opacity = 0.95
             };
 

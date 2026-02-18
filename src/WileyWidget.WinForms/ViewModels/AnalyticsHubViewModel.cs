@@ -7,6 +7,7 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 
@@ -19,6 +20,7 @@ public partial class AnalyticsHubViewModel : ObservableObject, IAnalyticsHubView
 {
     private readonly IAnalyticsService _analyticsService;
     private readonly ILogger<AnalyticsHubViewModel> _logger;
+    private readonly IScenarioSnapshotRepository? _scenarioSnapshotRepository;
 
     // Global/shared properties
     [ObservableProperty]
@@ -41,15 +43,17 @@ public partial class AnalyticsHubViewModel : ObservableObject, IAnalyticsHubView
 
     public AnalyticsHubViewModel(
         IAnalyticsService analyticsService,
-        ILogger<AnalyticsHubViewModel> logger)
+        ILogger<AnalyticsHubViewModel> logger,
+        IScenarioSnapshotRepository? scenarioSnapshotRepository = null)
     {
         _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _scenarioSnapshotRepository = scenarioSnapshotRepository;
 
         // Initialize sub-ViewModels
         Overview = new OverviewTabViewModel(analyticsService, logger);
         Trends = new TrendsTabViewModel(analyticsService, logger);
-        Scenarios = new ScenariosTabViewModel(analyticsService, logger);
+        Scenarios = new ScenariosTabViewModel(analyticsService, logger, _scenarioSnapshotRepository);
         Variances = new VariancesTabViewModel(analyticsService, logger);
 
         // Initialize commands
@@ -275,6 +279,8 @@ public partial class TrendsTabViewModel : AnalyticsTabViewModelBase
 /// </summary>
 public partial class ScenariosTabViewModel : AnalyticsTabViewModelBase
 {
+    private readonly IScenarioSnapshotRepository? _scenarioSnapshotRepository;
+
     [ObservableProperty]
     private decimal rateIncreasePercent;
 
@@ -289,10 +295,57 @@ public partial class ScenariosTabViewModel : AnalyticsTabViewModelBase
 
     public IAsyncRelayCommand RunScenarioCommand { get; }
 
-    public ScenariosTabViewModel(IAnalyticsService analyticsService, ILogger logger)
+    public ScenariosTabViewModel(
+        IAnalyticsService analyticsService,
+        ILogger logger,
+        IScenarioSnapshotRepository? scenarioSnapshotRepository = null)
         : base(analyticsService, logger)
     {
+        _scenarioSnapshotRepository = scenarioSnapshotRepository;
         RunScenarioCommand = new AsyncRelayCommand(RunScenarioAsync);
+    }
+
+    public async Task<bool> SaveCurrentScenarioAsync(string scenarioName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(scenarioName))
+        {
+            ErrorMessage = "Scenario name is required.";
+            return false;
+        }
+
+        if (_scenarioSnapshotRepository == null)
+        {
+            ErrorMessage = "Scenario persistence service is unavailable.";
+            Logger.LogWarning("Save scenario requested but IScenarioSnapshotRepository is not available");
+            return false;
+        }
+
+        try
+        {
+            var latestResult = ScenarioResults.FirstOrDefault();
+            var snapshot = new SavedScenarioSnapshot
+            {
+                Name = scenarioName.Trim(),
+                Description = latestResult?.Description,
+                RateIncreasePercent = RateIncreasePercent,
+                ExpenseIncreasePercent = ExpenseIncreasePercent,
+                RevenueTarget = RevenueTarget,
+                ProjectedValue = latestResult?.ProjectedValue ?? 0m,
+                Variance = latestResult?.Variance ?? 0m,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            await _scenarioSnapshotRepository.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
+            ErrorMessage = null;
+            Logger.LogInformation("Saved scenario snapshot '{ScenarioName}'", snapshot.Name);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            Logger.LogError(ex, "Failed to save scenario snapshot '{ScenarioName}'", scenarioName);
+            return false;
+        }
     }
 
     protected override async Task LoadDataAsync()

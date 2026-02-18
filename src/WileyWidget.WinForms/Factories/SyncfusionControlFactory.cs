@@ -185,9 +185,7 @@ public class SyncfusionControlFactory
 
         // Configure primary axes (properties are read-only)
         chart.PrimaryXAxis.Title = "X Axis";
-        chart.PrimaryXAxis.GridLineType.ForeColor = Color.LightGray;
         chart.PrimaryYAxis.Title = "Y Axis";
-        chart.PrimaryYAxis.GridLineType.ForeColor = Color.LightGray;
 
         chart.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(chart);

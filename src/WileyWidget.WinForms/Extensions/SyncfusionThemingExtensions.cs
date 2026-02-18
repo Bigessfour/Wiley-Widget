@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Themes;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;

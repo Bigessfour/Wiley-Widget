@@ -12,6 +12,7 @@
     "\\.yml$",
     "\\.yaml$",
     "ai-fetchable-manifest\\.json$",
+    "AI-BRIEF\\.md$",
     "^tests/",
     "^src/legacy/",
     "packages\\.lock\\.json$",
@@ -22,14 +23,86 @@
     "^\\.github/",
     "^\\.vscode/",
     "^wwwroot/",
-    "^schemas/"
+    "^schemas/",
+    "/bin/",
+    "/obj/",
+    "/\\.vs/",
+    "/\\.git/"
   ],
+
   "focus_mode": false,
-  "include_only_extensions": [".cs", ".csproj", ".sln", ".xaml"],
-  "max_files": 1000,
+  "include_only_extensions": [
+    ".cs",
+    ".csproj",
+    ".sln",
+    ".xaml",
+    ".json",
+    ".py",
+    ".ps1"
+  ],
+  "max_files": 12000,
+  "max_file_size_bytes": 10485760,
+  "manifest_mode": "full-context",
+  "generate_context_summary": true,
+
   "emit_full_tree": false,
-  "tree_max_depth": 4,
+  "tree_max_depth": 5,
   "max_tree_entries_per_dir": 50,
+
+  "focus_directories": [
+    "src/WileyWidget.WinForms",
+    "src/WileyWidget.Services",
+    "src/WileyWidget.Models"
+  ],
+
+  "always_include_dirs": [
+    "src/WileyWidget.WinForms/Controls",
+    "src/WileyWidget.WinForms/Forms",
+    "src/WileyWidget.WinForms/ViewModels",
+    "src/WileyWidget.Services"
+  ],
+
+  "priority_patterns": {
+    "MainForm": 100,
+    "Program": 90,
+    "ViewModel": 95,
+    "Panel": 92,
+    "Control": 88,
+    "Service": 85,
+    "Repository": 82,
+    "Factory": 78,
+    "Extension": 75,
+    "Helper": 70,
+    "Test": 65
+  },
+
+  "content_inclusion": {
+    "embed_full_if_smaller_than_kb": 600,
+    "preview_lines_for_large_files": 800,
+    "max_embedded_files": 400,
+    "critical_globs": [
+      "**/*ViewModel.cs",
+      "**/*Panel.cs",
+      "**/*Control.cs",
+      "**/MainForm*.cs",
+      "**/Analytics*.cs",
+      "**/*Service.cs",
+      "**/*Repository.cs",
+      "**/Program.cs",
+      "**/*.csproj",
+      "**/App.xaml.cs"
+    ],
+    "never_embed": [
+      "**/bin/**",
+      "**/obj/**",
+      "**/*.Designer.cs",
+      "**/*.g.cs",
+      "**/*.g.i.cs",
+      "**/*.AssemblyInfo.cs",
+      "**/node_modules/**"
+    ]
+  },
+
   "test_file_summary_length": 5000,
   "max_summary_length": 1000
 }

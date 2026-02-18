@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Syncfusion.Windows.Forms.Tools;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Forms;
 
@@ -24,16 +24,16 @@ namespace WileyWidget.WinForms.Services
         {
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountEditPanel), "Account Editor", "Views", DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ActivityLogPanel), "Activity Log", "Views", DockingStyle.Right, false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel), "Analytics Hub", "Reporting", DockingStyle.Right),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel), "Analytics Hub", "Reporting", DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AuditLogPanel), "Audit Log & Activity", "Views", DockingStyle.Bottom, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.BudgetPanel), "Budget Management & Analysis", "Financials", DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.CustomersPanel), "Customers", "Views", DockingStyle.Right, false),
             // Dashboard is now provided as a form hosted in a FormHostPanel
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel), "Dashboard", "Core Navigation", DockingStyle.Top, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel), "Data Mapper", "Views", DockingStyle.Right, false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel), "Department Summary", "Views", DockingStyle.Right),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel), "Department Summary", "Views", DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel), "Municipal Accounts", "Financials", DockingStyle.Left, true),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel), "Proactive AI Insights", "Views", DockingStyle.Right, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel), "Proactive AI Insights", "Views", DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel), "QuickBooks", "Tools", DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel), "Recommended Monthly Charge", "Views", DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel), "Rates", "Financials", DockingStyle.Right),

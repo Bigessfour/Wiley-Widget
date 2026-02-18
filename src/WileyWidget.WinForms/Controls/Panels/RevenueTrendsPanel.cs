@@ -805,26 +805,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
     }
 
-    protected override void ClosePanel()
-    {
-        try
-        {
-            var parentForm = FindForm();
-            if (parentForm == null) return;
-
-            // Try to find ClosePanel method on parent form
-            var closePanelMethod = parentForm.GetType().GetMethod(
-                "ClosePanel",
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-            closePanelMethod?.Invoke(parentForm, new object[] { Name });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"RevenueTrendsPanel: ClosePanel failed: {ex.Message}");
-        }
-    }
-
     /// <summary>
     /// <summary>
     /// Subscribes to theme changes for UI refresh via SfSkinManager.

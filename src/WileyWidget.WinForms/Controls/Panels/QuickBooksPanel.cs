@@ -41,7 +41,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.Services;
 // using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -253,7 +253,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
             return errors.Count == 0
                 ? ValidationResult.Success
-                : new ValidationResult(false, errors);
+                : new ValidationResult(false, errors.ToArray());
         }
         catch (OperationCanceledException)
         {
@@ -298,6 +298,32 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
         InitializeComponent();
+    }
+
+    /// <summary>
+    /// Called when the panel's visibility changes (e.g., Syncfusion makes the docked panel visible).
+    /// Queues a final layout pass so splitters and content are sized correctly
+    /// after DockingManager finishes expanding the panel from its initial tiny size.
+    /// </summary>
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+
+        if (!Visible) return;
+
+        // Use BeginInvoke so Syncfusion's docking resize messages have already been
+        // processed before we enforce content minimums.
+        BeginInvoke(new System.Action(() =>
+        {
+            if (Width > 500 && Height > 400)
+            {
+                EnforceMinimumContentHeight();
+                _splitContainerMain?.PerformLayout();
+                _splitContainerTop?.PerformLayout();
+                _splitContainerBottom?.PerformLayout();
+                Logger.LogDebug("QuickBooksPanel.OnVisibleChanged: Final layout pass completed ({W}x{H})", Width, Height);
+            }
+        }));
     }
 
     /// <summary>
@@ -425,17 +451,29 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
             base.OnResize(e);
 
-            // DYNAMICALLY CLAMP MIN SIZES: Syncfusion SplitContainerAdv constraint:
-            // Panel1MinSize + Panel2MinSize + SplitterWidth must not exceed container dimension
-            // When container is very narrow (< 300px), reduce min sizes to prevent InvalidOperationException
-            ClampMinSizesIfNeeded(_splitContainerMain);
-            ClampMinSizesIfNeeded(_splitContainerTop);
-            ClampMinSizesIfNeeded(_splitContainerBottom);
+            // Only do heavy min-size clamping once Syncfusion has finished expanding the panel.
+            // DockingManager/TabbedMDIManager first creates controls at a tiny default size, then
+            // grows them to the real docked size.  Running ClampMinSizesIfNeeded during that tiny
+            // phase forces splitters to their absolute minimums and leaves controls crushed.
+            if (Width > 500 && Height > 400)
+            {
+                // DYNAMICALLY CLAMP MIN SIZES: Syncfusion SplitContainerAdv constraint:
+                // Panel1MinSize + Panel2MinSize + SplitterWidth must not exceed container dimension
+                ClampMinSizesIfNeeded(_splitContainerMain);
+                ClampMinSizesIfNeeded(_splitContainerTop);
+                ClampMinSizesIfNeeded(_splitContainerBottom);
 
-            // Adjust min sizes responsively based on current width (wide/medium/narrow)
-            AdjustMinSizesForCurrentWidth();
+                // Adjust min sizes responsively based on current width (wide/medium/narrow)
+                AdjustMinSizesForCurrentWidth();
+            }
+            else
+            {
+                Logger.LogDebug("QuickBooksPanel: Deferring size clamp - container still too small ({W}x{H}), waiting for docking to finish sizing", Width, Height);
+            }
 
-            // Refresh all split containers to ensure they respect minimum sizes
+            // Refresh all split containers to ensure they respect minimum sizes.
+            // Height assignment and ClampSplitterSafely are always performed so basic layout
+            // stays correct even during the initial small-size phase.
             if (_splitContainerMain != null)
             {
                 _splitContainerMain.Height = Height - (_panelHeader?.Height ?? 0) - (_statusStrip?.Height ?? 0) - Padding.Vertical;
@@ -491,8 +529,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             }
 
 
-            // Enforce minimum dimensions based on content
-            EnforceMinimumContentHeight();
+            // Only enforce content-height minimums once the panel is at a real size
+            if (Width > 500 && Height > 400)
+            {
+                EnforceMinimumContentHeight();
+            }
 
             // Add safety clamp for all splitters
             if (_splitContainerMain != null) ClampSplitterSafely(_splitContainerMain!);
@@ -3192,11 +3233,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             await ViewModel.CheckConnectionCommand.ExecuteAsync(null);
             await ViewModel.RefreshHistoryCommand.ExecuteAsync(null);
         }
-    }
-
-    protected override void ClosePanel()
-    {
-        base.ClosePanel();
     }
 
     #endregion

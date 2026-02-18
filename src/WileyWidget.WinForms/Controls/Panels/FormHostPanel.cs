@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.Abstractions;
+using WileyWidget.WinForms.Controls.Base;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -181,9 +182,34 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         /// <summary>
         /// Saves the panel asynchronously.
-        /// Placeholder for future hosted form save operations.
+        /// Forwards save requests to hosted forms that implement save-capable contracts.
         /// </summary>
-        public virtual Task SaveAsync(CancellationToken ct) => Task.CompletedTask;
+        public virtual async Task SaveAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (_hostedForm == null)
+            {
+                return;
+            }
+
+            if (_hostedForm is ICompletablePanel completablePanel)
+            {
+                await completablePanel.SaveAsync(ct).ConfigureAwait(true);
+                return;
+            }
+
+            var saveMethod = _hostedForm.GetType().GetMethod(nameof(SaveAsync), new[] { typeof(CancellationToken) });
+            if (saveMethod == null)
+            {
+                return;
+            }
+
+            if (saveMethod.Invoke(_hostedForm, new object[] { ct }) is Task saveTask)
+            {
+                await saveTask.ConfigureAwait(true);
+            }
+        }
 
         /// <summary>
         /// Validates the panel asynchronously.

@@ -5,7 +5,7 @@ using System.Windows.Forms;
 using Syncfusion.Windows.Forms;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 
-namespace WileyWidget.WinForms.Controls.Analytics
+namespace WileyWidget.WinForms.Controls.Panels
 {
     /// <summary>
     /// Lightweight KPI card used in summary panels. Small, reusable UserControl

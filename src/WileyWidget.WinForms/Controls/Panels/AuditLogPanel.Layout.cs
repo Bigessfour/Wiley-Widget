@@ -57,9 +57,21 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0)
             };
 
-            _btnRefresh ??= new Syncfusion.WinForms.Controls.SfButton { Text = "Refresh", AutoSize = true, Name = "BtnRefresh" };
-            _btnExportCsv ??= new Syncfusion.WinForms.Controls.SfButton { Text = "Export CSV", AutoSize = true, Name = "BtnExportCsv" };
-            _btnUpdateChart ??= new Syncfusion.WinForms.Controls.SfButton { Text = "Update Chart", AutoSize = true, Name = "BtnUpdateChart" };
+            _btnRefresh ??= ControlFactory.CreateSfButton("Refresh", button =>
+            {
+                button.AutoSize = true;
+                button.Name = "BtnRefresh";
+            });
+            _btnExportCsv ??= ControlFactory.CreateSfButton("Export CSV", button =>
+            {
+                button.AutoSize = true;
+                button.Name = "BtnExportCsv";
+            });
+            _btnUpdateChart ??= ControlFactory.CreateSfButton("Update Chart", button =>
+            {
+                button.AutoSize = true;
+                button.Name = "BtnUpdateChart";
+            });
             _chkAutoRefresh ??= new CheckBoxAdv { Text = "Auto-refresh", AutoSize = true, Name = "ChkAutoRefresh" };
 
             toolbar.Controls.Add(_btnRefresh);
@@ -108,7 +120,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             _mainSplit ??= new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterWidth = 6 };
 
             // Left: audit grid
-            _auditGrid ??= new Syncfusion.WinForms.DataGrid.SfDataGrid { Dock = DockStyle.Fill, Name = "AuditGrid" };
+            _auditGrid ??= ControlFactory.CreateSfDataGrid(grid =>
+            {
+                grid.Dock = DockStyle.Fill;
+                grid.Name = "AuditGrid";
+            });
             _mainSplit.Panel1.Controls.Add(_auditGrid);
 
             // Right: chart host panel

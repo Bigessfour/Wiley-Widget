@@ -33,6 +33,7 @@ namespace WileyWidget.WinForms.Services
         bool HidePanel(string panelName);
         Task AddPanelAsync(UserControl panel, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true);
         string? GetActivePanelName();
+        void SetTabbedManager(Syncfusion.Windows.Forms.Tools.TabbedMDIManager tabbedMdi);
         event EventHandler<PanelActivatedEventArgs>? PanelActivated;
     }
 
@@ -45,6 +46,7 @@ namespace WileyWidget.WinForms.Services
         private readonly Dictionary<string, Control> _cachedPanels = new(StringComparer.OrdinalIgnoreCase);
         private string? _activePanelName;
         private readonly bool _useMDI;
+        private Syncfusion.Windows.Forms.Tools.TabbedMDIManager? _tabbedMdi;
 
         public bool IsMdiEnabled => _useMDI;
 
@@ -59,6 +61,16 @@ namespace WileyWidget.WinForms.Services
             // Check if owner is MDI container
             _useMDI = owner.IsMdiContainer;
             _logger.LogDebug("[PANEL_NAV] PanelNavigationService initialized - MDI mode: {UseMDI}", _useMDI);
+        }
+
+        /// <summary>
+        /// Sets the TabbedMDIManager for pure tabbed layout navigation.
+        /// Called during MainTabbedLayoutFactory initialization.
+        /// </summary>
+        public void SetTabbedManager(Syncfusion.Windows.Forms.Tools.TabbedMDIManager tabbedMdi)
+        {
+            _tabbedMdi = tabbedMdi ?? throw new ArgumentNullException(nameof(tabbedMdi));
+            _logger.LogDebug("[PANEL_NAV] TabbedMDIManager set for tab-based navigation");
         }
 
         public void ShowPanel<TPanel>(string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
@@ -78,6 +90,7 @@ namespace WileyWidget.WinForms.Services
                 {
                     panel = ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
                     _cachedPanels[panelName] = panel;
+                    CachePanelAliases(panelName, panel);
                 }
 
                 if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
@@ -119,9 +132,17 @@ namespace WileyWidget.WinForms.Services
                 form.ShowInTaskbar = false;
                 form.ShowIcon = true;
                 form.Text = string.IsNullOrWhiteSpace(form.Text) ? panelName : form.Text;
-                form.Owner = _owner;
+                if (_useMDI)
+                {
+                    form.Owner = null;
+                }
+                else
+                {
+                    form.Owner = _owner;
+                }
 
                 _cachedPanels[panelName] = form;
+                CachePanelAliases(panelName, form);
                 ShowFloating(form, panelName);
             });
         }
@@ -134,6 +155,7 @@ namespace WileyWidget.WinForms.Services
             ExecuteOnUiThread(() =>
             {
                 _cachedPanels[panelName] = panel;
+                CachePanelAliases(panelName, panel);
                 ShowFloating(panel, panelName);
             });
 
@@ -144,13 +166,39 @@ namespace WileyWidget.WinForms.Services
         {
             if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            if (_hosts.TryGetValue(panelName, out var host) && !host.IsDisposed)
-            {
-                ExecuteOnUiThread(() => host.Hide());
-                return true;
-            }
+            var closed = false;
 
-            return false;
+            ExecuteOnUiThread(() =>
+            {
+                if (!TryResolveHost(panelName, out var resolvedKey, out var host) || host == null || host.IsDisposed)
+                {
+                    _logger.LogDebug("[PANEL_NAV] HidePanel could not resolve host for '{PanelName}'", panelName);
+                    return;
+                }
+
+                try
+                {
+                    if (_useMDI || host.MdiParent != null)
+                    {
+                        _logger.LogDebug("[PANEL_NAV] Closing MDI host '{ResolvedKey}' for request '{PanelName}'", resolvedKey, panelName);
+                        host.Close();
+                    }
+                    else
+                    {
+                        _logger.LogDebug("[PANEL_NAV] Closing floating host '{ResolvedKey}' for request '{PanelName}'", resolvedKey, panelName);
+                        host.Close();
+                    }
+
+                    CleanupClosedHost(resolvedKey, host);
+                    closed = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[PANEL_NAV] Failed to close host '{ResolvedKey}' for request '{PanelName}'", resolvedKey, panelName);
+                }
+            });
+
+            return closed;
         }
 
         public string? GetActivePanelName() => _activePanelName;
@@ -187,12 +235,27 @@ namespace WileyWidget.WinForms.Services
                 host = GetOrCreateHost(panelName, panelOrForm as UserControl);
             }
 
+            EnsureTrackedHost(panelName, host);
+
             // Configure and show
             if (_useMDI)
             {
-                host.MdiParent = _owner;
-                host.WindowState = FormWindowState.Maximized;
-                host.Show();
+                PrepareHostForMdi(host, panelName);
+
+                if (!ReferenceEquals(host.MdiParent, _owner))
+                {
+                    host.MdiParent = _owner;
+                }
+
+                if (!host.Visible)
+                {
+                    host.Show();
+                }
+
+                if (host.WindowState != FormWindowState.Maximized)
+                {
+                    host.WindowState = FormWindowState.Maximized;
+                }
             }
             else
             {
@@ -211,6 +274,40 @@ namespace WileyWidget.WinForms.Services
 
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
+        }
+
+        private void PrepareHostForMdi(Form host, string panelName)
+        {
+            host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
+            host.ShowInTaskbar = false;
+            host.StartPosition = FormStartPosition.Manual;
+
+            if (host.MinimumSize != Size.Empty)
+            {
+                _logger.LogDebug("[PANEL_NAV] Resetting non-default MinimumSize {MinimumSize} for MDI host '{PanelName}'", host.MinimumSize, panelName);
+                host.MinimumSize = Size.Empty;
+            }
+
+            if (host.Owner != null)
+            {
+                host.Owner = null;
+            }
+        }
+
+        private void EnsureTrackedHost(string panelName, Form host)
+        {
+            if (string.IsNullOrWhiteSpace(panelName))
+            {
+                return;
+            }
+
+            if (_hosts.TryGetValue(panelName, out var existing) && ReferenceEquals(existing, host))
+            {
+                return;
+            }
+
+            _hosts[panelName] = host;
+            host.FormClosed += (_, __) => CleanupClosedHost(panelName, host);
         }
 
         private Form GetOrCreateHost(string panelName, UserControl? panel)
@@ -240,7 +337,7 @@ namespace WileyWidget.WinForms.Services
 
             EnsurePanelAttached(host, panel);
 
-            _hosts[panelName] = host;
+            EnsureTrackedHost(panelName, host);
             return host;
         }
 
@@ -314,7 +411,7 @@ namespace WileyWidget.WinForms.Services
                 EnsurePanelAttached(mdiChild, panel);
             }
 
-            _hosts[panelName] = mdiChild;
+            EnsureTrackedHost(panelName, mdiChild);
 
             // Apply theme
             var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
@@ -334,6 +431,148 @@ namespace WileyWidget.WinForms.Services
             }
 
             action();
+        }
+
+        private static string NormalizePanelKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return value.Replace(" ", string.Empty, StringComparison.Ordinal).Trim();
+        }
+
+        private void CachePanelAliases(string panelName, Control panel)
+        {
+            if (panel == null || panel.IsDisposed)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(panelName))
+            {
+                _cachedPanels[panelName] = panel;
+            }
+
+            if (!string.IsNullOrWhiteSpace(panel.Name))
+            {
+                _cachedPanels[panel.Name] = panel;
+            }
+
+            var typeName = panel.GetType().Name;
+            if (!string.IsNullOrWhiteSpace(typeName))
+            {
+                _cachedPanels[typeName] = panel;
+            }
+        }
+
+        private bool TryResolveHost(string panelName, out string resolvedKey, out Form? resolvedHost)
+        {
+            resolvedKey = panelName;
+            resolvedHost = null;
+
+            if (_hosts.TryGetValue(panelName, out var exactHost) && exactHost != null && !exactHost.IsDisposed)
+            {
+                resolvedHost = exactHost;
+                return true;
+            }
+
+            var normalizedRequest = NormalizePanelKey(panelName);
+
+            foreach (var kvp in _hosts)
+            {
+                var key = kvp.Key;
+                var host = kvp.Value;
+                if (host == null || host.IsDisposed)
+                {
+                    continue;
+                }
+
+                var keyMatches = string.Equals(key, panelName, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(NormalizePanelKey(key), normalizedRequest, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(host.Text, panelName, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(NormalizePanelKey(host.Text), normalizedRequest, StringComparison.OrdinalIgnoreCase);
+
+                if (keyMatches || HostContainsPanelIdentifier(host, panelName, normalizedRequest))
+                {
+                    resolvedKey = key;
+                    resolvedHost = host;
+                    return true;
+                }
+            }
+
+            if (_cachedPanels.TryGetValue(panelName, out var cachedPanel) && cachedPanel != null && !cachedPanel.IsDisposed)
+            {
+                foreach (var kvp in _hosts)
+                {
+                    var host = kvp.Value;
+                    if (host == null || host.IsDisposed)
+                    {
+                        continue;
+                    }
+
+                    if (host.Controls.Contains(cachedPanel))
+                    {
+                        resolvedKey = kvp.Key;
+                        resolvedHost = host;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HostContainsPanelIdentifier(Form host, string panelName, string normalizedRequest)
+        {
+            foreach (Control child in host.Controls)
+            {
+                if (string.Equals(child.Name, panelName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(child.GetType().Name, panelName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizePanelKey(child.Name), normalizedRequest, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizePanelKey(child.GetType().Name), normalizedRequest, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(child.Text, panelName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizePanelKey(child.Text), normalizedRequest, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void CleanupClosedHost(string panelName, Form host)
+        {
+            if (_hosts.TryGetValue(panelName, out var trackedHost) && ReferenceEquals(trackedHost, host))
+            {
+                _hosts.Remove(panelName);
+            }
+
+            if (_cachedPanels.TryGetValue(panelName, out var cachedPanel) && (cachedPanel == null || cachedPanel.IsDisposed || (host != null && host.Controls.Contains(cachedPanel))))
+            {
+                _cachedPanels.Remove(panelName);
+            }
+
+            var aliasesToRemove = new List<string>();
+            foreach (var alias in _cachedPanels)
+            {
+                var control = alias.Value;
+                if (control == null || control.IsDisposed || (host != null && host.Controls.Contains(control)))
+                {
+                    aliasesToRemove.Add(alias.Key);
+                }
+            }
+
+            foreach (var alias in aliasesToRemove)
+            {
+                _cachedPanels.Remove(alias);
+            }
+
+            if (string.Equals(_activePanelName, panelName, StringComparison.OrdinalIgnoreCase))
+            {
+                _activePanelName = null;
+            }
         }
     }
 

@@ -121,7 +121,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 if (_accountsGrid != null && _layout != null)
                 {
                     // Ensure grid has the current data source
-                    _accountsGrid.DataSource = ViewModel?.Accounts;
+                    _accountsGrid.DataSource = ViewModel.Accounts;
 
                     // Suspend layout during refresh to prevent flicker
                     _layout.SuspendLayout();
@@ -528,26 +528,26 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _toolbarPanel.BringToFront(); // Ensure Z-order
 
         // Accounts data grid
-        _accountsGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid
+        _accountsGrid = ControlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AutoGenerateColumns = false,
-            AllowFiltering = true,
-            AllowGrouping = true,
-            ShowGroupDropArea = true,
-            AllowSorting = true,
-            AllowResizingColumns = true,
-            EnableDataVirtualization = true,
-            SelectionMode = GridSelectionMode.Single,
-            SelectionUnit = SelectionUnit.Row,
-            RowHeight = 36,
-            ShowToolTip = true,
-            ShowHeaderToolTip = true,
-            ShowValidationErrorToolTip = true,
-            Name = "dataGridAccounts",
-            AccessibleName = "Accounts Grid",
-            ThemeName = activeTheme
-        };
+            grid.Dock = DockStyle.Fill;
+            grid.AutoGenerateColumns = false;
+            grid.AllowFiltering = true;
+            grid.AllowGrouping = true;
+            grid.ShowGroupDropArea = true;
+            grid.AllowSorting = true;
+            grid.AllowResizingColumns = true;
+            grid.EnableDataVirtualization = true;
+            grid.SelectionMode = GridSelectionMode.Single;
+            grid.SelectionUnit = SelectionUnit.Row;
+            grid.RowHeight = 36;
+            grid.ShowToolTip = true;
+            grid.ShowHeaderToolTip = true;
+            grid.ShowValidationErrorToolTip = true;
+            grid.Name = "dataGridAccounts";
+            grid.AccessibleName = "Accounts Grid";
+            grid.ThemeName = activeTheme;
+        });
         _accountsGrid.AccessibleDescription = "Municipal accounts data grid";
         _accountsGrid.SelectionChanged += _gridSelectionChangedHandler = Grid_SelectionChanged;
         _accountsGrid.CellDoubleClick += _gridCellDoubleClickHandler = Grid_CellDoubleClick;
@@ -1482,11 +1482,25 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         try
         {
-            var ct_op = RegisterOperation();
+            using var linkedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(ct, RegisterOperation());
+            var operationCancellationToken = linkedCancellationSource.Token;
             IsBusy = true;
-            // Optionally trigger a refresh of accounts from the service
-            // For now, the ViewModel.Accounts collection is pre-populated by DI
-            await Task.Delay(0, ct_op); // Placeholder for async work
+
+            if (ViewModel is ILazyLoadViewModel lazyLoadViewModel)
+            {
+                await lazyLoadViewModel.OnVisibilityChangedAsync(true);
+            }
+            else if (ViewModel.LoadAccountsCommand.CanExecute(null))
+            {
+                await ViewModel.LoadAccountsCommand.ExecuteAsync(operationCancellationToken);
+            }
+
+            if (_accountsGrid != null)
+            {
+                _accountsGrid.DataSource = ViewModel.Accounts;
+                _accountsGrid.Refresh();
+            }
+
             SetHasUnsavedChanges(false);
         }
         catch (OperationCanceledException)
@@ -1504,34 +1518,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         UpdateButtonState();
     }
 
-    protected override void ClosePanel()
-    {
-        try
-        {
-            var form = FindForm();
-            if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
-            {
-                mainForm.PanelNavigator.HidePanel("Municipal Accounts");
-                return;
-            }
 
-            var dockingManagerField = form?.GetType()
-                .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
-            {
-                dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "AccountsPanel.ClosePanel");
-            }
-            else
-            {
-                Visible = false;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to close AccountsPanel via docking manager");
-            Visible = false;
-        }
-    }
 
     protected override void Dispose(bool disposing)
     {

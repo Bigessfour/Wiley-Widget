@@ -17,7 +17,7 @@ using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Controls.Base;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
-namespace WileyWidget.WinForms.Controls.Analytics
+namespace WileyWidget.WinForms.Controls.Panels
 {
     /// <summary>
     /// Panel for displaying proactive AI insights with gradient header and data grid.
@@ -37,6 +37,11 @@ namespace WileyWidget.WinForms.Controls.Analytics
         private SfButton? _btnClear;
         private EventHandler? _btnRefreshClickHandler;
         private EventHandler? _btnClearClickHandler;
+        private EventHandler? _panelHeaderRefreshHandler;
+        private EventHandler? _panelHeaderCloseHandler;
+        private EventHandler? _panelHeaderHelpHandler;
+        private EventHandler? _panelHeaderPinToggledHandler;
+        private ToolTip? _buttonToolTip;
 
         /// <summary>
         /// Creates a new instance of the ProactiveInsightsPanel.
@@ -116,10 +121,14 @@ namespace WileyWidget.WinForms.Controls.Analytics
             headerLayout.Controls.Add(_panelHeader, 0, 0);
 
             // Wire PanelHeader events
-            _panelHeader.RefreshClicked += (s, e) => BtnRefresh_Click(s, e);
-            _panelHeader.CloseClicked += (s, e) => ClosePanel();
-            _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Proactive Insights Help: AI-generated insights for budget optimization.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
-            _panelHeader.PinToggled += (s, e) => { /* Pin logic */ };
+            _panelHeaderRefreshHandler = (s, e) => BtnRefresh_Click(s, e);
+            _panelHeaderCloseHandler = (s, e) => ClosePanel();
+            _panelHeaderHelpHandler = PanelHeader_HelpClicked;
+            _panelHeaderPinToggledHandler = PanelHeader_PinToggled;
+            _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+            _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+            _panelHeader.HelpClicked += _panelHeaderHelpHandler;
+            _panelHeader.PinToggled += _panelHeaderPinToggledHandler;
 
             // Right-side flow to keep toolbar items right-aligned and spaced
             var rightFlow = new FlowLayoutPanel
@@ -162,8 +171,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 TabIndex = 1,
                 TabStop = true
             };
-            var refreshTooltip = new ToolTip();
-            refreshTooltip.SetToolTip(_btnRefresh, "Refresh insights");
+            _buttonToolTip ??= new ToolTip();
+            _buttonToolTip.SetToolTip(_btnRefresh, "Refresh insights");
             SfSkinManager.SetVisualStyle(_btnRefresh, currentTheme);
             _btnRefresh.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnRefresh);
@@ -181,8 +190,7 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 TabIndex = 2,
                 TabStop = true
             };
-            var clearTooltip = new ToolTip();
-            clearTooltip.SetToolTip(_btnClear, "Clear all insights");
+            _buttonToolTip.SetToolTip(_btnClear, "Clear all insights");
             SfSkinManager.SetVisualStyle(_btnClear, currentTheme);
             _btnClear.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnClear);
@@ -225,16 +233,8 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     }
                 }
 
-                var dockingManagerField = form?.GetType()
-                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
-                {
-                    dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "ProactiveInsightsPanel.ClosePanel");
-                }
-                else
-                {
-                    Visible = false;
-                }
+                // Fallback: hide the panel directly
+                Visible = false;
             }
             catch (Exception ex)
             {
@@ -255,8 +255,20 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     _btnRefresh.Click -= _btnRefreshClickHandler;
                 if (_btnClear != null && _btnClearClickHandler != null)
                     _btnClear.Click -= _btnClearClickHandler;
+                if (_panelHeader != null)
+                {
+                    if (_panelHeaderRefreshHandler != null)
+                        _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                    if (_panelHeaderCloseHandler != null)
+                        _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                    if (_panelHeaderHelpHandler != null)
+                        _panelHeader.HelpClicked -= _panelHeaderHelpHandler;
+                    if (_panelHeaderPinToggledHandler != null)
+                        _panelHeader.PinToggled -= _panelHeaderPinToggledHandler;
+                }
 
                 // Dispose controls
+                _buttonToolTip?.Dispose();
                 _btnRefresh?.SafeDispose();
                 _btnClear?.SafeDispose();
                 _buttonContainer?.SafeDispose();
@@ -323,12 +335,35 @@ namespace WileyWidget.WinForms.Controls.Analytics
             try
             {
                 _logger?.LogInformation("[PROACTIVE_INSIGHTS] Clear clicked");
-                MessageBox.Show("Clear insights action - placeholder", "Clear", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                if (_insightFeedPanel?.ViewModel is InsightFeedViewModel viewModel)
+                {
+                    viewModel.InsightCards.Clear();
+                    viewModel.HighPriorityCount = 0;
+                    viewModel.MediumPriorityCount = 0;
+                    viewModel.LowPriorityCount = 0;
+                    viewModel.StatusMessage = "Insights cleared";
+                    _logger?.LogInformation("[PROACTIVE_INSIGHTS] Cleared visible insight cards");
+                }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[PROACTIVE_INSIGHTS] Clear action failed");
             }
+        }
+
+        private void PanelHeader_HelpClicked(object? sender, EventArgs e)
+        {
+            MessageBox.Show(
+                "Proactive Insights Help: AI-generated insights for budget optimization.",
+                "Help",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+
+        private void PanelHeader_PinToggled(object? sender, EventArgs e)
+        {
+            // Pin behavior is managed by host docking infrastructure.
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Tests.Integration;
 using WileyWidget.WinForms.Tests.Integration.TestUtilities;
@@ -33,7 +34,8 @@ public sealed class MainFormKeyboardIntegrationTests
                 WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.IThemeService>(provider),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.Abstractions.IWindowStateService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IFileImportService>(provider))
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IFileImportService>(provider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Factories.SyncfusionControlFactory>(provider))
         {
         }
 

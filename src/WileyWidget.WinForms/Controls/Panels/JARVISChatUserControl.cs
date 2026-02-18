@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Web.WebView2.Core;
@@ -20,13 +21,13 @@ using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 
-namespace WileyWidget.WinForms.Controls.Supporting
+namespace WileyWidget.WinForms.Controls.Panels
 {
     /// <summary>
     /// Hosted JARVIS chat control using pure JS/WebView2 for maximum stability.
     /// This control is managed by ScopedPanelBase and initialized via IAsyncInitializable.
     /// </summary>
-    public partial class JARVISChatUserControl : ScopedPanelBase, IAsyncInitializable, IParameterizedPanel
+    public partial class JARVISChatUserControl : ScopedPanelBase<CommunityToolkit.Mvvm.ComponentModel.ObservableObject>, IAsyncInitializable, IParameterizedPanel
     {
         private WebView2? _webView;
         private readonly IServiceProvider _serviceProvider;

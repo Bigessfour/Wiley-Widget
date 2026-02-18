@@ -51,17 +51,6 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         await LoadDataAsync();
     }
 
-    protected override void OnViewModelResolved(PaymentsViewModel viewModel)
-    {
-        base.OnViewModelResolved(viewModel);
-
-        // Bind the grid DataSource to the ViewModel's Payments collection
-        _paymentsGrid.DataSource = viewModel.Payments;
-        Logger?.LogDebug("PaymentsPanel: Grid DataSource bound to ViewModel.Payments");
-
-        UpdateExportButtonState();
-    }
-
     public async Task LoadDataAsync(CancellationToken cancellationToken = default)
     {
         try

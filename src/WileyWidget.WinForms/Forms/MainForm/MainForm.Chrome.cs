@@ -13,7 +13,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Panels;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
@@ -137,9 +137,9 @@ public partial class MainForm
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
 
-            // Initialize vertical chrome layout before docking starts so the docking host
+            // TODO: Initialize vertical chrome layout before docking starts so the docking host
             // is always constrained to row 1 below the ribbon.
-            InitializeMainLayout();
+            // InitializeMainLayout();  // [DISABLED] - Method not implemented
 
             // Initialize Navigation Strip (alternative to Ribbon for test harness)
             if (_uiConfig.IsUiTestHarness)
@@ -199,7 +199,7 @@ public partial class MainForm
                 r.MinimumSize = new Size(0, (int)DpiAware.LogicalToDeviceUnits(120f));
                 r.MenuButtonVisible = true;
                 r.MenuButtonText = "File";
-                
+
                 if (isUiTestRuntime)
                 {
                     r.ShowCaption = false;
@@ -411,11 +411,6 @@ public partial class MainForm
             CacheGlobalSearchTextBox();
             EnsureRibbonAccessibility();
 
-            if (_dockingManager != null && IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
-            }
-
             var skipRibbonVisualAttach = isUiTestRuntime;
 
             // Add ribbon to form if not already present.
@@ -490,11 +485,6 @@ public partial class MainForm
         {
             _ribbon?.PerformLayout();
             EnsureChromeZOrder();
-
-            if (_dockingManager != null && IsHandleCreated && !IsDisposed)
-            {
-                BeginInvoke((MethodInvoker)FinalizeDockingChromeLayout);
-            }
         }
         catch (Exception ex)
         {
@@ -633,37 +623,37 @@ public partial class MainForm
             dashboardBtn.Click += (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
-            accountsBtn.Click += (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            accountsBtn.Click += (s, e) => { _logger?.LogInformation("Accounts navigation: ribbon-based docking not yet implemented"); };
 
             var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Budget", Enabled = true };
-            budgetBtn.Click += (s, e) => this.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+            budgetBtn.Click += (s, e) => { _logger?.LogInformation("Budget navigation: ribbon-based docking not yet implemented"); };
 
             var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Charts", Enabled = true };
-            chartsBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            chartsBtn.Click += (s, e) => { _logger?.LogInformation("Charts navigation: ribbon-based docking not yet implemented"); };
 
             var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
-            analyticsBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true);
+            analyticsBtn.Click += (s, e) => { _logger?.LogInformation("Analytics navigation: ribbon-based docking not yet implemented"); };
 
             var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Audit Log" };
-            auditLogBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            auditLogBtn.Click += (s, e) => { _logger?.LogInformation("Audit Log navigation: ribbon-based docking not yet implemented"); };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
-            customersBtn.Click += (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true);
+            customersBtn.Click += (s, e) => { _logger?.LogInformation("Customers navigation: ribbon-based docking not yet implemented"); };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "QuickBooks" };
-            quickBooksBtn.Click += (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            quickBooksBtn.Click += (s, e) => { _logger?.LogInformation("QuickBooks navigation: ribbon-based docking not yet implemented"); };
 
             var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "AI Chat" };
-            aiChatBtn.Click += (s, e) => this.ShowPanel<InsightFeedPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+            aiChatBtn.Click += (s, e) => { _logger?.LogInformation("AI Chat navigation: ribbon-based docking not yet implemented"); };
 
             var proactiveInsightsBtn = new ToolStripButton("Proactive Insights") { Name = "Nav_ProactiveInsights", AccessibleName = "Proactive Insights" };
-            proactiveInsightsBtn.Click += (s, e) => this.ShowPanel<WarRoomPanel>("Proactive Insights", DockingStyle.Right, allowFloating: true);
+            proactiveInsightsBtn.Click += (s, e) => { _logger?.LogInformation("Proactive Insights navigation: ribbon-based docking not yet implemented"); };
 
             var warRoomBtn = new ToolStripButton("War Room") { Name = "Nav_WarRoom", AccessibleName = "War Room" };
-            warRoomBtn.Click += (s, e) => this.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);
+            warRoomBtn.Click += (s, e) => { _logger?.LogInformation("War Room navigation: ribbon-based docking not yet implemented"); };
 
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Settings" };
-            settingsBtn.Click += (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            settingsBtn.Click += (s, e) => { _logger?.LogInformation("Settings navigation: ribbon-based docking not yet implemented"); };
 
             var themeToggleBtn = new ToolStripButton
             {
@@ -753,9 +743,9 @@ public partial class MainForm
             // File Menu
             var fileMenu = new ToolStripMenuItem("&File") { Name = "Menu_File", ToolTipText = "File operations", Image = CreateIconFromText("\uE8E5", 16) };
             _recentFilesMenu = new ToolStripMenuItem("&Recent Files") { Name = "Menu_File_RecentFiles" };
-            UpdateMruMenu(_recentFilesMenu);
+            // UpdateMruMenu(_recentFilesMenu);
 
-            var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => ClearMruList()) { Name = "Menu_File_ClearRecent" };
+            var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => { /* ClearMruList(); */ }) { Name = "Menu_File_ClearRecent" };
             var exitMenuItem = new ToolStripMenuItem("E&xit", null, (s, e) => Close()) { Name = "Menu_File_Exit", ShortcutKeys = Keys.Alt | Keys.F4 };
 
             fileMenu.DropDownItems.AddRange(new ToolStripItem[] { _recentFilesMenu, clearRecentMenuItem, new ToolStripSeparator(), exitMenuItem });
@@ -766,17 +756,17 @@ public partial class MainForm
             var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
 
             // View > Accounts
-            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true)) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
+            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => { _logger?.LogInformation("Accounts menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
 
             // View > Budget
             // View > Charts
-            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
+            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => { _logger?.LogInformation("Analytics Hub menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
 
             // View > QuickBooks
-            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
+            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => { _logger?.LogInformation("QuickBooks menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
 
             // View > Customers
-            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
+            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => { _logger?.LogInformation("Customers menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
 
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
 
@@ -784,7 +774,7 @@ public partial class MainForm
 
             // Tools Menu
             var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools", Image = CreateIconFromText("\uE90F", 16) };
-            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true)) { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
+            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => { _logger?.LogInformation("Settings menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
             toolsMenu.DropDownItems.Add(settingsMenuItem);
 
             // Help Menu

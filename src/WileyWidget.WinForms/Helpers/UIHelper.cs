@@ -154,8 +154,15 @@ namespace WileyWidget.WinForms.Helpers
                 }
                 else
                 {
-                    // Restore default styling
-                    control.BackColor = SystemColors.Control;
+                    // Restore theme-driven styling
+                    try
+                    {
+                        control.ApplySyncfusionTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+                    }
+                    catch
+                    {
+                        // Best-effort: do not throw if theming fails
+                    }
                 }
             }
             catch (Exception ex)

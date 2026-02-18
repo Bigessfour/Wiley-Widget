@@ -51,6 +51,7 @@ namespace WileyWidget.WinForms.ViewModels
     public partial class InsightFeedViewModel : ViewModelBase, IInsightFeedViewModel
     {
         private readonly ProactiveInsightsService? _insightsService;
+        private readonly IPanelNavigationService? _panelNavigator;
         private readonly SynchronizationContext? _uiContext;
 
         [ObservableProperty]
@@ -75,7 +76,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Initializes a new instance of the InsightFeedViewModel with default dependencies.
         /// This parameterless constructor supports Moq proxy mocking in unit tests.
         /// </summary>
-        public InsightFeedViewModel() : this(null, null)
+        public InsightFeedViewModel() : this(null, null, null)
         {
         }
 
@@ -83,13 +84,16 @@ namespace WileyWidget.WinForms.ViewModels
         /// Initializes a new instance of the InsightFeedViewModel.
         /// </summary>
         /// <param name="insightsService">Service providing proactive insights.</param>
+        /// <param name="panelNavigator">Service for panel navigation.</param>
         /// <param name="logger">Logger for diagnostic output.</param>
         public InsightFeedViewModel(
             ProactiveInsightsService? insightsService = null,
+            IPanelNavigationService? panelNavigator = null,
             ILogger<InsightFeedViewModel>? logger = null)
             : base(logger)
         {
             _insightsService = insightsService;
+            _panelNavigator = panelNavigator;
             _uiContext = SynchronizationContext.Current;
 
             _logger.LogInformation("InsightFeedViewModel initialized");
@@ -258,39 +262,19 @@ namespace WileyWidget.WinForms.ViewModels
                 insightContext.AppendLine("What additional analysis or recommendations do you have about this insight?");
 
                 // Open the floating JARVIS panel and pass the prompt via IParameterizedPanel.
-                // Resolve the main form from open application forms.
-                var mainForm = System.Windows.Forms.Application.OpenForms
-                    .OfType<WileyWidget.WinForms.Forms.MainForm>()
-                    .FirstOrDefault();
-
-                if (mainForm == null || mainForm.IsDisposed)
+                if (_panelNavigator == null)
                 {
-                    _logger.LogWarning("MainForm is not available; cannot open JARVIS Chat");
+                    _logger.LogWarning("Panel navigation service is not available; cannot open JARVIS Chat");
                     MessageBox.Show(insightContext.ToString(), "Ask JARVIS Context", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
                 var prompt = insightContext.ToString();
 
-                if (mainForm.InvokeRequired)
-                {
-                    mainForm.BeginInvoke(new Action(() =>
-                    {
-                        mainForm.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
-                            "JARVIS Chat",
-                            prompt,
-                            Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
-                            allowFloating: true);
-                    }));
-                }
-                else
-                {
-                    mainForm.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
-                        "JARVIS Chat",
-                        prompt,
-                        Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
-                        allowFloating: true);
-                }
+                _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
+                    "JARVIS Chat",
+                    Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
+                    allowFloating: true);
 
                 _logger.LogInformation("Opened floating JARVIS Chat panel with insight context ({ContextLength} chars)", prompt.Length);
             }

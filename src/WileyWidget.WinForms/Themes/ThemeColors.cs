@@ -70,6 +70,23 @@ namespace WileyWidget.WinForms.Themes
             if (System.Array.Exists(ValidThemes, t => string.Equals(t, themeName, System.StringComparison.OrdinalIgnoreCase)))
                 return themeName;
 
+            // Legacy aliases from previous theme packs (Fluent/Modern) map to supported Office themes.
+            var mappedTheme = themeName.Trim().ToLowerInvariant() switch
+            {
+                "fluentdark" => "Office2019Dark",
+                "fluentlight" => "Office2019White",
+                "moderndark" => "Office2019Black",
+                "moderncolorful" => "Office2019Colorful",
+                "office2016" => "Office2016Colorful",
+                _ => string.Empty
+            };
+
+            if (!string.IsNullOrEmpty(mappedTheme))
+            {
+                logger?.LogInformation("Mapped legacy theme '{Theme}' to supported theme '{MappedTheme}'.", themeName, mappedTheme);
+                return mappedTheme;
+            }
+
             logger?.LogWarning("Invalid theme '{Theme}'. Valid themes: {ValidThemes}. Falling back to '{DefaultTheme}'.",
                 themeName, string.Join(", ", ValidThemes), DefaultTheme);
             return DefaultTheme;

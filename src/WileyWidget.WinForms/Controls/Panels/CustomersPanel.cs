@@ -44,7 +44,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// Provides customer search, add, edit, delete, and QuickBooks synchronization capabilities.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
-public partial class CustomersPanel : ScopedPanelBase
+public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 {
     // Strongly-typed ViewModel (this is what you use in your code)
     [Browsable(false)]
@@ -117,7 +117,7 @@ public partial class CustomersPanel : ScopedPanelBase
     /// <param name="logger">Logger instance.</param>
     public CustomersPanel(
         IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase> logger)
+        ILogger<ScopedPanelBase<CustomersViewModel>> logger)
         : base(scopeFactory, logger)
     {
         // Set preferred size for proper docking display (matches PreferredDockSize extension)
@@ -169,7 +169,7 @@ public partial class CustomersPanel : ScopedPanelBase
         {
             await ViewModel.LoadAsync(ct);
         }
-        _isLoaded = true;
+        IsLoaded = true;
     }
 
     public override async Task<ValidationResult> ValidateAsync(CancellationToken ct = default)
@@ -278,8 +278,8 @@ public partial class CustomersPanel : ScopedPanelBase
         };
         _panelHeader.Title = "Customers Management";
         _panelHeaderRefreshHandler = (s, e) => { _ = RefreshCustomersAsync(); };
-        _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
@@ -1455,14 +1455,7 @@ public partial class CustomersPanel : ScopedPanelBase
         }
     }
 
-    /// <summary>
-    /// Closes this panel.
-    /// </summary>
-    protected override void ClosePanel()
-    {
-        _logger.LogDebug("Closing CustomersPanel");
-        base.ClosePanel();
-    }
+
 
     /// <summary>
     /// Updates the status bar message.
@@ -1559,7 +1552,6 @@ public partial class CustomersPanel : ScopedPanelBase
             // Dispose helpers and UI
             _errorProvider?.Dispose();
             _toolTip?.Dispose();
-            _currentOperationCts?.Dispose();
 
             _customersGrid?.Dispose();
             _mainLayout?.Dispose();

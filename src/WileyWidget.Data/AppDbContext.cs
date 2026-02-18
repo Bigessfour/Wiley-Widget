@@ -49,6 +49,7 @@ namespace WileyWidget.Data
         public DbSet<DepartmentCurrentCharge> DepartmentCurrentCharges { get; set; } = null!;
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
         public DbSet<TelemetryLog> TelemetryLogs { get; set; } = null!;
+        public DbSet<SavedScenarioSnapshot> SavedScenarioSnapshots { get; set; } = null!;
         public DbSet<global::WileyWidget.Services.Abstractions.ConversationHistory> ConversationHistories { get; set; } = null!;
         public DbSet<TownOfWileyBudget2026> TownOfWileyBudgetData { get; set; } = null!;
 
@@ -234,6 +235,33 @@ namespace WileyWidget.Data
                 entity.Property(e => e.Category).HasMaxLength(100);
                 entity.Property(e => e.Icon).HasMaxLength(100);
                 entity.Property(e => e.Timestamp).HasColumnType("datetime2");
+            });
+
+            modelBuilder.Entity<SavedScenarioSnapshot>(entity =>
+            {
+                entity.ToTable("SavedScenarioSnapshots");
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.CreatedAtUtc);
+
+                entity.Property(e => e.Name)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(e => e.Description)
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.RateIncreasePercent).HasColumnType("decimal(19,4)");
+                entity.Property(e => e.ExpenseIncreasePercent).HasColumnType("decimal(19,4)");
+                entity.Property(e => e.RevenueTarget).HasColumnType("decimal(19,4)");
+                entity.Property(e => e.ProjectedValue).HasColumnType("decimal(19,4)");
+                entity.Property(e => e.Variance).HasColumnType("decimal(19,4)");
+
+                entity.Property(e => e.CreatedAtUtc)
+                    .HasColumnType("datetime2")
+                    .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                entity.Property(e => e.UpdatedAtUtc)
+                    .HasColumnType("datetime2");
             });
 
             // AI chat conversation persistence

@@ -65,11 +65,11 @@ public partial class MainForm
 
             // Find ScopedPanelBase in active child
             var panel = FindControlRecursive<WileyWidget.WinForms.Controls.Base.ScopedPanelBase>(activeChild);
-            if (panel != null && panel.ViewModel != null)
+            if (panel != null && panel.UntypedViewModel != null)
             {
                 // Try to invoke refresh command if available
-                var viewModelType = panel.ViewModel.GetType();
-                var refreshCommand = viewModelType.GetProperty("RefreshCommand")?.GetValue(panel.ViewModel);
+                var viewModelType = panel.UntypedViewModel.GetType();
+                var refreshCommand = viewModelType.GetProperty("RefreshCommand")?.GetValue(panel.UntypedViewModel);
                 
                 if (refreshCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
                 {

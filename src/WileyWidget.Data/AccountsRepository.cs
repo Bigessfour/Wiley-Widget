@@ -178,14 +178,50 @@ public class AccountsRepository : IAccountsRepository
 
     /// <summary>
     /// Returns aggregated revenue per calendar month within the supplied date range.
-    /// Minimal stub implementation: returns an empty collection until a proper DB aggregation is implemented.
+    /// Aggregates transaction amounts for revenue accounts (positive amounts).
     /// </summary>
-    public Task<IReadOnlyList<MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(
+    public async Task<IReadOnlyList<MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(
         DateTime startDate,
         DateTime endDate,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("GetMonthlyRevenueAsync called: returning empty aggregates until implemented.");
-        return Task.FromResult<IReadOnlyList<MonthlyRevenueAggregate>>(Array.Empty<MonthlyRevenueAggregate>());
+        using var activity = ActivitySource.StartActivity("AccountsRepository.GetMonthlyRevenue");
+        activity?.SetTag("operation.type", "aggregation");
+        activity?.SetTag("start_date", startDate.ToString("yyyy-MM-dd"));
+        activity?.SetTag("end_date", endDate.ToString("yyyy-MM-dd"));
+
+        try
+        {
+            _logger.LogDebug("Aggregating monthly revenue from {StartDate} to {EndDate}", startDate, endDate);
+
+            using var scope = _scopeFactory.CreateScope();
+
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            // Aggregate transactions by month for revenue (assuming positive amounts are revenue)
+            var aggregates = await context.Set<Models.Transaction>()
+                .Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate && t.Amount > 0)
+                .GroupBy(t => new { t.TransactionDate.Year, t.TransactionDate.Month })
+                .Select(g => new MonthlyRevenueAggregate
+                {
+                    Month = new DateTime(g.Key.Year, g.Key.Month, 1),
+                    Amount = g.Sum(t => t.Amount),
+                    TransactionCount = g.Count()
+                })
+                .OrderBy(a => a.Month)
+                .ToListAsync(cancellationToken);
+
+            activity?.SetTag("result.count", aggregates.Count);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+            _logger.LogInformation("Aggregated {Count} monthly revenue records", aggregates.Count);
+
+            return aggregates;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            _logger.LogError(ex, "Error aggregating monthly revenue");
+            throw;
+        }
     }
 }

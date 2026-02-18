@@ -6,8 +6,9 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Services;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -15,14 +16,14 @@ namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
 /// MainForm partial class containing RibbonControlAdv configuration and helper methods.
-/// 
+///
 /// SYNCFUSION API REFERENCE: RibbonControlAdv (Syncfusion.Windows.Forms.Tools)
 /// Documentation: https://help.syncfusion.com/windowsforms/ribbon/overview
 /// Local Samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Samples\Ribbon
-/// 
+///
 /// RIBBONCONTROLADV KEY PROPERTIES (configured in this file):
 /// ================================================================
-/// 
+///
 /// CORE PROPERTIES:
 /// - Name                              : Control identifier for automation/testing
 /// - Dock                              : DockStyleEx.Top (ribbon docking position)
@@ -30,7 +31,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - AutoSize                          : false (manual control)
 /// - Visible, Enabled                  : Visibility and interaction state
 /// - TabIndex, TabStop                 : Keyboard navigation order
-/// 
+///
 /// APPEARANCE PROPERTIES:
 /// - RibbonStyle                       : Office2016 (visual style)
 /// - LauncherStyle                     : Metro (group launcher icon style)
@@ -41,7 +42,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - QuickPanelImageLayout             : StretchImage (QAT icon layout)
 /// - TouchMode                         : false (optimize for mouse/keyboard)
 /// - OfficeColorScheme                 : Derived from theme (Blue/White/Black/DarkGray)
-/// 
+///
 /// LAYOUT PROPERTIES:
 /// - LayoutMode                        : Normal/Simplified (ribbon layout mode)
 /// - EnableSimplifiedLayoutMode        : true (allow simplified mode switching)
@@ -50,7 +51,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - AllowCollapse                     : true (allow ribbon collapse)
 /// - AllowMinimize                     : true (allow ribbon minimize)
 /// - IsMinimized                       : false (initial expanded state)
-/// 
+///
 /// MENU BUTTON PROPERTIES (FILE MENU):
 /// - MenuButtonVisible                 : true (show File button)
 /// - MenuButtonEnabled                 : true (enable File button)
@@ -58,12 +59,12 @@ namespace WileyWidget.WinForms.Forms;
 /// - MenuButtonWidth                   : DPI-aware width (min 56px)
 /// - MenuButtonFont                    : Segoe UI 9.75pt
 /// - MenuButtonBackColor               : Office blue (#0072C6)
-/// 
+///
 /// QUICK ACCESS TOOLBAR PROPERTIES:
 /// - QuickPanelVisible                 : true (show QAT)
 /// - ShowQuickItemsDropDownButton      : true (show QAT dropdown)
 /// - QuickPanelImageLayout             : StretchImage
-/// 
+///
 /// SYSTEM TEXT PROPERTIES (LOCALIZATION):
 /// - SystemText.QuickAccessDialogDropDownName      : "Start menu"
 /// - SystemText.RenameDisplayLabelText             : "&Display Name:"
@@ -74,32 +75,32 @@ namespace WileyWidget.WinForms.Forms;
 /// - SystemText.CustomizeQuickAccessToolBarText    : "&Customize Quick Access Toolbar..."
 /// - SystemText.MinimizeTheRibbon                  : "&Minimize the Ribbon"
 /// - SystemText.RemoveFromQuickAccessToolBarText   : "&Remove from Quick Access Toolbar"
-/// 
+///
 /// ACCESSIBILITY PROPERTIES:
 /// - AccessibleName                    : "Ribbon_Main"
 /// - AccessibleDescription             : "Main application ribbon for navigation and tools"
 /// - AccessibleRole                    : MenuBar
-/// 
+///
 /// BEHAVIOR PROPERTIES:
 /// - HideMenuButton                    : false (show File button)
 /// - ShowKeyTips                       : true (show keyboard shortcuts)
-/// 
+///
 /// THEME PROPERTIES:
 /// - ThemeName                         : Office2019Colorful/Dark/Black/White (SfSkinManager theme)
 /// - ThemeStyle                        : Office2019ColorfulTheme (loaded theme assembly)
-/// 
+///
 /// OFFICE MENU PROPERTIES:
 /// - OfficeMenu                        : Initialized but not populated (legacy)
-/// 
+///
 /// HEADER PROPERTIES:
 /// - Header.MainItems                  : Collection of ToolStripTabItem (tabs)
 /// - Header.AddMainItem(tab)           : Add tab to ribbon
 /// - Header.RemoveMainItem(tab)        : Remove tab from ribbon
-/// 
+///
 /// BACKSTAGE PROPERTIES:
 /// - BackStageView                     : BackStageView instance (File menu backstage)
 /// - MenuButtonEnabled                 : true (enable backstage activation)
-/// 
+///
 /// KEY EVENTS (available for subscription):
 /// ================================================================
 /// - RibbonClick                       : Fired when any ribbon item clicked
@@ -108,7 +109,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - OfficeMenuShown                   : Fired when Office menu (File) shown
 /// - OfficeMenuHidden                  : Fired when Office menu (File) hidden
 /// - LauncherClick                     : Fired when group launcher button clicked
-/// 
+///
 /// KEY METHODS (available for invocation):
 /// ================================================================
 /// - PerformLayout()                   : Force layout recalculation
@@ -119,7 +120,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - HideOfficeMenu()                  : Hide File menu backstage
 /// - Header.AddMainItem(tab)           : Add tab to ribbon
 /// - Header.RemoveMainItem(tab)        : Remove tab from ribbon
-/// 
+///
 /// IMPLEMENTATION NOTES:
 /// ================================================================
 /// - InitializeRibbon() in MainForm.Chrome.cs creates the RibbonControlAdv
@@ -179,7 +180,7 @@ public partial class MainForm
     /// <summary>
     /// Loads a colorful icon from Syncfusion's built-in resources or embedded project resources.
     /// Falls back to Segoe MDL2 Assets glyph if resource not found.
-    /// 
+    ///
     /// ICON SOURCES (in priority order):
     /// 1. Syncfusion Essential Studio icons: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Icons\
     /// 2. Embedded project resources: WileyWidget.WinForms.Resources.Icons.*
@@ -254,7 +255,7 @@ public partial class MainForm
     /// <summary>
     /// Creates a navigation command delegate for a panel from PanelRegistry.
     /// Uses type-based ShowPanel() method for direct navigation without reflection.
-    /// 
+    ///
     /// NAVIGATION FLOW:
     /// 1. User clicks ribbon button
     /// 2. RibbonCommand delegate invoked
@@ -262,9 +263,9 @@ public partial class MainForm
     /// 4. Panel instantiated via DI
     /// 5. Panel docked in DockingManager
     /// 6. Panel visible on screen
-    /// 
+    ///
     /// PATTERN: Direct Type-based navigation (no reflection, no string lookup)
-    /// 
+    ///
     /// </summary>
     /// <param name="form">MainForm instance</param>
     /// <param name="entry">Panel registry entry with Type, DisplayName, and DefaultDock</param>
@@ -280,14 +281,101 @@ public partial class MainForm
                 logger?.LogDebug("[RIBBON_NAV] Navigating to panel {PanelName} (Type={PanelType}, Dock={DockStyle})",
                     entry.DisplayName, entry.PanelType.Name, entry.DefaultDock);
 
-                // Call the non-generic ShowPanel(Type, string, DockingStyle) method directly
-                form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
-                
+                // Use the panel navigation service directly with type-based dispatch
+                if (entry.PanelType == typeof(BudgetPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<BudgetPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(ReportsPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<ReportsPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(SettingsPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<SettingsPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(AccountsPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<AccountsPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(ActivityLogPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<ActivityLogPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(InsightFeedPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<InsightFeedPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(ProactiveInsightsPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<ProactiveInsightsPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(FormHostPanel))
+                {
+                    // FormHostPanel entries that wrap a specific Form need to route to ShowForm
+                    if (string.Equals(entry.DisplayName, "Rates", StringComparison.OrdinalIgnoreCase))
+                        form.ShowForm<RatesPage>(entry.DisplayName, entry.DefaultDock, allowFloating: true);
+                    else
+                        form.PanelNavigator?.ShowPanel<FormHostPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(AnalyticsHubPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<AnalyticsHubPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(QuickBooksPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<QuickBooksPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(AuditLogPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<AuditLogPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(CustomersPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<CustomersPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(CsvMappingWizardPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<CsvMappingWizardPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(DepartmentSummaryPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<DepartmentSummaryPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(RecommendedMonthlyChargePanel))
+                {
+                    form.PanelNavigator?.ShowPanel<RecommendedMonthlyChargePanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(RevenueTrendsPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<RevenueTrendsPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(UtilityBillPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<UtilityBillPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(WarRoomPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<WarRoomPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(AccountEditPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<AccountEditPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else if (entry.PanelType == typeof(BudgetOverviewPanel))
+                {
+                    form.PanelNavigator?.ShowPanel<BudgetOverviewPanel>(entry.DisplayName, entry.DefaultDock);
+                }
+                else
+                {
+                    logger?.LogWarning("[RIBBON_NAV] Unsupported panel type {PanelType} for navigation", entry.PanelType.Name);
+                }
+
                 logger?.LogInformation("[RIBBON_NAV] Navigation command executed for {PanelName}", entry.DisplayName);
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[RIBBON_NAV] Failed to navigate to panel {PanelName} (Type={PanelType})", 
+                logger?.LogError(ex, "[RIBBON_NAV] Failed to navigate to panel {PanelName} (Type={PanelType})",
                     entry.DisplayName, entry.PanelType.Name);
             }
         };
@@ -295,7 +383,7 @@ public partial class MainForm
 
     /// <summary>
     /// Applies the appropriate RibbonStyle based on the current theme.
-    /// 
+    ///
     /// RIBBON STYLES AVAILABLE (Syncfusion.Windows.Forms.RibbonStyle):
     /// - Office2007        : Classic Office 2007 appearance
     /// - Office2010        : Office 2010 appearance (flatter design)
@@ -303,10 +391,10 @@ public partial class MainForm
     /// - Office2016        : Office 2016 appearance (modern, flat) ✓ USED
     /// - TouchStyle        : Touch-optimized large buttons
     /// - Metro             : Modern Metro/Modern UI style
-    /// 
-    /// CURRENT IMPLEMENTATION: Always uses Office2016 style regardless of theme.
-    /// This provides consistent modern appearance across all Office2019 themes.
-    /// 
+    ///
+    /// CURRENT IMPLEMENTATION: Uses theme-aware mapping (Office2007/2010/2013/2016).
+    /// Office2019 themes map to Office2016 RibbonStyle per Syncfusion sample conventions.
+    ///
     /// API REFERENCE: RibbonControlAdv.RibbonStyle property
     /// </summary>
     /// <param name="ribbon">RibbonControlAdv instance</param>
@@ -321,10 +409,24 @@ public partial class MainForm
 
         try
         {
-            // Always use Office2016 style for modern appearance
-            ribbon.RibbonStyle = RibbonStyle.Office2016;
-            
-            logger?.LogDebug("RibbonStyle set to Office2016 for theme: {Theme}", themeName);
+            var resolvedTheme = themeName ?? string.Empty;
+            var style = RibbonStyle.Office2016;
+
+            if (resolvedTheme.Contains("Office2007", StringComparison.OrdinalIgnoreCase))
+            {
+                style = RibbonStyle.Office2007;
+            }
+            else if (resolvedTheme.Contains("Office2010", StringComparison.OrdinalIgnoreCase))
+            {
+                style = RibbonStyle.Office2010;
+            }
+            else if (resolvedTheme.Contains("Office2013", StringComparison.OrdinalIgnoreCase))
+            {
+                style = RibbonStyle.Office2013;
+            }
+
+            ribbon.RibbonStyle = style;
+            logger?.LogDebug("RibbonStyle set to {RibbonStyle} for theme: {Theme}", style, resolvedTheme);
         }
         catch (Exception ex)
         {
@@ -348,7 +450,7 @@ public partial class MainForm
 
     /// <summary>
     /// Configures all RibbonControlAdv appearance and behavior properties per Syncfusion API.
-    /// 
+    ///
     /// CONFIGURED PROPERTIES:
     /// - BorderStyle                      : ToolStripBorderStyle.None
     /// - ShowCaption                      : true (false in test mode)
@@ -364,7 +466,7 @@ public partial class MainForm
     /// - TouchMode                        : false (optimized for mouse/keyboard)
     /// - AllowCollapse                    : true (ribbon can collapse)
     /// - SystemText.*                     : Localized strings for UI elements
-    /// 
+    ///
     /// API REFERENCE: Syncfusion.Windows.Forms.Tools.RibbonControlAdv
     /// </summary>
     /// <param name="ribbon">RibbonControlAdv instance to configure</param>
@@ -391,18 +493,18 @@ public partial class MainForm
             // === LAYOUT AND DISPLAY OPTIONS ===
             ribbon.ShowRibbonDisplayOptionButton = !isUiTestRuntime;
             ribbon.AutoLayoutToolStrip = true;
-            
+
             // === BEHAVIOR ===
             ribbon.AllowCollapse = true;
-            
+
             // === HEADER IMAGE ===
             ribbon.RibbonHeaderImage = RibbonHeaderImage.None;
-            
+
             // === MENU BUTTON (FILE MENU) ===
             ribbon.MenuButtonVisible = !isUiTestRuntime;
             ribbon.MenuButtonEnabled = !isUiTestRuntime;
             ribbon.MenuButtonWidth = Math.Max(56, ribbon.MenuButtonWidth);
-            
+
             // === TOUCH MODE ===
             ribbon.TouchMode = false;
 
@@ -425,7 +527,7 @@ public partial class MainForm
             // === INITIALIZE COLLECTIONS (ensure properties are accessed) ===
             _ = ribbon.OfficeMenu;
             _ = ribbon.Header?.MainItems;
-            
+
             logger?.LogDebug("RibbonControlAdv appearance configured successfully");
         }
         catch (Exception ex)
@@ -491,7 +593,7 @@ public partial class MainForm
     /// <summary>
     /// Accesses all key ToolStripTabItem API properties to ensure complete initialization.
     /// Workaround for Syncfusion lazy initialization issues where properties aren't set until accessed.
-    /// 
+    ///
     /// TOOLSTRIPTABITEM KEY PROPERTIES (Syncfusion.Windows.Forms.Tools.ToolStripTabItem):
     /// - Font               : Tab text font
     /// - Padding            : Interior padding around tab content
@@ -499,12 +601,12 @@ public partial class MainForm
     /// - Position           : Tab position (Left/Right/Top/Bottom)
     /// - Selected           : Whether tab is currently selected
     /// - GetPreferredSize() : Calculate minimum required size for tab content
-    /// 
+    ///
     /// WHY THIS METHOD EXISTS:
     /// Syncfusion's RibbonControlAdv uses lazy initialization for performance.
     /// Some properties (especially Panel) aren't created until first access.
     /// This method forces initialization by accessing all key properties.
-    /// 
+    ///
     /// API REFERENCE: Syncfusion.Windows.Forms.Tools.ToolStripTabItem
     /// </summary>
     /// <param name="tabItem">ToolStripTabItem to initialize</param>
@@ -525,7 +627,7 @@ public partial class MainForm
             _ = tabItem.Position;
             _ = tabItem.Selected;
             _ = tabItem.GetPreferredSize(new Size(200, 100));
-            
+
             logger?.LogDebug("ToolStripTabItem API initialization completed for tab: {TabText}", tabItem.Text);
         }
         catch (Exception ex)
@@ -573,7 +675,11 @@ public partial class MainForm
             var settingsButton = new SfButton { Text = "Application Settings", Width = 220, Height = 40 };
             settingsButton.Click += (_, _) =>
             {
-                SafeExecute((RibbonCommand)(() => SafeNavigate(form, "Settings", () => form.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right), logger)), "BackStage_Settings", logger);
+                var settingsEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Settings");
+                if (settingsEntry != null)
+                {
+                    SafeExecute((RibbonCommand)(() => SafeNavigate(form, "Settings", CreatePanelNavigationCommand(form, settingsEntry, logger), logger)), "BackStage_Settings", logger);
+                }
                 if (backStageView.BackStage != null)
                 {
                     backStageView.BackStage.Visible = false;
@@ -607,6 +713,7 @@ public partial class MainForm
             };
 
             var newBudgetButton = new SfButton { Text = "New Budget", Width = 220, Height = 40 };
+#pragma warning disable CS0618
             newBudgetButton.Click += (_, _) => SafeExecute((RibbonCommand)form.CreateNewBudget, "BackStage_NewBudget", logger);
 
             var openBudgetButton = new SfButton { Text = "Open Budget", Width = 220, Height = 40 };
@@ -617,6 +724,7 @@ public partial class MainForm
 
             var exportButton = new SfButton { Text = "Export Data", Width = 220, Height = 40 };
             exportButton.Click += (_, _) => SafeExecute((RibbonCommand)form.ExportData, "BackStage_ExportData", logger);
+#pragma warning restore CS0618
 
             // Apply theme to backstage buttons
             try
@@ -738,7 +846,7 @@ public partial class MainForm
                 using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
                 {
                     // Use Office blue color for professional appearance
-                    var iconColor = color.IsEmpty || color == SystemColors.ControlText 
+                    var iconColor = color.IsEmpty || color == SystemColors.ControlText
                         ? Color.FromArgb(255, 0, 120, 215) // Office blue
                         : color;
 
@@ -812,10 +920,10 @@ public partial class MainForm
     /// <param name="shortcutKeys">Keyboard shortcut keys</param>
     /// <returns>Configured ToolStripButton</returns>
     private static ToolStripButton CreateLargeNavButton(
-        string name, 
-        string text, 
-        RibbonCommand onClick, 
-        ILogger? logger, 
+        string name,
+        string text,
+        RibbonCommand onClick,
+        ILogger? logger,
         string? navigationTarget = null,
         string? iconGlyph = null,
         string? tooltip = null,
@@ -847,8 +955,8 @@ public partial class MainForm
         }
 
         // Set display style based on whether icon glyph was provided (not actual image load success)
-        button.DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph) 
-            ? ToolStripItemDisplayStyle.Text 
+        button.DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph)
+            ? ToolStripItemDisplayStyle.Text
             : ToolStripItemDisplayStyle.ImageAndText;
 
         // Build comprehensive tooltip with keyboard shortcut
@@ -885,9 +993,9 @@ public partial class MainForm
     /// Creates a small ribbon button with icon and tooltip support.
     /// </summary>
     private static ToolStripButton CreateSmallNavButton(
-        string name, 
-        string text, 
-        RibbonCommand onClick, 
+        string name,
+        string text,
+        RibbonCommand onClick,
         ILogger? logger,
         string? iconGlyph = null,
         string? tooltip = null,
@@ -1132,30 +1240,32 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Layout", "LayoutGroup", theme, logger);
 
+#pragma warning disable CS0618
         var saveLayoutBtn = CreateLargeNavButton(
-            "Nav_SaveLayout", 
-            "Save\nLayout", 
-            () => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "SaveLayout", logger), 
+            "Nav_SaveLayout",
+            "Save\nLayout",
+            () => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "SaveLayout", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Save Layout"),
             tooltip: "Save current panel layout",
             shortcutKeys: Keys.Control | Keys.Shift | Keys.S);
 
         var resetLayoutBtn = CreateLargeNavButton(
-            "Nav_ResetLayout", 
-            "Reset\nLayout", 
-            () => SafeExecute((RibbonCommand)form.ResetLayout, "ResetLayout", logger), 
+            "Nav_ResetLayout",
+            "Reset\nLayout",
+            () => SafeExecute((RibbonCommand)form.ResetLayout, "ResetLayout", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Reset Layout"),
             tooltip: "Reset panel layout to default");
 
         var lockLayoutBtn = CreateLargeNavButton(
-            "Nav_LockPanels", 
-            "Lock\nPanels", 
-            () => SafeExecute((RibbonCommand)form.TogglePanelLocking, "LockPanels", logger), 
+            "Nav_LockPanels",
+            "Lock\nPanels",
+            () => SafeExecute((RibbonCommand)form.TogglePanelLocking, "LockPanels", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Lock Panels"),
             tooltip: "Lock/unlock panel positions");
+#pragma warning restore CS0618
 
         strip.Items.Add(saveLayoutBtn);
         strip.Items.Add(resetLayoutBtn);
@@ -1200,17 +1310,17 @@ public partial class MainForm
         };
 
         var sortAscBtn = CreateSmallNavButton(
-            "Grid_SortAsc", 
-            "Sort Asc", 
-            () => SafeExecute((RibbonCommand)(() => form.SortActiveGridByFirstSortableColumn(false)), "SortAscending", logger), 
+            "Grid_SortAsc",
+            "Sort Asc",
+            () => SafeExecute((RibbonCommand)(() => form.SortActiveGridByFirstSortableColumn(false)), "SortAscending", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Sort Asc"),
             tooltip: "Sort grid ascending");
 
         var sortDescBtn = CreateSmallNavButton(
-            "Grid_SortDesc", 
-            "Sort Desc", 
-            () => SafeExecute((RibbonCommand)(() => form.SortActiveGridByFirstSortableColumn(true)), "SortDescending", logger), 
+            "Grid_SortDesc",
+            "Sort Desc",
+            () => SafeExecute((RibbonCommand)(() => form.SortActiveGridByFirstSortableColumn(true)), "SortDescending", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Sort Desc"),
             tooltip: "Sort grid descending");
@@ -1340,41 +1450,43 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("File", "FileGroup", theme, logger);
 
+#pragma warning disable CS0618
         var newBudgetBtn = CreateLargeNavButton(
-            "File_NewBudget", 
-            "New\nBudget", 
-            () => SafeExecute((RibbonCommand)form.CreateNewBudget, "NewBudget", logger), 
+            "File_NewBudget",
+            "New\nBudget",
+            () => SafeExecute((RibbonCommand)form.CreateNewBudget, "NewBudget", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("New"),
             tooltip: "Create new budget",
             shortcutKeys: Keys.Control | Keys.N);
 
         var openBudgetBtn = CreateLargeNavButton(
-            "File_OpenBudget", 
-            "Open\nBudget", 
-            () => SafeExecute((RibbonCommand)form.OpenBudget, "OpenBudget", logger), 
+            "File_OpenBudget",
+            "Open\nBudget",
+            () => SafeExecute((RibbonCommand)form.OpenBudget, "OpenBudget", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Open"),
             tooltip: "Open existing budget",
             shortcutKeys: Keys.Control | Keys.O);
 
         var saveLayoutBtn = CreateLargeNavButton(
-            "File_SaveLayout", 
-            "Save\nLayout", 
-            () => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "SaveLayout", logger), 
+            "File_SaveLayout",
+            "Save\nLayout",
+            () => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "SaveLayout", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Save Layout"),
             tooltip: "Save current layout",
             shortcutKeys: Keys.Control | Keys.Shift | Keys.S);
 
         var exportBtn = CreateLargeNavButton(
-            "File_ExportData", 
-            "Export\nData", 
-            () => SafeExecute((RibbonCommand)form.ExportData, "ExportData", logger), 
+            "File_ExportData",
+            "Export\nData",
+            () => SafeExecute((RibbonCommand)form.ExportData, "ExportData", logger),
             logger,
             iconGlyph: RibbonIconGlyphs.GetValueOrDefault("Export"),
             tooltip: "Export data to file",
             shortcutKeys: Keys.Control | Keys.E);
+#pragma warning restore CS0618
 
         strip.Items.Add(newBudgetBtn);
         strip.Items.Add(openBudgetBtn);
@@ -1671,7 +1783,9 @@ public partial class MainForm
                 AutoSize = true,
                 Enabled = true
             };
+#pragma warning disable CS0618
             saveButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "QAT_SaveLayout", logger);
+#pragma warning restore CS0618
 
         // Dashboard button
         var dashboardButton = new ToolStripButton
@@ -1800,4 +1914,17 @@ public partial class MainForm
             logger?.LogDebug(ex, "Failed to toggle layout contextual tab");
         }
     }
+
+    /// <summary>Helper: Check if control is a ribbon panel control</summary>
+    private static bool IsRibbonPanelControl(Control control)
+    {
+        return control?.GetType().Name.Contains("RibbonPanel") ?? false;
+    }
+
+    /// <summary>Helper: Check if control is a backstage control</summary>
+    private static bool IsBackStageControl(Control control)
+    {
+        return control?.GetType().Name.Contains("BackStage") ?? false;
+    }
+
 }

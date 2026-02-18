@@ -8,15 +8,13 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.Drawing;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Panels;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using Action = System.Action;  // Disambiguate from Syncfusion.Windows.Forms.Tools.Action
 
 namespace WileyWidget.WinForms.Forms;
@@ -98,7 +96,7 @@ public static class DashboardFactory
             var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(chartsCard, () =>
             {
-                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Budget Analytics", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
@@ -112,7 +110,7 @@ public static class DashboardFactory
             var reportsCard = CreateDashboardCard("Analytics Hub", "Open Hub", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(reportsCard, () =>
             {
-                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
             });
 
             // Card 5: Budget Status (Static/Status Display)
@@ -183,9 +181,9 @@ public static class DashboardFactory
     /// Create a dashboard card with title and description.
     /// Includes full accessibility support for screen readers (WCAG 2.1 Level A).
     /// </summary>
-    private static (LegacyGradientPanel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
+    private static (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
     {
-        var panel = new LegacyGradientPanel
+        var panel = new Panel
         {
             Dock = DockStyle.None,
             Width = width,
@@ -193,7 +191,6 @@ public static class DashboardFactory
             Padding = new Padding(12, 8, 12, 8),
             Margin = new Padding(4, 4, 4, 8),
             BorderStyle = BorderStyle.FixedSingle,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AutoSize = false
         };
 

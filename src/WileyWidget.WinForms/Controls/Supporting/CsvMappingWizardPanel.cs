@@ -44,7 +44,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private bool _isLoaded;
         private bool _hasUnsavedChanges;
         private List<ValidationItem>? _validationErrors;
-        private PanelMode? _mode = PanelMode.View;
+        private string? _mode = "View";
 
         // Stored event delegates for safe unsubscribe in Dispose
         private EventHandler? _btnApplyClickHandler;
@@ -384,7 +384,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
         public IReadOnlyList<ValidationItem> ValidationErrors => _validationErrors != null ? (IReadOnlyList<ValidationItem>)_validationErrors : Array.Empty<ValidationItem>();
 
-        public PanelMode? Mode => _mode;
+        public string? Mode => _mode;
 
         public CancellationTokenSource? CurrentOperationCts => _currentOperationCts;
 

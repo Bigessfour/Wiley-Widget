@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -245,7 +245,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             // Start async load - fire-and-forget with error handling
-            _ = LoadAsyncSafe();
+            LoadAsyncSafe();
         }
 
         public override async Task LoadAsync(CancellationToken ct = default)
@@ -920,7 +920,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "SettingsPanel: Failed to setup WileyWidget.WinForms.Controls.Supporting.ErrorProviderBinding");
+                Logger.LogWarning(ex, "SettingsPanel: Failed to setup WileyWidget.WinForms.Controls.Supporting.ErrorProviderBinding");
             }
         }
 
@@ -959,7 +959,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 }
                 catch (Exception ex)
                 {
-                    Serilog.Log.Debug(ex, "SettingsPanel: theme selection handler error");
+                    Logger.LogDebug(ex, "SettingsPanel: theme selection handler error");
                 }
             };
             if (_themeCombo != null) _themeCombo.SelectedIndexChanged += _themeComboSelectedHandler;
@@ -1029,7 +1029,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 UpdateStatus("Settings saved successfully", isError: false);
                 SetHasUnsavedChanges(false);
-                Serilog.Log.Information("SettingsPanel: Settings saved");
+                Logger.LogInformation("SettingsPanel: Settings saved");
 
                 MessageBox.Show(
                     this,
@@ -1041,7 +1041,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             catch (Exception ex)
             {
                 UpdateStatus($"Save failed: {ex.Message}", isError: true);
-                Serilog.Log.Error(ex, "SettingsPanel: Save failed");
+                Logger.LogError(ex, "SettingsPanel: Save failed");
             }
             finally
             {
@@ -1082,17 +1082,17 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             try
             {
-                Serilog.Log.Debug("SettingsPanel: LoadViewDataAsync starting");
+                Logger.LogDebug("SettingsPanel: LoadViewDataAsync starting");
                 if (ViewModel != null)
                 {
                     await (ViewModel.LoadCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
-                    Serilog.Log.Information("SettingsPanel: settings loaded successfully");
+                    Logger.LogInformation("SettingsPanel: settings loaded successfully");
                     SetHasUnsavedChanges(false);
                 }
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "SettingsPanel: LoadViewDataAsync failed");
+                Logger.LogWarning(ex, "SettingsPanel: LoadViewDataAsync failed");
             }
         }
 
@@ -1128,7 +1128,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                         }
 
                         try { ViewModel?.SaveCommand?.Execute(null); }
-                        catch (Exception ex) { Serilog.Log.Warning(ex, "SettingsPanel: Failed to save settings on close"); }
+                        catch (Exception ex) { Logger.LogWarning(ex, "SettingsPanel: Failed to save settings on close"); }
                     }
                 }
 
@@ -1139,21 +1139,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                     return;
                 }
 
-                if (parentForm != null)
-                {
-                    var dockingManagerField = parentForm.GetType().GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (dockingManagerField?.GetValue(parentForm) is Syncfusion.Windows.Forms.Tools.DockingManager dm)
-                    {
-                        dm.TrySetDockVisibilitySafe(this, false, context: "SettingsPanel.BtnClose_Click");
-                        return;
-                    }
-                }
-
-                this.Parent?.Controls.Remove(this);
+                // Fallback: hide the panel directly
+                this.Visible = false;
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "SettingsPanel: BtnClose_Click failed");
+                Logger.LogWarning(ex, "SettingsPanel: BtnClose_Click failed");
             }
         }
 
@@ -1196,7 +1187,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "SettingsPanel: Font selection change failed");
+                Logger.LogWarning(ex, "SettingsPanel: Font selection change failed");
             }
         }
 
@@ -1208,7 +1199,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "SettingsPanel: ShowAiHelpDialog failed");
+                Logger.LogWarning(ex, "SettingsPanel: ShowAiHelpDialog failed");
                 MessageBox.Show(this, SettingsPanelResources.AiSettingsHelpShort, SettingsPanelResources.AiSettingsDialogTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
@@ -1228,7 +1219,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "SettingsPanel: Failed to set initial font selection");
+                Logger.LogWarning(ex, "SettingsPanel: Failed to set initial font selection");
             }
         }
 
@@ -1253,7 +1244,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "Failed to parse font string: {FontString}", fontString);
+                Logger.LogWarning(ex, "Failed to parse font string: {FontString}", fontString);
             }
             return null;
         }
@@ -1274,25 +1265,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 }
                 catch { }
             });
-        }
-
-        protected override void ClosePanel()
-        {
-            try
-            {
-                var parentForm = FindForm();
-                if (parentForm == null) return;
-
-                var closePanelMethod = parentForm.GetType().GetMethod(
-                    "ClosePanel",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-                closePanelMethod?.Invoke(parentForm, new object[] { Name });
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "SettingsPanel: Failed to close panel via parent form");
-            }
         }
         #endregion
 

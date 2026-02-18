@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -99,7 +99,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
-        public BudgetOverviewPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<BudgetOverviewViewModel>>? logger)
+        public BudgetOverviewPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<BudgetOverviewViewModel>> logger)
             : base(scopeFactory, logger)
         {
             InitializeComponent();
@@ -124,14 +124,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
-        /// Heavy async initialization - loads budget data after panel is displayed.
-        /// </summary>
-        protected override async Task OnHandleCreatedAsync()
-        {
-            await base.OnHandleCreatedAsync();
-            await LoadAsync(CancellationToken.None);
-        }
-
         /// <summary>
         /// Loads budget data for the initially selected fiscal year.
         /// </summary>
@@ -675,7 +667,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetOverviewPanel: PropertyChanged handler failed");
+                Logger.LogWarning(ex, "BudgetOverviewPanel: PropertyChanged handler failed");
             }
         }
 
@@ -708,7 +700,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetOverviewPanel: UpdateUI failed");
+                Logger.LogWarning(ex, "BudgetOverviewPanel: UpdateUI failed");
             }
         }
 
@@ -725,7 +717,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetOverviewPanel: UpdateMetricsGrid failed");
+                Logger.LogWarning(ex, "BudgetOverviewPanel: UpdateMetricsGrid failed");
             }
         }
 
@@ -752,7 +744,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetOverviewPanel: UpdateChart failed");
+                Logger.LogWarning(ex, "BudgetOverviewPanel: UpdateChart failed");
             }
         }
 
@@ -763,20 +755,20 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Defensive null checks
                 if (_comboFiscalYear == null)
                 {
-                    Serilog.Log.Warning("BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged fired but _comboFiscalYear is null");
+                    Logger.LogWarning("BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged fired but _comboFiscalYear is null");
                     return;
                 }
 
                 if (ViewModel == null)
                 {
-                    Serilog.Log.Warning("BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged fired but ViewModel is null");
+                    Logger.LogWarning("BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged fired but ViewModel is null");
                     return;
                 }
 
                 // Validate selected item is an integer before casting
                 if (_comboFiscalYear.SelectedItem is not int year)
                 {
-                    Serilog.Log.Debug("BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged - invalid selected item type: {ItemType}",
+                    Logger.LogDebug("BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged - invalid selected item type: {ItemType}",
                         _comboFiscalYear.SelectedItem?.GetType().Name ?? "null");
                     return;
                 }
@@ -784,11 +776,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Only refresh if the year actually changed
                 if (year == ViewModel.SelectedFiscalYear)
                 {
-                    Serilog.Log.Debug("BudgetOverviewPanel: ComboFiscalYear selection unchanged ({Year})", year);
+                    Logger.LogDebug("BudgetOverviewPanel: ComboFiscalYear selection unchanged ({Year})", year);
                     return;
                 }
 
-                Serilog.Log.Debug("BudgetOverviewPanel: ComboFiscalYear selection changed to {Year}", year);
+                Logger.LogDebug("BudgetOverviewPanel: ComboFiscalYear selection changed to {Year}", year);
                 ViewModel.SelectedFiscalYear = year;
 
                 // Reload data for the newly selected fiscal year
@@ -796,7 +788,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged handler failed");
+                Logger.LogError(ex, "BudgetOverviewPanel: ComboFiscalYear_SelectedIndexChanged handler failed");
             }
         }
 
@@ -809,7 +801,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Warning(ex, "BudgetOverviewPanel: Refresh failed");
+                Logger.LogWarning(ex, "BudgetOverviewPanel: Refresh failed");
                 MessageBox.Show($"Failed to refresh data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -865,7 +857,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "BudgetOverviewPanel: Export to CSV failed");
+                Logger.LogError(ex, "BudgetOverviewPanel: Export to CSV failed");
                 MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -882,26 +874,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             catch
             {
                 return false;
-            }
-        }
-
-        protected override void ClosePanel()
-        {
-            try
-            {
-                var parentForm = this.FindForm();
-                if (parentForm is Forms.MainForm mainForm)
-                {
-                    mainForm.ClosePanel(Name);
-                    return;
-                }
-
-                var method = parentForm?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-                method?.Invoke(parentForm, new object[] { Name });
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Warning(ex, "BudgetOverviewPanel: ClosePanel failed");
             }
         }
 
@@ -956,25 +928,25 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Defensive checks for required binding objects.
                 if (_fiscalYearBindingSource == null)
                 {
-                    Serilog.Log.Warning("BudgetOverviewPanel: BindFiscalYearData called but _fiscalYearBindingSource is null");
+                    Logger.LogWarning("BudgetOverviewPanel: BindFiscalYearData called but _fiscalYearBindingSource is null");
                     return;
                 }
 
                 if (_comboFiscalYear == null)
                 {
-                    Serilog.Log.Warning("BudgetOverviewPanel: BindFiscalYearData called but _comboFiscalYear is null");
+                    Logger.LogWarning("BudgetOverviewPanel: BindFiscalYearData called but _comboFiscalYear is null");
                     return;
                 }
 
                 if (ViewModel == null)
                 {
-                    Serilog.Log.Warning("BudgetOverviewPanel: BindFiscalYearData called but ViewModel is null");
+                    Logger.LogWarning("BudgetOverviewPanel: BindFiscalYearData called but ViewModel is null");
                     return;
                 }
 
                 if (_comboFiscalYear.IsDisposed)
                 {
-                    Serilog.Log.Debug("BudgetOverviewPanel: BindFiscalYearData skipped because combo is disposed");
+                    Logger.LogDebug("BudgetOverviewPanel: BindFiscalYearData skipped because combo is disposed");
                     return;
                 }
 
@@ -997,7 +969,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                         _comboFiscalYear.Enabled = false;
                         _comboFiscalYear.SelectedIndex = -1;
 
-                        Serilog.Log.Debug("BudgetOverviewPanel: No fiscal years available; combo disabled with no selection");
+                        Logger.LogDebug("BudgetOverviewPanel: No fiscal years available; combo disabled with no selection");
                         return;
                     }
 
@@ -1012,7 +984,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     if (boundItemCount == 0)
                     {
                         _comboFiscalYear.SelectedIndex = -1;
-                        Serilog.Log.Warning("BudgetOverviewPanel: Fiscal year bound list is empty after binding; selection cleared");
+                        Logger.LogWarning("BudgetOverviewPanel: Fiscal year bound list is empty after binding; selection cleared");
                         return;
                     }
 
@@ -1039,12 +1011,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                     {
                         var targetYear = yearsList[targetIndex];
                         _comboFiscalYear.SelectedItem = targetYear;
-                        Serilog.Log.Debug("BudgetOverviewPanel: Selected fiscal year {Year} at index {Index}", targetYear, targetIndex);
+                        Logger.LogDebug("BudgetOverviewPanel: Selected fiscal year {Year} at index {Index}", targetYear, targetIndex);
                     }
                     else if (boundItemCount > 0)
                     {
                         _comboFiscalYear.SelectedItem = yearsList[0];
-                        Serilog.Log.Warning(
+                        Logger.LogWarning(
                             "BudgetOverviewPanel: Target index {TargetIndex} invalid for item count {ItemCount}; selected first item instead",
                             targetIndex,
                             boundItemCount);
@@ -1052,10 +1024,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                     else
                     {
                         _comboFiscalYear.SelectedIndex = -1;
-                        Serilog.Log.Warning("BudgetOverviewPanel: No combo items available for fiscal year selection");
+                        Logger.LogWarning("BudgetOverviewPanel: No combo items available for fiscal year selection");
                     }
 
-                    Serilog.Log.Debug(
+                    Logger.LogDebug(
                         "BudgetOverviewPanel: Fiscal year binding complete. Available years: {Years}, Selected: {SelectedYear}",
                         string.Join(", ", yearsList),
                         _comboFiscalYear.SelectedItem);
@@ -1070,7 +1042,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "BudgetOverviewPanel: Error binding fiscal year data");
+                Logger.LogError(ex, "BudgetOverviewPanel: Error binding fiscal year data");
 
                 if (_comboFiscalYear != null && !_comboFiscalYear.IsDisposed)
                 {
@@ -1092,7 +1064,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "BudgetOverviewPanel: OnLoad failed");
+                Logger.LogError(ex, "BudgetOverviewPanel: OnLoad failed");
             }
         }
 

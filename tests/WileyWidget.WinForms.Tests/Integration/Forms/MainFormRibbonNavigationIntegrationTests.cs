@@ -34,6 +34,7 @@ public sealed class MainFormRibbonNavigationIntegrationTests
         using var form = IntegrationTestServices.CreateMainForm(provider);
         _ = form.Handle;
         form.Show();
+        form.InvokeInitializeChrome();
         PumpMessages(8);
 
         var ribbon = GetPrivateField<RibbonControlAdv>(form, "_ribbon");
@@ -118,6 +119,7 @@ public sealed class MainFormRibbonNavigationIntegrationTests
         using var form = IntegrationTestServices.CreateMainForm(provider);
         _ = form.Handle;
         form.Show();
+        form.InvokeInitializeChrome();
         PumpMessages(8);
 
         var ribbon = GetPrivateField<RibbonControlAdv>(form, "_ribbon");

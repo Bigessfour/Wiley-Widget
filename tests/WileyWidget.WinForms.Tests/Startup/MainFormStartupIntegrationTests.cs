@@ -83,13 +83,6 @@ public sealed class MainFormStartupIntegrationTests
 
             startupException.Should().BeNull("Startup should complete without exceptions");
 
-            await IntegrationTestServices.WaitForConditionAsync(
-                () => GetPrivateField<DockingManager>(form, "_dockingManager") != null,
-                TimeSpan.FromSeconds(5),
-                pollInterval: TimeSpan.FromMilliseconds(100),
-                onTimeout: message => Console.WriteLine($"[TEST] {message}"),
-                CancellationToken.None);
-
             // Diagnostic: log config values
             var config = provider.GetService(typeof(IConfiguration)) as IConfiguration;
             Console.WriteLine($"[TEST DIAG] UI:UseSyncfusionDocking = {config?.GetSection("UI:UseSyncfusionDocking").Value}");
@@ -105,16 +98,14 @@ public sealed class MainFormStartupIntegrationTests
             var runtimeUiConfig = GetPrivateField<WileyWidget.WinForms.Configuration.UIConfiguration>(form, "_uiConfig");
             var isMinimalMode = runtimeUiConfig?.MinimalMode ?? false;
 
-            var dockingManager = GetPrivateField<DockingManager>(form, "_dockingManager");
-            (dockingManager != null || panelNav != null)
-                .Should().BeTrue("startup should initialize docking manager or panel navigator infrastructure");
+            panelNav.Should().NotBeNull("panel navigator should be initialized");
             GetPrivateField<RibbonControlAdv>(form, "_ribbon").Should().NotBeNull("Ribbon should be initialized");
             GetPrivateField<StatusBarAdv>(form, "_statusBar").Should().NotBeNull("StatusBar should be initialized");
             var centralPanel = GetPrivateField<Panel>(form, "_centralDocumentPanel");
             var rightPanel = GetPrivateField<Panel>(form, "_rightDockPanel");
-            if (dockingManager != null)
+            if (panelNav != null)
             {
-                centralPanel.Should().NotBeNull("Central document panel should be initialized when docking manager is available");
+                centralPanel.Should().NotBeNull("Central document panel should be initialized when panel navigator is available");
                 if (!isMinimalMode)
                 {
                     rightPanel.Should().NotBeNull("Right dock panel should be initialized when MinimalMode is disabled");

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using Syncfusion.Windows.Forms;
 using WileyWidget.WinForms.ViewModels;
@@ -69,8 +70,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             public TestMainForm(IServiceProvider sp, IConfiguration configuration, ILogger<MainForm> logger,
                 ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService, IWindowStateService windowStateService,
-                IFileImportService fileImportService)
-                : base(sp, configuration, logger, reportViewerLaunchOptions, themeService, windowStateService, fileImportService)
+                IFileImportService fileImportService, SyncfusionControlFactory controlFactory)
+                : base(sp, configuration, logger, reportViewerLaunchOptions, themeService, windowStateService, fileImportService, controlFactory)
             {
             }
             public void CallOnLoad() => typeof(MainForm).GetMethod("OnLoad", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, new object[] { EventArgs.Empty });
@@ -85,7 +86,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
             var panelNav = new Mock<IPanelNavigationService>();
 
             // Act
@@ -113,7 +114,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
@@ -136,7 +137,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
@@ -157,7 +158,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
@@ -179,7 +180,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());

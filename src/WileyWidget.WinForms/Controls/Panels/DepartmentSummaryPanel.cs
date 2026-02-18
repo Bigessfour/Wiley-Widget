@@ -21,7 +21,7 @@ using WileyWidget.WinForms.Controls.Supporting;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
-namespace WileyWidget.WinForms.Controls.Analytics
+namespace WileyWidget.WinForms.Controls.Panels
 {
     /// <summary>
     /// Docked panel displaying Department Summary with key metrics and drill-down grid.
@@ -538,26 +538,6 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     "Error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-            }
-        }
-
-        protected override void ClosePanel()
-        {
-            try
-            {
-                var parentForm = FindForm();
-                if (parentForm == null) return;
-
-                // Try to find ClosePanel method on parent form
-                var closePanelMethod = parentForm.GetType().GetMethod(
-                    "ClosePanel",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-                closePanelMethod?.Invoke(parentForm, new object[] { Name });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"DepartmentSummaryPanel: ClosePanel failed: {ex.Message}");
             }
         }
 

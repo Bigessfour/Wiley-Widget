@@ -12,6 +12,7 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.Services.Abstractions;
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
@@ -37,7 +38,8 @@ public sealed class MainFormIntegrationTests
                 Config.ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider))
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(provider))
         {
         }
 
@@ -106,6 +108,11 @@ public sealed class MainFormIntegrationTests
             Thread.Sleep(100);  // Give QAT and other UI elements time to wire up
             Application.DoEvents();
         }
+
+        public Syncfusion.Windows.Forms.Tools.RibbonControlAdv Ribbon => (Syncfusion.Windows.Forms.Tools.RibbonControlAdv)typeof(RibbonForm).GetProperty("Ribbon", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(this)!;
+        public int GetQATItemCount() => base.GetQATItemCount();
+        public void SaveCurrentLayout() => base.SaveCurrentLayout();
+        public void ResetLayout() => base.ResetLayout();
     }
 
     [WinFormsFact]
@@ -245,6 +252,7 @@ public sealed class MainFormIntegrationTests
     [WinFormsFact]
     public void ProfessionalStatusBar_QAT_And_MDI_DocumentManagement_Work()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         TestThemeHelper.EnsureOffice2019Colorful();
         using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
         using var form = new TestMainForm(provider);
@@ -279,6 +287,7 @@ public sealed class MainFormIntegrationTests
         {
             if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
+#pragma warning restore CS0618
     }
 
     [StaFact]
@@ -355,6 +364,7 @@ public sealed class MainFormIntegrationTests
     [WinFormsFact]
     public void MainForm_Disposal_And_ResourceCleanup_DoNotThrow()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         // Final resilience test: verify proper cleanup without exceptions
         TestThemeHelper.EnsureOffice2019Colorful();
         using var provider = IntegrationTestServices.BuildProvider();
@@ -382,6 +392,7 @@ public sealed class MainFormIntegrationTests
 
         disposalException.Should().BeNull("Form disposal must not throw exceptions");
     }
+#pragma warning restore CS0618
 
     [StaFact]
     public void MainForm_AsyncInitialization_And_ViewModel_Works()
@@ -464,6 +475,7 @@ public sealed class MainFormIntegrationTests
     [StaFact]
     public void ExpandedKeyboardShortcuts_CoverMajorPaths()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         TestThemeHelper.EnsureOffice2019Colorful();
         using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
         using var form = new TestMainForm(provider);
@@ -508,11 +520,13 @@ public sealed class MainFormIntegrationTests
         {
             if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
+#pragma warning restore CS0618
     }
 
     [StaFact]
     public void PanelNavigation_History_And_BackForward_Work()
     {
+#pragma warning disable CS0618 // Type or member is obsolete
         TestThemeHelper.EnsureOffice2019Colorful();
         using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
         using var form = new TestMainForm(provider);
@@ -554,5 +568,6 @@ public sealed class MainFormIntegrationTests
         {
             if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
+#pragma warning restore CS0618
     }
 }

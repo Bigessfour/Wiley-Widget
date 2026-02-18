@@ -8,7 +8,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using Panels = WileyWidget.WinForms.Controls.Panels;
-using WileyWidget.WinForms.Controls.Analytics;
+
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Helpers;
 
@@ -161,7 +161,8 @@ public partial class MainForm
         {
             try
             {
-                SaveCurrentLayout();
+                // SaveCurrentLayout();
+                _logger?.LogDebug("SaveCurrentLayout not yet implemented");
                 return true;
             }
             catch (System.IO.IOException ioEx)
@@ -185,7 +186,8 @@ public partial class MainForm
         {
             try
             {
-                ResetLayout();
+                // ResetLayout();
+                _logger?.LogDebug("ResetLayout not yet implemented");
                 return true;
             }
             catch (InvalidOperationException invEx)
@@ -202,7 +204,8 @@ public partial class MainForm
         {
             try
             {
-                TogglePanelLocking();
+                // TogglePanelLocking();
+                _logger?.LogDebug("TogglePanelLocking not yet implemented");
                 return true;
             }
             catch (InvalidOperationException invEx)
@@ -231,7 +234,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.C))
         {
-            return TryShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
+            return TryShowPanel<Panels.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.D))
@@ -274,7 +277,7 @@ public partial class MainForm
     {
         try
         {
-            ShowPanel<TPanel>(panelName, style, true);
+            _panelNavigator?.ShowPanel<TPanel>(panelName, style, true);
             return true;
         }
         catch (Exception ex)
@@ -497,4 +500,5 @@ public partial class MainForm
         }
         return null;
     }
+
 }

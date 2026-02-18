@@ -1143,14 +1143,18 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         try
         {
-            var parentForm = this.FindForm();
-            if (parentForm is Forms.MainForm mf)
+            // Use the modern panel navigation service
+            var panelNavigator = ServiceProvider is IServiceProvider provider
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(provider)
+                : null;
+            if (panelNavigator != null)
             {
-                mf.ShowPanel<TPanel>(panelName);
+                panelNavigator.ShowPanel<TPanel>(panelName);
                 return;
             }
 
             // Fallback for older hosts
+            var parentForm = this.FindForm();
             var method = parentForm?.GetType().GetMethod("DockUserControlPanel",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (method != null)
@@ -1550,7 +1554,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     private void ShowValidationDialog(ValidationResult validationResult)
     {
-        if (validationResult.IsValid || validationResult.Errors.Count == 0)
+        if (validationResult.IsValid || validationResult.Errors.Length == 0)
         {
             return;
         }
@@ -2116,26 +2120,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         });
     }
 
-    protected override void ClosePanel()
-    {
-        try
-        {
-            var parentForm = this.FindForm();
-            if (parentForm is Forms.MainForm mainForm)
-            {
-                mainForm.ClosePanel(Name);
-                return;
-            }
-
-            var method = parentForm?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            method?.Invoke(parentForm, new object[] { Name });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "BudgetPanel: ClosePanel failed");
-        }
-    }
-
     private void OnLoadBudgetsButtonClick(object? sender, EventArgs e)
     {
         if (ViewModel != null)
@@ -2238,7 +2222,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         try
         {
             // Auto-load data on panel load via LoadAsync override - fire-and-forget with error handling
-            _ = LoadAsyncSafe();
+            LoadAsyncSafe();
         }
         catch (Exception ex)
         {

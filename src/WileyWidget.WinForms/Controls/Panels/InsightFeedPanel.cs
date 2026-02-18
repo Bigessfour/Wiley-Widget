@@ -10,6 +10,7 @@ using System.Drawing;
 using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -26,7 +27,7 @@ using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
-namespace WileyWidget.WinForms.Controls.Analytics
+namespace WileyWidget.WinForms.Controls.Panels
 {
     /// <summary>
     /// Panel for displaying proactive AI insights in a grid with priority highlighting.
@@ -35,6 +36,11 @@ namespace WileyWidget.WinForms.Controls.Analytics
     /// </summary>
     public partial class InsightFeedPanel : ScopedPanelBase<InsightFeedViewModel>
     {
+        /// <summary>Public typed ViewModel for external access (e.g. ProactiveInsightsPanel container).</summary>
+        [System.ComponentModel.Browsable(false)]
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public new InsightFeedViewModel? ViewModel => base.ViewModel;
+
         private LegacyGradientPanel _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
@@ -48,12 +54,16 @@ namespace WileyWidget.WinForms.Controls.Analytics
         private PropertyChangedEventHandler ViewModelPropertyChangedHandler;
         private SelectionChangingEventHandler? _insightsGridSelectionChangingHandler;
         private FilterChangingEventHandler? _insightsGridFilterChangingHandler;
+        private EventHandler? _panelHeaderRefreshHandler;
+        private EventHandler? _panelHeaderCloseHandler;
+        private EventHandler? _panelHeaderHelpHandler;
+        private EventHandler? _panelHeaderPinToggledHandler;
 
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
         /// </summary>
         public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase<InsightFeedViewModel>>? logger = null)
-            : base(scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory)), logger)
+            : base(scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory)), (ILogger?)logger ?? NullLogger.Instance)
         {
             InitializeComponent();
 
@@ -86,10 +96,10 @@ namespace WileyWidget.WinForms.Controls.Analytics
             return await Task.FromResult(ValidationResult.Success);
         }
 
-        public override async Task<ValidationResult> SaveAsync(CancellationToken ct = default)
+        public override Task SaveAsync(CancellationToken ct = default)
         {
             // Insights feed is read-only, no save needed
-            return await Task.FromResult(ValidationResult.Success);
+            return Task.CompletedTask;
         }
 
         public override void FocusFirstError()
@@ -177,10 +187,14 @@ namespace WileyWidget.WinForms.Controls.Analytics
                 _topPanel.Controls.Add(_panelHeader);
 
                 // Wire PanelHeader events
-                _panelHeader.RefreshClicked += RefreshButton_Click;
-                _panelHeader.CloseClicked += (s, e) => ClosePanel();
-                _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Insight Feed Help: Real-time AI insights for your data.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
-                _panelHeader.PinToggled += (s, e) => { /* Pin logic */ };
+                _panelHeaderRefreshHandler = RefreshButton_Click;
+                _panelHeaderCloseHandler = (s, e) => ClosePanel();
+                _panelHeaderHelpHandler = PanelHeader_HelpClicked;
+                _panelHeaderPinToggledHandler = PanelHeader_PinToggled;
+                _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+                _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+                _panelHeader.HelpClicked += _panelHeaderHelpHandler;
+                _panelHeader.PinToggled += _panelHeaderPinToggledHandler;
 
                 // Insights grid - configured for Office2019Colorful theme with full Syncfusion support
                 _insightsGrid = new SfDataGrid
@@ -395,33 +409,18 @@ namespace WileyWidget.WinForms.Controls.Analytics
             }
         }
 
-        protected override void ClosePanel()
+        private void PanelHeader_HelpClicked(object? sender, EventArgs e)
         {
-            try
-            {
-                var form = FindForm();
-                if (form is WileyWidget.WinForms.Forms.MainForm mainForm && mainForm.PanelNavigator != null)
-                {
-                    mainForm.PanelNavigator.HidePanel("AI Chat");
-                    return;
-                }
+            MessageBox.Show(
+                "Insight Feed Help: Real-time AI insights for your data.",
+                "Help",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
 
-                var dockingManagerField = form?.GetType()
-                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
-                {
-                    dockingManager.TrySetDockVisibilitySafe(this, false, _logger, "InsightFeedPanel.ClosePanel");
-                }
-                else
-                {
-                    Visible = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Failed to close InsightFeedPanel via docking manager");
-                Visible = false;
-            }
+        private void PanelHeader_PinToggled(object? sender, EventArgs e)
+        {
+            // Pin behavior is managed by host docking infrastructure.
         }
 
         /// <summary>
@@ -556,6 +555,26 @@ namespace WileyWidget.WinForms.Controls.Analytics
                     if (_btnRefresh != null && _refreshButtonClickHandler != null)
                     {
                         _btnRefresh.Click -= _refreshButtonClickHandler;
+                    }
+
+                    if (_panelHeader != null)
+                    {
+                        if (_panelHeaderRefreshHandler != null)
+                        {
+                            _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                        }
+                        if (_panelHeaderCloseHandler != null)
+                        {
+                            _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
+                        }
+                        if (_panelHeaderHelpHandler != null)
+                        {
+                            _panelHeader.HelpClicked -= _panelHeaderHelpHandler;
+                        }
+                        if (_panelHeaderPinToggledHandler != null)
+                        {
+                            _panelHeader.PinToggled -= _panelHeaderPinToggledHandler;
+                        }
                     }
 
                     if (_insightsGrid != null && _insightsGridSelectionChangingHandler != null)

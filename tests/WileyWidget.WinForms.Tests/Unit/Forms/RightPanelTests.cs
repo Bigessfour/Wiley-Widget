@@ -15,6 +15,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Xunit;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
@@ -79,8 +80,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             public TestMainForm(IServiceProvider sp, IConfiguration configuration, ILogger<MainForm> logger,
                 ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService, IWindowStateService windowStateService,
-                IFileImportService fileImportService)
-                : base(sp, configuration, logger, reportViewerLaunchOptions, themeService, windowStateService, fileImportService)
+                IFileImportService fileImportService, SyncfusionControlFactory controlFactory)
+                : base(sp, configuration, logger, reportViewerLaunchOptions, themeService, windowStateService, fileImportService, controlFactory)
             {
             }
 
@@ -108,7 +109,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var form = new TestMainForm(provider, configuration, loggerForForm, ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider)!,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!);
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!,
+                Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
 
@@ -143,7 +145,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var form = new TestMainForm(provider, configuration, loggerForForm, ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider)!,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!);
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!,
+                Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
             var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
@@ -170,7 +173,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var form = new TestMainForm(provider, configuration, loggerForForm, ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider)!,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!);
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!,
+                Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
             var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);

@@ -112,7 +112,8 @@ internal static class IntegrationTestServices
         services.AddScoped<SettingsViewModel>();
         services.AddScoped<UtilityBillViewModel>();
         services.AddScoped<WarRoomViewModel>();
-        services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
+        services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatViewModel>();
+        services.AddScoped<WileyWidget.WinForms.Factories.SyncfusionControlFactory>();
         services.AddWindowsFormsBlazorWebView();
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
@@ -166,20 +167,31 @@ internal static class IntegrationTestServices
 
     public static MainForm CreateMainForm(IServiceProvider provider)
     {
-        var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
-        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
-        var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
-        var windowStateService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider);
-        var fileImportService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider);
+        var scope = provider.CreateScope();
+        var scopedProvider = scope.ServiceProvider;
 
-        return new MainForm(
-            provider,
+        var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(scopedProvider);
+        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(scopedProvider);
+        var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(scopedProvider);
+        var windowStateService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(scopedProvider);
+        var fileImportService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(scopedProvider);
+        var controlFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Factories.SyncfusionControlFactory>(scopedProvider);
+
+        var form = new MainForm(
+            scopedProvider,
             configuration,
             logger,
             ReportViewerLaunchOptions.Disabled,
             themeService,
             windowStateService,
-            fileImportService);
+            fileImportService,
+            controlFactory);
+
+        // Store the scope on the form so it doesn't get GC'd and disposed
+        // We'll dispose it when the form is disposed
+        form.Tag = scope; // Using Tag to store the scope
+
+        return form;
     }
 
     private const string ArtifactsDirEnv = "WILEYWIDGET_TEST_ARTIFACTS_DIR";

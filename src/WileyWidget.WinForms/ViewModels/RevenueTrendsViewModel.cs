@@ -328,5 +328,11 @@ internal class FallbackAccountsRepository : IAccountsRepository
         => Task.FromResult<IReadOnlyList<WileyWidget.Models.MunicipalAccount>>(new List<WileyWidget.Models.MunicipalAccount>());
 
     public Task<IReadOnlyList<MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<MonthlyRevenueAggregate>>(Array.Empty<MonthlyRevenueAggregate>());
+    {
+        // Return empty list for fallback/design-time scenarios
+        _ = startDate;
+        _ = endDate;
+        _ = cancellationToken;
+        return Task.FromResult<IReadOnlyList<MonthlyRevenueAggregate>>(Array.Empty<MonthlyRevenueAggregate>());
+    }
 }

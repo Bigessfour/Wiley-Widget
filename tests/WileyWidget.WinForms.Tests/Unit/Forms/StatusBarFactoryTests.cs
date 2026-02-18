@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.Windows.Forms.Tools;
 using Xunit;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
@@ -23,7 +24,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             // Arrange
             var logger = NullLogger.Instance;
-            var form = new MainFormStub();
+            var form = new MainForm();
 
             // Act
             var statusBar = StatusBarFactory.CreateStatusBar(form, logger, useSyncfusionDocking: true);
@@ -49,10 +50,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             // Theming is handled by SfSkinManager; avoid asserting platform-dependent colors here.
         }
 
-        // Small lightweight MainForm stub sufficient for status bar factory tests
-        private sealed class MainFormStub : MainForm
+        // Small lightweight MainForm  sufficient for status bar factory tests
+        private sealed class MainForm : MainForm
         {
-            public MainFormStub()
+            public MainForm()
                 : base(
                       new ServiceCollection().BuildServiceProvider(),
                       new ConfigurationBuilder().Build(),
@@ -60,7 +61,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                       ReportViewerLaunchOptions.Disabled,
                       new TestThemeService(),
                       new TestWindowStateService(),
-                      new TestFileImportService())
+                      new TestFileImportService(),
+                      new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance))
             {
             }
         }

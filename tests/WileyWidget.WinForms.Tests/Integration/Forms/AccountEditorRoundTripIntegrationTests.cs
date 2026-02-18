@@ -307,8 +307,15 @@ public sealed class AccountEditorRoundTripIntegrationTests
                 (account.AccountNumber != null && account.AccountNumber.Value.Contains(searchTerm)) ||
                 account.FundDescription.Contains(searchTerm));
 
-        public Task<IReadOnlyList<WileyWidget.Business.Models.MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<WileyWidget.Business.Models.MonthlyRevenueAggregate>>(Array.Empty<WileyWidget.Business.Models.MonthlyRevenueAggregate>());
+        public async Task<IReadOnlyList<WileyWidget.Business.Models.MonthlyRevenueAggregate>> GetMonthlyRevenueAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            // Test implementation - return sample data
+            return new List<WileyWidget.Business.Models.MonthlyRevenueAggregate>
+            {
+                new() { Month = new DateTime(2024, 1, 1), Amount = 10000m, TransactionCount = 50 },
+                new() { Month = new DateTime(2024, 2, 1), Amount = 12000m, TransactionCount = 55 }
+            };
+        }
 
         private async Task<IReadOnlyList<MunicipalAccount>> QueryTargetedAsync(
             CancellationToken cancellationToken,

@@ -19,6 +19,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -26,7 +27,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// <summary>
 /// Panel for creating/editing payment (check) entries
 /// </summary>
-public partial class PaymentEditPanel : ScopedPanelBase
+public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 {
     private Payment? _existingPayment;
     private bool _isNew;
@@ -64,7 +65,7 @@ public partial class PaymentEditPanel : ScopedPanelBase
         public Vendor Vendor { get; set; } = null!;
     }
 
-    public PaymentEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase> logger)
+    public PaymentEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<PaymentsViewModel>> logger)
         : base(scopeFactory, logger)
     {
         _isNew = true;

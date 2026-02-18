@@ -37,7 +37,7 @@ namespace WileyWidget.WinForms.Controls.Panels
     /// Replaces left dock navigation buttons, providing activity audit trail.
     /// Uses SfDataGrid to show recent actions in a user-friendly interface.
     /// </summary>
-    public partial class ActivityLogPanel : ScopedPanelBase
+    public partial class ActivityLogPanel : ScopedPanelBase<ActivityLogViewModel>
     {
         // Strongly-typed ViewModel (this is what you use in your code)
         [System.ComponentModel.Browsable(false)]
@@ -67,7 +67,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// </summary>
         public ActivityLogPanel(
             IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase> logger)
+            ILogger<ScopedPanelBase<ActivityLogViewModel>> logger)
             : base(scopeFactory, logger)
         {
             // Set AutoScaleMode for proper DPI scaling
@@ -204,7 +204,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             mainTable.Controls.Add(buttonPanel, 0, 0);
 
-            // Row 1: Placeholder for SplitContainer (will be created in OnShown)
+            // Row 1: temporary layout host for SplitContainer (created in OnShown)
             // Deferred to OnShown to avoid InvalidOperationException from premature SplitterDistance set
             var placeholderPanel = new Panel
             {
@@ -239,7 +239,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     this.Width, this.Height, this.IsHandleCreated);
 
                 // Row 1 index is 1 in the table (row 0 is the button panel)
-                // Remove placeholder and add the real split container
+                // Replace temporary layout host with the real split container
                 var placeholder = _mainTable.Controls["GrowPlaceholder"];
                 if (placeholder != null)
                 {
@@ -495,29 +495,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                     showErrorDialog: false, // Don't show dialog for background timer refreshes
                     statusLabel: null);
             }
-        }
-
-        protected override void ClosePanel()
-        {
-            try
-            {
-                var form = FindForm();
-                var dockingManagerField = form?.GetType()
-                    .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (dockingManagerField?.GetValue(form) is Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
-                {
-                    var dockedHost = FindDockedHost(dockingManager);
-                    dockingManager.TrySetDockVisibilitySafe(dockedHost ?? this, false, Logger, "ActivityLogPanel.ClosePanel");
-                    Logger?.LogDebug("ActivityLogPanel closed via DockingManager");
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger?.LogDebug(ex, "Failed to close ActivityLogPanel via docking manager");
-            }
-
-            Visible = false;
         }
 
         private Control? FindDockedHost(Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)

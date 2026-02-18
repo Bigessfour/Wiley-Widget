@@ -1090,26 +1090,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         }
     }
 
-    protected override void ClosePanel()
-    {
-        try
-        {
-            var parentForm = this.FindForm();
-            if (parentForm is Forms.MainForm mainForm)
-            {
-                mainForm.ClosePanel(Name);
-                return;
-            }
-
-            var method = parentForm?.GetType().GetMethod("ClosePanel", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            method?.Invoke(parentForm, new object[] { Name });
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogWarning(ex, "RecommendedMonthlyChargePanel: ClosePanel failed");
-        }
-    }
-
     /// <summary>
     /// Clean up any resources being used.
     /// </summary>

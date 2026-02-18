@@ -1053,64 +1053,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         return Task.CompletedTask;
     }
 
-    protected override void ClosePanel()
-    {
-        try
-        {
-            // Find parent form and locate DockingManager
-            var form = FindForm();
-            if (form != null)
-            {
-                var dockingManager = FindDockingManager(form);
-                if (dockingManager != null)
-                {
-                    dockingManager.TrySetDockVisibilitySafe(this, false, Logger, "ReportsPanel.ClosePanel");
-                    Logger.LogDebug("Panel hidden via DockingManager");
-                }
-                else
-                {
-                    // Fallback: just hide the panel
-                    Visible = false;
-                    Logger.LogDebug("Panel hidden (DockingManager not found)");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Error closing panel");
-        }
-    }
-
-    private static DockingManager? FindDockingManager(Form form)
-    {
-        // DockingManager is a component, not a control - search form's components
-        if (form.Site?.Container != null)
-        {
-            foreach (System.ComponentModel.IComponent component in form.Site.Container.Components)
-            {
-                if (component is DockingManager dm)
-                {
-                    return dm;
-                }
-            }
-        }
-
-        // Fallback: search via reflection for private _dockingManager field
-        var dockingManagerField = form.GetType()
-            .GetField("_dockingManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        if (dockingManagerField != null)
-        {
-            var value = dockingManagerField.GetValue(form);
-            if (value is DockingManager dm)
-            {
-                return dm;
-            }
-        }
-
-        return null;
-    }
-
     private void UpdateStatus(string message)
     {
         this.InvokeIfRequired(() =>
