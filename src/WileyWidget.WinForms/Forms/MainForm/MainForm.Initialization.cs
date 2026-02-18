@@ -22,16 +22,9 @@ namespace WileyWidget.WinForms.Forms
 
             EnsurePanelNavigatorInitialized();
 
-            // Auto-open the panels this branch is focused on
-            try
-            {
-                _panelNavigator?.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);
-                _panelNavigator?.ShowPanel<CustomersPanel>("Customers", DockingStyle.Left, allowFloating: true);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to auto-open WarRoom or Customers panel");
-            }
+            // Clean launch: no panels auto-open on startup — user opens via Ribbon
+            // _panelNavigator?.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);
+            // _panelNavigator?.ShowPanel<CustomersPanel>("Customers", DockingStyle.Left, allowFloating: true);
 
             ApplyStatus("Ready");
             _logger?.LogInformation("[ONSHOWN] Initialization complete");
