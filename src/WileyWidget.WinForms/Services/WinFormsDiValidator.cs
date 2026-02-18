@@ -347,6 +347,14 @@ namespace WileyWidget.WinForms.Services
                     continue;
                 }
                 var viewModelType = genericArgs[0];
+
+                // Skip abstract ViewModel types (e.g. ObservableObject used as a no-ViewModel placeholder)
+                if (viewModelType.IsAbstract)
+                {
+                    result.SuccessMessages.Add($"✓ {panelType.Name} ViewModel {viewModelType.Name} is abstract (no DI registration required)");
+                    continue;
+                }
+
                 try
                 {
                     // Check if ViewModel can be resolved from scoped provider

@@ -497,6 +497,7 @@ public class BudgetRepository : IBudgetRepository
                 TotalBudgeted = g.Sum(be => be.BudgetedAmount),
                 TotalActual = g.Sum(be => be.ActualAmount)
             })
+            .OrderBy(x => 1) // Suppress EF warning: First/FirstOrDefault without OrderBy
             .FirstOrDefaultAsync(cancellationToken);
 
         var analysis = new BudgetVarianceAnalysis
