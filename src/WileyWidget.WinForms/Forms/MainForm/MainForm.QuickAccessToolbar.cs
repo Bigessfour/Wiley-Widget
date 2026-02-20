@@ -70,7 +70,7 @@ public partial class MainForm
                 // Try to invoke refresh command if available
                 var viewModelType = panel.UntypedViewModel.GetType();
                 var refreshCommand = viewModelType.GetProperty("RefreshCommand")?.GetValue(panel.UntypedViewModel);
-                
+
                 if (refreshCommand is CommunityToolkit.Mvvm.Input.IAsyncRelayCommand asyncCmd)
                 {
                     _ = asyncCmd.ExecuteAsync(null);

@@ -104,6 +104,14 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main(string[] args)
         {
+            // Handle test mode argument (sets environment variable for FlaUI integration tests)
+            if (args.Contains("--testmode"))
+            {
+                Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "true");
+                Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+                Console.WriteLine("[TEST MODE] Enabled - using test database and UI automation settings");
+            }
+
             // Set working directory to repo root for consistent logging paths
             var currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
             var repoRoot = FindRepoRoot(currentDir) ?? FindRepoRoot(new DirectoryInfo(AppContext.BaseDirectory));

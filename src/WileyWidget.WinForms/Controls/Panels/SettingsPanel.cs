@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -12,6 +12,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Utilities;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.DataGrid.Events;
@@ -125,6 +126,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private EventHandler? _chkOpenEditFormsDockedHandler;
         private EventHandler? _chkUseDemoDataHandler;
         private EventHandler? _chkEnableAiHandler;
+        private EventHandler? _chkEnableAiManualValueSyncHandler;
         private EventHandler? _themeComboSelectedHandler;
         private EventHandler? _txtXaiApiEndpointChangedHandler;
         private EventHandler? _cmbXaiModelSelectedHandler;
@@ -139,6 +141,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         private EventHandler? _btnShowApiKeyClickHandler;
         private LinkLabelLinkClickedEventHandler? _lnkAiLearnMoreHandler;
         private EventHandler? _btnBrowseExportPathClickHandler;
+        private EventHandler? _btnSaveClickHandler;
+        private EventHandler? _btnCloseClickHandler;
         #endregion
 
         /// <summary>
@@ -206,15 +210,15 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// Called after ViewModel is resolved from scoped provider.
         /// Performs UI setup and initial data binding.
         /// </summary>
-        protected override void OnViewModelResolved(object? viewModel)
+        protected override void OnViewModelResolved(SettingsViewModel? viewModel)
         {
-            base.OnViewModelResolved(viewModel);
-            if (viewModel is not SettingsViewModel typedViewModel)
+            if (viewModel == null)
             {
+                Logger.LogWarning("SettingsPanel: ViewModel resolved as null — controls will not initialize.");
                 return;
             }
 
-            DataContext = typedViewModel;
+            DataContext = viewModel;
 
             InitializeComponent();
             SetupBindings();
@@ -350,7 +354,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Set automation ID for UI testing
             this.Name = "Panel_Settings";
 
-            AutoScaleMode = AutoScaleMode.Font;
+            AutoScaleMode = AutoScaleMode.Dpi;
             Padding = Padding.Empty;
 
             // Panel header
@@ -360,7 +364,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Title = "Application Settings",
                 ShowRefreshButton = false,
                 ShowHelpButton = false,
-                Height = 44
+                Height = LayoutTokens.HeaderHeight
             };
             _panelHeader.CloseClicked += (s, e) => ClosePanel();
             Controls.Add(_panelHeader);
@@ -394,7 +398,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.Name = "txtAppTitle";
                 textBox.Width = 300;
                 textBox.MaxLength = 100;
-                textBox.Font = new Font("Segoe UI", 10F);
                 textBox.AccessibleName = "Application Title";
                 textBox.AccessibleDescription = "Set the friendly application title";
             });
@@ -409,7 +412,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 combo.MaxDropDownItems = 5;
             });
             appearanceTable.Controls.Add(_themeCombo, 1, 1);
-            _themeCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             try
             {
                 if (ViewModel?.Themes != null && ViewModel.Themes.Count > 0)
@@ -434,7 +436,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 combo.MaxDropDownItems = 10;
             });
             appearanceTable.Controls.Add(_fontCombo, 1, 2);
-            _fontCombo.DropDownListView.Style.ItemStyle.Font = new Font("Segoe UI", 10F);
             _fontCombo.DataSource = GetAvailableFonts();
             appearanceGroup.Controls.Add(appearanceTable);
             mainFlowPanel.Controls.Add(appearanceGroup);
@@ -447,7 +448,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 checkBox.AutoSize = true;
                 checkBox.Checked = ViewModel?.OpenEditFormsDocked ?? false;
-                checkBox.Font = new Font("Segoe UI", 9);
                 checkBox.AccessibleName = "Open edit forms docked";
             });
             generalTable.Controls.Add(_chkOpenEditFormsDocked, 1, 0);
@@ -457,7 +457,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 checkBox.AutoSize = true;
                 checkBox.Checked = ViewModel?.UseDemoData ?? false;
-                checkBox.Font = new Font("Segoe UI", 9);
                 checkBox.AccessibleName = "Use demo data";
             });
             generalTable.Controls.Add(_chkUseDemoData, 1, 1);
@@ -528,7 +527,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 checkBox.AutoSize = true;
                 checkBox.Checked = ViewModel?.EnableAi ?? false;
-                checkBox.Font = new Font("Segoe UI", 9);
             });
             aiTable.Controls.Add(_chkEnableAi, 1, 0);
             _aiToolTip?.SetToolTip(_chkEnableAi, "Enable or disable AI features.");
@@ -611,8 +609,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             aiTable.Controls.Add(_lnkAiLearnMore = new LinkLabel
             {
                 Text = SettingsPanelResources.AiSettingsLearnMoreLabel,
-                AutoSize = true,
-                Font = new Font("Segoe UI", 8F)
+                AutoSize = true
             }, 1, 7);
             aiGroup.Controls.Add(aiTable);
             mainFlowPanel.Controls.Add(aiGroup);
@@ -647,14 +644,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             aboutFlow.Controls.Add(_lblVersion = new Label
             {
                 Text = $"Wiley Widget v1.0.0\n.NET {Environment.Version}\nRuntime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}",
-                AutoSize = true,
-                Font = new Font("Segoe UI", 9)
+                AutoSize = true
             });
             aboutFlow.Controls.Add(_lblDbStatus = new Label
             {
                 Text = "Database: Connected",
-                AutoSize = true,
-                Font = new Font("Segoe UI", 9)
+                AutoSize = true
             });
             aboutGroup.Controls.Add(aboutFlow);
             mainFlowPanel.Controls.Add(aboutGroup);
@@ -665,7 +660,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 button.Name = "btnClose";
                 button.Width = 100;
-                button.Height = 36;
+                button.Height = LayoutTokens.Dp(LayoutTokens.ButtonHeight);
             });
             buttonFlow.Controls.Add(_btnClose);
             _tooltip?.SetToolTip(_btnClose, "Close this settings panel");
@@ -673,7 +668,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 button.Name = "btnSave";
                 button.Width = 140;
-                button.Height = 36;
+                button.Height = LayoutTokens.Dp(LayoutTokens.ButtonHeight);
                 button.Enabled = false;
             });
             buttonFlow.Controls.Add(_btnSave);
@@ -729,11 +724,74 @@ namespace WileyWidget.WinForms.Controls.Panels
             _numXaiTimeout?.DataBindings.Clear();
             _numXaiMaxTokens?.DataBindings.Clear();
             _numXaiTemperature?.DataBindings.Clear();
+
+            if (_chkEnableAi != null && _chkEnableAiManualValueSyncHandler != null)
+            {
+                _chkEnableAi.CheckedChanged -= _chkEnableAiManualValueSyncHandler;
+                _chkEnableAiManualValueSyncHandler = null;
+            }
+        }
+
+        private bool TryResolveBindingMember(string preferredMember, out string resolvedMember, params string[] alternateMembers)
+        {
+            resolvedMember = preferredMember;
+
+            // If the binding source hasn't been initialized or has no DataSource, nothing to resolve.
+            if (_bindingSource?.DataSource == null)
+            {
+                return false;
+            }
+
+            PropertyDescriptorCollection? descriptors = null;
+            try
+            {
+                descriptors = _bindingSource.GetItemProperties(null);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "SettingsPanel: GetItemProperties failed while resolving binding member '{BindingMember}'", preferredMember);
+            }
+
+            if ((descriptors == null || descriptors.Count == 0) && _bindingSource.DataSource != null)
+            {
+                descriptors = TypeDescriptor.GetProperties(_bindingSource.DataSource);
+            }
+
+            if (descriptors == null || descriptors.Count == 0)
+            {
+                return false;
+            }
+
+            if (descriptors.Find(preferredMember, true) != null)
+            {
+                resolvedMember = preferredMember;
+                return true;
+            }
+
+            foreach (var alternate in alternateMembers)
+            {
+                if (!string.IsNullOrWhiteSpace(alternate) && descriptors.Find(alternate, true) != null)
+                {
+                    resolvedMember = alternate;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void SetupBindings()
         {
+            if (ViewModel == null)
+            {
+                return;
+            }
+
             _bindingSource = new BindingSource { DataSource = ViewModel };
+
+            var bindingSource = _bindingSource;
+
+#pragma warning disable CS8604
 
             // Clear any existing bindings to prevent duplicates when handle is recreated
             ClearExistingBindings();
@@ -743,7 +801,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _themeCombo.DataBindings.Add(
                     nameof(Syncfusion.WinForms.ListView.SfComboBox.SelectedItem),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.SelectedTheme),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -754,7 +812,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _txtAppTitle.DataBindings.Add(
                     nameof(TextBoxExt.Text),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.AppTitle),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -764,7 +822,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _chkOpenEditFormsDocked.DataBindings.Add(
                     nameof(CheckBoxAdv.Checked),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.OpenEditFormsDocked),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -774,7 +832,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _chkUseDemoData.DataBindings.Add(
                     nameof(CheckBoxAdv.Checked),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.UseDemoData),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -784,7 +842,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _txtExportPath.DataBindings.Add(
                     nameof(TextBoxExt.Text),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.DefaultExportPath),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -794,7 +852,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _numAutoSaveInterval.DataBindings.Add(
                     nameof(Syncfusion.WinForms.Input.SfNumericTextBox.Value),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.AutoSaveIntervalMinutes),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -804,7 +862,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _cmbLogLevel.DataBindings.Add(
                     nameof(Syncfusion.WinForms.ListView.SfComboBox.SelectedItem),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.LogLevel),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -814,7 +872,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _txtDateFormat.DataBindings.Add(
                     nameof(TextBoxExt.Text),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.DateFormat),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -824,7 +882,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _txtCurrencyFormat.DataBindings.Add(
                     nameof(TextBoxExt.Text),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.CurrencyFormat),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -833,19 +891,37 @@ namespace WileyWidget.WinForms.Controls.Panels
             // AI bindings
             if (_chkEnableAi != null)
             {
-                _chkEnableAi.DataBindings.Add(
-                    nameof(CheckBoxAdv.Checked),
-                    _bindingSource,
-                    nameof(ViewModel.EnableAi),
-                    true,
-                    DataSourceUpdateMode.OnPropertyChanged);
+                if (TryResolveBindingMember(nameof(ViewModel.EnableAi), out var enableAiMember, "EnableAI"))
+                {
+                    _chkEnableAi.DataBindings.Add(
+                        nameof(CheckBoxAdv.Checked),
+                        bindingSource!,
+                        enableAiMember,
+                        true,
+                        DataSourceUpdateMode.OnPropertyChanged);
+                }
+                else
+                {
+                    Logger.LogWarning("SettingsPanel: No compatible bindable member found for EnableAi/EnableAI on DataSource type {DataSourceType}; using manual sync fallback", _bindingSource?.DataSource?.GetType().FullName ?? "<null>");
+                    _chkEnableAi.Checked = ViewModel?.EnableAi ?? false;
+
+                    _chkEnableAiManualValueSyncHandler = (_, _) =>
+                    {
+                        if (ViewModel != null && _chkEnableAi != null)
+                        {
+                            ViewModel.EnableAi = _chkEnableAi.Checked;
+                        }
+                    };
+
+                    _chkEnableAi.CheckedChanged += _chkEnableAiManualValueSyncHandler;
+                }
             }
 
             if (_txtXaiApiEndpoint != null)
             {
                 _txtXaiApiEndpoint.DataBindings.Add(
                     nameof(TextBox.Text),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.XaiApiEndpoint),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -855,7 +931,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _txtXaiApiKey.DataBindings.Add(
                     nameof(TextBox.Text),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.XaiApiKey),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -865,7 +941,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _cmbXaiModel.DataBindings.Add(
                     nameof(Syncfusion.WinForms.ListView.SfComboBox.SelectedItem),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.XaiModel),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -875,7 +951,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _numXaiTimeout.DataBindings.Add(
                     nameof(Syncfusion.WinForms.Input.SfNumericTextBox.Value),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.XaiTimeout),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -885,7 +961,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _numXaiMaxTokens.DataBindings.Add(
                     nameof(Syncfusion.WinForms.Input.SfNumericTextBox.Value),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.XaiMaxTokens),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
@@ -895,11 +971,13 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _numXaiTemperature.DataBindings.Add(
                     nameof(Syncfusion.WinForms.Input.SfNumericTextBox.Value),
-                    _bindingSource,
+                    bindingSource,
                     nameof(ViewModel.XaiTemperature),
                     true,
                     DataSourceUpdateMode.OnPropertyChanged);
             }
+
+#pragma warning restore CS8604
 
             // Setup WileyWidget.WinForms.Controls.Supporting.ErrorProviderBinding
             try
@@ -1002,6 +1080,12 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _btnBrowseExportPathClickHandler = (s, e) => OnBrowseExportPath();
             if (_btnBrowseExportPath != null) _btnBrowseExportPath.Click += _btnBrowseExportPathClickHandler;
+
+            _btnSaveClickHandler = BtnSave_Click;
+            if (_btnSave != null) _btnSave.Click += _btnSaveClickHandler;
+
+            _btnCloseClickHandler = BtnClose_Click;
+            if (_btnClose != null) _btnClose.Click += _btnCloseClickHandler;
         }
         #endregion
 
@@ -1278,6 +1362,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 try { if (_chkOpenEditFormsDocked != null) _chkOpenEditFormsDocked.CheckedChanged -= _chkOpenEditFormsDockedHandler; } catch { }
                 try { if (_chkUseDemoData != null) _chkUseDemoData.CheckedChanged -= _chkUseDemoDataHandler; } catch { }
                 try { if (_chkEnableAi != null) _chkEnableAi.CheckedChanged -= _chkEnableAiHandler; } catch { }
+                try { if (_chkEnableAi != null && _chkEnableAiManualValueSyncHandler != null) _chkEnableAi.CheckedChanged -= _chkEnableAiManualValueSyncHandler; } catch { }
                 try { if (_themeCombo != null) _themeCombo.SelectedIndexChanged -= _themeComboSelectedHandler; } catch { }
                 try { if (_txtXaiApiEndpoint != null) _txtXaiApiEndpoint.TextChanged -= _txtXaiApiEndpointChangedHandler; } catch { }
                 try { if (_cmbXaiModel != null) _cmbXaiModel.SelectedIndexChanged -= _cmbXaiModelSelectedHandler; } catch { }
@@ -1292,6 +1377,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 try { if (_btnShowApiKey != null) _btnShowApiKey.Click -= _btnShowApiKeyClickHandler; } catch { }
                 try { if (_lnkAiLearnMore != null) _lnkAiLearnMore.LinkClicked -= _lnkAiLearnMoreHandler; } catch { }
                 try { if (_btnBrowseExportPath != null) _btnBrowseExportPath.Click -= _btnBrowseExportPathClickHandler; } catch { }
+                try { if (_btnSave != null) _btnSave.Click -= _btnSaveClickHandler; } catch { }
+                try { if (_btnClose != null) _btnClose.Click -= _btnCloseClickHandler; } catch { }
 
                 // Dispose controls and resources
                 try { if (_themeCombo != null && !_themeCombo.IsDisposed) { try { _themeCombo.DataSource = null; } catch { } _themeCombo.Dispose(); } } catch { }

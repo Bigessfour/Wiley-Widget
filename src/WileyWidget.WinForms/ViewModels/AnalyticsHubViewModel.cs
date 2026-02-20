@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.Services.Export;
 
 namespace WileyWidget.WinForms.ViewModels;
 
@@ -36,6 +37,7 @@ public partial class AnalyticsHubViewModel : ObservableObject, IAnalyticsHubView
     public OverviewTabViewModel Overview { get; }
     public TrendsTabViewModel Trends { get; }
     public ScenariosTabViewModel Scenarios { get; }
+    public AdvancedScenariosTabViewModel AdvancedScenarios { get; }
     public VariancesTabViewModel Variances { get; }
 
     // Commands
@@ -43,7 +45,10 @@ public partial class AnalyticsHubViewModel : ObservableObject, IAnalyticsHubView
 
     public AnalyticsHubViewModel(
         IAnalyticsService analyticsService,
+        IAIService aiService,
+        IExcelExportService excelExportService,
         ILogger<AnalyticsHubViewModel> logger,
+        ILogger<AdvancedScenariosTabViewModel> advancedLogger,
         IScenarioSnapshotRepository? scenarioSnapshotRepository = null)
     {
         _analyticsService = analyticsService ?? throw new ArgumentNullException(nameof(analyticsService));
@@ -54,6 +59,7 @@ public partial class AnalyticsHubViewModel : ObservableObject, IAnalyticsHubView
         Overview = new OverviewTabViewModel(analyticsService, logger);
         Trends = new TrendsTabViewModel(analyticsService, logger);
         Scenarios = new ScenariosTabViewModel(analyticsService, logger, _scenarioSnapshotRepository);
+        AdvancedScenarios = new AdvancedScenariosTabViewModel(analyticsService, aiService, excelExportService, advancedLogger);
         Variances = new VariancesTabViewModel(analyticsService, logger);
 
         // Initialize commands
@@ -97,6 +103,7 @@ public partial class AnalyticsHubViewModel : ObservableObject, IAnalyticsHubView
                 Overview.LoadAsync(),
                 Trends.LoadAsync(),
                 Scenarios.LoadAsync(),
+                AdvancedScenarios.LoadAsync(),
                 Variances.LoadAsync()
             );
 

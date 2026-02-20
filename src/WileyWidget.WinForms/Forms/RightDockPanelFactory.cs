@@ -14,7 +14,6 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -40,7 +39,7 @@ public static class RightDockPanelFactory
     /// Theme cascade applied via SfSkinManager.
     /// </remarks>
     public static (
-        LegacyGradientPanel rightDockPanel,
+        Panel rightDockPanel,
         ActivityLogPanel activityLogPanel
     ) CreateRightDockPanel(
         MainForm mainForm,
@@ -59,13 +58,12 @@ public static class RightDockPanelFactory
         try
         {
             // Create container panel
-            var rightDockPanel = new LegacyGradientPanel
+            var rightDockPanel = new Panel
             {
                 Dock = DockStyle.Right,
                 Width = 350,
                 MinimumSize = new Size(320, 0),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(Color.WhiteSmoke),
                 Name = "RightDockPanel"
             };
 

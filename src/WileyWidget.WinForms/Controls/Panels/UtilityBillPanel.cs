@@ -13,7 +13,7 @@ using Syncfusion.WinForms.Input;
 using System.ComponentModel;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls.Base;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Controls.Supporting;
 using Syncfusion.Windows.Forms;
 using System.Collections.Specialized;
@@ -61,9 +61,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private Label? _overdueCountLabel;
     private Label? _totalRevenueLabel;
     private Label? _billsThisMonthLabel;
-    private LegacyGradientPanel? _summaryPanel;
-    private LegacyGradientPanel? _gridPanel;
-    private LegacyGradientPanel? _buttonPanel;
+    private Panel? _summaryPanel;
+    private Panel? _gridPanel;
+    private Panel? _buttonPanel;
     private SplitContainerAdv? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -71,8 +71,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
     private ToolTip? _toolTip;
-    private LegacyGradientPanel? topPanel;
-    private LegacyGradientPanel? bottomPanel;
+    private Panel? topPanel;
+    private Panel? bottomPanel;
 
     private PropertyChangedEventHandler? ViewModelPropertyChangedHandler;
     private NotifyCollectionChangedEventHandler? _billsCollectionChangedHandler;
@@ -235,11 +235,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeTopPanel()
     {
-        topPanel = new LegacyGradientPanel
+        topPanel = new Panel
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         var theme1 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(topPanel, theme1);
@@ -261,13 +260,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeSummaryPanel()
     {
-        _summaryPanel = new LegacyGradientPanel
+        _summaryPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(80f),
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         var theme2 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(_summaryPanel, theme2);
@@ -301,7 +299,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         return new Label
         {
             Text = text,
-            Font = new Font(Font.FontFamily, DpiAware.LogicalToDeviceUnits(10f), FontStyle.Bold),
             // ForeColor removed - let SFSkinManager handle theming
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
@@ -311,13 +308,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeButtonPanel()
     {
-        _buttonPanel = new WileyWidget.WinForms.Controls.Base.LegacyGradientPanel
+        _buttonPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50f),
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         var theme3 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(_buttonPanel, theme3);
@@ -392,12 +388,11 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeBillsGrid()
     {
-        _gridPanel = new WileyWidget.WinForms.Controls.Base.LegacyGradientPanel
+        _gridPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         var theme4 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(_gridPanel, theme4);
@@ -502,13 +497,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         topPanel.Controls.Add(_gridPanel);
 
         // Button panel
-        _buttonPanel = new WileyWidget.WinForms.Controls.Base.LegacyGradientPanel
+        _buttonPanel = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 50,
-            Padding = new Padding(10),
+            Height = LayoutTokens.Dp(50),
+            Padding = new Padding(LayoutTokens.PanelPadding),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         var theme5 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(_buttonPanel, theme5);
@@ -586,22 +580,20 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeBottomPanel()
     {
-        bottomPanel = new WileyWidget.WinForms.Controls.Base.LegacyGradientPanel
+        bottomPanel = new Panel
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(bottomPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Filter panel
-        var filterPanel = new LegacyGradientPanel
+        var filterPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = (int)DpiAware.LogicalToDeviceUnits(45f),
             Padding = new Padding((int)DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(filterPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
@@ -668,12 +660,11 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void InitializeCustomersGrid()
     {
-        var customersPanel = new LegacyGradientPanel
+        var customersPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         SfSkinManager.SetVisualStyle(customersPanel, theme);

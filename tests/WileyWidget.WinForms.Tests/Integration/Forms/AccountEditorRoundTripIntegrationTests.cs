@@ -94,7 +94,7 @@ public sealed class AccountEditorRoundTripIntegrationTests
     private static AccountEditPanel CreateEditorPanel(IServiceProvider serviceProvider)
     {
         var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
-        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase>>(serviceProvider);
+        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<AccountsViewModel>>>(serviceProvider);
         var imageService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DpiAwareImageService>(serviceProvider);
 
         return new AccountEditPanel(scopeFactory, logger, imageService);

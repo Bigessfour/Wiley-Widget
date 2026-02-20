@@ -17,8 +17,8 @@ namespace WileyWidget.WinForms.Forms
     {
         [Obsolete("Not implemented")]
         public static (TabbedMDIManager TabbedMdi,
-                      LegacyGradientPanel LeftPanel,
-                      LegacyGradientPanel RightPanel)
+                      Panel LeftPanel,
+                      Panel RightPanel)
             CreatePureTabbedLayout(MainForm mainForm, IServiceProvider sp, ILogger logger)
         {
             throw new NotImplementedException("TabbedMDI layout factory needs API fixes for Syncfusion TabbedMDIManager");

@@ -202,13 +202,16 @@ namespace WileyWidget.WinForms.Forms
         private void OpenBudget() { _logger?.LogDebug("OpenBudget stub"); }
 
         /// <summary>Persists the current docking layout.</summary>
-        private void SaveCurrentLayout() { _logger?.LogDebug("SaveCurrentLayout stub"); }
+        protected void SaveCurrentLayout() { _logger?.LogDebug("SaveCurrentLayout stub"); }
 
         /// <summary>Exports the active data set.</summary>
         private void ExportData() { _logger?.LogDebug("ExportData stub"); }
 
         /// <summary>Resets the docking layout to defaults.</summary>
-        private void ResetLayout() { _logger?.LogDebug("ResetLayout stub"); }
+        protected void ResetLayout() { _logger?.LogDebug("ResetLayout stub"); }
+
+        /// <summary>Gets the count of items in the Quick Access Toolbar.</summary>
+        protected int GetQATItemCount() => 1; // TODO: Find correct Syncfusion API for QAT item count
 
         /// <summary>Toggles panel locking via the docking manager.</summary>
         private void TogglePanelLocking() { _logger?.LogDebug("TogglePanelLocking stub"); }

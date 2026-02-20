@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -12,8 +12,8 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Utilities;
 
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -29,7 +29,7 @@ public partial class TrendsTabControl : UserControl
     private ChartControl? _trendsChart;
     private ChartControl? _forecastChart;
     private ChartControl? _departmentChart;
-    private LegacyGradientPanel? _controlsPanel;
+    private Panel? _controlsPanel;
     private LoadingOverlay? _loadingOverlay;
 
     private NumericUpDownExt? _projectionYearsSpinner;
@@ -82,7 +82,7 @@ public partial class TrendsTabControl : UserControl
 
     private void InitializeControlsPanel()
     {
-        _controlsPanel = new LegacyGradientPanel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+        _controlsPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
         SfSkinManager.SetVisualStyle(_controlsPanel, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
 
         var layout = new TableLayoutPanel
@@ -144,8 +144,8 @@ public partial class TrendsTabControl : UserControl
         table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
         table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-        if (_trendsChart != null)    table.Controls.Add(_trendsChart, 0, 0);
-        if (_forecastChart != null)  table.Controls.Add(_forecastChart, 1, 0);
+        if (_trendsChart != null) table.Controls.Add(_trendsChart, 0, 0);
+        if (_forecastChart != null) table.Controls.Add(_forecastChart, 1, 0);
         if (_departmentChart != null)
         {
             table.Controls.Add(_departmentChart, 0, 1);

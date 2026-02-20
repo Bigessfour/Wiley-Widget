@@ -1,8 +1,9 @@
-﻿#nullable enable
+#nullable enable
 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Factories;
 using System.Diagnostics;
+using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.WinForms.Controls.Base
 {
@@ -21,6 +23,17 @@ namespace WileyWidget.WinForms.Controls.Base
     {
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
         public virtual object? UntypedViewModel => null;
+
+        protected ScopedPanelBase()
+        {
+            this.DoubleBuffered = true;
+            this.SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.AllPaintingInWmPaint,
+                true);
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+            this.AutoScaleDimensions = new SizeF(96F, 96F);
+        }
     }
 
     /// <summary>
@@ -56,6 +69,8 @@ namespace WileyWidget.WinForms.Controls.Base
         protected List<ValidationItem> ValidationErrors { get; } = new();
 
         private CancellationTokenSource? _operationCts;
+        private System.Windows.Forms.Timer? _finalLayoutTimer;
+        private bool _shownFired;
 
         protected ScopedPanelBase(IServiceScopeFactory scopeFactory, ILogger logger)
         {
@@ -69,6 +84,9 @@ namespace WileyWidget.WinForms.Controls.Base
             OnViewModelResolved(ViewModel);
             _logger?.LogDebug("[{Panel}] Initialized — ViewModel: {VmType}",
                 GetType().Name, ViewModel?.GetType().Name ?? $"{typeof(TViewModel).Name} (null)");
+
+            // Handle form close button
+            Load += ScopedPanelBase_Load;
         }
 
         protected virtual void OnViewModelResolved(TViewModel? vm) { }
@@ -89,8 +107,99 @@ namespace WileyWidget.WinForms.Controls.Base
             return _operationCts.Token;
         }
 
-        /// <summary>Hides the panel. Panels wire close-button events to this.</summary>
-        protected virtual void ClosePanel() => Visible = false;
+        /// <summary>
+        /// Hides this panel via the navigation service (panel stays alive in memory, DI scope preserved).
+        /// Falls back to <c>Visible = false</c> when MainForm is not reachable (e.g. design-time).
+        /// </summary>
+        protected virtual void ClosePanel()
+        {
+            // GetType().Name is always registered as a panel alias by CachePanelAliases, so it
+            // is the most reliable key regardless of the DisplayName used at ShowPanel time.
+            var panelName = GetType().Name;
+
+            // The panel can be hosted directly by MainForm or inside a floating wrapper Form
+            // whose Owner is MainForm.  Walk both levels.
+            var hostForm = FindForm();
+            var mainForm = hostForm as MainForm
+                        ?? hostForm?.Owner as MainForm;
+
+            if (mainForm != null)
+            {
+                // Check if this is a floating form (not the main form itself)
+                if (hostForm != null && hostForm != mainForm)
+                {
+                    // For floating forms, close the host form directly
+                    hostForm.Close();
+                    _logger?.LogDebug("[{Panel}] ClosePanel → HostForm.Close() for floating panel", GetType().Name);
+                }
+                else
+                {
+                    // For docked panels, use MainForm.ClosePanel
+                    mainForm.ClosePanel(panelName);
+                    _logger?.LogDebug("[{Panel}] ClosePanel → MainForm.ClosePanel({Name})", GetType().Name, panelName);
+                }
+            }
+            else
+            {
+                Visible = false;
+                _logger?.LogWarning("[{Panel}] ClosePanel fallback: MainForm not reachable, set Visible=false", GetType().Name);
+            }
+        }
+
+        private void ScopedPanelBase_Load(object? sender, EventArgs e)
+        {
+            var hostForm = FindForm();
+            if (hostForm != null)
+            {
+                hostForm.FormClosing += HostForm_FormClosing;
+            }
+        }
+
+        private void HostForm_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // Allow host forms to close normally and avoid recursive ClosePanel calls.
+            // PanelNavigationService cleans up hosts on FormClosed.
+            if (sender is MainForm && !e.Cancel)
+            {
+                // For MainForm closures, do not re-route; let the application close naturally.
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Forces a recursive layout pass on this panel and its first two levels of children.
+        /// Called via <see cref="BeginInvoke"/> after the Syncfusion DockingManager finishes
+        /// sizing the hosted <see cref="UserControl"/>, so that content controls render at their
+        /// correct positions instead of collapsing to 0×0 during the initial docking pass.
+        /// Override in derived panels to target deeper containers (e.g., SplitContainerAdv inner panels).
+        /// </summary>
+        protected virtual void ForceFullLayout()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            SuspendLayout();
+            try
+            {
+                PerformLayoutRecursive(this);
+                Invalidate(true);
+                Update();
+            }
+            finally
+            {
+                ResumeLayout(performLayout: true);
+            }
+
+            _logger?.LogDebug("[{Panel}] ForceFullLayout completed ({W}x{H})", GetType().Name, Width, Height);
+        }
+
+        private static void PerformLayoutRecursive(Control control)
+        {
+            control.PerformLayout();
+            foreach (Control child in control.Controls)
+            {
+                PerformLayoutRecursive(child);
+            }
+        }
 
         /// <summary>
         /// Clears all accumulated validation errors from <see cref="ValidationErrors"/>.
@@ -156,10 +265,69 @@ namespace WileyWidget.WinForms.Controls.Base
 
         protected void SetHasUnsavedChanges(bool value) => HasUnsavedChanges = value;
 
+        /// <summary>
+        /// Called the first time this panel becomes visible inside the DockingManager.
+        /// Starts a one-shot 180ms timer that fires <see cref="ForceFullLayout"/> after
+        /// DockingManager finishes its resize pass.  Override in derived panels to add
+        /// panel-specific splitter configuration inside a <c>BeginInvoke</c> callback
+        /// — always call <c>base.OnShown(e)</c> first to start the timer.
+        /// </summary>
+        protected virtual void OnShown(EventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            _finalLayoutTimer?.Stop();
+            _finalLayoutTimer?.Dispose();
+            _finalLayoutTimer = new System.Windows.Forms.Timer { Interval = 180 };
+            _finalLayoutTimer.Tick += (s, _) =>
+            {
+                _finalLayoutTimer?.Stop();
+                _finalLayoutTimer?.Dispose();
+                _finalLayoutTimer = null;
+                if (!IsDisposed && IsHandleCreated)
+                    ForceFullLayout();
+            };
+            _finalLayoutTimer.Start();
+        }
+
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
             _logger?.LogTrace("[{Panel}] Visibility → {Visible} ({W}x{H})", GetType().Name, Visible, Width, Height);
+            QueueDeferredLayoutPass(e);
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (Visible)
+            {
+                QueueDeferredLayoutPass(e);
+            }
+        }
+
+        private void QueueDeferredLayoutPass(EventArgs e)
+        {
+            // Queue a deferred layout pass so DockingManager has already finished resizing
+            // this UserControl before we force children to lay out at the correct dimensions.
+            if (!Visible || IsDisposed || !IsHandleCreated || Width <= 0 || Height <= 0)
+            {
+                return;
+            }
+
+            if (!_shownFired)
+            {
+                _shownFired = true;
+                OnShown(e);
+            }
+
+            BeginInvoke(new Action(() =>
+            {
+                if (!IsDisposed && IsHandleCreated && Visible)
+                {
+                    ForceFullLayout();
+                }
+            }));
         }
 
         /// <summary>
@@ -176,14 +344,41 @@ namespace WileyWidget.WinForms.Controls.Base
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            try
             {
-                _logger?.LogDebug("[{Panel}] Disposing", GetType().Name);
-                _operationCts?.Cancel();
-                _operationCts?.Dispose();
-                _scope?.Dispose();
+                if (disposing)
+                {
+                    _logger?.LogDebug("[{Panel}] Disposing", GetType().Name);
+                    _operationCts?.Cancel();
+                    _operationCts?.Dispose();
+                    _finalLayoutTimer?.Stop();
+                    _finalLayoutTimer?.Dispose();
+                    _finalLayoutTimer = null;
+
+                    if (ContextMenuStrip != null)
+                    {
+                        ContextMenuStrip.Dispose();
+                        ContextMenuStrip = null;
+                    }
+
+                    _scope?.Dispose();
+                }
             }
-            base.Dispose(disposing);
+            catch (Exception ex)
+            {
+                try
+                {
+                    _logger?.LogWarning(ex, "[{Panel}] Dispose encountered a non-fatal exception", GetType().Name);
+                }
+                catch
+                {
+                    // Never allow dispose logging failures to bubble up.
+                }
+            }
+            finally
+            {
+                base.Dispose(disposing);
+            }
         }
     }
 }

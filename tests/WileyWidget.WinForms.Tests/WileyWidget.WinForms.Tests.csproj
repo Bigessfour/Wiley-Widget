@@ -25,6 +25,7 @@
     <PackageReference Include="Syncfusion.Tools.Windows" />
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>
 
   <ItemGroup>

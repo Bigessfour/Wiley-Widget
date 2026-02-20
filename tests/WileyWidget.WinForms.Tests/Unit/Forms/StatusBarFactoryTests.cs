@@ -24,7 +24,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             // Arrange
             var logger = NullLogger.Instance;
-            var form = new MainForm();
+            var form = new TestMainForm();
 
             // Act
             var statusBar = StatusBarFactory.CreateStatusBar(form, logger, useSyncfusionDocking: true);
@@ -51,9 +51,9 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         }
 
         // Small lightweight MainForm  sufficient for status bar factory tests
-        private sealed class MainForm : MainForm
+        private sealed class TestMainForm : MainForm
         {
-            public MainForm()
+            public TestMainForm()
                 : base(
                       new ServiceCollection().BuildServiceProvider(),
                       new ConfigurationBuilder().Build(),

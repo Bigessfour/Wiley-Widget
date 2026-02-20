@@ -20,6 +20,8 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
+using Syncfusion.WinForms.DataGridConverter;
+using Syncfusion.XlsIO;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
@@ -50,6 +52,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private SfButton? _editButton;
     private SfButton? _deleteButton;
     private SfButton? _refreshButton;
+    private SfButton? _exportButton;
     private SfComboBox? _fundFilterComboBox;
     private SfComboBox? _accountTypeFilterComboBox;
     private SfComboBox? _departmentFilterComboBox;
@@ -82,11 +85,18 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         this.Padding = new Padding(12);
 
         // Set preferred size for proper docking display (matches PreferredDockSize extension)
-        this.Size = new Size(620, 380);
-        this.MinimumSize = new Size(420, 360);
+        this.Size = new Size(900, 560);
+        this.MinimumSize = new Size(600, 420);
 
         InitializeControls();
         Load += AccountsPanel_Load;
+
+        // NEW: Force VM resolution check right after controls are built (Syncfusion timing pattern)
+        if (ViewModel != null)
+        {
+            Logger?.LogDebug("[ACCOUNTS_CTOR] ViewModel available in constructor, triggering early bind");
+            BindViewModelCommands();
+        }
 
         Logger?.LogDebug("[ACCOUNTS_CTOR] Constructor complete - Load event wired, controls initialized");
 
@@ -152,22 +162,23 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// <summary>
     /// Called after the ViewModel is resolved from DI. Bind controls to the ViewModel.
     /// </summary>
-    protected override void OnViewModelResolved(object? viewModel)
+    protected override void OnViewModelResolved(AccountsViewModel? viewModel)
     {
         Logger?.LogDebug("[ACCOUNTS_VM_RESOLVED] OnViewModelResolved called - ViewModel type: {Type}, IsNull: {IsNull}",
             viewModel?.GetType().Name ?? "null", viewModel == null);
 
         base.OnViewModelResolved(viewModel);
 
-        if (viewModel is AccountsViewModel vm)
+        if (viewModel != null)
         {
             Logger?.LogDebug("[ACCOUNTS_VM_RESOLVED] ViewModel is AccountsViewModel - Accounts count: {Count}, IsDataLoaded: {Loaded}",
-                vm.Accounts?.Count ?? 0, vm.IsDataLoaded);
+                viewModel.Accounts?.Count ?? 0, viewModel.IsDataLoaded);
             BindViewModel();
+            BindViewModelCommands();
         }
         else
         {
-            Logger?.LogWarning("[ACCOUNTS_VM_RESOLVED] ViewModel is not AccountsViewModel or is null!");
+            Logger?.LogWarning("[ACCOUNTS_VM_RESOLVED] ViewModel is null! Panel binding skipped.");
         }
     }
 
@@ -184,9 +195,11 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             MinimumSize = new Size(0, 52), // Prevent collapse
             Height = 52
         };
+        _header.AccessibleName = "Chart of Accounts Panel Header";
+        _header.AccessibleDescription = "Municipal Chart of Accounts management panel with CRUD operations and filtering";
         _header.RefreshClicked += RefreshButton_Click;
         _header.CloseClicked += (s, e) => ClosePanel();
-        _header.HelpClicked += (s, e) => { MessageBox.Show("Chart of Accounts Help: Manage your municipal accounts.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+        _header.HelpClicked += (s, e) => ShowChartOfAccountsHelp();
         _header.PinToggled += (s, e) => { /* Pin logic */ };
         Controls.Add(_header);
         _logger.LogDebug("[ACCOUNTS_PANEL] Header added: Height={Height}, Visible={Visible}", _header.Height, _header.Visible);
@@ -235,23 +248,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "New Account"
         };
         _createButton.AccessibleDescription = "Create a new municipal account";
-        _createButton.Click += async (s, e) =>
-        {
-            try
-            {
-                Logger?.LogInformation("[BUTTON_CLICK] ✅ New Account button clicked!");
-                if (ViewModel?.CreateAccountCommand?.CanExecute(null) ?? false)
-                {
-                    await ViewModel.CreateAccountCommand.ExecuteAsync(null);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating account from toolbar click");
-                MessageBox.Show($"Error creating account: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        };
+        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
 
         // Edit Button - fully configured
         _editButton = new SfButton
@@ -271,23 +268,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Edit"
         };
         _editButton.AccessibleDescription = "Edit the selected account";
-        _editButton.Click += async (s, e) =>
-        {
-            try
-            {
-                var selectedAccount = ResolveSelectedAccountForCommands();
-                if (selectedAccount != null && (ViewModel?.EditAccountCommand?.CanExecute(selectedAccount) ?? false))
-                {
-                    await ViewModel!.EditAccountCommand.ExecuteAsync(selectedAccount);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error editing account from toolbar click");
-                MessageBox.Show($"Error editing account: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        };
+        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
 
         // Delete Button - fully configured
         _deleteButton = new SfButton
@@ -307,23 +288,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Delete"
         };
         _deleteButton.AccessibleDescription = "Delete the selected account";
-        _deleteButton.Click += async (s, e) =>
-        {
-            try
-            {
-                var selectedAccount = ResolveSelectedAccountForCommands();
-                if (selectedAccount != null && (ViewModel?.DeleteAccountCommand?.CanExecute(selectedAccount) ?? false))
-                {
-                    await ViewModel!.DeleteAccountCommand.ExecuteAsync(selectedAccount);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting account from toolbar click");
-                MessageBox.Show($"Error deleting account: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        };
+        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
 
         // Refresh Button - fully configured
         _refreshButton = new SfButton
@@ -342,22 +307,26 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             AccessibleName = "Refresh"
         };
         _refreshButton.AccessibleDescription = "Refresh account list from database";
-        _refreshButton.Click += async (s, e) =>
+        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
+
+        // Export to Excel Button - professional feature for auditors
+        _exportButton = new SfButton
         {
-            try
-            {
-                if (ViewModel?.RefreshCommand?.CanExecute(null) ?? false)
-                {
-                    await ViewModel.RefreshCommand.ExecuteAsync(null);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error refreshing accounts from toolbar click");
-                MessageBox.Show($"Error refreshing accounts: {ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            Text = "Export Excel",
+            AutoSize = true,
+            ThemeName = activeTheme,
+            AccessibilityEnabled = true,
+            AutoEllipsis = true,
+            FocusRectangleVisible = true,
+            Padding = new Padding(8, 4, 8, 4),
+            TextMargin = new Padding(2),
+            CanApplyTheme = true,
+            CanOverrideStyle = false,
+            Name = "btnExportExcel",
+            AccessibleName = "Export to Excel"
         };
+        _exportButton.AccessibleDescription = "Export the account list to Excel spreadsheet";
+        _exportButton.Click += ExportButton_Click;
 
         // === ICON ASSIGNMENT FOR TOOLBAR BUTTONS (Optional Polish) ===
         try
@@ -367,9 +336,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             _editButton.Image = _imageService.GetImage("edit");
             _deleteButton.Image = _imageService.GetImage("delete");
             _refreshButton.Image = _imageService.GetImage("refresh");
+            _exportButton.Image = _imageService.GetImage("export");
 
             // Layout: icon on left, text on right
-            foreach (var btn in new[] { _createButton, _editButton, _deleteButton, _refreshButton })
+            foreach (var btn in new[] { _createButton, _editButton, _deleteButton, _refreshButton, _exportButton })
             {
                 btn.TextImageRelation = TextImageRelation.ImageBeforeText;
                 btn.ImageAlign = ContentAlignment.MiddleLeft;
@@ -404,10 +374,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Margin = new Padding(0, 8, 4, 8)
         };
         _fundFilterComboBox.AccessibleDescription = "Filter accounts by fund type";
-        var fundItems = new List<object> { "All" };
-        if (ViewModel?.AvailableFunds != null)
-            fundItems.AddRange(ViewModel.AvailableFunds);
-        _fundFilterComboBox.DataSource = fundItems;
+        // Initial placeholder - will be populated when ViewModel is resolved
+        _fundFilterComboBox.DataSource = new List<object> { "All" };
         _fundFilterComboBox.DisplayMember = "ToString";
         _fundFilterComboBox.ValueMember = "ToString";
         _fundFilterComboBox.SelectedIndex = 0; // "All"
@@ -435,10 +403,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Margin = new Padding(0, 8, 4, 8)
         };
         _accountTypeFilterComboBox.AccessibleDescription = "Filter accounts by account type";
-        var accountTypeItems = new List<object> { "All" };
-        if (ViewModel?.AvailableAccountTypes != null)
-            accountTypeItems.AddRange(ViewModel.AvailableAccountTypes);
-        _accountTypeFilterComboBox.DataSource = accountTypeItems;
+        // Initial placeholder - will be populated when ViewModel is resolved
+        _accountTypeFilterComboBox.DataSource = new List<object> { "All" };
         _accountTypeFilterComboBox.DisplayMember = "ToString";
         _accountTypeFilterComboBox.ValueMember = "ToString";
         _accountTypeFilterComboBox.SelectedIndex = 0;
@@ -466,10 +432,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Margin = new Padding(0, 8, 4, 8)
         };
         _departmentFilterComboBox.AccessibleDescription = "Filter accounts by department";
-        var departmentItems = new List<object> { "All" };
-        if (ViewModel?.AvailableDepartments != null)
-            departmentItems.AddRange(ViewModel.AvailableDepartments);
-        _departmentFilterComboBox.DataSource = departmentItems;
+        // Initial placeholder - will be populated when ViewModel is resolved
+        _departmentFilterComboBox.DataSource = new List<object> { "All" };
         _departmentFilterComboBox.DisplayMember = "ToString";
         _departmentFilterComboBox.ValueMember = "ToString";
         _departmentFilterComboBox.SelectedIndex = 0;
@@ -488,12 +452,16 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         _searchBox = new TextBoxExt
         {
-            Width = 250,
-            Height = 28,
+            // UX Best Practices: Microsoft Fluent (280-320px), Material Design (280px+), Apple HIG (250-300px)
+            Width = 300,              // Increased from 250 - allows longer search terms without truncation
+            Height = 30,              // Increased from 28 - better touch target (Fluent: 32px, Material: 36px)
+            MinimumSize = new Size(200, 30),  // Prevents over-shrinking when panel resizes
             ThemeName = activeTheme,
             Name = "txtSearch",
             AccessibleName = "Search",
-            Margin = new Padding(0, 8, 4, 8)
+            Margin = new Padding(0, 8, 4, 8),
+            BorderStyle = BorderStyle.FixedSingle,  // Clean, modern appearance
+            Font = new Font(this.Font.FontFamily, 9.5F, FontStyle.Regular)  // Slightly larger for readability
         };
         _searchBox.AccessibleDescription = "Type to search accounts by account number, name, description, fund, or department";
         _searchBox.TextChanged += SearchBox_TextChanged;
@@ -501,22 +469,31 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         // Configure tooltips for buttons (accessibility enhancement)
         _buttonToolTips = new ToolTip
         {
-            AutoPopDelay = 5000,
-            InitialDelay = 500,
+            AutoPopDelay = 8000,     // Longer display for busy mayors
+            InitialDelay = 300,      // Faster appearance
             ReshowDelay = 100,
-            ShowAlways = true
+            ShowAlways = true,       // CRITICAL - ensures tooltips always display
+            UseAnimation = true,
+            UseFading = true
         };
+
+        // Add tooltip to the header itself for context
+        _buttonToolTips.SetToolTip(_header, "Chart of Accounts — Manage municipal funds, departments, and balances (Press F1 for full help)");
         _buttonToolTips.SetToolTip(_createButton, "Create a new municipal account (Ctrl+N)");
         _buttonToolTips.SetToolTip(_editButton, "Edit the selected account (F2)");
         _buttonToolTips.SetToolTip(_deleteButton, "Delete the selected account (Delete)");
         _buttonToolTips.SetToolTip(_refreshButton, "Refresh account list from database (F5)");
+        if (_exportButton != null)
+        {
+            _buttonToolTips.SetToolTip(_exportButton, "Export account list to Excel spreadsheet (Ctrl+E)");
+        }
         _buttonToolTips.SetToolTip(_fundFilterComboBox, "Filter accounts by fund type");
         _buttonToolTips.SetToolTip(_accountTypeFilterComboBox, "Filter accounts by account type");
         _buttonToolTips.SetToolTip(_departmentFilterComboBox, "Filter accounts by department");
         _buttonToolTips.SetToolTip(_searchBox, "Search by account number, name, description, fund, or department (Ctrl+F)");
 
         _toolbarPanel.Controls.AddRange(new Control[] {
-            _createButton, _editButton, _deleteButton, _refreshButton,
+            _createButton!, _editButton!, _deleteButton!, _refreshButton!, _exportButton!,
             fundLabel, _fundFilterComboBox,
             accountTypeLabel, _accountTypeFilterComboBox,
             departmentLabel, _departmentFilterComboBox,
@@ -548,8 +525,17 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             grid.AccessibleName = "Accounts Grid";
             grid.ThemeName = activeTheme;
         });
-        _accountsGrid.AccessibleDescription = "Municipal accounts data grid";
+        _accountsGrid.AccessibleDescription = "Data grid showing municipal funds, account balances, budgets, and departments. Use arrow keys to navigate, Enter or F2 to edit, Delete to remove";
         _accountsGrid.SelectionChanged += _gridSelectionChangedHandler = Grid_SelectionChanged;
+
+        // Add professional context menu for grid (right-click operations)
+        var gridContextMenu = new ContextMenuStrip();
+        gridContextMenu.Items.Add("Edit Account", null, (s, e) => { if (_editButton?.Enabled == true) EditAccount(); });
+        gridContextMenu.Items.Add("Delete Account", null, (s, e) => { if (_deleteButton?.Enabled == true) DeleteButton_Click(this, EventArgs.Empty); });
+        gridContextMenu.Items.Add(new ToolStripSeparator());
+        gridContextMenu.Items.Add("Refresh", null, (s, e) => RefreshButton_Click(this, EventArgs.Empty));
+        gridContextMenu.Items.Add("Export to Excel", null, (s, e) => ExportButton_Click(this, EventArgs.Empty));
+        _accountsGrid.ContextMenuStrip = gridContextMenu;
         _accountsGrid.CellDoubleClick += _gridCellDoubleClickHandler = Grid_CellDoubleClick;
         _accountsGrid.RowValidating += Grid_RowValidating;
         _accountsGrid.QueryCellStyle += Grid_QueryCellStyle;
@@ -666,6 +652,20 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             if (keyData == Keys.F5)
             {
                 RefreshButton_Click(this, EventArgs.Empty);
+                return true;
+            }
+
+            // F1: Show help dialog
+            if (keyData == Keys.F1)
+            {
+                ShowChartOfAccountsHelp();
+                return true;
+            }
+
+            // Ctrl+E: Export to Excel
+            if (keyData == (Keys.Control | Keys.E))
+            {
+                ExportButton_Click(this, EventArgs.Empty);
                 return true;
             }
 
@@ -837,6 +837,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         _logger.LogDebug("[BINDING] Starting AccountsPanel ViewModel binding. Accounts count: {Count}",
             ViewModel.Accounts?.Count ?? 0);
 
+        // Populate filter dropdowns now that ViewModel is available
+        PopulateFilterDropdowns();
+
         // Wrap binding in BeginUpdate/EndUpdate for performance
         if (_accountsGrid != null)
         {
@@ -882,12 +885,99 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             _logger.LogDebug("[BINDING] Subscribed to ViewModel PropertyChanged events");
         }
 
+        // NEW: Two-way DataBindings for filter dropdowns (Syncfusion MVVM pattern)
+        BindFilterDropdowns();
+
         // Note: SfDataGrid.SelectedItem is a read-only runtime property, not bindable.
         // Selection sync happens via SelectionChanged event -> UpdateButtonState() instead.
         _logger.LogDebug("[BINDING] Selection sync will use SelectionChanged event handler");
 
         _logger.LogDebug("[BINDING] AccountsPanel ViewModel bound successfully. Final grid row count: {RowCount}",
             _accountsGrid?.RowCount ?? -1);
+    }
+
+    /// <summary>
+    /// Populates the filter dropdown controls with data from the ViewModel.
+    /// Called when ViewModel is first bound and ready.
+    /// </summary>
+    private void PopulateFilterDropdowns()
+    {
+        try
+        {
+            if (ViewModel == null)
+            {
+                _logger?.LogWarning("[FILTER_POPULATE] ViewModel is null; cannot populate filters");
+                return;
+            }
+
+            // Temporarily unsubscribe from events to avoid triggering filter logic during population
+            if (_fundFilterComboBox != null)
+                _fundFilterComboBox.SelectedIndexChanged -= FundFilterComboBox_SelectedIndexChanged;
+            if (_accountTypeFilterComboBox != null)
+                _accountTypeFilterComboBox.SelectedIndexChanged -= AccountTypeFilterComboBox_SelectedIndexChanged;
+            if (_departmentFilterComboBox != null)
+                _departmentFilterComboBox.SelectedIndexChanged -= DepartmentFilterComboBox_SelectedIndexChanged;
+
+            // Populate Fund filter
+            if (_fundFilterComboBox != null && ViewModel.AvailableFunds != null)
+            {
+                var fundItems = new List<object> { "All" };
+                fundItems.AddRange(ViewModel.AvailableFunds.Cast<object>());
+                _fundFilterComboBox.DataSource = fundItems;
+                _fundFilterComboBox.SelectedIndex = 0;
+                _fundFilterComboBox.Refresh();  // Syncfusion magic for immediate display
+                _logger?.LogDebug("[FILTER_POPULATE] Fund filter populated with {Count} items", fundItems.Count);
+            }
+
+            // Populate Account Type filter
+            if (_accountTypeFilterComboBox != null && ViewModel.AvailableAccountTypes != null)
+            {
+                var accountTypeItems = new List<object> { "All" };
+                accountTypeItems.AddRange(ViewModel.AvailableAccountTypes.Cast<object>());
+                _accountTypeFilterComboBox.DataSource = accountTypeItems;
+                _accountTypeFilterComboBox.SelectedIndex = 0;
+                _accountTypeFilterComboBox.Refresh();  // Syncfusion magic for immediate display
+                _logger?.LogDebug("[FILTER_POPULATE] Account Type filter populated with {Count} items", accountTypeItems.Count);
+            }
+
+            // Populate Department filter
+            if (_departmentFilterComboBox != null && ViewModel.AvailableDepartments != null)
+            {
+                var departmentItems = new List<object> { "All" };
+                departmentItems.AddRange(ViewModel.AvailableDepartments.Cast<object>());
+                _departmentFilterComboBox.DataSource = departmentItems;
+                _departmentFilterComboBox.SelectedIndex = 0;
+                _departmentFilterComboBox.Refresh();  // Syncfusion magic for immediate display
+                _logger?.LogDebug("[FILTER_POPULATE] Department filter populated with {Count} items", departmentItems.Count);
+            }
+
+            // After all population, force UI refresh (fixes "only All" bug)
+            _fundFilterComboBox?.Invalidate();
+            _accountTypeFilterComboBox?.Invalidate();
+            _departmentFilterComboBox?.Invalidate();
+
+            // Re-subscribe to events
+            if (_fundFilterComboBox != null)
+                _fundFilterComboBox.SelectedIndexChanged += FundFilterComboBox_SelectedIndexChanged;
+            if (_accountTypeFilterComboBox != null)
+                _accountTypeFilterComboBox.SelectedIndexChanged += AccountTypeFilterComboBox_SelectedIndexChanged;
+            if (_departmentFilterComboBox != null)
+                _departmentFilterComboBox.SelectedIndexChanged += DepartmentFilterComboBox_SelectedIndexChanged;
+
+            _logger?.LogInformation("[FILTER_POPULATE] All filter dropdowns populated successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[FILTER_POPULATE] Error populating filter dropdowns");
+
+            // Re-subscribe even on error to avoid leaving controls in bad state
+            if (_fundFilterComboBox != null)
+                _fundFilterComboBox.SelectedIndexChanged += FundFilterComboBox_SelectedIndexChanged;
+            if (_accountTypeFilterComboBox != null)
+                _accountTypeFilterComboBox.SelectedIndexChanged += AccountTypeFilterComboBox_SelectedIndexChanged;
+            if (_departmentFilterComboBox != null)
+                _departmentFilterComboBox.SelectedIndexChanged += DepartmentFilterComboBox_SelectedIndexChanged;
+        }
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -1520,6 +1610,249 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
 
 
+
+    /// <summary>
+    /// Binds ViewModel commands to toolbar buttons using Syncfusion MVVM Command pattern.
+    /// This is the official Syncfusion way per Essential Studio 32.1.19 MVVM samples.
+    /// </summary>
+    private void BindViewModelCommands()
+    {
+        if (ViewModel == null)
+        {
+            _logger?.LogWarning("[BIND_COMMANDS] ViewModel is null; cannot bind commands");
+            return;
+        }
+
+        if (_createButton != null)
+        {
+            _createButton.Command = ViewModel.CreateAccountCommand;
+            _createButton.CommandParameter = null;
+            _logger?.LogDebug("[BIND_COMMANDS] Create button → CreateAccountCommand");
+        }
+
+        if (_editButton != null)
+        {
+            _editButton.Command = ViewModel.EditAccountCommand;
+            // CommandParameter is dynamically resolved via ViewModel.SelectedAccount
+            _logger?.LogDebug("[BIND_COMMANDS] Edit button → EditAccountCommand");
+        }
+
+        if (_deleteButton != null)
+        {
+            _deleteButton.Command = ViewModel.DeleteAccountCommand;
+            // CommandParameter is dynamically resolved via ViewModel.SelectedAccount
+            _logger?.LogDebug("[BIND_COMMANDS] Delete button → DeleteAccountCommand");
+        }
+
+        if (_refreshButton != null)
+        {
+            _refreshButton.Command = ViewModel.RefreshCommand;
+            _refreshButton.CommandParameter = null;
+            _logger?.LogDebug("[BIND_COMMANDS] Refresh button → RefreshCommand");
+        }
+
+        _logger?.LogInformation("[BIND_COMMANDS] ✅ All toolbar button commands bound successfully");
+    }
+
+    /// <summary>
+    /// Sets up two-way DataBindings for filter dropdown controls.
+    /// Syncfusion SfComboBox supports databinding to ViewModel properties for automatic UI sync.
+    /// </summary>
+    private void BindFilterDropdowns()
+    {
+        try
+        {
+            if (ViewModel == null)
+            {
+                _logger?.LogWarning("[BIND_FILTERS] ViewModel is null; cannot bind filters");
+                return;
+            }
+
+            // Clear any existing bindings to avoid duplicates
+            _fundFilterComboBox?.DataBindings.Clear();
+            _accountTypeFilterComboBox?.DataBindings.Clear();
+            _departmentFilterComboBox?.DataBindings.Clear();
+
+            // Two-way binding: UI ↔ ViewModel (Syncfusion pattern)
+            // When user changes dropdown → ViewModel.Selected* updates → VM partial method fires → grid filters
+            if (_fundFilterComboBox != null)
+            {
+                _fundFilterComboBox.DataBindings.Add(
+                    "SelectedItem",
+                    ViewModel,
+                    nameof(ViewModel.SelectedFund),
+                    true,
+                    DataSourceUpdateMode.OnPropertyChanged);
+                _logger?.LogDebug("[BIND_FILTERS] Fund filter bound to ViewModel.SelectedFund");
+            }
+
+            if (_accountTypeFilterComboBox != null)
+            {
+                _accountTypeFilterComboBox.DataBindings.Add(
+                    "SelectedItem",
+                    ViewModel,
+                    nameof(ViewModel.SelectedAccountType),
+                    true,
+                    DataSourceUpdateMode.OnPropertyChanged);
+                _logger?.LogDebug("[BIND_FILTERS] Account Type filter bound to ViewModel.SelectedAccountType");
+            }
+
+            if (_departmentFilterComboBox != null)
+            {
+                _departmentFilterComboBox.DataBindings.Add(
+                    "SelectedItem",
+                    ViewModel,
+                    nameof(ViewModel.SelectedDepartment),
+                    true,
+                    DataSourceUpdateMode.OnPropertyChanged);
+                _logger?.LogDebug("[BIND_FILTERS] Department filter bound to ViewModel.SelectedDepartment");
+            }
+
+            _logger?.LogInformation("[BIND_FILTERS] ✅ All filter dropdowns bound successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[BIND_FILTERS] Error binding filter dropdowns");
+        }
+    }
+
+    /// <summary>
+    /// Shows comprehensive Chart of Accounts help with keyboard shortcuts and municipal accounting guidance.
+    /// Professional help dialog for mayors and finance teams.
+    /// </summary>
+    private void ShowChartOfAccountsHelp()
+    {
+        var helpText = @"Chart of Accounts — Municipal Finance Management
+
+OVERVIEW:
+Manage your municipal chart of accounts with full CRUD operations, filtering, and real-time balance tracking.
+
+KEYBOARD SHORTCUTS:
+  • Ctrl+N     → Create new account
+  • F2 / Enter → Edit selected account
+  • Delete     → Delete selected account
+  • F5         → Refresh account list
+  • Ctrl+E     → Export to Excel
+  • Ctrl+F     → Focus search box
+  • F1         → Show this help
+  • Escape     → Clear selection
+
+MUNICIPAL ACCOUNTING STANDARDS:
+  • Account numbers follow GASB (Governmental Accounting Standards Board) guidelines
+  • Balance = Assets – Liabilities (real-time calculation)
+  • Budget vs Actual tracking enabled for all accounts
+  • Fund accounting separates resources by legal restrictions
+  • Department tracking enables cost center analysis
+
+FILTERING & SEARCH:
+  • Filter by Fund, Account Type, or Department using the toolbar dropdowns
+  • Search across account numbers, names, descriptions, and departments
+  • Right-click on grid rows for quick Edit/Delete actions
+
+EXCEL EXPORT:
+  • Export button creates a formatted Excel spreadsheet with all visible accounts
+  • Includes all columns: Account#, Name, Fund, Type, Balance, Budget, Department
+  • Perfect for auditors, board presentations, or external reporting
+
+TIPS:
+  • All accounts must have unique account numbers
+  • Inactive accounts are hidden by default (use filter to show)
+  • Summary totals appear at the bottom of the grid
+  • Double-click any row to edit quickly
+
+For technical support or feature requests, contact your Wiley Widget administrator.";
+
+        MessageBox.Show(helpText,
+            "Chart of Accounts Help",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+
+        _logger?.LogInformation("Chart of Accounts help displayed");
+    }
+
+    /// <summary>
+    /// Exports the current account list to an Excel spreadsheet.
+    /// Includes all visible columns and respects current filtering/search state.
+    /// Uses Syncfusion ExcelEngine per ExportService pattern.
+    /// </summary>
+    private void ExportButton_Click(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogDebug("ExportButton_Click: Starting Excel export");
+
+            if (_accountsGrid == null || ViewModel == null)
+            {
+                MessageBox.Show("Cannot export: Grid or ViewModel not available.", "Export Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var view = _accountsGrid.View;
+            if (view == null)
+            {
+                MessageBox.Show("Grid view not initialized - cannot export.", "Export Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Show save file dialog
+            using var saveDialog = new SaveFileDialog
+            {
+                Filter = "Excel Workbook (*.xlsx)|*.xlsx|Excel 97-2003 (*.xls)|*.xls",
+                DefaultExt = "xlsx",
+                FileName = $"ChartOfAccounts_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                Title = "Export Chart of Accounts to Excel"
+            };
+
+            if (saveDialog.ShowDialog(this) == DialogResult.OK)
+            {
+                _logger?.LogInformation("Exporting accounts to: {FilePath}", saveDialog.FileName);
+
+                // Use Syncfusion's Excel export (matching ExportService.cs pattern)
+                using var excelEngine = new ExcelEngine();
+                var workbook = excelEngine.Excel.Workbooks.Create(1);
+                var worksheet = workbook.Worksheets[0];
+
+                var options = new ExcelExportingOptions
+                {
+                    ExcelVersion = ExcelVersion.Xlsx,
+                    ExportStackedHeaders = true
+                };
+
+                // Export grid to worksheet
+                _accountsGrid.ExportToExcel(view, options, worksheet);
+                workbook.Version = ExcelVersion.Xlsx;
+                workbook.SaveAs(saveDialog.FileName);
+
+                _logger?.LogInformation("Excel export completed successfully: {RowCount} accounts exported",
+                    ViewModel.Accounts?.Count ?? 0);
+
+                // Offer to open the file
+                var result = MessageBox.Show(
+                    $"Export completed successfully!\n\n{ViewModel.Accounts?.Count ?? 0} accounts exported to:\n{saveDialog.FileName}\n\nOpen the file now?",
+                    "Export Complete",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (result == DialogResult.Yes)
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = saveDialog.FileName,
+                        UseShellExecute = true
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error exporting accounts to Excel");
+            MessageBox.Show($"Export failed: {ex.Message}\n\nSee logs for details.", "Export Error",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -1561,6 +1894,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             _buttonToolTips?.Dispose();
 
             // Dispose controls (in reverse order of creation)
+            _exportButton?.Dispose();
             _createButton?.Dispose();
             _editButton?.Dispose();
             _deleteButton?.Dispose();

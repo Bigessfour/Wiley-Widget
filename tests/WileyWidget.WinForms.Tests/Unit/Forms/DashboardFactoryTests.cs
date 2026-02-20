@@ -20,6 +20,7 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Tests.Infrastructure;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
@@ -86,7 +87,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncfusionControlFactory>.Instance));
             var panelNav = new Mock<IPanelNavigationService>();
 
             // Act
@@ -94,7 +95,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             // Assert
             panel.Should().BeOfType<FlowLayoutPanel>();
-            var cards = panel.Controls.OfType<LegacyGradientPanel>().ToList();
+            var cards = panel.Controls.OfType<Panel>().ToList();
             cards.Count.Should().Be(5, "dashboard should contain five navigation cards");
 
             var accountsCard = cards.FirstOrDefault(c => c.Name.Contains("Accounts"));
@@ -114,11 +115,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncfusionControlFactory>.Instance));
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
-            var accountsCard = panel.Controls.OfType<LegacyGradientPanel>().First(c => c.Name.Contains("Accounts"));
+            var accountsCard = panel.Controls.OfType<Panel>().First(c => c.Name.Contains("Accounts"));
 
             // Act: simulate click by invoking protected OnClick via reflection
             var onClick = typeof(Control).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -137,12 +138,12 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncfusionControlFactory>.Instance));
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
 
-            var accountsCard = panel.Controls.OfType<LegacyGradientPanel>().First(c => c.Name.Contains("Accounts"));
+            var accountsCard = panel.Controls.OfType<Panel>().First(c => c.Name.Contains("Accounts"));
             var desc = accountsCard.Controls.OfType<Label>().First(l => l.Name.EndsWith("_Desc"));
 
             // DashboardViewModel.AccountsSummary should appear in description
@@ -158,11 +159,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncfusionControlFactory>.Instance));
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());
-            var accountsCard = panel.Controls.OfType<LegacyGradientPanel>().First(c => c.Name.Contains("Accounts"));
+            var accountsCard = panel.Controls.OfType<Panel>().First(c => c.Name.Contains("Accounts"));
 
             accountsCard.AccessibleName.Should().Be("Dashboard Card: Accounts");
             accountsCard.AccessibleRole.Should().Be(AccessibleRole.Grouping);
@@ -180,7 +181,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
             var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeService, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(Microsoft.Extensions.Logging.Abstractions.NullLogger<SyncfusionControlFactory>.Instance));
             var panelNav = new Mock<IPanelNavigationService>();
 
             var panel = DashboardFactory.CreateDashboardPanel(panelNav.Object, form, Mock.Of<ILogger>());

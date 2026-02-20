@@ -35,6 +35,7 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 - **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
 - **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
 - **Git**: Never reset or amend without explicit approval.
+- **Workspace Violation Rule (Hard Fail)**: The command/tool "read changed files in GitHub" (for example, `get_changed_files`) is FORBIDDEN in this workspace because it is a no-op and wastes cycles. Use `git status` / `git diff` (or GitKraken MCP status/diff tools) instead.
 - **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy. Also validate Syncfusion method usage and control configuration against local Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19`.
 - **Syncfusion Control Creation Rule**: ALL Syncfusion controls must be created via `SyncfusionControlFactory` (located at `src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs`). Direct instantiation (e.g., `new SfDataGrid()`) without using the factory is STRICTLY FORBIDDEN unless ALL mandatory properties from the control's checklist in `.vscode/rules/syncfusion-control-enforcement.md` are explicitly set. See `docs/SYNCFUSION_CONTROL_QUICK_REFERENCE.md` for usage examples.
 
@@ -862,3 +863,4 @@ These guidelines provide guardrails without blocking progress when tools are una
 
 - Do not commit real secrets or credentials.
 - Avoid destructive operations without explicit approval.
+`````

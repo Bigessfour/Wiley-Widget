@@ -521,14 +521,14 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-            _logger.LogWarning("ResetBudgetOverviewDataOnFailure called: loading empty budget overview state.");
+                _logger.LogWarning("ResetBudgetOverviewDataOnFailure called: loading empty budget overview state.");
 
                 Categories.Clear();
                 TotalBudget = 0m;
                 TotalActual = 0m;
                 TotalEncumbrance = 0m;
                 TotalAvailable = 0m;
-            StatusText = "No budget overview data available yet.";
+                StatusText = "No budget overview data available yet.";
 
                 TotalVariance = 0m;
                 OverallVariancePercent = 0m;

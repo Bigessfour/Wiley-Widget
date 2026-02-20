@@ -18,6 +18,7 @@ using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using BusinessInterfaces = WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Tests.Integration.Mocks;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Forms;
@@ -80,7 +81,12 @@ internal static class IntegrationTestServices
         services.AddScoped<IReportService>(_ => Mock.Of<IReportService>());
         services.AddScoped<IAuditService>(_ => Mock.Of<IAuditService>());
         services.AddScoped<IReportExportService>(_ => Mock.Of<IReportExportService>());
+        // Benjamin: round-trip — MockExcelExportService no-ops all file I/O; safe for CI.
+        services.AddScoped<WileyWidget.Services.Export.IExcelExportService>(_ => new MockExcelExportService());
         services.AddScoped<IAILoggingService>(_ => Mock.Of<IAILoggingService>());
+        // Harper: MVVM — simple IAIService mock; GrokAgentService/RateScenarioTools/BudgetForecastTools
+        // are sealed and intentionally NOT registered — WarRoomViewModel receives null and degrades gracefully.
+        services.AddScoped<IAIService>(_ => Mock.Of<IAIService>());
         services.AddScoped<IQuickBooksService>(_ => Mock.Of<IQuickBooksService>());
         services.AddScoped<IGlobalSearchService>(_ => Mock.Of<IGlobalSearchService>());
 

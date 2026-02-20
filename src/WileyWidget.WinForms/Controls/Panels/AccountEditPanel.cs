@@ -21,6 +21,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Dialogs;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 using WileyWidget.WinForms.Extensions;
@@ -416,7 +417,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 0, 0, 8),
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold)
             };
             _mainLayout.Controls.Add(lblTitle, 0, 0);
             _mainLayout.SetColumnSpan(lblTitle, 2);
@@ -429,7 +429,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
 
@@ -444,7 +443,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 1,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
             _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
@@ -457,7 +455,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblName, 0, 2);
 
@@ -471,7 +468,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 2,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtName, 1, 2);
             _toolTip.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
@@ -484,7 +480,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblDescription, 0, 3);
 
@@ -500,7 +495,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 3,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(txtDescription, 1, 3);
             _toolTip.SetToolTip(txtDescription, "Optional detailed description");
@@ -513,7 +507,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblDepartment, 0, 4);
 
@@ -531,7 +524,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 4,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbDepartment, 1, 4);
             _toolTip.SetToolTip(cmbDepartment, "Select owning department");
@@ -544,7 +536,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblFund, 0, 5);
 
@@ -562,7 +553,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 5,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbFund, 1, 5);
             _toolTip.SetToolTip(cmbFund, "Select existing fund from database");
@@ -575,7 +565,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblType, 0, 6);
 
@@ -593,7 +582,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 6,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(cmbType, 1, 6);
             _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
@@ -606,7 +594,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblBalance, 0, 7);
 
@@ -625,7 +612,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ThemeName = themeName,
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             // Set decimal digits via NumberFormatInfo
             numBalance.NumberFormatInfo.CurrencyDecimalDigits = 2;
@@ -640,7 +626,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 3, 10, 3),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(lblBudget, 0, 8);
 
@@ -659,7 +644,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ThemeName = themeName,
                 FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
                 NumberFormatInfo = CurrencyFormat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             // Set decimal digits via NumberFormatInfo
             numBudget.NumberFormatInfo.CurrencyDecimalDigits = 2;
@@ -689,7 +673,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Margin = new Padding(0, 3, 0, 3),
                 TabIndex = 9,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _mainLayout.Controls.Add(chkActive, 1, 9);
             _toolTip.SetToolTip(chkActive, "Indicates whether this account is currently active");
@@ -713,7 +696,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TabIndex = 10,
                 ThemeName = themeName,
                 Margin = new Padding(0, 0, 10, 0),
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _saveHandler = BtnSave_Click;
             btnSave.Click += _saveHandler;
@@ -729,10 +711,17 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleDescription = "Cancel and discard changes",
                 TabIndex = 11,
                 ThemeName = themeName,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
             };
             _cancelHandler = BtnCancel_Click;
             btnCancel.Click += _cancelHandler;
+
+            // When used as a standalone panel (not in AccountEditDialog), wire events to close the panel
+            var hostForm = FindForm();
+            if (hostForm != null && !(hostForm is WileyWidget.WinForms.Dialogs.AccountEditDialog))
+            {
+                CancelRequested += (s, e) => ClosePanel();
+                SaveCompleted += (s, e) => ClosePanel();
+            }
 
             // Position buttons: Cancel first (rightmost), then Save to its left
             btnCancel.Left = _buttonPanel.ClientSize.Width - btnCancel.Width - 10;
@@ -771,6 +760,28 @@ namespace WileyWidget.WinForms.Controls.Panels
             ResumeLayout(false);
             PerformLayout();
             Refresh();
+
+            // Handle form close button as cancel
+            Load += AccountEditPanel_Load;
+        }
+
+        private void AccountEditPanel_Load(object? sender, EventArgs e)
+        {
+            var hostForm = FindForm();
+            if (hostForm != null)
+            {
+                hostForm.FormClosing += HostForm_FormClosing;
+            }
+        }
+
+        private void HostForm_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            // If user is closing via X button and we haven't saved/cancelled yet, treat as cancel
+            if (!e.Cancel && SaveDialogResult == DialogResult.None)
+            {
+                Cancel();
+                e.Cancel = true; // Prevent form from closing, let ClosePanel handle it
+            }
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)
@@ -1133,6 +1144,15 @@ namespace WileyWidget.WinForms.Controls.Panels
             SaveDialogResult = DialogResult.Cancel;
             // Raise cancel requested event instead of directly closing form
             CancelRequested?.Invoke(this, EventArgs.Empty);
+            // Smart close: check if hosted in dialog or docking panel
+            if (ParentForm is AccountEditDialog dlg)
+            {
+                dlg.Close();
+            }
+            else
+            {
+                ClosePanel();
+            }
         }
 
         /// <summary>
@@ -1202,6 +1222,20 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
+        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+            BeginInvoke(() =>
+            {
+                ForceFullLayout();
+                Logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+            });
+        }
+
+        /// <summary>
         /// Properly disposes all resources including event handlers, ErrorProvider, and bindings.
         /// </summary>
         protected override void Dispose(bool disposing)
@@ -1234,6 +1268,13 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (cmbDepartment != null) cmbDepartment.DataBindings.Clear();
                 if (cmbFund != null) cmbFund.DataBindings.Clear();
                 if (cmbType != null) cmbType.DataBindings.Clear();
+
+                // Remove form event handlers
+                var hostForm = FindForm();
+                if (hostForm != null)
+                {
+                    hostForm.FormClosing -= HostForm_FormClosing;
+                }
 
                 // Dispose resources
                 _errorBinding?.Dispose();

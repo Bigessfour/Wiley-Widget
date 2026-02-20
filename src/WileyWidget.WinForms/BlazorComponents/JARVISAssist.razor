@@ -1,35 +1,495 @@
 @namespace WileyWidget.WinForms.BlazorComponents
+@page "/"
+@using System.Text.Json
+@using WileyWidget.Services.Abstractions
+@using WileyWidget.WinForms.Services.AI
 @using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IChatBridgeService ChatBridge
+@inject ILogger<JARVISAssist> Logger
 @inject IJSRuntime JS
 
-<div style="background-color: darkblue !important; color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 20px solid lime !important; box-sizing: border-box;">
-    <h1 style="color: lime; font-size: 50px; margin: 0;">BLAZOR LIVES (V4)</h1>
-    <p style="font-size: 24px;">IF YOU SEE THIS DARK BLUE SCREEN WITH LIME BORDER, BLAZOR IS RENDERING!</p>
-    <p>Rendered at: @DateTime.Now.ToString("HH:mm:ss.fff")</p>
-    <div id="js-test" style="margin-top: 20px; padding: 20px; background: #333; border: 2px solid white; border-radius: 10px;">
-        JS Interop Status: <span id="js-result" style="font-weight: bold; color: yellow;">Initializing JSRuntime...</span>
+<div class="jarvis-container">
+    <div class="chat-header">
+        <h1>JARVIS Assistant</h1>
+        <p class="subtitle">Ask me anything about your municipality</p>
+    </div>
+
+    <div class="chat-messages" @ref="messagesContainer">
+        @foreach (var message in _messages)
+        {
+            <div class="message @message.SenderClass">
+                <div class="message-content">
+                    @if (message.IsMarkdown)
+                    {
+                        <div class="markdown-content">@((MarkupString)message.HtmlContent)</div>
+                    }
+                    else
+                    {
+                        <p>@message.Content</p>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (_isStreaming && !string.IsNullOrEmpty(_currentStreamingText))
+        {
+            <div class="message assistant">
+                <div class="message-content">
+                    <div class="markdown-content">@((MarkupString)_currentStreamingHtml)</div>
+                    <span class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input-area">
+        <div class="input-group">
+            <input
+                type="text"
+                class="chat-input"
+                placeholder="Ask JARVIS a question..."
+                @bind="_userInput"
+                @onkeyup="HandleKeyUp"
+                disabled="@_isStreaming"
+                @ref="inputField"
+            />
+            <button
+                class="send-button"
+                @onclick="SendMessage"
+                disabled="@(_isStreaming || string.IsNullOrWhiteSpace(_userInput))"
+                title="Send message (Enter)"
+            >
+                ➤ Send
+            </button>
+        </div>
     </div>
 </div>
 
 @code {
+    private List<ChatMessage> _messages = new();
+    private string _userInput = string.Empty;
+    private bool _isStreaming = false;
+    private string _currentStreamingText = string.Empty;
+    private string _currentStreamingHtml = string.Empty;
+    private ElementReference messagesContainer;
+    private ElementReference inputField;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger?.LogInformation("[JARVIS-BLAZOR] JARVISAssist component initializing");
+
+        // Subscribe to chat bridge events
+        ChatBridge.OnMessageReceived += HandleMessageReceived;
+        ChatBridge.ResponseChunkReceived += HandleResponseChunk;
+        ChatBridge.ResponseCompleted += HandleResponseCompleted;
+
+        await Task.CompletedTask;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            try {
-                await Task.Delay(500); // Brief delay to ensure DOM is ready
-                await JS.InvokeVoidAsync("eval", @"
-                    console.log('[JARVIS-BLAZOR] JS Interop Test Starting');
-                    const el = document.getElementById('js-result');
-                    if (el) {
-                        el.innerText = 'SUCCESS (' + window.innerWidth + 'x' + window.innerHeight + ')';
-                        el.style.color = '#0f0';
-                        document.title = 'JARVIS - BLAZOR ACTIVE';
-                    }
-                ");
-            } catch (Exception ex) {
-                Console.WriteLine("JS Error: " + ex.Message);
+            Logger?.LogInformation("[JARVIS-BLAZOR] Component first render, focusing input");
+            try
+            {
+                await inputField.FocusAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "[JARVIS-BLAZOR] Failed to focus input element");
             }
         }
+
+        // Scroll to bottom when messages update
+        if (_messages.Count > 0 || _isStreaming)
+        {
+            try
+            {
+                await ScrollToBottom();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "[JARVIS-BLAZOR] Failed to scroll to bottom");
+            }
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("scrollToBottom", messagesContainer);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogDebug(ex, "[JARVIS-BLAZOR] Scroll to bottom failed");
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_userInput) || _isStreaming)
+            return;
+
+        var userMessage = _userInput.Trim();
+        _userInput = string.Empty;
+
+        // Add user message to display
+        _messages.Add(new ChatMessage
+        {
+            Content = userMessage,
+            Sender = "user",
+            SenderClass = "user",
+            IsMarkdown = false
+        });
+
+        StateHasChanged();
+        await ScrollToBottom();
+
+        Logger?.LogInformation("[JARVIS-BLAZOR] Sending user message: {Length} chars", userMessage.Length);
+        _isStreaming = true;
+
+        try
+        {
+            await ChatBridge.RequestExternalPromptAsync(userMessage);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError(ex, "[JARVIS-BLAZOR] Error sending prompt");
+            _messages.Add(new ChatMessage
+            {
+                Content = $"Error: {ex.Message}",
+                Sender = "system",
+                SenderClass = "system",
+                IsMarkdown = false
+            });
+            _isStreaming = false;
+        }
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !_isStreaming)
+        {
+            _ = SendMessage();
+        }
+    }
+
+    private void HandleMessageReceived(object? sender, dynamic msg)
+    {
+        _messages.Add(new ChatMessage
+        {
+            Content = msg.Content,
+            Sender = "assistant",
+            SenderClass = "assistant",
+            IsMarkdown = true,
+            HtmlContent = MarkdownToHtml(msg.Content)
+        });
+
+        _isStreaming = false;
+        _currentStreamingText = string.Empty;
+        _currentStreamingHtml = string.Empty;
+
+        Logger?.LogDebug("[JARVIS-BLAZOR] Full message received");
+        StateHasChanged();
+        _ = ScrollToBottom();
+    }
+
+    private void HandleResponseChunk(object? sender, dynamic args)
+    {
+        if (args?.Chunk != null)
+        {
+            _currentStreamingText += (string)args.Chunk;
+            _currentStreamingHtml = MarkdownToHtml(_currentStreamingText);
+
+            Logger?.LogDebug("[JARVIS-BLAZOR] Streaming chunk received, total: {Length} chars", _currentStreamingText.Length);
+            StateHasChanged();
+            _ = ScrollToBottom();
+        }
+    }
+
+    private void HandleResponseCompleted(object? sender, dynamic args)
+    {
+        if (!string.IsNullOrEmpty(_currentStreamingText))
+        {
+            _messages.Add(new ChatMessage
+            {
+                Content = _currentStreamingText,
+                Sender = "assistant",
+                SenderClass = "assistant",
+                IsMarkdown = true,
+                HtmlContent = _currentStreamingHtml
+            });
+        }
+
+        _isStreaming = false;
+        _currentStreamingText = string.Empty;
+        _currentStreamingHtml = string.Empty;
+
+        Logger?.LogInformation("[JARVIS-BLAZOR] Response stream completed");
+        StateHasChanged();
+        _ = ScrollToBottom();
+    }
+
+    private string MarkdownToHtml(string markdown)
+    {
+        if (string.IsNullOrEmpty(markdown))
+            return string.Empty;
+
+        // Simple markdown to HTML conversion for common patterns
+        var html = System.Net.WebUtility.HtmlEncode(markdown);
+
+        // Convert line breaks
+        html = html.Replace("\n", "<br/>");
+
+        // Convert **bold** to <strong>bold</strong>
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+
+        // Convert *italic* to <em>italic</em>
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*(.+?)\*", "<em>$1</em>");
+
+        // Convert `code` to <code>code</code>
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"`(.+?)`", "<code>$1</code>");
+
+        return html;
+    }
+
+    private class ChatMessage
+    {
+        public string Content { get; set; } = string.Empty;
+        public string Sender { get; set; } = string.Empty;
+        public string SenderClass { get; set; } = string.Empty;
+        public bool IsMarkdown { get; set; }
+        public string HtmlContent { get; set; } = string.Empty;
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        ChatBridge.OnMessageReceived -= HandleMessageReceived;
+        ChatBridge.ResponseChunkReceived -= HandleResponseChunk;
+        ChatBridge.ResponseCompleted -= HandleResponseCompleted;
+        await ValueTask.CompletedTask;
     }
 }
+
+<style>
+    .jarvis-container {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100vh;
+        background-color: #0d1117;
+        color: #c9d1d9;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border-bottom: 1px solid #30363d;
+        flex-shrink: 0;
+    }
+
+    .chat-header h1 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .chat-header .subtitle {
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .message {
+        display: flex;
+        margin-bottom: 8px;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .message.user {
+        justify-content: flex-end;
+    }
+
+    .message.assistant {
+        justify-content: flex-start;
+    }
+
+    .message.system {
+        justify-content: center;
+    }
+
+    .message-content {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 8px;
+        word-wrap: break-word;
+    }
+
+    .message.user .message-content {
+        background-color: #10b981;
+        color: white;
+    }
+
+    .message.assistant .message-content {
+        background-color: #21262d;
+        color: #c9d1d9;
+        border: 1px solid #30363d;
+    }
+
+    .message.system .message-content {
+        background-color: #d97706;
+        color: white;
+        max-width: 90%;
+    }
+
+    .markdown-content {
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    .markdown-content code {
+        background-color: rgba(0, 0, 0, 0.3);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+    }
+
+    .markdown-content strong {
+        font-weight: 600;
+    }
+
+    .markdown-content em {
+        font-style: italic;
+    }
+
+    .markdown-content br {
+        display: block;
+        content: '';
+        margin: 4px 0;
+    }
+
+    .typing-indicator {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 8px;
+    }
+
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #58a6ff;
+        animation: typing 1.4s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @@keyframes typing {
+        0%, 60%, 100% {
+            opacity: 0.5;
+            transform: translateY(0);
+        }
+        30% {
+            opacity: 1;
+            transform: translateY(-8px);
+        }
+    }
+
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .chat-input-area {
+        flex-shrink: 0;
+        padding: 16px 20px;
+        border-top: 1px solid #30363d;
+        background-color: #0d1117;
+    }
+
+    .input-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 10px 14px;
+        background-color: #21262d;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        color: #c9d1d9;
+        font-size: 14px;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        transition: border-color 0.2s;
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: #58a6ff;
+        box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+    }
+
+    .chat-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .send-button {
+        padding: 10px 20px;
+        background-color: #10b981;
+        border: 1px solid #059669;
+        border-radius: 6px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .send-button:hover:not(:disabled) {
+        background-color: #059669;
+    }
+
+    .send-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .send-button:active:not(:disabled) {
+        background-color: #047857;
+    }
+</style>

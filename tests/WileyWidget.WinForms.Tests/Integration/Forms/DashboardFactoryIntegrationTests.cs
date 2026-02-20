@@ -21,7 +21,7 @@ public sealed class DashboardFactoryIntegrationTests
 
         var panel = DashboardFactory.CreateDashboardPanel(null, form, Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider));
 
-        panel.Controls.OfType<LegacyGradientPanel>().Count().Should().Be(5);
-        panel.Controls.OfType<LegacyGradientPanel>().Any(card => card.Name.Contains("Accounts")).Should().BeTrue();
+        panel.Controls.OfType<Panel>().Count().Should().Be(5);
+        panel.Controls.OfType<Panel>().Any(card => card.Name.Contains("Accounts")).Should().BeTrue();
     }
 }

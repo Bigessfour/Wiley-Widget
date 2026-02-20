@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
@@ -140,26 +142,40 @@ public partial class MainForm
     /// </summary>
     private static readonly Dictionary<string, string> RibbonIconGlyphs = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Core Navigation
+        // Administration tab
+        ["Account Editor"] = "\uE70F",      // Edit/pen — account editor panel
+
+        // Home — Core Navigation
         ["Dashboard"] = "\uE80F",           // View Dashboard
-        ["War Room"] = "\uE7EF",            // Org chart/Strategy
-        ["Activity Log"] = "\uE81C",        // Recent history
+        ["JARVIS Chat"] = "\uE720",          // Chat / Message bubble
 
-        // Financials
-        ["Budget"] = "\uE8F0",              // Money/Calculator
-        ["Accounts"] = "\uE7EE",            // Contact list
-        ["Municipal Accounts"] = "\uE7EE",  // Contact list
-        ["Rates"] = "\uE8AB",               // Chart bars
+        // Financials tab
+        ["Budget"] = "\uE8F0",                          // Money/Calculator
+        ["Budget Management & Analysis"] = "\uE8F0",    // Money/Calculator (full display name)
+        ["Municipal Accounts"] = "\uE7EE",              // Contact list / Ledger
+        ["Accounts"] = "\uE7EE",                        // Contact list
+        ["Rates"] = "\uE8AB",                           // Chart bars
+        ["Payments"] = "\uE8C7",                        // Payment / Check register
+        ["QuickBooks"] = "\uE8F1",                      // Cloud / Sync
 
-        // Reporting
-        ["Reports"] = "\uE8A1",             // Document
-        ["Analytics Hub"] = "\uEA24",       // Analytics chart
-        ["Revenue Trends"] = "\uE8E5",      // Line chart trending
+        // Analytics & Reports tab
+        ["Analytics Hub"] = "\uEA24",                   // Analytics chart
+        ["Revenue Trends"] = "\uE8E5",                  // Line chart trending
+        ["Reports"] = "\uE8A1",                         // Document
+        ["Department Summary"] = "\uE902",              // Building / Department
+        ["War Room"] = "\uE7EF",                        // Strategy / Org chart
+        ["Proactive AI Insights"] = "\uE8B9",           // Insights / Lightbulb
 
-        // Tools
-        ["Settings"] = "\uE713",            // Settings gear
-        ["QuickBooks"] = "\uE8F1",          // Cloud/Sync
-        ["Data Mapper"] = "\uE8B7",         // Map
+        // Utilities tab
+        ["Customers"] = "\uE716",                       // Person / Contact
+        ["Utility Bills"] = "\uE7BD",                   // Utilities / Invoice
+        ["Recommended Monthly Charge"] = "\uE8AB",      // Chart bars (same as Rates)
+
+        // Administration tab
+        ["Settings"] = "\uE713",                        // Settings gear
+        ["Data Mapper"] = "\uE8B7",                     // Map / Import
+        ["Activity Log"] = "\uE81C",                    // Recent history / Clock
+        ["Audit Log & Activity"] = "\uE838",            // Clipboard / Audit
 
         // File Operations
         ["New"] = "\uE8A5",                 // New document
@@ -176,6 +192,12 @@ public partial class MainForm
         ["Sort Asc"] = "\uE74A",            // Sort ascending
         ["Sort Desc"] = "\uE74B"            // Sort descending
     };
+
+    private static readonly Action<ILogger, string, string, string, Exception?> LogRibbonNav =
+        LoggerMessage.Define<string, string, string>(
+            LogLevel.Debug,
+            default,
+            "[RIBBON_NAV] → {PanelName} (Type={Type}, Dock={Dock})");
 
     /// <summary>
     /// Loads a colorful icon from Syncfusion's built-in resources or embedded project resources.
@@ -199,12 +221,12 @@ public partial class MainForm
 
         try
         {
-            // Try loading from Syncfusion Essential Studio installation
-            var syncfusionBasePath = @"C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Icons\";
-            if (Directory.Exists(syncfusionBasePath))
+            // Try loading from Icons\ folder beside the deployed EXE (deployment-safe — no dev machine path).
+            var localIconsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Icons");
+            if (Directory.Exists(localIconsPath))
             {
                 // Try exact size match
-                var iconPath = Path.Combine(syncfusionBasePath, $"{iconName}_{size}x{size}.png");
+                var iconPath = Path.Combine(localIconsPath, $"{iconName}_{size}x{size}.png");
                 if (File.Exists(iconPath))
                 {
                     return Image.FromFile(iconPath);
@@ -214,7 +236,7 @@ public partial class MainForm
                 var variations = new[] { iconName, iconName.Replace(" ", ""), iconName.ToLowerInvariant() };
                 foreach (var variant in variations)
                 {
-                    iconPath = Path.Combine(syncfusionBasePath, $"{variant}_{size}x{size}.png");
+                    iconPath = Path.Combine(localIconsPath, $"{variant}_{size}x{size}.png");
                     if (File.Exists(iconPath))
                     {
                         return Image.FromFile(iconPath);
@@ -254,129 +276,31 @@ public partial class MainForm
 
     /// <summary>
     /// Creates a navigation command delegate for a panel from PanelRegistry.
-    /// Uses type-based ShowPanel() method for direct navigation without reflection.
-    ///
-    /// NAVIGATION FLOW:
-    /// 1. User clicks ribbon button
-    /// 2. RibbonCommand delegate invoked
-    /// 3. ShowPanel(Type, string, DockingStyle) called
-    /// 4. Panel instantiated via DI
-    /// 5. Panel docked in DockingManager
-    /// 6. Panel visible on screen
-    ///
-    /// PATTERN: Direct Type-based navigation (no reflection, no string lookup)
-    ///
+    /// Creates a navigation command using the generic ShowPanel method (no more 30-line if/else monster).
+    /// This handles EVERY panel type uniformly, including Dashboard, JARVIS Chat, etc.
     /// </summary>
-    /// <param name="form">MainForm instance</param>
-    /// <param name="entry">Panel registry entry with Type, DisplayName, and DefaultDock</param>
-    /// <param name="logger">Logger for diagnostics</param>
-    /// <returns>RibbonCommand delegate that navigates to the panel</returns>
-    private static RibbonCommand CreatePanelNavigationCommand(MainForm form, PanelRegistry.PanelEntry entry, ILogger? logger)
+    private static RibbonCommand CreatePanelNavigationCommand(
+        MainForm form,
+        PanelRegistry.PanelEntry entry,
+        ILogger? logger)
     {
-        // Direct navigation using Type-based ShowPanel overload (no reflection needed)
         return () =>
         {
             try
             {
-                logger?.LogDebug("[RIBBON_NAV] Navigating to panel {PanelName} (Type={PanelType}, Dock={DockStyle})",
-                    entry.DisplayName, entry.PanelType.Name, entry.DefaultDock);
-
-                // Use the panel navigation service directly with type-based dispatch
-                if (entry.PanelType == typeof(BudgetPanel))
+                if (logger != null)
                 {
-                    form.PanelNavigator?.ShowPanel<BudgetPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(ReportsPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<ReportsPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(SettingsPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<SettingsPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(AccountsPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<AccountsPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(ActivityLogPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<ActivityLogPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(InsightFeedPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<InsightFeedPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(ProactiveInsightsPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<ProactiveInsightsPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(FormHostPanel))
-                {
-                    // FormHostPanel entries that wrap a specific Form need to route to ShowForm
-                    if (string.Equals(entry.DisplayName, "Rates", StringComparison.OrdinalIgnoreCase))
-                        form.ShowForm<RatesPage>(entry.DisplayName, entry.DefaultDock, allowFloating: true);
-                    else
-                        form.PanelNavigator?.ShowPanel<FormHostPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(AnalyticsHubPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<AnalyticsHubPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(QuickBooksPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<QuickBooksPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(AuditLogPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<AuditLogPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(CustomersPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<CustomersPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(CsvMappingWizardPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<CsvMappingWizardPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(DepartmentSummaryPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<DepartmentSummaryPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(RecommendedMonthlyChargePanel))
-                {
-                    form.PanelNavigator?.ShowPanel<RecommendedMonthlyChargePanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(RevenueTrendsPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<RevenueTrendsPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(UtilityBillPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<UtilityBillPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(WarRoomPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<WarRoomPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(AccountEditPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<AccountEditPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else if (entry.PanelType == typeof(BudgetOverviewPanel))
-                {
-                    form.PanelNavigator?.ShowPanel<BudgetOverviewPanel>(entry.DisplayName, entry.DefaultDock);
-                }
-                else
-                {
-                    logger?.LogWarning("[RIBBON_NAV] Unsupported panel type {PanelType} for navigation", entry.PanelType.Name);
+                    LogRibbonNav(logger, entry.DisplayName, entry.PanelType.Name, entry.DefaultDock.ToString(), null);
                 }
 
-                logger?.LogInformation("[RIBBON_NAV] Navigation command executed for {PanelName}", entry.DisplayName);
+                form.EnsurePanelNavigatorInitialized();
+
+                // ONE LINE TO RULE THEM ALL
+                form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[RIBBON_NAV] Failed to navigate to panel {PanelName} (Type={PanelType})",
-                    entry.DisplayName, entry.PanelType.Name);
+                logger?.LogError(ex, "[RIBBON_NAV] Failed to navigate to {Panel}", entry.DisplayName);
             }
         };
     }
@@ -594,7 +518,7 @@ public partial class MainForm
     /// Accesses all key ToolStripTabItem API properties to ensure complete initialization.
     /// Workaround for Syncfusion lazy initialization issues where properties aren't set until accessed.
     ///
-    /// TOOLSTRIPTABITEM KEY PROPERTIES (Syncfusion.Windows.Forms.Tools.ToolStripTabItem):
+    /// TOOLSTRIPTABITEM KEY PROPERTIES (Syncfusion.Windows.Forms.Tools ToolStripTabItem):
     /// - Font               : Tab text font
     /// - Padding            : Interior padding around tab content
     /// - Panel              : RibbonControlAdvPanel container for ribbon groups
@@ -607,7 +531,7 @@ public partial class MainForm
     /// Some properties (especially Panel) aren't created until first access.
     /// This method forces initialization by accessing all key properties.
     ///
-    /// API REFERENCE: Syncfusion.Windows.Forms.Tools.ToolStripTabItem
+    /// API REFERENCE: Syncfusion.Windows.Forms.Tools ToolStripTabItem
     /// </summary>
     /// <param name="tabItem">ToolStripTabItem to initialize</param>
     /// <param name="logger">Logger for diagnostics</param>
@@ -780,10 +704,10 @@ public partial class MainForm
             Text = title,
             GripStyle = ToolStripGripStyle.Hidden,
             AutoSize = false,
-            Height = (int)DpiAware.LogicalToDeviceUnits(92f),
+            Height = (int)DpiAware.LogicalToDeviceUnits(110f),
             LauncherStyle = LauncherStyle.Metro,
             ShowLauncher = true,
-            ImageScalingSize = new Size(32, 32),
+            ImageScalingSize = new Size(40, 40),
             ThemeName = ResolveRibbonThemeName(theme, logger),
             CanOverflow = false,
             Dock = DockStyle.None,
@@ -907,6 +831,61 @@ public partial class MainForm
         return string.Join("+", parts);
     }
 
+    // Explicit short ribbon labels for entries whose display name is too long to fit.
+    // Key = PanelRegistry DisplayName; Value = the text shown on the ribbon button (use \n for line breaks).
+    private static readonly Dictionary<string, string> RibbonShortLabels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Budget Management & Analysis"] = "Budget\nMgmt",
+        ["Municipal Accounts"] = "Municipal\nAccounts",
+        ["Recommended Monthly Charge"] = "Recommended\nMonthly\nCharge",
+        ["Proactive AI Insights"] = "Proactive\nAI Insights",
+        ["Revenue Trends"] = "Revenue\nTrends",
+        ["Department Summary"] = "Dept.\nSummary",
+        ["Analytics Hub"] = "Analytics\nHub",
+        ["Audit Log & Activity"] = "Audit Log",
+        ["JARVIS Chat"] = "JARVIS\nChat",
+        ["Utility Bills"] = "Utility\nBills",
+        ["War Room"] = "War\nRoom",
+    };
+
+    private static string WrapRibbonText(string text, int maxCharsPerLine = 10)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        // Use explicit override if available
+        if (RibbonShortLabels.TryGetValue(text, out var shortLabel))
+            return shortLabel;
+
+        var words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        var lines = new List<string>();
+        var current = new StringBuilder();
+
+        foreach (var word in words)
+        {
+            if (current.Length == 0)
+            {
+                current.Append(word);
+                continue;
+            }
+
+            if (current.Length + 1 + word.Length <= maxCharsPerLine)
+            {
+                current.Append(' ').Append(word);
+            }
+            else
+            {
+                lines.Add(current.ToString());
+                current.Clear();
+                current.Append(word);
+            }
+        }
+
+        if (current.Length > 0)
+            lines.Add(current.ToString());
+
+        return string.Join("\n", lines);
+    }
+
     /// <summary>
     /// Creates a large ribbon navigation button with icon, tooltip, and keyboard shortcut support.
     /// </summary>
@@ -929,21 +908,24 @@ public partial class MainForm
         string? tooltip = null,
         Keys shortcutKeys = Keys.None)
     {
-        var button = new ToolStripButton(text)
+        var displayText = WrapRibbonText(text);
+        var isMultiLine = displayText.Contains('\n');
+
+        var button = new ToolStripButton(displayText)
         {
             Name = name,
             AutoSize = false,
             DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph) ? ToolStripItemDisplayStyle.Text : ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageAboveText,
-            Padding = new Padding(8, 4, 8, 4),
-            Size = new Size((int)DpiAware.LogicalToDeviceUnits(92f), (int)DpiAware.LogicalToDeviceUnits(84f)),
+            Padding = new Padding(6, 4, 6, 4),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(108f), (int)DpiAware.LogicalToDeviceUnits(96f)),
             TextAlign = ContentAlignment.BottomCenter,
             ImageAlign = ContentAlignment.TopCenter,
             Margin = new Padding(3, 2, 3, 2),
             ImageScaling = ToolStripItemImageScaling.None,
             AutoToolTip = true,
             Overflow = ToolStripItemOverflow.Never,
-            Font = new Font("Segoe UI", 9F),
+            Font = new Font("Segoe UI", isMultiLine ? 9F : 10.5F, FontStyle.Bold),
             AccessibleName = text,
             AccessibleRole = AccessibleRole.PushButton
         };
@@ -951,7 +933,7 @@ public partial class MainForm
         // Create icon from Syncfusion resources or Segoe MDL2 Assets glyph
         if (!string.IsNullOrWhiteSpace(iconGlyph))
         {
-            button.Image = LoadRibbonIcon(text, 32, iconGlyph);
+            button.Image = LoadRibbonIcon(text, 40, iconGlyph);
         }
 
         // Set display style based on whether icon glyph was provided (not actual image load success)
@@ -1009,6 +991,7 @@ public partial class MainForm
             AutoSize = true,
             Padding = new Padding(4, 2, 4, 2),
             Margin = new Padding(2, 1, 2, 1),
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             AccessibleName = text,
             AccessibleRole = AccessibleRole.PushButton
         };
@@ -1019,7 +1002,7 @@ public partial class MainForm
             try
             {
                 // Try to load colorful Syncfusion icon first, fall back to glyph
-                button.Image = LoadRibbonIcon(text, 16, iconGlyph);
+                button.Image = LoadRibbonIcon(text, 24, iconGlyph);
             }
             catch (Exception ex)
             {
@@ -1058,10 +1041,11 @@ public partial class MainForm
         {
             TextImageRelation = TextImageRelation.ImageAboveText,
             AutoSize = false,
-            Size = new Size((int)DpiAware.LogicalToDeviceUnits(85f), (int)DpiAware.LogicalToDeviceUnits(75f)),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(100f), (int)DpiAware.LogicalToDeviceUnits(88f)),
             DisplayStyle = ToolStripItemDisplayStyle.Text,
             Padding = new Padding(3, 1, 3, 1),
-            Margin = new Padding(2, 1, 2, 1)
+            Margin = new Padding(2, 1, 2, 1),
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold)
         };
 
         if (!string.IsNullOrWhiteSpace(navigationTarget))
@@ -1094,6 +1078,7 @@ public partial class MainForm
             .ToList();
 
         ToolStripButton? firstButton = null;
+        bool isFirst = true;
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
@@ -1110,6 +1095,8 @@ public partial class MainForm
                 iconGlyph: iconGlyph,
                 tooltip: $"Open {panel.DisplayName} panel");
 
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
             strip.Items.Add(button);
             firstButton ??= button;
         }
@@ -1127,6 +1114,7 @@ public partial class MainForm
             .ToList();
 
         ToolStripButton? firstButton = null;
+        bool isFirst = true;
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
@@ -1143,6 +1131,8 @@ public partial class MainForm
                 iconGlyph: iconGlyph,
                 tooltip: $"Open {panel.DisplayName} panel");
 
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
             strip.Items.Add(button);
             firstButton ??= button;
         }
@@ -1159,6 +1149,7 @@ public partial class MainForm
             .OrderBy(p => p.DisplayName)
             .ToList();
 
+        bool isFirst = true;
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
@@ -1175,6 +1166,8 @@ public partial class MainForm
                 iconGlyph: iconGlyph,
                 tooltip: $"Open {panel.DisplayName} panel");
 
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
             strip.Items.Add(button);
         }
 
@@ -1193,6 +1186,7 @@ public partial class MainForm
         ToolStripButton? firstButton = null;
         ToolStripButton? settingsButton = null;
         ToolStripButton? quickBooksButton = null;
+        bool isFirst = true;
 
         foreach (var panel in panels)
         {
@@ -1219,6 +1213,8 @@ public partial class MainForm
                 tooltip: $"Open {panel.DisplayName} panel",
                 shortcutKeys: shortcutKeys);
 
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
             strip.Items.Add(button);
             firstButton ??= button;
 
@@ -1268,7 +1264,9 @@ public partial class MainForm
 #pragma warning restore CS0618
 
         strip.Items.Add(saveLayoutBtn);
+        strip.Items.Add(new ToolStripSeparator());
         strip.Items.Add(resetLayoutBtn);
+        strip.Items.Add(new ToolStripSeparator());
         strip.Items.Add(lockLayoutBtn);
 
         return (strip, saveLayoutBtn, resetLayoutBtn, lockLayoutBtn);
@@ -1283,6 +1281,7 @@ public partial class MainForm
             .OrderBy(p => p.DisplayName)
             .ToList();
 
+        bool isFirstGallery = true;
         foreach (var panel in panels)
         {
             var item = CreateGalleryItem(
@@ -1291,6 +1290,8 @@ public partial class MainForm
                 logger,
                 navigationTarget: panel.DisplayName);
 
+            if (!isFirstGallery) strip.Items.Add(new ToolStripSeparator());
+            isFirstGallery = false;
             strip.Items.Add(item);
         }
 
@@ -1374,7 +1375,7 @@ public partial class MainForm
             Transparent = true
         };
 
-        var label = new ToolStripLabel("Global Search:") { Name = "ActionGroup_SearchLabel" };
+        var label = new ToolStripLabel("Global\r\nSearch:") { Name = "ActionGroup_SearchLabel", AutoSize = true, Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
         searchStack.Items.Add(label);
         searchStack.Items.Add(searchBox);
 
@@ -1446,6 +1447,249 @@ public partial class MainForm
         return strip;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Financials tab — group creators
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static ToolStripEx CreatePaymentsGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Payments", "PaymentsGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "Payments", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
+    private static ToolStripEx CreateIntegrationGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Integration", "IntegrationGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "Integration", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+
+            var shortcutKeys = panel.DisplayName switch
+            {
+                "QuickBooks" => Keys.Control | Keys.Q,
+                _ => Keys.None
+            };
+
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel",
+                shortcutKeys: shortcutKeys);
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Analytics & Reports tab — group creators
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static ToolStripEx CreateAnalyticsGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Analytics", "AnalyticsGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "Analytics", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
+    private static ToolStripEx CreateOperationsGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Operations", "OperationsGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "Operations", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Utilities tab — group creator
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static ToolStripEx CreateUtilitiesGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Utilities", "UtilitiesGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "Utilities", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Administration tab — group creators
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static ToolStripEx CreateAdministrationGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Administration", "AdministrationGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "Administration", StringComparison.OrdinalIgnoreCase)
+                     && p.ShowInRibbonPanelsMenu)
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+
+            var shortcutKeys = panel.DisplayName switch
+            {
+                "Settings" => Keys.Control | Keys.Alt | Keys.S,
+                _ => Keys.None
+            };
+
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel",
+                shortcutKeys: shortcutKeys);
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
+    private static ToolStripEx CreateAuditLogsGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Audit & Logs", "AuditLogsGroup", theme, logger);
+
+        var panels = PanelRegistry.Panels
+            .Where(p => string.Equals(p.DefaultGroup, "AuditLogs", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DisplayName)
+            .ToList();
+
+        bool isFirst = true;
+        foreach (var panel in panels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
+            RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+            var button = CreateLargeNavButton(
+                $"Nav_{sanitizedName}",
+                panel.DisplayName,
+                () => SafeNavigate(form, panel.DisplayName, CreatePanelNavigationCommand(form, panel, logger), logger),
+                logger,
+                navigationTarget: panel.DisplayName,
+                iconGlyph: iconGlyph,
+                tooltip: $"Open {panel.DisplayName} panel");
+            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
+            isFirst = false;
+            strip.Items.Add(button);
+        }
+
+        return strip;
+    }
+
     private static ToolStripEx CreateFileGroup(MainForm form, string theme, ILogger? logger)
     {
         var strip = CreateRibbonGroup("File", "FileGroup", theme, logger);
@@ -1489,8 +1733,11 @@ public partial class MainForm
 #pragma warning restore CS0618
 
         strip.Items.Add(newBudgetBtn);
+        strip.Items.Add(new ToolStripSeparator());
         strip.Items.Add(openBudgetBtn);
+        strip.Items.Add(new ToolStripSeparator());
         strip.Items.Add(saveLayoutBtn);
+        strip.Items.Add(new ToolStripSeparator());
         strip.Items.Add(exportBtn);
 
         return strip;
@@ -1779,12 +2026,12 @@ public partial class MainForm
             Name = "QAT_Save",
             DisplayStyle = ToolStripItemDisplayStyle.Image,
             Image = CreateIconFromSegoeGlyph("\uE74E", 16, SystemColors.ControlText), // Save icon
-                 ToolTipText = "Save layout (Ctrl+Shift+S)",
-                AutoSize = true,
-                Enabled = true
-            };
+            ToolTipText = "Save layout (Ctrl+Shift+S)",
+            AutoSize = true,
+            Enabled = true
+        };
 #pragma warning disable CS0618
-            saveButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "QAT_SaveLayout", logger);
+        saveButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "QAT_SaveLayout", logger);
 #pragma warning restore CS0618
 
         // Dashboard button

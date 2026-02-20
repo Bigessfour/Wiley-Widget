@@ -36,7 +36,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 {
     // Chrome
     private PanelHeader? _panelHeader;
-    private LegacyGradientPanel? _filtersPanel;
+    private Panel? _filtersPanel;
     private TabControlAdv? _tabControl;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -53,11 +53,13 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     // Overlays
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
+    private TableLayoutPanel? _layoutRoot;
 
     // Lazy-loaded tab views
     private OverviewTabControl? _overviewTab;
     private TrendsTabControl? _trendsTab;
     private ScenariosTabControl? _scenariosTab;
+    private AdvancedScenariosTabControl? _advancedScenariosTab;
     private VariancesTabControl? _variancesTab;
 
     // State
@@ -94,16 +96,16 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         SuspendLayout();
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-        _panelHeader = new PanelHeader { Title = "Analytics Hub" };
+        _panelHeader = new PanelHeader { Title = "Analytics Hub", Dock = DockStyle.Fill };
         _refreshClicked = async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
         _panelHeader.RefreshClicked += _refreshClicked;
-        _closeClicked = (s, e) => ClosePanel();
+        _closeClicked = (_, _) => ClosePanel();
         _panelHeader.CloseClicked += _closeClicked;
-        Controls.Add(_panelHeader);
 
         InitializeGlobalFilters();
         InitializeTabControl();
         InitializeStatusStrip();
+        BuildLayoutRoot();
         InitializeOverlays();
 
         _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink, BlinkRate = 0 };
@@ -118,15 +120,14 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
 
-        _filtersPanel = new LegacyGradientPanel
+        _filtersPanel = new Panel
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             Height = 52,
             Padding = new Padding(12, 8, 12, 8),
             BorderStyle = BorderStyle.None
         };
         SfSkinManager.SetVisualStyle(_filtersPanel, themeName);
-        _filtersPanel.ThemeName = themeName;
 
         var table = new TableLayoutPanel
         {
@@ -174,7 +175,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         table.Controls.Add(btnPanel, 4, 0);
 
         _filtersPanel.Controls.Add(table);
-        Controls.Add(_filtersPanel);
     }
 
     private void InitializeTabControl()
@@ -182,26 +182,29 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _tabControl = ControlFactory.CreateTabControlAdv(t =>
         {
             t.Dock = DockStyle.Fill;
-            t.Multiline = true;
+            t.Multiline = false;
+            t.ItemSize = new Size(150, 36);
+            t.Alignment = TabAlignment.Top;
+            t.TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererMetro);
         });
 
-        _overviewTab  = new OverviewTabControl(ViewModel?.Overview, Logger) { Dock = DockStyle.Fill };
-        _trendsTab    = new TrendsTabControl(ViewModel?.Trends, Logger)                { Dock = DockStyle.Fill };
-        _scenariosTab = new ScenariosTabControl(ViewModel?.Scenarios, Logger)          { Dock = DockStyle.Fill };
-        _variancesTab = new VariancesTabControl(ViewModel?.Variances, Logger)          { Dock = DockStyle.Fill };
+        _overviewTab = new OverviewTabControl(ViewModel?.Overview, Logger) { Dock = DockStyle.Fill };
+        _trendsTab = new TrendsTabControl(ViewModel?.Trends, Logger) { Dock = DockStyle.Fill };
+        _scenariosTab = new ScenariosTabControl(ViewModel?.Scenarios, Logger) { Dock = DockStyle.Fill };
+        _advancedScenariosTab = new AdvancedScenariosTabControl(ViewModel?.AdvancedScenarios, ControlFactory, Logger) { Dock = DockStyle.Fill };
+        _variancesTab = new VariancesTabControl(ViewModel?.Variances, Logger) { Dock = DockStyle.Fill };
 
         _tabControl.TabPages.AddRange(new[]
         {
             CreateTabPage("Overview",           _overviewTab),
             CreateTabPage("Trends & Forecasts", _trendsTab),
             CreateTabPage("Scenarios",          _scenariosTab),
+            CreateTabPage("Scenarios vNext",    _advancedScenariosTab),
             CreateTabPage("Variances",          _variancesTab)
         });
 
         _tabChanged = async (s, e) => await LoadCurrentTabAsync(CancellationToken.None);
         _tabControl.SelectedIndexChanged += _tabChanged;
-
-        Controls.Add(_tabControl);
     }
 
     private static TabPageAdv CreateTabPage(string text, Control content)
@@ -213,12 +216,51 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private void InitializeStatusStrip()
     {
-        _statusStrip      = new StatusStrip { Dock = DockStyle.Bottom };
-        _statusLabel      = new ToolStripStatusLabel { Text = "Ready",             Spring = true };
+        _statusStrip = new StatusStrip { Dock = DockStyle.Fill };
+        _statusLabel = new ToolStripStatusLabel { Text = "Ready", Spring = true };
         _recordCountLabel = new ToolStripStatusLabel { Text = "Records: 0" };
         _lastRefreshLabel = new ToolStripStatusLabel { Text = "Last refresh: Never" };
         _statusStrip.Items.AddRange(new ToolStripItem[] { _statusLabel, _recordCountLabel, _lastRefreshLabel });
-        Controls.Add(_statusStrip);
+    }
+
+    private void BuildLayoutRoot()
+    {
+        _layoutRoot = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        _layoutRoot.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // header
+        _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // filters
+        _layoutRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // tabs
+        _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // status strip
+
+        if (_panelHeader != null)
+        {
+            _panelHeader.Margin = Padding.Empty;
+            _layoutRoot.Controls.Add(_panelHeader, 0, 0);
+        }
+        if (_filtersPanel != null)
+        {
+            _filtersPanel.Margin = Padding.Empty;
+            _layoutRoot.Controls.Add(_filtersPanel, 0, 1);
+        }
+        if (_tabControl != null)
+        {
+            _tabControl.Margin = Padding.Empty;
+            _layoutRoot.Controls.Add(_tabControl, 0, 2);
+        }
+        if (_statusStrip != null)
+        {
+            _statusStrip.Margin = Padding.Empty;
+            _layoutRoot.Controls.Add(_statusStrip, 0, 3);
+        }
+
+        Controls.Add(_layoutRoot);
     }
 
     private void InitializeOverlays()
@@ -383,7 +425,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
                         errors.Add(new ValidationItem("Trends", "Trends data not loaded", ValidationSeverity.Warning)); break;
                     case 2 when ViewModel.Scenarios == null:
                         errors.Add(new ValidationItem("Scenarios", "Scenarios data not loaded", ValidationSeverity.Warning)); break;
-                    case 3 when ViewModel.Variances == null:
+                    case 3 when ViewModel.AdvancedScenarios == null:
+                        errors.Add(new ValidationItem("Scenarios vNext", "Advanced scenarios data not loaded", ValidationSeverity.Warning)); break;
+                    case 4 when ViewModel.Variances == null:
                         errors.Add(new ValidationItem("Variances", "Variances data not loaded", ValidationSeverity.Warning)); break;
                 }
             }
@@ -421,7 +465,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
                     await _trendsTab.LoadAsync(); break;
                 case 2 when _scenariosTab != null && !_scenariosTab.IsLoaded:
                     await _scenariosTab.LoadAsync(); break;
-                case 3 when _variancesTab != null && !_variancesTab.IsLoaded:
+                case 3 when _advancedScenariosTab != null && !_advancedScenariosTab.IsLoaded:
+                    await _advancedScenariosTab.LoadAsync(); break;
+                case 4 when _variancesTab != null && !_variancesTab.IsLoaded:
                     await _variancesTab.LoadAsync(); break;
             }
 
@@ -450,7 +496,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         void Apply(Control? c) { if (c != null) SfSkinManager.SetVisualStyle(c, themeName); }
 
         Apply(_filtersPanel);
-        if (_filtersPanel != null) _filtersPanel.ThemeName = themeName;
         Apply(_fiscalYearComboBox);
         if (_fiscalYearComboBox != null) _fiscalYearComboBox.ThemeName = themeName;
         Apply(_searchTextBox);
@@ -465,12 +510,11 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             foreach (TabPageAdv page in _tabControl.TabPages)
                 Apply(page);
         Apply(_loadingOverlay);
-        if (_loadingOverlay != null) _loadingOverlay.ThemeName = themeName;
         Apply(_noDataOverlay);
-        if (_noDataOverlay != null) _noDataOverlay.ThemeName = themeName;
         Apply(_overviewTab);
         Apply(_trendsTab);
         Apply(_scenariosTab);
+        Apply(_advancedScenariosTab);
         Apply(_variancesTab);
     }
 
@@ -582,7 +626,8 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             0 => (ViewModel.Overview?.Metrics?.Count ?? 0) > 0 || (ViewModel.Overview?.Kpis?.Count ?? 0) > 0,
             1 => (ViewModel.Trends?.TrendData?.Count ?? 0) > 0 || (ViewModel.Trends?.ForecastData?.Count ?? 0) > 0,
             2 => (ViewModel.Scenarios?.ScenarioResults?.Count ?? 0) > 0,
-            3 => (ViewModel.Variances?.Variances?.Count ?? 0) > 0,
+            3 => (ViewModel.AdvancedScenarios?.Projections?.Count ?? 0) > 0,
+            4 => (ViewModel.Variances?.Variances?.Count ?? 0) > 0,
             _ => false
         };
 
@@ -646,7 +691,12 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private string GetCurrentTabName() => _tabControl?.SelectedIndex switch
     {
-        0 => "Overview", 1 => "Trends", 2 => "Scenarios", 3 => "Variances", _ => "Analytics"
+        0 => "Overview",
+        1 => "Trends",
+        2 => "Scenarios",
+        3 => "Scenarios vNext",
+        4 => "Variances",
+        _ => "Analytics"
     };
 
     private async Task ExportCurrentTabToCsvAsync(string filePath, CancellationToken ct)
@@ -655,11 +705,28 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         await using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
         switch (_tabControl?.SelectedIndex)
         {
-            case 0:  await WriteOverviewCsvAsync(writer, ct);  break;
-            case 1:  await WriteTrendsCsvAsync(writer, ct);    break;
-            case 2:  await WriteScenariosCsvAsync(writer, ct); break;
-            case 3:  await WriteVariancesCsvAsync(writer, ct); break;
-            default: await WriteOverviewCsvAsync(writer, ct);  break;
+            case 0: await WriteOverviewCsvAsync(writer, ct); break;
+            case 1: await WriteTrendsCsvAsync(writer, ct); break;
+            case 2: await WriteScenariosCsvAsync(writer, ct); break;
+            case 3: await WriteAdvancedScenariosCsvAsync(writer, ct); break;
+            case 4: await WriteVariancesCsvAsync(writer, ct); break;
+            default: await WriteOverviewCsvAsync(writer, ct); break;
+        }
+    }
+
+    private async Task WriteAdvancedScenariosCsvAsync(StreamWriter w, CancellationToken ct)
+    {
+        if (ViewModel?.AdvancedScenarios?.Projections == null) return;
+        await w.WriteLineAsync("Year,ProjectedRevenue,ProjectedExpenses,ProjectedReserves,RiskLevel");
+        foreach (var p in ViewModel.AdvancedScenarios.Projections)
+        {
+            ct.ThrowIfCancellationRequested();
+            await w.WriteLineAsync(CsvRow(
+                p.Year.ToString(CultureInfo.InvariantCulture),
+                p.ProjectedRevenue.ToString(CultureInfo.InvariantCulture),
+                p.ProjectedExpenses.ToString(CultureInfo.InvariantCulture),
+                p.ProjectedReserves.ToString(CultureInfo.InvariantCulture),
+                p.RiskLevel.ToString(CultureInfo.InvariantCulture)));
         }
     }
 
@@ -780,6 +847,20 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     // -------------------------------------------------------------------------
     // Disposal
     // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+    /// </summary>
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+        BeginInvoke(() =>
+        {
+            ForceFullLayout();
+            Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+        });
+    }
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)

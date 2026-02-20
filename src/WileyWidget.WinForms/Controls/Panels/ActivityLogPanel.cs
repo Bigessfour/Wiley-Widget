@@ -121,6 +121,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
+            MinimumSize = new Size(400, 250); // header(52) + buttons(36) + grid minimum(~100) + margin
 
             // Panel Header - added directly to Controls with Dock = Top
             _panelHeader = new PanelHeader
@@ -316,6 +317,21 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Logger?.LogError(ex, "Failed to initialize gridSplit in OnShown");
             }
+        }
+
+        /// <summary>
+        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+            BeginInvoke(() =>
+            {
+                ForceFullLayout();
+                if (_gridSplit != null) _gridSplit.SplitterDistance = 280;
+                Logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+            });
         }
 
         private void CreateControls_Old()

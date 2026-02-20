@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.ComponentModel;
 using System.Windows.Forms;
@@ -15,8 +15,8 @@ using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Utilities;
 
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -30,7 +30,7 @@ public partial class VariancesTabControl : UserControl
     private readonly ILogger _logger;
 
     private SfDataGrid? _variancesGrid;
-    private LegacyGradientPanel? _filterPanel;
+    private Panel? _filterPanel;
     private LoadingOverlay? _loadingOverlay;
 
     private TextBox? _searchTextBox;
@@ -88,7 +88,7 @@ public partial class VariancesTabControl : UserControl
     {
         var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
 
-        _filterPanel = new LegacyGradientPanel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+        _filterPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
         SfSkinManager.SetVisualStyle(_filterPanel, themeName);
 
         var layout = new TableLayoutPanel
@@ -247,9 +247,9 @@ public partial class VariancesTabControl : UserControl
     {
         if (disposing)
         {
-            if (_searchTextBox != null)           _searchTextBox.TextChanged -= SearchTextBox_TextChanged;
-            if (_departmentFilter != null)        _departmentFilter.SelectedIndexChanged -= DepartmentFilter_SelectedIndexChanged;
-            if (_variancesGrid != null)           _variancesGrid.QueryCellStyle -= VariancesGrid_QueryCellStyle;
+            if (_searchTextBox != null) _searchTextBox.TextChanged -= SearchTextBox_TextChanged;
+            if (_departmentFilter != null) _departmentFilter.SelectedIndexChanged -= DepartmentFilter_SelectedIndexChanged;
+            if (_variancesGrid != null) _variancesGrid.QueryCellStyle -= VariancesGrid_QueryCellStyle;
             if (_viewModel != null && _viewModelPropertyChangedHandler != null)
                 _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
         }

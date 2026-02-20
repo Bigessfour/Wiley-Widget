@@ -9,8 +9,8 @@ using System.Windows.Forms;
 using FastReport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WileyWidget.WinForms.Utilities;
 using DockingManager = Syncfusion.Windows.Forms.Tools.DockingManager;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
@@ -50,7 +50,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
     // UI Controls
     private PanelHeader? _panelHeader;
-    private WileyWidget.WinForms.Controls.Base.LegacyGradientPanel? _reportViewerContainer;
+    private Panel? _reportViewerContainer;
     private Report? _fastReport;
     // private FastReport.ReportViewer? _previewControl; // Removed - not available in Open Source
     private StatusStrip? _statusStrip;
@@ -59,7 +59,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private NoDataOverlay? _noDataOverlay;
 
     // Toolbar controls
-    private WileyWidget.WinForms.Controls.Base.LegacyGradientPanel? _toolbarPanel;
+    private Panel? _toolbarPanel;
     private SfComboBox? _reportSelector;
     private SfButton? _loadReportButton;
     private SfButton? _exportPdfButton;
@@ -68,7 +68,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private SfButton? _parametersButton;
 
     // Parameters panel
-    private WileyWidget.WinForms.Controls.Base.LegacyGradientPanel? _parametersPanel;
+    private Panel? _parametersPanel;
     private SfDataGrid? _parametersGrid;
     private SfButton? _applyParametersButton;
     private SfButton? _closeParametersButton;
@@ -109,11 +109,11 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     /// Initializes controls and binds to the ViewModel.
     /// </summary>
     /// <param name="viewModel">The resolved ViewModel instance.</param>
-    protected override void OnViewModelResolved(object? viewModel)
+    protected override void OnViewModelResolved(ReportsViewModel? viewModel)
     {
-        base.OnViewModelResolved(viewModel);
-        if (viewModel is not ReportsViewModel)
+        if (viewModel == null)
         {
+            Logger.LogWarning("ReportsPanel: ViewModel resolved as null — controls will not initialize.");
             return;
         }
         InitializeControls();
@@ -163,7 +163,11 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             // Auto-load the report after the panel is fully initialized
             if (IsHandleCreated && ViewModel != null)
             {
-                BeginInvoke(new System.Action(async () => await LoadInitialReportAsync()));
+                BeginInvoke(new System.Action(async () =>
+                {
+                    try { await LoadInitialReportAsync(); }
+                    catch (Exception ex) { Logger.LogError(ex, "Failed to auto-load initial report on BeginInvoke"); }
+                }));
             }
             else
             {
@@ -171,7 +175,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 handleCreatedForInitial = async (s, e) =>
                 {
                     HandleCreated -= handleCreatedForInitial;
-                    await LoadInitialReportAsync();
+                    try { await LoadInitialReportAsync(); }
+                    catch (Exception ex) { Logger.LogError(ex, "Failed to auto-load initial report on HandleCreated"); }
                 };
                 HandleCreated += handleCreatedForInitial;
             }
@@ -217,7 +222,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _panelHeader = new PanelHeader
         {
             Dock = DockStyle.Top,
-            Height = 50
+            Height = LayoutTokens.HeaderHeight
         };
         _panelHeader.Title = "Reports";
         try
@@ -239,17 +244,16 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = Orientation.Horizontal;
-            splitter.Panel2Collapsed = true; // Initially hidden
+            splitter.Panel1Collapsed = true; // Initially hidden
         });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_parametersSplitContainer, 200);
 
         // Parameters panel (top, initially collapsed)
-        _parametersPanel = new LegacyGradientPanel
+        _parametersPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10),
+            Padding = new Padding(LayoutTokens.PanelPadding),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_parametersPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
@@ -273,7 +277,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Dock = DockStyle.Top,
             AutoSize = false, // CRITICAL: Explicit false prevents measurement loops
             Height = 24, // Fixed height for label
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 10),
             TextAlign = ContentAlignment.MiddleLeft
         };
@@ -375,12 +378,11 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 60);
 
         // Top panel: Toolbar
-        _toolbarPanel = new LegacyGradientPanel
+        _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_toolbarPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
@@ -515,24 +517,22 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         // Bottom panel: FastReport viewer container
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-        var viewerPanel = new LegacyGradientPanel
+        var viewerPanel = new Panel
         {
             Name = "PreviewPanel",
             AccessibleName = "Report Preview",
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(viewerPanel, currentTheme);
 
         // Initialize FastReport viewer container
-        _reportViewerContainer = new LegacyGradientPanel
+        _reportViewerContainer = new Panel
         {
             Name = "reportViewerContainer",
             AccessibleName = "Report Preview Container",
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.FixedSingle,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_reportViewerContainer, currentTheme);
 
@@ -715,7 +715,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 displayNames.Add(Path.GetFileNameWithoutExtension(relativePath));
             }
 
-            try { _reportSelector.DataSource = displayNames; } catch { _reportSelector.DataSource = null; }
+            try { _reportSelector!.DataSource = displayNames; }
+            catch (Exception ex) { Logger.LogWarning(ex, "Failed to bind report selector DataSource"); }
 
             if (displayNames.Count > 0)
             {
@@ -906,7 +907,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 UpdateStatus("Exporting to PDF...");
 
                 // Use FastReport's PDF export if available
-                if (_fastReport != null && _fastReport.Report != null)
+                if (_fastReport != null)
                 {
                     // Note: FastReport Open Source doesn't include PDF export
                     // This would require FastReport.NET (commercial) or alternative solution
@@ -960,7 +961,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 UpdateStatus("Exporting to Excel...");
 
                 // Use FastReport's Excel export if available
-                if (_fastReport != null && _fastReport.Report != null)
+                if (_fastReport != null)
                 {
                     // Note: FastReport Open Source doesn't include Excel export
                     // This would require FastReport.NET (commercial) or alternative solution
@@ -1002,7 +1003,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             UpdateStatus("Printing report...");
 
-            if (_fastReport != null && _fastReport.Report != null)
+            if (_fastReport != null)
             {
                 // Use FastReport's print functionality
                 // Show print dialog

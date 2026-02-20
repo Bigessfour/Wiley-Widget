@@ -25,7 +25,6 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -41,7 +40,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         public new InsightFeedViewModel? ViewModel => base.ViewModel;
 
-        private LegacyGradientPanel _topPanel = null!;
+        private Panel _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private Label _lblStatus = null!;
@@ -121,7 +120,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 this.AccessibleDescription = "Displays proactive insights and the data grid";
 
                 // Top panel with header and toolbar
-                _topPanel = new LegacyGradientPanel
+                _topPanel = new Panel
                 {
                     // Removed fixed Height to allow growth; MinimumSize ensures header won't collapse below 60px
                     MinimumSize = new Size(0, 60), // ensures header won't collapse below 60px
@@ -538,6 +537,21 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.Name = "InsightFeedPanel";
             this.Size = new System.Drawing.Size(800, 600);
             this.ResumeLayout(false);
+        }
+
+        /// <summary>
+        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+            BeginInvoke(() =>
+            {
+                ForceFullLayout();
+                _insightsGrid?.PerformLayout();
+                _logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+            });
         }
 
         protected override void Dispose(bool disposing)

@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms
@@ -52,22 +53,52 @@ namespace WileyWidget.WinForms.Forms
         /// Non-generic panel show for runtime-type-based navigation (e.g. layout restore, global search).
         /// Uses reflection to invoke the generic ShowPanel&lt;TPanel&gt; overload.
         /// </summary>
-        public void ShowPanel(Type panelType, string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
+        public bool ShowPanel(Type panelType, string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
         {
             EnsurePanelNavigatorInitialized();
             try
             {
+                if (panelType == null || !typeof(UserControl).IsAssignableFrom(panelType))
+                {
+                    _logger?.LogWarning("[NAV] ShowPanel(Type) rejected invalid panel type {PanelType}", panelType?.FullName ?? "<null>");
+                    return false;
+                }
+
+                if (panelType == typeof(FormHostPanel))
+                {
+                    if (string.Equals(panelName, "Rates", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ShowForm<RatesPage>(panelName, style, allowFloating: true);
+                        return true;
+                    }
+                }
+
                 // Locate the generic ShowPanel<TPanel>(string, DockingStyle, bool) method by signature
                 var method = typeof(IPanelNavigationService)
                     .GetMethod(nameof(IPanelNavigationService.ShowPanel),
                         new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
 
-                method?.MakeGenericMethod(panelType)
-                       .Invoke(_panelNavigator, new object[] { panelName, style, allowFloating });
+                if (method == null)
+                {
+                    _logger?.LogWarning("[NAV] ShowPanel(Type) could not find generic method on IPanelNavigationService");
+                    return false;
+                }
+
+                method.MakeGenericMethod(panelType)
+                      .Invoke(_panelNavigator, new object[] { panelName, style, allowFloating });
+
+                var activePanelName = _panelNavigator?.GetActivePanelName();
+                if (string.IsNullOrWhiteSpace(activePanelName))
+                {
+                    _logger?.LogDebug("[NAV] ShowPanel(Type) completed but active panel is null for {PanelType}", panelType.Name);
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "[NAV] ShowPanel(Type) failed for {PanelType}", panelType?.Name);
+                return false;
             }
         }
 

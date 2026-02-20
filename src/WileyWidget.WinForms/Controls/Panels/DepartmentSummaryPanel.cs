@@ -18,7 +18,6 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -33,7 +32,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private NoDataOverlay? _noDataOverlay;
-        private LegacyGradientPanel? _summaryPanel;
+        private Panel? _summaryPanel;
         private SfDataGrid? _metricsGrid;
         private TableLayoutPanel? _summaryCardsPanel;
 
@@ -110,13 +109,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             rootTable.Controls.Add(_panelHeader, 0, 0);
 
             // Row 2: Summary panel with cards
-            _summaryPanel = new LegacyGradientPanel
+            _summaryPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Height = 120,
                 Padding = new Padding(8),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
                 AccessibleName = "Summary metrics panel"
             };
             var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
@@ -211,7 +209,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
         {
-            var cardPanel = new LegacyGradientPanel
+            var cardPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(4),
@@ -219,7 +217,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = $"{title} card",
                 AccessibleDescription = description,
                 BorderStyle = BorderStyle.FixedSingle,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
             var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(cardPanel, theme);
@@ -230,7 +227,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Top,
                 Height = 24,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 AutoSize = false,
                 BackColor = Color.Transparent,
                 AccessibleName = $"{title} label"
@@ -242,7 +238,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Text = value,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                 AutoSize = false,
                 AccessibleName = $"{title} value"
             };
@@ -636,6 +631,20 @@ namespace WileyWidget.WinForms.Controls.Panels
                 else
                     _statusLabel.Text = message;
             }
+        }
+
+        /// <summary>
+        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+            BeginInvoke(() =>
+            {
+                ForceFullLayout();
+                Logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+            });
         }
 
         /// <summary>

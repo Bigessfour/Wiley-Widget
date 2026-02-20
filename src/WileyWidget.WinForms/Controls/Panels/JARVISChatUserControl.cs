@@ -1,19 +1,15 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
-using System.IO;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Web.WebView2.Core;
-using Microsoft.Web.WebView2.WinForms;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.Abstractions;
-using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Services;
@@ -24,17 +20,18 @@ using WileyWidget.WinForms.Themes;
 namespace WileyWidget.WinForms.Controls.Panels
 {
     /// <summary>
-    /// Hosted JARVIS chat control using pure JS/WebView2 for maximum stability.
+    /// Hosted JARVIS chat control using Blazor WebView for rich component integration.
     /// This control is managed by ScopedPanelBase and initialized via IAsyncInitializable.
     /// </summary>
     public partial class JARVISChatUserControl : ScopedPanelBase<CommunityToolkit.Mvvm.ComponentModel.ObservableObject>, IAsyncInitializable, IParameterizedPanel
     {
-        private WebView2? _webView;
+        private BlazorWebView? _blazorWebView;
         private readonly IServiceProvider _serviceProvider;
         private bool _isInitialized;
         private readonly SemaphoreSlim _initLock = new(1, 1);
-        private string _currentStreamingText = string.Empty;
-        private bool _isStreaming = false;
+        private IChatBridgeService? _chatBridge;
+        private IThemeService? _themeService;
+        private EventHandler<string>? _themeChangedHandler;
 
         /// <summary>
         /// Gets or sets the initial prompt to be sent to JARVIS.
@@ -71,8 +68,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 if (_isInitialized || IsDisposed) return;
 
-                Logger?.LogInformation("[JARVIS-LIFECYCLE] Initializing WebView2 panel host...");
-                await InitializeWebViewAsync(ct);
+                Logger?.LogInformation("[JARVIS-LIFECYCLE] Initializing BlazorWebView panel host...");
+                await InitializeBlazorWebViewAsync(ct);
 
                 // Ensure AI Service is initialized in this scope
                 var aiService = (ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAIService>(ServiceProvider) : null)
@@ -85,7 +82,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 }
 
                 // Activate the bridge handler by resolving it from the scoped provider
-                // This ensures its constructor runs and it subscribes to the bridge events for this panel's lifecycle.
                 _ = (ServiceProvider != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<JarvisGrokBridgeHandler>(ServiceProvider) : null)
                     ?? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<JarvisGrokBridgeHandler>(_serviceProvider);
 
@@ -104,9 +100,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                         AccessibleName = "JarvisAutomationStatus",
                         ReadOnly = true,
                         BorderStyle = System.Windows.Forms.BorderStyle.None,
-                        BackColor = this.BackColor,
-                        ForeColor = this.ForeColor,
-                        Font = new System.Drawing.Font("Segoe UI", 8F),
+                        // BackColor/ForeColor/Font inherited from parent via SfSkinManager cascade
                         Text = automationState.Snapshot.ToStatusString(),
                         Dock = System.Windows.Forms.DockStyle.Bottom,
                         Height = 20,
@@ -131,11 +125,26 @@ namespace WileyWidget.WinForms.Controls.Panels
                 }
 
                 _isInitialized = true;
-                Logger?.LogInformation("[JARVIS-LIFECYCLE] JARVIS WebView2 panel initialization successful");
+
+                if (!IsDisposed && IsHandleCreated)
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        if (!IsDisposed)
+                        {
+                            ForceFullLayout();
+                            PerformLayout();
+                            Invalidate(true);
+                            Update();
+                        }
+                    }));
+                }
+
+                Logger?.LogInformation("[JARVIS-LIFECYCLE] JARVIS BlazorWebView panel initialization successful");
             }
             catch (Exception ex)
             {
-                Logger?.LogError(ex, "[JARVIS-LIFECYCLE] Failed to initialize JARVIS WebView2 panel");
+                Logger?.LogError(ex, "[JARVIS-LIFECYCLE] Failed to initialize JARVIS BlazorWebView panel");
                 ShowError(ex.Message);
             }
             finally
@@ -144,7 +153,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
-        private async Task InitializeWebViewAsync(CancellationToken ct)
+        private async Task InitializeBlazorWebViewAsync(CancellationToken ct)
         {
             if (InvokeRequired)
             {
@@ -153,7 +162,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 {
                     try
                     {
-                        await InitializeWebViewInternal();
+                        await InitializeBlazorWebViewInternal(ct);
                         tcs.SetResult();
                     }
                     catch (Exception ex)
@@ -165,186 +174,119 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             else
             {
-                await InitializeWebViewInternal();
+                await InitializeBlazorWebViewInternal(ct);
             }
         }
 
-        private async Task InitializeWebViewInternal()
+        private async Task InitializeBlazorWebViewInternal(CancellationToken ct)
         {
             if (IsDisposed) return;
 
-            _webView = new WebView2
+            // Get services
+            _chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IChatBridgeService>(_serviceProvider);
+            _themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(_serviceProvider);
+            var automationState = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Automation.JarvisAutomationState>(_serviceProvider);
+
+            // Create BlazorWebView
+            _blazorWebView = new BlazorWebView
             {
                 Dock = DockStyle.Fill,
-                Visible = true
+                HostPage = "wwwroot/index.html"
             };
 
             this.Controls.Clear();
-            this.Controls.Add(_webView);
+            this.Controls.Add(_blazorWebView);
+            _blazorWebView.BringToFront();
+            PerformLayout();
+            Invalidate(true);
+            Update();
 
-            await _webView.EnsureCoreWebView2Async();
+            // Set up services and root component
+            _blazorWebView.Services = ServiceProvider ?? _serviceProvider;
+            _blazorWebView.RootComponents.Clear();
 
-            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "jarvis.html");
-            if (!File.Exists(htmlPath))
-            {
-                Logger?.LogError("[JARVIS-INIT] jarvis.html not found at: {Path}", htmlPath);
-                throw new FileNotFoundException("JARVIS frontend assets missing", htmlPath);
-            }
+            Logger?.LogInformation("[JARVIS-INIT] BlazorWebView services configured, awaiting runtime component registration");
 
-            _webView.Source = new Uri(htmlPath);
+            // Theme sync
+            _themeChangedHandler = (_, themeName) => SyncThemeWithBlazor(themeName, _themeService?.IsDark ?? false);
+            _themeService.ThemeChanged += _themeChangedHandler;
 
-            var chatBridge = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IChatBridgeService>(_serviceProvider);
-            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(_serviceProvider);
-            var automationState = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Automation.JarvisAutomationState>(_serviceProvider);
-
-            themeService.ThemeChanged += (s, themeName) => SyncThemeWithJS(themeName, themeService.IsDark);
-
-            // Mark WebView2 as ready for automation
+            // Mark Blazor ready for automation
             automationState?.MarkBlazorReady(assistViewReady: false);
 
-            // Handle initial prompt via DOMContentLoaded to ensure UI is ready
-            _webView.CoreWebView2.DOMContentLoaded += async (s, e) =>
+            // Handle Blazor initialization
+            _blazorWebView.BlazorWebViewInitialized += (s, e) =>
             {
-                // Mark assist view as ready for automation
+                Logger?.LogInformation("[JARVIS-LIFECYCLE] BlazorWebView initialized");
                 automationState?.MarkAssistViewReady();
 
-                SyncThemeWithJS(themeService.CurrentTheme, themeService.IsDark);
+                BeginInvoke(new Action(() =>
+                {
+                    if (!IsDisposed)
+                    {
+                        _blazorWebView?.BringToFront();
+                        ForceFullLayout();
+                        PerformLayout();
+                        Invalidate(true);
+                        Update();
+                        Logger?.LogDebug("[JARVIS-LIFECYCLE] BlazorWebView presented at {W}x{H}", Width, Height);
+                    }
+                }));
 
+                // Send initial prompt if provided
                 if (!string.IsNullOrWhiteSpace(InitialPrompt))
                 {
                     var promptToSend = InitialPrompt;
                     InitialPrompt = null;
                     Logger?.LogInformation("[JARVIS-INIT] Sending initial prompt: {Length} chars", promptToSend.Length);
-
-                    // Inject user message into CSS and trigger Grok
-                    var escaped = promptToSend.Replace("`", "\\`").Replace("$", "\\$");
-                    await _webView.CoreWebView2.ExecuteScriptAsync(
-                        $"addMessage(`{escaped}`, 'user');" +
-                        $"document.getElementById('typing').style.display = 'block';" +
-                        $"messagesContainer.scrollTop = messagesContainer.scrollHeight;"
-                    );
-
-                    await chatBridge.RequestExternalPromptAsync(promptToSend);
-                }
-                else
-                {
-                    // Send standard welcome if no initial prompt
-                    PostMessageToJS("response", "Welcome to JARVIS. I'm ready to assist you.");
+                    _ = _chatBridge?.RequestExternalPromptAsync(promptToSend);
                 }
             };
 
-            // Wire up streaming events from Grok
-            chatBridge.ResponseChunkReceived += (s, args) =>
+            _blazorWebView.RootComponents.Add<WileyWidget.WinForms.BlazorComponents.App>("#app");
+
+            // Apply initial theme
+            SyncThemeWithBlazor(_themeService.CurrentTheme, _themeService.IsDark);
+
+            // Wire chat bridge events for logging
+            if (_chatBridge != null)
             {
-                if (!_isStreaming)
+                _chatBridge.ResponseChunkReceived += (s, args) =>
                 {
-                    _isStreaming = true;
-                    _currentStreamingText = string.Empty;
-                }
-                _currentStreamingText += args.Chunk;
-                PostMessageToJS("stream", _currentStreamingText, done: false);
-            };
-
-            chatBridge.ResponseCompleted += (s, args) =>
-            {
-                if (_isStreaming)
-                {
-                    PostMessageToJS("stream", _currentStreamingText, done: true);
-                    _isStreaming = false;
-                }
-            };
-
-            chatBridge.OnMessageReceived += (s, msg) =>
-            {
-                // Full message received (non-streaming)
-                PostMessageToJS("response", msg.Content);
-            };
-
-            _webView.CoreWebView2.WebMessageReceived += (s, e) =>
-            {
-                try
-                {
-                    var msg = JsonSerializer.Deserialize<JsonElement>(e.WebMessageAsJson);
-                    if (msg.TryGetProperty("type", out var typeProp))
-                    {
-                        var type = typeProp.GetString();
-                        if (type == "prompt")
-                        {
-                            var content = msg.GetProperty("content").GetString();
-                            if (!string.IsNullOrWhiteSpace(content))
-                            {
-                                _isStreaming = false; // Reset streaming state for new prompt
-                                _currentStreamingText = string.Empty;
-                                _ = chatBridge.RequestExternalPromptAsync(content);
-                            }
-                        }
-                        else if (type == "log")
-                        {
-                            var level = msg.GetProperty("level").GetString();
-                            var content = msg.GetProperty("content").GetString();
-                            if (level == "error")
-                                Logger?.LogError("[JARVIS-JS] {Content}", content);
-                            else
-                                Logger?.LogInformation("[JARVIS-JS] {Content}", content);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger?.LogWarning(ex, "[JARVIS-JS] Error processing JSON from JS");
-                }
-            };
-        }
-
-        private void SyncThemeWithJS(string themeName, bool isDark)
-        {
-            if (_webView?.CoreWebView2 == null || IsDisposed) return;
-
-            try
-            {
-                if (InvokeRequired)
-                {
-                    BeginInvoke(new Action(() => SyncThemeWithJS(themeName, isDark)));
-                    return;
-                }
-
-                // Construct a theme message with specific color overrides if needed
-                // For now we just signal dark mode toggle and let JS handle the rest
-                var themeMsg = new
-                {
-                    type = "theme",
-                    isDark = isDark,
-                    themeName = themeName
+                    Logger?.LogDebug("[JARVIS-STREAM] Received chunk: {Length} chars", args.Chunk.Length);
                 };
 
-                var json = JsonSerializer.Serialize(themeMsg);
-                _webView.CoreWebView2.PostWebMessageAsJson(json);
-                Logger?.LogInformation("[JARVIS-THEME] Synced theme {Theme} (IsDark: {IsDark}) to JS", themeName, isDark);
+                _chatBridge.ResponseCompleted += (s, args) =>
+                {
+                    Logger?.LogDebug("[JARVIS-STREAM] Response completed");
+                };
+
+                _chatBridge.OnMessageReceived += (s, msg) =>
+                {
+                    Logger?.LogDebug("[JARVIS-MESSAGE] Full message received: {Length} chars", msg.Content.Length);
+                };
             }
-            catch (Exception ex)
-            {
-                Logger?.LogWarning(ex, "[JARVIS-THEME] Failed to sync theme to WebView2");
-            }
+
+            Logger?.LogInformation("[JARVIS-INIT] BlazorWebView initialization complete");
         }
 
-        private void PostMessageToJS(string type, string content, bool done = false)
+        private void SyncThemeWithBlazor(string themeName, bool isDark)
         {
-            if (_webView?.CoreWebView2 == null || IsDisposed) return;
+            if (_blazorWebView?.IsDisposed ?? true) return;
 
             try
             {
                 if (InvokeRequired)
                 {
-                    BeginInvoke(new Action(() => PostMessageToJS(type, content, done)));
+                    BeginInvoke(new Action(() => SyncThemeWithBlazor(themeName, isDark)));
                     return;
                 }
 
-                var msgJson = JsonSerializer.Serialize(new { type, content, done });
-                _webView.CoreWebView2.PostWebMessageAsJson(msgJson);
+                Logger?.LogInformation("[JARVIS-THEME] Synced theme {Theme} (IsDark: {IsDark}) to Blazor", themeName, isDark);
             }
             catch (Exception ex)
             {
-                Logger?.LogWarning(ex, "[JARVIS-BRIDGE] Failed to post message to WebView2");
+                Logger?.LogWarning(ex, "[JARVIS-THEME] Failed to sync theme to BlazorWebView");
             }
         }
 
@@ -371,8 +313,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.SuspendLayout();
             this.Name = "JARVISChatUserControl";
             this.Size = new Size(400, 600);
-            // Removed manual fallback BackColor to respect SfSkinManager theme cascade.
-            // Apply theme to this control as a best-effort measure for dynamically initialized controls.
+            this.MinimumSize = new Size(760, 520);
+            this.AutoScroll = false;
+            this.Padding = Padding.Empty;
+            this.Margin = Padding.Empty;
             try
             {
                 var theme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
@@ -386,7 +330,13 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             if (disposing)
             {
-                _webView?.Dispose();
+                if (_themeService != null && _themeChangedHandler != null)
+                {
+                    _themeService.ThemeChanged -= _themeChangedHandler;
+                    _themeChangedHandler = null;
+                }
+
+                _blazorWebView?.Dispose();
                 _initLock?.Dispose();
             }
             base.Dispose(disposing);

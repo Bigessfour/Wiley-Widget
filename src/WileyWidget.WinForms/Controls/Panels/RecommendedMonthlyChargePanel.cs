@@ -23,7 +23,6 @@ using WileyWidget.WinForms.Controls.Base;
 using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Themes;
 // using WileyWidget.WinForms.Utils; // Consolidated
@@ -252,13 +251,12 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Button Panel - Top Action Buttons (Dock-based, responsive)
         // ============================================================================
-        _buttonPanel = new LegacyGradientPanel
+        _buttonPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 60,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_buttonPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -321,13 +319,12 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Summary Panel - Revenue, Expenses, Status Display (Dock-based, responsive)
         // ============================================================================
-        _summaryPanel = new LegacyGradientPanel
+        _summaryPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 180,
             Padding = new Padding(15),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -348,7 +345,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             Text = "Financial Summary",
             Dock = DockStyle.Top,
             Height = 25,
-            Font = new Font("Segoe UI", 11F, FontStyle.Bold),
             TabIndex = 4,
             Margin = new Padding(0, 0, 0, 10)
         };
@@ -358,7 +354,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "Current Revenue: $0.00",
             Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             TabIndex = 5,
             AccessibleName = "Total Current Revenue",
             AccessibleDescription = "Total monthly revenue from all departments at current rates",
@@ -370,7 +365,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "Suggested Revenue: $0.00",
             Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             TabIndex = 6,
             AccessibleName = "Total Suggested Revenue",
             AccessibleDescription = "Total monthly revenue at AI-suggested rates",
@@ -382,7 +376,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "Total Expenses: $0.00",
             Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 10F),
             TabIndex = 7,
             AccessibleName = "Total Monthly Expenses",
             AccessibleDescription = "Total monthly expenses across all departments",
@@ -394,7 +387,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "Status: Unknown",
             Dock = DockStyle.Fill,
-            Font = new Font("Segoe UI", 12F, FontStyle.Bold),
             TabIndex = 8,
             AccessibleName = "Overall Profitability Status",
             AccessibleDescription = "Overall profitability status: Losing Money, Breaking Even, or Profitable",
@@ -410,7 +402,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             ScrollBars = ScrollBars.Vertical,
             BorderStyle = BorderStyle.FixedSingle,
             TabIndex = 9,
-            Font = new Font("Segoe UI", 9F),
             AccessibleName = "AI Recommendation Explanation",
             AccessibleDescription = "AI-generated explanation of the recommended rate adjustments",
             AutoSize = false
@@ -448,12 +439,11 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Departments Grid (Top Left)
         // ============================================================================
-        var deptGridPanel = new LegacyGradientPanel
+        var deptGridPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(deptGridPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -462,7 +452,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             Text = "Department Rate Analysis",
             Dock = DockStyle.Top,
             Height = 25,
-            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             Padding = new Padding(5, 3, 0, 0)
         };
         deptGridPanel.Controls.Add(deptGridLabel);
@@ -566,12 +555,11 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Benchmarks Grid (Bottom Left)
         // ============================================================================
-        var benchmarkPanel = new LegacyGradientPanel
+        var benchmarkPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(benchmarkPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -580,7 +568,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             Text = "State & National Benchmarks",
             Dock = DockStyle.Top,
             Height = 25,
-            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             Padding = new Padding(5, 3, 0, 0)
         };
         benchmarkPanel.Controls.Add(benchmarkLabel);
@@ -663,12 +650,11 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Chart Panel (Right Side)
         // ============================================================================
-        _chartPanel = new LegacyGradientPanel
+        _chartPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_chartPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 

@@ -16,7 +16,6 @@ using Syncfusion.WinForms.Input;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls.Base;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 using System.Collections.Generic;
 using Syncfusion.WinForms.DataGrid;
@@ -69,7 +68,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
     // Toolbar controls
     private TableLayoutPanel? _mainLayout;
-    private LegacyGradientPanel? _toolbarPanel;
+    private Panel? _toolbarPanel;
     private TextBoxExt? _searchTextBox;
     private SfButton? _searchButton;
     private SfButton? _clearFiltersButton;
@@ -86,7 +85,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private CheckBoxAdv? _showActiveOnlyCheckBox;
 
     // Summary panel
-    private LegacyGradientPanel? _summaryPanel;
+    private Panel? _summaryPanel;
     private Label? _totalCustomersLabel;
     private Label? _activeCustomersLabel;
     private Label? _balanceSummaryLabel;
@@ -346,12 +345,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private void CreateToolbar()
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        _toolbarPanel = new LegacyGradientPanel
+        _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10, 5, 10, 5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_toolbarPanel, currentTheme);
 
@@ -513,7 +511,6 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _addCustomerButton = ControlFactory.CreateSfButton("➕ &Add Customer", button =>
         {
             button.AutoSize = true;
-            button.Font = new Font(Font.FontFamily, Font.Size, FontStyle.Bold);
             button.Margin = new Padding(0, 0, 5, 0);
         });
         _addCustomerButton.AccessibleName = "Add Customer";
@@ -602,12 +599,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private void CreateSummaryPanel()
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        _summaryPanel = new LegacyGradientPanel
+        _summaryPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10, 5, 10, 5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
 
@@ -640,12 +636,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private Label CreateSummaryLabel(string text)
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        var cardPanel = new LegacyGradientPanel
+        var cardPanel = new Panel
         {
             Width = 180,
             Height = 40,
             BorderStyle = BorderStyle.FixedSingle,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             Margin = new Padding(5),
             AutoSize = false
         };
@@ -655,8 +650,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             Text = text,
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold)
+            TextAlign = ContentAlignment.MiddleCenter
         };
         cardPanel.Controls.Add(label);
 
@@ -956,8 +950,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         try
         {
-            // Header styling - bold, professional appearance
-            grid.Style.HeaderStyle.Font = new Syncfusion.WinForms.DataGrid.Styles.GridFontInfo(new Font("Segoe UI", 11f, FontStyle.Bold));
+            // Header styling — font cascade from SfSkinManager theme
             // Note: GridBorder constructor signature may have changed in current Syncfusion version
             // grid.Style.HeaderStyle.Borders.All = new GridBorder(GridBorderStyle.Solid, 1);
 
@@ -984,42 +977,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         }
     }
 
-    /// <summary>
-    /// Validates and configures toolbar button text with consistent font sizing.
-    /// </summary>
-    private void ConfigureToolbarFonts()
-    {
-        try
-        {
-            var buttonFont = new Font("Segoe UI", 10f, FontStyle.Regular);
-
-            foreach (var control in new[] { _addCustomerButton, _editCustomerButton, _deleteCustomerButton,
-                                           _refreshButton, _exportButton, _syncQuickBooksButton,
-                                           _clearFiltersButton, _searchButton })
-            {
-                if (control is Control c)
-                    c.Font = buttonFont;
-            }
-
-            // Labels use slightly larger font for hierarchy
-            var labelFont = new Font("Segoe UI", 10f, FontStyle.Regular);
-            if (_totalCustomersLabel != null) _totalCustomersLabel.Font = labelFont;
-            if (_activeCustomersLabel != null) _activeCustomersLabel.Font = labelFont;
-            if (_balanceSummaryLabel != null) _balanceSummaryLabel.Font = labelFont;
-
-            // Status bar uses smaller font
-            var statusFont = new Font("Segoe UI", 9f, FontStyle.Regular);
-            if (_statusLabel != null) _statusLabel.Font = statusFont;
-            if (_countLabel != null) _countLabel.Font = statusFont;
-            if (_balanceLabel != null) _balanceLabel.Font = statusFont;
-
-            _logger?.LogDebug("Toolbar fonts configured");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning($"Failed to configure toolbar fonts: {ex.Message}");
-        }
-    }
+    // Font management is delegated entirely to SfSkinManager theme cascade.
+    // ConfigureToolbarFonts() removed — no manual font assignments.
 
     /// <summary>
     /// Handles ViewModel property changes to update UI state.
@@ -1487,7 +1446,6 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
         if (!DesignMode)
         {
-            ConfigureToolbarFonts();
             WireupToolbarEventHandlers();
 
             if (ViewModel != null)

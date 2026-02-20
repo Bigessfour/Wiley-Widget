@@ -292,12 +292,32 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        // Set preferred size for proper docking display (matches PreferredDockSize extension)
-        Size = new Size(620, 400);
-        MinimumSize = new Size(420, 360);
-
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
         InitializeComponent();
+    }
+
+    /// <summary>
+    /// Enforces a DPI-aware minimum size once the Win32 handle is available and DeviceDpi
+    /// is accurate.  Only raises the floor — never lowers it — so the Designer's
+    /// static (720 × 520) value remains respected on standard-DPI machines.
+    /// </summary>
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+
+        var dpiW = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(640f);
+        var dpiH = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(480f);
+        var newMin = new Size(
+            Math.Max(MinimumSize.Width, dpiW),
+            Math.Max(MinimumSize.Height, dpiH));
+
+        if (newMin != MinimumSize)
+        {
+            MinimumSize = newMin;
+            Logger.LogDebug(
+                "QuickBooksPanel: MinimumSize raised to {W}×{H} after handle created (DeviceDpi={Dpi})",
+                newMin.Width, newMin.Height, DeviceDpi);
+        }
     }
 
     /// <summary>
@@ -318,9 +338,25 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             if (Width > 500 && Height > 400)
             {
                 EnforceMinimumContentHeight();
+
+                // Layout the splitter containers themselves
                 _splitContainerMain?.PerformLayout();
                 _splitContainerTop?.PerformLayout();
                 _splitContainerBottom?.PerformLayout();
+
+                // Layout inner panels so their hosted controls render at correct positions
+                _splitContainerMain?.Panel1?.PerformLayout();
+                _splitContainerMain?.Panel2?.PerformLayout();
+                _splitContainerTop?.Panel1?.PerformLayout();
+                _splitContainerTop?.Panel2?.PerformLayout();
+                _splitContainerBottom?.Panel1?.PerformLayout();
+                _splitContainerBottom?.Panel2?.PerformLayout();
+
+                // Apply intentional splitter distances after layout is stable, then clamp to valid range
+                if (_splitContainerMain != null) { _splitContainerMain.SplitterDistance = 280; ClampSplitterSafely(_splitContainerMain); }
+                if (_splitContainerTop != null) { _splitContainerTop.SplitterDistance = 340; ClampSplitterSafely(_splitContainerTop); }
+                if (_splitContainerBottom != null) { _splitContainerBottom.SplitterDistance = 220; ClampSplitterSafely(_splitContainerBottom); }
+
                 Logger.LogDebug("QuickBooksPanel.OnVisibleChanged: Final layout pass completed ({W}x{H})", Width, Height);
             }
         }));
@@ -371,13 +407,15 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (_splitContainerMain == null || _splitContainerTop == null || _splitContainerBottom == null)
             return;
 
-        // Only configure when main container has been laid out with non-zero dimensions
-        // ConfigureSplitContainersSafely has fallback logic for smaller containers
+        // Only configure when main container AND nested containers have been laid out with valid dimensions.
+        // _splitContainerTop (Dock=Fill in Panel1) must also be sized before we run configuration —
+        // otherwise its Width reflects a stale value from a prior layout pass, causing false fallbacks.
         const int MinNonZeroHeight = 100;
         const int MinNonZeroWidth = 200;
 
         if (_splitContainerMain.Height >= MinNonZeroHeight &&
-            _splitContainerMain.Width >= MinNonZeroWidth)
+            _splitContainerMain.Width >= MinNonZeroWidth &&
+            _splitContainerTop.Width >= MinNonZeroWidth)
         {
             ConfigureSplitContainersSafely();
             _splittersConfigured = true;
@@ -1141,7 +1179,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Dock = DockStyle.Top,
             AutoSize = false, // CRITICAL: Explicit false + Height prevents measurement loops
             Height = DpiHeight(28f), // Explicit height for header
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleLeft,
             AccessibleName = "Summary Header",
             AccessibleDescription = "Header for QuickBooks summary metrics"
@@ -1283,7 +1320,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.TopCenter,
-            Font = new Font("Segoe UI", 8f, FontStyle.Regular),
             Visible = false // Only show if we start using it
         };
         cardLayout.Controls.Add(topSmallLabel, 0, 0);
@@ -1294,7 +1330,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = title,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
             AccessibleName = $"{title} Title"
         };
         cardLayout.Controls.Add(titleLabel, 0, 1);
@@ -1309,7 +1344,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = value,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 16f, FontStyle.Bold),
             AccessibleName = $"{title} Value"
         };
         _sharedTooltip?.SetToolTip(valueLabel, $"Displays the current {title.ToLower(System.Globalization.CultureInfo.InvariantCulture)} count");
@@ -1393,7 +1427,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Dock = DockStyle.Top,
             AutoSize = false, // CRITICAL: Explicit false + Height prevents measurement loops
             Height = DpiHeight(28f), // Explicit height for header
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleLeft,
             Margin = new Padding(0, 0, 0, 5), // Space below header
             AccessibleName = "Connection Status Header",
@@ -1423,7 +1456,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "Status: Checking...",
             Dock = DockStyle.Fill,
             AutoSize = false, // CRITICAL: Prevent WinForms RightToLeft recursion bug during TableLayout measurement
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold), // Bolder for status importance
             TextAlign = ContentAlignment.MiddleLeft,
             AccessibleName = "Connection Status",
             AccessibleDescription = "Current QuickBooks connection status"
@@ -1436,7 +1468,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "Company: -",
             Dock = DockStyle.Fill,
             AutoSize = false, // CRITICAL: Prevent WinForms RightToLeft recursion bug during TableLayout measurement
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
             TextAlign = ContentAlignment.MiddleLeft,
             AccessibleName = "Company Name",
             AccessibleDescription = "Name of the connected QuickBooks company"
@@ -1449,7 +1480,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "Last Sync: -",
             Dock = DockStyle.Fill,
             AutoSize = false, // CRITICAL: Prevent WinForms RightToLeft recursion bug during TableLayout measurement
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
             TextAlign = ContentAlignment.MiddleLeft,
             AccessibleName = "Last Sync Time",
             AccessibleDescription = "Timestamp of the last successful sync"
@@ -1552,7 +1582,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Dock = DockStyle.Top,
             AutoSize = false, // CRITICAL: Explicit false + Height prevents measurement loops
             Height = DpiHeight(28f), // Explicit height for header
-            Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleLeft,
             Margin = new Padding(0, 0, 0, 5), // Space below header
             AccessibleName = "Operations Header",
@@ -1589,7 +1618,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _syncDataButton = ControlFactory.CreateSfButton("🔄 Sync Data", button =>
         {
             button.Size = new Size(DpiHeight(120f), DpiHeight(36f));
-            button.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Sync Data with QuickBooks";
             button.AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online";
@@ -1669,7 +1697,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Dock = DockStyle.Top,
             AutoSize = false, // CRITICAL: Explicit false + Height prevents measurement loops
             Height = DpiHeight(28f), // Match other section headers for visual consistency
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleLeft,
             Margin = new Padding(0, 0, 0, 5), // Space below header
             AccessibleName = "Sync History Header",
@@ -1694,7 +1721,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "Filter:",
             AutoSize = false, // Explicit false: FlowLayoutPanel manages layout
             Size = new Size(DpiHeight(45f), DpiHeight(28f)), // Fixed size for toolbar consistency
-            Font = new Font("Segoe UI", 9f, FontStyle.Regular),
             TextAlign = ContentAlignment.MiddleLeft,
             Margin = new Padding(0, 0, 5, 0), // Space to the right
             AccessibleName = "Filter Label",

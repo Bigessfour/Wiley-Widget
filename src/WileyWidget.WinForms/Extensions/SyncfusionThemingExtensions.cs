@@ -32,16 +32,17 @@ public static class SyncfusionThemingExtensions
     public static Size PreferredDockSize(this UserControl panel) => panel switch
     {
         FormHostPanel => new Size(560, 420),
-        AccountsPanel => new Size(620, 380),
+        AccountsPanel => new Size(900, 560),
         AnalyticsHubPanel => new Size(560, 400),
         AuditLogPanel => new Size(520, 380),
         ProactiveInsightsPanel => new Size(560, 400),
-        WarRoomPanel => new Size(560, 420),
+        WarRoomPanel => new Size(1000, 700),
         QuickBooksPanel => new Size(620, 400),
         DepartmentSummaryPanel => new Size(540, 400),
         SettingsPanel => new Size(500, 360),
         UtilityBillPanel => new Size(560, 400),
         CustomersPanel => new Size(580, 380),
+        ReportsPanel => new Size(1400, 900),
         _ => new Size(540, 400) // Default fallback
     };
 

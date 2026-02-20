@@ -153,8 +153,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Final control properties
             this.Name = "Panel_QuickBooks";
-            this.AutoScaleMode = AutoScaleMode.Font;
-            this.Font = new Font("Segoe UI", 9F);
+            this.AutoScaleMode = AutoScaleMode.Dpi;
             this.MinimumSize = new Size(720, 520);
             this.Padding = new Padding(4);
 

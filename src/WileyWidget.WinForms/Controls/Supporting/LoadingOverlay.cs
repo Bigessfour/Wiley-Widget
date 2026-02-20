@@ -15,7 +15,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// A lightweight semi-transparent loading overlay with a marquee progress indicator and optional message.
     /// Designed to be docked Fill inside panels and toggled visible when panels are loading.
     /// </summary>
-    public class LoadingOverlay : LegacyGradientPanel
+    public class LoadingOverlay : Panel
     {
         private Label? _messageLabel;
         private ProgressBarAdv? _progress;
@@ -55,7 +55,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
             {
                 currentTheme = ThemeColors.DefaultTheme;
             }
-            ThemeName = currentTheme;
 
             // Overlay should cover parent fully
             Dock = DockStyle.Fill;
@@ -77,7 +76,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
             // Center container
-            var container = new WileyWidget.WinForms.Controls.Base.LegacyGradientPanel
+            var container = new Panel
             {
                 AutoSize = true,
                 Padding = new Padding(12),
@@ -92,7 +91,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
             {
                 // SfSkinManager may not be available in designer context
             }
-            container.ThemeName = currentTheme;
 
             // Use ProgressBarAdv with waiting gradient style for consistent loading indicator
             _progress = new Syncfusion.Windows.Forms.Tools.ProgressBarAdv
@@ -118,7 +116,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
             _messageLabel = new Label
             {
                 AutoSize = true,
-                Font = new Font("Segoe UI", 9.0f, FontStyle.Regular),
                 Text = WileyWidget.WinForms.Forms.MainFormResources.LoadingText,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Anchor = AnchorStyles.None,

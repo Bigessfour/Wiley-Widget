@@ -89,6 +89,14 @@ public partial class MainForm
             this.KeyDown -= MainForm_KeyDown;
             this.KeyDown += MainForm_KeyDown;
 
+            // RibbonForm chrome customization (Syncfusion RibbonForm API)
+            // Promotes the title-bar application icon from 16×16 (default) to 32×32.
+            IconSize = new Size(32, 32);
+            // EnableAeroTheme = false is required for TopLeftRadius to render visually.
+            EnableAeroTheme = false;
+            // Curved top-left corner for visual interest (default = 8; max recommended = 20).
+            TopLeftRadius = 20;
+
             // NOTE: SfForm.Style properties removed - RibbonForm uses different theming API
             // Title bar styling is handled by Syncfusion theming via OfficeColorScheme
 
@@ -137,9 +145,7 @@ public partial class MainForm
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
 
-            // TODO: Initialize vertical chrome layout before docking starts so the docking host
-            // is always constrained to row 1 below the ribbon.
-            // InitializeMainLayout();  // [DISABLED] - Method not implemented
+            // Tabbed MDI layout is already constrained beneath the ribbon; no extra docking host initialization needed.
 
             // Initialize Navigation Strip (alternative to Ribbon for test harness)
             if (_uiConfig.IsUiTestHarness)
@@ -274,15 +280,42 @@ public partial class MainForm
             var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
             CompleteToolStripTabItemAPI(homeTab, _logger);
 
+            var financialsTab = new ToolStripTabItem { Text = "Financials", Name = "FinancialsTab" };
+            var analyticsTab = new ToolStripTabItem { Text = "Analytics & Reports", Name = "AnalyticsTab" };
+            var utilitiesTab = new ToolStripTabItem { Text = "Utilities", Name = "UtilitiesTab" };
+            var administrationTab = new ToolStripTabItem { Text = "Administration", Name = "AdministrationTab" };
+            CompleteToolStripTabItemAPI(financialsTab, _logger);
+            CompleteToolStripTabItemAPI(analyticsTab, _logger);
+            CompleteToolStripTabItemAPI(utilitiesTab, _logger);
+            CompleteToolStripTabItemAPI(administrationTab, _logger);
+
+            // ── Home tab groups ──────────────────────────────────────────────
             var (dashboardStrip, _) = CreateCoreNavigationGroup(this, currentThemeString, _logger);
-            var (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
-            var reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
-            var (toolsStrip, _, _) = CreateToolsGroup(this, currentThemeString, _logger);
             var (layoutStrip, _, _, lockLayoutBtn) = CreateLayoutGroup(this, currentThemeString, _logger);
-            var moreStrip = CreateMoreGroup(this, currentThemeString, _logger);
             var searchAndGridStrip = CreateSearchAndGridGroup(this, currentThemeString, _logger);
 
+            // ── Financials tab groups ────────────────────────────────────────
+            var (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
+            var paymentsStrip = CreatePaymentsGroup(this, currentThemeString, _logger);
+            var integrationStrip = CreateIntegrationGroup(this, currentThemeString, _logger);
+
+            // ── Analytics & Reports tab groups ───────────────────────────────
+            var analyticsStrip = CreateAnalyticsGroup(this, currentThemeString, _logger);
+            var reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
+            var operationsStrip = CreateOperationsGroup(this, currentThemeString, _logger);
+
+            // ── Utilities tab groups ─────────────────────────────────────────
+            var utilitiesStrip = CreateUtilitiesGroup(this, currentThemeString, _logger);
+
+            // ── Administration tab groups ────────────────────────────────────
+            var administrationStrip = CreateAdministrationGroup(this, currentThemeString, _logger);
+            var auditLogsStrip = CreateAuditLogsGroup(this, currentThemeString, _logger);
+
             ribbon.Header.AddMainItem(homeTab);
+            ribbon.Header.AddMainItem(financialsTab);
+            ribbon.Header.AddMainItem(analyticsTab);
+            ribbon.Header.AddMainItem(utilitiesTab);
+            ribbon.Header.AddMainItem(administrationTab);
 
             ToolStripTabItem? layoutContextTab = null;
             ToolStripTabGroup? layoutTabGroup = null;
@@ -304,21 +337,38 @@ public partial class MainForm
                 _logger?.LogDebug(ex, "InitializeRibbon: Failed to attach LockPanels contextual toggle");
             }
 
+            // Home
             AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(homeTab, financialsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(homeTab, reportingStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(homeTab, toolsStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, layoutStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(homeTab, moreStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, searchAndGridStrip, currentThemeString, _logger);
+
+            // Financials
+            AddToolStripToTabPanel(financialsTab, financialsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(financialsTab, paymentsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(financialsTab, integrationStrip, currentThemeString, _logger);
+
+            // Analytics & Reports
+            AddToolStripToTabPanel(analyticsTab, analyticsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(analyticsTab, reportingStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(analyticsTab, operationsStrip, currentThemeString, _logger);
+
+            // Utilities
+            AddToolStripToTabPanel(utilitiesTab, utilitiesStrip, currentThemeString, _logger);
+
+            // Administration
+            AddToolStripToTabPanel(administrationTab, administrationStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(administrationTab, auditLogsStrip, currentThemeString, _logger);
 
             // Launcher handlers must be attached after tabs/groups exist.
             AttachRibbonLauncherHandlers(this, ribbon, _logger);
 
-            if (homeTab.Panel != null)
+            foreach (var tab in new[] { homeTab, financialsTab, analyticsTab, utilitiesTab, administrationTab })
             {
-                homeTab.Panel.AutoSize = true;
-                homeTab.Panel.Padding = new Padding(6, 4, 6, 4);
+                if (tab.Panel != null)
+                {
+                    tab.Panel.AutoSize = true;
+                    tab.Panel.Padding = new Padding(6, 4, 6, 4);
+                }
             }
 
             try

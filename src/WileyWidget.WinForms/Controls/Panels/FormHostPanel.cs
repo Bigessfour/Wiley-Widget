@@ -57,30 +57,54 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             void HostInternal()
             {
+                if (ReferenceEquals(_hostedForm, form) && Controls.Contains(form))
+                {
+                    form.Dock = DockStyle.Fill;
+                    form.Visible = true;
+                    form.BringToFront();
+                    PerformLayout();
+                    Invalidate(true);
+                    return;
+                }
+
                 if (_hostedForm != null)
                 {
                     UnhostFormInternal();
                 }
 
-                _hostedForm = form;
-                form.TopLevel = false;
-                form.FormBorderStyle = FormBorderStyle.None;
-                form.Dock = DockStyle.Fill;
-                Controls.Add(form);
-                form.Show();
-
-                // Propagate size constraints from hosted form (with reasonable defaults)
-                this.MinimumSize = new Size(
-                    Math.Max(420, form.MinimumSize.Width > 0 ? form.MinimumSize.Width : 420),
-                    Math.Max(360, form.MinimumSize.Height > 0 ? form.MinimumSize.Height : 360));
-
-                if (form.MaximumSize.Width > 0 && form.MaximumSize.Height > 0)
+                SuspendLayout();
+                try
                 {
-                    this.MaximumSize = form.MaximumSize;
+                    _hostedForm = form;
+                    form.TopLevel = false;
+                    form.FormBorderStyle = FormBorderStyle.None;
+                    form.Dock = DockStyle.Fill;
+                    Controls.Add(form);
+                    form.Show();
+                    form.Visible = true;
+                    form.BringToFront();
+
+                    // Propagate size constraints from hosted form (with reasonable defaults)
+                    this.MinimumSize = new Size(
+                        Math.Max(420, form.MinimumSize.Width > 0 ? form.MinimumSize.Width : 420),
+                        Math.Max(360, form.MinimumSize.Height > 0 ? form.MinimumSize.Height : 360));
+
+                    if (form.MaximumSize.Width > 0 && form.MaximumSize.Height > 0)
+                    {
+                        this.MaximumSize = form.MaximumSize;
+                    }
+
+                    // Apply current Syncfusion theme to ensure visual consistency
+                    ApplyCurrentTheme(form);
+                }
+                finally
+                {
+                    ResumeLayout(performLayout: true);
                 }
 
-                // Apply current Syncfusion theme to ensure visual consistency
-                ApplyCurrentTheme(form);
+                PerformLayout();
+                Invalidate(true);
+                Update();
 
                 // Notify observers
                 HostedFormChanged?.Invoke(this, EventArgs.Empty);
@@ -122,7 +146,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             try
             {
                 _hostedForm.Hide();
-                Controls.Remove(_hostedForm);
+                if (Controls.Contains(_hostedForm))
+                {
+                    Controls.Remove(_hostedForm);
+                }
                 _hostedForm.Close(); // Standard form cleanup pattern
                 _hostedForm.Dispose();
             }

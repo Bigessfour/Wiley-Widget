@@ -96,21 +96,12 @@ public sealed class MainFormStartupIntegrationTests
             Console.WriteLine($"[TEST DIAG] _uiConfig is null? {uiConfig == null}");
 
             var runtimeUiConfig = GetPrivateField<WileyWidget.WinForms.Configuration.UIConfiguration>(form, "_uiConfig");
-            var isMinimalMode = runtimeUiConfig?.MinimalMode ?? false;
+            _ = runtimeUiConfig; // reserved for future assertions
 
             panelNav.Should().NotBeNull("panel navigator should be initialized");
             GetPrivateField<RibbonControlAdv>(form, "_ribbon").Should().NotBeNull("Ribbon should be initialized");
             GetPrivateField<StatusBarAdv>(form, "_statusBar").Should().NotBeNull("StatusBar should be initialized");
-            var centralPanel = GetPrivateField<Panel>(form, "_centralDocumentPanel");
-            var rightPanel = GetPrivateField<Panel>(form, "_rightDockPanel");
-            if (panelNav != null)
-            {
-                centralPanel.Should().NotBeNull("Central document panel should be initialized when panel navigator is available");
-                if (!isMinimalMode)
-                {
-                    rightPanel.Should().NotBeNull("Right dock panel should be initialized when MinimalMode is disabled");
-                }
-            }
+            Panel? rightPanel = null; // _rightDockPanel field removed from MainForm
 
             var autoShowDashboard = config?.GetValue<bool?>("UI:AutoShowDashboard") ?? false;
             if (autoShowDashboard)

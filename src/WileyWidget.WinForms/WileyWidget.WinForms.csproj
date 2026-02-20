@@ -129,8 +129,15 @@
     <Reference Remove="Microsoft.Web.WebView2.Wpf" />
   </ItemGroup>
 
+  <!-- Explicitly include Blazor component files as RazorComponent items.
+       Required because EnableDefaultContentItems=false suppresses SDK auto-includes. -->
+  <ItemGroup>
+    <RazorComponent Include="BlazorComponents\**\*.razor" />
+  </ItemGroup>
+
   <!-- .NET 10 SDK automatically includes wwwroot and appsettings.json as Content items -->
-  <!-- Explicit Content includes required because EnableDefaultContentItems=false (to prevent NETSDK1022 duplicate items error with Razor SDK) -->
+  <!-- Explicit Content includes required because EnableDefaultContentItems=false (to prevent NETSDK1022 duplicate items
+  error with Razor SDK) -->
   <ItemGroup>
     <!-- Reports folder needs explicit include as it's not in wwwroot -->
     <Content Include="Reports\\**\\*">

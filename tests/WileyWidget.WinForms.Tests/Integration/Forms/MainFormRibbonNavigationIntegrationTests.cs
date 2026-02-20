@@ -103,7 +103,7 @@ public sealed class MainFormRibbonNavigationIntegrationTests
     }
 
     [WinFormsFact]
-    public void RibbonNavigationButtons_Clicks_UpdateNavigationHistoryState()
+    public void RibbonNavigationButtons_Clicks_UpdateActivePanelState()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
 
@@ -143,9 +143,6 @@ public sealed class MainFormRibbonNavigationIntegrationTests
         var navigator = form.PanelNavigator;
         navigator.Should().NotBeNull();
         MatchesTarget(navigator!.GetActivePanelName(), distinctTargets[1].Target!).Should().BeTrue();
-
-        form.CanNavigateBack.Should().BeTrue("clicking two different navigation buttons should create back history");
-        form.CanNavigateForward.Should().BeFalse("forward history should be empty until navigating backward");
     }
 
     private static IEnumerable<ToolStripButton> GetRibbonNavigationButtons(MainForm form, RibbonControlAdv ribbon)

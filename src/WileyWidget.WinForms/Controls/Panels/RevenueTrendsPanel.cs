@@ -36,7 +36,6 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
 
 using WileyWidget.WinForms.Controls.Base;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
@@ -274,7 +273,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Height = 24,
             TextAlign = ContentAlignment.MiddleRight,
             Text = "Last updated: --",
-            Font = new Font("Segoe UI", 8F, FontStyle.Italic),
             // CHANGE 15: Updated padding on timestamp for consistent spacing
             Padding = new Padding(0, 4, 12, 4),
             AccessibleName = "Last data update timestamp",
@@ -316,7 +314,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     private Label CreateSummaryCard(TableLayoutPanel parent, string title, string value, int columnIndex, string description)
     {
         // CHANGE 16: Card panel with improved padding and spacing
-        var cardPanel = new LegacyGradientPanel
+        var cardPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Margin = new Padding(6),  // CHANGE: Increased margin between cards for breathing room
@@ -334,7 +332,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Dock = DockStyle.Top,
             Height = 20,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
             AutoSize = false,
             // CHANGE 17: Improved accessibility for card title
             AccessibleName = $"{title} label",
@@ -347,7 +344,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Text = value,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font = new Font("Segoe UI", 14F, FontStyle.Bold),
             AutoSize = false,
             // CHANGE 18: Improved accessibility for card value
             AccessibleName = $"{title} value",
@@ -394,8 +390,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         // Configure Y-axis for currency values
         _chartControl.PrimaryYAxis.Title = "Revenue";
-        _chartControl.PrimaryYAxis.TitleFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-        _chartControl.PrimaryYAxis.Font = new Font("Segoe UI", 9F);
+        _chartControl.PrimaryYAxis.TitleFont = this.Font;
+        _chartControl.PrimaryYAxis.Font = this.Font;
         try
         {
             var yAxis = _chartControl.PrimaryYAxis;
@@ -413,7 +409,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _chartControl.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside;
         _chartControl.LegendPosition = ChartDock.Bottom;
         _chartControl.LegendAlignment = ChartAlignment.Center;
-        _chartControl.Legend.Font = new Font("Segoe UI", 9F);
+        _chartControl.Legend.Font = this.Font;
         // Legend colors inherited from global theme
     }
 

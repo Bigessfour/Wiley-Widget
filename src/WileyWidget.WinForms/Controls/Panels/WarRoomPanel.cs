@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 
 using System;
 using System.Threading;
@@ -19,7 +19,7 @@ namespace WileyWidget.WinForms.Controls.Panels
     public partial class WarRoomPanel : ScopedPanelBase<WarRoomViewModel>, ICompletablePanel
     {
         // Fields declared here and used by InitializeComponent in Designer.cs
-        private LegacyGradientPanel? _topPanel;
+        private Panel? _topPanel;
         private PanelHeader? _panelHeader;
         private TextBox? _scenarioInput;
         private SfButton? _btnRunScenario;
@@ -31,6 +31,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             : base(scopeFactory, logger)
         {
             InitializeComponent();
+
+            // Wire close button — base ClosePanel() routes through MainForm.ClosePanel(string)
+            if (_panelHeader != null)
+                _panelHeader.CloseClicked += (s, e) => ClosePanel();
+
+            if (_btnRunScenario != null)
+                _btnRunScenario.Click += OnRunScenarioClicked;
+
+            if (_btnExportForecast != null)
+                _btnExportForecast.Click += OnExportForecastClicked;
+
             Logger.LogDebug("[WarRoomPanel] Initialized");
         }
 
@@ -61,6 +72,46 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // ScenarioInput is not yet on WarRoomViewModel — wire when added
             }
             Logger.LogDebug("[WarRoomPanel] BindViewModel complete (ViewModel={VmPresent})", ViewModel is not null);
+        }
+
+        private async void OnRunScenarioClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (ViewModel?.RunScenarioCommand?.CanExecute(null) ?? false)
+                {
+                    await ViewModel.RunScenarioCommand.ExecuteAsync(null);
+                }
+                else
+                {
+                    Logger.LogWarning("[WarRoomPanel] RunScenarioCommand unavailable");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[WarRoomPanel] RunScenario click failed");
+                MessageBox.Show(this, $"Unable to run scenario: {ex.Message}", "War Room", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void OnExportForecastClicked(object? sender, EventArgs e)
+        {
+            try
+            {
+                if (ViewModel?.ExportForecastCommand?.CanExecute(null) ?? false)
+                {
+                    await ViewModel.ExportForecastCommand.ExecuteAsync(null);
+                }
+                else
+                {
+                    Logger.LogWarning("[WarRoomPanel] ExportForecastCommand unavailable");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[WarRoomPanel] ExportForecast click failed");
+                MessageBox.Show(this, $"Unable to export forecast: {ex.Message}", "War Room", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }

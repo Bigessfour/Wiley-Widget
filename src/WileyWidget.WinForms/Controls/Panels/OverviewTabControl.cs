@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.ComponentModel;
@@ -15,7 +15,6 @@ using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -28,7 +27,7 @@ public partial class OverviewTabControl : UserControl
     private readonly OverviewTabViewModel? _viewModel;
     private readonly ILogger _logger;
 
-    private LegacyGradientPanel? _summaryPanel;
+    private Panel? _summaryPanel;
     private Label? _lblTotalBudget;
     private Label? _lblTotalActual;
     private Label? _lblVariance;
@@ -84,7 +83,7 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeSummaryTiles(Control parent)
     {
-        _summaryPanel = new LegacyGradientPanel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+        _summaryPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
         SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
 
         var flow = new FlowLayoutPanel
@@ -94,11 +93,11 @@ public partial class OverviewTabControl : UserControl
             WrapContents = true
         };
 
-        _lblTotalBudget      = CreateSummaryTile(flow, "Total Budget",  "$0", Color.DodgerBlue);
-        _lblTotalActual      = CreateSummaryTile(flow, "Total Actual",  "$0", Color.Green);
-        _lblVariance         = CreateSummaryTile(flow, "Variance",      "$0", Color.Orange);
-        _lblOverBudgetCount  = CreateSummaryTile(flow, "Over Budget",   "0",  Color.Red);
-        _lblUnderBudgetCount = CreateSummaryTile(flow, "Under Budget",  "0",  Color.Green);
+        _lblTotalBudget = CreateSummaryTile(flow, "Total Budget", "$0", Color.DodgerBlue);
+        _lblTotalActual = CreateSummaryTile(flow, "Total Actual", "$0", Color.Green);
+        _lblVariance = CreateSummaryTile(flow, "Variance", "$0", Color.Orange);
+        _lblOverBudgetCount = CreateSummaryTile(flow, "Over Budget", "0", Color.Red);
+        _lblUnderBudgetCount = CreateSummaryTile(flow, "Under Budget", "0", Color.Green);
 
         _summaryPanel.Controls.Add(flow);
         parent.Controls.Add(_summaryPanel);
@@ -148,16 +147,16 @@ public partial class OverviewTabControl : UserControl
     private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-        var tile = new LegacyGradientPanel
+        var tile = new Panel
         {
-            Width = 150, Height = 80, Margin = new Padding(5),
+            Width = 150,
+            Height = 80,
+            Margin = new Padding(5),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AccessibleName = $"{title} summary card",
             AccessibleDescription = $"Displays {title.ToLowerInvariant()} metric"
         };
         SfSkinManager.SetVisualStyle(tile, currentTheme);
-        tile.ThemeName = currentTheme;
 
         tile.Controls.Add(new Label
         {

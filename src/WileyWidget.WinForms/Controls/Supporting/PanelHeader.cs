@@ -290,15 +290,13 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
             _toolTip = new ToolTip();
 
-            // Title label (use system font for theme consistency)
-            var titleFont = new Font("Segoe UI", 11F, FontStyle.Bold);
+            // Title label (use inherited theme font for consistency)
             _titleLabel = new Label
             {
                 Name = "headerLabel",
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = titleFont,
                 Margin = new Padding(0),
                 AccessibleName = "Header title"
             };
@@ -323,7 +321,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Refresh",
                 TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText
+                TextImageRelation = TextImageRelation.ImageBeforeText,
+                ImageAlign = ContentAlignment.MiddleCenter
             };
             if (_imageService != null)
             {
@@ -379,7 +378,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Pin",
                 TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText
+                TextImageRelation = TextImageRelation.ImageBeforeText,
+                ImageAlign = ContentAlignment.MiddleCenter
             };
             _btnPin.Click += PinButton_Click;
             _btnPin.KeyDown += (s, e) =>
@@ -402,7 +402,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 AccessibleName = "Help",
                 Visible = _helpButtonVisible,
                 TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText
+                TextImageRelation = TextImageRelation.ImageBeforeText,
+                ImageAlign = ContentAlignment.MiddleCenter
             };
             if (_imageService != null)
             {
@@ -441,7 +442,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
                 AccessibleName = "Close",
                 TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText
+                TextImageRelation = TextImageRelation.ImageBeforeText,
+                ImageAlign = ContentAlignment.MiddleCenter
             };
             if (_imageService != null)
             {

@@ -12,7 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using GridCheckBoxColumn = Syncfusion.WinForms.DataGrid.GridCheckBoxColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
@@ -78,10 +77,10 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private Label? _percentUsedLabel;
     private Label? _entriesOverBudgetLabel;
     private Label? _entriesUnderBudgetLabel;
-    private LegacyGradientPanel? _summaryPanel;
-    private LegacyGradientPanel? _gridPanel;
-    private LegacyGradientPanel? _filterPanel;
-    private LegacyGradientPanel? _buttonPanel;
+    private Panel? _summaryPanel;
+    private Panel? _gridPanel;
+    private Panel? _filterPanel;
+    private Panel? _buttonPanel;
     private SplitContainerAdv? _mainSplitContainer;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
@@ -263,22 +262,20 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         var themeName = ThemeColors.CurrentTheme;
 
-        var topPanel = new LegacyGradientPanel
+        var topPanel = new Panel
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(topPanel, themeName);
 
         // Summary panel
-        _summaryPanel = new LegacyGradientPanel
+        _summaryPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 80,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_summaryPanel, themeName);
 
@@ -297,7 +294,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _totalBudgetedLabel = new Label
         {
             Text = "Total Budgeted: $0.00",
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AccessibleName = "Total Budgeted",
@@ -308,7 +304,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _totalActualLabel = new Label
         {
             Text = "Total Actual: $0.00",
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AccessibleName = "Total Actual",
@@ -319,7 +314,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _totalVarianceLabel = new Label
         {
             Text = "Total Variance: $0.00",
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AccessibleName = "Total Variance",
@@ -330,7 +324,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _percentUsedLabel = new Label
         {
             Text = "Percent Used: 0.00%",
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AccessibleName = "Percent Used",
@@ -341,7 +334,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _entriesOverBudgetLabel = new Label
         {
             Text = "Over Budget: 0",
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AccessibleName = "Over Budget Count",
@@ -352,7 +344,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _entriesUnderBudgetLabel = new Label
         {
             Text = "Under Budget: 0",
-            Font = new Font(Font.FontFamily, 10, FontStyle.Bold),
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             AccessibleName = "Under Budget Count",
@@ -372,22 +363,20 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Filter panel - Fixed height (120px) to prevent unbounded growth when grid is shrunk
         // NO manual BackColor; let SfSkinManager handle it
-        _filterPanel = new LegacyGradientPanel
+        _filterPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f),
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_filterPanel, themeName);
 
-        var filterGroup = new LegacyGradientPanel
+        var filterGroup = new Panel
         {
             Text = "Filters",
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(filterGroup, themeName);
 
@@ -583,22 +572,20 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private void InitializeBottomPanel()
     {
         var themeName = ThemeColors.CurrentTheme;
-        var bottomPanel = new LegacyGradientPanel
+        var bottomPanel = new Panel
         {
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(bottomPanel, themeName);
 
         // Budget grid with AutoScroll enabled for overflow content
-        _gridPanel = new LegacyGradientPanel
+        _gridPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
             AutoScroll = true,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_gridPanel, themeName);
 
@@ -765,14 +752,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         bottomPanel.Controls.Add(_mappingContainer);
 
         // Button panel with AutoScroll for high DPI button overflow (Option A)
-        _buttonPanel = new LegacyGradientPanel
+        _buttonPanel = new Panel
         {
             Dock = DockStyle.Bottom,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50.0f),
             Padding = new Padding(10),
             AutoScroll = true,
             BorderStyle = BorderStyle.None,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
         };
         SfSkinManager.SetVisualStyle(_buttonPanel, themeName);
 
@@ -1256,9 +1242,18 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             _mainSplitContainer.SplitterDistance = safeDist;
 
+            // Force a layout pass on the inner panels so their hosted controls render correctly
+            // instead of collapsing to 0×0 during the initial docking resize pass.
+            _mainSplitContainer.PerformLayout();
+            _mainSplitContainer.Panel1?.PerformLayout();
+            _mainSplitContainer.Panel2?.PerformLayout();
+
             Logger.LogInformation(
                 "BudgetPanel SplitContainer configured in VisibleChanged: Panel1Min={P1}, Panel2Min={P2}, Distance={D}, Width={W}",
                 _mainSplitContainer.Panel1MinSize, _mainSplitContainer.Panel2MinSize, safeDist, _mainSplitContainer.Width);
+
+            // Queue a full recursive layout pass so any deeply nested controls also render.
+            BeginInvoke(new System.Action(ForceFullLayout));
         }
         catch (Exception ex)
         {
@@ -2313,6 +2308,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// Required designer variable.
     /// </summary>
     private System.ComponentModel.IContainer? components = null;
+
+    /// <summary>
+    /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+    /// </summary>
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+        BeginInvoke(() =>
+        {
+            ForceFullLayout();
+            if (_mainSplitContainer != null) _mainSplitContainer.SplitterDistance = 320;
+            Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+        });
+    }
 
     /// <summary>
     /// Clean up any resources being used.

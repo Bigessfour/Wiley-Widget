@@ -7,7 +7,10 @@ using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Abstractions;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Diagnostics;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -39,11 +42,17 @@ namespace WileyWidget.WinForms.Services
 
     public sealed class PanelNavigationService : IPanelNavigationService
     {
+        private const int MinimumFloatingWidth = 900;
+        private const int MinimumFloatingHeight = 620;
+        private const int ScreenPadding = 40;
+        private const double DefaultScreenUsageRatio = 0.82;
+
         private readonly Form _owner;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<PanelNavigationService> _logger;
         private readonly Dictionary<string, Form> _hosts = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Control> _cachedPanels = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<Control> _initializedAsyncPanels = new();
         private string? _activePanelName;
         private readonly bool _useMDI;
         private Syncfusion.Windows.Forms.Tools.TabbedMDIManager? _tabbedMdi;
@@ -93,12 +102,14 @@ namespace WileyWidget.WinForms.Services
                     CachePanelAliases(panelName, panel);
                 }
 
+                ConfigureSpecialHostPanels(panel, panelName);
+
                 if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
                 {
                     parameterizedPanel.InitializeWithParameters(parameters);
                 }
 
-                ShowFloating(panel, panelName);
+                ShowFloating(panel, panelName, preferredStyle);
             });
         }
 
@@ -117,7 +128,7 @@ namespace WileyWidget.WinForms.Services
             {
                 if (_cachedPanels.TryGetValue(panelName, out var existingHost) && !existingHost.IsDisposed)
                 {
-                    ShowFloating(existingHost, panelName);
+                    ShowFloating(existingHost, panelName, preferredStyle);
                     return;
                 }
 
@@ -143,7 +154,7 @@ namespace WileyWidget.WinForms.Services
 
                 _cachedPanels[panelName] = form;
                 CachePanelAliases(panelName, form);
-                ShowFloating(form, panelName);
+                ShowFloating(form, panelName, preferredStyle);
             });
         }
 
@@ -156,7 +167,7 @@ namespace WileyWidget.WinForms.Services
             {
                 _cachedPanels[panelName] = panel;
                 CachePanelAliases(panelName, panel);
-                ShowFloating(panel, panelName);
+                ShowFloating(panel, panelName, preferredStyle);
             });
 
             await Task.CompletedTask.ConfigureAwait(true);
@@ -217,14 +228,16 @@ namespace WileyWidget.WinForms.Services
             _cachedPanels.Clear();
         }
 
-        private void ShowFloating(Control panelOrForm, string panelName)
+        private void ShowFloating(Control panelOrForm, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right)
         {
             Form host;
+            UserControl? hostedPanel = null;
 
             // If owner is MDI container, create MDI child instead of floating window
             if (_useMDI && panelOrForm is not Form)
             {
-                host = CreateMDIChild(panelName, panelOrForm as UserControl);
+                hostedPanel = panelOrForm as UserControl;
+                host = CreateMDIChild(panelName, hostedPanel);
             }
             else if (panelOrForm is Form form)
             {
@@ -232,7 +245,8 @@ namespace WileyWidget.WinForms.Services
             }
             else
             {
-                host = GetOrCreateHost(panelName, panelOrForm as UserControl);
+                hostedPanel = panelOrForm as UserControl;
+                host = GetOrCreateHost(panelName, hostedPanel, preferredStyle);
             }
 
             EnsureTrackedHost(panelName, host);
@@ -259,6 +273,8 @@ namespace WileyWidget.WinForms.Services
             }
             else
             {
+                EnsureHostViewport(host, hostedPanel, panelName, preferredStyle);
+
                 host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
                 host.StartPosition = host.StartPosition == FormStartPosition.Manual ? FormStartPosition.Manual : FormStartPosition.CenterParent;
                 host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
@@ -271,6 +287,13 @@ namespace WileyWidget.WinForms.Services
 
             host.BringToFront();
             host.Activate();
+
+            EnsureControlVisibleAndLaidOut(host);
+            if (hostedPanel != null)
+            {
+                EnsureControlVisibleAndLaidOut(hostedPanel);
+            }
+            QueuePostShowLayoutPass(host, hostedPanel);
 
             _activePanelName = panelName;
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
@@ -310,13 +333,15 @@ namespace WileyWidget.WinForms.Services
             host.FormClosed += (_, __) => CleanupClosedHost(panelName, host);
         }
 
-        private Form GetOrCreateHost(string panelName, UserControl? panel)
+        private Form GetOrCreateHost(string panelName, UserControl? panel, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
         {
             if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
             {
                 EnsurePanelAttached(existing, panel);
                 return existing;
             }
+
+            var (initialSize, minimumSize) = ResolveHostSize(panel, preferredStyle);
 
             var host = new Form
             {
@@ -325,10 +350,8 @@ namespace WileyWidget.WinForms.Services
                 ShowInTaskbar = false,
                 StartPosition = FormStartPosition.Manual,
                 Location = CascadeLocation(),
-                Size = panel?.Size.IsEmpty == false && panel.Size.Width > 0 && panel.Size.Height > 0
-                    ? panel.Size
-                    : new Size(900, 600),
-                MinimumSize = new Size(0, 0),
+                Size = initialSize,
+                MinimumSize = minimumSize,
                 Text = panelName,
                 AutoScaleMode = AutoScaleMode.Dpi,
                 AutoScroll = false,
@@ -354,9 +377,21 @@ namespace WileyWidget.WinForms.Services
             {
                 panel.Dock = DockStyle.Fill;
                 panel.Margin = Padding.Empty;
+                var minimumWidth = Math.Max(640, panel.MinimumSize.Width);
+                var minimumHeight = Math.Max(420, panel.MinimumSize.Height);
+                panel.MinimumSize = new Size(minimumWidth, minimumHeight);
+
+                if (panel.Width < panel.MinimumSize.Width || panel.Height < panel.MinimumSize.Height)
+                {
+                    panel.Size = new Size(
+                        Math.Max(panel.Width, panel.MinimumSize.Width),
+                        Math.Max(panel.Height, panel.MinimumSize.Height));
+                }
+
                 host.Padding = Padding.Empty;
                 host.Controls.Clear();
                 host.Controls.Add(panel);
+                panel.Bounds = host.ClientRectangle;
 
                 // Force handle creation to trigger OnHandleCreated and ViewModel resolution
                 if (!panel.IsHandleCreated)
@@ -365,8 +400,248 @@ namespace WileyWidget.WinForms.Services
                 }
 
                 // Trigger Load event explicitly if handle already exists
+                host.PerformLayout();
                 panel.PerformLayout();
+
+                TryInitializeAsyncPanel(panel, host.Text);
             }
+
+            panel.Visible = true;
+            panel.Dock = DockStyle.Fill;
+            panel.BringToFront();
+            EnsureControlVisibleAndLaidOut(panel);
+            EnsureControlVisibleAndLaidOut(host);
+        }
+
+        private void TryInitializeAsyncPanel(Control panel, string panelName)
+        {
+            if (panel is not IAsyncInitializable asyncInitializable)
+            {
+                return;
+            }
+
+            if (_initializedAsyncPanels.Contains(panel))
+            {
+                return;
+            }
+
+            _initializedAsyncPanels.Add(panel);
+
+            _ = InitializeAsyncPanelCore(asyncInitializable, panel, panelName);
+        }
+
+        private void ConfigureSpecialHostPanels(Control panel, string panelName)
+        {
+            if (panel is not FormHostPanel formHostPanel)
+            {
+                return;
+            }
+
+            try
+            {
+                if (string.Equals(panelName, "Dashboard", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (formHostPanel.HostedForm == null || formHostPanel.HostedForm.IsDisposed)
+                    {
+                        var dashboardForm = ActivatorUtilities.CreateInstance<BudgetDashboardForm>(_serviceProvider);
+                        formHostPanel.HostForm(dashboardForm);
+                    }
+
+                    return;
+                }
+
+                if (string.Equals(panelName, "Rates", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (formHostPanel.HostedForm == null || formHostPanel.HostedForm.IsDisposed)
+                    {
+                        var ratesForm = ActivatorUtilities.CreateInstance<RatesPage>(_serviceProvider);
+                        formHostPanel.HostForm(ratesForm);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[PANEL_NAV] Failed to configure FormHostPanel content for '{PanelName}'", panelName);
+            }
+        }
+
+        private async Task InitializeAsyncPanelCore(IAsyncInitializable asyncInitializable, Control panel, string panelName)
+        {
+            try
+            {
+                _logger.LogDebug("[PANEL_NAV] Initializing async panel '{PanelName}' ({PanelType})", panelName, panel.GetType().Name);
+                await asyncInitializable.InitializeAsync(CancellationToken.None).ConfigureAwait(true);
+                _logger.LogDebug("[PANEL_NAV] Async panel initialized '{PanelName}'", panelName);
+
+                ExecuteOnUiThread(() =>
+                {
+                    EnsureControlVisibleAndLaidOut(panel);
+
+                    var host = panel.FindForm();
+                    if (host != null && !host.IsDisposed)
+                    {
+                        EnsureControlVisibleAndLaidOut(host);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _initializedAsyncPanels.Remove(panel);
+                _logger.LogWarning(ex, "[PANEL_NAV] Async initialization failed for '{PanelName}' ({PanelType})", panelName, panel.GetType().Name);
+            }
+        }
+
+        private static void EnsureControlVisibleAndLaidOut(Control control)
+        {
+            if (control == null || control.IsDisposed)
+            {
+                return;
+            }
+
+            control.Visible = true;
+            control.PerformLayout();
+            control.Invalidate(true);
+            control.Update();
+
+            foreach (Control child in control.Controls)
+            {
+                EnsureControlVisibleAndLaidOut(child);
+            }
+        }
+
+        private static void QueuePostShowLayoutPass(Form host, UserControl? hostedPanel)
+        {
+            if (host == null || host.IsDisposed || !host.IsHandleCreated)
+            {
+                return;
+            }
+
+            try
+            {
+                host.BeginInvoke(new Action(() =>
+                {
+                    if (host.IsDisposed)
+                    {
+                        return;
+                    }
+
+                    EnsureControlVisibleAndLaidOut(host);
+
+                    if (hostedPanel != null && !hostedPanel.IsDisposed)
+                    {
+                        hostedPanel.Dock = DockStyle.Fill;
+                        EnsureControlVisibleAndLaidOut(hostedPanel);
+                    }
+                }));
+            }
+            catch
+            {
+                // best-effort deferred layout pass
+            }
+        }
+
+        private void EnsureHostViewport(Form host, UserControl? panel, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
+        {
+            if (host == null || host.IsDisposed)
+            {
+                return;
+            }
+
+            var (desiredSize, minSize) = ResolveHostSize(panel, preferredStyle);
+
+            var sizeChanged = false;
+            if (host.MinimumSize.Width < minSize.Width || host.MinimumSize.Height < minSize.Height)
+            {
+                host.MinimumSize = minSize;
+            }
+
+            var targetWidth = Math.Max(host.Width, minSize.Width);
+            var targetHeight = Math.Max(host.Height, minSize.Height);
+
+            if (targetWidth < desiredSize.Width)
+            {
+                targetWidth = desiredSize.Width;
+                sizeChanged = true;
+            }
+
+            if (targetHeight < desiredSize.Height)
+            {
+                targetHeight = desiredSize.Height;
+                sizeChanged = true;
+            }
+
+            var workingArea = Screen.FromControl(_owner).WorkingArea;
+            targetWidth = Math.Min(targetWidth, Math.Max(minSize.Width, workingArea.Width - ScreenPadding));
+            targetHeight = Math.Min(targetHeight, Math.Max(minSize.Height, workingArea.Height - ScreenPadding));
+
+            if (host.Width != targetWidth || host.Height != targetHeight)
+            {
+                host.Size = new Size(targetWidth, targetHeight);
+                sizeChanged = true;
+            }
+
+            if (sizeChanged)
+            {
+                _logger.LogDebug("[PANEL_NAV] Ensured viewport for '{PanelName}' -> {Width}x{Height}, Min={MinWidth}x{MinHeight}",
+                    panelName,
+                    host.Width,
+                    host.Height,
+                    host.MinimumSize.Width,
+                    host.MinimumSize.Height);
+            }
+        }
+
+        private (Size Desired, Size Minimum) ResolveHostSize(UserControl? panel, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
+        {
+            var workingArea = Screen.FromControl(_owner).WorkingArea;
+            var maxWidth = Math.Max(MinimumFloatingWidth, workingArea.Width - ScreenPadding);
+            var maxHeight = Math.Max(MinimumFloatingHeight, workingArea.Height - ScreenPadding);
+
+            var panelSize = panel?.Size ?? Size.Empty;
+            var panelMinimumSize = panel?.MinimumSize ?? Size.Empty;
+            var panelDockMinimumSize = panel?.MinimumPanelSize(preferredStyle) ?? Size.Empty;
+            var panelPreferredDockSize = panel?.PreferredDockSize() ?? Size.Empty;
+            var panelPreferredSize = Size.Empty;
+
+            try
+            {
+                if (panel != null)
+                {
+                    panelPreferredSize = panel.GetPreferredSize(new Size(maxWidth, maxHeight));
+                }
+            }
+            catch
+            {
+                panelPreferredSize = Size.Empty;
+            }
+
+            var baselineWidth = (int)Math.Round(workingArea.Width * DefaultScreenUsageRatio);
+            var baselineHeight = (int)Math.Round(workingArea.Height * DefaultScreenUsageRatio);
+
+            var minWidth = Math.Min(maxWidth, Math.Max(Math.Max(MinimumFloatingWidth, panelMinimumSize.Width), panelDockMinimumSize.Width));
+            var minHeight = Math.Min(maxHeight, Math.Max(Math.Max(MinimumFloatingHeight, panelMinimumSize.Height), panelDockMinimumSize.Height));
+
+            var desiredWidth = Math.Max(Math.Max(minWidth, baselineWidth), MaxUsableDimension(panelSize.Width, panelPreferredSize.Width, panelPreferredDockSize.Width));
+            var desiredHeight = Math.Max(Math.Max(minHeight, baselineHeight), MaxUsableDimension(panelSize.Height, panelPreferredSize.Height, panelPreferredDockSize.Height));
+
+            desiredWidth = Math.Min(maxWidth, desiredWidth);
+            desiredHeight = Math.Min(maxHeight, desiredHeight);
+
+            return (new Size(desiredWidth, desiredHeight), new Size(minWidth, minHeight));
+        }
+
+        private static int MaxUsableDimension(params int[] dimensions)
+        {
+            var max = 0;
+            foreach (var dimension in dimensions)
+            {
+                if (dimension >= 320)
+                {
+                    max = Math.Max(max, dimension);
+                }
+            }
+
+            return max;
         }
 
         private Point CascadeLocation()
@@ -568,6 +843,8 @@ namespace WileyWidget.WinForms.Services
             {
                 _cachedPanels.Remove(alias);
             }
+
+            _initializedAsyncPanels.RemoveWhere(control => control == null || control.IsDisposed || (host != null && host.Controls.Contains(control)));
 
             if (string.Equals(_activePanelName, panelName, StringComparison.OrdinalIgnoreCase))
             {

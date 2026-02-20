@@ -7,7 +7,6 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.Windows.Forms.Gauge;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
@@ -248,9 +247,9 @@ namespace WileyWidget.WinForms.Forms
             _logger?.LogDebug("BudgetDashboardForm controls initialized - Chart, Grid, and 4 gauge cards created");
         }
 
-        private LegacyGradientPanel CreateGaugeCard(string title, string description, Color accent)
+        private Panel CreateGaugeCard(string title, string description, Color accent)
         {
-            var card = new LegacyGradientPanel
+            var card = new Panel
             {
                 Dock = DockStyle.Fill,                  // Important: fill the table cell
                 Padding = new Padding(12),

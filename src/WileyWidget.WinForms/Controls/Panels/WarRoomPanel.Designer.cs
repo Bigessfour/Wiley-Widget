@@ -1,6 +1,7 @@
-﻿using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -19,7 +20,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this._topPanel = new LegacyGradientPanel();
+            this._topPanel = new Panel();
             this._panelHeader = new PanelHeader();
             this._scenarioInput = new TextBox();
             this._btnRunScenario = new SfButton();
@@ -34,10 +35,12 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Simple clean layout
             this._topPanel.Dock = DockStyle.Top;
-            this._topPanel.Height = 140;
+            this._topPanel.Height = LayoutTokens.Dp(140);
+            this._topPanel.Padding = new Padding(LayoutTokens.PanelPadding);
 
             this._scenarioInput.Dock = DockStyle.Top;
-            this._scenarioInput.Height = 30;
+            this._scenarioInput.Height = LayoutTokens.Dp(LayoutTokens.StandardControlHeight);
+            this._scenarioInput.Margin = new Padding(LayoutTokens.ContentMargin);
 
             this._btnRunScenario.Dock = DockStyle.Right;
             this._btnExportForecast.Dock = DockStyle.Right;
@@ -46,7 +49,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.Controls.Add(_topPanel);
             this.Controls.Add(_contentPanel);
 
+            this.Name = "WarRoomPanel";
+            this.Size = new System.Drawing.Size(1000, 700);
+            this.MinimumSize = new System.Drawing.Size(600, 420);
+
             this.ResumeLayout(false);
+            this.PerformLayout();
         }
     }
 }

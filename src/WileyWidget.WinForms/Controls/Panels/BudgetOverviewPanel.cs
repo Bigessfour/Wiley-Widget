@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -24,7 +24,6 @@ using Syncfusion.WinForms.Input;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls.Base;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.Themes;
@@ -66,8 +65,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
         private NoDataOverlay? _noDataOverlay;
-        private LegacyGradientPanel? _topPanel;
-        private LegacyGradientPanel? _summaryPanel;
+        private Panel? _topPanel;
+        private Panel? _summaryPanel;
         private SfComboBox? _comboFiscalYear;
         private SfButton? _btnRefresh;
         private SfButton? _btnExportCsv;
@@ -169,8 +168,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.SuspendLayout();
 
             Name = "BudgetOverviewPanel";
-            // Removed manual Size assignment - panel now uses Dock.Fill or AutoSize
+            // Dock.Fill — let the DockingManager control size, but enforce a floor so
+            // the fixed chrome (header 52 + toolbar 48 + summary cards 80 + statusbar 24 = 204)
+            // never collapses and leaves a blank panel.
             Dock = DockStyle.Fill;
+            MinimumSize = new Size(800, 450); // 204px fixed chrome + ~246 for grid/chart
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
 
             this.ResumeLayout(false);
@@ -196,13 +198,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             Controls.Add(_panelHeader);
 
             // Top toolbar using TableLayoutPanel for proper responsive layout
-            _topPanel = new LegacyGradientPanel
+            _topPanel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 48,
                 Padding = new Padding(8, 4, 8, 4),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
             SfSkinManager.SetVisualStyle(_topPanel, currentTheme);
 
@@ -243,7 +244,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 DisplayMember = null,  // Use default ToString for List<int> integers
                 ValueMember = null,    // Use value itself without explicit member mapping
                 ThemeName = currentTheme,
-                Font = new Font("Segoe UI", 10F),
                 AllowNull = false      // Require selection
             };
             tooltips.SetToolTip(_comboFiscalYear, "Select a fiscal year to view budget data for that period");
@@ -293,13 +293,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             Controls.Add(_topPanel);
 
             // Summary panel with KPI tiles
-            _summaryPanel = new LegacyGradientPanel
+            _summaryPanel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 80,  // Reduced to give more space to grid headers
                 Padding = new Padding(8),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty)
             };
             SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
             var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
@@ -387,7 +386,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Height = 24,
                 TextAlign = ContentAlignment.MiddleRight,
                 Text = "Last updated:",
-                Font = new Font("Segoe UI", 8F, FontStyle.Italic),
                 Padding = new Padding(0, 0, 8, 0)
             };
             Controls.Add(_lblLastUpdated);
@@ -418,13 +416,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
         {
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-            var tile = new LegacyGradientPanel
+            var tile = new Panel
             {
                 Width = 150,
                 Height = 80,
                 Margin = new Padding(4),
                 BorderStyle = BorderStyle.None,
-                BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
                 AccessibleName = $"{title} summary card",
                 AccessibleDescription = $"Displays {title.ToLower(CultureInfo.CurrentCulture)} metric"
             };
@@ -1066,6 +1063,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Logger.LogError(ex, "BudgetOverviewPanel: OnLoad failed");
             }
+        }
+
+        /// <summary>
+        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// </summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+            BeginInvoke(() =>
+            {
+                ForceFullLayout();
+                Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+            });
         }
 
         protected override void Dispose(bool disposing)

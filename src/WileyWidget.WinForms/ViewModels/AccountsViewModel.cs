@@ -537,7 +537,9 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         {
             var editModel = new MunicipalAccountEditModel();
             using var dialog = new AccountEditDialog(editModel, _logger);
-            if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK || !dialog.IsSaved) return;
+            dialog.Show();  // Non-blocking Show() instead of ShowDialog()
+            // Let the panel's SaveCompleted event handle refresh
+            // No blocking the UI thread!
 
             await LoadAccountsAsync();
             StatusText = "New account created.";

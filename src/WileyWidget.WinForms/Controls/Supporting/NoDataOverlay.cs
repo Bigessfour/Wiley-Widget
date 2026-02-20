@@ -14,7 +14,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// Simple centered message for no-data states. Designed to be docked Fill and shown when the panel's collection is empty.
     /// Can optionally display an action button.
     /// </summary>
-    public class NoDataOverlay : LegacyGradientPanel
+    public class NoDataOverlay : Panel
     {
         private Label _messageLabel = null!;
         private SfButton? _actionButton;
@@ -60,7 +60,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
             // Configure gradient panel - SfSkinManager handles all theming
             var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, theme);
-            this.ThemeName = theme;
 
             Dock = DockStyle.Fill;
             Visible = false;
@@ -95,7 +94,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 AutoSize = true,
                 Anchor = AnchorStyles.None,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 11.0f, FontStyle.Regular),
                 Text = "No data available",
                 AccessibleName = "No data message",
                 AccessibleDescription = "Displays a message when no data is available",
@@ -166,7 +164,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 _actionButton = new SfButton
                 {
                     Size = new Size(140, 40),
-                    Font = new Font("Segoe UI", 10.0f, FontStyle.Bold),
                     AccessibleName = "Action button",
                     AccessibleDescription = "Button to perform an action when no data is available",
                     TabIndex = 2,
@@ -174,7 +171,6 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 };
                 var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
                 SfSkinManager.SetVisualStyle(_actionButton, theme);
-                _actionButton.ThemeName = theme;
 
                 var tooltip = new ToolTip();
                 tooltip.SetToolTip(_actionButton, "Click to perform an action");

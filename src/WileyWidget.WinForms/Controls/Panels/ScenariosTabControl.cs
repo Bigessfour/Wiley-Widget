@@ -16,8 +16,8 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Utilities;
 
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -31,7 +31,7 @@ public partial class ScenariosTabControl : UserControl
     private readonly ILogger _logger;
 
     // UI Controls
-    private LegacyGradientPanel? _inputPanel;
+    private Panel? _inputPanel;
     private SfDataGrid? _resultsGrid;
     private LoadingOverlay? _loadingOverlay;
 
@@ -103,10 +103,10 @@ public partial class ScenariosTabControl : UserControl
     {
         var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
 
-        _inputPanel = new LegacyGradientPanel
+        _inputPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10)
+            Padding = new Padding(LayoutTokens.PanelPadding)
         };
         SfSkinManager.SetVisualStyle(_inputPanel, themeName);
 

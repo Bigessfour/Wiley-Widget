@@ -517,7 +517,7 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                var isVisible = control.Visible; // TODO: reinstate docking manager visibility checks when dock system stabilizes
+                var isVisible = control.Visible && control.Parent?.Visible != false && control.FindForm()?.Visible != false;
 
                 // First check if the control itself implements ILazyLoadViewModel (e.g., WarRoomPanel)
                 if (control is WileyWidget.Abstractions.ILazyLoadViewModel controlLazyViewModel)

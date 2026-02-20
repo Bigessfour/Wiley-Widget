@@ -23,6 +23,7 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
@@ -89,9 +90,9 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             {
             }
 
-            public int GetQATItemCount() => base.GetQATItemCount();
-            public void SaveCurrentLayout() => base.SaveCurrentLayout();
-            public void ResetLayout() => base.ResetLayout();
+            public new int GetQATItemCount() => base.GetQATItemCount();
+            public new void SaveCurrentLayout() => base.SaveCurrentLayout();
+            public new void ResetLayout() => base.ResetLayout();
 
             public void CallOnLoad() => typeof(MainForm).GetMethod("OnLoad", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, new object[] { EventArgs.Empty });
             public void CallOnShown() => typeof(MainForm).GetMethod("OnShown", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, new object[] { EventArgs.Empty });
@@ -150,7 +151,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var themeMock = new Mock<IThemeService>();
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, windowMock.Object, Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, windowMock.Object, Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Act - initialize chrome explicitly (OnLoad defers chrome to OnShown)
             var _ = form.Handle; // ensure handle created (required by ValidateInitializationState)
@@ -180,7 +181,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 TestThemeHelper.EnsureOffice2019Colorful();
             });
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Apply theme to form
             SfSkinManager.SetVisualStyle(form, "Office2019Colorful");
@@ -228,7 +229,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var themeMock = new Mock<IThemeService>();
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             var _ = form.Handle;
             form.CallInitializeChrome();
@@ -292,7 +293,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var testProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
-            var form = new TestMainForm(testProvider, configuration, logger, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(testProvider, configuration, logger, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Act: run the real WinForms show lifecycle so OnShown executes in-order.
             var _ = form.Handle;
@@ -358,7 +359,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 .Callback(() => dashboardRequested = true)
                 .Verifiable();
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, windowMock.Object, Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, windowMock.Object, Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Create control handle to prevent Invoke hanging
             form.CreateControl();
@@ -423,7 +424,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 themeMock.Raise(tm => tm.ThemeChanged += null, themeMock.Object, theme);
             });
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Apply theme to form
             SfSkinManager.SetVisualStyle(form, "Office2019Colorful");
@@ -482,7 +483,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             windowMock.Setup(w => w.AddToMru(It.IsAny<string>()));
             windowMock.Setup(w => w.LoadMru()).Returns(new List<string>());
 
-            var form = new TestMainForm(provider, configuration, loggerMock.Object, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), windowMock.Object, fileImportMock.Object, Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, loggerMock.Object, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), windowMock.Object, fileImportMock.Object, new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Create temp csv file
             var tmp = System.IO.Path.GetTempFileName() + ".csv";
@@ -515,7 +516,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 TestThemeHelper.EnsureOffice2019Colorful();
             });
 
-            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Apply theme to form
             SfSkinManager.SetVisualStyle(form, "Office2019Colorful");
@@ -542,7 +543,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerMock = new Mock<ILogger<MainForm>>();
 
-            var form = new TestMainForm(provider, configuration, loggerMock.Object, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, loggerMock.Object, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             // Act & Assert for theme exception (should be ignored)
             var themeEx = new NullReferenceException("Theme error", new ArgumentException("SfSkinManager"));
@@ -567,7 +568,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerMock = new Mock<ILogger<MainForm>>();
 
-            var form = new TestMainForm(provider, configuration, loggerMock.Object, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), Mock.Of<SyncfusionControlFactory>());
+            var form = new TestMainForm(provider, configuration, loggerMock.Object, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
             var _ = form.Handle;
             form.Visible = true;

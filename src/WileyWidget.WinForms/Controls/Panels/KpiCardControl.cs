@@ -77,7 +77,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Top,
                 Height = Dpi(20f),
                 Text = "Title",
-                Font = new Font("Segoe UI", 9f, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
                 AccessibleRole = AccessibleRole.StaticText,
@@ -88,7 +87,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Dock = DockStyle.Fill,
                 Text = "0",
-                Font = new Font("Segoe UI", 16f, FontStyle.Bold),
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
                 AccessibleRole = AccessibleRole.StaticText,
@@ -101,7 +99,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Bottom,
                 Height = Dpi(16f),
                 Text = string.Empty,
-                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
                 AccessibleRole = AccessibleRole.StaticText,

@@ -16,6 +16,7 @@ public interface IAnalyticsHubViewModel : INotifyPropertyChanged
     OverviewTabViewModel Overview { get; }
     TrendsTabViewModel Trends { get; }
     ScenariosTabViewModel Scenarios { get; }
+    AdvancedScenariosTabViewModel AdvancedScenarios { get; }
     VariancesTabViewModel Variances { get; }
 
     IAsyncRelayCommand RefreshAllCommand { get; }

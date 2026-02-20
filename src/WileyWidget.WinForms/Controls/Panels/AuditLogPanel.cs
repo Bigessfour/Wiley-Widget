@@ -22,7 +22,6 @@ using Syncfusion.WinForms.Input.Enums;
 
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Extensions;
-using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Controls.Supporting;
 
 
@@ -61,7 +60,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
     private LoadingOverlay? _chartLoadingOverlay;
-    private LegacyGradientPanel? _filterPanel;
+    private Panel? _filterPanel;
 
     // Main content
     private Syncfusion.WinForms.DataGrid.SfDataGrid? _auditGrid;
@@ -171,7 +170,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         Controls.Add(_panelHeader);
 
         // Filter panel - theme applied via SfSkinManager cascade (no manual BackgroundColor)
-        _filterPanel = new LegacyGradientPanel
+        _filterPanel = new Panel
         {
             Dock = DockStyle.Top,
             Height = 120,
@@ -1225,6 +1224,23 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             // Ignore theme application failures
         }
+    }
+
+    /// <summary>
+    /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+    /// The base.OnShown starts the 180ms timer; BeginInvoke fires an immediate extra pass
+    /// for splitter configuration.
+    /// </summary>
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+
+        BeginInvoke(() =>
+        {
+            ForceFullLayout();
+            ConfigureMainSplitContainer();
+            Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+        });
     }
 
     /// <summary>

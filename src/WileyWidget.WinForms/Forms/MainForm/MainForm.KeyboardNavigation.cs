@@ -122,8 +122,8 @@ public partial class MainForm
 
         if (_documentSwitcherList != null && _documentSwitcherList.Items.Count > 0)
         {
-            var prevIndex = _documentSwitcherList.SelectedIndex <= 0 
-                ? _documentSwitcherList.Items.Count - 1 
+            var prevIndex = _documentSwitcherList.SelectedIndex <= 0
+                ? _documentSwitcherList.Items.Count - 1
                 : _documentSwitcherList.SelectedIndex - 1;
             _documentSwitcherList.SelectedIndex = prevIndex;
         }
@@ -315,7 +315,7 @@ View:
 Help:
   Ctrl+?            → Show this help";
 
-        MessageBoxAdv.Show(this, help, "Keyboard Shortcuts", 
+        MessageBoxAdv.Show(this, help, "Keyboard Shortcuts",
             MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         _logger?.LogDebug("Displayed keyboard shortcuts help");

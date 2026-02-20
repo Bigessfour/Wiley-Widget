@@ -11,6 +11,7 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 
@@ -18,13 +19,13 @@ namespace WileyWidget.WinForms.Factories;
 
 /// <summary>
 /// Factory for creating fully-configured Syncfusion controls with ALL required properties.
-/// 
+///
 /// MANDATORY USAGE: This factory ensures no partial/incomplete control implementations.
 /// Per workspace rules (Syncfusion API Rule):
 /// - ALL Syncfusion API properties must be configured
 /// - Theme integration is mandatory
 /// - No "winging it" or incomplete setups
-/// 
+///
 /// Before using ANY control type, consult Syncfusion WinForms documentation via MCP:
 /// - Use Syncfusion WinForms Assistant MCP for API documentation
 /// - Validate against local samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19
@@ -44,7 +45,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured SfDataGrid with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist (per Syncfusion API):
     /// ✅ ThemeName - Theme integration
     /// ✅ Dock/Size - Layout
@@ -66,11 +67,10 @@ public class SyncfusionControlFactory
         var grid = new SfDataGrid
         {
             // Theme integration (MANDATORY per SfSkinManager rule)
-            ThemeName = _currentTheme,
 
             // Layout
             Dock = DockStyle.Fill,
-            
+
             // Core behaviors (all set explicitly - no defaults assumed)
             AllowEditing = true,
             AllowFiltering = true,
@@ -78,25 +78,25 @@ public class SyncfusionControlFactory
             AllowResizingColumns = true,
             AllowDraggingColumns = true,
             AllowGrouping = false, // Set explicitly
-            
+
             // Selection behavior
             SelectionMode = GridSelectionMode.Single,
-            
+
             // Column generation
             AutoGenerateColumns = true,
-            
+
             // Edit behavior
             EditorSelectionBehavior = EditorSelectionBehavior.SelectAll,
-            
+
             // Add row behavior
             AddNewRowPosition = RowPosition.Bottom,
-            
+
             // Navigation
             NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Cell,
-            
+
             // Performance
             EnableDataVirtualization = true,
-            
+
             // Visual polish
             ShowRowHeader = false,
             ShowToolTip = true
@@ -124,7 +124,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured SfButton with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ Text
@@ -137,7 +137,6 @@ public class SyncfusionControlFactory
 
         var button = new SfButton
         {
-            ThemeName = _currentTheme,
             Text = text,
             Size = new Size(120, 32),
             Font = new Font("Segoe UI", 9F, FontStyle.Regular)
@@ -155,7 +154,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured ChartControl with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ Size/Dock
@@ -173,11 +172,11 @@ public class SyncfusionControlFactory
         {
             Dock = DockStyle.Fill,
             Title = { Text = title },
-            
+
             // Visual settings
             Legend = { Visible = true, Position = ChartDock.Bottom },
             ShowLegend = true,
-            
+
             // Interaction
             EnableMouseRotation = false,
             AllowGradientPalette = true
@@ -199,7 +198,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured TabControlAdv with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ Dock/Size
@@ -213,7 +212,6 @@ public class SyncfusionControlFactory
 
         var tabControl = new TabControlAdv
         {
-            ThemeName = _currentTheme,
             Dock = DockStyle.Fill,
             TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererMetro),
             Alignment = TabAlignment.Top,
@@ -233,7 +231,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured RibbonControlAdv with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ Dock
@@ -248,14 +246,13 @@ public class SyncfusionControlFactory
 
         var ribbon = new RibbonControlAdv
         {
-            ThemeName = _currentTheme,
             MenuButtonText = menuButtonText,
             ShowQuickItemsDropDownButton = false,
             TitleAlignment = Syncfusion.Windows.Forms.Tools.TextAlignment.Left,
             RibbonStyle = RibbonStyle.Office2016,
             OfficeColorScheme = Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed
         };
-        
+
         // Dock must be set via special property (not regular DockStyle)
         ribbon.Dock = (Syncfusion.Windows.Forms.Tools.DockStyleEx)DockStyle.Top;
 
@@ -271,7 +268,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured SfListView with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ Dock/Size
@@ -285,7 +282,6 @@ public class SyncfusionControlFactory
 
         var listView = new SfListView
         {
-            ThemeName = _currentTheme,
             Dock = DockStyle.Fill,
             ItemHeight = 28,
             Font = new Font("Segoe UI", 9F, FontStyle.Regular)
@@ -303,7 +299,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured TextBoxExt with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ Size
@@ -316,7 +312,6 @@ public class SyncfusionControlFactory
 
         var textBox = new TextBoxExt
         {
-            ThemeName = _currentTheme,
             BorderStyle = BorderStyle.FixedSingle,
             Size = new Size(200, 28),
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
@@ -342,7 +337,6 @@ public class SyncfusionControlFactory
 
         var comboBox = new SfComboBox
         {
-            ThemeName = _currentTheme,
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
             Width = 150,
             Height = 28,
@@ -369,7 +363,6 @@ public class SyncfusionControlFactory
 
         var numericTextBox = new SfNumericTextBox
         {
-            ThemeName = _currentTheme,
             Size = new Size(80, 24),
             FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Numeric
         };
@@ -442,7 +435,6 @@ public class SyncfusionControlFactory
 
         var progressBar = new ProgressBarAdv
         {
-            ThemeName = _currentTheme,
             Size = new Size(200, 16),
             ProgressStyle = ProgressBarStyles.Metro
         };
@@ -459,7 +451,7 @@ public class SyncfusionControlFactory
 
     /// <summary>
     /// Creates a fully-configured DockingManager with ALL essential properties set.
-    /// 
+    ///
     /// Mandatory Properties Checklist:
     /// ✅ ThemeName
     /// ✅ HostForm (parent form)
@@ -474,7 +466,6 @@ public class SyncfusionControlFactory
 
         var dockingManager = new DockingManager
         {
-            ThemeName = _currentTheme,
             HostForm = hostForm,
             HostControl = hostControl as ContainerControl ?? hostForm,
             ShowCaption = false,
@@ -486,6 +477,85 @@ public class SyncfusionControlFactory
         configure?.Invoke(dockingManager);
 
         return dockingManager;
+    }
+
+    #endregion
+
+    #region SfChart (modernized wrapper)
+
+    /// <summary>
+    /// Creates a chart configured for reserve projections using the current theme.
+    /// Uses the existing ChartControl for compatibility while exposing a modern factory entry point.
+    /// </summary>
+    public ChartControl CreateSfChart(string title, Action<ChartControl>? configure = null)
+    {
+        _logger.LogDebug("Creating SfChart wrapper: {Title}", title);
+
+        var chart = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            Title = { Text = title },
+            Legend = { Visible = true, Position = ChartDock.Bottom },
+            ShowLegend = true,
+            EnableMouseRotation = false,
+            AllowGradientPalette = true
+        };
+
+        chart.PrimaryXAxis.Title = "Fiscal Year";
+        chart.PrimaryYAxis.Title = "Projected Reserves";
+
+        chart.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(chart);
+
+        return chart;
+    }
+
+    #endregion
+
+    #region SfRichTextBox (narrative helper)
+
+    /// <summary>
+    /// Creates a themed RichTextBox for AI narrative output.
+    /// </summary>
+    public RichTextBox CreateSfRichTextBox(Action<RichTextBox>? configure = null)
+    {
+        _logger.LogDebug("Creating SfRichTextBox (RichTextBox themed)");
+
+        var rtb = new RichTextBox
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            BorderStyle = BorderStyle.FixedSingle,
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+            DetectUrls = true,
+            WordWrap = true
+        };
+
+        rtb.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(rtb);
+
+        return rtb;
+    }
+
+    #endregion
+
+    #region LoadingOverlay helper
+
+    /// <summary>
+    /// Creates the standard loading overlay for panel operations.
+    /// </summary>
+    public LoadingOverlay CreateLoadingOverlay(Action<LoadingOverlay>? configure = null)
+    {
+        _logger.LogDebug("Creating LoadingOverlay helper");
+
+        var overlay = new LoadingOverlay
+        {
+            Dock = DockStyle.Fill,
+            Visible = false
+        };
+
+        configure?.Invoke(overlay);
+        return overlay;
     }
 
     #endregion

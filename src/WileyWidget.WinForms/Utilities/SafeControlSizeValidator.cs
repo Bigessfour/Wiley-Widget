@@ -30,7 +30,7 @@ namespace WileyWidget.WinForms.Helpers
     /// Panel/GroupBox      | 0         | 0          | Int32.MaxValue  | Content may overflow if too small
     /// Label/Button/TextBox| 0         | 0          | Int32.MaxValue  | AutoSize respects MinimumSize
     /// TabControl          | 0         | 0          | Int32.MaxValue  | TabPages sized per control sizing
-    /// LegacyGradientPanel| 0         | 0          | Int32.MaxValue  | AutoSize respects MinimumSize constraints
+    /// Panel| 0         | 0          | Int32.MaxValue  | AutoSize respects MinimumSize constraints
     /// TableLayoutPanel    | 0         | 0          | Int32.MaxValue  | Cell sizing per SizeType, respects column/row styles
     /// </summary>
     public static class SafeControlSizeValidator

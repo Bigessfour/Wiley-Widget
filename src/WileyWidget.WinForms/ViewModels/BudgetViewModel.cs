@@ -345,7 +345,7 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-            _logger.LogWarning("ResetBudgetDataOnFailure called: loading empty budget state.");
+                _logger.LogWarning("ResetBudgetDataOnFailure called: loading empty budget state.");
 
                 BudgetEntries = new ObservableCollection<BudgetEntry>();
                 FilteredBudgetEntries = new ObservableCollection<BudgetEntry>();
