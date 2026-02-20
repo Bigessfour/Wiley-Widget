@@ -36,10 +36,7 @@ public partial class MainForm
     /// </summary>
     public async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        var timelineService = _serviceProvider != null
-            ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                .GetService<WileyWidget.Services.IStartupTimelineService>(_serviceProvider)
-            : null;
+        // timelineService was previously used for startup diagnostics; removed to reduce unused locals
 
         _asyncLogger?.Information("MainForm.InitializeAsync started - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
 
@@ -104,10 +101,6 @@ public partial class MainForm
                     try { await Task.Delay(100, cancellationToken); } catch (OperationCanceledException) { return; }
                     _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
                     _logger?.LogInformation("Priority panels shown successfully");
-                }
-                catch (NullReferenceException nrex)
-                {
-                    _logger?.LogError(nrex, "[CRITICAL NRE] NullReferenceException while showing panels. Stack: {Stack}", nrex.StackTrace);
                 }
                 catch (Exception ex)
                 {
@@ -359,7 +352,10 @@ public partial class MainForm
                                 MessageBoxIcon.Warning,
                                 _logger);
                         }
-                        catch { }
+                        catch (Exception uiEx)
+                        {
+                            _logger?.LogDebug(uiEx, "Suppressed UI helper failure while showing initialization error dialog");
+                        }
                     }
                     return;
                 }
@@ -524,7 +520,9 @@ public partial class MainForm
                 }
             }
 
-            _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", _mruList.Count, loadedMru.Count(), loadedMru.Count() - _mruList.Count);
+            int totalLoaded = (loadedMru as System.Collections.ICollection) is System.Collections.ICollection coll ? coll.Count : loadedMru.Count();
+            int filtered = totalLoaded - _mruList.Count;
+            _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", _mruList.Count, totalLoaded, filtered);
         }
         catch (Exception ex)
         {
@@ -636,7 +634,7 @@ public partial class MainForm
                 catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException)
                 {
                     _logger?.LogWarning(ex, "Skipping dropped file due to malformed path: {File}", file);
-                    try { ShowErrorDialog("Invalid File Path", $"The file path '{file}' is invalid and will be skipped."); } catch { }
+                    try { ShowErrorDialog("Invalid File Path", $"The file path '{file}' is invalid and will be skipped."); } catch (Exception uiEx) { _logger?.LogDebug(uiEx, "Suppressed UI helper failure while showing Invalid File Path dialog"); }
                     continue;
                 }
 
@@ -758,8 +756,12 @@ public partial class MainForm
             }
 
             _logger?.LogInformation("Successfully imported {File}: {Count} items", Path.GetFileName(file), count);
-            try { UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data items",
-                "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger); } catch { }
+            try
+            {
+                UIHelper.ShowMessageOnUI(this, $"File imported: {Path.GetFileName(file)}\nParsed {count} data items",
+            "Import Complete", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger);
+            }
+            catch (Exception uiEx) { _logger?.LogDebug(uiEx, "Suppressed UI helper failure while showing import completion dialog"); }
         }
         else if (result.IsSuccess && result.Data == null)
         {

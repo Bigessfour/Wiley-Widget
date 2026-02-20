@@ -95,8 +95,8 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
     <PackageVersion Include="ModelContextProtocol" Version="0.2.0-preview.1" />
-    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.40.1" />
-    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.40.1" />
+    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.42.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.42.0" />
     <PackageVersion Include="OpenAI" Version="2.2.0-beta.1" />
     <PackageVersion Include="System.Numerics.Tensors" Version="10.0.2" />
     <PackageVersion Include="NUnit" Version="4.2.2" />

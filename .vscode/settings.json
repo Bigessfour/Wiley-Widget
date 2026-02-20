@@ -19,7 +19,7 @@
   // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
-  "terminal.integrated.hideAgentShellProcesses": false,
+  "terminal.integrated.hideAgentShellProcesses": true,
   "task.autoClose": true,
 
   // ============================================================================
@@ -236,14 +236,7 @@
   "powershell.codeFormatting.autoCorrectAliases": true,
   "powershell.integratedConsole.showOnStartup": false,
 
-  // ============================================================================
-  // SonarLint Configuration
-  // ============================================================================
-  "sonarlint.rules": {
-    "cs:S1135": {
-      "level": "on"
-    }
-  },
+  // SonarLint removed from workspace per request
 
   // ============================================================================
   // TODO Highlighting
@@ -336,6 +329,18 @@
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
+  "terminal.integrated.defaultProfile.osx": "PowerShell",
+  "terminal.integrated.profiles.osx": {
+    "PowerShell": {
+      "path": "pwsh",
+      "args": [],
+      "icon": "terminal-powershell"
+    },
+    "zsh": {
+      "path": "zsh",
+      "args": []
+    }
+  },
   "terminal.integrated.defaultProfile.windows": "PowerShell",
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
