@@ -340,6 +340,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// </summary>
         public override async Task LoadAsync(CancellationToken ct)
         {
+            if (IsDisposed || Disposing)
+            {
+                Logger?.LogDebug("AccountEditPanel: Skipping LoadAsync — panel is disposed");
+                return;
+            }
+
             DataContext = _editModel;
             BindControls();
             SetupValidation();
@@ -715,13 +721,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             _cancelHandler = BtnCancel_Click;
             btnCancel.Click += _cancelHandler;
 
-            // When used as a standalone panel (not in AccountEditDialog), wire events to close the panel
-            var hostForm = FindForm();
-            if (hostForm != null && !(hostForm is WileyWidget.WinForms.Dialogs.AccountEditDialog))
-            {
-                CancelRequested += (s, e) => ClosePanel();
-                SaveCompleted += (s, e) => ClosePanel();
-            }
+            // Wire events to smart close handlers that check context at runtime
+            CancelRequested += OnCancelRequested;
+            SaveCompleted += OnSaveCompleted;
 
             // Position buttons: Cancel first (rightmost), then Save to its left
             btnCancel.Left = _buttonPanel.ClientSize.Width - btnCancel.Width - 10;
@@ -776,11 +778,16 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void HostForm_FormClosing(object? sender, FormClosingEventArgs e)
         {
-            // If user is closing via X button and we haven't saved/cancelled yet, treat as cancel
+            // If user is closing via X button and we haven't saved/cancelled yet, treat as cancel.
             if (!e.Cancel && SaveDialogResult == DialogResult.None)
             {
                 Cancel();
-                e.Cancel = true; // Prevent form from closing, let ClosePanel handle it
+                // For docked (non-dialog) panels, block the host form close and let ClosePanel()
+                // handle navigation. For AccountEditDialog, Cancel() already calls dlg.Close()
+                // and the dialog's own message pump handles the rest — setting e.Cancel=true here
+                // would block the modal pump and freeze the UI.
+                if (sender is not WileyWidget.WinForms.Dialogs.AccountEditDialog)
+                    e.Cancel = true;
             }
         }
 
@@ -821,6 +828,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             try
             {
+                // Guard: bail out if the control has already been disposed (e.g. if the
+                // dialog that owns this panel was closed before async init completed).
+                if (IsDisposed || Disposing)
+                {
+                    Logger?.LogDebug("AccountEditPanel: Skipping LoadDataAsync — panel is disposed");
+                    return;
+                }
+
                 Logger?.LogDebug("AccountEditPanel: Loading departments and fund/type data");
 
                 if (ViewModel == null)
@@ -831,11 +846,18 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 // Load departments
                 var depts = await ViewModel.GetDepartmentsAsync();
+
+                // Re-check after each await: the dialog may have been closed while we were waiting.
+                if (IsDisposed || Disposing) return;
+
                 if (depts != null && depts.Count > 0)
                 {
-                    cmbDepartment.DataSource = depts;
+                    // Syncfusion API: DisplayMember and ValueMember MUST be set before DataSource.
+                    // Setting DataSource first triggers OnDataSourceChanged() before the members
+                    // are configured, causing a NullReferenceException inside SfComboBox internals.
                     cmbDepartment.DisplayMember = "Name";
                     cmbDepartment.ValueMember = "Id";
+                    cmbDepartment.DataSource = depts;
 
                     // Select existing department if editing
                     if (_existingAccount?.Department != null)
@@ -854,9 +876,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                         new Department { Id = 4, Name = "Tax Collector" },
                         new Department { Id = 5, Name = "Human Resources" }
                     };
-                    cmbDepartment.DataSource = sampleDepts;
                     cmbDepartment.DisplayMember = "Name";
                     cmbDepartment.ValueMember = "Id";
+                    cmbDepartment.DataSource = sampleDepts;
                     Logger?.LogWarning("AccountEditPanel: Using sample departments (repository returned no data)");
                 }
 
@@ -873,13 +895,17 @@ namespace WileyWidget.WinForms.Controls.Panels
                     }
                 }
 
+                // Re-check after fund load await.
+                if (IsDisposed || Disposing) return;
+
                 if (funds.Count > 0)
                 {
                     // Wrap in BindingList for dynamic add/remove capability
                     _fundBindingList = new BindingList<Fund>(funds);
-                    cmbFund.DataSource = _fundBindingList;
+                    // Syncfusion API: DisplayMember and ValueMember MUST be set before DataSource.
                     cmbFund.DisplayMember = "Name";
                     cmbFund.ValueMember = "Id";
+                    cmbFund.DataSource = _fundBindingList;
                     if (_existingAccount?.FundId != null)
                     {
                         cmbFund.SelectedValue = _existingAccount.FundId.Value;
@@ -1174,6 +1200,32 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 // Default to first editable control if no errors set
                 txtAccountNumber.Focus();
+            }
+        }
+
+        private void OnCancelRequested(object? sender, EventArgs e)
+        {
+            // Smart close: check if hosted in dialog or docking panel
+            if (ParentForm is AccountEditDialog dlg)
+            {
+                dlg.Close();
+            }
+            else
+            {
+                ClosePanel();
+            }
+        }
+
+        private void OnSaveCompleted(object? sender, EventArgs e)
+        {
+            // Smart close: check if hosted in dialog or docking panel
+            if (ParentForm is AccountEditDialog dlg)
+            {
+                dlg.Close();
+            }
+            else
+            {
+                ClosePanel();
             }
         }
 

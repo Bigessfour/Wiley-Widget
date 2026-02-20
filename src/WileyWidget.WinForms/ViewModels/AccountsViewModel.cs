@@ -7,11 +7,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Abstractions;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
+using WileyWidget.WinForms;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Dialogs;
+using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Models;
 
 namespace WileyWidget.WinForms.ViewModels;
@@ -43,6 +47,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     private readonly ILogger<AccountsViewModel> _logger;
     private readonly IAccountsRepository _accountsRepository;
     private readonly IMunicipalAccountRepository _municipalAccountRepository;
+    private readonly IServiceScopeFactory _scopeFactory;
     private CancellationTokenSource? _loadCancellationSource;
     private bool _disposed;
 
@@ -169,14 +174,17 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     /// <param name="logger">Logger for diagnostic output.</param>
     /// <param name="accountsRepository">Repository for account data operations.</param>
     /// <param name="municipalAccountRepository">Repository for municipal-specific account operations.</param>
+    /// <param name="scopeFactory">Factory for creating service scopes.</param>
     public AccountsViewModel(
         ILogger<AccountsViewModel> logger,
         IAccountsRepository accountsRepository,
-        IMunicipalAccountRepository municipalAccountRepository)
+        IMunicipalAccountRepository municipalAccountRepository,
+        IServiceScopeFactory scopeFactory)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _accountsRepository = accountsRepository ?? throw new ArgumentNullException(nameof(accountsRepository));
         _municipalAccountRepository = municipalAccountRepository ?? throw new ArgumentNullException(nameof(municipalAccountRepository));
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
 
         // Optimization: Defer data loading until the associated panel becomes visible.
         // This is handled by ILazyLoadViewModel via OnVisibilityChangedAsync.
@@ -500,56 +508,48 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
         }
     }
 
+    private async Task ShowEditDialogAsync(MunicipalAccountDisplay? display = null)
+    {
+        // Create fresh scoped panel (DI magic)
+        using var scope = _scopeFactory.CreateScope();
+        var editPanel = scope.ServiceProvider.GetRequiredService<AccountEditPanel>();
+
+        if (display != null)
+        {
+            // Load the real entity for editing
+            var repo = scope.ServiceProvider.GetRequiredService<IAccountsRepository>();
+            var fullAccount = await repo.GetAccountByIdAsync(display.Id);
+            if (fullAccount != null)
+            {
+                editPanel.SetExistingAccount(fullAccount);
+            }
+        }
+
+        // THIS IS THE MONEY LINE — OWNER + MODAL
+        using var dialog = new AccountEditDialog(editPanel);
+
+        // Pass the MAIN FORM as owner so it ALWAYS stays on top
+        var mainForm = Application.OpenForms.OfType<MainForm>().FirstOrDefault();
+
+        var result = dialog.ShowDialog(mainForm);
+
+        if (result == DialogResult.OK)
+        {
+            await RefreshAsync(); // reload the grid
+        }
+    }
+
     // New: CRUD RelayCommands with CanExecute for Edit/Delete
     [RelayCommand(CanExecute = nameof(CanModifyAccount))]
     private async Task EditAccountAsync(MunicipalAccountDisplay display)
     {
-
-        try
-        {
-            var account = await _municipalAccountRepository.GetByIdAsync(display.Id);
-            if (account == null)
-            {
-                ErrorMessage = "Account not found.";
-                return;
-            }
-
-            var editModel = MunicipalAccountEditModel.FromEntity(account);
-            using var dialog = new AccountEditDialog(editModel, _logger);
-            if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK || !dialog.IsSaved) return;
-
-            await LoadAccountsAsync();
-            SelectedAccount = Accounts.FirstOrDefault(a => a.Id == display.Id);
-            StatusText = "Account updated successfully.";
-            _logger?.LogInformation("Account {Id} updated", display.Id);
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to update account: {ex.Message}";
-            _logger?.LogError(ex, "Error updating account {Id}", display.Id);
-        }
+        await ShowEditDialogAsync(display);
     }
 
     [RelayCommand]
     private async Task CreateAccountAsync()
     {
-        try
-        {
-            var editModel = new MunicipalAccountEditModel();
-            using var dialog = new AccountEditDialog(editModel, _logger);
-            dialog.Show();  // Non-blocking Show() instead of ShowDialog()
-            // Let the panel's SaveCompleted event handle refresh
-            // No blocking the UI thread!
-
-            await LoadAccountsAsync();
-            StatusText = "New account created.";
-            _logger?.LogInformation("New account created via AccountEditDialog");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to create account: {ex.Message}";
-            _logger?.LogError(ex, "Error creating new account");
-        }
+        await ShowEditDialogAsync(null);
     }
 
     [RelayCommand(CanExecute = nameof(CanModifyAccount))]
