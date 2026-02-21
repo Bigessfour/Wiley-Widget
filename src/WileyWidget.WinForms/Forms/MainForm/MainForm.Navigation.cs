@@ -3,7 +3,6 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,9 +11,13 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 
@@ -42,8 +45,17 @@ public partial class MainForm
         bool allowFloating = true)
         where TPanel : UserControl
     {
+        // Ensure panel navigator is initialized before attempting to show panel
+        EnsurePanelNavigatorInitialized();
+
+        if (_panelNavigator == null)
+        {
+            _logger?.LogWarning("ShowPanel<{PanelType}> called but PanelNavigator is still null after initialization attempt", typeof(TPanel).Name);
+            return;
+        }
+
 #pragma warning disable CS8604 // Possible null reference argument
-        _panelNavigator?.ShowPanel<TPanel>(panelName, preferredStyle, allowFloating);
+        _panelNavigator.ShowPanel<TPanel>(panelName, preferredStyle, allowFloating);
 #pragma warning restore CS8604
     }
 
@@ -58,7 +70,16 @@ public partial class MainForm
         bool allowFloating = true)
         where TPanel : UserControl
     {
-        _panelNavigator?.ShowPanel<TPanel>(panelName ?? typeof(TPanel).Name, parameters, preferredStyle, allowFloating);
+        // Ensure panel navigator is initialized before attempting to show panel
+        EnsurePanelNavigatorInitialized();
+
+        if (_panelNavigator == null)
+        {
+            _logger?.LogWarning("ShowPanel<{PanelType}> (with parameters) called but PanelNavigator is still null after initialization attempt", typeof(TPanel).Name);
+            return;
+        }
+
+        _panelNavigator.ShowPanel<TPanel>(panelName ?? typeof(TPanel).Name, parameters, preferredStyle, allowFloating);
     }
 
     /// <summary>
@@ -80,17 +101,11 @@ public partial class MainForm
             return;
         }
 
-        // Delegate to ViewModel's GlobalSearchCommand
-        // Command handles validation, error display, and resilience
+        // Directly invoke the command (avoids reflection AmbiguousMatchException)
         try
         {
-            var method = viewModel.GlobalSearchCommand.GetType().GetMethod("ExecuteAsync", BindingFlags.Public | BindingFlags.Instance);
-            if (method != null)
-            {
-                var task = (Task?)method.Invoke(viewModel.GlobalSearchCommand, new object?[] { query });
-                if (task != null)
-                    await task;
-            }
+            // GlobalSearchCommand is AsyncRelayCommand<string> - call ExecuteAsync directly
+            await viewModel.GlobalSearchCommand.ExecuteAsync(query);
         }
         catch (Exception ex)
         {
@@ -140,10 +155,16 @@ public partial class MainForm
                 return;
             }
 
+            // Try to initialize basic docking if not already done
             if (_dockingManager == null)
             {
-                _logger?.LogWarning("EnsurePanelNavigatorInitialized: DockingManager is null - skipping panel navigator initialization");
-                return;
+                _logger?.LogInformation("EnsurePanelNavigatorInitialized: DockingManager is null - attempting basic docking initialization");
+                if (!TryInitializeBasicDocking())
+                {
+                    _logger?.LogWarning("EnsurePanelNavigatorInitialized: Basic docking initialization failed - skipping panel navigator initialization");
+                    return;
+                }
+                _logger?.LogInformation("EnsurePanelNavigatorInitialized: Basic docking initialization succeeded");
             }
 
             // If it's null, create it with the now-initialized DockingManager
@@ -154,12 +175,26 @@ public partial class MainForm
 
                 try
                 {
-                    _panelNavigator = new PanelNavigationService(_dockingManager, this, _serviceProvider, navLogger);
+                    _panelNavigator = new PanelNavigationService(_dockingManager!, this, _serviceProvider, navLogger);
                     _logger?.LogDebug("PanelNavigationService created with initialized DockingManager");
+                    // Subscribe to activation events to keep ribbon/navigation selection in sync
+                    try
+                    {
+                        _panelNavigator.PanelActivated += PanelNavigator_OnPanelActivated;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to subscribe to PanelActivated events");
+                    }
                 }
-                catch (Exception creationEx)
+                catch (ArgumentNullException argEx)
                 {
-                    _logger?.LogError(creationEx, "Failed to create PanelNavigationService - docking panel navigation will be unavailable");
+                    _logger?.LogError(argEx, "Failed to create PanelNavigationService due to null argument - docking panel navigation will be unavailable");
+                    return;
+                }
+                catch (InvalidOperationException invEx)
+                {
+                    _logger?.LogError(invEx, "Failed to create PanelNavigationService due to invalid operation - docking panel navigation will be unavailable");
                     return;
                 }
             }
@@ -168,9 +203,30 @@ public partial class MainForm
                 _logger?.LogDebug("PanelNavigationService already initialized - no action needed");
             }
         }
+        catch (ObjectDisposedException dispEx)
+        {
+            _logger?.LogWarning(dispEx, "Panel navigator initialization failed - docking manager or service provider was disposed");
+        }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Unexpected error in EnsurePanelNavigatorInitialized - panel navigation may be unavailable");
+            _logger?.LogError(ex, "Unexpected error in EnsurePanelNavigatorInitialized - panel navigation may be unavailable. Error: {ErrorType}", ex.GetType().Name);
+
+            // Provide user feedback for unexpected errors that may impact functionality
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(() =>
+                {
+                    UIHelper.ShowErrorOnUI(this,
+                        "Failed to initialize panel navigation system. Some navigation features may be unavailable.",
+                        "Initialization Error", _logger);
+                });
+            }
+            else
+            {
+                UIHelper.ShowErrorOnUI(this,
+                    "Failed to initialize panel navigation system. Some navigation features may be unavailable.",
+                    "Initialization Error", _logger);
+            }
         }
     }
 
@@ -191,5 +247,175 @@ public partial class MainForm
     public void ClosePanel(string panelName)
     {
         _panelNavigator?.HidePanel(panelName);
+    }
+
+    /// <summary>
+    /// Handles panel activation events from the PanelNavigationService.
+    /// Updates ribbon/navigation selection to keep UI in sync with active panel.
+    /// </summary>
+    private void PanelNavigator_OnPanelActivated(object? sender, PanelActivatedEventArgs e)
+    {
+        if (IsDisposed || e == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _logger?.LogDebug("Panel activated: {PanelName} ({PanelType})", e.PanelName, e.PanelType.Name);
+
+            // Update ribbon/navigation selection to match active panel
+            // This keeps the UI synchronized with the navigation service state
+            UpdateNavigationSelection(e.PanelName);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to handle panel activation for {PanelName}", e.PanelName);
+        }
+    }
+
+    /// <summary>
+    /// Updates the ribbon/navigation strip selection to match the active panel.
+    /// Called when panels are activated to keep UI selection synchronized.
+    /// </summary>
+    private void UpdateNavigationSelection(string panelName)
+    {
+        try
+        {
+            // Update ribbon navigation buttons
+            if (_ribbon != null)
+            {
+                // Find and select the corresponding ribbon button
+                var navigationButtons = FindToolStripItems(_ribbon, item =>
+                    item.Tag is string tag && tag.StartsWith("Nav:", StringComparison.OrdinalIgnoreCase) &&
+                    tag.EndsWith(panelName, StringComparison.OrdinalIgnoreCase));
+
+                foreach (var button in navigationButtons)
+                {
+                    if (button is ToolStripButton toolStripButton)
+                    {
+                        toolStripButton.Checked = true;
+                        _logger?.LogDebug("Updated ribbon button selection for panel: {PanelName}", panelName);
+                    }
+                }
+            }
+
+            // Update navigation strip selection
+            if (_navigationStrip != null)
+            {
+                // Find and select the corresponding navigation strip item
+                var navigationItems = FindToolStripItems((ToolStripItemCollection)_navigationStrip.Items, item =>
+                    item.Tag is string tag && tag.StartsWith("Nav:", StringComparison.OrdinalIgnoreCase) &&
+                    tag.EndsWith(panelName, StringComparison.OrdinalIgnoreCase));
+
+                foreach (var item in navigationItems)
+                {
+                    if (item is ToolStripButton toolStripButton)
+                    {
+                        toolStripButton.Checked = true;
+                        _logger?.LogDebug("Updated navigation strip selection for panel: {PanelName}", panelName);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to update navigation selection for panel: {PanelName}", panelName);
+        }
+    }
+
+    /// <summary>
+    /// Finds all ToolStripItem instances that match the specified predicate.
+    /// Searches recursively through ribbon tabs, panels, and dropdown items.
+    /// </summary>
+    private IEnumerable<ToolStripItem> FindToolStripItems(RibbonControlAdv ribbon, Func<ToolStripItem, bool> predicate)
+    {
+        if (ribbon == null || predicate == null)
+        {
+            yield break;
+        }
+
+        foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
+        {
+            if (tab.Panel != null)
+            {
+                foreach (var panel in tab.Panel.Controls.OfType<ToolStripEx>())
+                {
+                    foreach (var item in FindToolStripItemsRecursive(panel.Items, predicate))
+                    {
+                        yield return item;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Finds all ToolStripItem instances that match the specified predicate.
+    /// Searches recursively through ToolStripItemCollection and nested items.
+    /// </summary>
+    private IEnumerable<ToolStripItem> FindToolStripItems(ToolStripItemCollection items, Func<ToolStripItem, bool> predicate)
+    {
+        if (items == null || predicate == null)
+        {
+            yield break;
+        }
+
+        foreach (var item in FindToolStripItemsRecursive(items, predicate))
+        {
+            yield return item;
+        }
+    }
+
+    /// <summary>
+    /// Recursively searches ToolStripItemCollection for items matching the predicate.
+    /// Handles nested ToolStripPanelItem and ToolStripDropDownItem containers.
+    /// </summary>
+    private IEnumerable<ToolStripItem> FindToolStripItemsRecursive(ToolStripItemCollection items, Func<ToolStripItem, bool> predicate)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            ToolStripPanelItem? panelItem = null;
+            ToolStripDropDownItem? dropDown = null;
+            bool matches = false;
+
+            try
+            {
+                matches = predicate(item);
+                panelItem = item as ToolStripPanelItem;
+                dropDown = item as ToolStripDropDownItem;
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogDebug("ToolStripItem was disposed during recursive search");
+                continue;
+            }
+            catch (InvalidOperationException)
+            {
+                _logger?.LogDebug("ToolStripItem collection was modified during search");
+                continue;
+            }
+
+            if (matches)
+            {
+                yield return item;
+            }
+
+            if (panelItem != null)
+            {
+                foreach (var found in FindToolStripItemsRecursive(panelItem.Items, predicate))
+                {
+                    yield return found;
+                }
+            }
+
+            if (dropDown != null)
+            {
+                foreach (var found in FindToolStripItemsRecursive(dropDown.DropDownItems, predicate))
+                {
+                    yield return found;
+                }
+            }
+        }
     }
 }

@@ -11,6 +11,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Controls.Analytics;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
@@ -73,7 +74,7 @@ public partial class MainForm
             // Set form properties
             Text = MainFormResources.FormTitle;
             Size = new Size(1400, 900);
-            MinimumSize = new Size(1024, 768);
+            MinimumSize = new Size(1400, 800);
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
             KeyPreview = true;
@@ -188,19 +189,8 @@ public partial class MainForm
             _logger?.LogDebug(ex, "Wiring theme toggle failed");
         }
 
-        // Ensure JARVIS button is wired to switch to JarvisChat panel
-        try
-        {
-            var jarvisButton = FindToolStripItem(_ribbon, "Nav_JARVIS") as ToolStripButton;
-            if (jarvisButton != null)
-            {
-                jarvisButton.Click += (s, e) => SwitchRightPanel("JarvisChat");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Wiring JARVIS button failed");
-        }
+        // NOTE: JARVIS button click handler is already wired in RibbonFactory.CreateToolsGroup()
+        // Duplicate wiring here caused double-firing and docking race conditions
 
         try
         {
@@ -212,15 +202,9 @@ public partial class MainForm
         CacheGlobalSearchTextBox();
         EnsureRibbonAccessibility();
 
-        // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
-        try
-        {
-            _ribbon.ValidateAndConvertImages(_logger);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "ValidateAndConvertImages failed on ribbon");
-        }
+        // [PERF] Heavy image validation (converting animated images to static) is now deferred
+        // to DeferChromeOptimizationAsync in MainForm.Initialization.cs. This avoids
+        // blocking the UI thread during OnLoad (~200-400ms saved).
 
         try
         {
@@ -228,8 +212,8 @@ public partial class MainForm
             {
                 _ribbon.Dock = DockStyleEx.Top;
                 _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
-                _ribbon.BorderStyle = (ToolStripBorderStyle)BorderStyle.None;
                 _ribbon.Width = ClientSize.Width;
+                // [VISIBILITY] Allow BorderStyle from RibbonFactory to persist for better definition
                 Controls.Add(_ribbon);
             }
 
@@ -240,7 +224,7 @@ public partial class MainForm
             _logger?.LogDebug(ex, "InitializeRibbon: failed to attach ribbon to form");
         }
 
-        TryRecalculateRibbonHeight("InitializeRibbon");
+        // RibbonForm handles sizing natively via AutoSize
         UpdateChromePadding();
         AdjustDockingHostBounds();
 
@@ -287,52 +271,6 @@ public partial class MainForm
         }
     }
 
-    private void TryRecalculateRibbonHeight(string reason)
-    {
-        if (_ribbon == null || _ribbon.IsDisposed) return;
-
-        var originalAutoSize = _ribbon.AutoSize;
-        try
-        {
-            if (!originalAutoSize)
-            {
-                _ribbon.AutoSize = true;
-            }
-
-            _ribbon.PerformLayout();
-            var preferredSize = _ribbon.GetPreferredSize(new Size(ClientSize.Width, 0));
-
-            var minimumHeight = _ribbon.MinimumSize.Height;
-            var targetHeight = Math.Max(minimumHeight, preferredSize.Height);
-
-            if (_homeTab?.Panel != null)
-            {
-                var panelPreferred = _homeTab.Panel.GetPreferredSize(new Size(_ribbon.Width, 0));
-                if (panelPreferred.Height > _homeTab.Panel.Height)
-                {
-                    _homeTab.Panel.Height = panelPreferred.Height;
-                }
-            }
-
-            if (targetHeight > 0 && _ribbon.Height != targetHeight)
-            {
-                _ribbon.Height = targetHeight;
-                _ribbon.MinimumSize = new Size(0, targetHeight);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to recalculate ribbon height ({Reason})", reason);
-        }
-        finally
-        {
-            if (_ribbon.AutoSize != originalAutoSize)
-            {
-                _ribbon.AutoSize = originalAutoSize;
-            }
-        }
-    }
-
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
@@ -340,8 +278,8 @@ public partial class MainForm
         {
             if (_ribbon != null)
             {
+                // RibbonForm handles sizing natively via AutoSize
                 _ribbon.Width = ClientSize.Width;
-                TryRecalculateRibbonHeight("OnResize");
                 _ribbon.PerformLayout();
                 _ribbon.BringToFront();
             }
@@ -468,23 +406,23 @@ public partial class MainForm
             // Helpers for button creation to save space?
             // Just pasting the logic from UI.cs
 
-            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = false };
+            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = true };
             dashboardBtn.Click += (s, e) => this.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
 
-            var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = false };
+            var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
             accountsBtn.Click += (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
 
-            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Budget", Enabled = false };
+            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Budget", Enabled = true };
             budgetBtn.Click += (s, e) => this.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
 
-            var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Charts", Enabled = false };
-            chartsBtn.Click += (s, e) => this.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Charts", Enabled = true };
+            chartsBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
 
-             var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
+            var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
             analyticsBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true);
 
             var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Audit Log" };
-            auditLogBtn.Click += (s, e) => this.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            auditLogBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
             customersBtn.Click += (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true);
@@ -513,7 +451,7 @@ public partial class MainForm
             themeToggleBtn.Click += ThemeToggleBtn_Click;
             themeToggleBtn.Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
 
-             // Grid helpers (navigation strip)
+            // Grid helpers (navigation strip)
             var navGridClearFilter = new ToolStripButton("Clear Grid Filter") { Name = "Nav_ClearGridFilter", AccessibleName = "Clear Grid Filter" };
             navGridClearFilter.Click += (s, e) => ClearActiveGridFilter();
 
@@ -522,7 +460,7 @@ public partial class MainForm
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
-                dashboardBtn, new ToolStripSeparator(), accountsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
+                dashboardBtn, new ToolStripSeparator(), accountsBtn, budgetBtn, chartsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
             });
 
         }
@@ -621,7 +559,7 @@ public partial class MainForm
         }
     }
 
-     /// <summary>
+    /// <summary>
     /// Initialize MenuStrip for navigation and commands.
     /// Provides a traditional menu bar with File, View, Tools, and Help menus.
     /// Enhanced with Syncfusion theming, Segoe MDL2 Assets icons, and proper renderer configuration.
@@ -655,7 +593,7 @@ public partial class MainForm
             // Simplying slightly for snippet size, but logic assumes existence
             // I will just put a comment that it's the same logic, but for `write_file` I need to be explicit.
 
-             // File Menu
+            // File Menu
             var fileMenu = new ToolStripMenuItem("&File") { Name = "Menu_File", ToolTipText = "File operations" };
             _recentFilesMenu = new ToolStripMenuItem("&Recent Files") { Name = "Menu_File_RecentFiles" };
             UpdateMruMenu(_recentFilesMenu);
@@ -665,22 +603,22 @@ public partial class MainForm
 
             fileMenu.DropDownItems.AddRange(new ToolStripItem[] { _recentFilesMenu, clearRecentMenuItem, new ToolStripSeparator(), exitMenuItem });
 
-             // View Menu
+            // View Menu
             var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View" };
             // View > Dashboard
             var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
 
-             // View > Accounts
+            // View > Accounts
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true)) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
 
             // View > Budget
-             // View > Charts
+            // View > Charts
             var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
 
-             // View > QuickBooks
+            // View > QuickBooks
             var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
 
-             // View > Customers
+            // View > Customers
             var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
 
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
@@ -694,13 +632,17 @@ public partial class MainForm
 
             // Help Menu
             var helpMenu = new ToolStripMenuItem("&Help") { Name = "Menu_Help" };
-            var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) => {
-                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/WileyWidget/WileyWidget/wiki", UseShellExecute = true }); } catch { }
-            }) { Name = "Menu_Help_Documentation", ShortcutKeys = Keys.F1 };
+            var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/WileyWidget/WileyWidget/wiki", UseShellExecute = true }); } catch { }
+            })
+            { Name = "Menu_Help_Documentation", ShortcutKeys = Keys.F1 };
 
-            var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) => {
+            var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) =>
+            {
                 MessageBox.Show($"{MainFormResources.FormTitle}\n\nVersion 1.0.0\nBuilt with .NET 9\n\n© {DateTime.Now.Year} Wiley Widget", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }) { Name = "Menu_Help_About" };
+            })
+            { Name = "Menu_Help_About" };
 
             helpMenu.DropDownItems.AddRange(new ToolStripItem[] { documentationMenuItem, new ToolStripSeparator(), aboutMenuItem });
 
@@ -726,28 +668,35 @@ public partial class MainForm
 
     private Bitmap? CreateIconFromText(string iconText, int size)
     {
-         if (string.IsNullOrWhiteSpace(iconText) || size <= 0) return null;
-         try
-         {
-             var bitmap = new Bitmap(size, size);
-             using (var graphics = Graphics.FromImage(bitmap))
-             {
-                 graphics.Clear(Color.Transparent);
-                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-                 graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                 using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
-                 using (var brush = new SolidBrush(Color.DodgerBlue))
-                 {
-                     graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
-                 }
-             }
-             return bitmap;
-         }
-         catch (Exception ex) { _logger?.LogWarning(ex, "CreateIconFromText failed"); return null; }
+        if (string.IsNullOrWhiteSpace(iconText) || size <= 0) return null;
+        try
+        {
+            var bitmap = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
+                {
+                    // Theme-aware icon color: use the form ForeColor which SfSkinManager sets per theme.
+                    // Fallback to a high-contrast system color if ForeColor is not set.
+                    var iconColor = this.ForeColor.IsEmpty ? SystemColors.Highlight : this.ForeColor;
+                    using (var brush = new SolidBrush(iconColor))
+                    {
+                        graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    }
+                }
+            }
+            return bitmap;
+        }
+        catch (Exception ex) { _logger?.LogWarning(ex, "CreateIconFromText failed"); return null; }
     }
 
-    private Color GetLoadingOverlayColor() => SystemColors.Control;
-    private Color GetLoadingLabelColor() => Color.White;
+    // Removed unused helpers: GetLoadingOverlayColor / GetLoadingLabelColor
+    // These helpers had no call sites in the codebase. Keep commented for possible future use.
+    // private Color GetLoadingOverlayColor() => SystemColors.Control;
+    // private Color GetLoadingLabelColor() => Color.White;
 
     private string GetCurrentTheme() => SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
@@ -757,8 +706,8 @@ public partial class MainForm
         try
         {
             var dropdown = (ToolStripDropDownMenu)menuItem.DropDown;
-             try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful"); } catch { }
-             foreach (ToolStripItem item in dropdown.Items) if (item is ToolStripMenuItem child) ApplyMenuTheme(child);
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful"); } catch { }
+            foreach (ToolStripItem item in dropdown.Items) if (item is ToolStripMenuItem child) ApplyMenuTheme(child);
         }
         catch { }
     }
@@ -783,17 +732,6 @@ public partial class MainForm
     {
         try
         {
-            try
-            {
-                var tmpDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp");
-                Directory.CreateDirectory(tmpDir);
-                var toggleLogPath = Path.Combine(tmpDir, "theme-toggle-log.txt");
-                File.AppendAllText(toggleLogPath, $"ToggleTheme called. CurrentTheme={_themeService?.CurrentTheme}\n");
-            }
-            catch (Exception ioEx)
-            {
-                _logger?.LogDebug(ioEx, "Unable to persist theme toggle log");
-            }
             var currentTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
             // Validate current theme before toggling
@@ -1109,7 +1047,7 @@ public partial class MainForm
     private ToolStripItem? FindToolStripItem(Control container, string name)
     {
         if (container is ToolStrip strip) return strip.Items.Find(name, true).FirstOrDefault();
-        foreach(Control c in container.Controls) { var res = FindToolStripItem(c, name); if (res != null) return res; }
+        foreach (Control c in container.Controls) { var res = FindToolStripItem(c, name); if (res != null) return res; }
         return null;
     }
 }

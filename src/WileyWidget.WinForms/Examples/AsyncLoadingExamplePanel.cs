@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
 
 namespace WileyWidget.WinForms.Examples;
 

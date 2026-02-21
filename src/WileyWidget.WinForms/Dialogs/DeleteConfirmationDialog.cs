@@ -46,7 +46,7 @@ namespace WileyWidget.WinForms.Dialogs
         {
             // Form properties
             Text = title;
-            Size = new Size(450, detail != null ? 200 : 170);
+            Size = new Size(450, detail != null ? 220 : 170);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -113,7 +113,7 @@ namespace WileyWidget.WinForms.Dialogs
                     Dock = DockStyle.Fill,
                     Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                     // ForeColor handled by SFSkinManager theme cascade
-                    Padding = new Padding(0, 0, 0, 10),
+                    Padding = new Padding(0, 5, 0, 15),
                     TextAlign = ContentAlignment.TopLeft
                 };
                 mainPanel.SetColumnSpan(_detailLabel, 2);

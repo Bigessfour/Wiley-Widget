@@ -38,7 +38,7 @@ public static class SyncfusionExtensions
         if (menuStrip == null) return;
         try
         {
-             logger?.LogDebug("Validating menu strip images...");
+            logger?.LogDebug("Validating menu strip images...");
         }
         catch (Exception ex)
         {

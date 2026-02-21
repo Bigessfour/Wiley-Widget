@@ -28,6 +28,11 @@ public interface IChatBridgeService
     event EventHandler<ChatResponseChunkEventArgs> ResponseChunkReceived;
 
     /// <summary>
+    /// Raised when a streaming response has completed.
+    /// </summary>
+    event EventHandler<EventArgs> ResponseCompleted;
+
+    /// <summary>
     /// Raised when a suggestion is selected by the user.
     /// </summary>
     event EventHandler<ChatSuggestionSelectedEventArgs> SuggestionSelected;
@@ -55,6 +60,11 @@ public interface IChatBridgeService
     /// </summary>
     /// <param name="chunk">The response chunk to send</param>
     Task SendResponseChunkAsync(string chunk, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Notifies that a streaming response has completed.
+    /// </summary>
+    Task NotifyResponseCompletedAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Notify that a suggestion has been selected.

@@ -3,7 +3,7 @@
 	"tasks": [
 		{
 			"label": "build",
-			"command": "dotnet build WileyWidget.sln",
+			"command": "dotnet build WileyWidget.sln -m:2",
 			"type": "shell",
 			"group": {
 				"kind": "build",
@@ -20,7 +20,7 @@
 		},
 		{
 			"label": "build: fast",
-			"command": "dotnet build WileyWidget.sln -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false",
+			"command": "dotnet build WileyWidget.sln -m:2 -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false",
 			"type": "shell",
 			"group": {
 				"kind": "build",
@@ -796,6 +796,25 @@
 			"group": "none"
 		},
 		{
+			"label": "maintenance: Clear Logs",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/maintenance/clear-logs.ps1"
+			],
+			"presentation": {
+				"panel": "new",
+				"reveal": "always",
+				"echo": true
+			},
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
 			"label": "👁️ Preview WarRoom Panel",
 			"dependsOn": [
 				"build: fast"
@@ -1398,6 +1417,661 @@
 			"problemMatcher": [
 				"$msCompile"
 			]
+		},
+		{
+			"label": "test: jarvis chat flaui",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"normal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"normal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (quiet)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (clean)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (clean)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (clean)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (clean)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (clean)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"quiet",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (minimal)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (named trx)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx;LogFileName=JarvisChatFlaUiTests.trx",
+				"--results-directory",
+				"c:\\Users\\biges\\Desktop\\Wiley-Widget\\TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (named trx)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"c:\\Users\\biges\\Desktop\\Wiley-Widget\\TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (clean)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"c:\\Users\\biges\\Desktop\\Wiley-Widget\\TestResults",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-v",
+				"minimal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: jarvis chat flaui (final)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"c:\\Users\\biges\\Desktop\\Wiley-Widget\\TestResults",
+				"-v",
+				"normal",
+				"--filter",
+				"FullyQualifiedName~JarvisChatFlaUiTests",
+				"-p:NoIncremental=true"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "🔍 Find Dead Code",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/tools/Find-DeadCode.ps1"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"focus": true,
+				"clear": true
+			},
+			"group": {
+				"kind": "test",
+				"isDefault": false
+			}
+		},
+		{
+			"label": "🔍 Find Dead Code (Include Public)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/tools/Find-DeadCode.ps1",
+				"-IncludePublic"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"focus": true,
+				"clear": true
+			},
+			"group": "test"
+		},
+		{
+			"label": "🔍 Find Dead Code (All Sources)",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/tools/Find-DeadCode.ps1",
+				"-ProjectPath",
+				"src"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"focus": true,
+				"clear": true
+			},
+			"group": "test"
+		},
+		{
+			"label": "🔍 Evaluate Dead Code",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/tools/Evaluate-DeadCode.ps1"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"focus": true,
+				"clear": true
+			},
+			"group": "test",
+			"dependsOn": []
+		},
+		{
+			"label": "🔍 Analyze Panel for Unused/Underdeveloped Elements",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/tools/Analyze-Panel.ps1",
+				"-FilePath",
+				"${file}"
+			],
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"focus": true,
+				"clear": true
+			},
+			"group": {
+				"kind": "test",
+				"isDefault": false
+			}
 		}
 	]
 }

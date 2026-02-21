@@ -28,9 +28,9 @@ public sealed class DockingHostFactoryIntegrationTests
 
         dockingManager.Should().NotBeNull();
         dockingManager.HostControl.Should().Be(form);
-        left.Name.Should().Be("LeftDockPanel");
-        right.Name.Should().Be("RightDockPanel");
-        central.Name.Should().Be("CentralDocumentPanel");
+        left!.Name.Should().Be("LeftDockPanel");
+        right!.Name.Should().Be("RightDockPanel");
+        central!.Name.Should().Be("CentralDocumentPanel");
         form.Controls.Contains(left).Should().BeTrue();
         form.Controls.Contains(right).Should().BeTrue();
         form.Controls.Contains(central).Should().BeTrue();

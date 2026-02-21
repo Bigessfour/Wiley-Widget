@@ -739,14 +739,14 @@ Focus on municipal finance best practices and operational efficiency.";
             var response = await _aiService.SendPromptAsync(prompt);
 
             var content = response.Content;
-            
+
             // Apply JARVIS personality
             if (!string.IsNullOrEmpty(content))
             {
-                content = _jarvisPersonality.ApplyPersonality(content, new AnalysisContext 
-                { 
+                content = _jarvisPersonality.ApplyPersonality(content, new AnalysisContext
+                {
                     AnalysisType = "General Query",
-                    RequiresDirectAttention = true 
+                    RequiresDirectAttention = true
                 });
             }
 
@@ -778,7 +778,7 @@ Focus on municipal finance best practices and operational efficiency.";
         if (string.IsNullOrWhiteSpace(prompt)) yield break;
 
         var systemPrompt = _jarvisPersonality.GetSystemPrompt();
-        
+
         await foreach (var chunk in _aiService.StreamResponseAsync(prompt, systemPrompt))
         {
             yield return chunk;

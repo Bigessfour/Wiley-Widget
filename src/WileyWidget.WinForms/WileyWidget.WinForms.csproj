@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,6 +11,8 @@
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600;MSB3277</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Disable default SDK Content auto-includes to avoid NETSDK1022 duplicates with Razor SDK -->
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <!-- .NET 10 Runtime Performance Optimizations -->
     <!-- Enable Server GC: better for long-running desktop apps with heavy memory usage -->
     <ServerGarbageCollection>true</ServerGarbageCollection>
@@ -23,7 +25,8 @@
 
   <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->
   <ItemGroup>
-    <RuntimeHostConfigurationOption Include="System.Runtime.Versioning.RuntimeConfiguration.AppContext.TryGetSwitch" Value="false" />
+    <RuntimeHostConfigurationOption Include="System.Runtime.Versioning.RuntimeConfiguration.AppContext.TryGetSwitch"
+      Value="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -106,6 +109,8 @@
     <!-- FastReport Open Source WinForms viewer -->
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+    <!-- Roslyn scripting for C# evaluation plugin (JARVIS) -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
     <!-- Blazor WebView for Windows Forms -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" />
     <PackageReference Include="Microsoft.Web.WebView2" />
@@ -124,12 +129,35 @@
   </ItemGroup>
 
   <!-- .NET 10 SDK automatically includes wwwroot and appsettings.json as Content items -->
-  <!-- Explicit Content includes removed to prevent NETSDK1022 duplicate items error -->
+  <!-- Explicit Content includes required because EnableDefaultContentItems=false (to prevent NETSDK1022 duplicate items error with Razor SDK) -->
   <ItemGroup>
-    <!-- Reports folder still needs explicit include as it's not auto-included by SDK -->
+    <!-- Reports folder needs explicit include as it's not in wwwroot -->
     <Content Include="Reports\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- App settings must be copied because default content items are disabled -->
+    <Content Include="appsettings*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- Blazor wwwroot static assets -->
+    <Content Include="wwwroot\\**\\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Embed FlatIcons as resources for reliable icon loading -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\\FlatIcons\\*.png">
+      <LogicalName>WileyWidget.WinForms.Resources.FlatIcons.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- Bundle Fixed-Version WebView2 Runtime (eliminates HWND invalidation during Blazor init) -->
+  <Target Name="CopyWebView2Runtime" AfterTargets="Build">
+    <Copy SourceFiles="@(WebView2Files)" DestinationFolder="$(OutDir)WebView2Runtime\%(RecursiveDir)" />
+  </Target>
+  <ItemGroup>
+    <WebView2Files Include="..\..\WebView2Runtime\**\*.*" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,8 +7,12 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
+
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Controls.Analytics;
 
@@ -22,7 +26,7 @@ public partial class VariancesTabControl : UserControl
 
     // UI Controls
     private SfDataGrid? _variancesGrid;
-    private GradientPanelExt? _filterPanel;
+    private LegacyGradientPanel? _filterPanel;
     private LoadingOverlay? _loadingOverlay;
 
     // Filter controls
@@ -35,6 +39,15 @@ public partial class VariancesTabControl : UserControl
     public VariancesTabControl(VariancesTabViewModel? viewModel)
     {
         _viewModel = viewModel;
+
+        // Apply Syncfusion theme
+        try
+        {
+            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            SfSkinManager.SetVisualStyle(this, theme);
+        }
+        catch { /* Theme application is best-effort */ }
+
         InitializeControls();
         if (_viewModel != null)
         {
@@ -77,7 +90,7 @@ public partial class VariancesTabControl : UserControl
 
     private void InitializeFilterPanel()
     {
-        _filterPanel = new GradientPanelExt
+        _filterPanel = new LegacyGradientPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(10)

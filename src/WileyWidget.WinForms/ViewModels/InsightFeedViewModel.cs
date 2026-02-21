@@ -219,7 +219,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Command to open JARVIS AI chat with the selected insight as context.
         /// Triggered when user clicks on an insight row in the grid.
         ///
-        /// The insight context is passed to the JARVIS modal form so JARVIS can provide
+        /// The insight context is passed to the JARVIS chat panel so JARVIS can provide
         /// specific recommendations related to the selected insight.
         /// Example: "Budget variance alert" → JARVIS provides investigation recommendations.
         /// </summary>
@@ -259,47 +259,42 @@ namespace WileyWidget.WinForms.ViewModels
                 insightContext.AppendLine();
                 insightContext.AppendLine("What additional analysis or recommendations do you have about this insight?");
 
-                // Switch to JARVIS Chat tab in right dock panel and set the initial prompt
-                var serviceProvider = WileyWidget.WinForms.Program.Services;
-                // Resolve the main form from open application forms rather than relying on a non-existent
-                // Program.MainFormInstance property.
+                // Open the floating JARVIS panel and pass the prompt via IParameterizedPanel.
+                // Resolve the main form from open application forms.
                 var mainForm = System.Windows.Forms.Application.OpenForms
                     .OfType<WileyWidget.WinForms.Forms.MainForm>()
                     .FirstOrDefault();
 
-                if (serviceProvider != null && mainForm != null)
+                if (mainForm == null || mainForm.IsDisposed)
                 {
-                    // Get JARVIS chat control from the right panel
-                    var rightPanel = mainForm.GetRightDockPanel();
+                    _logger.LogWarning("MainForm is not available; cannot open JARVIS Chat");
+                    MessageBox.Show(insightContext.ToString(), "Ask JARVIS Context", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-                    // Guard against empty control collections to avoid ArgumentOutOfRangeException
-                    if (rightPanel != null && rightPanel.Controls != null && rightPanel.Controls.Count > 0 && rightPanel.Controls[0] is TabControl tabControl)
-                    {
-                        var jarvisTab = tabControl.TabPages.Cast<TabPage>()
-                            .FirstOrDefault(tp => tp.Name == "JARVISChatTab");
+                var prompt = insightContext.ToString();
 
-                        if (jarvisTab != null && jarvisTab.Controls != null && jarvisTab.Controls.Count > 0 && jarvisTab.Controls[0] is WileyWidget.WinForms.Controls.JARVISChatUserControl jarvisControl)
-                        {
-                            // Set initial prompt and switch tab
-                            jarvisControl.InitialPrompt = insightContext.ToString();
-                            mainForm.SwitchRightPanel("JarvisChat");
-                            _logger.LogInformation("Switched to JARVIS Chat tab with insight context ({ContextLength} chars)", insightContext.Length);
-                        }
-                        else
-                        {
-                            _logger.LogDebug("JARVIS tab or control not found in right panel or control collection empty");
-                        }
-                    }
-                    else
+                if (mainForm.InvokeRequired)
+                {
+                    mainForm.BeginInvoke(new Action(() =>
                     {
-                        _logger.LogDebug("Right panel or its controls are not ready for JARVIS chat switch");
-                    }
+                        mainForm.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
+                            "JARVIS Chat",
+                            prompt,
+                            Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
+                            allowFloating: true);
+                    }));
                 }
                 else
                 {
-                    _logger.LogWarning("Program.Services or MainForm is null, cannot open JARVIS Chat");
-                    MessageBox.Show(insightContext.ToString(), "Ask JARVIS Context", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    mainForm.ShowPanel<WileyWidget.WinForms.Controls.Supporting.JARVISChatUserControl>(
+                        "JARVIS Chat",
+                        prompt,
+                        Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
+                        allowFloating: true);
                 }
+
+                _logger.LogInformation("Opened floating JARVIS Chat panel with insight context ({ContextLength} chars)", prompt.Length);
             }
             catch (Exception ex)
             {

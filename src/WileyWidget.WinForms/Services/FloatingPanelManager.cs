@@ -179,6 +179,16 @@ namespace WileyWidget.WinForms.Services
             MinimumSize = new Size(200, 150);
             Size = new Size(400, 300);
 
+            // Apply Syncfusion theme (consistent with parent form)
+            try
+            {
+                WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to apply theme to floating panel window '{PanelName}'", panelName);
+            }
+
             // Create container for the panel
             _contentPanel = new Panel
             {

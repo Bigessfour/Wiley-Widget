@@ -101,7 +101,8 @@ namespace WileyWidget.Services
                     "AI Query | Model: {Model} | Query Length: {QueryLength} | Context Length: {ContextLength} | Query: {Query}",
                     model, query?.Length ?? 0, context?.Length ?? 0, TruncateForLog(query, 200));
 
-                _logger.LogDebug("Logged AI query: Model={Model}, QueryLength={Length}", model, query?.Length ?? 0);
+                _logger.LogInformation("AI query logged: Model={Model}, QueryLength={QueryLength}, ContextLength={ContextLength}",
+                    model, query?.Length ?? 0, context?.Length ?? 0);
 
                 // Track telemetry event for AI query
 #if !NET10_0
@@ -153,8 +154,8 @@ namespace WileyWidget.Services
                     responseTimeMs, tokensUsed, response?.Length ?? 0,
                     TruncateForLog(query, 100), TruncateForLog(response, 300));
 
-                _logger.LogDebug("Logged AI response: ResponseTime={ResponseTime}ms, TokensUsed={Tokens}",
-                    responseTimeMs, tokensUsed);
+                _logger.LogInformation("AI response logged: ResponseTimeMs={ResponseTimeMs}, TokensUsed={TokensUsed}, ResponseLength={ResponseLength}",
+                    responseTimeMs, tokensUsed, response?.Length ?? 0);
 
                 // Track telemetry event for AI response
 #if !NET10_0
@@ -230,7 +231,8 @@ namespace WileyWidget.Services
                     "AI Error | Type: {ErrorType} | Query: {Query} | Error: {Error}",
                     errorType, TruncateForLog(query, 200), error);
 
-                _logger.LogWarning("Logged AI error: Type={ErrorType}, Query={Query}", errorType, query);
+                _logger.LogError("AI error logged: Type={ErrorType}, QueryLength={QueryLength}, Message={Message}",
+                    errorType, query?.Length ?? 0, error);
 
                 // Track telemetry event for AI error
 #if !NET10_0

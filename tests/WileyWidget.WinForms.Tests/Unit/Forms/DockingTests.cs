@@ -15,7 +15,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Controls;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
@@ -111,13 +111,13 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             central.Should().NotBeNull();
 
             // Check docking state - use Dock property since DockingManager.GetDockStyle may not be reliable in tests
-            left.Dock.Should().Be(DockStyle.Left);
-            right.Dock.Should().Be(DockStyle.Right);
+            left!.Dock.Should().Be(DockStyle.Left);
+            right!.Dock.Should().Be(DockStyle.Right);
 
             activityLogPanel.Should().NotBeNull();
 
             var gridCtl = FindChildByName(activityLogPanel!, "ActivityGrid");
-            gridCtl.Should().NotBeNull();
+            gridCtl!.Should().NotBeNull();
             gridCtl.Should().BeOfType<SfDataGrid>();
 
             var grid = (SfDataGrid)gridCtl!;
@@ -143,8 +143,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var dockingManager = new DockingManager { HostControl = form, DockToFill = true };
 
-            var leftPanel = new GradientPanelExt { Name = "LeftDockPanel_Test" };
-            var rightPanel = new GradientPanelExt { Name = "RightDockPanel_Test" };
+            var leftPanel = new LegacyGradientPanel { Name = "LeftDockPanel_Test" };
+            var rightPanel = new LegacyGradientPanel { Name = "RightDockPanel_Test" };
 
             form.Controls.Add(leftPanel);
             form.Controls.Add(rightPanel);
@@ -152,7 +152,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             dockingManager.DockControl(leftPanel, form, DockingStyle.Left, 300);
             dockingManager.DockControl(rightPanel, form, DockingStyle.Right, 350);
 
-            var centralPanel = new GradientPanelExt { Dock = DockStyle.Fill, Name = "Central" };
+            var centralPanel = new LegacyGradientPanel { Dock = DockStyle.Fill, Name = "Central" };
             form.Controls.Add(centralPanel);
             // Note: Central panel uses DockStyle.Fill, not DockingManager docking
 

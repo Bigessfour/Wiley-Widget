@@ -75,7 +75,7 @@ namespace WileyWidget.Data
                 var connectionString = _configuration.GetConnectionString("DefaultConnection");
                 if (string.IsNullOrWhiteSpace(connectionString))
                 {
-                    connectionString = "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;";
+                    connectionString = "Data Source=localhost\\SQLEXPRESS;Initial Catalog=WileyWidget;Integrated Security=True;Pooling=False;Encrypt=False;Trust Server Certificate=True";
                     Log.Warning("DefaultConnection missing; using fallback SQL Server connection string");
                 }
 
@@ -117,7 +117,7 @@ namespace WileyWidget.Data
                 // Minimal SQL Server fallback
                 var fallback = new DbContextOptionsBuilder<AppDbContext>();
                 fallback.UseSqlServer(
-                    "Server=.\\SQLEXPRESS;Database=WileyWidgetDev;Trusted_Connection=True;TrustServerCertificate=True;",
+                    "Data Source=localhost\\SQLEXPRESS;Initial Catalog=WileyWidget;Integrated Security=True;Pooling=False;Encrypt=False;Trust Server Certificate=True",
                     sql =>
                     {
                         sql.MigrationsAssembly("WileyWidget.Data");

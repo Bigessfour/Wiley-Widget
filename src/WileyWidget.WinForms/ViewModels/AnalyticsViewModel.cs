@@ -16,11 +16,11 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable, ILazyLoadViewModel
     {
-    /// <summary>
-    /// Gets or sets a value indicating whether data has been loaded.
-    /// </summary>
-    [ObservableProperty]
-    private bool isDataLoaded;
+        /// <summary>
+        /// Gets or sets a value indicating whether data has been loaded.
+        /// </summary>
+        [ObservableProperty]
+        private bool isDataLoaded;
 
         public async Task OnVisibilityChangedAsync(bool isVisible)
         {

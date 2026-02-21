@@ -2,7 +2,7 @@ name: Build & WinForms Integration Check
 
 on:
   push:
-    branches: [main, develop, "feature/*"]
+    branches: [main, develop, feature/*]
   pull_request:
     branches: [main, develop]
   workflow_dispatch: {}
@@ -17,9 +17,29 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Build & WinForms Startup Test
+    name: Build & WinForms Startup Test (${{ matrix.config.name }})
     runs-on: windows-2022
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: default
+            dashboardAutoLoad: "true"
+            disableDocking: "false"
+            disableRibbon: "false"
+          - name: no-docking
+            dashboardAutoLoad: "true"
+            disableDocking: "true"
+            disableRibbon: "false"
+          - name: no-ribbon
+            dashboardAutoLoad: "true"
+            disableDocking: "false"
+            disableRibbon: "true"
+          - name: no-dashboard
+            dashboardAutoLoad: "false"
+            disableDocking: "false"
+            disableRibbon: "false"
 
     steps:
       - name: Checkout
@@ -82,24 +102,49 @@ jobs:
           dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { Write-Error "Build failed; see build.log" }
 
-      - name: Run WinForms startup test (capture log)
-        continue-on-error: true
+      - name: Discover WinForms startup test
         shell: pwsh
         run: |
           dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj \
             --configuration Release \
             --no-build \
+            --list-tests \
+            --filter "FullyQualifiedName~MainFormStartupIntegrationTests" \
+            -v minimal *>&1 | Tee-Object -FilePath test-discovery.log
+
+      - name: Run WinForms startup test (capture log)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj \
+            --configuration Release \
+            --no-build \
             --filter "FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions" \
+            --logger "console;verbosity=detailed" \
             --logger "trx;LogFileName=startup-test.trx" \
-            --results-directory ./TestResults *>&1 | Tee-Object -FilePath test.log
+            --results-directory ${{ github.workspace }}\TestResults *>&1 | Tee-Object -FilePath test.log
           Set-Content -Path test-exitcode.txt -Value $LASTEXITCODE
+        env:
+          WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD: ${{ matrix.config.dashboardAutoLoad }}
+          WILEYWIDGET_TEST_DISABLE_DOCKING: ${{ matrix.config.disableDocking }}
+          WILEYWIDGET_TEST_DISABLE_RIBBON: ${{ matrix.config.disableRibbon }}
+          WILEYWIDGET_TEST_ARTIFACTS_DIR: ${{ github.workspace }}\artifacts
+          WILEYWIDGET_TEST_SCREENSHOT_ON_FAILURE: "true"
+
+      - name: Diagnostic - list test results and logs
+        if: always()
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter *.trx -File | Select-Object FullName > trx-files.txt
+          Get-ChildItem -Path ${{ github.workspace }} -Recurse -Filter *.log -File | Select-Object FullName > log-files.txt
 
       - name: Publish test results
         if: always()
         uses: dorny/test-reporter@v2
         with:
           name: WinForms Startup Test
-          path: TestResults/*.trx
+          path: "**/TestResults/**/*.trx"
           reporter: dotnet-trx
           fail-on-error: true
 
@@ -107,8 +152,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-artifacts
-          path: TestResults/
+          name: test-artifacts-${{ matrix.config.name }}
+          path: "**/TestResults/**"
           retention-days: 7
 
       - name: Upload failure artifacts
@@ -117,7 +162,7 @@ jobs:
         with:
           name: failure-artifacts
           path: |
-            TestResults/
+            **/TestResults/**
             **/*.log
             **/*-screenshot.png
           retention-days: 7
@@ -126,11 +171,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-diagnostics
+          name: ci-diagnostics-${{ matrix.config.name }}
           path: |
             build.log
             test.log
+            test-discovery.log
             test-exitcode.txt
+            trx-files.txt
+            log-files.txt
+            artifacts/control-tree.txt
+            artifacts/*.png
             ci-*.txt
             theme-content*.txt
             sdks.txt

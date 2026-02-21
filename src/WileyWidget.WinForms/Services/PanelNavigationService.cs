@@ -7,8 +7,12 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -124,7 +128,6 @@ namespace WileyWidget.WinForms.Services
         {
             { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
             { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
-            { typeof(WileyWidget.WinForms.Controls.Analytics.AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
             { typeof(AnalyticsHubPanel), new PanelSizing(new Size(600, 0), new Size(0, 500), new Size(500, 450)) },
             { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
             { typeof(WarRoomPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(460, 380)) },
@@ -159,7 +162,7 @@ namespace WileyWidget.WinForms.Services
             _animationHelper = new UI.Helpers.PanelAnimationHelper(logger);
 
             Logger.LogDebug("PanelNavigationService initialized with non-null DockingManager");
-            }
+        }
 
         public void ShowPanel<TPanel>(
             string panelName,
@@ -177,12 +180,50 @@ namespace WileyWidget.WinForms.Services
             bool allowFloating = true)
             where TPanel : UserControl
         {
+            // Validation: Panel name
             if (string.IsNullOrWhiteSpace(panelName))
                 throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            // Validation: Critical dependencies
+            if (_dockingManager == null)
+            {
+                var ex = new InvalidOperationException("DockingManager is null - cannot show panel without docking infrastructure");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show panel {PanelName} - DockingManager is null", panelName);
+                throw ex;
+            }
+
+            if (_parentControl == null)
+            {
+                var ex = new InvalidOperationException("Parent control is null - cannot show panel without parent container");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show panel {PanelName} - Parent control is null", panelName);
+                throw ex;
+            }
+
+            if (_serviceProvider == null)
+            {
+                var ex = new InvalidOperationException("Service provider is null - cannot resolve panel via DI");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show panel {PanelName} - Service provider is null", panelName);
+                throw ex;
+            }
+
+            // Validation: Parent control state
+            if (_parentControl.IsDisposed)
+            {
+                var ex = new ObjectDisposedException(nameof(_parentControl), "Parent control has been disposed - cannot show panel");
+                Logger.LogError(ex, "[PANEL-CRITICAL] Cannot show panel {PanelName} - Parent control disposed", panelName);
+                throw ex;
+            }
+
+            Logger.LogDebug("[PANEL-SHOW] ShowPanel<{Type}> called for '{PanelName}' - Thread={Thread}, InvokeRequired={InvokeReq}, HandleCreated={HasHandle}",
+                typeof(TPanel).Name, panelName, System.Threading.Thread.CurrentThread.ManagedThreadId,
+                _parentControl.InvokeRequired, _parentControl.IsHandleCreated);
 
             // If called from a non-UI thread or before the handle exists, marshal the call to the UI thread.
             if (_parentControl.InvokeRequired || !_parentControl.IsHandleCreated)
             {
+                Logger.LogDebug("[PANEL-SHOW] Marshalling required for {PanelName} - InvokeRequired={InvokeReq}, HandleCreated={HasHandle}",
+                    panelName, _parentControl.InvokeRequired, _parentControl.IsHandleCreated);
+
                 try
                 {
                     // Use BeginInvoke only when parent control is valid and not disposed
@@ -190,63 +231,170 @@ namespace WileyWidget.WinForms.Services
                     {
                         if (_parentControl.IsHandleCreated)
                         {
-                            _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
+                            Logger.LogDebug("[PANEL-SHOW] Using BeginInvoke to marshal {PanelName} to UI thread", panelName);
+                            _parentControl.BeginInvoke(new System.Action(() =>
+                            {
+                                try
+                                {
+                                    ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating);
+                                }
+                                catch (Exception invokeEx)
+                                {
+                                    Logger.LogError(invokeEx, "[PANEL-SHOW] Exception in BeginInvoke callback for {PanelName}", panelName);
+                                    throw;
+                                }
+                            }));
                             return;
                         }
 
                         // If no handle yet, defer until handle creation to avoid cross-thread access.
+                        Logger.LogInformation("[PANEL-SHOW] Deferring {PanelName} until parent handle is created", panelName);
                         EventHandler? handleCreatedHandler = null;
+                        var handlerRegistered = false;
+
                         handleCreatedHandler = (s, e) =>
                         {
-                            _parentControl.HandleCreated -= handleCreatedHandler;
+                            if (!handlerRegistered) return; // Prevent duplicate execution
+
+                            Logger.LogDebug("[PANEL-SHOW] HandleCreated fired for deferred panel {PanelName}", panelName);
                             try
                             {
+                                _parentControl.HandleCreated -= handleCreatedHandler;
+                                handlerRegistered = false;
+                            }
+                            catch (Exception unsubEx)
+                            {
+                                Logger.LogDebug(unsubEx, "[PANEL-SHOW] Failed to unsubscribe HandleCreated handler (non-critical)");
+                            }
+
+                            try
+                            {
+                                if (_parentControl.IsDisposed)
+                                {
+                                    Logger.LogWarning("[PANEL-SHOW] Parent control disposed before deferred ShowPanel for {PanelName}", panelName);
+                                    return;
+                                }
+
                                 ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating);
                             }
                             catch (Exception ex)
                             {
-                                Logger.LogWarning(ex, "Deferred ShowPanel failed after handle creation for panel {PanelName}", panelName);
+                                Logger.LogError(ex, "[PANEL-SHOW] Deferred ShowPanel failed after handle creation for panel {PanelName}", panelName);
                             }
                         };
+
                         _parentControl.HandleCreated += handleCreatedHandler;
-                        Logger.LogDebug("ShowPanel deferred until parent handle is created for panel {PanelName}", panelName);
+                        handlerRegistered = true;
+                        Logger.LogDebug("[PANEL-SHOW] HandleCreated handler registered for {PanelName}", panelName);
                         return;
+                    }
+                    else
+                    {
+                        Logger.LogWarning("[PANEL-SHOW] Parent control disposed during marshalling attempt for {PanelName}", panelName);
                     }
                 }
                 catch (Exception ex)
                 {
                     // Log and continue on current thread if marshalling fails for any reason
-                    Logger.LogWarning(ex, "Failed to marshal ShowPanel to UI thread for panel {PanelName}", panelName);
+                    Logger.LogWarning(ex, "[PANEL-SHOW] Failed to marshal ShowPanel to UI thread for panel {PanelName}, attempting direct execution", panelName);
                 }
             }
 
             try
             {
-                Logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}", panelName, typeof(TPanel).Name);
+                Logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}, existing: {Exists}",
+                    panelName, typeof(TPanel).Name, _cachedPanels.ContainsKey(panelName));
 
                 // Reuse existing panel if already created
                 if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
                 {
-                    ActivateExistingPanel(existingPanel, panelName, allowFloating);
-                    return;
+                    Logger.LogDebug("[PANEL] Reusing existing panel instance for {PanelName}", panelName);
+
+                    // Validate existing panel state
+                    if (existingPanel == null)
+                    {
+                        Logger.LogWarning("[PANEL] Cached panel for {PanelName} is null, removing from cache and creating new", panelName);
+                        _cachedPanels.Remove(panelName);
+                    }
+                    else if (existingPanel.IsDisposed)
+                    {
+                        Logger.LogWarning("[PANEL] Cached panel for {PanelName} is disposed, removing from cache and creating new", panelName);
+                        _cachedPanels.Remove(panelName);
+                    }
+                    else
+                    {
+                        try
+                        {
+                            ActivateExistingPanel(existingPanel, panelName, allowFloating);
+                            Logger.LogInformation("[PANEL] ✅ Successfully activated existing panel {PanelName}", panelName);
+                            return;
+                        }
+                        catch (Exception activateEx)
+                        {
+                            Logger.LogError(activateEx, "[PANEL] Failed to activate existing panel {PanelName}, will recreate", panelName);
+                            _cachedPanels.Remove(panelName);
+                            // Continue to create new panel
+                        }
+                    }
                 }
 
                 // Create new instance via DI (supports constructor injection)
-                Logger.LogDebug("Creating panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
-                var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
+                Logger.LogDebug("[PANEL] Creating new panel instance: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
 
-                // C# 14: Pattern matching with 'is not null' for cleaner guard clause
-                if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
+                UserControl? panel = null;
+                try
                 {
-                    parameterizedPanel.InitializeWithParameters(parameters);
+                    panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
+
+                    Logger.LogDebug("[PANEL] Panel instance created successfully: {PanelName}, Type={Type}, IsDisposed={IsDisposed}",
+                        panelName, panel.GetType().FullName, panel.IsDisposed);
+                }
+                catch (Exception createEx)
+                {
+                    Logger.LogError(createEx, "[PANEL] Failed to create panel instance via DI for {PanelName} ({PanelType})",
+                        panelName, typeof(TPanel).Name);
+                    throw new InvalidOperationException(
+                        $"Failed to create panel '{panelName}' of type {typeof(TPanel).Name}. " +
+                        $"Check that all constructor dependencies are registered in DI container.", createEx);
                 }
 
+                // Initialize with parameters if provided
+                if (parameters is not null)
+                {
+                    if (panel is IParameterizedPanel parameterizedPanel)
+                    {
+                        try
+                        {
+                            Logger.LogDebug("[PANEL] Initializing {PanelName} with parameters (type: {ParamType})",
+                                panelName, parameters.GetType().Name);
+                            parameterizedPanel.InitializeWithParameters(parameters);
+                            Logger.LogDebug("[PANEL] Parameter initialization completed for {PanelName}", panelName);
+                        }
+                        catch (Exception paramEx)
+                        {
+                            Logger.LogError(paramEx, "[PANEL] Parameter initialization failed for {PanelName}", panelName);
+                            throw new InvalidOperationException(
+                                $"Failed to initialize panel '{panelName}' with provided parameters.", paramEx);
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning("[PANEL] Parameters provided for {PanelName} but panel does not implement IParameterizedPanel", panelName);
+                    }
+                }
+
+                // Dock the panel
+                Logger.LogDebug("[PANEL] Calling DockPanelInternal for {PanelName}", panelName);
                 DockPanelInternal(panel, panelName, preferredStyle, allowFloating);
+                Logger.LogInformation("[PANEL] ✅ Successfully created and docked new panel {PanelName}", panelName);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to show panel: {PanelName}", panelName);
-                throw new InvalidOperationException($"Unable to show panel '{panelName}'. Check logs for details.", ex);
+                Logger.LogError(ex, "[PANEL] ❌ Failed to show panel: {PanelName} - {ErrorType}: {ErrorMessage}",
+                    panelName, ex.GetType().Name, ex.Message);
+                throw new InvalidOperationException(
+                    $"Unable to show panel '{panelName}' of type {typeof(TPanel).Name}. " +
+                    $"Error: {ex.Message}. Check logs for detailed stack trace.", ex);
             }
         }
 
@@ -276,34 +424,117 @@ namespace WileyWidget.WinForms.Services
 
         private void ActivateExistingPanel(UserControl existingPanel, string panelName, bool allowFloating)
         {
-            // Already on UI thread - ActivateExistingPanel is called only from ShowPanel or AddPanelAsync
-            // which have already marshalled execution via InvokeAsync
-            ApplyCaptionSettings(existingPanel, panelName, allowFloating);
-            _dockingManager.SetDockVisibility(existingPanel, true);
+            Logger.LogDebug("[PANEL-ACTIVATE] Activating existing panel {PanelName} - IsDisposed={IsDisposed}, Visible={Visible}",
+                panelName, existingPanel?.IsDisposed, existingPanel?.Visible);
+
+            // Validation: Check panel state
+            if (existingPanel == null)
+            {
+                var ex = new ArgumentNullException(nameof(existingPanel), "Existing panel is null");
+                Logger.LogError(ex, "[PANEL-ACTIVATE] Cannot activate null panel for {PanelName}", panelName);
+                throw ex;
+            }
+
+            if (existingPanel.IsDisposed)
+            {
+                var ex = new ObjectDisposedException(nameof(existingPanel), "Panel has been disposed");
+                Logger.LogError(ex, "[PANEL-ACTIVATE] Cannot activate disposed panel {PanelName}", panelName);
+                throw ex;
+            }
+
+            // Validation: Check docking manager state
+            if (_dockingManager == null)
+            {
+                var ex = new InvalidOperationException("DockingManager is null");
+                Logger.LogError(ex, "[PANEL-ACTIVATE] Cannot activate panel {PanelName} without DockingManager", panelName);
+                throw ex;
+            }
+
             try
             {
+                // Update caption settings
+                Logger.LogDebug("[PANEL-ACTIVATE] Applying caption settings to {PanelName}", panelName);
+                ApplyCaptionSettings(existingPanel, panelName, allowFloating);
+
+                // Set visibility through DockingManager
+                Logger.LogDebug("[PANEL-ACTIVATE] Setting dock visibility for {PanelName}", panelName);
+                _dockingManager.SetDockVisibility(existingPanel, true);
+
                 // Ensure the control is visible and rendered immediately
-                existingPanel.Visible = true;
-                try { existingPanel.BringToFront(); } catch { }
-                _dockingManager.ActivateControl(existingPanel);
-                existingPanel.Refresh();
+                Logger.LogDebug("[PANEL-ACTIVATE] Forcing panel visibility and refresh for {PanelName}", panelName);
+                try
+                {
+                    existingPanel.Visible = true;
+                    try { existingPanel.BringToFront(); }
+                    catch (Exception bfEx)
+                    {
+                        Logger.LogDebug(bfEx, "[PANEL-ACTIVATE] BringToFront failed for {PanelName} (non-critical)", panelName);
+                    }
+
+                    _dockingManager.ActivateControl(existingPanel);
+                    existingPanel.Refresh();
+                    Logger.LogDebug("[PANEL-ACTIVATE] Panel visibility forced successfully for {PanelName}", panelName);
+                }
+                catch (Exception visEx)
+                {
+                    Logger.LogWarning(visEx, "[PANEL-ACTIVATE] Failed to force existing panel visibility/refresh for {PanelName}", panelName);
+                    // Continue - panel may still be functional
+                }
+
+                // Apply theme
+                Logger.LogDebug("[PANEL-ACTIVATE] Applying theme to {PanelName}", panelName);
+                try
+                {
+                    ApplyPanelTheme(existingPanel);
+                }
+                catch (Exception themeEx)
+                {
+                    Logger.LogWarning(themeEx, "[PANEL-ACTIVATE] Theme application failed for {PanelName} (non-critical)", panelName);
+                }
+
+                // Try async initialization if panel implements IAsyncInitializable
+                Logger.LogDebug("[PANEL-ACTIVATE] Checking async initialization for {PanelName}", panelName);
+                try
+                {
+                    TryInitializeAsyncPanel(existingPanel, panelName);
+                }
+                catch (Exception initEx)
+                {
+                    Logger.LogWarning(initEx, "[PANEL-ACTIVATE] Async initialization attempt failed for {PanelName}", panelName);
+                    // Continue - panel may already be initialized
+                }
+
+                // Track active panel and raise event for ribbon button highlighting
+                _activePanelName = panelName;
+                Logger.LogDebug("[PANEL-ACTIVATE] Raising PanelActivated event for {PanelName}", panelName);
+                try
+                {
+                    PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
+                }
+                catch (Exception eventEx)
+                {
+                    Logger.LogWarning(eventEx, "[PANEL-ACTIVATE] PanelActivated event handler threw exception for {PanelName}", panelName);
+                    // Continue - event handler failure shouldn't prevent panel activation
+                }
+
+                // POLISH: Announce panel visibility change to screen readers
+                try
+                {
+                    AnnounceForAccessibility(existingPanel, $"{panelName} panel is now visible");
+                }
+                catch (Exception accEx)
+                {
+                    Logger.LogDebug(accEx, "[PANEL-ACTIVATE] Accessibility announcement failed for {PanelName} (non-critical)", panelName);
+                }
+
+                Logger.LogInformation("[PANEL-ACTIVATE] ✅ Successfully activated existing panel {PanelName} - Visible={Visible}, Bounds={Bounds}, Docked={Docked}",
+                    panelName, existingPanel.Visible, existingPanel.Bounds, _dockingManager.GetEnableDocking(existingPanel));
             }
             catch (Exception ex)
             {
-                Logger.LogDebug(ex, "Failed to force existing panel visibility/refresh (non-critical)");
+                Logger.LogError(ex, "[PANEL-ACTIVATE] ❌ Failed to activate existing panel {PanelName}", panelName);
+                throw;
             }
-
-            ApplyPanelTheme(existingPanel);
-
-            // Track active panel and raise event for ribbon button highlighting
-            _activePanelName = panelName;
-            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
-
-            // POLISH: Announce panel visibility change to screen readers
-            AnnounceForAccessibility(existingPanel, $"{panelName} panel is now visible");
-
-            Logger.LogDebug("Activated existing panel: {PanelName}", panelName);
-            Logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
         }
 
         private void DockPanelInternal(UserControl panel, string panelName, DockingStyle preferredStyle, bool allowFloating)
@@ -333,6 +564,11 @@ namespace WileyWidget.WinForms.Services
             if (forceFloating)
             {
                 FloatPanel(panel, panelName, preferredStyle, hostControl);
+                // CRITICAL FIX: For floating panels, explicitly trigger async initialization
+                // Floating windows may not have Visible state propagated correctly,
+                // so we must force initialization after the panel is created and floated.
+                Logger.LogInformation("[PANEL-FLOAT] Panel {PanelName} floated - forcing async initialization trigger", panelName);
+                TryInitializeAsyncPanel(panel, panelName);
                 return;
             }
 
@@ -464,6 +700,8 @@ namespace WileyWidget.WinForms.Services
                 Logger.LogDebug(ex, "Failed to force panel visibility/refresh (non-critical)");
             }
 
+            TryInitializeAsyncPanel(panel, panelName);
+
             // Subscribe to DockStateChanged event to verify panel rendering
             // This replaces the Thread.Sleep(250) hack with proper event-driven synchronization
             try
@@ -496,6 +734,82 @@ namespace WileyWidget.WinForms.Services
 
             Logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
             Logger.LogInformation("[PANEL] {PanelName} docked - Visible={Visible}, Bounds={Bounds}", panelName, panel.Visible, panel.Bounds);
+        }
+
+        private void TryInitializeAsyncPanel(UserControl panel, string panelName)
+        {
+            Logger.LogDebug("[PANEL-INIT] TryInitializeAsyncPanel called for {PanelName} - Type={Type}",
+                panelName, panel?.GetType().Name);
+
+            if (panel is null)
+            {
+                Logger.LogWarning("[PANEL-INIT] Panel is null for {PanelName}", panelName);
+                return;
+            }
+
+            if (panel.IsDisposed)
+            {
+                Logger.LogWarning("[PANEL-INIT] Panel {PanelName} is already disposed", panelName);
+                return;
+            }
+
+            if (panel is not IAsyncInitializable asyncInitializable)
+            {
+                Logger.LogDebug("[PANEL-INIT] Panel {PanelName} does not implement IAsyncInitializable", panelName);
+                return;
+            }
+
+            Logger.LogInformation("[PANEL-INIT] Panel {PanelName} implements IAsyncInitializable - scheduling initialization", panelName);
+
+            void BeginInitialize()
+            {
+                Logger.LogInformation("[PANEL-INIT] BeginInitialize executing for {PanelName} on thread {Thread}",
+                    panelName, System.Threading.Thread.CurrentThread.ManagedThreadId);
+                _ = InitializePanelAsync(asyncInitializable, panelName);
+            }
+
+            if (panel.IsHandleCreated)
+            {
+                Logger.LogInformation("[PANEL-INIT] Handle already created for {PanelName}, calling BeginInitialize immediately", panelName);
+                BeginInitialize();
+                return;
+            }
+
+            Logger.LogInformation("[PANEL-INIT] Handle not yet created for {PanelName}, subscribing to HandleCreated event", panelName);
+            EventHandler? handleCreated = null;
+            handleCreated = (_, __) =>
+            {
+                Logger.LogInformation("[PANEL-INIT] HandleCreated event fired for {PanelName}", panelName);
+                panel.HandleCreated -= handleCreated;
+                if (!panel.IsDisposed)
+                {
+                    Logger.LogInformation("[PANEL-INIT] Panel {PanelName} not disposed, calling BeginInitialize", panelName);
+                    BeginInitialize();
+                }
+                else
+                {
+                    Logger.LogWarning("[PANEL-INIT] Panel {PanelName} disposed during HandleCreated callback", panelName);
+                }
+            };
+            panel.HandleCreated += handleCreated;
+        }
+
+        private async Task InitializePanelAsync(IAsyncInitializable asyncInitializable, string panelName)
+        {
+            Logger.LogInformation("[PANEL-INIT] InitializePanelAsync STARTING for {PanelName}", panelName);
+            try
+            {
+                await asyncInitializable.InitializeAsync().ConfigureAwait(true);
+                Logger.LogInformation("✅ [PANEL-INIT] Async initialization completed successfully for panel {PanelName}", panelName);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogWarning("⚠️ [PANEL-INIT] Async initialization cancelled for panel {PanelName}", panelName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "❌ [PANEL-INIT] Async initialization FAILED for panel {PanelName}", panelName);
+            }
         }
 
         /// <summary>
@@ -632,6 +946,7 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 _dockingManager.SetDockVisibility(panel, true);
+                Logger.LogDebug("[PANEL-FLOAT] SetDockVisibility(true) called for {PanelName}", panelName);
             }
             catch (Exception ex)
             {
@@ -641,7 +956,9 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 panel.Visible = true;
+                Logger.LogDebug("[PANEL-FLOAT] Panel.Visible set to true for {PanelName}", panelName);
                 panel.BringToFront();
+                Logger.LogDebug("[PANEL-FLOAT] BringToFront() called for {PanelName}", panelName);
             }
             catch (Exception ex)
             {
@@ -651,13 +968,27 @@ namespace WileyWidget.WinForms.Services
             try
             {
                 _dockingManager.ActivateControl(panel);
+                Logger.LogDebug("[PANEL-FLOAT] ActivateControl() called for {PanelName}", panelName);
             }
             catch (Exception ex)
             {
                 Logger.LogDebug(ex, "Failed to activate floating panel {PanelName}", panelName);
             }
 
-            Logger.LogInformation("Panel floated by default: {PanelName} at {Bounds}", panelName, bounds);
+            // CRITICAL FIX: Force panel invalidation and refresh to ensure rendering
+            try
+            {
+                panel.Invalidate(true);
+                panel.Update();
+                Logger.LogDebug("[PANEL-FLOAT] Panel invalidated and updated for {PanelName}", panelName);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to invalidate/update floating panel for {PanelName}", panelName);
+            }
+
+            Logger.LogInformation("Panel floated by default: {PanelName} at {Bounds}, Visible={Visible}, Handle={Handle}",
+                panelName, bounds, panel.Visible, panel.IsHandleCreated);
         }
 
         private static System.Drawing.Rectangle CalculateFloatingBounds(UserControl panel, DockingStyle preferredStyle, Control hostControl)

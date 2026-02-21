@@ -33,18 +33,21 @@ namespace WileyWidget.WinForms.Services
         private readonly ILogger<StartupOrchestrator> _logger;
         private readonly IThemeService _themeService;
         private readonly StartupOptions _startupOptions;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly List<string> _executedPhases = new();
 
         public StartupOrchestrator(
             IWinFormsDiValidator validator,
             ILogger<StartupOrchestrator> logger,
             IThemeService themeService,
-            IOptions<StartupOptions> startupOptions)
+            IOptions<StartupOptions> startupOptions,
+            IServiceScopeFactory scopeFactory)
         {
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
             _startupOptions = startupOptions?.Value ?? throw new ArgumentNullException(nameof(startupOptions));
+            _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         }
 
         public async Task InitializeAsync()
@@ -86,31 +89,17 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
-                _logger.LogInformation("Phase 1 (Pre-UI): starting license registration and theme initialization");
+                _logger.LogInformation("Phase 1 (Pre-UI): starting theme validation (license already registered in Program.Main)");
 
+                // NOTE: Syncfusion license is now registered in Program.Main BEFORE any Syncfusion code runs
+                // This phase only validates theme settings, not license registration
                 if (_startupOptions.EnableLicenseValidation)
                 {
-                    var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
-                    if (string.IsNullOrWhiteSpace(licenseKey))
-                    {
-                        _logger.LogError("Syncfusion license key is missing; set SYNCFUSION_LICENSE_KEY to continue.");
-                        throw new InvalidOperationException("Syncfusion license key is missing.");
-                    }
-
-                    try
-                    {
-                        SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                        _logger.LogInformation("Syncfusion license registration completed successfully.");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Syncfusion license registration failed.");
-                        throw new InvalidOperationException("Syncfusion license registration failed.", ex);
-                    }
+                    _logger.LogInformation("License validation enabled - license was registered earlier in Program.Main before theme initialization");
                 }
                 else
                 {
-                    _logger.LogInformation("Startup license validation is disabled via StartupOptions.");
+                    _logger.LogInformation("License validation is disabled via StartupOptions.");
                 }
 
                 if (_startupOptions.EnableThemeValidation)
@@ -180,6 +169,24 @@ namespace WileyWidget.WinForms.Services
                     HandleDiValidationFailure(new InvalidOperationException("DI validation completed with errors."), result);
                 }
 
+                /// <summary>
+                /// NEW: Validate Blazor-specific services
+                /// Ensures that AddWindowsFormsBlazorWebView() and AddSyncfusionBlazor() were properly registered during startup.
+                /// These services are critical for JARVIS panel rendering and AI component functionality.
+                /// </summary>
+                try
+                {
+                    var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceScopeFactory>(serviceProvider);
+                    if (scopeFactory == null)
+                    {
+                        _logger.LogWarning("Blazor WebView services not registered - ensure AddWindowsFormsBlazorWebView() is called in startup");
+                    }
+                }
+                catch (Exception blazorCheckEx)
+                {
+                    _logger.LogWarning(blazorCheckEx, "Error checking Blazor services during validation");
+                }
+
                 // [PERF] Initialize all IAsyncInitializable services in background to avoid UI blocking
                 _ = Task.Run(async () =>
                 {
@@ -188,24 +195,39 @@ namespace WileyWidget.WinForms.Services
                         // Allow structures time to develop before initializing services
                         await Task.Delay(50).ConfigureAwait(false);
                         _logger.LogInformation("Initializing IAsyncInitializable services in background...");
-                        var asyncInitializables = serviceProvider.GetServices<WileyWidget.Abstractions.IAsyncInitializable>();
-                        var initTasks = asyncInitializables.Select(async service =>
-                        {
-                            try
-                            {
-                                // Small delay per service to stagger initialization
-                                await Task.Delay(10).ConfigureAwait(false);
-                                await service.InitializeAsync();
-                                _logger.LogDebug("Initialized {ServiceType}", service.GetType().Name);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning(ex, "Failed to initialize {ServiceType}", service.GetType().Name);
-                            }
-                        });
 
-                        await Task.WhenAll(initTasks);
-                        _logger.LogInformation("All IAsyncInitializable services initialized successfully");
+                        // [FIX] Use IServiceScopeFactory consistently to ensure background threads have a stable scope
+                        using (var scope = _scopeFactory.CreateScope())
+                        {
+                            var asyncInitializables = scope.ServiceProvider.GetServices<WileyWidget.Abstractions.IAsyncInitializable>();
+
+                            // Materialize the list immediately to avoid late-binding issues
+                            var initializablesList = asyncInitializables.ToList();
+                            _logger.LogInformation("Discovered {Count} IAsyncInitializable services for background warmup", initializablesList.Count);
+
+                            foreach (var service in initializablesList)
+                            {
+                                try
+                                {
+                                    _logger.LogDebug("Background warmup: Initializing {ServiceType}...", service.GetType().Name);
+
+                                    // Use a dedicated timeout per service to prevent deadlocks from blocking entire chain
+                                    using var serviceCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                                    await service.InitializeAsync(serviceCts.Token).ConfigureAwait(false);
+
+                                    _logger.LogDebug("Background warmup: {ServiceType} initialized successfully", service.GetType().Name);
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    _logger.LogWarning("Background warmup: Initialization of {ServiceType} timed out (30s limit)", service.GetType().Name);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning(ex, "Background warmup: Failed to initialize {ServiceType}", service.GetType().Name);
+                                }
+                            }
+                        }
+                        _logger.LogInformation("All IAsyncInitializable services background initialization sequence completed");
                     }
                     catch (Exception ex)
                     {

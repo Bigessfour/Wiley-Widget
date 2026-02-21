@@ -1,9 +1,9 @@
-# Seed FY 2025 Budget Data for WileyWidgetDev Database
-# This script populates the WileyWidgetDev database with budget data for FY 2025
+# Seed FY 2025 Budget Data for WileyWidget Database
+# This script populates the WileyWidget database with budget data for FY 2025
 
 param(
     [string]$ServerInstance = ".\SQLEXPRESS",
-    [string]$Database = "WileyWidgetDev"
+    [string]$Database = "WileyWidget"
 )
 
 Write-Host "Seeding FY 2025 budget data into $Database on $ServerInstance..." -ForegroundColor Green

@@ -4,6 +4,7 @@ using DI = Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
@@ -32,6 +33,9 @@ using Serilog;
 using Serilog.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 
 namespace WileyWidget.WinForms.Configuration
 {
@@ -40,7 +44,7 @@ namespace WileyWidget.WinForms.Configuration
         public static ServiceCollection CreateServiceCollection(bool includeDefaults = true)
         {
             var services = new ServiceCollection();
-            ConfigureServicesInternal(services, includeDefaults);
+            ConfigureServicesInternal(services, configuration: null, includeDefaults: includeDefaults);
             return services;
         }
 
@@ -51,7 +55,7 @@ namespace WileyWidget.WinForms.Configuration
             // Register QuickBooks OAuth configuration BEFORE calling ConfigureServicesInternal
             services.Configure<QuickBooksOAuthOptions>(configuration.GetSection("Services:QuickBooks:OAuth"));
 
-            ConfigureServicesInternal(services, includeDefaults: true);
+            ConfigureServicesInternal(services, configuration, includeDefaults: true);
             return services;
         }
 
@@ -76,7 +80,7 @@ namespace WileyWidget.WinForms.Configuration
             });
         }
 
-        private static void ConfigureServicesInternal(IServiceCollection services, bool includeDefaults = true)
+        private static void ConfigureServicesInternal(IServiceCollection services, IConfiguration? configuration = null, bool includeDefaults = true)
         {
             // =====================================================================
             // INFRASTRUCTURE SERVICES (Configuration, Logging, Health Checks)
@@ -87,7 +91,8 @@ namespace WileyWidget.WinForms.Configuration
             // The host's configuration will be automatically available when services are registered
             // This ensures .env, user secrets, and environment variables are all properly loaded
             // For tests, provide a default in-memory configuration
-            if (includeDefaults)
+            IConfiguration? effectiveConfig = configuration;
+            if (effectiveConfig == null && includeDefaults)
             {
                 var defaultConfig = new ConfigurationBuilder()
                     .AddInMemoryCollection(new Dictionary<string, string?>
@@ -98,6 +103,7 @@ namespace WileyWidget.WinForms.Configuration
                     })
                     .Build();
                 services.TryAddSingleton<IConfiguration>(defaultConfig);
+                effectiveConfig = defaultConfig;
             }
 
             // Logging (Singleton - Serilog logger)
@@ -157,13 +163,7 @@ namespace WileyWidget.WinForms.Configuration
                              (int?)args.Outcome.Result?.StatusCode >= 500))  // 5xx
                     });
 
-                    // Hedging: Fire parallel attempts for faster response (great for Grok latency)
-                    // When initial attempt is slow, spawn hedged attempts staggered by 500ms
-                    builder.AddHedging(new HttpHedgingStrategyOptions
-                    {
-                        MaxHedgedAttempts = 3,
-                        Delay = TimeSpan.FromMilliseconds(500)
-                    });
+                    // Hedging disabled to avoid duplicate requests and cancellation cascades.
 
                     // Circuit Breaker: Prevent hammering when Grok is down
                     builder.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
@@ -247,6 +247,9 @@ namespace WileyWidget.WinForms.Configuration
             // Blazor WebView Services (Required for BlazorWebView controls)
             services.AddWindowsFormsBlazorWebView();
 
+            // Automation hooks for JARVIS UI validation
+            services.AddSingleton<WileyWidget.WinForms.Automation.JarvisAutomationState>();
+
             // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
             // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in Syncfusion.Blazor.SmartComponents
             // The package exists but the actual components/APIs are not released yet
@@ -270,18 +273,57 @@ namespace WileyWidget.WinForms.Configuration
             // DATABASE CONTEXT (Scoped - one per request/scope)
             // =====================================================================
 
-            // For tests, register DbContext with in-memory database
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+            var connectionString = effectiveConfig?.GetConnectionString("DefaultConnection");
+            var isUiTestHarness = effectiveConfig?.GetValue<bool>("UI:IsUiTestHarness", false) ?? false;
+            var resolvedConnection = string.IsNullOrWhiteSpace(connectionString)
+                ? "Data Source=localhost\\SQLEXPRESS;Initial Catalog=WileyWidget;Integrated Security=True;Pooling=False;Encrypt=False;Trust Server Certificate=True"
+                : connectionString;
+            var useInMemory = includeDefaults && (isUiTestHarness ||
+                string.IsNullOrWhiteSpace(connectionString) ||
+                connectionString.Contains("Data Source=:memory:", StringComparison.OrdinalIgnoreCase));
+
+            var providerLabel = useInMemory ? "InMemory" : "SqlServer";
+            var connectionForLog = useInMemory ? "Data Source=:memory:" : resolvedConnection;
+            Log.Information("DI: AppDbContext provider={Provider} TestHarness={IsUiTestHarness} Connection={ConnectionString}",
+                providerLabel, isUiTestHarness, connectionForLog);
+
+            if (useInMemory)
             {
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase("TestDb"));
+                // For tests and UI harness, register DbContext with in-memory database
+                if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+                {
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseInMemoryDatabase("TestDb"));
+                }
+                if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+                {
+                    // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
+                    // DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped
+                    services.AddDbContextFactory<AppDbContext>((sp, options) =>
+                        options.UseInMemoryDatabase("TestDb"), ServiceLifetime.Scoped);
+                }
             }
-            if (includeDefaults && !services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+            else
             {
-                // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
-                // DbContextOptions internally resolves IDbContextOptionsConfiguration which is scoped
-                services.AddDbContextFactory<AppDbContext>((sp, options) =>
-                    options.UseInMemoryDatabase("TestDb"), ServiceLifetime.Scoped);
+                if (!services.Any(sd => sd.ServiceType == typeof(AppDbContext)))
+                {
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseSqlServer(resolvedConnection, sql =>
+                        {
+                            sql.MigrationsAssembly("WileyWidget.Data");
+                            sql.EnableRetryOnFailure();
+                        }));
+                }
+                if (!services.Any(sd => sd.ServiceType == typeof(IDbContextFactory<AppDbContext>)))
+                {
+                    // CRITICAL: DbContextFactory must be Scoped to avoid lifetime conflicts
+                    services.AddDbContextFactory<AppDbContext>((sp, options) =>
+                        options.UseSqlServer(resolvedConnection, sql =>
+                        {
+                            sql.MigrationsAssembly("WileyWidget.Data");
+                            sql.EnableRetryOnFailure();
+                        }), ServiceLifetime.Scoped);
+                }
             }
 
             // =====================================================================
@@ -302,6 +344,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IEnterpriseRepository, EnterpriseRepository>();
             services.AddScoped<IMunicipalAccountRepository, MunicipalAccountRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IVendorRepository, VendorRepository>();
             services.AddScoped<IUtilityBillRepository, UtilityBillRepository>();
             services.AddScoped<IUtilityCustomerRepository, UtilityCustomerRepository>();
 
@@ -389,6 +433,7 @@ namespace WileyWidget.WinForms.Configuration
 
             // AI Services (Scoped - may hold request-specific context)
             services.AddScoped<IAIService, GrokAgentService>();
+            services.AddScoped<JarvisGrokBridgeHandler>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
@@ -396,9 +441,37 @@ namespace WileyWidget.WinForms.Configuration
             services.TryAddScoped<IAILoggingService, AILoggingService>();
 
             // AI-Powered Search and Analysis Services
+            // Register OpenAI embedding generator for semantic search (using OpenAI endpoint as fallback)
+#pragma warning disable SKEXP0010 // Experimental API - required for SK 1.70 compatibility
+            try
+            {
+                var openaiKey = (configuration?["OPENAI_API_KEY"] ?? configuration?["OpenAI:ApiKey"]) ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(openaiKey))
+                {
+                    services.AddOpenAIEmbeddingGenerator(
+                        modelId: "text-embedding-3-small",
+                        apiKey: openaiKey
+                    );
+                }
+                else
+                {
+                    // No OpenAI key - semantic search will fall back to keyword search
+                    services.AddOpenAIEmbeddingGenerator(
+                        modelId: "text-embedding-3-small",
+                        apiKey: "placeholder"  // Will be null/unavailable in SemanticSearchService
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // Failed to register embedding generator - semantic search will use keyword fallback
+                System.Diagnostics.Debug.WriteLine($"[DI] Failed to register OpenAI embedding generator: {ex.Message}");
+            }
+#pragma warning restore SKEXP0010
+
             services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
-            services.AddScoped<IConversationRepository, EfConversationRepository>();
+            services.AddSingleton<IConversationRepository, EfConversationRepository>();
 
             // JARVIS Personality Service (Scoped - depends on IAILoggingService which is scoped)
             services.AddScoped<IJARVISPersonalityService, JARVISPersonalityService>();
@@ -497,7 +570,18 @@ namespace WileyWidget.WinForms.Configuration
             // 1. User Secrets (XAI:ApiKey) - highest priority, secure
             // 2. Environment Variables (XAI_API_KEY) - CI/CD friendly
             // 3. appsettings.json (XAI:ApiKey) - lowest priority, public
-            services.AddSingleton<IGrokApiKeyProvider, GrokApiKeyProvider>();
+            // ✅ ENHANCED: Explicitly inject IHttpClientFactory for validation requests
+            services.AddSingleton<IGrokApiKeyProvider>(sp =>
+            {
+                var config = DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp);
+                var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<GrokApiKeyProvider>>(sp);
+                var httpClientFactory = DI.ServiceProviderServiceExtensions.GetRequiredService<IHttpClientFactory>(sp);
+
+                return new GrokApiKeyProvider(
+                    configuration: config,
+                    logger: logger,
+                    httpClientFactory: httpClientFactory);  // ✅ Always inject factory
+            });
 
             // Grok Health Checks (registered with health check service)
             services.AddHealthChecks()
@@ -507,8 +591,34 @@ namespace WileyWidget.WinForms.Configuration
             // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
             // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
             // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
-            // Use AddScoped directly instead of ActivatorUtilities.CreateInstance to avoid trying to instantiate during validation.
-            services.TryAddScoped<GrokAgentService>();
+            // ✅ ENHANCED: Explicitly inject IHttpClientFactory to ensure proper connection pooling and prevent socket exhaustion
+            services.TryAddScoped<GrokAgentService>(sp =>
+            {
+                var apiKeyProvider = DI.ServiceProviderServiceExtensions.GetRequiredService<IGrokApiKeyProvider>(sp);
+                var config = DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp);
+                var logger = DI.ServiceProviderServiceExtensions.GetService<ILogger<GrokAgentService>>(sp);
+                var httpClientFactory = DI.ServiceProviderServiceExtensions.GetRequiredService<IHttpClientFactory>(sp);
+                var modelDiscovery = DI.ServiceProviderServiceExtensions.GetService<IXaiModelDiscoveryService>(sp);
+                var chatBridge = DI.ServiceProviderServiceExtensions.GetService<IChatBridgeService>(sp);
+                var jarvisPersonality = DI.ServiceProviderServiceExtensions.GetService<IJARVISPersonalityService>(sp);
+                var memoryCache = DI.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp);
+
+                return new GrokAgentService(
+                    apiKeyProvider: apiKeyProvider,
+                    config: config,
+                    logger: logger,
+                    httpClientFactory: httpClientFactory,  // ✅ Always inject factory (never null)
+                    modelDiscoveryService: modelDiscovery,
+                    chatBridge: chatBridge,
+                    serviceProvider: sp,
+                    jarvisPersonality: jarvisPersonality,
+                    memoryCache: memoryCache);
+            });
+
+            // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
+            // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered
+            services.AddScoped<WileyWidget.Abstractions.IAsyncInitializable>(sp =>
+                DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp));
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)
             // Analyzes enterprise data using Grok and publishes insights to observable collection
@@ -572,6 +682,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<SettingsViewModel>();
             services.AddScoped<UtilityBillViewModel>();
             services.AddScoped<AccountsViewModel>();
+            services.AddScoped<PaymentsViewModel>();
             services.AddScoped<DashboardViewModel>();
             services.AddScoped<AnalyticsViewModel>();
             services.AddScoped<IAnalyticsHubViewModel, AnalyticsHubViewModel>();
@@ -594,39 +705,40 @@ namespace WileyWidget.WinForms.Configuration
             // Example panels' ViewModels - sometimes omitted during refactor
             services.AddScoped<WileyWidget.WinForms.Examples.AsyncLoadingExampleViewModel>();
             // JARVIS Chat ViewModel for docked chat control
-            services.AddScoped<WileyWidget.WinForms.Controls.JARVISChatViewModel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.JARVISChatViewModel>();
 
             // =====================================================================
             // CONTROLS / PANELS (Scoped - One instance per panel scope)
             // Panels are UI controls that display ViewModels and must be scoped for proper DI resolution
             // =====================================================================
 
-            services.AddScoped<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.BudgetPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ReportsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.SettingsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.BudgetOverviewPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ReportsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.SettingsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.DepartmentSummaryPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.RevenueTrendsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AuditLogPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.ActivityLogPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.CustomersPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AccountEditPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AccountsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.UtilityBillPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.QuickBooksPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.AnalyticsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.CustomersPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.PaymentsPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.ProactiveInsightsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.WarRoomPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.RecommendedMonthlyChargePanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.CsvMappingWizardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.DashboardPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 
             // =====================================================================
-            // FORMS (Singleton for MainForm, Transient for child forms)
-            // MainForm: Singleton because it's the application's main window (lives for app lifetime)
-            // Child Forms: Transient because they're created/disposed multiple times
+            // FORMS (Scoped for MainForm per UI scope pattern)
+            // MainForm: Scoped - resolved from UI scope created in Program.Main to ensure proper
+            //           lifetime management and access to scoped dependencies (DbContext, panels, etc.)
+            //           The UI scope lives for the application lifetime but allows proper disposal chain.
+            // Child Forms: Removed - application now uses panel-based navigation (see below)
             // =====================================================================
 
             // Main Form (Scoped - resolved from UI scope to ensure scoped dependencies are available)

@@ -8,6 +8,8 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
 using WileyWidget.ViewModels;
 

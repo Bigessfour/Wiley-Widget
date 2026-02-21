@@ -8,6 +8,7 @@ using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.Windows.Forms.Gauge;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.Paneltest.Fixtures;
 using WileyWidget.Paneltest.Helpers;
 using Xunit;
@@ -36,7 +37,7 @@ public class WarRoomPanelTestCase : BasePanelTestCase
                 .GetRequiredService<IServiceScopeFactory>(provider);
             var loggerFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetRequiredService<ILoggerFactory>(provider);
-            var logger = loggerFactory.CreateLogger<WileyWidget.WinForms.Controls.ScopedPanelBase<WileyWidget.WinForms.ViewModels.WarRoomViewModel>>();
+            var logger = loggerFactory.CreateLogger<WileyWidget.WinForms.Controls.Base.ScopedPanelBase<WileyWidget.WinForms.ViewModels.WarRoomViewModel>>();
             _testLogger = loggerFactory.CreateLogger<WarRoomPanelTestCase>();
 
             return new WarRoomPanel(scopeFactory, logger);

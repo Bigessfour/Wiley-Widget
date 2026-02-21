@@ -1,0 +1,38 @@
+{
+  "name": "syncfusion-skill-agent",
+  "displayName": "Syncfusion WinForms Skill Agent",
+  "description": "Chat participant that applies the Syncfusion WinForms skill from the workspace.",
+  "version": "0.0.1",
+  "publisher": "wileywidget",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onChatParticipant:syncfusion-agent.syncfusion"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "syncfusion-agent.syncfusion",
+        "name": "syncfusion",
+        "fullName": "Syncfusion WinForms Expert",
+        "description": "Expert guidance on Syncfusion WinForms controls, licensing, and theming.",
+        "isSticky": true
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.86.0",
+    "typescript": "^5.5.4"
+  }
+}

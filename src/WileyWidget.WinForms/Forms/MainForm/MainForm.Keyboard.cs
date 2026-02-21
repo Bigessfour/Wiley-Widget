@@ -5,7 +5,12 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using Panels = WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -17,12 +22,18 @@ namespace WileyWidget.WinForms.Forms;
 /// - Ctrl+F: Focus global search box
 /// - Ctrl+Shift+F: Find in active grid
 /// - Ctrl+Shift+T: Toggle theme
+/// - Ctrl+Shift+S: Save current layout
+/// - Ctrl+Shift+R: Reset layout to default
+/// - Ctrl+L: Lock/unlock panel docking
 /// - Alt+D: Show Dashboard panel
 /// - Alt+A: Show Accounts panel
 /// - Alt+B: Show Budget panel
-/// - Alt+C: Show Charts panel
+/// - Alt+C: Show Analytics Hub panel
 /// - Alt+R: Show Reports panel
 /// - Alt+S: Show Settings panel
+/// - Alt+W: Show War Room panel
+/// - Alt+Q: Show QuickBooks panel
+/// - Alt+J: Switch to JARVIS Chat
 /// - Enter: Focus global search (from text boxes)
 /// - Escape: Clear search or dismiss status text
 /// </summary>
@@ -96,9 +107,19 @@ public partial class MainForm
                     return true;
                 }
             }
+            catch (InvalidOperationException invEx)
+            {
+                _logger?.LogWarning(invEx, "Find-in-grid prompt failed due to invalid operation");
+                MessageBox.Show(
+                    "Search prompt could not be displayed. The grid may not be ready.",
+                    "Search Unavailable",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
             catch (Exception ex)
             {
-                _logger?.LogDebug(ex, "Find-in-grid prompt failed");
+                _logger?.LogError(ex, "Unexpected error showing find-in-grid prompt. Error: {ErrorType}", ex.GetType().Name);
+                UIHelper.ShowErrorOnUI(this, "Failed to show grid search dialog.", "Search Error", _logger);
             }
         }
 
@@ -114,9 +135,77 @@ public partial class MainForm
                     return true;
                 }
             }
-            catch (Exception ex)
+            catch (ObjectDisposedException dispEx)
             {
-                _logger?.LogError(ex, "Error toggling theme");
+                _logger?.LogDebug(dispEx, "Theme toggle button was disposed");
+            }
+            catch (InvalidOperationException invEx)
+            {
+                _logger?.LogWarning(invEx, "Error toggling theme - operation invalid");
+                MessageBox.Show(
+                    "Theme toggle is not available right now. Please try again.",
+                    "Theme Toggle Unavailable",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+        }
+
+        // [NEW] Layout Management Shortcuts
+        // Ctrl+Shift+S: Save current layout
+        if (keyData == (Keys.Control | Keys.Shift | Keys.S))
+        {
+            try
+            {
+                SaveCurrentLayout();
+                return true;
+            }
+            catch (System.IO.IOException ioEx)
+            {
+                _logger?.LogError(ioEx, "Error saving layout - file system error");
+                UIHelper.ShowErrorOnUI(this,
+                    "Failed to save layout. The layout file may be locked or inaccessible.",
+                    "Save Layout Error", _logger);
+            }
+            catch (UnauthorizedAccessException authEx)
+            {
+                _logger?.LogError(authEx, "Error saving layout - access denied");
+                UIHelper.ShowErrorOnUI(this,
+                    "Failed to save layout. You may not have permission to write to the layout file.",
+                    "Save Layout Error", _logger);
+            }
+        }
+
+        // Ctrl+Shift+R: Reset layout to default
+        if (keyData == (Keys.Control | Keys.Shift | Keys.R))
+        {
+            try
+            {
+                ResetLayout();
+                return true;
+            }
+            catch (InvalidOperationException invEx)
+            {
+                _logger?.LogError(invEx, "Error resetting layout - invalid operation");
+                UIHelper.ShowErrorOnUI(this,
+                    "Failed to reset layout. The docking manager may not be ready.",
+                    "Reset Layout Error", _logger);
+            }
+        }
+
+        // Ctrl+L: Toggle panel locking
+        if (keyData == (Keys.Control | Keys.L))
+        {
+            try
+            {
+                TogglePanelLocking();
+                return true;
+            }
+            catch (InvalidOperationException invEx)
+            {
+                _logger?.LogError(invEx, "Error toggling panel locking - invalid operation");
+                UIHelper.ShowErrorOnUI(this,
+                    "Failed to toggle panel locking. The docking manager may not be ready.",
+                    "Panel Lock Error", _logger);
             }
         }
 
@@ -132,7 +221,7 @@ public partial class MainForm
         // [PERF] Panel Navigation Shortcuts (Alt+key)
         if (keyData == (Keys.Alt | Keys.A))
         {
-            return TryShowPanel<Controls.AccountsPanel>("Accounts", DockingStyle.Right);
+            return TryShowPanel<Panels.AccountsPanel>("Accounts", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.C))
@@ -142,12 +231,32 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.D))
         {
-            return TryShowPanel<Controls.DashboardPanel>("Dashboard", DockingStyle.Top);
+            return TryShowPanel<Panels.DashboardPanel>("Dashboard", DockingStyle.Top);
+        }
+
+        if (keyData == (Keys.Alt | Keys.R))
+        {
+            return TryShowPanel<Panels.ReportsPanel>("Reports", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.S))
         {
-            return TryShowPanel<Controls.SettingsPanel>("Settings", DockingStyle.Right);
+            return TryShowPanel<Panels.SettingsPanel>("Settings", DockingStyle.Right);
+        }
+
+        if (keyData == (Keys.Alt | Keys.W))
+        {
+            return TryShowPanel<Panels.WarRoomPanel>("War Room", DockingStyle.Right);
+        }
+
+        if (keyData == (Keys.Alt | Keys.Q))
+        {
+            return TryShowPanel<Panels.QuickBooksPanel>("QuickBooks", DockingStyle.Right);
+        }
+
+        if (keyData == (Keys.Alt | Keys.J))
+        {
+            return TryShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Bottom);
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
@@ -158,9 +267,20 @@ public partial class MainForm
     /// </summary>
     private bool TryShowPanel<TPanel>(string panelName, DockingStyle style) where TPanel : UserControl
     {
+        if (_panelNavigator == null)
+        {
+            _logger?.LogWarning("TryShowPanel<{PanelType}> failed: PanelNavigator is null - navigation system not initialized", typeof(TPanel).Name);
+            MessageBox.Show(
+                $"The {panelName} panel is not ready. Please try again in a moment.",
+                "Panel Not Ready",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return false;
+        }
+
         try
         {
-            _panelNavigator?.ShowPanel<TPanel>(panelName, style, true);
+            _panelNavigator.ShowPanel<TPanel>(panelName, style, true);
             return true;
         }
         catch (Exception ex)
@@ -321,7 +441,14 @@ public partial class MainForm
                     if (found != null) return found;
                 }
             }
-            catch { }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogDebug("ToolStripItem {ItemName} was disposed during recursive search", item.Name);
+            }
+            catch (InvalidOperationException invEx)
+            {
+                _logger?.LogDebug(invEx, "Invalid operation while searching ToolStripItem {ItemName}", item.Name);
+            }
         }
         return null;
     }
@@ -347,7 +474,14 @@ public partial class MainForm
                     if (found != null) return found;
                 }
             }
-            catch { }
+            catch (ObjectDisposedException)
+            {
+                _logger?.LogDebug("ToolStripItem {ItemName} was disposed during text box search", item.Name);
+            }
+            catch (InvalidOperationException invEx)
+            {
+                _logger?.LogDebug(invEx, "Invalid operation while searching for ToolStripTextBox {ItemName}", item.Name);
+            }
         }
         return null;
     }

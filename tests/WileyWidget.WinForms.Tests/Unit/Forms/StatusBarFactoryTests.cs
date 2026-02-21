@@ -69,6 +69,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             public event EventHandler<string> ThemeChanged = delegate { };
             public string CurrentTheme => "Office2019Colorful";
+            public bool IsDark => false;
             public void ApplyTheme(string themeName) => ThemeChanged?.Invoke(this, themeName);
         }
 

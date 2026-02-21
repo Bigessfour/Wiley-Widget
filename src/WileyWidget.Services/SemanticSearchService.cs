@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Microsoft.SemanticKernel.Embeddings;
+using Microsoft.Extensions.AI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,53 +21,23 @@ namespace WileyWidget.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<SemanticSearchService> _logger;
-        private readonly Lazy<ITextEmbeddingGenerationService?> _embeddingService;
+        private readonly IEmbeddingGenerator<string, Embedding<float>>? _embeddingService;
 
         public SemanticSearchService(
             IConfiguration configuration,
-            ILogger<SemanticSearchService> logger)
+            ILogger<SemanticSearchService> logger,
+            IEmbeddingGenerator<string, Embedding<float>>? embeddingService = null)
         {
             _configuration = configuration;
             _logger = logger;
-            _embeddingService = new Lazy<ITextEmbeddingGenerationService?>(() => InitializeEmbeddingService());
-        }
-
-        private ITextEmbeddingGenerationService? InitializeEmbeddingService()
-        {
-            try
+            _embeddingService = embeddingService;
+            if (_embeddingService != null)
             {
-                var apiKey = _configuration["XAI_API_KEY"] ?? _configuration["XAI:ApiKey"];
-                if (string.IsNullOrWhiteSpace(apiKey))
-                {
-                    _logger.LogWarning("[SEMANTIC_SEARCH] API key not configured - semantic search unavailable");
-                    return null;
-                }
-
-                // Grok API uses OpenAI-compatible endpoint
-                // Note: Grok may not support embeddings endpoint yet - fallback to keyword search
-                var endpoint = new Uri("https://api.x.ai/v1");
-                var model = "text-embedding-ada-002"; // OpenAI embedding model as placeholder
-
-                // OpenAITextEmbeddingGenerationService doesn't support custom endpoint parameter
-                // Use HttpClient with custom BaseAddress for custom endpoints
-                var httpClient = new System.Net.Http.HttpClient
-                {
-                    BaseAddress = endpoint
-                };
-
-                // Use standalone service instance for custom endpoint via HttpClient
-                var textEmbeddingService = new Microsoft.SemanticKernel.Connectors.OpenAI.OpenAITextEmbeddingGenerationService(
-                    modelId: model,
-                    apiKey: apiKey,
-                    httpClient: httpClient);
-
                 _logger.LogInformation("[SEMANTIC_SEARCH] Embedding service initialized successfully");
-                return textEmbeddingService;
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "[SEMANTIC_SEARCH] Failed to initialize embedding service");
-                return null;
+                _logger.LogWarning("[SEMANTIC_SEARCH] Embedding service not available - will use keyword search fallback");
             }
         }
 
@@ -89,8 +59,7 @@ namespace WileyWidget.Services
                 }).ToList();
             }
 
-            var embeddingService = _embeddingService.Value;
-            if (embeddingService == null)
+            if (_embeddingService == null)
             {
                 _logger.LogDebug("[SEMANTIC_SEARCH] Service unavailable - falling back to keyword search");
                 return await FallbackKeywordSearchAsync(items, query, textExtractor, cancellationToken);
@@ -98,8 +67,9 @@ namespace WileyWidget.Services
 
             try
             {
-                // Generate embedding for search query
-                var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(query, cancellationToken: cancellationToken);
+                // Generate embedding for search query (new API returns IList<Embedding<float>>)
+                var queryEmbeddings = await _embeddingService.GenerateAsync(new[] { query }, options: null, cancellationToken);
+                var queryEmbedding = queryEmbeddings[0].Vector;
 
                 var results = new List<SemanticSearchResult<T>>();
 
@@ -110,10 +80,11 @@ namespace WileyWidget.Services
                         continue;
 
                     // Generate embedding for item text
-                    var itemEmbedding = await embeddingService.GenerateEmbeddingAsync(itemText, cancellationToken: cancellationToken);
+                    var itemEmbeddings = await _embeddingService.GenerateAsync(new[] { itemText }, options: null, cancellationToken);
+                    var itemEmbeddingVector = itemEmbeddings[0].Vector;
 
                     // Calculate cosine similarity
-                    var similarity = CalculateCosineSimilarity(queryEmbedding, itemEmbedding);
+                    var similarity = CalculateCosineSimilarity(queryEmbedding, itemEmbeddingVector);
 
                     if (similarity >= threshold)
                     {
@@ -176,7 +147,7 @@ namespace WileyWidget.Services
 
         public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
         {
-            return _embeddingService.Value != null;
+            return _embeddingService != null;
         }
     }
 }

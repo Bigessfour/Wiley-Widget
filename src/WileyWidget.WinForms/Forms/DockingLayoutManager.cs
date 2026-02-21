@@ -16,9 +16,11 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Utils;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using WileyWidget.WinForms.Helpers;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -45,9 +47,9 @@ public class DockingLayoutManager : IDisposable
     private readonly string _layoutPath;  // Path for layout persistence
     private readonly Control _uiControl;  // UI control for thread marshaling
     private readonly DockingManager _dockingManager;
-    private readonly GradientPanelExt _leftDockPanel;
-    private readonly GradientPanelExt _rightDockPanel;
-    private readonly GradientPanelExt _centralDocumentPanel;
+    private readonly LegacyGradientPanel? _leftDockPanel;
+    private readonly LegacyGradientPanel? _rightDockPanel;
+    private readonly LegacyGradientPanel _centralDocumentPanel;
     private readonly ActivityLogPanel? _activityLogPanel;
 
     private const string LayoutVersionAttributeName = "LayoutVersion";
@@ -69,9 +71,9 @@ public class DockingLayoutManager : IDisposable
     private static readonly object _cacheLock = new();
 
     // Dynamic panels tracking
-    private Dictionary<string, GradientPanelExt>? _dynamicDockPanels = new();  // Instance-safe
+    private Dictionary<string, LegacyGradientPanel>? _dynamicDockPanels = new();  // Instance-safe
 
-    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, GradientPanelExt leftDockPanel, GradientPanelExt rightDockPanel, GradientPanelExt centralDocumentPanel, ActivityLogPanel? activityLogPanel)
+    public DockingLayoutManager(IServiceProvider serviceProvider, IPanelNavigationService? panelNavigator, ILogger? logger, string layoutPath, Control uiControl, DockingManager dockingManager, LegacyGradientPanel? leftDockPanel, LegacyGradientPanel? rightDockPanel, LegacyGradientPanel centralDocumentPanel, ActivityLogPanel? activityLogPanel)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _panelNavigator = panelNavigator;
@@ -79,10 +81,12 @@ public class DockingLayoutManager : IDisposable
         _layoutPath = layoutPath ?? throw new ArgumentNullException(nameof(layoutPath));
         _uiControl = uiControl ?? throw new ArgumentNullException(nameof(uiControl));
         _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager));
-        _leftDockPanel = leftDockPanel ?? throw new ArgumentNullException(nameof(leftDockPanel));
-        _rightDockPanel = rightDockPanel ?? throw new ArgumentNullException(nameof(rightDockPanel));
+        _leftDockPanel = leftDockPanel;
+        _rightDockPanel = rightDockPanel;
         _centralDocumentPanel = centralDocumentPanel ?? throw new ArgumentNullException(nameof(centralDocumentPanel));
         _activityLogPanel = activityLogPanel;
+
+        // Note: DockingManager serialization handled by LoadDockState/SaveDockState with GZip compression
 
         // Setup save timer with tick handler
         _dockingLayoutSaveTimer = new System.Windows.Forms.Timer
@@ -92,7 +96,7 @@ public class DockingLayoutManager : IDisposable
         // Use synchronous handler to avoid fire-and-forget async pattern
         _dockingLayoutSaveTimer.Tick += (_, _) => DebounceSaveDockingLayoutSync();
 
-        _logger?.LogDebug("DockingLayoutManager initialized with layout path: {Path} (GZip compression enabled, retry mechanism active)", _layoutPath);
+        _logger?.LogDebug("DockingLayoutManager initialized with layout path: {Path} (GZip compression enabled, retry mechanism active, BinaryFmtStream serialization configured)", _layoutPath);
     }
 
     /// <summary>
@@ -110,6 +114,10 @@ public class DockingLayoutManager : IDisposable
             _logger?.LogWarning("UI control is disposed or handle not created - skipping layout load");
             return;
         }
+
+        // [QUICK WIN] Sanitize SplitContainer values before loading to prevent layout crashes
+        // This ensures that even if a bad layout was persisted, it is corrected before being restored.
+        SanitizeSplitContainerMinSizes(_uiControl);
 
         var coll = _dockingManager.Controls as System.Collections.ICollection;
         if (coll == null || coll.Count == 0)
@@ -160,35 +168,35 @@ public class DockingLayoutManager : IDisposable
                 // 2. Fallback to disk if cache miss or decompression failed (async I/O, background-safe)
                 if (layoutData == null)
                 {
-                        // Ensure directory exists before attempting file I/O. This avoids first-run failures
-                        // when the settings folder has not yet been created by the application.
-                        var dir = Path.GetDirectoryName(_layoutPath);
-                        if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    // Ensure directory exists before attempting file I/O. This avoids first-run failures
+                    // when the settings folder has not yet been created by the application.
+                    var dir = Path.GetDirectoryName(_layoutPath);
+                    if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    {
+                        try
                         {
-                            try
-                            {
-                                Directory.CreateDirectory(dir);
-                                _logger?.LogDebug("Created layout directory: {Dir}", dir);
-                            }
-                            catch (Exception dirEx)
-                            {
-                                _logger?.LogWarning(dirEx, "Failed to create layout directory {Dir} - will continue and attempt fallback if file missing", dir);
-                            }
+                            Directory.CreateDirectory(dir);
+                            _logger?.LogDebug("Created layout directory: {Dir}", dir);
                         }
+                        catch (Exception dirEx)
+                        {
+                            _logger?.LogWarning(dirEx, "Failed to create layout directory {Dir} - will continue and attempt fallback if file missing", dir);
+                        }
+                    }
 
-                        if (!File.Exists(_layoutPath))
+                    if (!File.Exists(_layoutPath))
+                    {
+                        _logger?.LogInformation("No saved layout found at {Path} - resetting to default docking configuration", _layoutPath);
+                        try
                         {
-                            _logger?.LogInformation("No saved layout found at {Path} - resetting to default docking configuration", _layoutPath);
-                            try
-                            {
-                                ResetToDefaultLayout();
-                            }
-                            catch (Exception resetEx)
-                            {
-                                _logger?.LogWarning(resetEx, "ResetToDefaultLayout() failed during first-run fallback");
-                            }
-                            return;
+                            ResetToDefaultLayout();
                         }
+                        catch (Exception resetEx)
+                        {
+                            _logger?.LogWarning(resetEx, "ResetToDefaultLayout() failed during first-run fallback");
+                        }
+                        return;
+                    }
 
                     var ioSw = Stopwatch.StartNew();
                     byte[] diskData = await File.ReadAllBytesAsync(_layoutPath, cancellationToken).ConfigureAwait(false);
@@ -314,15 +322,6 @@ public class DockingLayoutManager : IDisposable
                                             _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
                                         }
 
-                                        try
-                                        {
-                                            // Ensure default tab/content is selected before showing
-                                            RightDockPanelFactory.SwitchRightPanelContent(_rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
-                                        }
-                                        catch (Exception switchEx)
-                                        {
-                                            _logger?.LogDebug(switchEx, "Failed to switch right panel content after layout apply");
-                                        }
 
                                         // Small micro-delay to let the control settle (UI thread)
                                         try { await Task.Delay(50); } catch { /* ignore */ }
@@ -608,14 +607,6 @@ public class DockingLayoutManager : IDisposable
                                     _logger?.LogDebug(visEx, "Failed to set right panel visibility=false before layout apply");
                                 }
 
-                                try
-                                {
-                                    RightDockPanelFactory.SwitchRightPanelContent(_rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
-                                }
-                                catch (Exception switchEx)
-                                {
-                                    _logger?.LogDebug(switchEx, "Failed to switch right panel content after layout apply");
-                                }
 
                                 try { Thread.Sleep(50); } catch { /* ignore */ }
 
@@ -817,12 +808,22 @@ public class DockingLayoutManager : IDisposable
         if (dockingManager == null) throw new ArgumentNullException(nameof(dockingManager));
         if (_isSavingLayout) return;  // Debounce
 
-        lock (_dockingSaveLock)
+        // ✅ FIX (P2): Add timeout protection to prevent blocking during shutdown
+        if (!Monitor.TryEnter(_dockingSaveLock, TimeSpan.FromSeconds(5)))
+        {
+            _logger?.LogWarning("Dock layout save skipped - could not acquire lock within 5s (shutdown in progress?)");
+            return; // Graceful degradation - skip save if blocked
+        }
+
+        try
         {
             if ((DateTime.Now - _lastSaveTime).TotalMilliseconds < MinimumSaveIntervalMs) return;
 
             _isSavingLayout = true;
             var sw = Stopwatch.StartNew();
+
+            var hostControl = dockingManager.HostControl ?? _uiControl;
+            SanitizeSplitContainerMinSizes(hostControl);
             try
             {
                 // Serialize layout
@@ -898,6 +899,10 @@ public class DockingLayoutManager : IDisposable
                 sw.Stop();
             }
         }
+        finally
+        {
+            Monitor.Exit(_dockingSaveLock); // ✅ FIX (P2): Release lock from TryEnter
+        }
     }
 
     /// <summary>
@@ -968,6 +973,29 @@ public class DockingLayoutManager : IDisposable
         await Task.CompletedTask;  // Placeholder
     }
 
+    private void SanitizeSplitContainerMinSizes(Control? root)
+    {
+        if (root == null)
+            return;
+
+        foreach (Control child in root.Controls)
+        {
+            if (child is SplitContainer standardSplit)
+            {
+                SafeSplitterDistanceHelper.ClampMinSizesToAvailableSpace(standardSplit);
+            }
+            else if (child is SplitContainerAdv advSplit)
+            {
+                SafeSplitterDistanceHelper.ClampMinSizesToAvailableSpace(advSplit);
+            }
+
+            if (child.HasChildren)
+            {
+                SanitizeSplitContainerMinSizes(child);
+            }
+        }
+    }
+
     /// <summary>
     /// Restore dynamic panels from persistence.
     /// </summary>
@@ -976,7 +1004,7 @@ public class DockingLayoutManager : IDisposable
         // Placeholder: Load from XML or config, create panels
         foreach (var info in GetPersistedDynamicPanels())  // Assume method to fetch
         {
-            var panel = new GradientPanelExt { Name = info.Name };
+            var panel = new LegacyGradientPanel { Name = info.Name };
             Control host = dockingManager.HostControl;
             if (host != null)
             {
@@ -1052,11 +1080,14 @@ public class DockingLayoutManager : IDisposable
             try
             {
                 // Left panel (Navigation)
-                _dockingManager.SetEnableDocking(_leftDockPanel, true);
-                _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
-                _dockingManager.DockControl(_leftDockPanel, hostControl, DockingStyle.Left, 300);
-                _dockingManager.SetAutoHideMode(_leftDockPanel, true);
-                _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px auto-hide)");
+                if (_leftDockPanel != null)
+                {
+                    _dockingManager.SetEnableDocking(_leftDockPanel, true);
+                    _dockingManager.SetDockLabel(_leftDockPanel, "Navigation");
+                    _dockingManager.DockControl(_leftDockPanel, hostControl, DockingStyle.Left, 300);
+                    _dockingManager.SetAutoHideMode(_leftDockPanel, true);
+                    _logger?.LogDebug("Reset left docking panel to default (Navigation, 300px auto-hide)");
+                }
             }
             catch (Exception leftEx)
             {
@@ -1066,11 +1097,14 @@ public class DockingLayoutManager : IDisposable
             try
             {
                 // Right panel (Activity)
-                _dockingManager.SetEnableDocking(_rightDockPanel, true);
-                _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
-                _dockingManager.DockControl(_rightDockPanel, hostControl, DockingStyle.Right, 350);
-                _dockingManager.SetAutoHideMode(_rightDockPanel, true);
-                _logger?.LogDebug("Reset right docking panel to default (Activity, 350px auto-hide)");
+                if (_rightDockPanel != null)
+                {
+                    _dockingManager.SetEnableDocking(_rightDockPanel, true);
+                    _dockingManager.SetDockLabel(_rightDockPanel, "Activity");
+                    _dockingManager.DockControl(_rightDockPanel, hostControl, DockingStyle.Right, 350);
+                    _dockingManager.SetAutoHideMode(_rightDockPanel, true);
+                    _logger?.LogDebug("Reset right docking panel to default (Activity, 350px auto-hide)");
+                }
             }
             catch (Exception rightEx)
             {

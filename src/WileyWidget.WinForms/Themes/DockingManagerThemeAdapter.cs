@@ -105,31 +105,31 @@ namespace WileyWidget.WinForms.Themes
         /// <returns>The theme name (e.g., "Office2019Colorful"), or ThemeColors.DefaultTheme if unknown.</returns>
         public string GetCurrentThemeName()
         {
-                VisualStyle style;
-                try
-                {
-                    style = _dockingManager.VisualStyle;
-                }
-                catch (Exception ex)
-                {
-                    // Some Syncfusion VisualStyle accesses can throw (renderer not initialized).
-                    // Treat any error reading the current style as an "unknown" style and
-                    // return the default theme name so callers remain stable in test hosts.
-                    _logger?.LogDebug(ex, "Failed to read DockingManager.VisualStyle - treating as unknown style");
-                    return ThemeColors.DefaultTheme;
-                }
-
-                // Search the theme map for a matching VisualStyle
-                foreach (var kvp in ThemeMap)
-                {
-                    if (kvp.Value == style)
-                    {
-                        return kvp.Key;
-                    }
-                }
-
-                // Unknown style - return default
+            VisualStyle style;
+            try
+            {
+                style = _dockingManager.VisualStyle;
+            }
+            catch (Exception ex)
+            {
+                // Some Syncfusion VisualStyle accesses can throw (renderer not initialized).
+                // Treat any error reading the current style as an "unknown" style and
+                // return the default theme name so callers remain stable in test hosts.
+                _logger?.LogDebug(ex, "Failed to read DockingManager.VisualStyle - treating as unknown style");
                 return ThemeColors.DefaultTheme;
+            }
+
+            // Search the theme map for a matching VisualStyle
+            foreach (var kvp in ThemeMap)
+            {
+                if (kvp.Value == style)
+                {
+                    return kvp.Key;
+                }
+            }
+
+            // Unknown style - return default
+            return ThemeColors.DefaultTheme;
         }
 
         /// <summary>

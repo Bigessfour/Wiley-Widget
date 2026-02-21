@@ -34,7 +34,7 @@ public static class PanelReflectionHelper
     /// </summary>
     public static object? GetViewModelForTesting(UserControl panel)
     {
-        var vmProperty = panel.GetType().GetProperty("ViewModel", 
+        var vmProperty = panel.GetType().GetProperty("ViewModel",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
         return vmProperty?.GetValue(panel);
     }
@@ -44,7 +44,7 @@ public static class PanelReflectionHelper
     /// </summary>
     public static object? GetPrivateField(UserControl panel, string fieldName)
     {
-        var field = panel.GetType().GetField(fieldName, 
+        var field = panel.GetType().GetField(fieldName,
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         return field?.GetValue(panel);
     }

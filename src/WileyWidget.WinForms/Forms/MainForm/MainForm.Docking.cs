@@ -14,28 +14,31 @@ using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms;
-using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
+using LegacyGradientPanel = WileyWidget.WinForms.Controls.Base.LegacyGradientPanel;
 
 namespace WileyWidget.WinForms.Forms;
 
 public partial class MainForm
 {
     private DockingManager? _dockingManager;
-    private WileyWidget.WinForms.Controls.ActivityLogPanel? _activityLogPanel;
+    private ActivityLogPanel? _activityLogPanel;
     private DockingLayoutManager? _dockingLayoutManager;
     private DockingManagerThemeAdapter? _dockingManagerThemeAdapter;
     private Panel? _leftDockPanel;
-    #pragma warning disable CS0649
+#pragma warning disable CS0649
     private Panel? _centralDocumentPanel;
-    #pragma warning restore CS0649
+#pragma warning restore CS0649
     private Panel? _rightDockPanel;
-    private Dictionary<string, Control>? _dynamicDockPanels;
+    private LegacyGradientPanel? _jarvisDockPanel;  // Fixed non-dockable JARVIS sidebar
+    private JARVISChatUserControl? _jarvisChatUserControl;  // JARVIS control reference
 
     [DllImport("user32.dll")]
     private static extern bool LockWindowUpdate(IntPtr hWndLock);
@@ -79,7 +82,7 @@ public partial class MainForm
             _centralDocumentPanel = centralPanel;
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
-            _dynamicDockPanels ??= new Dictionary<string, Control>();
+            // dynamic dock panels removed: DockingHostFactory owns panel creation
 
             if (_leftDockPanel != null)
             {
@@ -105,7 +108,7 @@ public partial class MainForm
                 _activityLogPanel.AccessibleDescription ??= "Application activity log";
             }
 
-            ConfigureDockingManagerSettings();
+            // ConfigureDockingManagerSettings() removed - was dead code never called from active code path
 
             var currentTheme = _themeService?.CurrentTheme ?? AppThemeColors.DefaultTheme;
             ThemeApplicationHelper.ApplyThemeToDockingManager(_dockingManager, currentTheme, _logger);
@@ -121,11 +124,15 @@ public partial class MainForm
 
             if (_leftDockPanel != null)
             {
-                _leftDockPanel.Visible = true;
+                // Respect AutoShowPanels configuration
+                bool shouldShow = _uiConfig?.AutoShowPanels ?? true;
+                if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                _leftDockPanel.Visible = shouldShow;
+
                 try
                 {
-                    _dockingManager.SetDockVisibility(_leftDockPanel, true);
-                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _leftDockPanel.Name ?? "null");
+                    _dockingManager.SetDockVisibility(_leftDockPanel, shouldShow);
+                    _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _leftDockPanel.Name ?? "null");
                 }
                 catch (Exception ex)
                 {
@@ -149,11 +156,15 @@ public partial class MainForm
 
             if (_rightDockPanel != null)
             {
-                _rightDockPanel.Visible = false;
+                // Respect AutoShowPanels configuration
+                bool shouldShow = _uiConfig?.AutoShowPanels ?? false; // Right panel default was false
+                if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                _rightDockPanel.Visible = shouldShow;
+
                 try
                 {
-                    _dockingManager.SetDockVisibility(_rightDockPanel, false);
-                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _rightDockPanel.Name ?? "null");
+                    _dockingManager.SetDockVisibility(_rightDockPanel, shouldShow);
+                    _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _rightDockPanel.Name ?? "null");
                 }
                 catch (Exception ex)
                 {
@@ -165,7 +176,36 @@ public partial class MainForm
 
             if (_activityLogPanel != null)
             {
-                _activityLogPanel.Visible = true;
+                _activityLogPanel.Visible = false;
+            }
+
+            // Create JARVIS Chat as fixed non-dockable sidebar (right-side)
+            if (_dockingManager != null && _serviceProvider != null)
+            {
+                try
+                {
+                    (_jarvisDockPanel, _jarvisChatUserControl) = JarvisDockPanelFactory.CreateJarvisDockPanel(
+                        this, _serviceProvider, _logger);
+
+                    if (_jarvisDockPanel != null)
+                    {
+                        // Add JARVIS panel to MainForm (positioned right-side via DockStyle.Right)
+                        // [CLEAN SLATE] In MinimalMode, we auto-show JARVIS as the primary focus
+                        bool shouldShowJarvis = _uiConfig?.MinimalMode ?? false;
+                        _jarvisDockPanel.Visible = shouldShowJarvis;
+                        this.Controls.Add(_jarvisDockPanel);
+
+                        // Configure as fixed (non-dockable) with DockingManager
+                        JarvisDockPanelFactory.ConfigureJarvisPanelAsDockingDisabled(_dockingManager, _jarvisDockPanel, _logger);
+
+                        _logger?.LogInformation("JARVIS Chat panel created and integrated - Fixed sidebar, hidden by default, non-dockable");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to create JARVIS Chat panel - chat will be unavailable");
+                    // Don't fail entire docking init; continue without JARVIS
+                }
             }
 
             if (_ribbon != null) _ribbon.BringToFront();
@@ -225,11 +265,10 @@ public partial class MainForm
             _centralDocumentPanel = centralPanel;
             _activityLogPanel = activityLogPanel;
             _dockingLayoutManager = layoutManager;
-            _dynamicDockPanels ??= new Dictionary<string, Control>();
             _logger?.LogDebug("Docking panels assigned: Left={Left}, Right={Right}, Central={Central}, Activity={Activity}",
                 _leftDockPanel?.Name, _rightDockPanel?.Name, _centralDocumentPanel?.Name, _activityLogPanel?.Name);
 
-            ConfigureDockingManagerSettings();
+            // ConfigureDockingManagerSettings() removed - was dead code never called from active code path
 
             var currentTheme = _themeService?.CurrentTheme ?? AppThemeColors.DefaultTheme;
             ThemeApplicationHelper.ApplyThemeToDockingManager(_dockingManager, currentTheme, _logger);
@@ -248,11 +287,15 @@ public partial class MainForm
                 _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
                 if (_leftDockPanel != null)
                 {
-                    _leftDockPanel.Visible = true;
+                    // Respect AutoShowPanels configuration
+                    bool shouldShow = _uiConfig?.AutoShowPanels ?? true;
+                    if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                    _leftDockPanel.Visible = shouldShow;
+
                     try
                     {
-                        _dockingManager.SetDockVisibility(_leftDockPanel, true);
-                        _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _leftDockPanel.Name ?? "null");
+                        _dockingManager.SetDockVisibility(_leftDockPanel, shouldShow);
+                        _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _leftDockPanel.Name ?? "null");
                     }
                     catch (Exception ex)
                     {
@@ -261,17 +304,20 @@ public partial class MainForm
                     }
                     _leftDockPanel.Refresh();
                     _dockingManager.SetControlMinimumSize(_leftDockPanel, new Size(300, 360));
-                    _logger?.LogDebug("Left panel configured: Visible=true, MinSize=300x360");
+                    _logger?.LogDebug("Left panel configured: Visible={Visible}, MinSize=300x360", shouldShow);
                 }
 
                 if (_rightDockPanel != null)
                 {
-                    // Start hidden by default to avoid covering central UI until user opens it
-                    _rightDockPanel.Visible = false;
+                    // Respect AutoShowPanels configuration (defaulted to false for right panel)
+                    bool shouldShow = _uiConfig?.AutoShowPanels ?? false;
+                    if (_uiConfig?.MinimalMode == true) shouldShow = false; // [CLEAN SLATE] MinimalMode suppresses all side panels
+                    _rightDockPanel.Visible = shouldShow;
+
                     try
                     {
-                        _dockingManager.SetDockVisibility(_rightDockPanel, false);
-                        _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", _rightDockPanel.Name ?? "null");
+                        _dockingManager.SetDockVisibility(_rightDockPanel, shouldShow);
+                        _logger?.LogDebug("SetDockVisibility set to {Visible} for {PanelName}", shouldShow, _rightDockPanel.Name ?? "null");
                     }
                     catch (Exception ex)
                     {
@@ -279,7 +325,7 @@ public partial class MainForm
                             _rightDockPanel.Name ?? "null");
                     }
                     _dockingManager.SetControlMinimumSize(_rightDockPanel, new Size(300, 360));
-                    _logger?.LogDebug("Right panel configured: Visible=false, MinSize=300x360");
+                    _logger?.LogDebug("Right panel configured: Visible={Visible}, MinSize=300x360", shouldShow);
                 }
             }
 
@@ -288,7 +334,7 @@ public partial class MainForm
             // 4. Activity grid will be loaded with actual data after docking completes
             if (_activityLogPanel != null)
             {
-                _activityLogPanel.Visible = true;
+                _activityLogPanel.Visible = false;
             }
 
             // Panel activation and layout recalc deferred until form is fully shown
@@ -303,192 +349,178 @@ public partial class MainForm
             else
             {
                 // CRITICAL: Ensure ribbon and status bar are on top of docking panels after DockingManager creation
-            // This prevents docking panels from covering the ribbon UI chrome
-            if (_ribbon != null)
-            {
-                try
+                // This prevents docking panels from covering the ribbon UI chrome
+                if (_ribbon != null)
                 {
-                    _ribbon.BringToFront();
-                    _logger?.LogDebug("Ribbon z-order corrected after DockingManager initialization");
-                }
-                catch (Exception zEx)
-                {
-                    _logger?.LogDebug(zEx, "Failed to bring ribbon to front after docking initialization");
-                }
-            }
-
-            if (_statusBar != null)
-            {
-                try
-                {
-                    _statusBar.BringToFront();
-                    _logger?.LogDebug("Status bar z-order corrected after DockingManager initialization");
-                }
-                catch (Exception zEx)
-                {
-                    _logger?.LogDebug(zEx, "Failed to bring status bar to front after docking initialization");
-                }
-            }
-
-            // Ensure panel navigation is available before layout load so dynamic panels recreate with real controls
-            EnsurePanelNavigatorInitialized();
-
-            // Layout manager is now created by DockingHostFactory
-            var layoutPath = GetDockingLayoutPath();
-            _logger?.LogDebug("DockingLayoutManager provided by factory with path {LayoutPath}", layoutPath);
-
-            // Transfer ownership of panels and fonts to the layout manager
-            var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
-            var dockTabFont = new Font(SegoeUiFontName, 9F);
-
-            // Note: DockingLayoutManager initialization deferred - methods will be available in future
-            // For now, panels are managed directly by DockingManager
-            _logger?.LogDebug("DockingLayoutManager from factory - initialization deferred");
-
-            HideStandardPanelsForDocking();
-
-            // CRITICAL FIX: Create and dock initial panels BEFORE suspending layout
-            // This ensures DockingManager has controls in its collection before OnPaint events fire
-            // Without this, ArgumentOutOfRangeException occurs in DockHost.GetPaintInfo()
-            try
-            {
-                // Panels are now created by DockingHostFactory - just ensure they're properly configured
-                var dynamicPanelCount = _dynamicDockPanels?.Count ?? 0;
-                var createdPanelCount = new[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel }.Count(p => p != null) + dynamicPanelCount;
-                _logger?.LogInformation("Docking panels created by factory — count={PanelCount}, dynamicPanels={DynamicCount}, layoutManagerReady={LayoutManagerReady}",
-                    createdPanelCount, dynamicPanelCount, _dockingLayoutManager != null);
-            }
-            catch (Exception panelEx)
-            {
-                _logger?.LogError(panelEx, "Failed to configure docking panels - paint exceptions may occur");
-            }
-
-            // Reduce flicker during layout load + theme application (best-effort).
-            try
-            {
-                try
-                {
-                    _dockingManager.LockHostFormUpdate();
-                    _dockingManager.LockDockPanelsUpdate();
-                }
-                catch (Exception lockEx)
-                {
-                    _logger?.LogWarning(lockEx, "Failed to lock DockingManager updates - continuing without lock");
-                }
-
-                try
-                {
-                    _dockingManager.SuspendLayout();
-                }
-                catch (Exception suspendEx)
-                {
-                    _logger?.LogWarning(suspendEx, "Failed to suspend DockingManager layout - continuing");
-                }
-
-                // CRITICAL: Layout loading is now deferred to InitializeAsync() via LoadAndApplyDockingLayout()
-                // This ensures the form is fully rendered before we start heavy docking restoration.
-                _logger?.LogDebug("DockingManager infrastructure initialized. Layout restoration will follow in InitializeAsync().");
-
-                // Theme application deferred: Applied after DockingManager.ResumeLayout() to avoid conflicts
-
-                // CRITICAL: Apply SFSkinManager theme AFTER DockingManager is fully initialized and panels are docked
-                // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
-                var themeStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                try
-                {
-                    var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-                    SfSkinManager.SetVisualStyle(this, themeName);
-                    themeStopwatch.Stop();
-                    StartupInstrumentation.RecordPhaseTime("Theme Application", themeStopwatch.ElapsedMilliseconds);
-                    _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme} ({Time}ms)", themeName, themeStopwatch.ElapsedMilliseconds);
-                }
-                catch (Exception themeEx)
-                {
-                    themeStopwatch.Stop();
-                    _logger?.LogWarning(themeEx, "Failed to apply SFSkinManager theme to MainForm after DockingManager setup");
-                }
-
-                // Ensure panels start visible & activated
-                if (_dockingManager != null)
-                {
-                    var controlsObj = _dockingManager.Controls;
-                    if (controlsObj != null)
+                    try
                     {
-                        // Prefer ICollection for Count and safe enumeration
-                        var coll = controlsObj as System.Collections.ICollection;
-                        if (coll != null && coll.Count > 0)
+                        _ribbon.BringToFront();
+                        _logger?.LogDebug("Ribbon z-order corrected after DockingManager initialization");
+                    }
+                    catch (Exception zEx)
+                    {
+                        _logger?.LogDebug(zEx, "Failed to bring ribbon to front after docking initialization");
+                    }
+                }
+
+                if (_statusBar != null)
+                {
+                    try
+                    {
+                        _statusBar.BringToFront();
+                        _logger?.LogDebug("Status bar z-order corrected after DockingManager initialization");
+                    }
+                    catch (Exception zEx)
+                    {
+                        _logger?.LogDebug(zEx, "Failed to bring status bar to front after docking initialization");
+                    }
+                }
+
+                // Ensure panel navigation is available before layout load so dynamic panels recreate with real controls
+                EnsurePanelNavigatorInitialized();
+
+                // Layout manager is now created by DockingHostFactory
+                var layoutPath = GetDockingLayoutPath();
+                _logger?.LogDebug("DockingLayoutManager provided by factory with path {LayoutPath}", layoutPath);
+
+                // Transfer ownership of panels and fonts to the layout manager
+                var dockAutoHideTabFont = new Font(SegoeUiFontName, 9F);
+                var dockTabFont = new Font(SegoeUiFontName, 9F);
+
+                // Note: DockingLayoutManager initialization deferred - methods will be available in future
+                // For now, panels are managed directly by DockingManager
+                _logger?.LogDebug("DockingLayoutManager from factory - initialization deferred");
+
+                HideStandardPanelsForDocking();
+
+                // CRITICAL FIX: Create and dock initial panels BEFORE suspending layout
+                // This ensures DockingManager has controls in its collection before OnPaint events fire
+                // Without this, ArgumentOutOfRangeException occurs in DockHost.GetPaintInfo()
+                try
+                {
+                    // Panels are now created by DockingHostFactory - just ensure they're properly configured
+                    var createdPanelCount = new[] { _leftDockPanel, _centralDocumentPanel, _rightDockPanel }.Count(p => p != null);
+                    _logger?.LogInformation("Docking panels created by factory — count={PanelCount}, layoutManagerReady={LayoutManagerReady}",
+                        createdPanelCount, _dockingLayoutManager != null);
+                }
+                catch (Exception panelEx)
+                {
+                    _logger?.LogError(panelEx, "Failed to configure docking panels - paint exceptions may occur");
+                }
+
+                // Reduce flicker during layout load + theme application (best-effort).
+                try
+                {
+                    try
+                    {
+                        _dockingManager.LockHostFormUpdate();
+                        _dockingManager.LockDockPanelsUpdate();
+                    }
+                    catch (Exception lockEx)
+                    {
+                        _logger?.LogWarning(lockEx, "Failed to lock DockingManager updates - continuing without lock");
+                    }
+
+                    try
+                    {
+                        _dockingManager.SuspendLayout();
+                    }
+                    catch (Exception suspendEx)
+                    {
+                        _logger?.LogWarning(suspendEx, "Failed to suspend DockingManager layout - continuing");
+                    }
+
+                    // CRITICAL: Layout loading is now deferred to InitializeAsync() via LoadAndApplyDockingLayout()
+                    // This ensures the form is fully rendered before we start heavy docking restoration.
+                    _logger?.LogDebug("DockingManager infrastructure initialized. Layout restoration will follow in InitializeAsync().");
+
+                    // Theme application deferred: Applied after DockingManager.ResumeLayout() to avoid conflicts
+
+                    // CRITICAL: Apply SFSkinManager theme AFTER DockingManager is fully initialized and panels are docked
+                    // This ensures theme cascade works correctly and prevents ArgumentOutOfRangeException in paint events
+                    var themeStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    try
+                    {
+                        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                        SfSkinManager.SetVisualStyle(this, themeName);
+                        themeStopwatch.Stop();
+                        StartupInstrumentation.RecordPhaseTime("Theme Application", themeStopwatch.ElapsedMilliseconds);
+                        _logger?.LogInformation("Applied SfSkinManager theme to MainForm after DockingManager setup: {Theme} ({Time}ms)", themeName, themeStopwatch.ElapsedMilliseconds);
+                    }
+                    catch (Exception themeEx)
+                    {
+                        themeStopwatch.Stop();
+                        _logger?.LogWarning(themeEx, "Failed to apply SFSkinManager theme to MainForm after DockingManager setup");
+                    }
+
+                    // Ensure panels start visible & activated
+                    if (_dockingManager != null)
+                    {
+                        try
                         {
-                            int floatingWindowCount = 0;
-                            foreach (var item in coll)
+                            var controlsObj = _dockingManager.Controls;
+                            if (controlsObj != null)
                             {
-                                if (item is Control control && !control.IsDisposed)
+                                // Prefer ICollection for Count and safe enumeration
+                                var coll = controlsObj as System.Collections.ICollection;
+                                if (coll != null && coll.Count > 0)
                                 {
-                                    try
+                                    int floatingWindowCount = 0;
+                                    foreach (var item in coll)
                                     {
-                                        // Refresh floating window by invalidating to trigger repaint
-                                        // This ensures Z-order is respected and no overlap occurs
-                                        control.Invalidate(true);
-                                        floatingWindowCount++;
+                                        if (item is Control control && !control.IsDisposed)
+                                        {
+                                            try
+                                            {
+                                                // Verify control has valid handle before invalidating
+                                                if (control.IsHandleCreated)
+                                                {
+                                                    // Refresh floating window by invalidating to trigger repaint
+                                                    // This ensures Z-order is respected and no overlap occurs
+                                                    control.Invalidate(true);
+                                                    floatingWindowCount++;
+                                                }
+                                            }
+                                            catch (ArgumentOutOfRangeException aorEx)
+                                            {
+                                                _logger?.LogDebug(aorEx, "ArgumentOutOfRangeException refreshing window: {WindowName} - window may not be fully initialized", control.Name);
+                                            }
+                                            catch (Exception windowEx)
+                                            {
+                                                _logger?.LogDebug(windowEx, "Failed to refresh window: {WindowName}", control.Name);
+                                            }
+                                        }
                                     }
-                                    catch (Exception windowEx)
+
+                                    if (floatingWindowCount > 0)
                                     {
-                                        _logger?.LogDebug(windowEx, "Failed to refresh window: {WindowName}", control.Name);
+                                        _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
                                     }
                                 }
-                            }
-
-                            if (floatingWindowCount > 0)
-                            {
-                                _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
-                            }
-                        }
-                        else
-                        {
-                            _logger?.LogWarning("No controls registered in DockingManager – skipping GetControls operations");
-                        }
-
-                        // Fall back to IEnumerator API (older Syncfusion versions expose an IEnumerator)
-                        if (controlsObj is System.Collections.IEnumerator enumerator)
-                        {
-                            int floatingWindowCount = 0;
-                            try
-                            {
-                                while (enumerator.MoveNext())
+                                else
                                 {
-                                    if (enumerator.Current is Control control && !control.IsDisposed)
-                                    {
-                                        try
-                                        {
-                                            control.Invalidate(true);
-                                            floatingWindowCount++;
-                                        }
-                                        catch (Exception windowEx)
-                                        {
-                                            _logger?.LogDebug(windowEx, "Failed to refresh window: {WindowName}", control.Name);
-                                        }
-                                    }
+                                    _logger?.LogWarning("No controls registered in DockingManager – skipping GetControls operations");
                                 }
                             }
-                            catch (Exception ex)
-                            {
-                                _logger?.LogWarning(ex, "Failed during float window iteration");
-                            }
-
-                            if (floatingWindowCount > 0)
-                            {
-                                _logger?.LogDebug("Float window Z-order refreshed ({Count} windows)", floatingWindowCount);
-                            }
+                        }
+                        catch (ArgumentOutOfRangeException aorEx)
+                        {
+                            _logger?.LogWarning(aorEx, "ArgumentOutOfRangeException during DockingManager control enumeration - docking system may not be fully initialized yet");
+                        }
+                        catch (Exception enumEx)
+                        {
+                            _logger?.LogWarning(enumEx, "Exception during DockingManager control enumeration");
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Exception during docking updates phase");
-            }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Exception during docking updates phase");
+                }
 
-            _logger?.LogInformation("InitializeSyncfusionDocking complete - ActivityLogPanel={HasActivityPanel}",
-            _activityLogPanel != null);
+                _logger?.LogInformation(
+                    "InitializeSyncfusionDocking complete - WileyWidget.WinForms.Controls.Panels.ActivityLogPanel={HasActivityPanel}",
+                    _activityLogPanel != null);
 
                 // FINAL Z-order correction: Ensure ribbon stays on top of all docking content
                 if (_ribbon != null)
@@ -716,12 +748,6 @@ public partial class MainForm
 
         try
         {
-            try
-            {
-                System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp"));
-                System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-log.txt"), $"OnThemeChanged invoked: {theme}\n");
-            }
-            catch { }
             _logger?.LogInformation("Applying theme change to all form controls: {Theme}", theme);
 
             // Apply theme recursively to entire control tree (form and all children)
@@ -740,11 +766,11 @@ public partial class MainForm
                 if (themeToggleBtn != null)
                 {
                     themeToggleBtn.Text = theme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
-                    try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-log.txt"), $"Updated ribbon themeToggle text to: {themeToggleBtn.Text}\n"); } catch { }
+                    _logger?.LogDebug("Updated ribbon themeToggle text to: {Text}", themeToggleBtn.Text);
                 }
                 else
                 {
-                    try { System.IO.File.AppendAllText(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "theme-log.txt"), "ribbon themeToggle not found\n"); } catch { }
+                    _logger?.LogDebug("Ribbon themeToggle not found");
                 }
             }
 
@@ -769,53 +795,23 @@ public partial class MainForm
         }
     }
 
-    /// <summary>
-    /// Initialize the DockingManager component with proper configuration
-    /// </summary>
-    private void InitializeDockingManager()
-    {
-        components ??= new Container();
-        _dockingManager = new DockingManager(components);
-        _dockingManager.HostControl = this;
-
-        ConfigureDockingManagerSettings();
-    }
-
-    /// <summary>
-    /// Configure DockingManager settings and theme
-    /// </summary>
-    private void ConfigureDockingManagerSettings()
-    {
-         if (_dockingManager == null) return;
-
-        // Phase 1 Simplification: EnableDocumentMode permanently false (panels only)
-        _dockingManager.EnableDocumentMode = false;
-        _logger?.LogInformation("DockingManager document mode disabled (using DockingManager for panels only)");
-
-        _dockingManager.PersistState = false;
-        _dockingManager.AnimateAutoHiddenWindow = true;
-        // REMOVED: Hard-coded fonts - SFSkinManager owns all theming
-        _dockingManager.ShowCaption = true;
-
-        // Give the DockingManager a stable name for tooling/tests
-        try
-        {
-            var nameProp = _dockingManager.GetType().GetProperty("Name");
-            if (nameProp != null && nameProp.CanWrite)
-            {
-                nameProp.SetValue(_dockingManager, "DockingManager_Main");
-            }
-        }
-        catch { }
-
-        // Intentionally skip extra event wiring in basic mode
-    }
+    // REMOVED: Dead code - InitializeDockingManager() and ConfigureDockingManagerSettings() were never called
+    // DockingManager is now created exclusively through DockingHostFactory.CreateDockingHost()
+    // See MainForm.OnShown() → InitializeSyncfusionDocking() for the active creation path
 
     private async Task LoadAndApplyDockingLayout(string layoutPath, CancellationToken cancellationToken = default)
     {
         if (_dockingManager == null)
         {
             _logger?.LogWarning("Cannot load docking layout - DockingManager is null");
+            return;
+        }
+
+        // [CLEAN SLATE] In MinimalMode, we skip loading the persisted docking layout
+        // to ensure a completely clean UI without interference from previous sessions.
+        if (_uiConfig?.MinimalMode == true)
+        {
+            _logger?.LogInformation("[CLEAN-SLATE] MinimalMode is active - skipping docking layout restoration for a clean UI");
             return;
         }
 
@@ -853,7 +849,6 @@ public partial class MainForm
         try
         {
             _asyncLogger?.Information("LoadAndApplyDockingLayout start - path={Path}", layoutPath);
-            LoadDynamicPanels(layoutPath);
 
             // Minimize flicker by locking OS-level painting and batching DockingManager updates
             try
@@ -873,22 +868,21 @@ public partial class MainForm
 
                     try
                     {
-                        var rightPanel = GetRightDockPanel();
+                        var rightPanel = _rightDockPanel;
                         var leftPanel = _leftDockPanel;
                         var centralPanel = _centralDocumentPanel;
-
-                        if (rightPanel != null)
-                        {
-                            RightDockPanelFactory.SwitchRightPanelContent(rightPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, _logger);
-                        }
 
                         if (_dockingManager != null)
                         {
                             var panelCount = (_dockingManager.Controls as System.Collections.ICollection)?.Count ?? 0;
                             _logger?.LogDebug("Applying dock visibility/state for {Count} panels", panelCount);
+
+                            // Respect AutoShowPanels configuration during layout restoration
+                            bool shouldAutoShow = _uiConfig?.AutoShowPanels ?? true;
+
                             if (leftPanel != null)
                             {
-                                _dockingManager.SetDockVisibility(leftPanel, true);
+                                _dockingManager.SetDockVisibility(leftPanel, shouldAutoShow);
                                 leftPanel.Refresh();
                             }
 
@@ -907,7 +901,7 @@ public partial class MainForm
 
                             if (rightPanel != null)
                             {
-                                _dockingManager.SetDockVisibility(rightPanel, true);
+                                _dockingManager.SetDockVisibility(rightPanel, shouldAutoShow);
                                 rightPanel.Refresh();
                             }
                         }
@@ -992,9 +986,20 @@ public partial class MainForm
 
     private static void TryDeleteLayoutFiles(string? layoutPath)
     {
-         if (string.IsNullOrWhiteSpace(layoutPath)) return;
-        try { if (File.Exists(layoutPath)) File.Delete(layoutPath); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Failed to delete layout file: {ex.Message}"); }
+        if (string.IsNullOrWhiteSpace(layoutPath)) return;
+        try
+        {
+            if (File.Exists(layoutPath))
+                File.Delete(layoutPath);
+        }
+        catch (IOException ioEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"IO error deleting layout file: {ioEx.Message}");
+        }
+        catch (UnauthorizedAccessException uaEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Access denied deleting layout file: {uaEx.Message}");
+        }
         TryCleanupTempFile(layoutPath + ".tmp");
     }
 
@@ -1007,15 +1012,37 @@ public partial class MainForm
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
             return Path.Combine(dir, DockingLayoutFileName);
         }
-        catch
+        catch (IOException ioEx)
         {
-            try { return Path.Combine(Path.GetTempPath(), DockingLayoutFileName); } catch { return DockingLayoutFileName; }
+            System.Diagnostics.Debug.WriteLine($"IO error accessing AppData: {ioEx.Message}");
+            try
+            {
+                return Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
+            }
+            catch (IOException tempIoEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"IO error accessing temp path: {tempIoEx.Message}");
+                return DockingLayoutFileName;
+            }
+        }
+        catch (UnauthorizedAccessException uaEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Access denied to AppData: {uaEx.Message}");
+            try
+            {
+                return Path.Combine(Path.GetTempPath(), DockingLayoutFileName);
+            }
+            catch (UnauthorizedAccessException tempUaEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"Access denied to temp path: {tempUaEx.Message}");
+                return DockingLayoutFileName;
+            }
         }
     }
 
     private Task SafeInvokeAsync(System.Action action, CancellationToken cancellationToken = default)
     {
-         if (action == null) throw new ArgumentNullException(nameof(action));
+        if (action == null) throw new ArgumentNullException(nameof(action));
 
         if (!this.IsHandleCreated)
         {
@@ -1253,10 +1280,10 @@ public partial class MainForm
             return false;
         }
 
-        GradientPanelExt? panel = null;
+        LegacyGradientPanel? panel = null;
         try
         {
-            panel = new GradientPanelExt
+            panel = new LegacyGradientPanel
             {
                 Name = panelName,
                 Padding = new Padding(5),
@@ -1300,24 +1327,7 @@ public partial class MainForm
         }
     }
 
-    public bool RemoveDynamicDockPanel(string panelName)
-    {
-        if (string.IsNullOrWhiteSpace(panelName)) return false;
-        _logger?.LogDebug("RemoveDynamicDockPanel requested for '{PanelName}' - delegating to DockingLayoutManager", panelName);
-        return false;
-    }
 
-    public Control? GetDynamicDockPanel(string panelName)
-    {
-        if (string.IsNullOrWhiteSpace(panelName)) return null;
-        _logger?.LogDebug("GetDynamicDockPanel requested for '{PanelName}' - delegating to DockingLayoutManager", panelName);
-        return null;
-    }
-
-    public IReadOnlyCollection<string> GetDynamicDockPanelNames()
-    {
-        return new List<string>().AsReadOnly();
-    }
 
     private void ResetToDefaultLayout()
     {
@@ -1354,7 +1364,7 @@ public partial class MainForm
 
     private void DisposeSyncfusionDockingResources()
     {
-         _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - delegating to DockingLayoutManager");
+        _logger?.LogDebug("DisposeSyncfusionDockingResources invoked - delegating to DockingLayoutManager");
 
         // [PERF] Dispose Z-order debounce timer
         if (_zOrderDebounceTimer != null)
@@ -1500,11 +1510,7 @@ public partial class MainForm
         catch (Exception ex) { _logger?.LogDebug(ex, "Failed to apply theme to docking panels"); }
     }
 
-    private void LoadDynamicPanels(string? layoutPath = null)
-    {
-        try { _logger?.LogDebug("Dynamic panels load requested: {LayoutPath}", layoutPath ?? "<default>"); }
-        catch (Exception ex) { _logger?.LogDebug(ex, "Failed to load dynamic panels"); }
-    }
+
 
     private static void TryCleanupTempFile(string filePath)
     {
@@ -1516,15 +1522,19 @@ public partial class MainForm
                 System.Diagnostics.Debug.WriteLine($"Cleaned up temporary file: {filePath}");
             }
         }
-        catch (Exception ex)
+        catch (IOException ioEx)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to cleanup temporary file: {filePath}, Error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"IO error cleaning up temp file {filePath}: {ioEx.Message}");
+        }
+        catch (UnauthorizedAccessException uaEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Access denied cleaning up temp file {filePath}: {uaEx.Message}");
         }
     }
 
     private void HideStandardPanelsForDocking()
     {
-         foreach (Control control in Controls)
+        foreach (Control control in Controls)
         {
             if (control is SplitContainer)
             {
@@ -1680,133 +1690,4 @@ public partial class MainForm
         EnsureDockingZOrder(validateHosting: true);
     }
 
-    /// <summary>
-    /// Gets the right dock panel for programmatic access to its tabs and controls.
-    /// </summary>
-    /// <returns>The right dock panel (GradientPanelExt) containing Activity Log and JARVIS Chat tabs, or null if not initialized</returns>
-    public Controls.GradientPanelExt? GetRightDockPanel()
-    {
-        if (_rightDockPanel != null && !_rightDockPanel.IsDisposed)
-        {
-            return _rightDockPanel as Controls.GradientPanelExt;
-        }
-        _logger?.LogDebug("GetRightDockPanel: Right dock panel is null or disposed");
-        return null;
-    }
-
-    /// <summary>
-    /// Switches the active tab in the right dock panel between Activity Log and JARVIS Chat.
-    /// Ensures the right panel is visible and docked before switching tabs.
-    /// </summary>
-    /// <param name="tabName">The name of the tab to switch to (e.g., "JarvisChat", "ActivityLog")</param>
-    public void SwitchRightPanel(string tabName)
-    {
-        try
-        {
-            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] User requested {TabName}", tabName);
-
-            // Map friendly names to actual tab names
-            string actualTabName = tabName switch
-            {
-                "JarvisChat" => "JARVISChatTab",
-                "ActivityLog" => "ActivityLogTab",
-                _ => tabName
-            };
-
-            var rightPanel = GetRightDockPanel();
-            if (rightPanel == null)
-            {
-                _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right dock panel is null or disposed - cannot switch");
-                MessageBox.Show(
-                    "The right panel is not yet initialized. Please try again in a moment.",
-                    "Panel Not Ready",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-                return;
-            }
-
-            if (rightPanel.IsDisposed)
-            {
-                _logger?.LogWarning("[SWITCH_RIGHT_PANEL] Right dock panel has been disposed - cannot switch");
-                return;
-            }
-
-            // Ensure the right panel is visible before switching
-            if (!rightPanel.Visible)
-            {
-                rightPanel.Visible = true;
-                _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Made right panel visible");
-            }
-
-            // Ensure right panel is docked and in proper position
-            if (_dockingManager != null)
-            {
-                try
-                {
-                    _dockingManager.SetDockVisibility(rightPanel, true);
-                    _logger?.LogDebug("SetDockVisibility succeeded for {PanelName}", rightPanel.Name ?? "null");
-                    rightPanel.Refresh();
-                    _logger?.LogDebug("[SWITCH_RIGHT_PANEL] Ensured right panel is docked");
-
-                    // Activate the control to bring it to front
-                    _dockingManager.ActivateControl(rightPanel);
-                    _logger?.LogDebug("ActivateControl succeeded for {PanelName}", rightPanel.Name ?? "null");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "SetDockVisibility/ActivateControl failed for {PanelName}",
-                        rightPanel.Name ?? "null");
-                }
-            }
-            else
-            {
-                _logger?.LogWarning("[SWITCH_RIGHT_PANEL] DockingManager is null - cannot ensure proper docking");
-                MessageBox.Show(
-                    "Docking system is not available. Panel may not display correctly.",
-                    "Docking Warning",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
-
-            // Now switch the tab content
-            _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Switching to tab {ActualTabName}", actualTabName);
-
-            var tabControl = rightPanel.Controls.OfType<TabControlAdv>().FirstOrDefault();
-            if (tabControl == null)
-            {
-                _logger?.LogWarning("[SWITCH_RIGHT_PANEL] No TabControl found in right panel - creating one dynamically.");
-                tabControl = new TabControlAdv { Dock = DockStyle.Fill };
-                // Add tabs as needed - assuming they are created elsewhere
-                rightPanel.Controls.Add(tabControl);
-            }
-
-            TabPageAdv? tab = null;
-            foreach (TabPageAdv page in tabControl.TabPages)
-            {
-                if (page.Name == actualTabName)
-                {
-                    tab = page;
-                    break;
-                }
-            }
-            if (tab != null)
-            {
-                tabControl.SelectedTab = tab;
-                _logger?.LogInformation("[SWITCH_RIGHT_PANEL] Successfully switched to {TabName}", actualTabName);
-            }
-            else
-            {
-                _logger?.LogError("[SWITCH_RIGHT_PANEL] Tab {ActualTabName} not found.", actualTabName);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "[SWITCH_RIGHT_PANEL] Failed to switch right panel to {TabName}", tabName);
-            MessageBox.Show(
-                $"Failed to open panel: {ex.Message}",
-                "Switch Panel Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-        }
-    }
 }

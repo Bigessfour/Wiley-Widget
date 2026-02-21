@@ -14,6 +14,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
 
 namespace WileyWidget.WinForms.ViewModels
 {

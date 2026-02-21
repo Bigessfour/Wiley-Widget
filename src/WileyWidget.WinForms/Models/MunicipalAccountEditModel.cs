@@ -53,6 +53,8 @@ namespace WileyWidget.WinForms.Models
         [Required]
         public MunicipalFundType Fund { get; set; }
 
+        [Required(ErrorMessage = "Department is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a valid department")]
         public int? DepartmentId { get; set; }
 
         [Range(typeof(decimal), "-9999999999", "9999999999")]
@@ -87,6 +89,12 @@ namespace WileyWidget.WinForms.Models
 
         public MunicipalAccount ToEntity()
         {
+            // Validate DepartmentId is set before converting
+            if (!DepartmentId.HasValue || DepartmentId.Value <= 0)
+            {
+                throw new InvalidOperationException("DepartmentId must be set to a valid value before converting to entity. Please select a department.");
+            }
+
             return new MunicipalAccount
             {
                 Id = this.Id,
@@ -95,7 +103,7 @@ namespace WileyWidget.WinForms.Models
                 FundDescription = Description ?? string.Empty,
                 Type = this.Type,
                 Fund = this.Fund,
-                DepartmentId = this.DepartmentId ?? 0,
+                DepartmentId = this.DepartmentId.Value,
                 Balance = this.Balance,
                 BudgetAmount = this.BudgetAmount,
                 IsActive = this.IsActive,

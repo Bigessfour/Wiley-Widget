@@ -1,54 +1,35 @@
-@using Microsoft.AspNetCore.Components.Web
+@namespace WileyWidget.WinForms.BlazorComponents
 @using Microsoft.JSInterop
-@using WileyWidget.Models
-@using WileyWidget.Services.Abstractions
-@using static WileyWidget.Models.ChatMessage
-@using Syncfusion.Blazor
-@using Syncfusion.Blazor.Inputs
-@using Syncfusion.Blazor.Buttons
-@using Syncfusion.Blazor.InteractiveChat
-@using CommunityToolkit.Mvvm.Input
-@implements IDisposable
-@inject IChatBridgeService ChatBridge
+@inject IJSRuntime JS
 
-<div class="jarvis-container">
-    <SfAIAssistView @ref="_assistView"
-                    CssClass="custom-ai-assist"
-                    Prompts="@_prompts"
-                    PromptPlaceholder="Type prompt for assistance..."
-                    PromptIconCss="e-icons e-user-avatar"
-                    ResponseIconCss="e-icons e-ai-assist"
-                    PromptRequested="HandlePromptRequestedAsync">
-        <ChildContent>
-            <AssistViews>
-                <AssistView Header="Jarvis - Wiley Widget Assistant"
-                            IconCss="e-icons e-ai-assist">
-                    <BannerTemplate>
-                        <div class="assist-banner">
-                            <div class="assist-banner-icon e-icons e-ai-assist"></div>
-                            <div class="assist-banner-title">AI Assistance</div>
-                            <div class="assist-banner-subtitle">Your everyday AI companion.</div>
-                        </div>
-                    </BannerTemplate>
-                </AssistView>
-            </AssistViews>
-        </ChildContent>
-    </SfAIAssistView>
+<div style="background-color: darkblue !important; color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 20px solid lime !important; box-sizing: border-box;">
+    <h1 style="color: lime; font-size: 50px; margin: 0;">BLAZOR LIVES (V4)</h1>
+    <p style="font-size: 24px;">IF YOU SEE THIS DARK BLUE SCREEN WITH LIME BORDER, BLAZOR IS RENDERING!</p>
+    <p>Rendered at: @DateTime.Now.ToString("HH:mm:ss.fff")</p>
+    <div id="js-test" style="margin-top: 20px; padding: 20px; background: #333; border: 2px solid white; border-radius: 10px;">
+        JS Interop Status: <span id="js-result" style="font-weight: bold; color: yellow;">Initializing JSRuntime...</span>
+    </div>
 </div>
 
-<style>
-    .jarvis-container {
-        height: 100%;
-        width: 100%;
-        padding: 8px;
-        box-sizing: border-box;
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try {
+                await Task.Delay(500); // Brief delay to ensure DOM is ready
+                await JS.InvokeVoidAsync("eval", @"
+                    console.log('[JARVIS-BLAZOR] JS Interop Test Starting');
+                    const el = document.getElementById('js-result');
+                    if (el) {
+                        el.innerText = 'SUCCESS (' + window.innerWidth + 'x' + window.innerHeight + ')';
+                        el.style.color = '#0f0';
+                        document.title = 'JARVIS - BLAZOR ACTIVE';
+                    }
+                ");
+            } catch (Exception ex) {
+                Console.WriteLine("JS Error: " + ex.Message);
+            }
+        }
     }
-
-    /* Keep the prompt box compact, closer to Syncfusion demo */
-    .jarvis-container .e-assistview-input {
-        min-height: 48px;
-        max-height: 120px;
-    }
-</style>
-
-@* Logic is implemented in the code-behind file JARVISAssist.razor.cs *@
+}

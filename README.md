@@ -299,7 +299,7 @@ All Views and ViewModels follow consistent namespace patterns:
 
 The application will:
 
-- Initialize the local SQL Server Express database (WileyWidgetDev)
+- Initialize the local SQL Server Express database (WileyWidget)
 - Load default Office2019Colorful theme via SfSkinManager
 - Display the main dashboard with budget management interface
 
