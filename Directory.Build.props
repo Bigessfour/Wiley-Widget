@@ -1,5 +1,8 @@
 <Project>
   <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <SyncfusionVersion>32.2.3</SyncfusionVersion>
+
     <!-- Disable RemovePayloadDuplicates task which depends on VisualStudio telemetry assemblies
          that may not be present on CI or machines without full VS/MSBuild components. -->
     <DisableRemovePayloadDuplicatesTask>true</DisableRemovePayloadDuplicatesTask>
