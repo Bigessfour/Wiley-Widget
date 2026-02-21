@@ -1,0 +1,69 @@
+name: MCP Health Check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mcp-health:
+    name: MCP Server Health Regression Check
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN || 'ci-placeholder-token' }}
+      MSSQL_CONNECTION_STRING: ${{ secrets.MSSQL_CONNECTION_STRING || 'Server=localhost;Database=master;Trusted_Connection=True;TrustServerCertificate=True' }}
+      SYNCFUSION_MCP_API_KEY: ${{ secrets.SYNCFUSION_MCP_API_KEY || 'ci-placeholder-key' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore .NET local tools
+        shell: pwsh
+        run: dotnet tool restore
+
+      - name: Run MCP health check
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoLogo -NoProfile -File scripts/setup/init-mcp-servers.ps1 -HealthCheck -Verbose | Tee-Object -FilePath mcp-health.log
+
+          $line = Get-Content -Path mcp-health.log | Select-String -Pattern '^Unhealthy:\s*(\d+)' | Select-Object -Last 1
+          if (-not $line) {
+            throw 'Could not parse Unhealthy count from MCP health output.'
+          }
+
+          $unhealthyCount = [int]([regex]::Match($line.Line, 'Unhealthy:\s*(\d+)').Groups[1].Value)
+          if ($unhealthyCount -gt 0) {
+            throw "MCP health regression detected: $unhealthyCount unhealthy server(s)."
+          }
+
+          Write-Host 'MCP health check passed with 0 unhealthy servers.'
+
+      - name: Upload MCP health log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-health-log
+          path: mcp-health.log
+          retention-days: 7

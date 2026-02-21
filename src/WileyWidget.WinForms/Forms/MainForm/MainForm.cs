@@ -49,9 +49,16 @@ namespace WileyWidget.WinForms.Forms
         private IThemeService? _themeService;
         private IConfiguration? _configuration;
         private ILogger<MainForm>? _logger;
+        private Serilog.ILogger? _asyncLogger;
         private IWindowStateService _windowStateService;
         private IFileImportService _fileImportService;
+        private IStatusProgressService? _statusProgressService;
         private SyncfusionControlFactory? _controlFactory;
+        private object? _dockingManager;
+        private bool _syncfusionDockingInitialized;
+        private bool _dashboardAutoShown;
+        private bool _reportViewerLaunched;
+        private IServiceScope? _mainViewModelScope;
 
         // UI State
         private UIConfiguration _uiConfig = null!;
@@ -122,6 +129,8 @@ namespace WileyWidget.WinForms.Forms
             _windowStateService = windowStateService ?? throw new ArgumentNullException(nameof(windowStateService));
             _fileImportService = fileImportService ?? throw new ArgumentNullException(nameof(fileImportService));
             _controlFactory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
+            _statusProgressService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<IStatusProgressService>(_serviceProvider);
 
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
 
@@ -214,6 +223,19 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>Toggles panel locking via the docking manager.</summary>
         private void TogglePanelLocking() { _logger?.LogDebug("TogglePanelLocking stub"); }
+
+        /// <summary>Initializes Syncfusion docking infrastructure placeholder for partial compatibility.</summary>
+        private void InitializeSyncfusionDocking()
+        {
+            _dockingManager ??= new object();
+            _logger?.LogDebug("InitializeSyncfusionDocking compatibility stub initialized");
+        }
+
+        /// <summary>Configures docking chrome layout placeholder for partial compatibility.</summary>
+        private void ConfigureDockingManagerChromeLayout()
+        {
+            _logger?.LogDebug("ConfigureDockingManagerChromeLayout compatibility stub executed");
+        }
 
         /// <summary>Performs a global search across panels and data.</summary>
         public async Task PerformGlobalSearchAsync(string query)
