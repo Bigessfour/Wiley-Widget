@@ -191,7 +191,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
             _logger.LogInformation("Initializing QuickBooksViewModel");
 
             await CheckConnectionAsync(cancellationToken);
-            LoadSampleSyncHistory(); // Load sample data for demonstration
+            ResetSyncHistoryState();
 
             // Start connection polling (every 30 seconds)
             StartConnectionPolling();
@@ -922,7 +922,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     {
         _cancellationTokenSource = new CancellationTokenSource();
         var uiContext = SynchronizationContext.Current; // Capture UI context once
-        
+
         _connectionPollingTimer = new System.Threading.Timer(
             async _ =>
             {
@@ -991,71 +991,18 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
 
     #endregion
 
-    #region Sample Data
+    #region Empty-State Helpers
 
     /// <summary>
-    /// Loads realistic sample sync history data for demonstration.
+    /// Resets sync history to an empty state when no production history source is configured.
     /// </summary>
-    private void LoadSampleSyncHistory()
+    private void ResetSyncHistoryState()
     {
-        _logger.LogInformation("Loading sample QuickBooks sync history");
-
-        var sampleRecords = new[]
-        {
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddHours(-2),
-                Operation = "Sync Data",
-                Status = "Success",
-                RecordsProcessed = 1247,
-                Duration = TimeSpan.FromSeconds(45.3),
-                Message = "Synced customers, invoices, and accounts"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-1),
-                Operation = "Import Accounts",
-                Status = "Success",
-                RecordsProcessed = 156,
-                Duration = TimeSpan.FromSeconds(12.7),
-                Message = "Imported 156 accounts, updated 23"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-1).AddHours(-3),
-                Operation = "Sync Data",
-                Status = "Success",
-                RecordsProcessed = 892,
-                Duration = TimeSpan.FromSeconds(38.1),
-                Message = "Synced customers and invoices"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-2),
-                Operation = "Connect",
-                Status = "Success",
-                RecordsProcessed = 0,
-                Duration = TimeSpan.FromSeconds(2.5),
-                Message = "Connected to QuickBooks successfully"
-            },
-            new QuickBooksSyncHistoryRecord
-            {
-                Timestamp = DateTime.Now.AddDays(-3),
-                Operation = "Sync Data",
-                Status = "Failed",
-                RecordsProcessed = 0,
-                Duration = TimeSpan.FromSeconds(5.2),
-                Message = "Authentication token expired"
-            }
-        };
-
-        foreach (var record in sampleRecords)
-        {
-            SyncHistory.Add(record);
-        }
-
+        _logger.LogInformation("ResetSyncHistoryState called: no persisted QuickBooks history source is configured.");
+        SyncHistory.Clear();
         ApplyHistoryFilter();
         UpdateSummaries();
+        StatusText = "No QuickBooks history loaded yet";
     }
 
     #endregion

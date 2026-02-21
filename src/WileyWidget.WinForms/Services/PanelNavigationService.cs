@@ -1,901 +1,858 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Drawing;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Windows.Forms;
-using Syncfusion.WinForms.Themes;
-using Syncfusion.WinForms.Controls;
-using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.Abstractions;
+using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Themes;
-using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using WileyWidget.WinForms.Forms;
 
 namespace WileyWidget.WinForms.Services
 {
-    /// <summary>
-    /// Interface for panels that can be initialized with parameters.
-    /// </summary>
     public interface IParameterizedPanel
     {
-        /// <summary>
-        /// Initialize the panel with the provided parameters.
-        /// </summary>
-        /// <param name="parameters">Parameters for panel initialization.</param>
         void InitializeWithParameters(object parameters);
     }
 
-    /// <summary>
-    /// Centralized service for managing docked panels in MainForm's DockingManager.
-    /// Ensures single instance per panel type, reuse, activation, and proper naming.
-    /// Replaces scattered menu click handlers and legacy form-based navigation.
-    /// Panels are resolved via dependency injection to support constructor parameters.
-    /// </summary>
-    public interface IPanelNavigationService
+    public interface IPanelNavigationService : IDisposable
     {
-        /// <summary>
-        /// Shows or activates a docked panel. Creates it if not already present.
-        /// Panel is resolved from DI container to support constructor injection.
-        /// </summary>
-        /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
-        /// <param name="panelName">Unique display name (also used as DockingManager key).</param>
-        /// <param name="preferredStyle">Preferred docking position.</param>
-        /// <param name="allowFloating">If true, panel can be floated by user.</param>
-        void ShowPanel<TPanel>(
-            string panelName,
-            DockingStyle preferredStyle = DockingStyle.Right,
-            bool allowFloating = true)
+        void ShowPanel<TPanel>(string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
             where TPanel : UserControl;
 
-        /// <summary>
-        /// Shows or activates a docked panel with initialization parameters. Creates it if not already present.
-        /// Panel is resolved from DI container to support constructor injection.
-        /// </summary>
-        /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
-        /// <param name="panelName">Unique display name (also used as DockingManager key).</param>
-        /// <param name="parameters">Parameters to pass to panel constructor or initialization.</param>
-        /// <param name="preferredStyle">Preferred docking position.</param>
-        /// <param name="allowFloating">If true, panel can be floated by user.</param>
-        void ShowPanel<TPanel>(
-            string panelName,
-            object? parameters,
-            DockingStyle preferredStyle = DockingStyle.Right,
-            bool allowFloating = true)
+        void ShowPanel<TPanel>(string panelName, object? parameters, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
             where TPanel : UserControl;
 
-        /// <summary>
-        /// Hides a docked panel by name.
-        /// </summary>
-        /// <param name="panelName">Name of the panel to hide.</param>
-        /// <returns>True if panel was hidden, false if panel doesn't exist.</returns>
+        void ShowForm<TForm>(string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form;
+
+        void ShowForm<TForm>(string panelName, object? parameters, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form;
+
         bool HidePanel(string panelName);
-
-        /// <summary>
-        /// Adds an existing panel instance to the docking manager asynchronously.
-        /// </summary>
-        /// <param name="panel">The panel instance to add.</param>
-        /// <param name="panelName">The name/title of the panel.</param>
-        /// <param name="preferredStyle">The preferred docking style.</param>
-        /// <param name="allowFloating">Whether the panel can be floated.</param>
-        /// <returns>A task that completes when the panel is added.</returns>
-        Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true);
-
-        /// <summary>
-        /// Get the currently active panel name for ribbon button state tracking.
-        /// </summary>
-        /// <returns>The name of the currently active panel, or null if no panel is active.</returns>
+        Task AddPanelAsync(UserControl panel, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true);
         string? GetActivePanelName();
-
-        /// <summary>
-        /// Event raised when a panel is activated, for ribbon button highlighting.
-        /// </summary>
+        void SetTabbedManager(Syncfusion.Windows.Forms.Tools.TabbedMDIManager tabbedMdi);
         event EventHandler<PanelActivatedEventArgs>? PanelActivated;
     }
 
-    public sealed class PanelNavigationService : IPanelNavigationService, IDisposable
+    public sealed class PanelNavigationService : IPanelNavigationService
     {
-        /// <summary>
-        /// C# 14: Logger property for cleaner access.
-        /// </summary>
-        private readonly ILogger<PanelNavigationService> Logger;
+        private const int MinimumFloatingWidth = 900;
+        private const int MinimumFloatingHeight = 620;
+        private const int ScreenPadding = 40;
+        private const double DefaultScreenUsageRatio = 0.82;
 
-        private readonly DockingManager _dockingManager;
-        private readonly Control _parentControl; // Usually MainForm or central document container
+        private readonly Form _owner;
         private readonly IServiceProvider _serviceProvider;
-        private readonly Dictionary<string, UserControl> _cachedPanels = new();
-        private readonly UI.Helpers.PanelAnimationHelper _animationHelper;
-
-        // Map panels to their DockStateChanged handlers so we can unsubscribe cleanly when panels are disposed/removed
-        private readonly System.Collections.Concurrent.ConcurrentDictionary<UserControl, Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler> _dockEventHandlers = new();
-
-        /// <summary>
-        /// Tracks the currently active panel name for ribbon button highlighting.
-        /// </summary>
+        private readonly ILogger<PanelNavigationService> _logger;
+        private readonly Dictionary<string, Form> _hosts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Control> _cachedPanels = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<Control> _initializedAsyncPanels = new();
         private string? _activePanelName;
+        private readonly bool _useMDI;
+        private Syncfusion.Windows.Forms.Tools.TabbedMDIManager? _tabbedMdi;
 
-        /// <summary>
-        /// Event raised when the active panel changes, for ribbon button state updates.
-        /// </summary>
+        public bool IsMdiEnabled => _useMDI;
+
         public event EventHandler<PanelActivatedEventArgs>? PanelActivated;
 
-        private static readonly Dictionary<Type, PanelSizing> PanelSizeOverrides = new()
+        public PanelNavigationService(Form owner, IServiceProvider serviceProvider, ILogger<PanelNavigationService> logger)
         {
-            { typeof(DashboardPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(450, 420)) },
-            { typeof(AccountsPanel), new PanelSizing(new Size(620, 0), new Size(0, 380), new Size(520, 420)) },
-            { typeof(WileyWidget.WinForms.Controls.Analytics.AnalyticsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 380)) },
-            { typeof(AnalyticsHubPanel), new PanelSizing(new Size(600, 0), new Size(0, 500), new Size(500, 450)) },
-            { typeof(AuditLogPanel), new PanelSizing(new Size(520, 0), new Size(0, 380), new Size(440, 320)) },
-            { typeof(WarRoomPanel), new PanelSizing(new Size(560, 0), new Size(0, 420), new Size(460, 380)) },
-            { typeof(QuickBooksPanel), new PanelSizing(new Size(620, 0), new Size(0, 400), new Size(540, 360)) },
-            { typeof(DepartmentSummaryPanel), new PanelSizing(new Size(540, 0), new Size(0, 400), new Size(440, 360)) },
-            { typeof(SettingsPanel), new PanelSizing(new Size(500, 0), new Size(0, 360), new Size(420, 320)) },
-            { typeof(ProactiveInsightsPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
-            { typeof(UtilityBillPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
-            { typeof(CustomersPanel), new PanelSizing(new Size(560, 0), new Size(0, 400), new Size(460, 360)) },
-        };
+            _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            // Check if owner is MDI container
+            _useMDI = owner.IsMdiContainer;
+            _logger.LogDebug("[PANEL_NAV] PanelNavigationService initialized - MDI mode: {UseMDI}", _useMDI);
+        }
 
         /// <summary>
-        /// Initializes the panel navigation service with docking infrastructure and dependency injection support.
-        /// DockingManager must be non-null and properly initialized before construction.
+        /// Sets the TabbedMDIManager for pure tabbed layout navigation.
+        /// Called during MainTabbedLayoutFactory initialization.
         /// </summary>
-        /// <param name="dockingManager">Initialized DockingManager instance (required, non-null).</param>
-        /// <param name="parentControl">Parent control hosting the docked panels.</param>
-        /// <param name="serviceProvider">Service provider for DI resolution of panel types.</param>
-        /// <param name="logger">Logger instance.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
-        public PanelNavigationService(
-            DockingManager dockingManager,
-            Control parentControl,
-            IServiceProvider serviceProvider,
-            ILogger<PanelNavigationService> logger)
+        public void SetTabbedManager(Syncfusion.Windows.Forms.Tools.TabbedMDIManager tabbedMdi)
         {
-            _dockingManager = dockingManager ?? throw new ArgumentNullException(nameof(dockingManager), "DockingManager must be initialized before PanelNavigationService construction.");
-            // No global subscription here; per-panel subscriptions are added when the panel is docked. (Keep handler registration localized.)
-            _parentControl = parentControl ?? throw new ArgumentNullException(nameof(parentControl));
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            Logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _animationHelper = new UI.Helpers.PanelAnimationHelper(logger);
+            _tabbedMdi = tabbedMdi ?? throw new ArgumentNullException(nameof(tabbedMdi));
+            _logger.LogDebug("[PANEL_NAV] TabbedMDIManager set for tab-based navigation");
+        }
 
-            Logger.LogDebug("PanelNavigationService initialized with non-null DockingManager");
-            }
-
-        public void ShowPanel<TPanel>(
-            string panelName,
-            DockingStyle preferredStyle = DockingStyle.Right,
-            bool allowFloating = true)
+        public void ShowPanel<TPanel>(string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
             where TPanel : UserControl
         {
             ShowPanel<TPanel>(panelName, null, preferredStyle, allowFloating);
         }
 
-        public void ShowPanel<TPanel>(
-            string panelName,
-            object? parameters,
-            DockingStyle preferredStyle = DockingStyle.Right,
-            bool allowFloating = true)
+        public void ShowPanel<TPanel>(string panelName, object? parameters, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
             where TPanel : UserControl
         {
-            if (string.IsNullOrWhiteSpace(panelName))
-                throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+            if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            // If called from a non-UI thread or before the handle exists, marshal the call to the UI thread.
-            if (_parentControl.InvokeRequired || !_parentControl.IsHandleCreated)
+            ExecuteOnUiThread(() =>
             {
-                try
+                if (!_cachedPanels.TryGetValue(panelName, out var panel) || panel.IsDisposed)
                 {
-                    // Use BeginInvoke only when parent control is valid and not disposed
-                    if (!_parentControl.IsDisposed)
-                    {
-                        if (_parentControl.IsHandleCreated)
-                        {
-                            _parentControl.BeginInvoke(new System.Action(() => ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating)));
-                            return;
-                        }
-
-                        // If no handle yet, defer until handle creation to avoid cross-thread access.
-                        EventHandler? handleCreatedHandler = null;
-                        handleCreatedHandler = (s, e) =>
-                        {
-                            _parentControl.HandleCreated -= handleCreatedHandler;
-                            try
-                            {
-                                ShowPanel<TPanel>(panelName, parameters, preferredStyle, allowFloating);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.LogWarning(ex, "Deferred ShowPanel failed after handle creation for panel {PanelName}", panelName);
-                            }
-                        };
-                        _parentControl.HandleCreated += handleCreatedHandler;
-                        Logger.LogDebug("ShowPanel deferred until parent handle is created for panel {PanelName}", panelName);
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Log and continue on current thread if marshalling fails for any reason
-                    Logger.LogWarning(ex, "Failed to marshal ShowPanel to UI thread for panel {PanelName}", panelName);
-                }
-            }
-
-            try
-            {
-                Logger.LogInformation("[PANEL] Showing {PanelName} - type: {Type}", panelName, typeof(TPanel).Name);
-
-                // Reuse existing panel if already created
-                if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
-                {
-                    ActivateExistingPanel(existingPanel, panelName, allowFloating);
-                    return;
+                    panel = ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
+                    _cachedPanels[panelName] = panel;
+                    CachePanelAliases(panelName, panel);
                 }
 
-                // Create new instance via DI (supports constructor injection)
-                Logger.LogDebug("Creating panel: {PanelName} ({PanelType})", panelName, typeof(TPanel).Name);
-                var panel = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
+                ConfigureSpecialHostPanels(panel, panelName);
 
-                // C# 14: Pattern matching with 'is not null' for cleaner guard clause
                 if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
                 {
                     parameterizedPanel.InitializeWithParameters(parameters);
                 }
 
-                DockPanelInternal(panel, panelName, preferredStyle, allowFloating);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to show panel: {PanelName}", panelName);
-                throw new InvalidOperationException($"Unable to show panel '{panelName}'. Check logs for details.", ex);
-            }
+                ShowFloating(panel, panelName, preferredStyle);
+            });
         }
 
-        public async Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+        public void ShowForm<TForm>(string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form
         {
-            if (panel is null) throw new ArgumentNullException(nameof(panel));
+            ShowForm<TForm>(panelName, null, preferredStyle, allowFloating);
+        }
+
+        public void ShowForm<TForm>(string panelName, object? parameters, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form
+        {
             if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            try
+            ExecuteOnUiThread(() =>
             {
-                // Reuse existing panel if already created
-                if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
+                if (_cachedPanels.TryGetValue(panelName, out var existingHost) && !existingHost.IsDisposed)
                 {
-                    await _parentControl.InvokeAsync(() => ActivateExistingPanel(existingPanel, panelName, allowFloating));
+                    ShowFloating(existingHost, panelName, preferredStyle);
                     return;
                 }
 
-                await _parentControl.InvokeAsync(() => DockPanelInternal(panel, panelName, preferredStyle, allowFloating));
-                await Task.Yield(); // Allow UI to breathe
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to add panel async: {PanelName}", panelName);
-                throw new InvalidOperationException($"Unable to add panel '{panelName}'. Check logs for details.", ex);
-            }
+                var form = ActivatorUtilities.CreateInstance<TForm>(_serviceProvider);
+                if (parameters is not null && form is IParameterizedPanel parameterizedForm)
+                {
+                    parameterizedForm.InitializeWithParameters(parameters);
+                }
+
+                form.StartPosition = FormStartPosition.Manual;
+                form.Location = CascadeLocation();
+                form.ShowInTaskbar = false;
+                form.ShowIcon = true;
+                form.Text = string.IsNullOrWhiteSpace(form.Text) ? panelName : form.Text;
+                if (_useMDI)
+                {
+                    form.Owner = null;
+                }
+                else
+                {
+                    form.Owner = _owner;
+                }
+
+                _cachedPanels[panelName] = form;
+                CachePanelAliases(panelName, form);
+                ShowFloating(form, panelName, preferredStyle);
+            });
         }
 
-        private void ActivateExistingPanel(UserControl existingPanel, string panelName, bool allowFloating)
+        public async Task AddPanelAsync(UserControl panel, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right, bool allowFloating = true)
         {
-            // Already on UI thread - ActivateExistingPanel is called only from ShowPanel or AddPanelAsync
-            // which have already marshalled execution via InvokeAsync
-            ApplyCaptionSettings(existingPanel, panelName, allowFloating);
-            _dockingManager.SetDockVisibility(existingPanel, true);
-            try
+            if (panel == null) throw new ArgumentNullException(nameof(panel));
+            if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
+
+            ExecuteOnUiThread(() =>
             {
-                // Ensure the control is visible and rendered immediately
-                existingPanel.Visible = true;
-                try { existingPanel.BringToFront(); } catch { }
-                _dockingManager.ActivateControl(existingPanel);
-                existingPanel.Refresh();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "Failed to force existing panel visibility/refresh (non-critical)");
-            }
+                _cachedPanels[panelName] = panel;
+                CachePanelAliases(panelName, panel);
+                ShowFloating(panel, panelName, preferredStyle);
+            });
 
-            ApplyPanelTheme(existingPanel);
-
-            // Track active panel and raise event for ribbon button highlighting
-            _activePanelName = panelName;
-            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, existingPanel.GetType()));
-
-            // POLISH: Announce panel visibility change to screen readers
-            AnnounceForAccessibility(existingPanel, $"{panelName} panel is now visible");
-
-            Logger.LogDebug("Activated existing panel: {PanelName}", panelName);
-            Logger.LogInformation("[PANEL] {PanelName} activated - Visible={Visible}, Bounds={Bounds}", panelName, existingPanel.Visible, existingPanel.Bounds);
+            await Task.CompletedTask.ConfigureAwait(true);
         }
 
-        private void DockPanelInternal(UserControl panel, string panelName, DockingStyle preferredStyle, bool allowFloating)
+        public bool HidePanel(string panelName)
         {
-            // Already on UI thread - DockPanelInternal is called only from ShowPanel or AddPanelAsync
-            // which have already marshalled execution via InvokeAsync
-            panel.Name = panelName.Replace(" ", "", StringComparison.Ordinal); // Clean name for internal use
-            Logger.LogDebug("Docking panel: {PanelName} with style {Style}, allowFloating={AllowFloating}", panelName, preferredStyle, allowFloating);
+            if (string.IsNullOrWhiteSpace(panelName)) throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
 
-            // Apply sensible defaults so charts/grids have usable space on first show
-            ApplyDefaultPanelSizing(panel, preferredStyle, panel.GetType());
+            var closed = false;
 
-            // Enable docking features and caption buttons (required for headers and buttons to appear)
-            var forceFloating = ShouldFloatByDefault(preferredStyle);
-            ApplyCaptionSettings(panel, panelName, allowFloating || forceFloating);
-
-            // Dock or float the panel
-            var effectiveStyle = preferredStyle;
-
-            var hostControl = _dockingManager.HostControl ?? _parentControl;
-            if (hostControl.IsDisposed)
+            ExecuteOnUiThread(() =>
             {
-                hostControl = _parentControl;
-                Logger.LogWarning("DockingManager.HostControl was disposed, falling back to parent control for panel: {PanelName}", panelName);
-            }
+                if (!TryResolveHost(panelName, out var resolvedKey, out var host) || host == null || host.IsDisposed)
+                {
+                    _logger.LogDebug("[PANEL_NAV] HidePanel could not resolve host for '{PanelName}'", panelName);
+                    return;
+                }
 
-            if (forceFloating)
-            {
-                FloatPanel(panel, panelName, preferredStyle, hostControl);
-                return;
-            }
-
-            if (effectiveStyle == DockingStyle.Fill)
-            {
-                Logger.LogWarning(
-                    "DockingStyle.Fill is not supported when docking to the DockingManager host. Falling back to DockingStyle.Right for panel: {PanelName}",
-                    panelName);
-                effectiveStyle = DockingStyle.Right;
-            }
-
-            int dockSize = CalculateDockSize(effectiveStyle, hostControl);
-            Logger.LogDebug("Calculated dock size: {Size} for style {Style}", dockSize, effectiveStyle);
-
-            // Respect desired default dimension when we have one
-            var (desiredSize, _) = GetDefaultPanelSizes(panel.GetType(), effectiveStyle);
-            if (effectiveStyle is DockingStyle.Left or DockingStyle.Right && desiredSize.Width > 0)
-            {
-                dockSize = desiredSize.Width;
-                Logger.LogDebug("Using desired width: {Width} for panel: {PanelName}", dockSize, panelName);
-            }
-            else if (effectiveStyle is DockingStyle.Top or DockingStyle.Bottom && desiredSize.Height > 0)
-            {
-                dockSize = desiredSize.Height;
-                Logger.LogDebug("Using desired height: {Height} for panel: {PanelName}", dockSize, panelName);
-            }
-
-            // Dock the panel with calculated size
-            _dockingManager.DockControl(panel, hostControl, effectiveStyle, dockSize);
-            Logger.LogInformation("Panel docked successfully: {PanelName} at {Style} with size {Size}", panelName, effectiveStyle, dockSize);
-
-            // QuickBooksPanel: Prevent resizing due to explicit internal sizing (prevents StackOverflow)
-            // Since all controls in QuickBooksPanel have explicit AutoSize=false + Heights,
-            // user resizing the panel would break the layout stability guarantees.
-            // Lock the panel to its initial size.
-            if (panel.GetType() == typeof(QuickBooksPanel))
-            {
                 try
                 {
-                    // Set MaximumSize equal to initial size to prevent resize
-                    var currentSize = panel.Size;
-                    panel.MaximumSize = new Size(currentSize.Width, currentSize.Height);
-                    Logger.LogDebug("QuickBooksPanel locked to size {Width}x{Height} to preserve explicit control sizing", currentSize.Width, currentSize.Height);
-                }
-                catch (Exception lockEx)
-                {
-                    Logger.LogDebug(lockEx, "Failed to lock QuickBooksPanel size (non-critical), continuing");
-                }
-            }
-
-            // Apply minimum size to ensure usable bounds (Syncfusion API - no reflection needed)
-            var (_, minimumSize) = GetDefaultPanelSizes(panel.GetType(), effectiveStyle);
-            if (minimumSize.Width > 0 || minimumSize.Height > 0)
-            {
-                try
-                {
-                    _dockingManager.SetControlMinimumSize(panel, minimumSize);
-                }
-                catch (Exception minSizeEx)
-                {
-                    Logger.LogDebug(minSizeEx, "SetControlMinimumSize failed (non-critical), continuing");
-                }
-            }
-
-            // Ensure theme cascade reaches the newly created panel and children
-            ApplyPanelTheme(panel);
-
-            // Set panel accessibility properties for UI automation
-            try
-            {
-                panel.AccessibleName = panelName;
-                panel.AccessibleDescription = $"Panel: {panelName}";
-                panel.Tag = panelName;
-            }
-            catch (Exception accEx)
-            {
-                Logger.LogDebug(accEx, "Failed to set accessibility properties (non-critical)");
-            }
-
-            // Set dock label and caption via documented Syncfusion API (no reflection)
-            try
-            {
-                _dockingManager.SetDockLabel(panel, panelName);
-            }
-            catch (Exception labelEx)
-            {
-                Logger.LogDebug(labelEx, "SetDockLabel failed (non-critical)");
-            }
-
-            // Update PanelHeader control if present
-            try
-            {
-                // C# 14: Using 'is not null' pattern for more expressive null checking
-                var header = panel.Controls.OfType<PanelHeader>().FirstOrDefault();
-                if (header is not null)
-                {
-                    header.Title = panelName;
-                    try { header.AccessibleName = panelName + " header"; } catch { }
-                }
-            }
-            catch (Exception headerEx)
-            {
-                Logger.LogDebug(headerEx, "Failed to update PanelHeader (non-critical)");
-            }
-
-            // Force visibility and activation
-            try
-            {
-                _dockingManager.SetDockVisibility(panel, true);
-                _dockingManager.ActivateControl(panel);
-
-                // POLISH: Apply fade-in animation on panel show
-                _animationHelper.FadeIn(panel, durationMs: 200);
-            }
-            catch (Exception visEx)
-            {
-                Logger.LogDebug(visEx, "Failed to set visibility/activation (non-critical)");
-            }
-
-            // Ensure the panel is visible and refreshed after docking
-            try
-            {
-                panel.Visible = true;
-                try { panel.BringToFront(); } catch { }
-                panel.Refresh();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "Failed to force panel visibility/refresh (non-critical)");
-            }
-
-            // Subscribe to DockStateChanged event to verify panel rendering
-            // This replaces the Thread.Sleep(250) hack with proper event-driven synchronization
-            try
-            {
-                // Create a typed handler and store it so we can unsubscribe later
-                Syncfusion.Windows.Forms.Tools.DockStateChangeEventHandler handler = (sender, e) => OnDockStateChanged(panel, panelName);
-                _dockEventHandlers[panel] = handler;
-                _dockingManager.DockStateChanged += handler;
-
-                // Ensure we remove the handler if the panel is disposed
-                panel.Disposed += (s, e) =>
-                {
-                    if (_dockEventHandlers.TryRemove(panel, out var existing))
+                    if (_useMDI || host.MdiParent != null)
                     {
-                        try { _dockingManager.DockStateChanged -= existing; } catch { }
+                        _logger.LogDebug("[PANEL_NAV] Closing MDI host '{ResolvedKey}' for request '{PanelName}'", resolvedKey, panelName);
+                        host.Close();
                     }
-                };
-            }
-            catch (Exception eventEx)
-            {
-                Logger.LogDebug(eventEx, "Failed to subscribe to DockStateChanged (non-critical)");
-            }
-
-            // Cache for reuse
-            _cachedPanels[panelName] = panel;
-
-            // Track active panel and raise event for ribbon button highlighting
-            _activePanelName = panelName;
-            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panel.GetType()));
-
-            Logger.LogInformation("Docked and activated new panel: {PanelName} ({PanelType})", panelName, panel.GetType().Name);
-            Logger.LogInformation("[PANEL] {PanelName} docked - Visible={Visible}, Bounds={Bounds}", panelName, panel.Visible, panel.Bounds);
-        }
-
-        /// <summary>
-        /// Event handler for DockStateChanged. Validates panel visibility and forces rendering.
-        /// Replaces Thread.Sleep(250) timing hack with proper event synchronization.
-        /// </summary>
-        /// <summary>
-        /// Event handler for DockStateChanged. Validates panel visibility and forces rendering.
-        /// C# 14: Using 'is not' pattern for cleaner control flow.
-        /// </summary>
-        private void OnDockStateChanged(UserControl panel, string panelName)
-        {
-            try
-            {
-                if (panel is not null && !panel.IsDisposed && panel.Visible)
-                {
-                    // Panel is visible - invalidate to force clean rendering
-                    if (!panel.IsDisposed)
+                    else
                     {
-                        panel.Invalidate(true);
-                        panel.Update();
+                        _logger.LogDebug("[PANEL_NAV] Closing floating host '{ResolvedKey}' for request '{PanelName}'", resolvedKey, panelName);
+                        host.Close();
                     }
-                    Logger.LogDebug("Panel {PanelName} verified visible via DockStateChanged event", panelName);
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                // Panel was disposed - safe to ignore
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "Error in OnDockStateChanged for panel {PanelName}", panelName);
-            }
-        }
 
-        private void ApplyPanelTheme(Control panel)
-        {
-            try
-            {
-                // C# 14: Extension method for safe theme application with null-conditional.
-                // SfSkinManager is the single source of truth for theming.
-                // Theme cascade from parent form automatically applies to all child controls.
-                AppThemeColors.EnsureThemeAssemblyLoaded(Logger);
-                var themeName = GetCurrentThemeName();
-                panel?.ApplySyncfusionTheme(themeName, Logger);
-            }
-            catch
-            {
-                // Best-effort: if theming fails, continue without blocking panel display
-            }
-        }
-
-        /// <summary>
-        /// Gets the current active theme name from SfSkinManager.
-        /// C# 14 feature: Uses simplified pattern matching and null-coalescing.
-        /// SfSkinManager is Syncfusion's single source of truth for theming.
-        /// </summary>
-        private static string GetCurrentThemeName() =>
-            SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
-
-        private void ApplyCaptionSettings(UserControl panel, string panelName, bool allowFloating)
-        {
-            // Already on UI thread - ApplyCaptionSettings is called only from ActivateExistingPanel or DockPanelInternal
-            // which are themselves called only from ShowPanel or AddPanelAsync (both marshalled via InvokeAsync)
-            if (panel is null)
-            {
-                return;
-            }
-
-            try { _dockingManager.EnableContextMenu = true; } catch { }
-
-            // Set caption, floating, and close button settings directly using Syncfusion DockingManager API
-            try
-            {
-                // Set the caption text
-                _dockingManager.SetDockLabel(panel, panelName);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "SetDockLabel failed (non-critical)");
-            }
-
-            try
-            {
-                // Enable/disable floating
-                _dockingManager.SetEnableDocking(panel, true);
-                _dockingManager.SetAllowFloating(panel, allowFloating);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "SetAllowFloating failed (non-critical)");
-            }
-
-            try
-            {
-                // Show close button
-                _dockingManager.SetCloseButtonVisibility(panel, true);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "SetCloseButtonVisibility failed (non-critical)");
-            }
-
-            try
-            {
-                _dockingManager.SetAutoHideButtonVisibility(panel, true);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "SetAutoHideButtonVisibility failed (non-critical)");
-            }
-
-            try
-            {
-                _dockingManager.SetMenuButtonVisibility(panel, true);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "SetMenuButtonVisibility failed (non-critical)");
-            }
-        }
-
-        private static bool ShouldFloatByDefault(DockingStyle preferredStyle)
-        {
-            // Only panels explicitly designated for left/right docking should dock by default.
-            return preferredStyle is not DockingStyle.Left and not DockingStyle.Right;
-        }
-
-        private void FloatPanel(UserControl panel, string panelName, DockingStyle preferredStyle, Control hostControl)
-        {
-            var bounds = CalculateFloatingBounds(panel, preferredStyle, hostControl);
-            _dockingManager.FloatControl(panel, bounds);
-
-            try
-            {
-                _dockingManager.SetDockVisibility(panel, true);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "SetDockVisibility failed for floating panel {PanelName}", panelName);
-            }
-
-            try
-            {
-                panel.Visible = true;
-                panel.BringToFront();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "Failed to update floating panel visibility for {PanelName}", panelName);
-            }
-
-            try
-            {
-                _dockingManager.ActivateControl(panel);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogDebug(ex, "Failed to activate floating panel {PanelName}", panelName);
-            }
-
-            Logger.LogInformation("Panel floated by default: {PanelName} at {Bounds}", panelName, bounds);
-        }
-
-        private static System.Drawing.Rectangle CalculateFloatingBounds(UserControl panel, DockingStyle preferredStyle, Control hostControl)
-        {
-            var (desiredSize, minimumSize) = GetDefaultPanelSizes(panel.GetType(), preferredStyle);
-            var width = desiredSize.Width > 0 ? desiredSize.Width : Math.Max(minimumSize.Width, Math.Max(640, hostControl.Width / 2));
-            var height = desiredSize.Height > 0 ? desiredSize.Height : Math.Max(minimumSize.Height, Math.Max(480, hostControl.Height / 2));
-
-            var screen = Screen.FromControl(hostControl).WorkingArea;
-            width = Math.Min(width, screen.Width);
-            height = Math.Min(height, screen.Height);
-
-            var x = screen.Left + Math.Max(0, (screen.Width - width) / 2);
-            var y = screen.Top + Math.Max(0, (screen.Height - height) / 2);
-
-            return new System.Drawing.Rectangle(x, y, width, height);
-        }
-
-        public void Dispose()
-        {
-            // Ensure disposal happens on UI thread to safely dispose controls
-            // Dictionary iteration and panel disposal must be thread-safe
-            if (_parentControl.InvokeRequired)
-            {
-                _parentControl.Invoke(new System.Action(() => Dispose()));
-                return;
-            }
-
-            try
-            {
-                // Dispose all cached panels to release their resources
-                // This is important for panels with Syncfusion controls (grids, charts) that hold resources
-                foreach (var panel in _cachedPanels.Values)
-                {
-                    try
-                    {
-                        panel?.Dispose();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogWarning(ex, "Exception disposing cached panel (continuing)");
-                    }
-                }
-
-                Logger.LogInformation("Disposed {Count} cached panels", _cachedPanels.Count);
-
-                // Dispose animation helper
-                try
-                {
-                    _animationHelper?.Dispose();
+                    CleanupClosedHost(resolvedKey, host);
+                    closed = true;
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogWarning(ex, "Exception disposing animation helper (continuing)");
+                    _logger.LogWarning(ex, "[PANEL_NAV] Failed to close host '{ResolvedKey}' for request '{PanelName}'", resolvedKey, panelName);
+                }
+            });
+
+            return closed;
+        }
+
+        public string? GetActivePanelName() => _activePanelName;
+
+        public void Dispose()
+        {
+            foreach (var host in _hosts.Values)
+            {
+                try { host.Dispose(); } catch { }
+            }
+            foreach (var panel in _cachedPanels.Values)
+            {
+                try { panel.Dispose(); } catch { }
+            }
+            _hosts.Clear();
+            _cachedPanels.Clear();
+        }
+
+        private void ShowFloating(Control panelOrForm, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right)
+        {
+            Form host;
+            UserControl? hostedPanel = null;
+
+            // If owner is MDI container, create MDI child instead of floating window
+            if (_useMDI && panelOrForm is not Form)
+            {
+                hostedPanel = panelOrForm as UserControl;
+                host = CreateMDIChild(panelName, hostedPanel);
+            }
+            else if (panelOrForm is Form form)
+            {
+                host = form;
+            }
+            else
+            {
+                hostedPanel = panelOrForm as UserControl;
+                host = GetOrCreateHost(panelName, hostedPanel, preferredStyle);
+            }
+
+            EnsureTrackedHost(panelName, host);
+
+            // Configure and show
+            if (_useMDI)
+            {
+                PrepareHostForMdi(host, panelName);
+
+                if (!ReferenceEquals(host.MdiParent, _owner))
+                {
+                    host.MdiParent = _owner;
+                }
+
+                if (!host.Visible)
+                {
+                    host.Show();
+                }
+
+                if (host.WindowState != FormWindowState.Maximized)
+                {
+                    host.WindowState = FormWindowState.Maximized;
                 }
             }
-            finally
+            else
             {
-                _cachedPanels.Clear();
+                EnsureHostViewport(host, hostedPanel, panelName, preferredStyle);
+
+                host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
+                host.StartPosition = host.StartPosition == FormStartPosition.Manual ? FormStartPosition.Manual : FormStartPosition.CenterParent;
+                host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
+                host.ShowInTaskbar = false;
+                host.Owner = _owner;
+                host.TopMost = true;
+                host.WindowState = FormWindowState.Normal;
+                host.Show();
             }
+
+            host.BringToFront();
+            host.Activate();
+
+            EnsureControlVisibleAndLaidOut(host);
+            if (hostedPanel != null)
+            {
+                EnsureControlVisibleAndLaidOut(hostedPanel);
+            }
+            QueuePostShowLayoutPass(host, hostedPanel);
+
+            _activePanelName = panelName;
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
         }
 
-        private static int CalculateDockSize(DockingStyle style, Control container)
+        private void PrepareHostForMdi(Form host, string panelName)
         {
-            if (container == null) return 300;
-            // Use sensible defaults relative to available container size.
-            switch (style)
+            host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
+            host.ShowInTaskbar = false;
+            host.StartPosition = FormStartPosition.Manual;
+
+            if (host.MinimumSize != Size.Empty)
             {
-                case DockingStyle.Left:
-                case DockingStyle.Right:
-                    return Math.Max(300, Math.Max(100, container.Width / 4));
-                case DockingStyle.Top:
-                case DockingStyle.Bottom:
-                    return Math.Max(200, Math.Max(80, container.Height / 4));
-                case DockingStyle.Tabbed:
-                case DockingStyle.Fill:
-                default:
-                    return Math.Max(400, Math.Min(container.Width, container.Height) / 2);
+                _logger.LogDebug("[PANEL_NAV] Resetting non-default MinimumSize {MinimumSize} for MDI host '{PanelName}'", host.MinimumSize, panelName);
+                host.MinimumSize = Size.Empty;
+            }
+
+            if (host.Owner != null)
+            {
+                host.Owner = null;
             }
         }
 
-        private static void ApplyDefaultPanelSizing(UserControl panel, DockingStyle style, Type panelType)
-        {
-            var (desired, minimum) = GetDefaultPanelSizes(panelType, style);
-
-            if (minimum.Width > 0 || minimum.Height > 0)
-            {
-                var mergedMin = new Size(
-                    Math.Max(panel.MinimumSize.Width, minimum.Width),
-                    Math.Max(panel.MinimumSize.Height, minimum.Height));
-                panel.MinimumSize = mergedMin;
-            }
-
-            if (desired.Width > 0 || desired.Height > 0)
-            {
-                // Set control size so DockingManager honors the initial width/height.
-                try { panel.Size = new Size(Math.Max(desired.Width, panel.Width), Math.Max(desired.Height, panel.Height)); } catch { }
-            }
-        }
-
-        private static (Size desiredSize, Size minimumSize) GetDefaultPanelSizes(Type panelType, DockingStyle style)
-        {
-            var sizing = DefaultPanelSizing;
-            if (PanelSizeOverrides.TryGetValue(panelType, out var overrideSizing))
-            {
-                sizing = MergeSizing(DefaultPanelSizing, overrideSizing);
-            }
-
-            var desired = style switch
-            {
-                DockingStyle.Left or DockingStyle.Right => sizing.Side,
-                DockingStyle.Top or DockingStyle.Bottom => sizing.TopBottom,
-                _ => Size.Empty
-            };
-
-            // C# 14: Use extension property for cleaner minimum size calculation.
-            // Creates a temporary UserControl to compute style-aware minimums.
-            // In production, this would be a direct type check; shown here for illustration.
-            var minimum = sizing.Minimum;
-
-            // Enforce reasonable minima for orientation using C# 14 patterns
-            minimum = style switch
-            {
-                DockingStyle.Top or DockingStyle.Bottom => EnforceMinimum(minimum, new Size(800, 300)),
-                DockingStyle.Left or DockingStyle.Right => EnforceMinimum(minimum, new Size(420, 360)),
-                DockingStyle.Tabbed or DockingStyle.Fill or _ => EnforceMinimum(minimum, new Size(800, 600))
-            };
-
-            return (desired, minimum);
-        }
-
-        /// <summary>
-        /// C# 14: Helper method using required return type semantics.
-        /// Enforces minimum size by taking max of current and required.
-        /// </summary>
-        private static Size EnforceMinimum(Size current, Size required) => new(
-            Math.Max(current.Width, required.Width),
-            Math.Max(current.Height, required.Height)
-        );
-
-        private static PanelSizing MergeSizing(PanelSizing defaults, PanelSizing overrides)
-        {
-            Size MergeSize(Size @default, Size @override)
-            {
-                return new Size(
-                    @override.Width > 0 ? @override.Width : @default.Width,
-                    @override.Height > 0 ? @override.Height : @default.Height);
-            }
-
-            var mergedSide = MergeSize(defaults.Side, overrides.Side);
-            var mergedTopBottom = MergeSize(defaults.TopBottom, overrides.TopBottom);
-            var mergedMinimum = new Size(
-                Math.Max(defaults.Minimum.Width, overrides.Minimum.Width),
-                Math.Max(defaults.Minimum.Height, overrides.Minimum.Height));
-
-            return new PanelSizing(mergedSide, mergedTopBottom, mergedMinimum);
-        }
-
-        private readonly record struct PanelSizing(Size Side, Size TopBottom, Size Minimum);
-
-        private static readonly PanelSizing DefaultPanelSizing = new PanelSizing(
-            new Size(540, 0),
-            new Size(0, 400),
-            new Size(420, 360));
-
-        /// <summary>
-        /// Hides a docked panel by name.
-        /// </summary>
-        /// <param name="panelName">Name of the panel to hide.</param>
-        /// <returns>True if panel was hidden, false if panel doesn't exist.</returns>
-        public bool HidePanel(string panelName)
+        private void EnsureTrackedHost(string panelName, Form host)
         {
             if (string.IsNullOrWhiteSpace(panelName))
-                throw new ArgumentException("Panel name cannot be empty.", nameof(panelName));
-
-            if (_parentControl.InvokeRequired)
             {
-                return (bool)_parentControl.Invoke(new Func<bool>(() => HidePanel(panelName)));
+                return;
             }
 
-            if (_cachedPanels.TryGetValue(panelName, out var existingPanel))
+            if (_hosts.TryGetValue(panelName, out var existing) && ReferenceEquals(existing, host))
             {
-                _dockingManager.SetDockVisibility(existingPanel, false);
-                Logger.LogDebug("Hidden panel: {PanelName}", panelName);
-                return true;
+                return;
             }
 
-            Logger.LogWarning("Cannot hide panel '{PanelName}' - not found", panelName);
-            return false;
+            _hosts[panelName] = host;
+            host.FormClosed += (_, __) => CleanupClosedHost(panelName, host);
         }
 
-        /// <summary>
-        /// Get the currently active panel name.
-        /// Thread-safe: Routes through UI thread if called from background thread.
-        /// C# 14: Simplified with null-conditional operator and pattern matching.
-        /// </summary>
-        /// <returns>The name of the currently active panel, or null if no panel is active.</returns>
-        public string? GetActivePanelName()
+        private Form GetOrCreateHost(string panelName, UserControl? panel, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
         {
-            // C# 14: Null-conditional operator with method invocation.
-            // If InvokeRequired is true, marshal to UI thread.
-            if (_parentControl.InvokeRequired)
+            if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
             {
-                return (string?)_parentControl.Invoke(new Func<string?>(() => GetActivePanelName()));
+                EnsurePanelAttached(existing, panel);
+                return existing;
             }
-            // Return the currently active panel name (or null if none)
-            return _activePanelName;
+
+            var (initialSize, minimumSize) = ResolveHostSize(panel, preferredStyle);
+
+            var host = new Form
+            {
+                FormBorderStyle = FormBorderStyle.Sizable,
+                ShowIcon = false,
+                ShowInTaskbar = false,
+                StartPosition = FormStartPosition.Manual,
+                Location = CascadeLocation(),
+                Size = initialSize,
+                MinimumSize = minimumSize,
+                Text = panelName,
+                AutoScaleMode = AutoScaleMode.Dpi,
+                AutoScroll = false,
+                Padding = Padding.Empty
+            };
+
+            EnsurePanelAttached(host, panel);
+
+            EnsureTrackedHost(panelName, host);
+            return host;
         }
 
-        /// <summary>
-        /// POLISH: Announces a message to screen readers via AccessibleName update.
-        /// This provides accessibility feedback when panel visibility changes occur.
-        /// </summary>
-        /// <param name="control">The control to announce from.</param>
-        /// <param name="announcementText">The text to announce to screen readers.</param>
-        private void AnnounceForAccessibility(Control control, string announcementText)
+        private void EnsurePanelAttached(Form host, UserControl? panel)
         {
-            if (control == null || string.IsNullOrWhiteSpace(announcementText))
+            if (panel == null) return;
+
+            if (panel.Parent != null && !ReferenceEquals(panel.Parent, host))
+            {
+                panel.Parent.Controls.Remove(panel);
+            }
+
+            if (!host.Controls.Contains(panel))
+            {
+                panel.Dock = DockStyle.Fill;
+                panel.Margin = Padding.Empty;
+                var minimumWidth = Math.Max(640, panel.MinimumSize.Width);
+                var minimumHeight = Math.Max(420, panel.MinimumSize.Height);
+                panel.MinimumSize = new Size(minimumWidth, minimumHeight);
+
+                if (panel.Width < panel.MinimumSize.Width || panel.Height < panel.MinimumSize.Height)
+                {
+                    panel.Size = new Size(
+                        Math.Max(panel.Width, panel.MinimumSize.Width),
+                        Math.Max(panel.Height, panel.MinimumSize.Height));
+                }
+
+                host.Padding = Padding.Empty;
+                host.Controls.Clear();
+                host.Controls.Add(panel);
+                panel.Bounds = host.ClientRectangle;
+
+                // Force handle creation to trigger OnHandleCreated and ViewModel resolution
+                if (!panel.IsHandleCreated)
+                {
+                    _ = panel.Handle;
+                }
+
+                // Trigger Load event explicitly if handle already exists
+                host.PerformLayout();
+                panel.PerformLayout();
+
+                TryInitializeAsyncPanel(panel, host.Text);
+            }
+
+            panel.Visible = true;
+            panel.Dock = DockStyle.Fill;
+            panel.BringToFront();
+            EnsureControlVisibleAndLaidOut(panel);
+            EnsureControlVisibleAndLaidOut(host);
+        }
+
+        private void TryInitializeAsyncPanel(Control panel, string panelName)
+        {
+            if (panel is not IAsyncInitializable asyncInitializable)
+            {
+                return;
+            }
+
+            if (_initializedAsyncPanels.Contains(panel))
+            {
+                return;
+            }
+
+            _initializedAsyncPanels.Add(panel);
+
+            _ = InitializeAsyncPanelCore(asyncInitializable, panel, panelName);
+        }
+
+        private void ConfigureSpecialHostPanels(Control panel, string panelName)
+        {
+            if (panel is not FormHostPanel formHostPanel)
             {
                 return;
             }
 
             try
             {
-                // WinForms accessibility: Update AccessibleName to trigger screen reader announcement
-                control.AccessibleName = announcementText;
-                Logger.LogDebug("Accessibility announcement: {Text}", announcementText);
+                if (string.Equals(panelName, "Dashboard", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (formHostPanel.HostedForm == null || formHostPanel.HostedForm.IsDisposed)
+                    {
+                        var dashboardForm = ActivatorUtilities.CreateInstance<BudgetDashboardForm>(_serviceProvider);
+                        formHostPanel.HostForm(dashboardForm);
+                    }
+
+                    return;
+                }
+
+                if (string.Equals(panelName, "Rates", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (formHostPanel.HostedForm == null || formHostPanel.HostedForm.IsDisposed)
+                    {
+                        var ratesForm = ActivatorUtilities.CreateInstance<RatesPage>(_serviceProvider);
+                        formHostPanel.HostForm(ratesForm);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Logger.LogDebug(ex, "Failed to announce accessibility message (non-critical)");
+                _logger.LogWarning(ex, "[PANEL_NAV] Failed to configure FormHostPanel content for '{PanelName}'", panelName);
+            }
+        }
+
+        private async Task InitializeAsyncPanelCore(IAsyncInitializable asyncInitializable, Control panel, string panelName)
+        {
+            try
+            {
+                _logger.LogDebug("[PANEL_NAV] Initializing async panel '{PanelName}' ({PanelType})", panelName, panel.GetType().Name);
+                await asyncInitializable.InitializeAsync(CancellationToken.None).ConfigureAwait(true);
+                _logger.LogDebug("[PANEL_NAV] Async panel initialized '{PanelName}'", panelName);
+
+                ExecuteOnUiThread(() =>
+                {
+                    EnsureControlVisibleAndLaidOut(panel);
+
+                    var host = panel.FindForm();
+                    if (host != null && !host.IsDisposed)
+                    {
+                        EnsureControlVisibleAndLaidOut(host);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _initializedAsyncPanels.Remove(panel);
+                _logger.LogWarning(ex, "[PANEL_NAV] Async initialization failed for '{PanelName}' ({PanelType})", panelName, panel.GetType().Name);
+            }
+        }
+
+        private static void EnsureControlVisibleAndLaidOut(Control control)
+        {
+            if (control == null || control.IsDisposed)
+            {
+                return;
+            }
+
+            control.Visible = true;
+            control.PerformLayout();
+            control.Invalidate(true);
+            control.Update();
+
+            foreach (Control child in control.Controls)
+            {
+                EnsureControlVisibleAndLaidOut(child);
+            }
+        }
+
+        private static void QueuePostShowLayoutPass(Form host, UserControl? hostedPanel)
+        {
+            if (host == null || host.IsDisposed || !host.IsHandleCreated)
+            {
+                return;
+            }
+
+            try
+            {
+                host.BeginInvoke(new Action(() =>
+                {
+                    if (host.IsDisposed)
+                    {
+                        return;
+                    }
+
+                    EnsureControlVisibleAndLaidOut(host);
+
+                    if (hostedPanel != null && !hostedPanel.IsDisposed)
+                    {
+                        hostedPanel.Dock = DockStyle.Fill;
+                        EnsureControlVisibleAndLaidOut(hostedPanel);
+                    }
+                }));
+            }
+            catch
+            {
+                // best-effort deferred layout pass
+            }
+        }
+
+        private void EnsureHostViewport(Form host, UserControl? panel, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
+        {
+            if (host == null || host.IsDisposed)
+            {
+                return;
+            }
+
+            var (desiredSize, minSize) = ResolveHostSize(panel, preferredStyle);
+
+            var sizeChanged = false;
+            if (host.MinimumSize.Width < minSize.Width || host.MinimumSize.Height < minSize.Height)
+            {
+                host.MinimumSize = minSize;
+            }
+
+            var targetWidth = Math.Max(host.Width, minSize.Width);
+            var targetHeight = Math.Max(host.Height, minSize.Height);
+
+            if (targetWidth < desiredSize.Width)
+            {
+                targetWidth = desiredSize.Width;
+                sizeChanged = true;
+            }
+
+            if (targetHeight < desiredSize.Height)
+            {
+                targetHeight = desiredSize.Height;
+                sizeChanged = true;
+            }
+
+            var workingArea = Screen.FromControl(_owner).WorkingArea;
+            targetWidth = Math.Min(targetWidth, Math.Max(minSize.Width, workingArea.Width - ScreenPadding));
+            targetHeight = Math.Min(targetHeight, Math.Max(minSize.Height, workingArea.Height - ScreenPadding));
+
+            if (host.Width != targetWidth || host.Height != targetHeight)
+            {
+                host.Size = new Size(targetWidth, targetHeight);
+                sizeChanged = true;
+            }
+
+            if (sizeChanged)
+            {
+                _logger.LogDebug("[PANEL_NAV] Ensured viewport for '{PanelName}' -> {Width}x{Height}, Min={MinWidth}x{MinHeight}",
+                    panelName,
+                    host.Width,
+                    host.Height,
+                    host.MinimumSize.Width,
+                    host.MinimumSize.Height);
+            }
+        }
+
+        private (Size Desired, Size Minimum) ResolveHostSize(UserControl? panel, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
+        {
+            var workingArea = Screen.FromControl(_owner).WorkingArea;
+            var maxWidth = Math.Max(MinimumFloatingWidth, workingArea.Width - ScreenPadding);
+            var maxHeight = Math.Max(MinimumFloatingHeight, workingArea.Height - ScreenPadding);
+
+            var panelSize = panel?.Size ?? Size.Empty;
+            var panelMinimumSize = panel?.MinimumSize ?? Size.Empty;
+            var panelDockMinimumSize = panel?.MinimumPanelSize(preferredStyle) ?? Size.Empty;
+            var panelPreferredDockSize = panel?.PreferredDockSize() ?? Size.Empty;
+            var panelPreferredSize = Size.Empty;
+
+            try
+            {
+                if (panel != null)
+                {
+                    panelPreferredSize = panel.GetPreferredSize(new Size(maxWidth, maxHeight));
+                }
+            }
+            catch
+            {
+                panelPreferredSize = Size.Empty;
+            }
+
+            var baselineWidth = (int)Math.Round(workingArea.Width * DefaultScreenUsageRatio);
+            var baselineHeight = (int)Math.Round(workingArea.Height * DefaultScreenUsageRatio);
+
+            var minWidth = Math.Min(maxWidth, Math.Max(Math.Max(MinimumFloatingWidth, panelMinimumSize.Width), panelDockMinimumSize.Width));
+            var minHeight = Math.Min(maxHeight, Math.Max(Math.Max(MinimumFloatingHeight, panelMinimumSize.Height), panelDockMinimumSize.Height));
+
+            var desiredWidth = Math.Max(Math.Max(minWidth, baselineWidth), MaxUsableDimension(panelSize.Width, panelPreferredSize.Width, panelPreferredDockSize.Width));
+            var desiredHeight = Math.Max(Math.Max(minHeight, baselineHeight), MaxUsableDimension(panelSize.Height, panelPreferredSize.Height, panelPreferredDockSize.Height));
+
+            desiredWidth = Math.Min(maxWidth, desiredWidth);
+            desiredHeight = Math.Min(maxHeight, desiredHeight);
+
+            return (new Size(desiredWidth, desiredHeight), new Size(minWidth, minHeight));
+        }
+
+        private static int MaxUsableDimension(params int[] dimensions)
+        {
+            var max = 0;
+            foreach (var dimension in dimensions)
+            {
+                if (dimension >= 320)
+                {
+                    max = Math.Max(max, dimension);
+                }
+            }
+
+            return max;
+        }
+
+        private Point CascadeLocation()
+        {
+            const int offset = 24;
+            var screen = Screen.FromControl(_owner).WorkingArea;
+            var baseX = Math.Max(screen.Left + offset, screen.Left + 50);
+            var baseY = Math.Max(screen.Top + offset, screen.Top + 50);
+            var cascadeCount = _hosts.Count % 8;
+            var location = new Point(baseX + cascadeCount * offset, baseY + cascadeCount * offset);
+            return location;
+        }
+
+        /// <summary>
+        /// Creates an MDI child form to host a panel.
+        /// Used when owner is MDI container.
+        /// </summary>
+        private Form CreateMDIChild(string panelName, UserControl? panel)
+        {
+            if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
+            {
+                if (panel != null)
+                {
+                    EnsurePanelAttached(existing, panel);
+                }
+                return existing;
+            }
+
+            var mdiChild = new Form
+            {
+                Text = panelName,
+                FormBorderStyle = FormBorderStyle.Sizable,
+                ShowIcon = false,
+                WindowState = FormWindowState.Maximized,
+                AutoScaleMode = AutoScaleMode.Dpi,
+                MinimumSize = new Size(0, 0),
+                Padding = Padding.Empty
+            };
+
+            if (panel != null)
+            {
+                EnsurePanelAttached(mdiChild, panel);
+            }
+
+            EnsureTrackedHost(panelName, mdiChild);
+
+            // Apply theme
+            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(mdiChild, currentTheme);
+
+            return mdiChild;
+        }
+
+        private void ExecuteOnUiThread(Action action)
+        {
+            if (_owner.IsDisposed) return;
+
+            if (_owner.InvokeRequired)
+            {
+                _owner.Invoke(action);
+                return;
+            }
+
+            action();
+        }
+
+        private static string NormalizePanelKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return value.Replace(" ", string.Empty, StringComparison.Ordinal).Trim();
+        }
+
+        private void CachePanelAliases(string panelName, Control panel)
+        {
+            if (panel == null || panel.IsDisposed)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(panelName))
+            {
+                _cachedPanels[panelName] = panel;
+            }
+
+            if (!string.IsNullOrWhiteSpace(panel.Name))
+            {
+                _cachedPanels[panel.Name] = panel;
+            }
+
+            var typeName = panel.GetType().Name;
+            if (!string.IsNullOrWhiteSpace(typeName))
+            {
+                _cachedPanels[typeName] = panel;
+            }
+        }
+
+        private bool TryResolveHost(string panelName, out string resolvedKey, out Form? resolvedHost)
+        {
+            resolvedKey = panelName;
+            resolvedHost = null;
+
+            if (_hosts.TryGetValue(panelName, out var exactHost) && exactHost != null && !exactHost.IsDisposed)
+            {
+                resolvedHost = exactHost;
+                return true;
+            }
+
+            var normalizedRequest = NormalizePanelKey(panelName);
+
+            foreach (var kvp in _hosts)
+            {
+                var key = kvp.Key;
+                var host = kvp.Value;
+                if (host == null || host.IsDisposed)
+                {
+                    continue;
+                }
+
+                var keyMatches = string.Equals(key, panelName, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(NormalizePanelKey(key), normalizedRequest, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(host.Text, panelName, StringComparison.OrdinalIgnoreCase)
+                                 || string.Equals(NormalizePanelKey(host.Text), normalizedRequest, StringComparison.OrdinalIgnoreCase);
+
+                if (keyMatches || HostContainsPanelIdentifier(host, panelName, normalizedRequest))
+                {
+                    resolvedKey = key;
+                    resolvedHost = host;
+                    return true;
+                }
+            }
+
+            if (_cachedPanels.TryGetValue(panelName, out var cachedPanel) && cachedPanel != null && !cachedPanel.IsDisposed)
+            {
+                foreach (var kvp in _hosts)
+                {
+                    var host = kvp.Value;
+                    if (host == null || host.IsDisposed)
+                    {
+                        continue;
+                    }
+
+                    if (host.Controls.Contains(cachedPanel))
+                    {
+                        resolvedKey = kvp.Key;
+                        resolvedHost = host;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool HostContainsPanelIdentifier(Form host, string panelName, string normalizedRequest)
+        {
+            foreach (Control child in host.Controls)
+            {
+                if (string.Equals(child.Name, panelName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(child.GetType().Name, panelName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizePanelKey(child.Name), normalizedRequest, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizePanelKey(child.GetType().Name), normalizedRequest, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(child.Text, panelName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizePanelKey(child.Text), normalizedRequest, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void CleanupClosedHost(string panelName, Form host)
+        {
+            if (_hosts.TryGetValue(panelName, out var trackedHost) && ReferenceEquals(trackedHost, host))
+            {
+                _hosts.Remove(panelName);
+            }
+
+            if (_cachedPanels.TryGetValue(panelName, out var cachedPanel) && (cachedPanel == null || cachedPanel.IsDisposed || (host != null && host.Controls.Contains(cachedPanel))))
+            {
+                _cachedPanels.Remove(panelName);
+            }
+
+            var aliasesToRemove = new List<string>();
+            foreach (var alias in _cachedPanels)
+            {
+                var control = alias.Value;
+                if (control == null || control.IsDisposed || (host != null && host.Controls.Contains(control)))
+                {
+                    aliasesToRemove.Add(alias.Key);
+                }
+            }
+
+            foreach (var alias in aliasesToRemove)
+            {
+                _cachedPanels.Remove(alias);
+            }
+
+            _initializedAsyncPanels.RemoveWhere(control => control == null || control.IsDisposed || (host != null && host.Controls.Contains(control)));
+
+            if (string.Equals(_activePanelName, panelName, StringComparison.OrdinalIgnoreCase))
+            {
+                _activePanelName = null;
             }
         }
     }
 
-    /// <summary>
-    /// Event args for panel activation events.
-    /// </summary>
     public class PanelActivatedEventArgs : EventArgs
     {
         public string PanelName { get; set; }

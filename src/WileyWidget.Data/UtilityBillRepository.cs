@@ -92,6 +92,7 @@ public class UtilityBillRepository : IUtilityBillRepository
             .Include(b => b.Customer)
             .Include(b => b.Charges)
             .AsNoTracking()
+            .OrderByDescending(b => b.Id)
             .FirstOrDefaultAsync(b => b.Id == id);
     }
 
@@ -105,6 +106,8 @@ public class UtilityBillRepository : IUtilityBillRepository
             .Include(b => b.Customer)
             .Include(b => b.Charges)
             .AsNoTracking()
+            .OrderByDescending(b => b.BillDate)
+            .ThenByDescending(b => b.Id)
             .FirstOrDefaultAsync(b => b.BillNumber == billNumber);
     }
 
@@ -321,6 +324,7 @@ public class UtilityBillRepository : IUtilityBillRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
 
         var existingBill = await context.UtilityBills
+            .OrderByDescending(b => b.Id)
             .FirstOrDefaultAsync(b => b.Id == bill.Id);
 
         if (existingBill == null)
@@ -350,6 +354,7 @@ public class UtilityBillRepository : IUtilityBillRepository
 
         var bill = await context.UtilityBills
             .Include(b => b.Charges)
+            .OrderByDescending(b => b.Id)
             .FirstOrDefaultAsync(b => b.Id == id);
 
         if (bill == null)

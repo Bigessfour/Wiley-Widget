@@ -5,6 +5,8 @@ using System.Windows.Forms;
 using WileyWidget.WinForms.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 
 namespace WileyWidget.WinForms.Services
@@ -150,7 +152,7 @@ namespace WileyWidget.WinForms.Services
     /// Provides minimize, maximize, and close buttons.
     /// Automatically returns panel to parent when closed.
     /// </summary>
-    public class FloatingPanelWindow : Form
+    public class FloatingPanelWindow : SfForm
     {
         private readonly Control _panelControl;
         private readonly Form _parentForm;
@@ -178,6 +180,19 @@ namespace WileyWidget.WinForms.Services
             FormBorderStyle = FormBorderStyle.SizableToolWindow;
             MinimumSize = new Size(200, 150);
             Size = new Size(400, 300);
+
+            // Apply Syncfusion theme (consistent with parent form)
+            try
+            {
+                WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to apply theme to floating panel window '{PanelName}'", panelName);
+            }
+
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 2);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 2);
 
             // Create container for the panel
             _contentPanel = new Panel

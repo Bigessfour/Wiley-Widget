@@ -33,6 +33,10 @@ namespace WileyWidget.WinForms.Services
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
+            var view = grid.View;
+            if (view == null)
+                throw new InvalidOperationException("Grid view not initialized - cannot export");
+
             return Task.Run(() =>
             {
                 using var excelEngine = new ExcelEngine();
@@ -41,15 +45,16 @@ namespace WileyWidget.WinForms.Services
 
                 var options = new ExcelExportingOptions
                 {
-                    ExcelVersion = ExcelVersion.Xlsx
+                    ExcelVersion = ExcelVersion.Xlsx,
+                    ExportStackedHeaders = true
                 };
 
                 // Export using SfDataGrid's built-in export functionality
-                grid.ExportToExcel(grid.View, options, worksheet);
+                grid.ExportToExcel(view, options, worksheet);
 
                 workbook.Version = ExcelVersion.Xlsx;
                 workbook.SaveAs(filePath);
-            });
+            }, cancellationToken);
         }
 
         /// <summary>
@@ -66,6 +71,10 @@ namespace WileyWidget.WinForms.Services
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
 
+            var view = grid.View;
+            if (view == null)
+                throw new InvalidOperationException("Grid view not initialized - cannot export");
+
             return Task.Run(() =>
             {
                 using var document = new PdfDocument();
@@ -79,7 +88,7 @@ namespace WileyWidget.WinForms.Services
                 };
 
                 // Export using SfDataGrid's built-in PDF export functionality
-                var pdfGrid = grid.ExportToPdfGrid(grid.View, options);
+                var pdfGrid = grid.ExportToPdfGrid(view, options);
                 var page = document.Pages.Add();
 
                 pdfGrid.Draw(page, new PointF(0, 0));

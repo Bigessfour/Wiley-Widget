@@ -7,7 +7,9 @@ using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Base;
+
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Themes;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -29,18 +31,18 @@ public static class SyncfusionThemingExtensions
     /// </remarks>
     public static Size PreferredDockSize(this UserControl panel) => panel switch
     {
-        DashboardPanel => new Size(560, 420),
-        AccountsPanel => new Size(620, 380),
-        WileyWidget.WinForms.Controls.Analytics.AnalyticsPanel => new Size(560, 400),
-        AnalyticsHubPanel => new Size(600, 500),
+        FormHostPanel => new Size(560, 420),
+        AccountsPanel => new Size(900, 560),
+        AnalyticsHubPanel => new Size(560, 400),
         AuditLogPanel => new Size(520, 380),
         ProactiveInsightsPanel => new Size(560, 400),
-        WarRoomPanel => new Size(560, 420),
+        WarRoomPanel => new Size(1000, 700),
         QuickBooksPanel => new Size(620, 400),
         DepartmentSummaryPanel => new Size(540, 400),
         SettingsPanel => new Size(500, 360),
         UtilityBillPanel => new Size(560, 400),
-        CustomersPanel => new Size(560, 400),
+        CustomersPanel => new Size(580, 380),
+        ReportsPanel => new Size(1400, 900),
         _ => new Size(540, 400) // Default fallback
     };
 
@@ -173,18 +175,18 @@ public static class SyncfusionThemingExtensions
     /// </summary>
     public static Size SafeDockSize(this UserControl panel, DockingStyle style, Size containerSize) =>
         (style, containerSize.Width, containerSize.Height) switch
-    {
-        // Vertical docking: width-aware sizing
-        (DockingStyle.Left or DockingStyle.Right, > 300, > 0) =>
-            new Size(Math.Min(panel.Width, containerSize.Width / 3), containerSize.Height),
+        {
+            // Vertical docking: width-aware sizing
+            (DockingStyle.Left or DockingStyle.Right, > 300, > 0) =>
+                new Size(Math.Min(panel.Width, containerSize.Width / 3), containerSize.Height),
 
-        // Horizontal docking: height-aware sizing
-        (DockingStyle.Top or DockingStyle.Bottom, > 0, > 200) =>
-            new Size(containerSize.Width, Math.Min(panel.Height, containerSize.Height / 3)),
+            // Horizontal docking: height-aware sizing
+            (DockingStyle.Top or DockingStyle.Bottom, > 0, > 200) =>
+                new Size(containerSize.Width, Math.Min(panel.Height, containerSize.Height / 3)),
 
-        // Fallback: sensible defaults
-        _ => new Size(400, 300)
-    };
+            // Fallback: sensible defaults
+            _ => new Size(400, 300)
+        };
 
     /// <summary>
     /// Extension method to validate Syncfusion control visibility state (C# 14 record).
@@ -259,9 +261,17 @@ public static class SyncfusionThemingExtensions
 
             logger?.LogDebug("Applied theme '{Theme}' recursively to {Count} Syncfusion controls", themeName, syncfusionControlsProcessed);
         }
-        catch (Exception ex)
+        catch (ObjectDisposedException odEx)
         {
-            logger?.LogWarning(ex, "Recursive theme application failed for theme '{Theme}'", themeName);
+            logger?.LogWarning(odEx, "Control was disposed during theme application for theme '{Theme}'", themeName);
+        }
+        catch (InvalidOperationException ioEx)
+        {
+            logger?.LogWarning(ioEx, "Invalid operation during recursive theme application for theme '{Theme}' - control state may have changed", themeName);
+        }
+        catch (ArgumentException argEx)
+        {
+            logger?.LogError(argEx, "Invalid argument during theme application - theme '{Theme}' may not be valid", themeName);
         }
     }
 

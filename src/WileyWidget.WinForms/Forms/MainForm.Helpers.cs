@@ -1,15 +1,7 @@
-using System.Threading;
-using System;
-using System.Collections;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using Syncfusion.WinForms.DataGrid;
-using Syncfusion.WinForms.DataGridConverter;
-using Syncfusion.Data;
 using Microsoft.Extensions.Logging;
+using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.DataGrid;
+using System.Collections;
 using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Forms
@@ -20,36 +12,13 @@ namespace WileyWidget.WinForms.Forms
     /// </summary>
     public partial class MainForm
     {
-        #region Internal Methods for RibbonFactory
+        #region Internal Methods for Ribbon
 
-        /// <summary>
-        /// Shows a panel of specified type with the given name.
-        /// Delegates to PanelNavigationService for centralized panel management.
-        /// </summary>
-        /// <typeparam name="TPanel">Type of panel control to show (must derive from UserControl)</typeparam>
-        /// <param name="panelName">Name identifier for the panel</param>
-        public void ShowPanel<TPanel>(string panelName) where TPanel : UserControl
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(panelName))
-                {
-                    _logger?.LogWarning("ShowPanel called with null or empty panelName");
-                    return;
-                }
 
-                // Delegate to PanelNavigationService for consistent panel management
-                _panelNavigator?.ShowPanel<TPanel>(panelName);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "ShowPanel<{PanelType}>({PanelName}) failed", typeof(TPanel).Name, panelName);
-            }
-        }
 
         /// <summary>
         /// Gets the currently active or focused SfDataGrid control.
-        /// Searches through the control hierarchy with caching and specialized docking support.
+        /// Searches through the control hierarchy with caching.
         /// </summary>
         /// <returns>The active SfDataGrid, or null if none found</returns>
         private SfDataGrid? GetActiveGrid()
@@ -74,21 +43,7 @@ namespace WileyWidget.WinForms.Forms
                     foundGrid = ac;
                 }
 
-                // 3. Check DockingManager ActiveControl (high priority in docking apps)
-                if (foundGrid == null && _dockingManager?.ActiveControl != null)
-                {
-                    var activeDoc = _dockingManager.ActiveControl;
-                    if (activeDoc is SfDataGrid dg && !dg.IsDisposed)
-                    {
-                        foundGrid = dg;
-                    }
-                    else
-                    {
-                        foundGrid = FindVisibleGridRecursive(activeDoc.Controls);
-                    }
-                }
-
-                // 4. Recursive search for focused control
+                // 3. Recursive search for focused control
                 if (foundGrid == null)
                 {
                     Control? focused = FindFocusedControl(Controls);
@@ -98,7 +53,7 @@ namespace WileyWidget.WinForms.Forms
                     }
                 }
 
-                // 5. Deep recursive search for first visible grid (fallback)
+                // 4. Deep recursive search for first visible grid (fallback)
                 if (foundGrid == null)
                 {
                     foundGrid = FindVisibleGridRecursive(Controls);
@@ -188,7 +143,7 @@ namespace WileyWidget.WinForms.Forms
         /// Sorts the active grid by its first sortable column.
         /// </summary>
         /// <param name="descending">If true, sorts in descending order; otherwise ascending</param>
-        private void SortActiveGridByFirstSortableColumn(bool descending)
+        public void SortActiveGridByFirstSortableColumn(bool descending)
         {
             try
             {
@@ -346,7 +301,7 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 // Validate data before export
-                if (grid.View?.Records?.Count == 0)
+                if (grid.View.Records?.Count == 0)
                 {
                     MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
@@ -562,13 +517,13 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                var isVisible = _dockingManager?.GetDockVisibility(control) ?? control.Visible;
+                var isVisible = control.Visible && control.Parent?.Visible != false && control.FindForm()?.Visible != false;
 
                 // First check if the control itself implements ILazyLoadViewModel (e.g., WarRoomPanel)
                 if (control is WileyWidget.Abstractions.ILazyLoadViewModel controlLazyViewModel)
                 {
                     _logger?.LogDebug("Notifying {PanelType} (control) visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
-                    await controlLazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(false);
+                    await controlLazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(true);
                     return;
                 }
 
@@ -584,7 +539,7 @@ namespace WileyWidget.WinForms.Forms
                 if (dataContext is WileyWidget.Abstractions.ILazyLoadViewModel lazyViewModel)
                 {
                     _logger?.LogDebug("Notifying {PanelType} (ViewModel) visibility changed: isVisible={IsVisible}", control.GetType().Name, isVisible);
-                    await lazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(false);
+                    await lazyViewModel.OnVisibilityChangedAsync(isVisible).ConfigureAwait(true);
                 }
             }
             catch (Exception ex)
@@ -592,6 +547,27 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogWarning(ex, "Failed to notify panel visibility change for {ControlName}", control?.Name ?? "unknown");
             }
         }
+
+        #endregion
+
+        #region Stub methods (legacy docking code - no-ops for TabbedMDI)
+
+        /// <summary>Stub: ApplyStatus - not used in TabbedMDI mode</summary>
+        private void ApplyStatus(string text) { /* TabbedMDI doesn't need status updates */ }
+
+        /// <summary>Stub: ShowErrorDialog - kept for compatibility with initialization code</summary>
+        private void ShowErrorDialog(string title, string message)
+        {
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        /// <summary>Stub: ShowErrorDialog with exception - kept for compatibility</summary>
+        private void ShowErrorDialog(string title, string message, Exception ex)
+        {
+            _logger?.LogError(ex, "{Title}: {Message}", title, message);
+            ShowErrorDialog(title, message);
+        }
+
+        #endregion
     }
-    #endregion
 }

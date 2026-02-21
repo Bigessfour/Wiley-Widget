@@ -9,6 +9,115 @@ namespace WileyWidget.WinForms.Extensions;
 public static class SyncfusionExtensions
 {
     /// <summary>
+    /// Attempts to update dock visibility only when DockingManager and control state are ready.
+    /// Falls back to plain Control.Visible assignment if manager state is not stable.
+    /// </summary>
+    public static bool TrySetDockVisibilitySafe(
+        this DockingManager? dockingManager,
+        Control control,
+        bool visible,
+        ILogger? logger = null,
+        string? context = null)
+    {
+        if (control == null || control.IsDisposed)
+        {
+            return false;
+        }
+
+        void ApplyVisibleFallback()
+        {
+            if (control.IsDisposed)
+            {
+                return;
+            }
+
+            if (control.InvokeRequired)
+            {
+                try
+                {
+                    control.BeginInvoke(new System.Action(() =>
+                    {
+                        if (!control.IsDisposed && control.Visible != visible)
+                        {
+                            control.Visible = visible;
+                        }
+                    }));
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+                catch (InvalidOperationException)
+                {
+                }
+
+                return;
+            }
+
+            if (control.Visible != visible)
+            {
+                control.Visible = visible;
+            }
+        }
+
+        context ??= "UnknownContext";
+
+        if (dockingManager == null)
+        {
+            ApplyVisibleFallback();
+            return false;
+        }
+
+        var hostControl = dockingManager.HostControl;
+        if (hostControl == null || hostControl.IsDisposed || !hostControl.IsHandleCreated || hostControl.Controls.Count == 0)
+        {
+            logger?.LogDebug("Skipping SetDockVisibility for {ControlName} during {Context}: host control not ready", control.Name, context);
+            ApplyVisibleFallback();
+            return false;
+        }
+
+        if (control.Parent == null || control.Parent.IsDisposed)
+        {
+            logger?.LogDebug("Skipping SetDockVisibility for {ControlName} during {Context}: parent not ready", control.Name, context);
+            ApplyVisibleFallback();
+            return false;
+        }
+
+        try
+        {
+            dockingManager.SetDockVisibility(control, visible);
+            ApplyVisibleFallback();
+            return true;
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            logger?.LogWarning(ex,
+                "SetDockVisibility deferred for {ControlName} during {Context}; applying Visible fallback",
+                control.Name,
+                context);
+            ApplyVisibleFallback();
+            return false;
+        }
+        catch (DockingManagerException ex)
+        {
+            logger?.LogDebug(ex,
+                "SetDockVisibility failed for {ControlName} during {Context}; applying Visible fallback",
+                control.Name,
+                context);
+            ApplyVisibleFallback();
+            return false;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex,
+                "Unexpected SetDockVisibility failure for {ControlName} during {Context}; applying Visible fallback",
+                control.Name,
+                context);
+            ApplyVisibleFallback();
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Validates all images in the ribbon and converts any animated images to static bitmaps.
     /// This prevents ImageAnimator exceptions when Syncfusion ToolStrip controls try to paint animated images.
     /// </summary>
@@ -38,7 +147,7 @@ public static class SyncfusionExtensions
         if (menuStrip == null) return;
         try
         {
-             logger?.LogDebug("Validating menu strip images...");
+            logger?.LogDebug("Validating menu strip images...");
         }
         catch (Exception ex)
         {

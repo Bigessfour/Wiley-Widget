@@ -15,6 +15,7 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Xunit;
 using WileyWidget.WinForms.Configuration;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.Services.Abstractions;
@@ -24,6 +25,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
     public class RightPanelTests
     {
+        // NOTE: These tests are obsolete. RightDockPanelFactory was refactored to remove JARVIS chat.
+        // JARVIS is managed through DockingManager panel navigation.
+        // The right panel now only contains ActivityLogPanel directly, no tabs or mode switching.
+        // These tests need to be rewritten to test the new simplified architecture.
         private static ServiceProvider BuildProvider(Dictionary<string, string?>? overrides = null)
         {
             var services = new ServiceCollection();
@@ -75,8 +80,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         {
             public TestMainForm(IServiceProvider sp, IConfiguration configuration, ILogger<MainForm> logger,
                 ReportViewerLaunchOptions reportViewerLaunchOptions, IThemeService themeService, IWindowStateService windowStateService,
-                IFileImportService fileImportService)
-                : base(sp, configuration, logger, reportViewerLaunchOptions, themeService, windowStateService, fileImportService)
+                IFileImportService fileImportService, SyncfusionControlFactory controlFactory)
+                : base(sp, configuration, logger, reportViewerLaunchOptions, themeService, windowStateService, fileImportService, controlFactory)
             {
             }
 
@@ -92,7 +97,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
         }
 
-        [StaFact]
+        [StaFact(Skip = "Obsolete: RightDockPanelFactory no longer uses tabs or modes")]
         public void CreateRightDockPanel_HasActivityLogAndJarvisTabs_AndDefaultMode()
         {
             // Arrange
@@ -104,30 +109,31 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var form = new TestMainForm(provider, configuration, loggerForForm, ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider)!,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!);
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!,
+                Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
 
             // Act
-            var (rightDockPanel, activityLogPanel, initialMode) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
+            var (rightDockPanel, activityLogPanel) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
 
             // Assert
             rightDockPanel.Should().NotBeNull();
-            initialMode.Should().Be(RightDockPanelFactory.RightPanelMode.ActivityLog);
-            rightDockPanel.Tag.Should().Be(RightDockPanelFactory.RightPanelMode.ActivityLog);
+            // initialMode.Should().Be(RightDockPanelFactory.RightPanelMode.ActivityLog);
+            // rightDockPanel.Tag.Should().Be(RightDockPanelFactory.RightPanelMode.ActivityLog);
 
             rightDockPanel.Controls.Count.Should().BeGreaterThan(0);
-            rightDockPanel.Controls[0].Should().BeOfType<TabControl>();
-            var tabControl = (TabControl)rightDockPanel.Controls[0];
-            tabControl.TabPages.Cast<TabPage>().Any(tp => tp.Name == "ActivityLogTab").Should().BeTrue();
-            tabControl.TabPages.Cast<TabPage>().Any(tp => tp.Name == "JARVISChatTab").Should().BeTrue();
+            // rightDockPanel.Controls[0].Should().BeOfType<TabControl>();
+            // var tabControl = (TabControl)rightDockPanel.Controls[0];
+            // tabControl.TabPages.Cast<TabPage>().Any(tp => tp.Name == "ActivityLogTab").Should().BeTrue();
+            // tabControl.TabPages.Cast<TabPage>().Any(tp => tp.Name == "JARVISChatTab").Should().BeTrue();
             activityLogPanel.Should().NotBeNull();
             activityLogPanel.Name.Should().Be("ActivityLogPanel");
 
             form.Dispose();
         }
 
-        [StaFact]
+        [StaFact(Skip = "Obsolete: RightDockPanelFactory no longer uses modes")]
         public void GetSetMode_TracksTagCorrectly()
         {
             // Arrange
@@ -139,22 +145,23 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var form = new TestMainForm(provider, configuration, loggerForForm, ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider)!,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!);
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!,
+                Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
-            var (rightDockPanel, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
+            var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
 
             // Act
-            RightDockPanelFactory.SetMode(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat);
+            // RightDockPanelFactory.SetMode(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat);
 
             // Assert
-            RightDockPanelFactory.GetCurrentMode(rightDockPanel).Should().Be(RightDockPanelFactory.RightPanelMode.JarvisChat);
-            rightDockPanel.Tag.Should().Be(RightDockPanelFactory.RightPanelMode.JarvisChat);
+            // RightDockPanelFactory.GetCurrentMode(rightDockPanel).Should().Be(RightDockPanelFactory.RightPanelMode.JarvisChat);
+            // rightDockPanel.Tag.Should().Be(RightDockPanelFactory.RightPanelMode.JarvisChat);
 
             form.Dispose();
         }
 
-        [StaFact]
+        [StaFact(Skip = "Obsolete: RightDockPanelFactory no longer uses tabs or SwitchRightPanelContent")]
         public void SwitchRightPanelContent_SelectsTabAndLogs()
         {
             // Arrange
@@ -166,24 +173,25 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var form = new TestMainForm(provider, configuration, loggerForForm, ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider)!,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider)!,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!);
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider)!,
+                Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
-            var (rightDockPanel, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
+            var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
 
             // Act
-            RightDockPanelFactory.SwitchRightPanelContent(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat, factoryLogger.Object);
+            // RightDockPanelFactory.SwitchRightPanelContent(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat, factoryLogger.Object);
 
             // Assert
-            rightDockPanel.Controls.Count.Should().BeGreaterThan(0, "RightDockPanel should contain a TabControl");
-            var tabControl = (TabControl)rightDockPanel.Controls[0];
-            tabControl.SelectedTab.Should().NotBeNull();
-            tabControl.SelectedTab!.Name.Should().Be("JARVISChatTab");
-            var jarvisTab = tabControl.TabPages.Cast<TabPage>().First(tp => tp.Name == "JARVISChatTab");
-            jarvisTab.Visible.Should().BeTrue();
+            rightDockPanel.Controls.Count.Should().BeGreaterThan(0, "RightDockPanel should contain ActivityLogPanel");
+            // var tabControl = (TabControl)rightDockPanel.Controls[0];
+            // tabControl.SelectedTab.Should().NotBeNull();
+            // tabControl.SelectedTab!.Name.Should().Be("JARVISChatTab");
+            // var jarvisTab = tabControl.TabPages.Cast<TabPage>().First(tp => tp.Name == "JARVISChatTab");
+            // jarvisTab.Visible.Should().BeTrue();
 
             // Verify logger got at least one Information call for the switch
-            factoryLogger.Verify(l => l.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.AtLeastOnce);
+            // factoryLogger.Verify(l => l.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.AtLeastOnce);
 
             form.Dispose();
         }

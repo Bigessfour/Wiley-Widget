@@ -2,11 +2,11 @@
 REM Batch file to seed FY 2025 budget data
 REM This is an alternative to the PowerShell script for users who prefer .bat files
 
-echo Seeding FY 2025 budget data into WileyWidgetDev database...
+echo Seeding FY 2025 budget data into WileyWidget database...
 echo.
 
 set SERVER=.\SQLEXPRESS
-set DATABASE=WileyWidgetDev
+set DATABASE=WileyWidget
 
 echo Executing SQL files...
 echo.

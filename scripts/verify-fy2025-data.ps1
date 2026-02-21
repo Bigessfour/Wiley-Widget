@@ -1,9 +1,9 @@
-# Verify FY 2025 Budget Data in WileyWidgetDev Database
+# Verify FY 2025 Budget Data in WileyWidget Database
 # This script checks if the budget data was properly seeded
 
 param(
     [string]$ServerInstance = ".\SQLEXPRESS",
-    [string]$Database = "WileyWidgetDev"
+    [string]$Database = "WileyWidget"
 )
 
 Write-Host "Verifying FY 2025 budget data in $Database on $ServerInstance..." -ForegroundColor Green

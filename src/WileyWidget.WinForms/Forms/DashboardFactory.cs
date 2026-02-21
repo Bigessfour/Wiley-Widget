@@ -8,14 +8,13 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.Drawing;
 using WileyWidget.ViewModels;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Panels;
+
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Forms;
-using GradientPanelExt = WileyWidget.WinForms.Controls.GradientPanelExt;
 using Action = System.Action;  // Disambiguate from Syncfusion.Windows.Forms.Tools.Action
 
 namespace WileyWidget.WinForms.Forms;
@@ -97,7 +96,7 @@ public static class DashboardFactory
             var chartsCard = CreateDashboardCard("Charts", "Analytics Ready", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(chartsCard, () =>
             {
-                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>("Budget Analytics", DockingStyle.Right);
             });
 
             // Card 3: Settings
@@ -111,7 +110,7 @@ public static class DashboardFactory
             var reportsCard = CreateDashboardCard("Analytics Hub", "Open Hub", responsiveCardWidth, cardHeight).Panel;
             SetupCardClickHandler(reportsCard, () =>
             {
-                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
+                panelNavigator?.ShowPanel<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right);
             });
 
             // Card 5: Budget Status (Static/Status Display)
@@ -148,12 +147,43 @@ public static class DashboardFactory
     }
 
     /// <summary>
+    /// Create a dashboard as a Form (`BudgetDashboardForm`) to be hosted in a FormHostPanel.
+    /// Uses DI to construct the form so constructor dependencies are resolved.
+    /// </summary>
+    public static BudgetDashboardForm CreateDashboardForm(IPanelNavigationService? panelNavigator, MainForm mainForm, ILogger logger)
+    {
+        try
+        {
+            IServiceProvider? serviceProvider = mainForm as IServiceProvider;
+            if (serviceProvider == null)
+            {
+                var prop = mainForm.GetType().GetProperty("ServiceProvider");
+                serviceProvider = prop?.GetValue(mainForm) as IServiceProvider;
+            }
+
+            if (serviceProvider == null)
+            {
+                throw new InvalidOperationException("ServiceProvider not available from MainForm - cannot create BudgetDashboardForm via DI");
+            }
+
+            var form = Microsoft.Extensions.DependencyInjection.ActivatorUtilities.CreateInstance<BudgetDashboardForm>(serviceProvider);
+            logger?.LogDebug("Created BudgetDashboardForm via DI");
+            return form;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "CreateDashboardForm failed");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Create a dashboard card with title and description.
     /// Includes full accessibility support for screen readers (WCAG 2.1 Level A).
     /// </summary>
-    private static (GradientPanelExt Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
+    private static (Panel Panel, Label DescriptionLabel) CreateDashboardCard(string title, string description, int width = 280, int height = 80)
     {
-        var panel = new GradientPanelExt
+        var panel = new Panel
         {
             Dock = DockStyle.None,
             Width = width,
@@ -161,7 +191,6 @@ public static class DashboardFactory
             Padding = new Padding(12, 8, 12, 8),
             Margin = new Padding(4, 4, 4, 8),
             BorderStyle = BorderStyle.FixedSingle,
-            BackgroundColor = new BrushInfo(GradientStyle.Vertical, Color.Empty, Color.Empty),
             AutoSize = false
         };
 

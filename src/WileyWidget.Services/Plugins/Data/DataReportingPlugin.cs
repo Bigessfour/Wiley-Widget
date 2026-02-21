@@ -26,12 +26,12 @@ namespace WileyWidget.Services.Plugins.Data
             [Description("Optional entity name to filter by (e.g. 'Water Fund').")] string? entityName = null, CancellationToken cancellationToken = default)
         {
             var result = await _analyticsService.PerformExploratoryAnalysisAsync(startDate, endDate, entityName);
-            
+
             // Format result as a readable summary for the LLM
             var sb = new StringBuilder();
             sb.AppendLine($"Budget Analysis ({startDate:d} to {endDate:d})");
             sb.AppendLine($"Data Trend: {result.TrendData.OverallTrend} (Growth: {result.TrendData.GrowthRate:P2})");
-            
+
             if (result.Insights.Any())
             {
                 sb.AppendLine("Key Insights:");
@@ -68,7 +68,7 @@ namespace WileyWidget.Services.Plugins.Data
 
             var sb = new StringBuilder();
             sb.AppendLine($"Scenario Results (Rate +{rateIncrease:P0}, Exp +{expenseIncrease:P0}):");
-            
+
             foreach (var rec in result.Recommendations)
             {
                 sb.AppendLine($"- Recommendation: {rec}");

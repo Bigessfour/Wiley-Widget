@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,8 @@ using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Analytics;
+using WileyWidget.WinForms.Controls.Panels;
+
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
@@ -44,6 +46,7 @@ public partial class MainForm
     private StatusBarAdvPanel? _clockPanel;
     private System.Windows.Forms.Timer? _statusTimer;
     private ToolStripTextBox? _globalSearchTextBox;
+    private bool _chromeInitialized;
 
     /// <summary>
     /// Initialize UI chrome elements (Ribbon, Status Bar, Navigation).
@@ -53,6 +56,12 @@ public partial class MainForm
     {
         if (DesignMode)
         {
+            return;
+        }
+
+        if (_chromeInitialized)
+        {
+            _logger?.LogDebug("InitializeChrome skipped - chrome already initialized");
             return;
         }
 
@@ -73,14 +82,23 @@ public partial class MainForm
             // Set form properties
             Text = MainFormResources.FormTitle;
             Size = new Size(1400, 900);
-            MinimumSize = new Size(1024, 768);
+            MinimumSize = new Size(1400, 800);
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
             KeyPreview = true;
+            this.KeyDown -= MainForm_KeyDown;
+            this.KeyDown += MainForm_KeyDown;
 
-            // Polish: Set modern title bar style via SfForm.Style
-            this.Style.TitleBar.Height = 36;
-            this.Style.TitleBar.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            // RibbonForm chrome customization (Syncfusion RibbonForm API)
+            // Promotes the title-bar application icon from 16×16 (default) to 32×32.
+            IconSize = new Size(32, 32);
+            // EnableAeroTheme = false is required for TopLeftRadius to render visually.
+            EnableAeroTheme = false;
+            // Curved top-left corner for visual interest (default = 8; max recommended = 20).
+            TopLeftRadius = 20;
+
+            // NOTE: SfForm.Style properties removed - RibbonForm uses different theming API
+            // Title bar styling is handled by Syncfusion theming via OfficeColorScheme
 
             // Initialize components container if needed
             components ??= new System.ComponentModel.Container();
@@ -89,25 +107,35 @@ public partial class MainForm
             // Establish default Escape key behavior
             EnsureDefaultActionButtons();
 
-            // Initialize Menu Bar
-            InitializeMenuBar();
-            _logger?.LogInformation("Menu bar initialized");
-
-            // Initialize Ribbon
-            // Always initialize the ribbon - it's required for proper UI chrome
-            var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            InitializeRibbon();
-            _ribbon?.Refresh();
-            ribbonPhaseStopwatch.Stop();
-            _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
-            if (_ribbon == null)
+            // Single chrome path: Ribbon is primary. Use native menu only when ribbon is disabled.
+            if (!_uiConfig.ShowRibbon)
             {
-                _logger?.LogWarning("Ribbon initialization returned null - creating fallback ribbon");
-                CreateFallbackRibbon();
+                InitializeMenuBar();
+                _logger?.LogInformation("Menu bar initialized (ribbon disabled)");
+            }
+
+            if (_uiConfig.ShowRibbon)
+            {
+                var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                InitializeRibbon();
+                if (!(_uiConfig.IsUiTestHarness || IsUiTestEnvironment() || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _ribbon?.Refresh();
+                }
+                ribbonPhaseStopwatch.Stop();
+                _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
+                if (_ribbon == null)
+                {
+                    _logger?.LogError("Ribbon initialization returned null");
+                }
+                else
+                {
+                    _logger?.LogInformation("Ribbon initialized");
+                }
             }
             else
             {
-                _logger?.LogInformation("Ribbon initialized");
+                _logger?.LogInformation("Ribbon initialization skipped because UI:ShowRibbon is false");
             }
 
             // Initialize Status Bar
@@ -116,6 +144,8 @@ public partial class MainForm
             statusBarStopwatch.Stop();
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
+
+            // Tabbed MDI layout is already constrained beneath the ribbon; no extra docking host initialization needed.
 
             // Initialize Navigation Strip (alternative to Ribbon for test harness)
             if (_uiConfig.IsUiTestHarness)
@@ -126,6 +156,8 @@ public partial class MainForm
 
             // Start status timer
             InitializeStatusTimer();
+
+            _chromeInitialized = true;
         }
         catch (Exception ex)
         {
@@ -143,193 +175,356 @@ public partial class MainForm
     /// </summary>
     private void InitializeRibbon()
     {
+        if (_ribbon != null && !_ribbon.IsDisposed)
+        {
+            _logger?.LogDebug("InitializeRibbon skipped - existing ribbon already initialized");
+            return;
+        }
+
+        var isUiTestRuntime = _uiConfig.IsUiTestHarness
+            || IsUiTestEnvironment()
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"), "true", StringComparison.OrdinalIgnoreCase);
+
         _logger?.LogInformation("InitializeRibbon: Starting ribbon initialization");
         var ribbonStopwatch = System.Diagnostics.Stopwatch.StartNew();
-        // Create ribbon via factory and be defensive about non-critical failures
+
         try
         {
-            var ribbonResult = RibbonFactory.CreateRibbon(this, _logger);
-            _ribbon = ribbonResult.Ribbon;
-            _homeTab = ribbonResult.HomeTab;
-            _logger?.LogDebug("InitializeRibbon: Ribbon created successfully, HomeTab={HomeTab}", _homeTab?.Text);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "RibbonFactory failed to create ribbon");
-            _ribbon = null;
-            ribbonStopwatch.Stop();
-            _logger?.LogWarning("InitializeRibbon: Ribbon creation failed after {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
-            return;
-        }
+            AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
 
-        if (_ribbon == null)
-        {
-            ribbonStopwatch.Stop();
-            _logger?.LogWarning("InitializeRibbon: Ribbon creation failed after {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
-            return;
-        }
-
-        try { _ribbon.AccessibleName = "Ribbon_Main"; } catch (Exception ex) { _logger?.LogDebug(ex, "Setting ribbon AccessibleName failed"); }
-        try { _ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools"; } catch { }
-        try { _ribbon.TabIndex = 1; _ribbon.TabStop = true; } catch { }
-
-        // Ensure theme toggle is wired to the live theme switcher (defensive)
-        try
-        {
-            var themeToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton;
-            if (themeToggle != null)
+            var ribbon = _controlFactory.CreateRibbonControlAdv("File", r =>
             {
-                try { themeToggle.Click -= ThemeToggleFromRibbon; } catch { }
-                try { themeToggle.Click += ThemeToggleFromRibbon; } catch { }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Wiring theme toggle failed");
-        }
+                r.Name = "Ribbon_Main";
+                r.LauncherStyle = LauncherStyle.Metro;
+                r.RibbonStyle = RibbonStyle.Office2016;
+                r.ShowRibbonDisplayOptionButton = !isUiTestRuntime;
+                r.EnableSimplifiedLayoutMode = true;
+                r.LayoutMode = RibbonLayoutMode.Normal;
+                r.AutoSize = false;
+                r.Size = new Size(ClientSize.Width, (int)DpiAware.LogicalToDeviceUnits(180f));
+                r.MinimumSize = new Size(0, (int)DpiAware.LogicalToDeviceUnits(120f));
+                r.MenuButtonVisible = true;
+                r.MenuButtonText = "File";
 
-        // Ensure JARVIS button is wired to switch to JarvisChat panel
-        try
-        {
-            var jarvisButton = FindToolStripItem(_ribbon, "Nav_JARVIS") as ToolStripButton;
-            if (jarvisButton != null)
-            {
-                jarvisButton.Click += (s, e) => SwitchRightPanel("JarvisChat");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Wiring JARVIS button failed");
-        }
-
-        try
-        {
-            _logger?.LogInformation("Ribbon initialized via RibbonFactory");
-            _logger?.LogDebug("Ribbon size after init: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
-        }
-        catch { }
-
-        CacheGlobalSearchTextBox();
-        EnsureRibbonAccessibility();
-
-        // DEFENSIVE: Convert any animated images to static bitmaps to prevent ImageAnimator exceptions
-        try
-        {
-            _ribbon.ValidateAndConvertImages(_logger);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "ValidateAndConvertImages failed on ribbon");
-        }
-
-        try
-        {
-            if (!Controls.Contains(_ribbon))
-            {
-                _ribbon.Dock = DockStyleEx.Top;
-                _ribbon.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
-                _ribbon.BorderStyle = (ToolStripBorderStyle)BorderStyle.None;
-                _ribbon.Width = ClientSize.Width;
-                Controls.Add(_ribbon);
-            }
-
-            _ribbon.BringToFront();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "InitializeRibbon: failed to attach ribbon to form");
-        }
-
-        TryRecalculateRibbonHeight("InitializeRibbon");
-        UpdateChromePadding();
-        AdjustDockingHostBounds();
-
-        try
-        {
-            _ribbon.PerformLayout();
-            _ribbon.Refresh();
-            _ribbon.BringToFront();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "InitializeRibbon: batch refresh failed");
-        }
-
-        var ribbonTabCount = _ribbon.Header?.MainItems.Count ?? 0;
-        _logger?.LogInformation("Ribbon created in {Ms}ms | Tabs={Count}", ribbonStopwatch.ElapsedMilliseconds, ribbonTabCount);
-        ribbonStopwatch.Stop();
-        _logger?.LogInformation("Ribbon/Chrome init completed in {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
-    }
-
-    private void UpdateChromePadding()
-    {
-        if (IsDisposed) return;
-
-        var top = 0;
-        if (_menuStrip != null)
-        {
-            top = Math.Max(top, _menuStrip.Bottom);
-        }
-
-        if (_ribbon != null)
-        {
-            top = Math.Max(top, _ribbon.Bottom);
-        }
-
-        if (_navigationStrip != null)
-        {
-            top = Math.Max(top, _navigationStrip.Bottom);
-        }
-
-        if (Padding.Top != top)
-        {
-            Padding = new Padding(Padding.Left, top, Padding.Right, Padding.Bottom);
-        }
-    }
-
-    private void TryRecalculateRibbonHeight(string reason)
-    {
-        if (_ribbon == null || _ribbon.IsDisposed) return;
-
-        var originalAutoSize = _ribbon.AutoSize;
-        try
-        {
-            if (!originalAutoSize)
-            {
-                _ribbon.AutoSize = true;
-            }
-
-            _ribbon.PerformLayout();
-            var preferredSize = _ribbon.GetPreferredSize(new Size(ClientSize.Width, 0));
-
-            var minimumHeight = _ribbon.MinimumSize.Height;
-            var targetHeight = Math.Max(minimumHeight, preferredSize.Height);
-
-            if (_homeTab?.Panel != null)
-            {
-                var panelPreferred = _homeTab.Panel.GetPreferredSize(new Size(_ribbon.Width, 0));
-                if (panelPreferred.Height > _homeTab.Panel.Height)
+                if (isUiTestRuntime)
                 {
-                    _homeTab.Panel.Height = panelPreferred.Height;
+                    r.ShowCaption = false;
+                    r.MenuButtonEnabled = false;
+                    r.MenuButtonVisible = false;
+                }
+            });
+
+            ribbon.BeginInit();
+            ribbon.SuspendLayout();
+
+            if (ribbon.IsDisposed || ribbon.Disposing)
+            {
+                throw new InvalidOperationException("Ribbon control disposed during initialization");
+            }
+
+            try
+            {
+                var appTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+                if (appTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase))
+                {
+                    AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
+                }
+
+                ribbon.ThemeName = appTheme;
+                SfSkinManager.SetVisualStyle(ribbon, appTheme);
+                ApplyRibbonStyleForTheme(ribbon, appTheme, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: Theme load failed, falling back to default theme");
+                ribbon.ThemeName = AppThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(ribbon, AppThemeColors.DefaultTheme);
+                ApplyRibbonStyleForTheme(ribbon, ribbon.ThemeName, _logger);
+            }
+
+            Syncfusion.Windows.Forms.BackStageView? backStageView = null;
+            if (!isUiTestRuntime)
+            {
+                try
+                {
+                    ribbon.MenuButtonEnabled = true;
+                    backStageView = CreateBackStage(this, ribbon, _logger);
+                    if (backStageView == null)
+                    {
+                        ribbon.MenuButtonEnabled = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "InitializeRibbon: BackStage initialization failed; disabling File menu");
+                    ribbon.MenuButtonEnabled = false;
+                    backStageView = null;
+                }
+            }
+            else
+            {
+                ribbon.MenuButtonEnabled = false;
+            }
+
+            if (backStageView != null)
+            {
+                ribbon.BackStageView = backStageView;
+            }
+
+            ConfigureRibbonAppearance(ribbon, _logger, isUiTestRuntime);
+
+            var currentThemeString = ResolveRibbonThemeName(SfSkinManager.ApplicationVisualTheme ?? ribbon.ThemeName, _logger);
+            ribbon.ThemeName = currentThemeString;
+            SfSkinManager.SetVisualStyle(ribbon, currentThemeString);
+
+            var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
+            CompleteToolStripTabItemAPI(homeTab, _logger);
+
+            var financialsTab = new ToolStripTabItem { Text = "Financials", Name = "FinancialsTab" };
+            var analyticsTab = new ToolStripTabItem { Text = "Analytics & Reports", Name = "AnalyticsTab" };
+            var utilitiesTab = new ToolStripTabItem { Text = "Utilities", Name = "UtilitiesTab" };
+            var administrationTab = new ToolStripTabItem { Text = "Administration", Name = "AdministrationTab" };
+            CompleteToolStripTabItemAPI(financialsTab, _logger);
+            CompleteToolStripTabItemAPI(analyticsTab, _logger);
+            CompleteToolStripTabItemAPI(utilitiesTab, _logger);
+            CompleteToolStripTabItemAPI(administrationTab, _logger);
+
+            // ── Home tab groups ──────────────────────────────────────────────
+            var (dashboardStrip, _) = CreateCoreNavigationGroup(this, currentThemeString, _logger);
+            var (layoutStrip, _, _, lockLayoutBtn) = CreateLayoutGroup(this, currentThemeString, _logger);
+            var searchAndGridStrip = CreateSearchAndGridGroup(this, currentThemeString, _logger);
+
+            // ── Financials tab groups ────────────────────────────────────────
+            var (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
+            var paymentsStrip = CreatePaymentsGroup(this, currentThemeString, _logger);
+            var integrationStrip = CreateIntegrationGroup(this, currentThemeString, _logger);
+
+            // ── Analytics & Reports tab groups ───────────────────────────────
+            var analyticsStrip = CreateAnalyticsGroup(this, currentThemeString, _logger);
+            var reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
+            var operationsStrip = CreateOperationsGroup(this, currentThemeString, _logger);
+
+            // ── Utilities tab groups ─────────────────────────────────────────
+            var utilitiesStrip = CreateUtilitiesGroup(this, currentThemeString, _logger);
+
+            // ── Administration tab groups ────────────────────────────────────
+            var administrationStrip = CreateAdministrationGroup(this, currentThemeString, _logger);
+            var auditLogsStrip = CreateAuditLogsGroup(this, currentThemeString, _logger);
+
+            ribbon.Header.AddMainItem(homeTab);
+            ribbon.Header.AddMainItem(financialsTab);
+            ribbon.Header.AddMainItem(analyticsTab);
+            ribbon.Header.AddMainItem(utilitiesTab);
+            ribbon.Header.AddMainItem(administrationTab);
+
+            ToolStripTabItem? layoutContextTab = null;
+            ToolStripTabGroup? layoutTabGroup = null;
+            try
+            {
+                (layoutContextTab, layoutTabGroup) = TryCreateLayoutContextualTabGroup(this, ribbon, currentThemeString, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to create layout contextual tab group");
+            }
+
+            try
+            {
+                lockLayoutBtn.Click += (_, _) => ToggleLayoutContextualTab(ribbon, homeTab, layoutContextTab, layoutTabGroup, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to attach LockPanels contextual toggle");
+            }
+
+            // Home
+            AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, layoutStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, searchAndGridStrip, currentThemeString, _logger);
+
+            // Financials
+            AddToolStripToTabPanel(financialsTab, financialsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(financialsTab, paymentsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(financialsTab, integrationStrip, currentThemeString, _logger);
+
+            // Analytics & Reports
+            AddToolStripToTabPanel(analyticsTab, analyticsStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(analyticsTab, reportingStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(analyticsTab, operationsStrip, currentThemeString, _logger);
+
+            // Utilities
+            AddToolStripToTabPanel(utilitiesTab, utilitiesStrip, currentThemeString, _logger);
+
+            // Administration
+            AddToolStripToTabPanel(administrationTab, administrationStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(administrationTab, auditLogsStrip, currentThemeString, _logger);
+
+            // Launcher handlers must be attached after tabs/groups exist.
+            AttachRibbonLauncherHandlers(this, ribbon, _logger);
+
+            foreach (var tab in new[] { homeTab, financialsTab, analyticsTab, utilitiesTab, administrationTab })
+            {
+                if (tab.Panel != null)
+                {
+                    tab.Panel.AutoSize = true;
+                    tab.Panel.Padding = new Padding(6, 4, 6, 4);
                 }
             }
 
-            if (targetHeight > 0 && _ribbon.Height != targetHeight)
+            try
             {
-                _ribbon.Height = targetHeight;
-                _ribbon.MinimumSize = new Size(0, targetHeight);
+                ApplyThemeRecursively(ribbon, currentThemeString, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Theme recursion failed");
+            }
+
+            try
+            {
+                if (homeTab.Panel != null)
+                {
+                    if (!isUiTestRuntime)
+                    {
+                        homeTab.Panel.PerformLayout();
+                        homeTab.Panel.Invalidate();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Home tab panel refresh failed");
+            }
+
+            ((System.ComponentModel.ISupportInitialize)ribbon).EndInit();
+            ribbon.ResumeLayout(false);
+            if (!isUiTestRuntime)
+            {
+                ribbon.PerformLayout();
+            }
+
+            try
+            {
+                ribbon.SelectedTab = homeTab;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: Could not select Home tab");
+            }
+
+            if (!isUiTestRuntime)
+            {
+                ribbon.Invalidate();
+            }
+
+            if (ribbon.Header.MainItems.Count == 0)
+            {
+                var fallbackTab = new ToolStripTabItem { Text = "Home", Name = "FallbackHomeTab" };
+                ribbon.Header.AddMainItem(fallbackTab);
+            }
+
+            try
+            {
+                var qatButtons = CreateDefaultQuickAccessToolbarButtons(this, currentThemeString, _logger);
+                InitializeQuickAccessToolbar(ribbon, _logger, isUiTestRuntime, qatButtons);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "InitializeRibbon: QAT initialization failed");
+            }
+
+            try
+            {
+                AttachRibbonLayoutHandlers(this, ribbon, homeTab, layoutContextTab, isUiTestRuntime, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to attach ribbon layout handlers");
+            }
+
+            try
+            {
+                _logger?.LogDebug("InitializeRibbon: Ribbon HomeTab groups loaded: {GroupCount}", homeTab.Panel?.Controls.OfType<ToolStripEx>().Count() ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to log ribbon group count");
+            }
+
+            try { ribbon.AccessibleName = "Ribbon_Main"; } catch (Exception ex) { _logger?.LogDebug(ex, "InitializeRibbon: setting ribbon AccessibleName failed"); }
+            try { ribbon.AccessibleDescription ??= "Main application ribbon for navigation, search, and grid tools"; } catch { }
+            try { ribbon.TabIndex = 1; ribbon.TabStop = true; } catch { }
+
+            _ribbon = ribbon;
+            _homeTab = homeTab;
+
+            CacheGlobalSearchTextBox();
+            EnsureRibbonAccessibility();
+
+            var skipRibbonVisualAttach = isUiTestRuntime;
+
+            // Add ribbon to form if not already present.
+            // In explicit UI test harness runtime, keep ribbon detached to avoid Syncfusion non-client paint crashes.
+            if (!skipRibbonVisualAttach && !_ribbon.IsDisposed && !this.Controls.Contains(_ribbon))
+            {
+                this.Controls.Add(_ribbon);
+                _ribbon.Dock = DockStyleEx.Top;
+                _ribbon.SendToBack(); // Ensure it is below any future fill-docked controls
+                _ribbon.BringToFront(); // But visually on top of content
+
+                if (!isUiTestRuntime)
+                {
+                    _ribbon.PerformLayout();
+                    _ribbon.Refresh();
+                }
+            }
+            else if (skipRibbonVisualAttach)
+            {
+                _logger?.LogDebug("InitializeRibbon: Skipping ribbon visual attach in UI test harness runtime");
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogDebug(ex, "Failed to recalculate ribbon height ({Reason})", reason);
+            _logger?.LogError(ex, "InitializeRibbon failed to create ribbon");
+            _ribbon = null;
+            _homeTab = null;
         }
         finally
         {
-            if (_ribbon.AutoSize != originalAutoSize)
+            ribbonStopwatch.Stop();
+            var ribbonTabCount = _ribbon?.Header?.MainItems.Count ?? 0;
+            _logger?.LogInformation("Ribbon created in {Ms}ms | Tabs={Count}", ribbonStopwatch.ElapsedMilliseconds, ribbonTabCount);
+            _logger?.LogInformation("Ribbon/Chrome init completed in {Ms}ms", ribbonStopwatch.ElapsedMilliseconds);
+        }
+    }
+
+    private void EnsureChromeZOrder()
+    {
+        try
+        {
+            if (_menuStrip != null && !_menuStrip.IsDisposed && _menuStrip.Visible)
             {
-                _ribbon.AutoSize = originalAutoSize;
+                _menuStrip.BringToFront();
             }
+
+            if (_ribbon != null && !_ribbon.IsDisposed && _ribbon.Visible)
+            {
+                _ribbon.BringToFront();
+            }
+
+            if (_navigationStrip != null && !_navigationStrip.IsDisposed && _navigationStrip.Visible)
+            {
+                _navigationStrip.BringToFront();
+            }
+
+            if (_statusBar != null && !_statusBar.IsDisposed && _statusBar.Visible)
+            {
+                _statusBar.BringToFront();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "EnsureChromeZOrder: failed to enforce chrome z-order");
         }
     }
 
@@ -338,29 +533,15 @@ public partial class MainForm
         base.OnResize(e);
         try
         {
-            if (_ribbon != null)
-            {
-                _ribbon.Width = ClientSize.Width;
-                TryRecalculateRibbonHeight("OnResize");
-                _ribbon.PerformLayout();
-                _ribbon.BringToFront();
-            }
-
-            _statusBar?.BringToFront();
+            _ribbon?.PerformLayout();
+            EnsureChromeZOrder();
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "OnResize: failed to reassert ribbon z-order");
         }
 
-        try
-        {
-            AdjustDockingHostBounds();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "OnResize: failed to adjust docking host bounds");
-        }
+        // DockingHostFactory handles host bounds automatically
     }
 
     private void ThemeToggleFromRibbon(object? sender, EventArgs e)
@@ -391,8 +572,12 @@ public partial class MainForm
             var statusBar = StatusBarFactory.CreateStatusBar(this, _logger, useSyncfusionDocking: _uiConfig.UseSyncfusionDocking);
             _statusBar = statusBar;
 
+            statusBar.Dock = DockStyle.Bottom;
+            statusBar.Margin = Padding.Empty;
+
             // Add status bar to form controls
             Controls.Add(statusBar);
+            statusBar.BringToFront();
 
             _logger?.LogInformation("StatusBarFactory returned StatusBarAdv with {PanelCount} panels in Panels collection, and {ControlCount} in Controls collection",
                 statusBar.Panels?.Length ?? 0, statusBar.Controls.Count);
@@ -461,59 +646,77 @@ public partial class MainForm
                 AccessibleRole = AccessibleRole.ToolBar,
                 AutoSize = true, // ToolStripEx handles height automatically
                 TabIndex = 2,
-                TabStop = true,
-                ThemeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful" // Syncfusion theme integration
+                TabStop = true
             };
+
+            // Ensure theme assembly is loaded before applying themes
+            AppThemeColors.EnsureThemeAssemblyLoaded(_logger);
+            try
+            {
+                _navigationStrip.ThemeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme; // Syncfusion theme integration
+            }
+            catch (Exception ex)
+            {
+                // Protect against Syncfusion control theme parsing issues (avoid crashing during ApplyControlTheme)
+                _logger?.LogWarning(ex, "[MAINFORM] Failed to set NavigationStrip.ThemeName - falling back to default theme");
+                try
+                {
+                    _navigationStrip.ThemeName = AppThemeColors.DefaultTheme;
+                }
+                catch { /* swallow - we cannot do more here */ }
+            }
 
             // Helpers for button creation to save space?
             // Just pasting the logic from UI.cs
 
-            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = false };
-            dashboardBtn.Click += (s, e) => this.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = true };
+            dashboardBtn.Click += (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
 
-            var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = false };
-            accountsBtn.Click += (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
+            accountsBtn.Click += (s, e) => { _logger?.LogInformation("Accounts navigation: ribbon-based docking not yet implemented"); };
 
-            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Budget", Enabled = false };
-            budgetBtn.Click += (s, e) => this.ShowPanel<BudgetOverviewPanel>("Budget Overview", DockingStyle.Bottom, allowFloating: true);
+            var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Budget", Enabled = true };
+            budgetBtn.Click += (s, e) => { _logger?.LogInformation("Budget navigation: ribbon-based docking not yet implemented"); };
 
-            var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Charts", Enabled = false };
-            chartsBtn.Click += (s, e) => this.ShowPanel<BudgetAnalyticsPanel>("Budget Analytics", DockingStyle.Right, allowFloating: true);
+            var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Charts", Enabled = true };
+            chartsBtn.Click += (s, e) => { _logger?.LogInformation("Charts navigation: ribbon-based docking not yet implemented"); };
 
-             var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
-            analyticsBtn.Click += (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true);
+            var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
+            analyticsBtn.Click += (s, e) => { _logger?.LogInformation("Analytics navigation: ribbon-based docking not yet implemented"); };
 
             var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Audit Log" };
-            auditLogBtn.Click += (s, e) => this.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            auditLogBtn.Click += (s, e) => { _logger?.LogInformation("Audit Log navigation: ribbon-based docking not yet implemented"); };
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
-            customersBtn.Click += (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true);
+            customersBtn.Click += (s, e) => { _logger?.LogInformation("Customers navigation: ribbon-based docking not yet implemented"); };
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "QuickBooks" };
-            quickBooksBtn.Click += (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            quickBooksBtn.Click += (s, e) => { _logger?.LogInformation("QuickBooks navigation: ribbon-based docking not yet implemented"); };
 
             var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "AI Chat" };
-            aiChatBtn.Click += (s, e) => this.ShowPanel<InsightFeedPanel>("AI Chat", DockingStyle.Right, allowFloating: true);
+            aiChatBtn.Click += (s, e) => { _logger?.LogInformation("AI Chat navigation: ribbon-based docking not yet implemented"); };
 
             var proactiveInsightsBtn = new ToolStripButton("Proactive Insights") { Name = "Nav_ProactiveInsights", AccessibleName = "Proactive Insights" };
-            proactiveInsightsBtn.Click += (s, e) => this.ShowPanel<ProactiveInsightsPanel>("Proactive Insights", DockingStyle.Right, allowFloating: true);
+            proactiveInsightsBtn.Click += (s, e) => { _logger?.LogInformation("Proactive Insights navigation: ribbon-based docking not yet implemented"); };
 
             var warRoomBtn = new ToolStripButton("War Room") { Name = "Nav_WarRoom", AccessibleName = "War Room" };
-            warRoomBtn.Click += (s, e) => this.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);
+            warRoomBtn.Click += (s, e) => { _logger?.LogInformation("War Room navigation: ribbon-based docking not yet implemented"); };
 
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Settings" };
-            settingsBtn.Click += (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            settingsBtn.Click += (s, e) => { _logger?.LogInformation("Settings navigation: ribbon-based docking not yet implemented"); };
 
             var themeToggleBtn = new ToolStripButton
             {
                 Name = "ThemeToggle",
-                AccessibleName = "Theme_Toggle",
-                AutoSize = true
+                AccessibleName = "Theme Toggle",
+                AccessibleDescription = "Toggle between light and dark themes",
+                AutoSize = true,
+                ToolTipText = "Switch application theme (Ctrl+T)"
             };
             themeToggleBtn.Click += ThemeToggleBtn_Click;
-            themeToggleBtn.Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode";
+            themeToggleBtn.Text = GetThemeButtonText(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
 
-             // Grid helpers (navigation strip)
+            // Grid helpers (navigation strip)
             var navGridClearFilter = new ToolStripButton("Clear Grid Filter") { Name = "Nav_ClearGridFilter", AccessibleName = "Clear Grid Filter" };
             navGridClearFilter.Click += (s, e) => ClearActiveGridFilter();
 
@@ -522,7 +725,7 @@ public partial class MainForm
 
             _navigationStrip.Items.AddRange(new ToolStripItem[]
             {
-                dashboardBtn, new ToolStripSeparator(), accountsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
+                dashboardBtn, new ToolStripSeparator(), accountsBtn, budgetBtn, chartsBtn, analyticsBtn, auditLogBtn, customersBtn, quickBooksBtn, aiChatBtn, proactiveInsightsBtn, warRoomBtn, new ToolStripSeparator(), settingsBtn, new ToolStripSeparator(), themeToggleBtn, new ToolStripSeparator(), navGridClearFilter, navGridExport
             });
 
         }
@@ -554,74 +757,6 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Create a minimal fallback ribbon with a GlobalSearch textbox and ThemeToggle button.
-    /// Used when the full RibbonFactory cannot initialize (safe for test environments).
-    /// </summary>
-    private void CreateFallbackRibbon()
-    {
-        try
-        {
-            var ribbon = new RibbonControlAdv
-            {
-                Name = "Ribbon_Main",
-                Dock = DockStyleEx.Top,
-                Height = 120
-            };
-
-            var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
-
-            var strip = new ToolStripEx
-            {
-                Name = "FallbackActionGroup",
-                GripStyle = ToolStripGripStyle.Hidden,
-                AutoSize = true,
-                ImageScalingSize = new System.Drawing.Size(32, 32)
-            };
-
-            var searchBox = new ToolStripTextBox
-            {
-                Name = "GlobalSearch",
-                Width = 180,
-                BorderStyle = BorderStyle.FixedSingle,
-                ToolTipText = "Search panels (Enter to search)",
-                AccessibleName = "Global search",
-                AccessibleDescription = "Enter a search term and press Enter to search across modules"
-            };
-            searchBox.KeyDown += SearchBox_KeyDown;
-            _globalSearchTextBox = searchBox;
-
-            var searchPanel = new ToolStripPanelItem { RowCount = 1, AutoSize = true, Transparent = true };
-            searchPanel.Items.Add(new ToolStripLabel("Global Search:"));
-            searchPanel.Items.Add(searchBox);
-
-            var themeBtn = new ToolStripButton
-            {
-                Name = "ThemeToggle",
-                Text = SfSkinManager.ApplicationVisualTheme == "Office2019Dark" ? "☀️ Light Mode" : "🌙 Dark Mode",
-                AutoSize = true
-            };
-            themeBtn.Click += ThemeToggleFromRibbon;
-
-            strip.Items.Add(searchPanel);
-            strip.Items.Add(new ToolStripSeparator());
-            strip.Items.Add(themeBtn);
-
-            homeTab.Panel.AddToolStrip(strip);
-            ribbon.Header.AddMainItem(homeTab);
-
-            _ribbon = ribbon;
-            _homeTab = homeTab;
-            EnsureRibbonAccessibility();
-
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Fallback ribbon creation failed");
-            _ribbon = null;
-        }
-    }
-
-     /// <summary>
     /// Initialize MenuStrip for navigation and commands.
     /// Provides a traditional menu bar with File, View, Tools, and Help menus.
     /// Enhanced with Syncfusion theming, Segoe MDL2 Assets icons, and proper renderer configuration.
@@ -655,52 +790,56 @@ public partial class MainForm
             // Simplying slightly for snippet size, but logic assumes existence
             // I will just put a comment that it's the same logic, but for `write_file` I need to be explicit.
 
-             // File Menu
-            var fileMenu = new ToolStripMenuItem("&File") { Name = "Menu_File", ToolTipText = "File operations" };
+            // File Menu
+            var fileMenu = new ToolStripMenuItem("&File") { Name = "Menu_File", ToolTipText = "File operations", Image = CreateIconFromText("\uE8E5", 16) };
             _recentFilesMenu = new ToolStripMenuItem("&Recent Files") { Name = "Menu_File_RecentFiles" };
-            UpdateMruMenu(_recentFilesMenu);
+            // UpdateMruMenu(_recentFilesMenu);
 
-            var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => ClearMruList()) { Name = "Menu_File_ClearRecent" };
+            var clearRecentMenuItem = new ToolStripMenuItem("&Clear Recent Files", null, (s, e) => { /* ClearMruList(); */ }) { Name = "Menu_File_ClearRecent" };
             var exitMenuItem = new ToolStripMenuItem("E&xit", null, (s, e) => Close()) { Name = "Menu_File_Exit", ShortcutKeys = Keys.Alt | Keys.F4 };
 
             fileMenu.DropDownItems.AddRange(new ToolStripItem[] { _recentFilesMenu, clearRecentMenuItem, new ToolStripSeparator(), exitMenuItem });
 
-             // View Menu
-            var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View" };
+            // View Menu
+            var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View", Image = CreateIconFromText("\uE8A7", 16) };
             // View > Dashboard
-            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Top, allowFloating: true)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
+            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
 
-             // View > Accounts
-            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true)) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
+            // View > Accounts
+            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => { _logger?.LogInformation("Accounts menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
 
             // View > Budget
-             // View > Charts
-            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => this.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
+            // View > Charts
+            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => { _logger?.LogInformation("Analytics Hub menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
 
-             // View > QuickBooks
-            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
+            // View > QuickBooks
+            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => { _logger?.LogInformation("QuickBooks menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
 
-             // View > Customers
-            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
+            // View > Customers
+            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => { _logger?.LogInformation("Customers menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
 
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
 
             viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, chartsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
 
             // Tools Menu
-            var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools" };
-            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true)) { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
+            var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools", Image = CreateIconFromText("\uE90F", 16) };
+            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => { _logger?.LogInformation("Settings menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
             toolsMenu.DropDownItems.Add(settingsMenuItem);
 
             // Help Menu
-            var helpMenu = new ToolStripMenuItem("&Help") { Name = "Menu_Help" };
-            var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) => {
-                 try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/WileyWidget/WileyWidget/wiki", UseShellExecute = true }); } catch { }
-            }) { Name = "Menu_Help_Documentation", ShortcutKeys = Keys.F1 };
+            var helpMenu = new ToolStripMenuItem("&Help") { Name = "Menu_Help", Image = CreateIconFromText("\uE897", 16) };
+            var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/WileyWidget/WileyWidget/wiki", UseShellExecute = true }); } catch { }
+            })
+            { Name = "Menu_Help_Documentation", ShortcutKeys = Keys.F1 };
 
-            var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) => {
+            var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) =>
+            {
                 MessageBox.Show($"{MainFormResources.FormTitle}\n\nVersion 1.0.0\nBuilt with .NET 9\n\n© {DateTime.Now.Year} Wiley Widget", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }) { Name = "Menu_Help_About" };
+            })
+            { Name = "Menu_Help_About" };
 
             helpMenu.DropDownItems.AddRange(new ToolStripItem[] { documentationMenuItem, new ToolStripSeparator(), aboutMenuItem });
 
@@ -726,28 +865,35 @@ public partial class MainForm
 
     private Bitmap? CreateIconFromText(string iconText, int size)
     {
-         if (string.IsNullOrWhiteSpace(iconText) || size <= 0) return null;
-         try
-         {
-             var bitmap = new Bitmap(size, size);
-             using (var graphics = Graphics.FromImage(bitmap))
-             {
-                 graphics.Clear(Color.Transparent);
-                 graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-                 graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                 using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
-                 using (var brush = new SolidBrush(Color.DodgerBlue))
-                 {
-                     graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
-                 }
-             }
-             return bitmap;
-         }
-         catch (Exception ex) { _logger?.LogWarning(ex, "CreateIconFromText failed"); return null; }
+        if (string.IsNullOrWhiteSpace(iconText) || size <= 0) return null;
+        try
+        {
+            var bitmap = new Bitmap(size, size);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                using (var font = new Font("Segoe MDL2 Assets", size * 0.75f, FontStyle.Regular, GraphicsUnit.Pixel))
+                {
+                    // Theme-aware icon color: use the form ForeColor which SfSkinManager sets per theme.
+                    // Fallback to a high-contrast system color if ForeColor is not set.
+                    var iconColor = this.ForeColor.IsEmpty ? SystemColors.Highlight : this.ForeColor;
+                    using (var brush = new SolidBrush(iconColor))
+                    {
+                        graphics.DrawString(iconText, font, brush, new RectangleF(0, 0, size, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    }
+                }
+            }
+            return bitmap;
+        }
+        catch (Exception ex) { _logger?.LogWarning(ex, "CreateIconFromText failed"); return null; }
     }
 
-    private Color GetLoadingOverlayColor() => SystemColors.Control;
-    private Color GetLoadingLabelColor() => Color.White;
+    // Removed unused helpers: GetLoadingOverlayColor / GetLoadingLabelColor
+    // These helpers had no call sites in the codebase. Keep commented for possible future use.
+    // private Color GetLoadingOverlayColor() => SystemColors.Control;
+    // private Color GetLoadingLabelColor() => Color.White;
 
     private string GetCurrentTheme() => SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
@@ -757,8 +903,8 @@ public partial class MainForm
         try
         {
             var dropdown = (ToolStripDropDownMenu)menuItem.DropDown;
-             try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful"); } catch { }
-             foreach (ToolStripItem item in dropdown.Items) if (item is ToolStripMenuItem child) ApplyMenuTheme(child);
+            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(dropdown, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme); } catch { }
+            foreach (ToolStripItem item in dropdown.Items) if (item is ToolStripMenuItem child) ApplyMenuTheme(child);
         }
         catch { }
     }
@@ -783,17 +929,6 @@ public partial class MainForm
     {
         try
         {
-            try
-            {
-                var tmpDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp");
-                Directory.CreateDirectory(tmpDir);
-                var toggleLogPath = Path.Combine(tmpDir, "theme-toggle-log.txt");
-                File.AppendAllText(toggleLogPath, $"ToggleTheme called. CurrentTheme={_themeService?.CurrentTheme}\n");
-            }
-            catch (Exception ioEx)
-            {
-                _logger?.LogDebug(ioEx, "Unable to persist theme toggle log");
-            }
             var currentTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
 
             // Validate current theme before toggling
@@ -1106,10 +1241,127 @@ public partial class MainForm
         }
     }
 
+    private void MainForm_KeyDown(object? sender, KeyEventArgs e)
+    {
+        // Handle global keyboard shortcuts
+        if (e.Control && e.KeyCode == Keys.T)
+        {
+            // Ctrl+T: Toggle theme
+            e.Handled = true;
+            ThemeToggleFromRibbon(sender, e);
+        }
+    }
+
     private ToolStripItem? FindToolStripItem(Control container, string name)
     {
-        if (container is ToolStrip strip) return strip.Items.Find(name, true).FirstOrDefault();
-        foreach(Control c in container.Controls) { var res = FindToolStripItem(c, name); if (res != null) return res; }
+        if (container == null || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        if (container is ToolStrip strip)
+        {
+            return FindToolStripItemInCollection(strip.Items, name);
+        }
+
+        if (container is RibbonControlAdv ribbon)
+        {
+            foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
+            {
+                if (tab?.Panel == null)
+                {
+                    continue;
+                }
+
+                foreach (Control child in tab.Panel.Controls)
+                {
+                    var result = FindToolStripItem(child, name);
+                    if (result != null)
+                    {
+                        return result;
+                    }
+                }
+            }
+        }
+
+        foreach (Control child in container.Controls)
+        {
+            var result = FindToolStripItem(child, name);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
         return null;
     }
+
+    private static ToolStripItem? FindToolStripItemInCollection(ToolStripItemCollection items, string name)
+    {
+        foreach (ToolStripItem item in items)
+        {
+            if (string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return item;
+            }
+
+            if (item is ToolStripPanelItem panelItem)
+            {
+                var panelResult = FindToolStripItemInCollection(panelItem.Items, name);
+                if (panelResult != null)
+                {
+                    return panelResult;
+                }
+            }
+
+            if (item is ToolStripDropDownItem dropDownItem)
+            {
+                var dropDownResult = FindToolStripItemInCollection(dropDownItem.DropDownItems, name);
+                if (dropDownResult != null)
+                {
+                    return dropDownResult;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// ✅ NEW: Diagnostic method to verify ribbon state and configuration (for troubleshooting).
+    /// Call this from InitializeRibbon() after ribbon creation to identify any state issues.
+    /// </summary>
+    private void DiagnoseRibbon()
+    {
+        if (_ribbon == null)
+        {
+            _logger?.LogError("[RIBBON_DIAGNOSTICS] Ribbon is NULL");
+            return;
+        }
+
+        try
+        {
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ===== RIBBON STATE REPORT =====");
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] IsDisposed: {Disposed}", _ribbon.IsDisposed);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] IsDisposing: {Disposing}", _ribbon.Disposing);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] IsHandleCreated: {HasHandle}", _ribbon.IsHandleCreated);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Size: {Width}x{Height}", _ribbon.Width, _ribbon.Height);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Dock: {Dock}", _ribbon.Dock);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Visible: {Visible}", _ribbon.Visible);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] OfficeColorScheme: {Scheme}", _ribbon.OfficeColorScheme);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ThemeName: {Theme}", _ribbon.ThemeName);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] RibbonStyle: {Style}", _ribbon.RibbonStyle);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] LauncherStyle: {Launcher}", _ribbon.LauncherStyle);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Tabs Count: {TabCount}", _ribbon.Header?.MainItems.Count ?? 0);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Parent: {Parent}", _ribbon.Parent?.GetType().Name ?? "null");
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] In Controls Collection: {InCollection}", this.Controls.Contains(_ribbon));
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] TabIndex: {TabIndex}", _ribbon.TabIndex);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ===== END RIBBON STATE =====");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "[RIBBON_DIAGNOSTICS] Exception during diagnostics");
+        }
+    }
+
 }

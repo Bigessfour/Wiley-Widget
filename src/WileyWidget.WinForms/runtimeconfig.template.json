@@ -4,11 +4,11 @@
     "Microsoft.NETCore.UnhandledExceptionPolicy": "PassThrough"
   },
   "runtimeOptions": {
-    "tfm": "net9.0",
+    "tfm": "net10.0",
     "rollForward": "LatestMinor",
     "framework": {
       "name": "Microsoft.WindowsDesktop.App",
-      "version": "9.0.0"
+      "version": "10.0.0"
     },
     "configProperties": {
       "System.Runtime.CompilerServices.RuntimeFeature.DefaultImplementationsOfInterfaces": true

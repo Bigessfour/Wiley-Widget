@@ -1,0 +1,514 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>JARVIS Chat</title>
+    <script src="js/marked.min.js"></script>
+    <link rel="stylesheet" href="css/github-dark.min.css" />
+    <script src="js/highlight.min.js"></script>
+    <style>
+      :root {
+        --bg-color: #f8f9fa;
+        --user-msg-bg: #0078d4;
+        --user-msg-color: white;
+        --jarvis-msg-bg: #ffffff;
+        --jarvis-msg-color: #333;
+        --border-color: #dee2e6;
+        --system-color: #6c757d;
+      }
+
+      body.dark {
+        --bg-color: #202020;
+        --user-msg-bg: #0078d4;
+        --user-msg-color: white;
+        --jarvis-msg-bg: #2d2d2d;
+        --jarvis-msg-color: #eee;
+        --border-color: #444;
+        --system-color: #aaa;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        background: var(--bg-color);
+        color: var(--jarvis-msg-color);
+        transition: background 0.3s ease;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      #messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        scroll-behavior: smooth;
+      }
+
+      .message {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.4;
+        word-wrap: break-word;
+        position: relative;
+        animation: fadeIn 0.2s ease-out;
+      }
+
+      .message::before {
+        content: "";
+        position: absolute;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        top: 8px;
+        background-size: cover;
+      }
+
+      .user::before {
+        right: -44px;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230078d4"><circle cx="12" cy="12" r="10"/></svg>');
+      }
+
+      .jarvis::before {
+        left: -44px;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%237ee787"><path d="M12 2L2 22h20L12 2z"/></svg>');
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .user {
+        background: var(--user-msg-bg);
+        color: var(--user-msg-color);
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
+      }
+
+      .jarvis {
+        background: var(--jarvis-msg-bg);
+        color: var(--jarvis-msg-color);
+        align-self: flex-start;
+        border: 1px solid var(--border-color);
+        border-bottom-left-radius: 2px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+
+      .jarvis p {
+        margin: 0 0 8px 0;
+      }
+      .jarvis p:last-child {
+        margin-bottom: 0;
+      }
+
+      .system {
+        align-self: center;
+        font-size: 11px;
+        color: var(--system-color);
+        background: transparent;
+        font-style: italic;
+      }
+
+      .timestamp {
+        font-size: 10px;
+        opacity: 0.6;
+        margin-top: 4px;
+        text-align: right;
+      }
+      .user .timestamp {
+        text-align: left;
+      }
+
+      #input-container {
+        position: relative;
+        padding: 12px;
+        background: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+        gap: 8px;
+      }
+
+      #userInput {
+        flex: 1;
+        min-height: 40px;
+        max-height: 120px;
+        padding: 10px 44px 10px 12px; /* space for button */
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        resize: none;
+        font-family: inherit;
+        font-size: 14px;
+        background: var(--jarvis-msg-bg);
+        color: var(--jarvis-msg-color);
+        outline: none;
+      }
+
+      #userInput:focus {
+        border-color: var(--user-msg-bg);
+      }
+
+      #sendButton {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 50%;
+        background: var(--user-msg-bg);
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #sendButton:hover {
+        opacity: 0.9;
+      }
+
+      #sendButton:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      button {
+        padding: 8px 16px;
+        background: var(--user-msg-bg);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      button:hover {
+        background: #005a9e;
+      }
+
+      /* Markdown blocks */
+      .jarvis pre {
+        background: #2d2d2d;
+        color: #ccc;
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 8px 0;
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        position: relative;
+      }
+
+      .copy-code {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      pre:hover .copy-code {
+        opacity: 1;
+      }
+
+      .jarvis code {
+        font-family: "Consolas", monospace;
+        background: rgba(0, 0, 0, 0.1);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .typing-indicator {
+        display: none;
+        align-self: flex-start;
+        padding: 8px 12px;
+        background: var(--jarvis-msg-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        font-size: 12px;
+        color: var(--system-color);
+        margin-bottom: 10px;
+        margin-left: 15px;
+      }
+
+      .dots {
+        display: inline-block;
+      }
+      .dots::after {
+        content: ".";
+        animation: dots 1.5s steps(5, end) infinite;
+      }
+      @keyframes dots {
+        0%,
+        20% {
+          content: ".";
+        }
+        40% {
+          content: "..";
+        }
+        60% {
+          content: "...";
+        }
+        80%,
+        100% {
+          content: "";
+        }
+      }
+
+      #typing {
+        align-self: flex-start;
+        padding: 10px 14px;
+        background: var(--jarvis-msg-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        border-bottom-left-radius: 2px;
+        color: var(--jarvis-msg-color);
+        font-style: italic;
+        opacity: 0.8;
+        display: none;
+      }
+
+      .typing-dots {
+        display: inline-block;
+      }
+
+      .typing-dots span {
+        opacity: 0;
+        animation: dotPulse 1.4s infinite both;
+      }
+
+      .typing-dots span:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .typing-dots span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .typing-dots span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes dotPulse {
+        0%,
+        60%,
+        100% {
+          opacity: 0;
+        }
+        40% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="messages" aria-live="polite">
+      <!-- Messages will be injected here -->
+    </div>
+    <div id="typing" class="message jarvis" style="display: none">
+      JARVIS is thinking<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
+    </div>
+    <div id="input-container">
+      <textarea id="userInput" placeholder="Ask JARVIS anything..." rows="1"></textarea>
+      <button id="sendButton" title="Send (Enter)">➤</button>
+    </div>
+
+    <script>
+      const messagesContainer = document.getElementById("messages");
+      const userInput = document.getElementById("userInput");
+      const sendButton = document.getElementById("sendButton");
+      const typingIndicator = document.getElementById("typing");
+
+      // Bridge logging helper
+      function logToCSharp(message, level = "info") {
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage({
+            type: "log",
+            level: level,
+            content: message,
+          });
+        }
+      }
+
+      // Configure marked.js for safe rendering
+      marked.setOptions({
+        highlight: function (code, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(code, { language: lang }).value;
+          }
+          return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true,
+      });
+
+      function sendMessage() {
+        const msg = userInput.value.trim();
+        if (!msg) return;
+
+        addMessage(msg, "user");
+        userInput.value = "";
+        adjustTextareaHeight();
+        sendButton.disabled = true;
+
+        typingIndicator.style.display = "block";
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Bridge to C#
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage({
+            type: "prompt",
+            content: msg,
+          });
+        } else {
+          console.error("WebView2 bridge not found");
+          addMessage("Error: WebView2 bridge not available.", "system");
+        }
+        sendButton.disabled = false;
+      }
+
+      sendButton.addEventListener("click", sendMessage);
+
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      function adjustTextareaHeight() {
+        userInput.style.height = "auto";
+        userInput.style.height = userInput.scrollHeight + "px";
+      }
+
+      userInput.addEventListener("input", adjustTextareaHeight);
+
+      // Initial focus
+      userInput.focus();
+
+      function addMessage(text, sender) {
+        const div = document.createElement("div");
+        div.className = `message ${sender}`;
+
+        if (sender === "jarvis" || sender === "response") {
+          div.innerHTML = marked.parse(text);
+          div.querySelectorAll("pre code").forEach((block) => {
+            hljs.highlightElement(block);
+          });
+        } else {
+          // User or System messages - simple text
+          div.textContent = text;
+          div.style.whiteSpace = "pre-wrap";
+        }
+
+        const time = document.createElement("div");
+        time.className = "timestamp";
+        time.textContent = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        div.appendChild(time);
+
+        messagesContainer.appendChild(div);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      function updateLastJarvisMessage(text, isDone) {
+        typingIndicator.style.display = isDone ? "none" : "block";
+
+        let lastMsg = messagesContainer.lastElementChild;
+        if (!lastMsg || !lastMsg.classList.contains("jarvis") || lastMsg._isStreamingDone) {
+          lastMsg = document.createElement("div");
+          lastMsg.className = "message jarvis";
+          messagesContainer.appendChild(lastMsg);
+        }
+
+        if (isDone) {
+          lastMsg.innerHTML = marked.parse(text);
+          lastMsg.querySelectorAll("pre code").forEach((block) => {
+            hljs.highlightElement(block);
+
+            const button = document.createElement("button");
+            button.className = "copy-code";
+            button.textContent = "Copy";
+            button.onclick = () => {
+              navigator.clipboard.writeText(block.textContent || "");
+              button.textContent = "Copied!";
+              setTimeout(() => (button.textContent = "Copy"), 2000);
+            };
+
+            block.parentElement.style.position = "relative";
+            block.parentElement.appendChild(button);
+          });
+          const time = document.createElement("div");
+          time.className = "timestamp";
+          time.textContent = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          lastMsg.appendChild(time);
+          lastMsg._isStreamingDone = true;
+        } else {
+          // During streaming, avoid full markdown parse for performance/stability
+          // but handle newlines for readability
+          lastMsg.innerHTML = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br>");
+        }
+
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+
+      // Receive from C#
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.addEventListener("message", (event) => {
+          const data = event.data;
+          console.log("[JARVIS-JS] Message received:", data.type);
+
+          if (data.type === "response") {
+            typingIndicator.style.display = "none";
+            addMessage(data.content, "jarvis");
+          } else if (data.type === "stream") {
+            updateLastJarvisMessage(data.content, data.done);
+          } else if (data.type === "system") {
+            addMessage(data.content, "system");
+          } else if (data.type === "theme") {
+            if (data.isDark) {
+              document.body.classList.add("dark");
+            } else {
+              document.body.classList.remove("dark");
+            }
+            if (data.colors) {
+              const root = document.documentElement;
+              for (const [key, value] of Object.entries(data.colors)) {
+                root.style.setProperty(`--${key}`, value);
+              }
+            }
+          }
+        });
+      }
+
+      console.log("JARVIS JS Chat Client Initialized");
+    </script>
+  </body>
+</html>

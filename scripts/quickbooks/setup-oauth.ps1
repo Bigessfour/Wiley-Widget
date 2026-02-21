@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.5.4
 <#
 .SYNOPSIS
     Establishes QuickBooks Online OAuth connection for sandbox environment.

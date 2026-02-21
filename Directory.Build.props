@@ -8,6 +8,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
 
     <!-- Suppress NETSDK1206 warnings from legacy Azure DocumentDB dependency (win7-x64 RID) -->
+    <!-- Suppress NU1904 for Microsoft.SemanticKernel.Core vulnerability warning (known, mitigation in progress) -->
     <NoWarn>$(NoWarn);NETSDK1206;CA1303;CA2213;CA2000;NU1601;NU1603;NU1608;NU1904</NoWarn>
 
     <!-- ============================================================
@@ -42,8 +43,11 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!-- Keep treating compiler warnings as errors for hygiene, but do not treat analyzer warnings as errors globally.
-         Use explicit EditorConfig entries or targeted escalation for specific analyzer rules. -->
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+         Use explicit EditorConfig entries or targeted escalation for specific analyzer rules.
+         Exclude NuGet warnings (NU*) from TreatWarningsAsErrors since they're not code warnings. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>$(NoWarn);NU1904</NoWarn>
     <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
 
     <!-- Ensure analyzers run by default both during builds and live analysis -->

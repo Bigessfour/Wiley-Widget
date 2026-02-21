@@ -51,6 +51,7 @@ namespace WileyWidget.WinForms.Services
                 .Include(e => e.Department)
                 .Include(e => e.Fund)
                 .Include(e => e.MunicipalAccount)
+                .OrderByDescending(e => e.Id)
                 .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
             return entry == null ? null : MapToDto(entry);
@@ -90,7 +91,9 @@ namespace WileyWidget.WinForms.Services
                 .Include(e => e.Department)
                 .Include(e => e.Fund)
                 .Include(e => e.MunicipalAccount)
-                .FirstAsync(e => e.Id == entry.Id, cancellationToken);
+                .Where(e => e.Id == entry.Id)
+                .OrderByDescending(e => e.Id)
+                .FirstAsync(cancellationToken);
 
             return MapToDto(saved);
         }
@@ -125,7 +128,9 @@ namespace WileyWidget.WinForms.Services
                 .Include(e => e.Department)
                 .Include(e => e.Fund)
                 .Include(e => e.MunicipalAccount)
-                .FirstAsync(e => e.Id == entry.Id, cancellationToken);
+                .Where(e => e.Id == entry.Id)
+                .OrderByDescending(e => e.Id)
+                .FirstAsync(cancellationToken);
 
             return MapToDto(updated);
         }
@@ -180,8 +185,12 @@ namespace WileyWidget.WinForms.Services
 
         private async Task<Department> EnsureDefaultDepartmentAsync(AppDbContext context, CancellationToken cancellationToken)
         {
-            var department = await context.Departments.FirstOrDefaultAsync(d => d.Name == "General", cancellationToken)
-                              ?? await context.Departments.FirstOrDefaultAsync(cancellationToken);
+            var department = await context.Departments
+                .OrderByDescending(d => d.Id)
+                .FirstOrDefaultAsync(d => d.Name == "General", cancellationToken)
+                              ?? await context.Departments
+                                  .OrderByDescending(d => d.Id)
+                                  .FirstOrDefaultAsync(cancellationToken);
 
             if (department != null)
             {
@@ -228,9 +237,13 @@ namespace WileyWidget.WinForms.Services
         {
             var account = await context.MunicipalAccounts
                 .Include(ma => ma.AccountNumber)
+                .OrderByDescending(ma => ma.LastSyncDate)
+                .ThenByDescending(ma => ma.Id)
                 .FirstOrDefaultAsync(ma => ma.Name == "General Fund", cancellationToken)
                 ?? await context.MunicipalAccounts
                     .Include(ma => ma.AccountNumber)
+                    .OrderByDescending(ma => ma.LastSyncDate)
+                    .ThenByDescending(ma => ma.Id)
                     .FirstOrDefaultAsync(cancellationToken);
 
             if (account != null)
@@ -246,7 +259,7 @@ namespace WileyWidget.WinForms.Services
                 DepartmentId = department.Id,
                 BudgetPeriodId = period.Id,
                 AccountNumber = new AccountNumber("0000"),
-                Fund = MunicipalFundType.General,
+                FundType = MunicipalFundType.General,
                 FundDescription = "General Fund",
                 Type = AccountType.Cash,
                 TypeDescription = "Cash",

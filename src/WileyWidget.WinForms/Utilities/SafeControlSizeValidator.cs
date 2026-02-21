@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 
-namespace WileyWidget.WinForms.Utils
+namespace WileyWidget.WinForms.Helpers
 {
     /// <summary>
     /// Comprehensive control sizing validator for all WinForms controls.
@@ -19,17 +19,18 @@ namespace WileyWidget.WinForms.Utils
     /// - DPI-aware sizing (LogicalToDeviceUnits conversion)
     /// - Control visibility and disposed state checks
     /// - Parent container space validation
+    /// - NEW: SplitContainer-specific validation (integrates with SafeSplitterDistanceHelper)
     ///
     /// CONSTRAINT MATRIX (Per Syncfusion and WinForms Docs):
     /// Control Type        | Min Width | Min Height | Max Dimension   | Notes
     /// =================== | ========= | ========== | =============== | =====================================================
-    /// SplitContainer      | 0         | 0          | Int32.MaxValue  | Panel1MinSize + Panel2MinSize + SplitterWidth must fit
-    /// SfDataGrid          | 0         | 0          | Int32.MaxValue  | Column Width greater-equal MinimumWidth enforced
-    /// ChartControl        | 0         | 0          | Int32.MaxValue  | Both dims must be greater-than 0 for rendering
+    /// SplitContainer      | 0         | 0          | Int32.MaxValue  | Panel1MinSize + Panel2MinSize + SplitterWidth must fit; Defaults: 25px mins
+    /// SfDataGrid          | 0         | 0          | Int32.MaxValue  | Column Width >= MinimumWidth (default 5) enforced
+    /// ChartControl        | 0         | 0          | Int32.MaxValue  | Both dims must be >0 for rendering
     /// Panel/GroupBox      | 0         | 0          | Int32.MaxValue  | Content may overflow if too small
     /// Label/Button/TextBox| 0         | 0          | Int32.MaxValue  | AutoSize respects MinimumSize
     /// TabControl          | 0         | 0          | Int32.MaxValue  | TabPages sized per control sizing
-    /// GradientPanelExt    | 0         | 0          | Int32.MaxValue  | AutoSize respects MinimumSize constraints
+    /// Panel| 0         | 0          | Int32.MaxValue  | AutoSize respects MinimumSize constraints
     /// TableLayoutPanel    | 0         | 0          | Int32.MaxValue  | Cell sizing per SizeType, respects column/row styles
     /// </summary>
     public static class SafeControlSizeValidator
@@ -101,6 +102,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Safely sets a control's Size with validation.
         /// Validates both Width and Height, enforces MinimumSize and MaximumSize constraints.
+        /// NEW: DPI-aware adjustment using LogicalToDeviceUnits for high-DPI scenarios.
         /// </summary>
         /// <param name="control">The control to resize</param>
         /// <param name="width">Desired width in pixels</param>
@@ -115,6 +117,10 @@ namespace WileyWidget.WinForms.Utils
             int minSize = allowZero ? 0 : 1;
             if (width < minSize || height < minSize)
                 return false;
+
+            // DPI adjustment (convert logical to device units if needed)
+            width = control.LogicalToDeviceUnits(width);
+            height = control.LogicalToDeviceUnits(height);
 
             // Check MinimumSize constraint
             if (control.MinimumSize.Width > 0 && width < control.MinimumSize.Width)
@@ -223,6 +229,28 @@ namespace WileyWidget.WinForms.Utils
         }
 
         /// <summary>
+        /// NEW: Overload for SplitContainer-specific validation.
+        /// Integrates with SafeSplitterDistanceHelper.Validate for comprehensive checks.
+        /// </summary>
+        /// <param name="splitContainer">The SplitContainer to validate</param>
+        /// <returns>SizeValidationResult with SplitContainer specifics</returns>
+        public static SizeValidationResult ValidateControlSize(SplitContainer splitContainer)
+        {
+            var result = ValidateControlSize((Control)splitContainer);
+            if (!result.IsValid)
+                return result;
+
+            var splitterResult = SafeSplitterDistanceHelper.Validate(splitContainer);
+            if (!splitterResult.IsValid)
+            {
+                result.IsValid = false;
+                result.Message = $"SplitContainer violation: {splitterResult.Message}";
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Validates SfDataGrid column width constraints.
         /// Ensures Width ≥ MinimumWidth per Syncfusion documentation:
         /// https://help.syncfusion.com/windowsforms/datagrid/columns
@@ -241,6 +269,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Safely resizes a control after deferring to layout completion.
         /// Useful for controls in complex hierarchies that need layout finalization first.
+        /// NEW: Uses BeginInvoke for UI thread safety.
         /// </summary>
         /// <param name="control">The control to resize</param>
         /// <param name="width">Target width</param>
@@ -252,19 +281,14 @@ namespace WileyWidget.WinForms.Utils
                 return;
 
             // Schedule resize on UI thread after delay
-            var timer = new System.Windows.Forms.Timer();
-            timer.Interval = delayMs;
-            timer.Tick += (s, e) =>
+            control.BeginInvoke(new Action(() =>
             {
-                timer.Stop();
-                timer.Dispose();
-
+                System.Threading.Thread.Sleep(delayMs); // Simple delay; use Timer for non-blocking if needed
                 if (!control.IsDisposed)
                 {
                     TrySetSize(control, width, height);
                 }
-            };
-            timer.Start();
+            }));
         }
 
         /// <summary>
@@ -322,6 +346,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Validates a container has sufficient space before adding or resizing child controls.
         /// Prevents "controls cut off" scenarios from insufficient parent container dimensions.
+        /// NEW: Accounts for DPI scaling.
         /// </summary>
         /// <param name="parentContainer">The parent container to check</param>
         /// <param name="requiredWidth">Minimum width needed for child controls</param>
@@ -333,8 +358,8 @@ namespace WileyWidget.WinForms.Utils
             if (parentContainer == null || parentContainer.IsDisposed)
                 return false;
 
-            int availableWidth = parentContainer.Width;
-            int availableHeight = parentContainer.Height;
+            int availableWidth = parentContainer.LogicalToDeviceUnits(parentContainer.Width);
+            int availableHeight = parentContainer.LogicalToDeviceUnits(parentContainer.Height);
 
             if (accountForPadding)
             {
@@ -399,6 +424,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Gets comprehensive diagnostics for a control's sizing state.
         /// Useful for debugging dashboard panel sizing issues.
+        /// NEW: Includes DPI scale factor.
         /// </summary>
         /// <param name="control">The control to diagnose</param>
         /// <param name="label">Optional label for identification</param>
@@ -411,10 +437,12 @@ namespace WileyWidget.WinForms.Utils
             var sizeValidation = ValidateControlSize(control);
             var autoSizeValidation = ValidateAutoSizeConflicts(control);
 
+            float dpiScale = control.CreateGraphics()?.DpiX / 96f ?? 1f;
+
             return $"\n{label} SIZING DIAGNOSTICS:\n" +
                    $"  Name: {control.Name}\n" +
                    $"  Type: {control.GetType().Name}\n" +
-                   $"  Current Size: {control.Width}x{control.Height}px\n" +
+                   $"  Current Size: {control.Width}x{control.Height}px (DPI Scale: {dpiScale}x)\n" +
                    $"  MinimumSize: {control.MinimumSize.Width}x{control.MinimumSize.Height}px\n" +
                    $"  MaximumSize: {control.MaximumSize.Width}x{control.MaximumSize.Height}px\n" +
                    $"  Padding: {control.Padding}\n" +

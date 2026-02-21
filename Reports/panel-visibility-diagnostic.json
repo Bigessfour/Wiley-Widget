@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "total_issues": 2,
+    "critical": 1,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "auto_fixable": 1,
+    "docking_system": "MainForm.Docking.cs (direct initialization)",
+    "panels_created": [
+      "leftDockPanel",
+      "rightDockPanel",
+      "centralDocumentPanel",
+      "dockingHost"
+    ],
+    "theme_timing": "Post-docking (ideal)"
+  },
+  "issues": [
+    {
+      "severity": "critical",
+      "category": "visibility_blocker",
+      "file": "src\\WileyWidget.WinForms\\Forms\\DockingHostFactory.cs",
+      "line": 141,
+      "code": "hostControl.Visible = false; // Prevent painting of empty DockHosts before panels are docked",
+      "description": "CRITICAL: DockingHostFactory hostControl visibility blocker - Sets Visible=false which prevents panels from rendering",
+      "fix": "Remove this line or set to 'true' after panels are docked",
+      "auto_fixable": true
+    },
+    {
+      "severity": "high",
+      "category": "architecture",
+      "file": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Docking.cs",
+      "line": 0,
+      "code": "",
+      "description": "MainForm.Docking.cs does NOT use DockingHostFactory - creates panels directly",
+      "fix": "Consider migrating to DockingHostFactory.CreateDockingHost for consistency and testability",
+      "auto_fixable": false
+    }
+  ]
+}

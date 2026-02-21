@@ -1,6 +1,5 @@
 {
   "recommendations": [
-    // === Core .NET Development ===
     "ms-dotnettools.csdevkit",
     "ms-dotnettools.csharp",
     "ms-dotnettools.vscode-dotnet-runtime",
@@ -36,44 +35,8 @@
     // === AI & Productivity ===
     "github.copilot",
     "github.copilot-chat",
-    "aaron-bond.better-comments",
-    "gruntfuggly.todo-tree",
-
-    // === Docker & Containers ===
-    "ms-azuretools.vscode-docker",
-    "ms-vscode-remote.remote-containers",
-
-    // === Code Quality & Linting ===
-    "trunk.io",
-    "streetsidesoftware.code-spell-checker",
-    "editorconfig.editorconfig",
-
-    // === Navigation & Productivity ===
-    "christian-kohler.path-intellisense",
-    "eamodio.toggle-excluded-files",
-    "wayou.vscode-todo-highlight",
-
-    // === Markdown & Documentation ===
-    "yzhang.markdown-all-in-one",
-    "davidanson.vscode-markdownlint",
-
-    // === Code Execution ===
-    "formulahendry.code-runner",
-
-    // === WinForms / UI debugging & layout helpers ===
-    "formulahendry.dotnet",
-    "ms-dotnettools.dotnet-interactive-vscode",
-
-    // === REST API Testing ===
-    "humao.rest-client",
-
-    // === File Icons & UI ===
-    "vscode-icons-team.vscode-icons",
-    "pkief.material-icon-theme"
+    "sonarsource.sonarlint-vscode",
+    "streetsidesoftware.code-spell-checker"
   ],
-
-  "unwantedRecommendations": [
-    "ms-vscode.csharp",  // csdevkit replaces the old csharp extension
-    "littlefoxteam.vscode-python-test-adapter"  // Causing crashes, not needed for .NET project
-  ]
+  "unwantedRecommendations": []
 }

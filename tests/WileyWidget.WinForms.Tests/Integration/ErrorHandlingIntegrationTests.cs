@@ -49,6 +49,7 @@ public sealed class ErrorHandlingIntegrationTests
         services.AddSingleton<IThemeService>(themeMock.Object);
         services.AddSingleton<IWindowStateService>(Mock.Of<IWindowStateService>());
         services.AddSingleton<IFileImportService>(Mock.Of<IFileImportService>());
+        services.AddScoped<WileyWidget.WinForms.Factories.SyncfusionControlFactory>();
 
         using var provider = services.BuildServiceProvider();
 
@@ -85,6 +86,7 @@ public sealed class ErrorHandlingIntegrationTests
         services.AddSingleton<IThemeService>(themeMock.Object);
         services.AddSingleton<IWindowStateService>(Mock.Of<IWindowStateService>());
         services.AddSingleton<IFileImportService>(Mock.Of<IFileImportService>());
+        services.AddScoped<WileyWidget.WinForms.Factories.SyncfusionControlFactory>();
 
         using var provider = services.BuildServiceProvider();
 

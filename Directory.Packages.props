@@ -15,7 +15,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.2" />
     <!-- ==================== .NET 10 STABLE VERSIONS ==================== -->
-    <!-- Core .NET Extensions (stable .NET 9 versions) -->
+    <!-- Core .NET Extensions (stable .NET 10 versions) -->
     <PackageVersion Include="Microsoft.Extensions.Primitives" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
@@ -33,17 +33,17 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="10.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="10.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
-    <!-- IdentityModel – huge security jump, fully net9.0 compatible -->
+    <!-- IdentityModel – huge security jump, fully net10.0 compatible -->
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.2.0" />
     <PackageVersion Include="Microsoft.IdentityModel.*" Version="8.15.0" />
-    <!-- Third-party – all safe on .NET 9 -->
+    <!-- Third-party – all safe on .NET 10 -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="MailKit" Version="4.14.1" />
     <PackageVersion Include="MimeKit" Version="4.14.0" />
     <PackageVersion Include="Polly" Version="8.6.5" />
     <PackageVersion Include="Polly.Core" Version="8.6.5" />
     <PackageVersion Include="Polly.Extensions" Version="8.6.5" />
-    <!-- Serilog – use stable versions compatible with .NET 9 -->
+    <!-- Serilog – use stable versions compatible with .NET 10 -->
     <PackageVersion Include="Serilog" Version="4.3.0" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="9.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
@@ -61,7 +61,8 @@
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-    <!-- NOTE: Intentionally pinned to 14.7.0.3 due to compatibility/regression issues observed with 15.0.0 in this application.
+    <!-- NOTE: Intentionally pinned to 14.7.0.3 due to compatibility/regression issues observed with 15.0.0 in this
+    application.
          Revisit upgrading to 15.x once the issues are resolved and full compatibility is verified. -->
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.3" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
@@ -74,12 +75,19 @@
     <PackageVersion Include="ExcelDataReader" Version="3.8.0" />
     <PackageVersion Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <!-- PdfSharpCore removed - replaced with Syncfusion.Pdf for consistency -->
-    <!-- BoldReports.WinForms removed - doesn't exist on nuget.org. Use BoldReports.WPF only. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.102" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="System.Management" Version="10.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.AI" Version="9.0.1-preview.1.24570.5" />
-    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="9.0.1-preview.1.24570.5" />
+    <!-- ==================== SEMANTIC KERNEL 1.70.0 (Released ~Jan 23, 2026) ==================== -->
+    <!-- Full tool calling, plugins, memory, planners - JARVIS gets his teeth back! -->
+    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.70.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.70.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Plugins.Core" Version="1.70.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Plugins.Memory" Version="1.70.0" />
+    <PackageVersion Include="Microsoft.SemanticKernel.Planners.Handlebars" Version="1.70.0" />
+    <!-- Microsoft.Extensions.AI - stable 9.0.0 (matches SK 1.70 requirements) -->
+    <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.AI.OpenAI" Version="9.0.0" />
     <!-- System.* packages removed where functionality is provided by .NET 10 framework -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.0" />
     <!-- Explicit versions for transitive dependencies that don't have .NET 10 versions yet -->
@@ -95,8 +103,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
     <PackageVersion Include="ModelContextProtocol" Version="0.2.0-preview.1" />
-    <PackageVersion Include="Microsoft.SemanticKernel" Version="1.42.0" />
-    <PackageVersion Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.42.0" />
+    <!-- Semantic Kernel versions moved to core section (SK 1.70.0) -->
     <PackageVersion Include="OpenAI" Version="2.2.0-beta.1" />
     <PackageVersion Include="System.Numerics.Tensors" Version="10.0.2" />
     <PackageVersion Include="NUnit" Version="4.2.2" />
@@ -115,19 +122,22 @@
     <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
     <!-- WinForms and charting packages -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <!-- Syncfusion WinForms packages v32.1.19 (latest with performance fixes) -->
-    <PackageVersion Include="Syncfusion.Grid.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Chart.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Shared.Base" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Licensing" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Tools.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="32.1.19" />
+    <!-- Syncfusion WinForms packages v32.2.3 (Service Pack 1 - fixes BackStage renderer NRE) -->
+    <PackageVersion Include="Syncfusion.Grid.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Chart.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Shared.Base" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Licensing" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Tools.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.SfDataGrid.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.DataGridExport.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Gauge.Windows" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.SfInput.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Inputs.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Pdf.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.XlsIO.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Office2016Theme.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Office2019Theme.WinForms" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.HighContrastTheme.WinForms" Version="32.2.3" />
     <!-- FluentTheme and MaterialTheme removed - NOT supported in Windows Forms per Syncfusion docs -->
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
     <!-- FastReport Open Source packages -->
@@ -144,17 +154,17 @@
     <PackageVersion Include="System.Memory" Version="4.6.3" />
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageVersion Include="Syncfusion.Core.WinForms" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Core.WinForms" Version="32.2.3" />
     <!-- SixLabors.ImageSharp removed - unused orphaned dependency -->
     <PackageVersion Include="System.IO.Packaging" Version="10.0.0" />
     <!-- Blazor WebView and Interactive Chat for Windows Forms -->
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="10.0.30" />
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
-    <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.SmartComponents" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Inputs" Version="32.1.19" />
-    <PackageVersion Include="Syncfusion.Blazor.Buttons" Version="32.1.19" />
+    <PackageVersion Include="Syncfusion.Blazor.InteractiveChat" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Core" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Themes" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.SmartComponents" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Inputs" Version="32.2.3" />
+    <PackageVersion Include="Syncfusion.Blazor.Buttons" Version="32.2.3" />
   </ItemGroup>
 </Project>

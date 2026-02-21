@@ -29,17 +29,17 @@ if (-not (Test-Path $OutputDir)) {
 
 $crashLogFile = Join-Path $OutputDir "crash-events-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 
-Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  🔬 Automatic Crash Dump Capture" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "===============================================================" -ForegroundColor Cyan
+Write-Host "  Automatic Crash Dump Capture" -ForegroundColor Cyan
+Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "🎯 Monitoring:" -ForegroundColor Yellow
-Write-Host "   • Process exit" -ForegroundColor Yellow
-Write-Host "   • Unhandled exceptions" -ForegroundColor Yellow
-Write-Host "   • Memory dumps" -ForegroundColor Yellow
+Write-Host "Monitoring:" -ForegroundColor Yellow
+Write-Host "   - Process exit" -ForegroundColor Yellow
+Write-Host "   - Unhandled exceptions" -ForegroundColor Yellow
+Write-Host "   - Memory dumps" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "📁 Crash Log: $crashLogFile" -ForegroundColor Green
-Write-Host "📁 Dumps Dir: $(Join-Path $OutputDir 'crash-dumps')" -ForegroundColor Green
+Write-Host "Crash Log: $crashLogFile" -ForegroundColor Green
+Write-Host "Dumps Dir: $(Join-Path $OutputDir 'crash-dumps')" -ForegroundColor Green
 Write-Host ""
 Write-Host "Press Ctrl+C to stop monitoring..." -ForegroundColor Yellow
 Write-Host ""
@@ -85,38 +85,39 @@ try {
         # Check for new dump files
         $dumpFiles = Get-ChildItem -Path $dumpDir -Filter "*.dmp" -ErrorAction SilentlyContinue
         if ($dumpFiles.Count -gt 0) {
-            Log-Event "Crash dump detected: $($dumpFiles.Count) dump(s)" "DUMP"
+            Write-DiagnosticLog "Crash dump detected: $($dumpFiles.Count) dump(s)" "DUMP"
 
             foreach ($dump in $dumpFiles) {
                 $size = [math]::Round($dump.Length / 1MB, 1)
-                Log-Event "  Dump file: $($dump.Name) ($size MB)" "DUMP"
+                $dumpMessage = "  Dump file: " + $dump.Name + " (" + $size + " MB)"
+                Write-DiagnosticLog $dumpMessage "DUMP"
 
                 # Generate crash report
                 $reportFile = Join-Path $OutputDir "crash-report-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
 
-                @"
-═══════════════════════════════════════════════════════════════
-  💥 Crash Report
-═══════════════════════════════════════════════════════════════
+                                @"
+===============================================================
+    Crash Report
+===============================================================
 
 Timestamp: $(Get-Date)
 Dump File: $($dump.FullName)
 Dump Size: $size MB
 
 System Info:
-────────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 $(Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object Caption, Version | Format-List | Out-String)
 
 Process Info:
-────────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 $(Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-List | Out-String)
 
 Windows Event Log (Last 10 errors):
-────────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 $(Get-WinEvent -FilterHashtable @{LogName="Application"; Level=2,3} -MaxEvents 10 -ErrorAction SilentlyContinue | Format-Table -AutoSize | Out-String)
 
 Debugging Instructions:
-────────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 1. Analyze dump with VS: File > Open > Project/Solution
 2. Or use dotnet-dump: dotnet dump analyze $($dump.FullName)
 3. Look for:
@@ -125,7 +126,7 @@ Debugging Instructions:
    - Managed heap status
 
 Next Steps:
-────────────────────────────────────────────────────────────────
+---------------------------------------------------------------
 1. Review crash report: $reportFile
 2. Check full dump: $($dump.FullName)
 3. Analyze with debugger or dotnet-dump
@@ -133,7 +134,7 @@ Next Steps:
 5. Review Windows Event Viewer
 "@ | Out-File -FilePath $reportFile -Encoding UTF8
 
-                Log-Event "Crash report generated: $reportFile" "SUCCESS"
+                Write-DiagnosticLog "Crash report generated: $reportFile" "SUCCESS"
             }
         }
 
@@ -146,10 +147,10 @@ Next Steps:
     }
 }
 catch {
-    Log-Event "Monitor error: $_" "ERROR"
+    Write-DiagnosticLog "Monitor error: $_" "ERROR"
 }
 finally {
-    Log-Event "Crash monitoring stopped" "INFO"
+    Write-DiagnosticLog "Crash monitoring stopped" "INFO"
     Write-Host ""
     Write-Host "Final Summary:" -ForegroundColor Yellow
     $dumps = Get-ChildItem -Path $dumpDir -Filter "*.dmp" -ErrorAction SilentlyContinue

@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Tests.Integration;
 using Xunit;
@@ -20,7 +21,7 @@ public sealed class DashboardFactoryIntegrationTests
 
         var panel = DashboardFactory.CreateDashboardPanel(null, form, Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider));
 
-        panel.Controls.OfType<GradientPanelExt>().Count().Should().Be(5);
-        panel.Controls.OfType<GradientPanelExt>().Any(card => card.Name.Contains("Accounts")).Should().BeTrue();
+        panel.Controls.OfType<Panel>().Count().Should().Be(5);
+        panel.Controls.OfType<Panel>().Any(card => card.Name.Contains("Accounts")).Should().BeTrue();
     }
 }

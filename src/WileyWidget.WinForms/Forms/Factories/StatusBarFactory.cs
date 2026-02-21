@@ -199,11 +199,19 @@ namespace WileyWidget.WinForms.Forms
         /// <summary>
         /// Updates the unified status panel with color-coded feedback.
         /// POLISH: Color-coding provides immediate visual feedback (Green=Ready, Red=Error, Yellow=Warning).
+        /// THREAD-SAFE: Uses InvokeRequired to ensure UI thread access.
         /// </summary>
         public static void UpdateStatus(StatusBarAdv statusBar, string statusText, StatusLevel level = StatusLevel.Info)
         {
             try
             {
+                // Ensure thread safety for UI updates
+                if (statusBar.InvokeRequired)
+                {
+                    statusBar.Invoke(new System.Action(() => UpdateStatus(statusBar, statusText, level)));
+                    return;
+                }
+
                 var panels = statusBar.Controls.OfType<StatusBarAdvPanel>().ToArray();
                 var labelPanel = panels.FirstOrDefault(p => p.Name == "StatusLabelPanel");
                 var textPanel = panels.FirstOrDefault(p => p.Name == "StatusTextPanel");

@@ -16,11 +16,11 @@ namespace WileyWidget.WinForms.ViewModels
     /// </summary>
     public partial class AnalyticsViewModel : ObservableObject, IAnalyticsViewModel, IDisposable, ILazyLoadViewModel
     {
-    /// <summary>
-    /// Gets or sets a value indicating whether data has been loaded.
-    /// </summary>
-    [ObservableProperty]
-    private bool isDataLoaded;
+        /// <summary>
+        /// Gets or sets a value indicating whether data has been loaded.
+        /// </summary>
+        [ObservableProperty]
+        private bool isDataLoaded;
 
         public async Task OnVisibilityChangedAsync(bool isVisible)
         {
@@ -338,10 +338,9 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
             {
-                // Circuit breaker is open - use fallback data
-                StatusText = "Service unavailable - using sample scenario";
-                _logger.LogWarning(ex, "Analytics service unavailable, using sample scenario data");
-                await LoadSampleScenarioDataAsync(cancellationToken);
+                StatusText = "Service unavailable - no scenario data available.";
+                _logger.LogWarning(ex, "Analytics service unavailable while running scenario analysis");
+                await ClearScenarioDataAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -351,12 +350,7 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 StatusText = $"Scenario failed: {ex.Message}";
                 _logger.LogError(ex, "Error running rate scenario");
-
-                // Fallback to sample data only if circuit breaker allows it
-                if (_circuitBreaker.CircuitState != Polly.CircuitBreaker.CircuitState.Open)
-                {
-                    await LoadSampleScenarioDataAsync(cancellationToken);
-                }
+                await ClearScenarioDataAsync(cancellationToken);
             }
             finally
             {
@@ -398,10 +392,9 @@ namespace WileyWidget.WinForms.ViewModels
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("temporarily unavailable"))
             {
-                // Circuit breaker is open - use fallback data
-                StatusText = "Service unavailable - using sample forecast";
-                _logger.LogWarning(ex, "Analytics service unavailable, using sample forecast data");
-                await LoadSampleForecastDataAsync(cancellationToken);
+                StatusText = "Service unavailable - no forecast data available.";
+                _logger.LogWarning(ex, "Analytics service unavailable while generating forecast");
+                await ClearForecastDataAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -411,12 +404,7 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 StatusText = $"Forecast failed: {ex.Message}";
                 _logger.LogError(ex, "Error generating reserve forecast");
-
-                // Fallback to sample data only if circuit breaker allows it
-                if (_circuitBreaker.CircuitState != Polly.CircuitBreaker.CircuitState.Open)
-                {
-                    await LoadSampleForecastDataAsync(cancellationToken);
-                }
+                await ClearForecastDataAsync(cancellationToken);
             }
             finally
             {
@@ -475,104 +463,33 @@ namespace WileyWidget.WinForms.ViewModels
         /// </summary>
         partial void OnVariancesSearchTextChanged(string value) => UpdateFilteredCollections();
 
-        /// <summary>
-        /// Loads sample data for design-time preview or fallback
-        /// </summary>
-        private async Task LoadSampleDataAsync(CancellationToken cancellationToken)
+        private async Task ClearAnalyticsDataAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                Metrics.Clear();
-                Metrics.Add(new AnalyticsMetric { Name = "Revenue", Value = 1500000m, Unit = "$" });
-                Metrics.Add(new AnalyticsMetric { Name = "Expenses", Value = 1200000m, Unit = "$" });
-                Metrics.Add(new AnalyticsMetric { Name = "Reserves", Value = 300000m, Unit = "$" });
-
-                TopVariances.Clear();
-                TopVariances.Add(new VarianceAnalysis
-                {
-                    AccountNumber = "1000",
-                    AccountName = "General Fund",
-                    BudgetedAmount = 500000m,
-                    ActualAmount = 480000m,
-                    VarianceAmount = -20000m,
-                    VariancePercentage = -0.04m
-                });
-
-                TrendData.Clear();
-                for (int i = 1; i <= 12; i++)
-                {
-                    TrendData.Add(new MonthlyTrend
-                    {
-                        Month = $"2024-{i:D2}",
-                        Budgeted = 100000 + i * 5000,
-                        Actual = 95000 + i * 4500,
-                        Variance = -5000 - i * 500
-                    });
-                }
-
-                Insights.Clear();
-                Insights.Add("Revenue is trending below budget by 4%");
-                Insights.Add("Expense controls are effective");
-
-                UpdateSummaries();
-                UpdateFilteredCollections();
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("ClearAnalyticsDataAsync called: clearing analytics collections.");
+            Metrics.Clear();
+            TopVariances.Clear();
+            TrendData.Clear();
+            Insights.Clear();
+            UpdateSummaries();
+            UpdateFilteredCollections();
+            await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Loads sample scenario data
-        /// </summary>
-        private async Task LoadSampleScenarioDataAsync(CancellationToken cancellationToken)
+        private async Task ClearScenarioDataAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                ScenarioProjections.Clear();
-                for (int i = 1; i <= ProjectionYears; i++)
-                {
-                    ScenarioProjections.Add(new YearlyProjection
-                    {
-                        Year = DateTime.Now.Year + i,
-                        ProjectedRevenue = 1600000m + i * 50000,
-                        ProjectedExpenses = 1250000m + i * 30000,
-                        ProjectedReserves = 350000m + i * 20000,
-                        RiskLevel = 0.1m + i * 0.05m
-                    });
-                }
-
-                Recommendations.Clear();
-                Recommendations.Add("Consider 5% rate increase to meet revenue targets");
-                Recommendations.Add("Monitor expense growth carefully");
-
-                RecommendationExplanation = "Sample scenario shows balanced growth with moderate risk.";
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("ClearScenarioDataAsync called: clearing scenario collections.");
+            ScenarioProjections.Clear();
+            Recommendations.Clear();
+            RecommendationExplanation = string.Empty;
+            await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Loads sample forecast data
-        /// </summary>
-        private async Task LoadSampleForecastDataAsync(CancellationToken cancellationToken)
+        private async Task ClearForecastDataAsync(CancellationToken cancellationToken)
         {
-            await Task.Run(() =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                ForecastData.Clear();
-                for (int i = 0; i < ProjectionYears * 12; i++)
-                {
-                    ForecastData.Add(new ForecastPoint
-                    {
-                        Date = DateTime.Now.AddMonths(i),
-                        PredictedReserves = 300000m + i * 2000,
-                        ConfidenceInterval = 5000m
-                    });
-                }
-
-                RecommendationExplanation = "Sample forecast indicates stable reserve levels with low risk.";
-            }, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("ClearForecastDataAsync called: clearing forecast collections.");
+            ForecastData.Clear();
+            RecommendationExplanation = string.Empty;
+            await Task.CompletedTask;
         }
 
         private void ApplyAvailableEntities(IEnumerable<string> availableEntitiesFromResult)

@@ -14,7 +14,7 @@
     SQL Server instance name (default: .\SQLEXPRESS)
 
 .PARAMETER DatabaseName
-    Database name to fix (default: WileyWidgetDev)
+    Database name to fix (default: WileyWidget)
 
 .PARAMETER KillConnections
     Force kill all connections to the database before fixing
@@ -38,7 +38,7 @@
 [CmdletBinding()]
 param(
     [string]$ServerInstance = ".\SQLEXPRESS",
-    [string]$DatabaseName = "WileyWidgetDev",
+    [string]$DatabaseName = "WileyWidget",
     [switch]$KillConnections,
     [switch]$VerifyOnly
 )

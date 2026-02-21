@@ -21,6 +21,6 @@ namespace WileyWidget.Services.Abstractions
         Task<string> GenerateRecommendationsAsync(object data, CancellationToken cancellationToken = default);
         Task<string> AnalyzeMunicipalAccountsWithAIAsync(IEnumerable<MunicipalAccount> municipalAccounts, BudgetData budgetData, CancellationToken cancellationToken = default);
         Task<string> QueryAsync(string prompt, CancellationToken cancellationToken = default);
-        System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt);
+        System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt, CancellationToken cancellationToken = default);
     }
 }

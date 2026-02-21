@@ -13,7 +13,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.ViewModels;
 
-namespace WileyWidget.ViewModels
+namespace WileyWidget.WinForms.ViewModels
 {
     /// <summary>
     /// Budget metric for display in grids and charts showing department-level budget vs actual variance.
@@ -100,6 +100,14 @@ namespace WileyWidget.ViewModels
         /// <summary>Gets or sets the total encumbrance amount across all categories.</summary>
         [ObservableProperty]
         private decimal totalEncumbrance;
+
+        /// <summary>Gets or sets the total available amount across all categories.</summary>
+        [ObservableProperty]
+        private decimal totalAvailable;
+
+        /// <summary>Gets or sets the status text for UI display.</summary>
+        [ObservableProperty]
+        private string statusText = string.Empty;
 
         /// <summary>Gets or sets the total variance (Budget - Actual - Encumbrance).</summary>
         [ObservableProperty]
@@ -256,8 +264,7 @@ namespace WileyWidget.ViewModels
                 _logger.LogError(ex, "Failed to load budget overview for fiscal year {FiscalYear}", FiscalYear);
                 ErrorMessage = $"Failed to load budget overview: {ex.Message}";
 
-                // Provide sample data on failure for graceful degradation
-                LoadSampleDataOnFailure();
+                ResetBudgetOverviewDataOnFailure();
             }
             finally
             {
@@ -510,46 +517,30 @@ namespace WileyWidget.ViewModels
                 Metrics.Count, OverBudgetCount, UnderBudgetCount);
         }
 
-        /// <summary>
-        /// Loads sample/fallback data when service fails, to maintain UI functionality.
-        /// </summary>
-        private void LoadSampleDataOnFailure()
+        private void ResetBudgetOverviewDataOnFailure()
         {
             try
             {
-                _logger.LogWarning("Loading sample budget data as fallback");
-
-                // Create sample categories
-                var sampleCategories = new[]
-                {
-                    new BudgetCategoryDto { Id = 1, Category = "Personnel", DepartmentName = "General", BudgetedAmount = 500000m, ActualAmount = 475000m, EncumbranceAmount = 10000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 2, Category = "Operations", DepartmentName = "General", BudgetedAmount = 250000m, ActualAmount = 260000m, EncumbranceAmount = 5000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 3, Category = "Utilities", DepartmentName = "Sewer", BudgetedAmount = 150000m, ActualAmount = 145000m, EncumbranceAmount = 2000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 4, Category = "Maintenance", DepartmentName = "Sewer", BudgetedAmount = 100000m, ActualAmount = 95000m, EncumbranceAmount = 3000m, FiscalYear = FiscalYear },
-                    new BudgetCategoryDto { Id = 5, Category = "Capital Projects", DepartmentName = "General", BudgetedAmount = 300000m, ActualAmount = 280000m, EncumbranceAmount = 15000m, FiscalYear = FiscalYear }
-                };
+                _logger.LogWarning("ResetBudgetOverviewDataOnFailure called: loading empty budget overview state.");
 
                 Categories.Clear();
-                foreach (var category in sampleCategories)
-                {
-                    Categories.Add(category);
-                }
+                TotalBudget = 0m;
+                TotalActual = 0m;
+                TotalEncumbrance = 0m;
+                TotalAvailable = 0m;
+                StatusText = "No budget overview data available yet.";
 
-                // Calculate totals from sample data
-                TotalBudget = sampleCategories.Sum(c => c.BudgetedAmount);
-                TotalActual = sampleCategories.Sum(c => c.ActualAmount);
-                TotalEncumbrance = sampleCategories.Sum(c => c.EncumbranceAmount);
-                TotalVariance = Variance;
-                OverallVariancePercent = TotalBudget == 0 ? 0 : (Variance / TotalBudget) * 100m;
+                TotalVariance = 0m;
+                OverallVariancePercent = 0m;
 
                 UpdateMetricsFromCategories();
                 LastUpdated = DateTime.Now;
 
-                _logger.LogInformation("Loaded {Count} sample budget categories", sampleCategories.Length);
+                _logger.LogInformation("Budget overview reset to empty metrics state.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load sample data");
+                _logger.LogError(ex, "Failed to reset budget overview data state");
             }
         }
     }

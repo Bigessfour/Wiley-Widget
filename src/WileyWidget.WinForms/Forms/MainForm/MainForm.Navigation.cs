@@ -1,195 +1,108 @@
 using System;
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.Windows.Forms.Tools;
-using WileyWidget.Abstractions;
-using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
-using WileyWidget.WinForms.Services.Abstractions;
-using WileyWidget.Services.Abstractions;
-using WileyWidget.WinForms.ViewModels;
 
-namespace WileyWidget.WinForms.Forms;
-
-public partial class MainForm
+namespace WileyWidget.WinForms.Forms
 {
-    /// <summary>
-    /// Global PanelNavigator for the application.
-    /// Created during MainForm initialization and exposed for DI resolution.
-    /// </summary>
-    public IPanelNavigationService? PanelNavigator => _panelNavigator;
-
-    /// <summary>
-    /// Shows or activates a docked panel. Creates it if not already present.
-    /// Delegates to PanelNavigationService for centralized panel management.
-    /// </summary>
-    /// <typeparam name="TPanel">The UserControl panel type.</typeparam>
-    /// <param name="panelName">Optional panel name. If null, uses type name.</param>
-    /// <param name="preferredStyle">Preferred docking position (default: Right).</param>
-    /// <param name="allowFloating">If true, panel can be floated by user (default: true).</param>
-    public void ShowPanel<TPanel>(
-        string? panelName = null,
-        DockingStyle preferredStyle = DockingStyle.Right,
-        bool allowFloating = true)
-        where TPanel : UserControl
+    public partial class MainForm
     {
-#pragma warning disable CS8604 // Possible null reference argument
-        _panelNavigator?.ShowPanel<TPanel>(panelName, preferredStyle, allowFloating);
-#pragma warning restore CS8604
-    }
+        public IPanelNavigationService? PanelNavigator => _panelNavigator;
 
-    /// <summary>
-    /// Shows or activates a docked panel with initialization parameters. Creates it if not already present.
-    /// Delegates to PanelNavigationService for centralized panel management.
-    /// </summary>
-    public void ShowPanel<TPanel>(
-        string? panelName,
-        object? parameters,
-        DockingStyle preferredStyle = DockingStyle.Right,
-        bool allowFloating = true)
-        where TPanel : UserControl
-    {
-        _panelNavigator?.ShowPanel<TPanel>(panelName ?? typeof(TPanel).Name, parameters, preferredStyle, allowFloating);
-    }
+        private IPanelNavigationService? _panelNavigator;
 
-    /// <summary>
-    /// Performs a global search across all modules (accounts, budgets, reports).
-    /// This method delegates to MainViewModel.GlobalSearchCommand for MVVM purity.
-    /// Called from ribbon search box for backward compatibility.
-    /// </summary>
-    /// <param name="query">Search query string</param>
-    /// <remarks>
-    /// DEPRECATED: Use MainViewModel.GlobalSearchCommand.ExecuteAsync(query) directly.
-    /// Kept for backward compatibility with ribbon event handlers.
-    /// </remarks>
-    public async Task PerformGlobalSearchAsync(string query)
-    {
-        var viewModel = MainViewModel;
-        if (viewModel?.GlobalSearchCommand == null)
+        private void EnsurePanelNavigatorInitialized()
         {
-            UIHelper.ShowErrorOnUI(this, "ViewModel not initialized.", "Search Error", _logger);
-            return;
+            if (_panelNavigator != null) return;
+
+            _logger?.LogDebug("[NAV] Creating PanelNavigationService");
+
+            var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<ILogger<PanelNavigationService>>(_serviceProvider!);
+
+            _panelNavigator = new PanelNavigationService(
+                this,
+                _serviceProvider!,
+                navLogger ?? NullLogger<PanelNavigationService>.Instance);
         }
 
-        // Delegate to ViewModel's GlobalSearchCommand
-        // Command handles validation, error display, and resilience
-        try
+        public void ShowPanel<TPanel>(string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
+            where TPanel : UserControl
         {
-            var method = viewModel.GlobalSearchCommand.GetType().GetMethod("ExecuteAsync", BindingFlags.Public | BindingFlags.Instance);
-            if (method != null)
-            {
-                var task = (Task?)method.Invoke(viewModel.GlobalSearchCommand, new object?[] { query });
-                if (task != null)
-                    await task;
-            }
+            EnsurePanelNavigatorInitialized();
+            _panelNavigator?.ShowPanel<TPanel>(panelName, style, allowFloating);
         }
-        catch (Exception ex)
+
+        public void ShowForm<TForm>(string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form
         {
-            _logger?.LogError(ex, "Failed to execute GlobalSearchCommand");
-            UIHelper.ShowErrorOnUI(this, $"Search failed: {ex.Message}", "Search Error", _logger);
+            EnsurePanelNavigatorInitialized();
+            _panelNavigator?.ShowForm<TForm>(panelName, style, allowFloating);
         }
-    }
 
-    /// <summary>
-    /// Synchronous wrapper for backward compatibility with async void callers.
-    /// New code should use PerformGlobalSearchAsync() or MainViewModel.GlobalSearchCommand directly.
-    /// </summary>
-    [Obsolete("Use PerformGlobalSearchAsync() or MainViewModel.GlobalSearchCommand.ExecuteAsync() instead")]
-    public void PerformGlobalSearch(string query)
-    {
-        // Fire-and-forget for backward compatibility
-        _ = PerformGlobalSearchAsync(query);
-    }
-
-    /// <summary>
-    /// Adds an existing panel instance to the docking manager asynchronously.
-    /// Useful for panels pre-initialized with specific ViewModels or state.
-    /// </summary>
-    /// <param name="panel">The UserControl panel instance to add.</param>
-    /// <param name="panelName">The display name used for caption and identification.</param>
-    /// <param name="preferredStyle">The preferred docking style (default: Right).</param>
-    /// <returns>A task that completes when the panel is added.</returns>
-    public async Task AddPanelAsync(
-        UserControl panel,
-        string panelName,
-        DockingStyle preferredStyle = DockingStyle.Right)
-    {
-        if (_panelNavigator != null && panel != null && !string.IsNullOrWhiteSpace(panelName))
+        public void ClosePanel(string panelName)
         {
-            await _panelNavigator.AddPanelAsync(panel, panelName, preferredStyle);
+            _panelNavigator?.HidePanel(panelName);
         }
-    }
 
-    private void EnsurePanelNavigatorInitialized()
-    {
-        try
+        /// <summary>
+        /// Non-generic panel show for runtime-type-based navigation (e.g. layout restore, global search).
+        /// Uses reflection to invoke the generic ShowPanel&lt;TPanel&gt; overload.
+        /// </summary>
+        public bool ShowPanel(Type panelType, string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
         {
-            // Defensive checks: Validate all dependencies before proceeding
-            if (_serviceProvider == null)
+            EnsurePanelNavigatorInitialized();
+            try
             {
-                _logger?.LogWarning("EnsurePanelNavigatorInitialized: ServiceProvider is null - skipping panel navigator initialization");
-                return;
-            }
-
-            if (_dockingManager == null)
-            {
-                _logger?.LogWarning("EnsurePanelNavigatorInitialized: DockingManager is null - skipping panel navigator initialization");
-                return;
-            }
-
-            // If it's null, create it with the now-initialized DockingManager
-            if (_panelNavigator == null)
-            {
-                var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                    .GetService<ILogger<PanelNavigationService>>(_serviceProvider) ?? NullLogger<PanelNavigationService>.Instance;
-
-                try
+                if (panelType == null || !typeof(UserControl).IsAssignableFrom(panelType))
                 {
-                    _panelNavigator = new PanelNavigationService(_dockingManager, this, _serviceProvider, navLogger);
-                    _logger?.LogDebug("PanelNavigationService created with initialized DockingManager");
+                    _logger?.LogWarning("[NAV] ShowPanel(Type) rejected invalid panel type {PanelType}", panelType?.FullName ?? "<null>");
+                    return false;
                 }
-                catch (Exception creationEx)
+
+                if (panelType == typeof(FormHostPanel))
                 {
-                    _logger?.LogError(creationEx, "Failed to create PanelNavigationService - docking panel navigation will be unavailable");
-                    return;
+                    if (string.Equals(panelName, "Rates", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ShowForm<RatesPage>(panelName, style, allowFloating: true);
+                        return true;
+                    }
                 }
+
+                // Locate the generic ShowPanel<TPanel>(string, DockingStyle, bool) method by signature
+                var method = typeof(IPanelNavigationService)
+                    .GetMethod(nameof(IPanelNavigationService.ShowPanel),
+                        new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
+
+                if (method == null)
+                {
+                    _logger?.LogWarning("[NAV] ShowPanel(Type) could not find generic method on IPanelNavigationService");
+                    return false;
+                }
+
+                method.MakeGenericMethod(panelType)
+                      .Invoke(_panelNavigator, new object[] { panelName, style, allowFloating });
+
+                var activePanelName = _panelNavigator?.GetActivePanelName();
+                if (string.IsNullOrWhiteSpace(activePanelName))
+                {
+                    _logger?.LogDebug("[NAV] ShowPanel(Type) completed but active panel is null for {PanelType}", panelType.Name);
+                }
+
+                return true;
             }
-            else
+            catch (Exception ex)
             {
-                _logger?.LogDebug("PanelNavigationService already initialized - no action needed");
+                _logger?.LogWarning(ex, "[NAV] ShowPanel(Type) failed for {PanelType}", panelType?.Name);
+                return false;
             }
         }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Unexpected error in EnsurePanelNavigatorInitialized - panel navigation may be unavailable");
-        }
-    }
 
-    /// <summary>
-    /// Closes the settings panel if it's currently visible.
-    /// Legacy method: SettingsForm replaced by SettingsPanel.
-    /// </summary>
-    public void CloseSettingsPanel()
-    {
-        // Legacy method - SettingsForm replaced by SettingsPanel
-        _panelNavigator?.HidePanel("Settings");
-    }
-
-    /// <summary>
-    /// Closes a panel with the specified name.
-    /// </summary>
-    /// <param name="panelName">Name of the panel to close.</param>
-    public void ClosePanel(string panelName)
-    {
-        _panelNavigator?.HidePanel(panelName);
+        /// <summary>Hides the Settings panel (called by SettingsPanel close button).</summary>
+        public void CloseSettingsPanel() => ClosePanel("Settings");
     }
 }

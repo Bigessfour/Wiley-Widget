@@ -23,8 +23,9 @@ namespace WileyWidget.WinForms.ViewModels
         decimal ProjectedMonthlyRevenue { get; set; }
         decimal RevenueDifference { get; set; }
         bool HasResults { get; set; }
-        
+
         IAsyncRelayCommand RunScenarioCommand { get; }
+        IAsyncRelayCommand ExportForecastCommand { get; }
         IRelayCommand ResetCommand { get; }
     }
 }

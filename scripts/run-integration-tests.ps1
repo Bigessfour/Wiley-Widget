@@ -7,6 +7,7 @@ Param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$overallExitCode = 0
 
 # Initialize the global overall exit code so later logic can safely update it
 if (-not (Get-Variable -Name overallExitCode -Scope Global -ErrorAction SilentlyContinue)) {
@@ -185,9 +186,10 @@ foreach ($proj in $testProjects) {
 
     if ($exitCode -ne 0) { Write-Host "dotnet test exit code: $exitCode" }
 
-    if (-not $global:overallExitCode) { $global:overallExitCode = $exitCode } elseif ($exitCode -ne 0) { $global:overallExitCode = $exitCode }
+    if ($exitCode -ne 0) { $overallExitCode = $exitCode }
 
     Write-Host "Finished project $projName; check $resultsDir for TRX/diag/job-output.txt"
 }
 
 Write-Host "\nAll done. Summary: check ./TestResults for per-project outputs."
+exit $overallExitCode

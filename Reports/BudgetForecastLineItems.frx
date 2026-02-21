@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report ScriptLanguage="CSharp" ReportInfo.Created="02/10/2026 00:00:00" ReportInfo.Modified="02/10/2026 00:00:00" ReportInfo.CreatorVersion="2026.1.0.0">
+  <Dictionary>
+    <BusinessObjectDataSource Name="LineItems" ReferenceName="LineItems" DataType="System.Int32" Enabled="true">
+      <Column Name="Category" DataType="System.String"/>
+      <Column Name="Description" DataType="System.String"/>
+      <Column Name="CurrentAmount" DataType="System.Decimal"/>
+      <Column Name="ProposedAmount" DataType="System.Decimal"/>
+      <Column Name="Increase" DataType="System.Decimal"/>
+      <Column Name="IncreasePercent" DataType="System.Decimal"/>
+      <Column Name="Justification" DataType="System.String"/>
+      <Column Name="IsGoalDriven" DataType="System.Boolean"/>
+    </BusinessObjectDataSource>
+    <BusinessObjectDataSource Name="ForecastHeader" ReferenceName="ForecastHeader" DataType="System.Int32" Enabled="true">
+      <Column Name="EnterpriseName" DataType="System.String"/>
+      <Column Name="CurrentFiscalYear" DataType="System.Int32"/>
+      <Column Name="ProposedFiscalYear" DataType="System.Int32"/>
+    </BusinessObjectDataSource>
+  </Dictionary>
+  <ReportPage Name="Page1" Landscape="true" PaperWidth="279.4" PaperHeight="215.9" RawPaperSize="9" Watermark.Font="Arial, 60pt">
+    <ReportTitleBand Name="ReportTitle1" Width="1047.06" Height="94.5">
+      <TextObject Name="Text1" Left="0" Top="0" Width="1047.06" Height="37.8" Text="BUDGET FORECAST - LINE ITEMS" HorzAlign="Center" VertAlign="Center" Font="Arial, 18pt, style=Bold" TextFill.Color="Navy"/>
+      <TextObject Name="Text2" Left="0" Top="47.25" Width="1047.06" Height="18.9" Text="[ForecastHeader.EnterpriseName] - FY [ForecastHeader.CurrentFiscalYear] → [ForecastHeader.ProposedFiscalYear]" HorzAlign="Center" Font="Arial, 11pt"/>
+    </ReportTitleBand>
+    <GroupHeaderBand Name="GroupHeader1" Top="98.5" Width="1047.06" Height="37.8" Condition="[LineItems.Category]">
+      <TextObject Name="Text3" Left="0" Top="9.45" Width="1047.06" Height="18.9" Text="[LineItems.Category]" Font="Arial, 12pt, style=Bold" TextFill.Color="Navy"/>
+      <DataBand Name="Data1" Top="140.3" Width="1047.06" Height="56.7" DataSource="LineItems">
+        <TextObject Name="Text4" Left="18.9" Top="0" Width="170.1" Height="18.9" Text="[LineItems.Description]" Font="Arial, 9pt"/>
+        <TextObject Name="Text5" Left="198.45" Top="0" Width="94.5" Height="18.9" Text="[LineItems.CurrentAmount]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt"/>
+        <TextObject Name="Text6" Left="302.4" Top="0" Width="94.5" Height="18.9" Text="[LineItems.ProposedAmount]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+        <TextObject Name="Text7" Left="406.35" Top="0" Width="75.6" Height="18.9" Text="[LineItems.Increase]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt" TextFill.Color="Red"/>
+        <TextObject Name="Text8" Left="491.4" Top="0" Width="56.7" Height="18.9" Text="[LineItems.IncreasePercent]%" HorzAlign="Right" Font="Arial, 9pt"/>
+        <TextObject Name="Text9" Left="557.55" Top="0" Width="481.95" Height="18.9" Text="[LineItems.Justification]" Font="Arial, 8pt, style=Italic"/>
+        <TextObject Name="Text10" Left="18.9" Top="28.35" Width="94.5" Height="18.9" Text="[IIf([LineItems.IsGoalDriven],&quot;🎯 Goal-Driven&quot;,&quot;&quot;)]" Font="Arial, 8pt" TextFill.Color="Green"/>
+        <Sort>
+          <Sort Expression="[LineItems.Category]" Descending="false"/>
+        </Sort>
+      </DataBand>
+      <GroupFooterBand Name="GroupFooter1" Top="201" Width="1047.06" Height="37.8">
+        <TextObject Name="Text11" Left="198.45" Top="9.45" Width="94.5" Height="18.9" Text="[Sum([LineItems.CurrentAmount],[LineItems.Category])]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+        <TextObject Name="Text12" Left="302.4" Top="9.45" Width="94.5" Height="18.9" Text="[Sum([LineItems.ProposedAmount],[LineItems.Category])]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold" TextFill.Color="Green"/>
+        <TextObject Name="Text13" Left="406.35" Top="9.45" Width="75.6" Height="18.9" Text="[Sum([LineItems.Increase],[LineItems.Category])]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold" TextFill.Color="Red"/>
+        <TextObject Name="Text14" Left="18.9" Top="9.45" Width="170.1" Height="18.9" Text="[LineItems.Category] Total:" Font="Arial, 9pt, style=Bold"/>
+        <ShapeObject Name="Shape1" Left="18.9" Top="0" Width="1009.8" Height="1.89" Border.Color="Navy"/>
+      </GroupFooterBand>
+    </GroupHeaderBand>
+    <PageHeaderBand Name="PageHeader1" Top="242.8" Width="1047.06" Height="28.35">
+      <TextObject Name="Text15" Left="18.9" Top="0" Width="170.1" Height="18.9" Text="Description" Font="Arial, 9pt, style=Bold"/>
+      <TextObject Name="Text16" Left="198.45" Top="0" Width="94.5" Height="18.9" Text="Current" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+      <TextObject Name="Text17" Left="302.4" Top="0" Width="94.5" Height="18.9" Text="Proposed" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+      <TextObject Name="Text18" Left="406.35" Top="0" Width="75.6" Height="18.9" Text="Change" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+      <TextObject Name="Text19" Left="491.4" Top="0" Width="56.7" Height="18.9" Text="%" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+      <TextObject Name="Text20" Left="557.55" Top="0" Width="481.95" Height="18.9" Text="Justification" Font="Arial, 9pt, style=Bold"/>
+      <ShapeObject Name="Shape2" Left="18.9" Top="18.9" Width="1009.8" Height="1.89" Border.Color="LightGray"/>
+    </PageHeaderBand>
+    <PageFooterBand Name="PageFooter1" Top="275.15" Width="1047.06" Height="28.35">
+      <TextObject Name="Text21" Left="0" Top="9.45" Width="1047.06" Height="18.9" Text="Page [Page] of [TotalPages#]" HorzAlign="Center" Font="Arial, 8pt"/>
+    </PageFooterBand>
+  </ReportPage>
+</Report>

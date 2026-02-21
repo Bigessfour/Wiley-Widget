@@ -1,7 +1,11 @@
 {
   "github.copilot.chat.localeOverride": "en",
+  "chat.useAgentSkills": true,
+  "chat.agentSkillsLocations": [
+    ".agents/skills",
+    ".vscode/skills"
+  ],
   "github.copilot.advanced": {
-    "debug.overrideEngine": "gpt-4o-2024-11-20",
     "debug.useNodeFetcher": true,
     "inlineSuggest.enable": true
   },
@@ -14,33 +18,40 @@
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
+  "github.copilot.chat.tools.changes.enabled": false,
   "github.copilot.editor.enableAutoCompletions": true,
+  "github.copilot.chat.agent.autoStartMcpServers": false,
 
   // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": true,
   "task.autoClose": true,
+  "chat.tools.terminal.outputLocation": "terminal",
 
   // ============================================================================
   // MCP (Model Context Protocol) Server Configuration
   // ============================================================================
   "github.copilot.chat.mcpServers": {
     "filesystem": {
-      "command": "node_modules/.bin/mcp-server-filesystem.cmd",
-      "args": [],
-      "roots": ["."],
-      "env": {
-        "MCP_FILESYSTEM_ALLOWED_PATHS": "."
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "."
+      ]
     },
     "microsoft-learn": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
     },
     "csharp-mcp": {
-      "command": "InfinityFlow.CSharp.Eval",
-      "args": [],
+      "command": "dotnet",
+      "args": [
+        "tool",
+        "run",
+        "InfinityFlow.CSharp.Eval"
+      ],
       "env": {
         "CSX_ALLOWED_PATH": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
         "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
@@ -56,7 +67,7 @@
     },
     "mssql": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-mssql"],
+      "args": ["-y", "mssql-mcp"],
       "env": {
         "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
       },
@@ -66,7 +77,7 @@
       "command": "npx",
       "args": ["-y", "@syncfusion/winforms-assistant@latest"],
       "env": {
-        "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
+        "Syncfusion_API_Key": "${env:SYNCFUSION_MCP_API_KEY}"
       }
     },
     "mcp-debugger": {
@@ -77,9 +88,8 @@
 
   // ============================================================================
   // ============================================================================
-  "xamlDiag.compilerPath": "C:\\Users\\biges\\.nuget\\packages\\microsoft.windowsappsdk\\1.8.251105000\\tools\\net472\\XamlCompiler.exe",
   "xamlDiag.autoDetectCompiler": true,
-  "xamlDiag.defaultObjDir": "obj/Debug/net9.0-windows10.0.26100.0/win-x64",
+  "xamlDiag.defaultObjDir": "obj/Debug/net10.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
   "xml.format.splitAttributes": "preserve",
   "xml.format.maxLineWidth": 120,
@@ -93,10 +103,12 @@
   // ============================================================================
   // Editor Configuration
   // ============================================================================
+  "editor.defaultFormatter": "trunk.io",
   "editor.formatOnSave": true,
   "editor.formatOnPaste": false,
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
+    "source.fixAll.trunk": "always",
     "source.organizeImports": "explicit",
     "source.fixAll.powershell": "explicit"
   },
@@ -145,6 +157,8 @@
   "files.watcherExclude": {
     "**/.git/objects/**": true,
     "**/.git/subtree-cache/**": true,
+    "**/.vs/**": true,
+    "**/*.binlog": true,
     "**/node_modules/**": true,
     "**/bin/**": true,
     "**/obj/**": true,
@@ -153,6 +167,7 @@
     "**/.venv/**": true,
     "**/tests/.archive/**": true
   },
+  "search.followSymlinks": false,
 
   // ============================================================================
   // .NET & C# Configuration
@@ -166,6 +181,7 @@
   "dotnet.unitTests.showCodeLens": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
+  "omnisharp.enableLspDriver": true,
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
@@ -176,11 +192,34 @@
   "omnisharp.analyzeOpenDocumentsOnly": true,
 
   "csharp.suppressDotnetRestoreNotification": true,
+  "csharp.semanticHighlighting.enabled": true,
 
   "[csharp]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-dotnettools.csharp",
     "editor.formatOnSaveMode": "modifications"
+  },
+
+  "[python]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+
+  "[markdown]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": false
+  },
+
+  "[json]": {
+    "editor.defaultFormatter": "trunk.io"
+  },
+
+  "[yaml]": {
+    "editor.defaultFormatter": "trunk.io"
+  },
+
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell"
   },
 
   // ============================================================================
@@ -212,10 +251,10 @@
   // Python Configuration
   // ============================================================================
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-  "python.formatting.provider": "black",
+  "python.formatting.provider": "none",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
-  "python.linting.pylintEnabled": true,
+  "python.linting.pylintEnabled": false,
   "python.linting.pylintArgs": [
     "--disable=C0114,C0115,C0116",
     "--disable=W0611",
@@ -230,6 +269,13 @@
   // ============================================================================
   // PowerShell Configuration
   // ============================================================================
+  // Pin the PowerShell extension to PowerShell 7.5.4 (not Windows PowerShell 5.1)
+  // Ref: https://learn.microsoft.com/powershell/scripting/dev-cross-plat/vscode/using-vscode?view=powershell-7.5#configuration-settings-for-visual-studio-code
+  "powershell.powerShellAdditionalExePaths": {
+    "PowerShell 7.5.4 (Repo)": "C:/Program Files/PowerShell/7/pwsh.exe"
+  },
+  "powershell.powerShellDefaultVersion": "PowerShell 7.5.4 (Repo)",
+
   "powershell.scriptAnalysis.enable": true,
   "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
   "powershell.codeFormatting.preset": "OTBS",
@@ -281,10 +327,6 @@
   // Markdown Linting - Disabled (MD lint clutters Problems panel)
   // ============================================================================
   "markdownlint.enable": false,
-  "[markdown]": {
-    "editor.defaultFormatter": null,
-    "editor.formatOnSave": false
-  },
 
   // ============================================================================
   // Debugging Configuration
@@ -294,34 +336,26 @@
   "debug.internalConsoleOptions": "openOnSessionStart",
 
   // ============================================================================
-  // Continue/Grok 4.1 Integration (Updated 2025-12-05)
-  // Models: grok-4-1-fast-reasoning (agentic), grok-4-1-fast-non-reasoning (speed)
-  // Ref: https://docs.x.ai/docs/models | https://x.ai/news/grok-4-1-fast/
-  // ============================================================================
-  "continue.defaultModel": "grok-4-1-fast-reasoning",
-  "continue.chat.model": "grok-4-1-fast-reasoning",
-  "continue.maxTokens": 8192,
-  "continue.temperature": 0.7,
-  "continue.enableExperimentalFeatures": true,
-  "continue.telemetryLevel": "off",
-  "continue.contextProviders.codebase.nRetrieve": 15,
-  "continue.experimental.modelessChat": true,
-
-  // ============================================================================
   // Docker Configuration
   // ============================================================================
   "docker.showStartPage": false,
 
   // ============================================================================
+  // Trunk Integration (Full)
+  // ============================================================================
+  "trunk.checkOnSave": true,
+  "trunk.formatOnSave": true,
+  "trunk.addToolsToPath": true,
+
+  // ============================================================================
   // Performance & UI
   // ============================================================================
-  "github.copilot.chat.agent.autoStartMcpServers": true,
   "extensions.autoUpdate": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.limit.enabled": true,
   "workbench.editor.limit.value": 10,
-  "workbench.iconTheme": "material-icon-theme",
+  "workbench.iconTheme": "vs-seti",
   "workbench.colorTheme": "Default Dark+",
   "search.maxResults": 5000,
   "editor.largeFileOptimizations": false,
@@ -329,6 +363,7 @@
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
+  // Default terminals to PowerShell 7.5.4 (`pwsh`) to match the PowerShell VS Code extension.
   "terminal.integrated.defaultProfile.osx": "PowerShell",
   "terminal.integrated.profiles.osx": {
     "PowerShell": {
@@ -341,9 +376,19 @@
       "args": []
     }
   },
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.defaultProfile.windows": "PowerShell 7.5.4",
+  "terminal.integrated.automationProfile.windows": "PowerShell 7.5.4",
   "terminal.integrated.profiles.windows": {
-    "PowerShell": {
+    "PowerShell 7.5.4": {
+      "path": [
+        "C:/Program Files/PowerShell/7/pwsh.exe"
+      ],
+      "args": [
+        "-NoLogo"
+      ],
+      "icon": "terminal-powershell"
+    },
+    "Windows PowerShell": {
       "source": "PowerShell",
       "icon": "terminal-powershell"
     },
@@ -353,14 +398,6 @@
       ],
       "icon": "terminal-cmd"
     }
-  },
-  "chat.mcp.serverSampling": {
-    "Wiley-Widget/.vscode/mcp.json: mssql": {
-      "allowedModels": [
-        "copilot/auto"
-      ]
-    }
-  },
-  "trunk.addToolsToPath": true
+  }
 }
 

@@ -4,22 +4,57 @@ using System;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 
-namespace WileyWidget.WinForms.Utils;
+namespace WileyWidget.WinForms.Helpers;
 
 /// <summary>
 /// Thread-safe helper for marshalling calls to the UI thread per Microsoft WinForms threading best practices.
 /// https://learn.microsoft.com/en-us/dotnet/desktop/winforms/controls/how-to-make-thread-safe-calls
-/// 
+///
 /// Windows Forms uses the Single-Threaded Apartment (STA) model - all control access MUST occur on the
 /// thread that created the control. This helper ensures safe cross-thread operations.
-/// 
+///
 /// .NET 10+: Uses Control.InvokeAsync() for non-blocking async marshalling where available.
 /// Fallback: Uses synchronous Invoke() for compatibility.
 /// </summary>
 public static class UIThreadHelper
 {
-    private const int MessagePumpSleepDelayMs = 1;
-    private static readonly TimeSpan MessagePumpTimeout = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// Marshals the action to the UI thread if necessary.
+    /// Safe to call even if control is disposing/closed.
+    /// Uses BeginInvoke (non-blocking) — suitable for fire-and-forget UI updates.
+    /// </summary>
+    public static void SafeInvoke(this Control? control, Action action)
+    {
+        if (control == null || control.IsDisposed || action == null)
+            return;
+
+        try
+        {
+            // If handle isn't created, we can't marshal via Invoke.
+            // Avoid creating handles on background threads.
+            if (!control.IsHandleCreated)
+            {
+                return;
+            }
+
+            if (control.InvokeRequired)
+            {
+                control.BeginInvoke((Action)(() =>
+                {
+                    // Re-check after marshalling (race condition protection)
+                    if (control.IsDisposed || !control.IsHandleCreated)
+                        return;
+                    action();
+                }));
+            }
+            else
+            {
+                action();
+            }
+        }
+        catch (ObjectDisposedException) { }
+        catch (InvalidOperationException) { }
+    }
 
     /// <summary>
     /// Safely executes an action on the UI thread if needed.
@@ -155,7 +190,7 @@ public static class UIThreadHelper
                     ?? throw new InvalidOperationException("Async action returned null task");
             }
 
-            await AwaitWithOptionalMessagePumpAsync(task, logger);
+            await task.ConfigureAwait(false);
         }
         catch (ObjectDisposedException ex)
         {
@@ -200,7 +235,7 @@ public static class UIThreadHelper
                     ?? throw new InvalidOperationException("Async function returned null task");
             }
 
-            return await AwaitWithOptionalMessagePumpAsync(task, logger);
+            return await task.ConfigureAwait(false);
         }
         catch (ObjectDisposedException ex)
         {
@@ -224,7 +259,7 @@ public static class UIThreadHelper
     {
         if (control == null) return false;
         if (control.IsDisposed) return false;
-        
+
         // Per Microsoft: InvokeRequired can return false even if handle isn't created
         // (if we're on the creation thread but before OnHandleCreated)
         // So we must explicitly check IsHandleCreated for safety
@@ -296,7 +331,7 @@ public static class UIThreadHelper
     /// <param name="logger">Optional logger for diagnostics.</param>
     /// <returns>A ValueTask that completes when the action finishes on the UI thread.</returns>
     /// <exception cref="ArgumentNullException">Thrown if control or action is null.</exception>
-    public static async System.Threading.Tasks.ValueTask InvokeAsyncNonBlocking(
+    public static async System.Threading.Tasks.ValueTask InvokeAsyncSafe(
         this Control control,
         Action action,
         ILogger? logger = null)
@@ -304,11 +339,35 @@ public static class UIThreadHelper
         if (control == null) throw new ArgumentNullException(nameof(control));
         if (action == null) throw new ArgumentNullException(nameof(action));
 
+        if (control.IsDisposed) return;
+
         try
         {
-            // Use Control.InvokeAsync (.NET 10+) for non-blocking marshalling
-            // CancellationToken.None means no cancellation support for this operation
-            await control.InvokeAsync(action, System.Threading.CancellationToken.None);
+            // E2E Evaluation: .NET 9/10 Thread Marshalling Best Practices
+            // Per Microsoft docs: If the control's handle does not yet exist, InvokeRequired returns false.
+            // This can lead to a situation where a background thread attempts to access the control,
+            // causing the underlying handle to be created on the wrong (background) thread.
+
+            // 1. Ensure handle is created on the UI thread first if it doesn't exist
+            if (!control.IsHandleCreated)
+            {
+                logger?.LogDebug("InvokeAsyncSafe: Handle not created for {ControlName}. Waiting for handle creation...", control.Name);
+                if (!await control.WaitForHandleAsync())
+                {
+                    logger?.LogWarning("InvokeAsyncSafe: Timeout waiting for handle for {ControlName}. Abandoning operation.", control.Name);
+                    return;
+                }
+            }
+
+            // 2. Use InvokeAsync for non-blocking marshalling
+            // Re-check disposal after potential wait
+            if (control.IsDisposed) return;
+
+            await control.InvokeAsync(() =>
+            {
+                if (control.IsDisposed) return;
+                action();
+            });
         }
         catch (ObjectDisposedException ex)
         {
@@ -321,9 +380,22 @@ public static class UIThreadHelper
         catch (InvalidOperationException ex)
         {
             logger?.LogError(ex, "Invalid operation executing action on UI thread for {ControlName}", control.Name);
+            // Re-throw if it's still a cross-thread exception despite our guards
+            if (ex.Message.Contains("thread other than the thread it was created on"))
+            {
+                logger?.LogCritical("CRITICAL: Cross-thread violation detected for {ControlName} despite InvokeAsyncSafe guards!", control.Name);
+            }
             throw;
         }
     }
+
+    /// <summary>
+    /// Safely executes an action on the UI thread asynchronously without blocking.
+    /// Uses Control.InvokeAsync() (.NET 10+) for non-blocking marshalling.
+    /// Aliased to InvokeAsyncNonBlocking for backward compatibility with existing codebase.
+    /// </summary>
+    public static System.Threading.Tasks.ValueTask InvokeAsyncNonBlocking(this Control control, Action action, ILogger? logger = null)
+        => InvokeAsyncSafe(control, action, logger);
 
     /// <summary>
     /// Safely executes a function on the UI thread asynchronously without blocking.
@@ -466,7 +538,7 @@ public static class UIThreadHelper
             // Convert Func<CancellationToken, Task> to Func<CancellationToken, ValueTask>
             // by wrapping the Task result in a ValueTask
             await control.InvokeAsync(
-                async (ct) => 
+                async (ct) =>
                 {
                     var task = asyncFunc(ct);
                     if (task != null)
@@ -490,105 +562,46 @@ public static class UIThreadHelper
     }
 
     /// <summary>
-    /// Waits for a control's handle to be created, with timeout protection.
-    /// Useful for deferred operations that require a window handle.
+    /// Waits for a control's handle to be created asynchronously.
+    /// Safe to call from any thread.
     /// </summary>
-    /// <param name="control">The control whose handle to wait for.</param>
-    /// <param name="timeoutMs">Maximum wait time in milliseconds (default 5000ms).</param>
-    /// <returns>True if handle was created within timeout, false if timeout expired.</returns>
-    public static bool WaitForHandle(this Control control, int timeoutMs = 5000)
+    public static async System.Threading.Tasks.Task<bool> WaitForHandleAsync(this Control control, int timeoutMs = 5000)
     {
-        if (control == null) throw new ArgumentNullException(nameof(control));
-        
+        if (control == null) return false;
         if (control.IsHandleCreated) return true;
 
-        var endTime = DateTime.UtcNow.AddMilliseconds(timeoutMs);
-        while (DateTime.UtcNow < endTime)
+        var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+
+        EventHandler handler = (s, e) => tcs.TrySetResult(true);
+        control.HandleCreated += handler;
+
+        try
         {
-            // Force handle creation by accessing the Handle property
-            // This is safe per Microsoft docs
-            try
-            {
-                _ = control.Handle;
-                if (control.IsHandleCreated) return true;
-            }
-            catch (ObjectDisposedException)
-            {
-                return false;
-            }
+            // Re-check in case it was created while wiring the event
+            if (control.IsHandleCreated) return true;
 
-            // Pump UI messages instead of blocking with Thread.Sleep
-            // This keeps the UI responsive and allows pending messages to be processed
-            System.Windows.Forms.Application.DoEvents();
+            var delayTask = System.Threading.Tasks.Task.Delay(timeoutMs);
+            var completedTask = await System.Threading.Tasks.Task.WhenAny(tcs.Task, delayTask);
+
+            return completedTask == tcs.Task;
         }
-
-        return false;
+        finally
+        {
+            control.HandleCreated -= handler;
+        }
     }
 
-    private static async System.Threading.Tasks.Task AwaitWithOptionalMessagePumpAsync(
-        System.Threading.Tasks.Task task,
-        ILogger? logger)
+    /// <summary>
+    /// Waits for a control's handle to be created, with timeout protection.
+    /// </summary>
+    public static bool WaitForHandle(this Control control, int timeoutMs = 5000)
     {
-        if (task == null) throw new ArgumentNullException(nameof(task));
+        if (control == null) return false;
+        if (control.IsHandleCreated) return true;
 
-        if (RequiresLocalMessagePump())
-        {
-            logger?.LogTrace("UIThreadHelper engaged a temporary message pump for async Task execution.");
-            PumpMessagesUntilCompleted(task);
-        }
-
-        await task.ConfigureAwait(true);
+        // Use the async version and block wait - simplified for synchronous callers
+        // though synchronous blocking is discouraged.
+        return WaitForHandleAsync(control, timeoutMs).GetAwaiter().GetResult();
     }
 
-    private static async System.Threading.Tasks.Task<T> AwaitWithOptionalMessagePumpAsync<T>(
-        System.Threading.Tasks.Task<T> task,
-        ILogger? logger)
-    {
-        if (task == null) throw new ArgumentNullException(nameof(task));
-
-        if (RequiresLocalMessagePump())
-        {
-            logger?.LogTrace("UIThreadHelper engaged a temporary message pump for async Task<T> execution.");
-            PumpMessagesUntilCompleted(task);
-        }
-
-        return await task.ConfigureAwait(true);
-    }
-
-    private static bool RequiresLocalMessagePump()
-    {
-        if (System.Windows.Forms.Application.MessageLoop)
-        {
-            return false;
-        }
-
-        if (System.Threading.Thread.CurrentThread.GetApartmentState() != System.Threading.ApartmentState.STA)
-        {
-            return false;
-        }
-
-        return System.Threading.SynchronizationContext.Current is System.Windows.Forms.WindowsFormsSynchronizationContext;
-    }
-
-    private static void PumpMessagesUntilCompleted(System.Threading.Tasks.Task task)
-    {
-        var expiration = DateTime.UtcNow + MessagePumpTimeout;
-
-        while (!task.IsCompleted)
-        {
-            System.Windows.Forms.Application.DoEvents();
-
-            if (task.IsCompleted)
-            {
-                break;
-            }
-
-            System.Threading.Thread.Sleep(MessagePumpSleepDelayMs);
-
-            if (DateTime.UtcNow > expiration)
-            {
-                throw new TimeoutException("UIThreadHelper timed out while waiting for async UI work to complete.");
-            }
-        }
-    }
 }

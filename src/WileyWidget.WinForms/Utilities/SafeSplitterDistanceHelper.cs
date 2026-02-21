@@ -1,17 +1,18 @@
 using System;
 using System.Windows.Forms;
 
-namespace WileyWidget.WinForms.Utils
+namespace WileyWidget.WinForms.Helpers
 {
     /// <summary>
     /// Comprehensive helper utility for safely configuring SplitContainer sizing and layout.
     /// Prevents InvalidOperationException during control initialization by deferring sizing operations
     /// until the control has valid dimensions. Follows Syncfusion Windows Forms API constraints:
-    /// https://help.syncfusion.com/cr/windowsforms
+    /// https://help.syncfusion.com/windowsforms/splitcontainer/splitcontaineradv
     ///
     /// CONSTRAINT ENFORCEMENT (Per Syncfusion Docs):
     /// Panel1MinSize ≤ SplitterDistance ≤ (Dimension - Panel2MinSize - SplitterWidth)
     /// Where Dimension = Width (vertical splitter) or Height (horizontal splitter)
+    /// Defaults: Panel1MinSize/Panel2MinSize = 25, SplitterWidth varies (e.g., 20 in examples)
     ///
     /// Usage Patterns:
     ///
@@ -61,34 +62,213 @@ namespace WileyWidget.WinForms.Utils
                 ? control.Height
                 : control.Width;
 
-            // Use SizeChanged to defer initialization until control has real dimensions
-            control.SizeChanged += (s, e) =>
-            {
-                if (!initialized)
-                {
-                    // Calculate minimum dimension needed
-                    int requiredDimension = panel1MinSize + panel2MinSize + sc.SplitterWidth;
-                    minDimension = sc.Orientation == Orientation.Horizontal
-                        ? control.Height
-                        : control.Width;
+            // [CRITICAL FIX] Clamp min-sizes to safe fallback if they're too large for initial container
+            // This prevents ArgumentOutOfRangeException when container starts small
+            int currentDimension = sc.Orientation == Orientation.Horizontal
+                ? control.Height
+                : control.Width;
 
-                    // Only initialize if we have enough space
-                    if (minDimension >= requiredDimension)
+            int splitterWidth = 0;
+            try { splitterWidth = sc.SplitterWidth; } catch { splitterWidth = 5; }
+
+            // [CRITICAL FIX] Defer ALL property sets until control has valid handle + dimensions
+            // Setting Panel1MinSize/Panel2MinSize before handle creation causes cascade of InvalidOperationException
+            // Reference: https://github.com/dotnet/winforms/issues/4000 (similar timing issues)
+
+            System.Diagnostics.Debug.WriteLine(
+                $"[SafeSplitterDistanceHelper] Deferring configuration: Panel1={panel1MinSize}, Panel2={panel2MinSize}, " +
+                $"Distance={desiredDistance}, CurrentDim={currentDimension}px, Orientation={sc.Orientation}");
+
+            // Use HandleCreated + SizeChanged to defer initialization until control is ready
+            EventHandler? initHandler = null;
+            initHandler = (s, e) =>
+            {
+                if (initialized || control.IsDisposed)
+                    return;
+
+                // Wait for valid dimensions (>0)
+                minDimension = sc.Orientation == Orientation.Horizontal
+                    ? control.Height
+                    : control.Width;
+
+                if (minDimension <= 0)
+                    return; // Still not sized, wait for next event
+
+                // Calculate safe min sizes based on actual dimensions
+                int requiredDimension = panel1MinSize + panel2MinSize + splitterWidth;
+
+                if (minDimension < requiredDimension)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[SafeSplitterDistanceHelper] Container too small: {minDimension}px < required {requiredDimension}px - waiting");
+                    return;
+                }
+
+                initialized = true;
+
+                // Unsubscribe (one-shot pattern)
+                control.HandleCreated -= initHandler;
+                control.SizeChanged -= initHandler;
+
+                try
+                {
+                    // Clamp to safe bounds
+                    int finalPanel1Min = Math.Min(panel1MinSize, Math.Max(25, minDimension - panel2MinSize - splitterWidth - 10));
+                    int finalPanel2Min = Math.Min(panel2MinSize, Math.Max(25, minDimension - panel1MinSize - splitterWidth - 10));
+
+                    // Set min sizes
+                    sc.Panel1MinSize = finalPanel1Min;
+                    sc.Panel2MinSize = finalPanel2Min;
+
+                    // Calculate safe distance bounds
+                    int minDistance = finalPanel1Min;
+                    int maxDistance = minDimension - finalPanel2Min - splitterWidth;
+                    int safeDistance = Math.Clamp(desiredDistance, minDistance, maxDistance);
+
+                    if (safeDistance != desiredDistance)
                     {
-                        initialized = true;
-                        try
-                        {
-                            sc.Panel1MinSize = panel1MinSize;
-                            sc.Panel2MinSize = panel2MinSize;
-                            TrySetSplitterDistance(sc, desiredDistance);
-                        }
-                        catch
-                        {
-                            // Silently ignore - layout may still be adjusting
-                        }
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[SafeSplitterDistanceHelper] Clamped distance: {desiredDistance} → {safeDistance} (bounds: {minDistance}-{maxDistance})");
+                    }
+
+                    // Set splitter distance
+                    TrySetSplitterDistance(sc, safeDistance);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[SafeSplitterDistanceHelper] SplitContainer configured: Orientation={sc.Orientation}, " +
+                        $"Panel1Min={finalPanel1Min}, Panel2Min={finalPanel2Min}, Distance={sc.SplitterDistance}, Dimension={minDimension}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SafeSplitterDistanceHelper] Configuration failed: {ex.Message}");
+                    // Don't rethrow - layout may still be adjusting
+                }
+            };
+
+            // Subscribe to both events for maximum compatibility
+            if (!control.IsHandleCreated)
+            {
+                control.HandleCreated += initHandler;
+            }
+            else
+            {
+                // Handle already exists - trigger immediately via SizeChanged path
+                control.SizeChanged += initHandler;
+            }
+        }
+
+        /// <summary>
+        /// Advanced configuration with optional splitter width override.
+        /// Defers settings until control is ready, clamps mins proportionally if overflowing.
+        /// </summary>
+        /// <param name="splitContainer">The SplitContainer to configure</param>
+        /// <param name="panel1MinSize">Desired Panel1MinSize</param>
+        /// <param name="panel2MinSize">Desired Panel2MinSize</param>
+        /// <param name="desiredDistance">Desired SplitterDistance</param>
+        /// <param name="targetSplitterWidth">Optional SplitterWidth override (default: current)</param>
+        public static void ConfigureSafeSplitContainerAdvanced(dynamic splitContainer, int panel1MinSize, int panel2MinSize, int desiredDistance, int targetSplitterWidth = -1)
+        {
+            if (splitContainer == null || splitContainer.IsDisposed)
+                return;
+
+            bool initialized = false;
+
+            EventHandler? initHandler = null;
+            initHandler = (s, e) =>
+            {
+                if (initialized || splitContainer.IsDisposed)
+                    return;
+
+                int currentDimension = splitContainer.Orientation == Orientation.Vertical
+                    ? splitContainer.Width
+                    : splitContainer.Height;
+
+                if (currentDimension <= 0)
+                    return;
+
+                int splWidth = targetSplitterWidth > 0 ? targetSplitterWidth : splitContainer.SplitterWidth;
+
+                // Calculate available space for both panels
+                int availableForPanels = Math.Max(0, currentDimension - splWidth);
+
+                // FIXED LOGIC: Ensure sum of min sizes never exceeds available space
+                int requestedTotal = panel1MinSize + panel2MinSize;
+                int safePanel1 = panel1MinSize;
+                int safePanel2 = panel2MinSize;
+
+                if (requestedTotal > availableForPanels)
+                {
+                    // Scale down proportionally while maintaining minimum viable sizes
+                    const int absoluteMin = 25; // Syncfusion default
+
+                    if (availableForPanels < (absoluteMin * 2))
+                    {
+                        // Not enough space for both panels - skip initialization
+                        return;
+                    }
+
+                    // Calculate proportional sizes and CLAMP to available space
+                    double scale = (double)availableForPanels / requestedTotal;
+                    safePanel1 = Math.Max(absoluteMin, (int)(panel1MinSize * scale));
+                    safePanel2 = Math.Max(absoluteMin, availableForPanels - safePanel1);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[SafeSplitterDistanceHelper] Scaled min sizes: Panel1 {panel1MinSize}→{safePanel1}, " +
+                        $"Panel2 {panel2MinSize}→{safePanel2} (Available={availableForPanels}px)");
+                }
+
+                // Calculate minimum required dimension
+                int minRequiredDimension = safePanel1 + safePanel2 + splWidth;
+
+                // Only initialize if we have enough space
+                if (currentDimension >= minRequiredDimension)
+                {
+                    initialized = true;
+
+                    // Unsubscribe (one-shot pattern)
+                    splitContainer.HandleCreated -= initHandler;
+                    splitContainer.SizeChanged -= initHandler;
+
+                    try
+                    {
+                        // Set SplitterWidth if provided
+                        if (targetSplitterWidth > 0)
+                            splitContainer.SplitterWidth = targetSplitterWidth;
+
+                        // Set min sizes safely - order matters! Panel1 first
+                        splitContainer.Panel1MinSize = safePanel1;
+                        splitContainer.Panel2MinSize = safePanel2;
+
+                        // Calculate safe distance bounds per Syncfusion formula
+                        int minDistance = safePanel1;
+                        int maxDistance = currentDimension - safePanel2 - splWidth;
+                        int safeDistance = Math.Clamp(desiredDistance, minDistance, maxDistance);
+
+                        // Set splitter distance
+                        TrySetSplitterDistance(splitContainer, safeDistance);
+
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[SafeSplitterDistanceHelper] SplitContainer configured (Advanced): " +
+                            $"Orientation={splitContainer.Orientation}, " +
+                            $"Panel1Min={splitContainer.Panel1MinSize}, " +
+                            $"Panel2Min={splitContainer.Panel2MinSize}, " +
+                            $"Distance={splitContainer.SplitterDistance}, " +
+                            $"Dimension={currentDimension}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[SafeSplitterDistanceHelper] Configuration failed: {ex.Message}");
                     }
                 }
             };
+
+            // Subscribe to both events for maximum compatibility
+            if (!splitContainer.IsHandleCreated)
+            {
+                splitContainer.HandleCreated += initHandler;
+            }
+            splitContainer.SizeChanged += initHandler;
         }
 
         /// <summary>
@@ -108,29 +288,26 @@ namespace WileyWidget.WinForms.Utils
             if (splitContainer == null || splitContainer.IsDisposed)
                 return;
 
-            Control control = splitContainer;
-            dynamic sc = splitContainer;
-
             // CRITICAL FIX: Wait for handle to exist before invoking
             // BeginInvoke requires a valid window handle; calling it before the handle
             // is created throws InvalidOperationException. This commonly happens when
             // controls are created in InitializeControls() during parent's OnHandleCreated.
-            if (!control.IsHandleCreated)
+            if (!splitContainer.IsHandleCreated)
             {
                 // Defer until handle is created (one-shot handler)
                 EventHandler? handleCreatedHandler = null;
                 handleCreatedHandler = (s, e) =>
                 {
                     // Unsubscribe immediately (one-shot pattern)
-                    control.HandleCreated -= handleCreatedHandler;
+                    splitContainer.HandleCreated -= handleCreatedHandler;
 
                     // Verify control wasn't disposed during handle creation
-                    if (control.IsDisposed)
+                    if (splitContainer.IsDisposed)
                         return;
 
                     try
                     {
-                        TrySetSplitterDistance(sc, desiredDistance);
+                        TrySetSplitterDistance(splitContainer, desiredDistance);
                     }
                     catch (Exception ex)
                     {
@@ -138,16 +315,16 @@ namespace WileyWidget.WinForms.Utils
                     }
                 };
 
-                control.HandleCreated += handleCreatedHandler;
+                splitContainer.HandleCreated += handleCreatedHandler;
                 return;
             }
 
             // Handle already exists - safe to invoke immediately
-            control.BeginInvoke(new Action(() =>
+            splitContainer.BeginInvoke(new Action(() =>
             {
                 try
                 {
-                    TrySetSplitterDistance(sc, desiredDistance);
+                    TrySetSplitterDistance(splitContainer, desiredDistance);
                 }
                 catch
                 {
@@ -159,7 +336,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Attempts to set SplitterDistance with automatic bounds checking.
         /// Returns true if successful, false if the desired distance is out of bounds.
-        /// 
+        ///
         /// CRITICAL VALIDATIONS:
         /// 1. Control must not be null or disposed
         /// 2. Control must have a created window handle (IsHandleCreated)
@@ -178,65 +355,77 @@ namespace WileyWidget.WinForms.Utils
             // CRITICAL: Control must have a window handle to set properties safely
             // Attempting to set SplitterDistance on a control without a handle can cause
             // InvalidOperationException or underlying constraint violations
-            try
+            if (!splitContainer.IsHandleCreated)
             {
-                Control control = splitContainer;
-                if (!control.IsHandleCreated)
-                    return false;
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SafeSplitterDistanceHelper] Skipping early set - no handle created yet. Desired distance: {desiredDistance}px");
+                return false;
+            }
 
-                // Get valid bounds based on current dimension and min sizes
-                if (!TryGetBounds(splitContainer, out int minDistance, out int maxDistance))
-                {
-                    return false; // Not enough room to satisfy min-size constraints
-                }
+            // CRITICAL: Dimension must be non-zero
+            // Setting SplitterDistance on a zero-sized control causes InvalidOperationException
+            Control control = splitContainer;
+            int currentDimension = (splitContainer.Orientation == Orientation.Horizontal)
+                ? control.Height
+                : control.Width;
 
-                // Clamp desired distance to valid bounds
-                var safeDist = EnforceBounds(desiredDistance, minDistance, maxDistance);
+            if (currentDimension <= 0)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[SafeSplitterDistanceHelper] Skipping early set - zero width/height. " +
+                    $"Dimension={currentDimension}px, Desired distance={desiredDistance}px, Orientation={splitContainer.Orientation}");
+                return false;
+            }
 
-                // Pre-validate: ensure the clamped distance is still within bounds
-                // This catches race conditions where the container dimension changed
-                if (safeDist < minDistance || safeDist > maxDistance)
-                {
-                    return false;
-                }
+            // Get valid bounds based on current dimension and min sizes
+            if (!TryGetBounds(splitContainer, out int minDistance, out int maxDistance))
+            {
+                return false; // Not enough room to satisfy min-size constraints
+            }
 
-                // Only set if value actually changed (avoid unnecessary setter calls)
-                int currentDistance = splitContainer.SplitterDistance;
-                if (currentDistance != safeDist)
+            // Clamp desired distance to valid bounds
+            var safeDist = Math.Clamp(desiredDistance, minDistance, maxDistance);
+
+            // Pre-validate: ensure the clamped distance is still within bounds
+            // This catches race conditions where the container dimension changed
+            if (safeDist < minDistance || safeDist > maxDistance)
+            {
+                return false;
+            }
+
+            // Only set if value actually changed (avoid unnecessary setter calls)
+            int currentDistance = splitContainer.SplitterDistance;
+            if (currentDistance != safeDist)
+            {
+                try
                 {
                     splitContainer.SplitterDistance = safeDist;
+                    return true;
                 }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // Syncfusion SplitContainerAdv threw due to constraint violation
+                    return false;
+                }
+                catch (ArgumentException)
+                {
+                    // Out of bounds
+                    return false;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Underlying control rejected the value (likely due to layout race)
+                    return false;
+                }
+            }
 
-                return true;
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                // Syncfusion SplitContainerAdv threw due to constraint violation
-                // This can happen when Panel1MinSize > available dimension
-                // Return false to allow caller to handle gracefully
-                return false;
-            }
-            catch (ArgumentException)
-            {
-                // Out of bounds - return false to allow caller to handle
-                return false;
-            }
-            catch (InvalidOperationException)
-            {
-                // Underlying control rejected the value (likely due to layout race); caller can retry later
-                return false;
-            }
-            catch (Exception)
-            {
-                // Any other exception during property reads or sets - fail gracefully
-                return false;
-            }
+            return true;
         }
 
         /// <summary>
         /// Calculates a safe splitter distance based on a percentage of the available space.
-        /// For horizontal splitters: calculates based on Height
         /// For vertical splitters: calculates based on Width
+        /// For horizontal splitters: calculates based on Height
         /// </summary>
         /// <param name="splitContainer">The SplitContainer to measure</param>
         /// <param name="percentage">The desired percentage for Panel1 (0.0 to 1.0). Default: 0.5 (50%)</param>
@@ -252,183 +441,48 @@ namespace WileyWidget.WinForms.Utils
             }
 
             // Clamp percentage to valid range
-            percentage = Math.Max(0.0, Math.Min(1.0, percentage));
+            percentage = Math.Clamp(percentage, 0.0, 1.0);
 
-            int dimension = splitContainer.Orientation == Orientation.Horizontal
-                ? splitContainer.Height
-                : splitContainer.Width;
+            int dimension = splitContainer.Orientation == Orientation.Vertical
+                ? splitContainer.Width
+                : splitContainer.Height;
 
             if (dimension <= 0)
-                return Math.Max(100, splitContainer.Panel1MinSize);
+                return Math.Max(25, splitContainer.Panel1MinSize);  // Syncfusion default min
 
             int proposed = (int)(dimension * percentage);
-            return EnforceBounds(proposed, minDistance, maxDistance);
+            return Math.Clamp(proposed, minDistance, maxDistance);
         }
 
         /// <summary>
-        /// Enforces splitter distance bounds: Panel1MinSize ≤ distance ≤ (Width/Height - Panel2MinSize)
+        /// Sets up proportional resizing for the SplitContainer on parent form resize.
+        /// Maintains the given ratio as the container size changes.
+        /// NEW: Finishing touch for dynamic layouts.
         /// </summary>
-        private static int EnforceBounds(int proposedDistance, int minDistance, int maxDistance)
-        {
-            if (proposedDistance < minDistance)
-                return minDistance;
-
-            if (proposedDistance > maxDistance)
-                return maxDistance;
-
-            return proposedDistance;
-        }
-
-        /// <summary>
-        /// Computes the valid splitter distance bounds, respecting Panel1MinSize, Panel2MinSize, and SplitterWidth.
-        /// Returns false when the available dimension is smaller than the sum of both minima plus the splitter, in which case no
-        /// valid SplitterDistance can be applied per WinForms/Syncfusion SplitContainer rules.
-        /// </summary>
-        private static bool TryGetBounds(dynamic splitContainer, out int minDistance, out int maxDistance)
-        {
-            minDistance = 0;
-            maxDistance = 0;
-
-            try
-            {
-                if (splitContainer == null || splitContainer.IsDisposed)
-                {
-                    return false;
-                }
-
-                // Read properties with defensive null coalescing
-                minDistance = splitContainer.Panel1MinSize ?? 0;
-                int panel2Min = splitContainer.Panel2MinSize ?? 0;
-                int splitterWidth = splitContainer.SplitterWidth ?? 5;
-
-                int dimension = splitContainer.Orientation == Orientation.Horizontal
-                    ? splitContainer.Height
-                    : splitContainer.Width;
-
-                // Documented constraint: Panel1MinSize <= SplitterDistance <= ClientSize - SplitterWidth - Panel2MinSize
-                // (refer to SplitContainer/SplitContainerAdv API docs)
-                int required = minDistance + panel2Min + splitterWidth;
-                if (dimension < required)
-                {
-                    return false;
-                }
-
-                maxDistance = dimension - panel2Min - splitterWidth;
-                return maxDistance >= minDistance;  // Ensure max >= min
-            }
-            catch
-            {
-                // If we can't even read the properties, we can't proceed safely
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Sets up a resize handler that maintains a proportional splitter distance during window resize.
-        /// Useful for panels that should maintain a 50/50 split or similar proportional layout.
-        /// </summary>
-        /// <param name="splitContainer">The SplitContainer to configure</param>
-        /// <param name="proportionForPanel1">The proportion for Panel1 (0.5 = 50%)</param>
-        public static void SetupProportionalResizing(dynamic splitContainer, double proportionForPanel1 = 0.5)
+        /// <param name="splitContainer">The SplitContainer to setup</param>
+        /// <param name="ratio">The desired Panel1 ratio (0.0 to 1.0)</param>
+        public static void SetupProportionalResizing(dynamic splitContainer, double ratio)
         {
             if (splitContainer == null || splitContainer.IsDisposed)
                 return;
 
             Control control = splitContainer;
-            dynamic sc = splitContainer;
-
-            control.Resize += (sender, e) =>
-            {
-                try
-                {
-                    var safeDist = CalculateSafeDistance(sc, proportionForPanel1);
-                    TrySetSplitterDistance(sc, safeDist);
-                }
-                catch
-                {
-                    // Ignore resize failures - layout is still adjusting
-                }
-            };
-        }
-
-        /// <summary>
-        /// Advanced configuration for SplitContainer with comprehensive sizing control.
-        /// Respects all Syncfusion sizing constraints and properties according to official documentation.
-        /// Per https://help.syncfusion.com/cr/windowsforms - SplitterDistance constraint:
-        /// Panel1MinSize ≤ SplitterDistance ≤ (Dimension - Panel2MinSize - SplitterWidth)
-        /// </summary>
-        /// <param name="splitContainer">The SplitContainer to configure</param>
-        /// <param name="panel1MinSize">Minimum size for Panel1 (0 to disable)</param>
-        /// <param name="panel2MinSize">Minimum size for Panel2 (0 to disable)</param>
-        /// <param name="desiredDistance">Desired splitter position</param>
-        /// <param name="splitterWidth">Optional custom splitter width in pixels</param>
-        public static void ConfigureSafeSplitContainerAdvanced(
-            dynamic splitContainer,
-            int panel1MinSize = 0,
-            int panel2MinSize = 0,
-            int desiredDistance = 100,
-            int? splitterWidth = null)
-        {
-            if (splitContainer == null || splitContainer.IsDisposed)
-                return;
-
-            Control control = splitContainer;
-            dynamic sc = splitContainer;
-
-            bool initialized = false;
-            int minRequiredDimension = 0;
-
-            // Store SplitterWidth if provided
-            if (splitterWidth.HasValue && splitterWidth.Value > 0)
-            {
-                try { sc.SplitterWidth = splitterWidth.Value; } catch { }
-            }
-
-            // Use SizeChanged to defer initialization until control has real dimensions
             control.SizeChanged += (s, e) =>
             {
-                if (!initialized)
-                {
-                    // Calculate current dimension based on orientation
-                    int currentDimension = sc.Orientation == Orientation.Horizontal
-                        ? control.Height
-                        : control.Width;
-
-                    // Calculate minimum required dimension
-                    minRequiredDimension = panel1MinSize + panel2MinSize + sc.SplitterWidth;
-
-                    // Only initialize if we have enough space
-                    if (currentDimension >= minRequiredDimension)
-                    {
-                        initialized = true;
-                        try
-                        {
-                            // Set min sizes safely
-                            if (panel1MinSize > 0)
-                                sc.Panel1MinSize = panel1MinSize;
-                            if (panel2MinSize > 0)
-                                sc.Panel2MinSize = panel2MinSize;
-
-                            // Set splitter distance with bounds enforcement
-                            TrySetSplitterDistance(sc, desiredDistance);
-
-                            // Log initialization for debugging
-                            System.Diagnostics.Debug.WriteLine(
-                                $"[SafeSplitterDistanceHelper] SplitContainer configured: " +
-                                $"Orientation={sc.Orientation}, " +
-                                $"Panel1Min={sc.Panel1MinSize}, " +
-                                $"Panel2Min={sc.Panel2MinSize}, " +
-                                $"Distance={sc.SplitterDistance}, " +
-                                $"Dimension={currentDimension}");
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine(
-                                $"[SafeSplitterDistanceHelper] Configuration failed: {ex.Message}");
-                        }
-                    }
-                }
+                int safeDistance = CalculateSafeDistance(splitContainer, ratio);
+                TrySetSplitterDistance(splitContainer, safeDistance);
             };
+        }
+
+        /// <summary>
+        /// Internal: Gets current bounds for splitter distance.
+        /// </summary>
+        private static bool TryGetBounds(dynamic splitContainer, out int min, out int max)
+        {
+            min = splitContainer.Panel1MinSize;
+            max = (splitContainer.Orientation == Orientation.Vertical ? splitContainer.Width : splitContainer.Height)
+                  - splitContainer.SplitterWidth - splitContainer.Panel2MinSize;
+            return min <= max && max > 0;
         }
 
         /// <summary>
@@ -448,9 +502,9 @@ namespace WileyWidget.WinForms.Utils
                 return result;
             }
 
-            int dimension = splitContainer.Orientation == Orientation.Horizontal
-                ? splitContainer.Height
-                : splitContainer.Width;
+            int dimension = splitContainer.Orientation == Orientation.Vertical
+                ? splitContainer.Width
+                : splitContainer.Height;
 
             int minRequired = splitContainer.Panel1MinSize + splitContainer.Panel2MinSize + splitContainer.SplitterWidth;
             int minDistance = splitContainer.Panel1MinSize;
@@ -490,6 +544,7 @@ namespace WileyWidget.WinForms.Utils
         /// <summary>
         /// Gets a detailed diagnostic report for a SplitContainer's sizing state.
         /// Useful for debugging layout issues in complex panel hierarchies.
+        /// NEW: Integrates with SafeControlSizeValidator diagnostics.
         /// </summary>
         /// <param name="splitContainer">The SplitContainer to diagnose</param>
         /// <param name="label">Optional label for identification in output</param>
@@ -500,13 +555,12 @@ namespace WileyWidget.WinForms.Utils
                 return $"{label}: NULL or DISPOSED";
 
             var validation = Validate(splitContainer);
+            var controlDiag = SafeControlSizeValidator.GetSizingDiagnostics(splitContainer, label);
 
-            return $"\n{label} DIAGNOSTICS:\n" +
-                   $"  Name: {splitContainer.Name}\n" +
+            return controlDiag + "\n" +
                    $"  Status: {(validation.IsValid ? "✓ VALID" : "✗ INVALID")}\n" +
                    $"  {validation}\n" +
                    $"  IsHandleCreated: {splitContainer.IsHandleCreated}\n" +
-                   $"  IsDisposed: {splitContainer.IsDisposed}\n" +
                    $"  FixedPanel: {splitContainer.FixedPanel}\n" +
                    $"  BorderStyle: {splitContainer.BorderStyle}";
         }
@@ -521,16 +575,92 @@ namespace WileyWidget.WinForms.Utils
         /// <returns>True if range is valid (has non-zero width), false if not enough space</returns>
         public static bool TryGetValidDistanceRange(dynamic splitContainer, out int minValid, out int maxValid)
         {
-            minValid = 0;
-            maxValid = 0;
+            return TryGetBounds(splitContainer, out minValid, out maxValid);
+        }
 
-            if (splitContainer == null || splitContainer.IsDisposed)
+        /// <summary>
+        /// Clamps the SplitContainer minimum sizes so they fit inside the current client dimension plus a safety buffer.
+        /// Panel2MinSize is reduced first and Panel1MinSize only if the overflow remains.
+        /// </summary>
+        /// <param name="splitContainer">The SplitContainer or SplitContainerAdv that should be adjusted.</param>
+        /// <param name="fallbackMin">Minimum pixel size to enforce for each panel (Syncfusion default: 25).</param>
+        /// <param name="safetyBuffer">Pixels reserved for the splitter and breathing room.</param>
+        /// <returns>True if any panel minimum was lowered.</returns>
+        public static bool ClampMinSizesToAvailableSpace(dynamic splitContainer, int fallbackMin = 25, int safetyBuffer = 40)
+        {
+            if (splitContainer == null || splitContainer.IsDisposed || fallbackMin <= 0)
                 return false;
 
-            if (!TryGetBounds(splitContainer, out minValid, out maxValid))
-                return false;
+            try
+            {
+                int dimension = splitContainer.Orientation == Orientation.Vertical
+                    ? splitContainer.Width
+                    : splitContainer.Height;
+                int splitterWidth = Math.Max(splitContainer.SplitterWidth, 1);
+                int available = Math.Max(0, dimension - splitterWidth - safetyBuffer);
 
-            return minValid <= maxValid;
+                int panel1Min = splitContainer.Panel1MinSize;
+                int panel2Min = splitContainer.Panel2MinSize;
+                int maxCombined = Math.Max(available, fallbackMin * 2);
+                int currentSum = panel1Min + panel2Min;
+
+                if (currentSum <= maxCombined)
+                    return false;
+
+                int excess = currentSum - maxCombined;
+                int originalPanel1 = panel1Min;
+                int originalPanel2 = panel2Min;
+
+                if (panel2Min > fallbackMin)
+                {
+                    int reduce = Math.Min(panel2Min - fallbackMin, excess);
+                    panel2Min -= reduce;
+                    excess -= reduce;
+                }
+
+                if (excess > 0 && panel1Min > fallbackMin)
+                {
+                    int reduce = Math.Min(panel1Min - fallbackMin, excess);
+                    panel1Min -= reduce;
+                    excess -= reduce;
+                }
+
+                if (excess > 0)
+                {
+                    panel2Min = Math.Max(fallbackMin, panel2Min - excess);
+                    excess = 0;
+                }
+
+                panel1Min = Math.Max(fallbackMin, panel1Min);
+                panel2Min = Math.Max(fallbackMin, panel2Min);
+
+                bool changed = false;
+                if (panel1Min != originalPanel1)
+                {
+                    splitContainer.Panel1MinSize = panel1Min;
+                    changed = true;
+                }
+
+                if (panel2Min != originalPanel2)
+                {
+                    splitContainer.Panel2MinSize = panel2Min;
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[SafeSplitterDistanceHelper] Clamped min sizes: Panel1 {originalPanel1}px → {panel1Min}px, " +
+                        $"Panel2 {originalPanel2}px → {panel2Min}px (Dimension={dimension}px, Available={available}px)");
+                    return true;
+                }
+            }
+            catch
+            {
+                // Keep the helper failure-safe
+            }
+
+            return false;
         }
 
         /// <summary>

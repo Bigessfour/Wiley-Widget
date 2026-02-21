@@ -32,6 +32,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IEnterpriseRepository _enterpriseRepository;
         private readonly WileyWidget.Services.Abstractions.IAppEventBus? _eventBus;
         private readonly Action<WileyWidget.Services.Abstractions.BudgetActualsUpdatedEvent>? _budgetUpdatedHandler;
+        private readonly SynchronizationContext? _uiSynchronizationContext;
 
         /// <summary>Gets or sets the collection of all budget entries.</summary>
         [ObservableProperty]
@@ -190,6 +191,7 @@ namespace WileyWidget.WinForms.ViewModels
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _reportExportService = reportExportService ?? throw new ArgumentNullException(nameof(reportExportService));
             _enterpriseRepository = enterpriseRepository ?? throw new ArgumentNullException(nameof(enterpriseRepository));
+            _uiSynchronizationContext = SynchronizationContext.Current;
 
             // Initialize commands
             LoadBudgetsCommand = new AsyncRelayCommand(LoadBudgetsAsync);
@@ -228,16 +230,50 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 _budgetUpdatedHandler = ev =>
                 {
-                    _logger.LogInformation("BudgetViewModel: Budget actuals updated event received: FY {FiscalYear} Updated {UpdatedCount}", ev.FiscalYear, ev.UpdatedCount);
-                    if (ev.FiscalYear == SelectedFiscalYear)
+                    RunOnUiThread(() =>
                     {
-                        _ = LoadBudgetsCommand.ExecuteAsync(null);
-                        _ = RefreshAnalysisCommand.ExecuteAsync(null);
-                        StatusText = $"Budget actuals updated: {ev.UpdatedCount} rows";
-                    }
+                        _logger.LogInformation("BudgetViewModel: Budget actuals updated event received: FY {FiscalYear} Updated {UpdatedCount}", ev.FiscalYear, ev.UpdatedCount);
+                        if (ev.FiscalYear == SelectedFiscalYear)
+                        {
+                            _ = LoadBudgetsCommand.ExecuteAsync(null);
+                            _ = RefreshAnalysisCommand.ExecuteAsync(null);
+                            StatusText = $"Budget actuals updated: {ev.UpdatedCount} rows";
+                        }
+                    });
                 };
 
                 try { _eventBus.Subscribe(_budgetUpdatedHandler); } catch { /* best-effort subscribe */ }
+            }
+        }
+
+        private void RunOnUiThread(Action action)
+        {
+            if (action == null)
+            {
+                return;
+            }
+
+            var uiContext = _uiSynchronizationContext;
+            if (uiContext == null || SynchronizationContext.Current == uiContext)
+            {
+                action();
+                return;
+            }
+
+            try
+            {
+                uiContext.Post(static state =>
+                {
+                    if (state is Action callback)
+                    {
+                        callback();
+                    }
+                }, action);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to marshal action to UI thread; running action on current thread");
+                action();
             }
         }
 
@@ -297,8 +333,7 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = "Error loading budgets";
                 _logger.LogError(ex, "Budget load failed");
 
-                // Load sample data on failure for graceful degradation
-                LoadSampleDataOnFailure();
+                ResetBudgetDataOnFailure();
             }
             finally
             {
@@ -306,40 +341,27 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
-        /// <summary>
-        /// Loads sample budget data when service fails, to maintain UI functionality.
-        /// </summary>
-        private void LoadSampleDataOnFailure()
+        private void ResetBudgetDataOnFailure()
         {
             try
             {
-                _logger.LogWarning("Loading sample budget entries as fallback");
+                _logger.LogWarning("ResetBudgetDataOnFailure called: loading empty budget state.");
 
-                var sampleEntries = new[]
-                {
-                    new BudgetEntry { Id = 1, AccountNumber = "410.1", Description = "Town Administrator", BudgetedAmount = 150000m, ActualAmount = 145000m, FiscalYear = SelectedFiscalYear, DepartmentId = 1, FundType = FundType.GeneralFund, Variance = 5000m },
-                    new BudgetEntry { Id = 2, AccountNumber = "410.2", Description = "Town Clerk", BudgetedAmount = 80000m, ActualAmount = 82000m, FiscalYear = SelectedFiscalYear, DepartmentId = 1, FundType = FundType.GeneralFund, Variance = -2000m },
-                    new BudgetEntry { Id = 3, AccountNumber = "420.1", Description = "Police Department", BudgetedAmount = 500000m, ActualAmount = 485000m, FiscalYear = SelectedFiscalYear, DepartmentId = 2, FundType = FundType.GeneralFund, Variance = 15000m },
-                    new BudgetEntry { Id = 4, AccountNumber = "430.1", Description = "Fire Department", BudgetedAmount = 400000m, ActualAmount = 395000m, FiscalYear = SelectedFiscalYear, DepartmentId = 3, FundType = FundType.GeneralFund, Variance = 5000m },
-                    new BudgetEntry { Id = 5, AccountNumber = "440.1", Description = "Sewer Operations", BudgetedAmount = 250000m, ActualAmount = 265000m, FiscalYear = SelectedFiscalYear, DepartmentId = 4, FundType = FundType.EnterpriseFund, Variance = -15000m }
-                };
+                BudgetEntries = new ObservableCollection<BudgetEntry>();
+                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>();
 
-                BudgetEntries = new ObservableCollection<BudgetEntry>(sampleEntries);
-                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(sampleEntries);
+                TotalBudgeted = 0m;
+                TotalActual = 0m;
+                TotalVariance = 0m;
+                PercentUsed = 0;
+                EntriesOverBudget = 0;
+                EntriesUnderBudget = 0;
 
-                TotalBudgeted = sampleEntries.Sum(e => e.BudgetedAmount);
-                TotalActual = sampleEntries.Sum(e => e.ActualAmount);
-                TotalVariance = sampleEntries.Sum(e => e.Variance);
-                PercentUsed = TotalBudgeted > 0 ? (TotalActual / TotalBudgeted) * 100 : 0;
-                EntriesOverBudget = sampleEntries.Count(e => e.ActualAmount > e.BudgetedAmount);
-                EntriesUnderBudget = sampleEntries.Count(e => e.ActualAmount <= e.BudgetedAmount);
-
-                StatusText = $"Loaded {sampleEntries.Length} sample budget entries";
-                _logger.LogInformation("Loaded {Count} sample budget entries", sampleEntries.Length);
+                StatusText = "No budget entries available yet.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load sample data");
+                _logger.LogError(ex, "Error while resetting budget data state");
             }
         }
 
@@ -867,8 +889,11 @@ namespace WileyWidget.WinForms.ViewModels
                 return filtered.ToList();
             }, cancellationToken).ConfigureAwait(false);
 
-            FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filteredList);
-            StatusText = $"{FilteredBudgetEntries.Count} of {BudgetEntries.Count} entries match filters";
+            RunOnUiThread(() =>
+            {
+                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filteredList);
+                StatusText = $"{FilteredBudgetEntries.Count} of {BudgetEntries.Count} entries match filters";
+            });
             _logger.LogInformation("Applied filters: {Count} entries match criteria", FilteredBudgetEntries.Count);
 
             await RefreshAnalysisAsync();
@@ -926,13 +951,16 @@ namespace WileyWidget.WinForms.ViewModels
             }, cancellationToken).ConfigureAwait(false);
 
             // Assign computed values to properties on UI thread
-            TotalBudgeted = totals.totalBudgeted;
-            TotalActual = totals.totalActual;
-            TotalVariance = totals.totalVariance;
-            TotalEncumbrance = totals.totalEncumbrance;
-            PercentUsed = totals.percentUsed;
-            EntriesOverBudget = totals.entriesOverBudget;
-            EntriesUnderBudget = totals.entriesUnderBudget;
+            RunOnUiThread(() =>
+            {
+                TotalBudgeted = totals.totalBudgeted;
+                TotalActual = totals.totalActual;
+                TotalVariance = totals.totalVariance;
+                TotalEncumbrance = totals.totalEncumbrance;
+                PercentUsed = totals.percentUsed;
+                EntriesOverBudget = totals.entriesOverBudget;
+                EntriesUnderBudget = totals.entriesUnderBudget;
+            });
 
             _logger.LogInformation(
                 "Budget analysis: Total Budgeted={Budgeted:C}, Actual={Actual:C}, Variance={Variance:C}, {PercentUsed:F2}% used, Over={Over}, Under={Under}",

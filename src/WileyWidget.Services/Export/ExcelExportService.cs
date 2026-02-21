@@ -35,6 +35,11 @@ namespace WileyWidget.Services.Export
         /// Exports generic data to Excel with custom columns.
         /// </summary>
         Task<string> ExportGenericDataAsync<T>(IEnumerable<T> data, string filePath, string worksheetName, Dictionary<string, Func<T, object>> columns);
+
+        /// <summary>
+        /// Exports a budget forecast result to Excel with multiple worksheets (Summary, Line Items, Historical Trends, Assumptions).
+        /// </summary>
+        Task<string> ExportBudgetForecastAsync(BudgetForecastResult forecast, string filePath, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -276,6 +281,266 @@ namespace WileyWidget.Services.Export
                     throw;
                 }
             });
+        }
+
+        public async Task<string> ExportBudgetForecastAsync(BudgetForecastResult forecast, string filePath, CancellationToken cancellationToken = default)
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    using var excelEngine = new ExcelEngine();
+                    var application = excelEngine.Excel;
+                    application.DefaultVersion = ExcelVersion.Xlsx;
+                    var workbook = application.Workbooks.Create(4); // 4 worksheets
+
+                    // ========== WORKSHEET 1: SUMMARY ==========
+                    var summarySheet = workbook.Worksheets[0];
+                    summarySheet.Name = "Summary";
+
+                    // Title
+                    summarySheet.Range["A1"].Text = "Budget Forecast Summary";
+                    summarySheet.Range["A1"].CellStyle.Font.Bold = true;
+                    summarySheet.Range["A1"].CellStyle.Font.Size = 16;
+                    summarySheet.Range["A1"].CellStyle.Color = System.Drawing.Color.Navy;
+                    summarySheet.Range["A1"].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
+
+                    // Summary data
+                    int row = 3;
+                    summarySheet.Range[$"A{row}"].Text = "Enterprise:";
+                    summarySheet.Range[$"B{row}"].Text = forecast.EnterpriseName;
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Current Fiscal Year:";
+                    summarySheet.Range[$"B{row}"].Number = forecast.CurrentFiscalYear;
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Proposed Fiscal Year:";
+                    summarySheet.Range[$"B{row}"].Number = forecast.ProposedFiscalYear;
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Generated Date:";
+                    summarySheet.Range[$"B{row}"].DateTime = forecast.GeneratedDate;
+                    summarySheet.Range[$"B{row}"].NumberFormat = "MM/dd/yyyy HH:mm";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    row += 2;
+
+                    summarySheet.Range[$"A{row}"].Text = "Total Current Budget:";
+                    summarySheet.Range[$"B{row}"].Number = (double)forecast.TotalCurrentBudget;
+                    summarySheet.Range[$"B{row}"].NumberFormat = "\"$\"#,##0.00";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    summarySheet.Range[$"B{row}"].CellStyle.Font.Bold = true;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Total Proposed Budget:";
+                    summarySheet.Range[$"B{row}"].Number = (double)forecast.TotalProposedBudget;
+                    summarySheet.Range[$"B{row}"].NumberFormat = "\"$\"#,##0.00";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    summarySheet.Range[$"B{row}"].CellStyle.Font.Bold = true;
+                    summarySheet.Range[$"B{row}"].CellStyle.Color = System.Drawing.Color.LightGreen;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Total Increase:";
+                    summarySheet.Range[$"B{row}"].Number = (double)forecast.TotalIncrease;
+                    summarySheet.Range[$"B{row}"].NumberFormat = "\"$\"#,##0.00";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    summarySheet.Range[$"B{row}"].CellStyle.Font.Bold = true;
+                    if (forecast.TotalIncrease > 0)
+                        summarySheet.Range[$"B{row}"].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.Red;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Increase Percentage:";
+                    summarySheet.Range[$"B{row}"].Number = (double)forecast.TotalIncreasePercent;
+                    summarySheet.Range[$"B{row}"].NumberFormat = "0.00\"%\"";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    summarySheet.Range[$"B{row}"].CellStyle.Font.Bold = true;
+                    row++;
+
+                    summarySheet.Range[$"A{row}"].Text = "Inflation Rate:";
+                    summarySheet.Range[$"B{row}"].Number = (double)forecast.InflationRate;
+                    summarySheet.Range[$"B{row}"].NumberFormat = "0.00\"%\"";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    row += 2;
+
+                    summarySheet.Range[$"A{row}"].Text = "Summary:";
+                    summarySheet.Range[$"A{row}"].CellStyle.Font.Bold = true;
+                    row++;
+                    summarySheet.Range[$"A{row}:C{row}"].Merge();
+                    summarySheet.Range[$"A{row}"].Text = forecast.Summary;
+                    summarySheet.Range[$"A{row}"].WrapText = true;
+
+                    summarySheet.UsedRange.AutofitColumns();
+
+                    // ========== WORKSHEET 2: LINE ITEMS ==========
+                    var lineItemsSheet = workbook.Worksheets[1];
+                    lineItemsSheet.Name = "Line Items";
+
+                    // Headers
+                    var headers = new[] { "Category", "Description", "Current Budget", "Proposed Budget", "$ Change", "% Change", "Justification", "Goal-Driven" };
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = lineItemsSheet.Range[1, i + 1];
+                        cell.Text = headers[i];
+                        cell.CellStyle.Font.Bold = true;
+                        cell.CellStyle.Color = System.Drawing.Color.SteelBlue;
+                        cell.CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
+                    }
+
+                    // Data rows
+                    for (int i = 0; i < forecast.ProposedLineItems.Count; i++)
+                    {
+                        var item = forecast.ProposedLineItems[i];
+                        int dataRow = i + 2;
+
+                        lineItemsSheet.Range[dataRow, 1].Text = item.Category;
+                        lineItemsSheet.Range[dataRow, 2].Text = item.Description;
+                        lineItemsSheet.Range[dataRow, 3].Number = (double)item.CurrentAmount;
+                        lineItemsSheet.Range[dataRow, 3].NumberFormat = "\"$\"#,##0.00";
+                        lineItemsSheet.Range[dataRow, 4].Number = (double)item.ProposedAmount;
+                        lineItemsSheet.Range[dataRow, 4].NumberFormat = "\"$\"#,##0.00";
+                        lineItemsSheet.Range[dataRow, 5].Number = (double)item.Increase;
+                        lineItemsSheet.Range[dataRow, 5].NumberFormat = "\"$\"#,##0.00";
+                        lineItemsSheet.Range[dataRow, 6].Number = (double)item.IncreasePercent;
+                        lineItemsSheet.Range[dataRow, 6].NumberFormat = "0.00\"%\"";
+                        lineItemsSheet.Range[dataRow, 7].Text = item.Justification;
+                        lineItemsSheet.Range[dataRow, 8].Text = item.IsGoalDriven ? "Yes" : "No";
+
+                        // Conditional formatting for changes
+                        if (item.Increase > 0)
+                        {
+                            lineItemsSheet.Range[dataRow, 5].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.Red;
+                            lineItemsSheet.Range[dataRow, 6].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.Red;
+                        }
+                        else if (item.Increase < 0)
+                        {
+                            lineItemsSheet.Range[dataRow, 5].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.Green;
+                            lineItemsSheet.Range[dataRow, 6].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.Green;
+                        }
+
+                        // Highlight goal-driven items
+                        if (item.IsGoalDriven)
+                        {
+                            lineItemsSheet.Range[dataRow, 1, dataRow, 8].CellStyle.Color = System.Drawing.Color.LightYellow;
+                        }
+                    }
+
+                    // Add totals row
+                    int totalsRow = forecast.ProposedLineItems.Count + 2;
+                    lineItemsSheet.Range[totalsRow, 1].Text = "TOTAL";
+                    lineItemsSheet.Range[totalsRow, 1].CellStyle.Font.Bold = true;
+                    lineItemsSheet.Range[totalsRow, 3].Formula = $"=SUM(C2:C{totalsRow - 1})";
+                    lineItemsSheet.Range[totalsRow, 3].NumberFormat = "\"$\"#,##0.00";
+                    lineItemsSheet.Range[totalsRow, 3].CellStyle.Font.Bold = true;
+                    lineItemsSheet.Range[totalsRow, 4].Formula = $"=SUM(D2:D{totalsRow - 1})";
+                    lineItemsSheet.Range[totalsRow, 4].NumberFormat = "\"$\"#,##0.00";
+                    lineItemsSheet.Range[totalsRow, 4].CellStyle.Font.Bold = true;
+                    lineItemsSheet.Range[totalsRow, 5].Formula = $"=SUM(E2:E{totalsRow - 1})";
+                    lineItemsSheet.Range[totalsRow, 5].NumberFormat = "\"$\"#,##0.00";
+                    lineItemsSheet.Range[totalsRow, 5].CellStyle.Font.Bold = true;
+
+                    lineItemsSheet.UsedRange.AutofitColumns();
+                    lineItemsSheet.AutoFilters.FilterRange = lineItemsSheet.Range[1, 1, totalsRow - 1, 8];
+                    lineItemsSheet.Range["A1"].FreezePanes();
+
+                    // ========== WORKSHEET 3: HISTORICAL TRENDS ==========
+                    var historySheet = workbook.Worksheets[2];
+                    historySheet.Name = "Historical Trends";
+
+                    if (forecast.HistoricalTrends != null && forecast.HistoricalTrends.Any())
+                    {
+                        // Headers
+                        var histHeaders = new[] { "Fiscal Year", "Total Budget", "YoY Change", "YoY %" };
+                        for (int i = 0; i < histHeaders.Length; i++)
+                        {
+                            var cell = historySheet.Range[1, i + 1];
+                            cell.Text = histHeaders[i];
+                            cell.CellStyle.Font.Bold = true;
+                            cell.CellStyle.Color = System.Drawing.Color.DarkGreen;
+                            cell.CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
+                        }
+
+                        // Data
+                        for (int i = 0; i < forecast.HistoricalTrends.Count; i++)
+                        {
+                            var trend = forecast.HistoricalTrends[i];
+                            int dataRow = i + 2;
+
+                            historySheet.Range[dataRow, 1].Number = trend.FiscalYear;
+                            historySheet.Range[dataRow, 2].Number = (double)trend.TotalBudget;
+                            historySheet.Range[dataRow, 2].NumberFormat = "\"$\"#,##0.00";
+                            historySheet.Range[dataRow, 3].Number = (double)trend.YearOverYearChange;
+                            historySheet.Range[dataRow, 3].NumberFormat = "\"$\"#,##0.00";
+                            historySheet.Range[dataRow, 4].Number = (double)trend.YearOverYearPercent;
+                            historySheet.Range[dataRow, 4].NumberFormat = "0.00\"%\"";
+                        }
+
+                        historySheet.UsedRange.AutofitColumns();
+                    }
+                    else
+                    {
+                        historySheet.Range["A1"].Text = "No historical trend data available";
+                    }
+
+                    // ========== WORKSHEET 4: ASSUMPTIONS & METHODOLOGY ==========
+                    var assumptionsSheet = workbook.Worksheets[3];
+                    assumptionsSheet.Name = "Assumptions";
+
+                    assumptionsSheet.Range["A1"].Text = "Assumptions & Methodology";
+                    assumptionsSheet.Range["A1"].CellStyle.Font.Bold = true;
+                    assumptionsSheet.Range["A1"].CellStyle.Font.Size = 14;
+                    assumptionsSheet.Range["A1"].CellStyle.Color = System.Drawing.Color.DarkOrange;
+                    assumptionsSheet.Range["A1"].CellStyle.Font.Color = Syncfusion.XlsIO.ExcelKnownColors.White;
+
+                    int assumptionRow = 3;
+                    assumptionsSheet.Range[$"A{assumptionRow}"].Text = "Assumptions:";
+                    assumptionsSheet.Range[$"A{assumptionRow}"].CellStyle.Font.Bold = true;
+                    assumptionRow++;
+
+                    foreach (var assumption in forecast.Assumptions)
+                    {
+                        assumptionsSheet.Range[$"A{assumptionRow}"].Text = $"• {assumption}";
+                        assumptionRow++;
+                    }
+
+                    assumptionRow += 2;
+                    assumptionsSheet.Range[$"A{assumptionRow}"].Text = "Goals Considered:";
+                    assumptionsSheet.Range[$"A{assumptionRow}"].CellStyle.Font.Bold = true;
+                    assumptionRow++;
+
+                    if (forecast.Goals.Any())
+                    {
+                        foreach (var goal in forecast.Goals)
+                        {
+                            assumptionsSheet.Range[$"A{assumptionRow}"].Text = $"• {goal}";
+                            assumptionRow++;
+                        }
+                    }
+                    else
+                    {
+                        assumptionsSheet.Range[$"A{assumptionRow}"].Text = "No specific goals specified";
+                        assumptionRow++;
+                    }
+
+                    assumptionsSheet.Range["A:A"].ColumnWidth = 100;
+
+                    // Save the workbook
+                    using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                    {
+                        workbook.SaveAs(stream);
+                    }
+
+                    _logger.LogInformation("Exported budget forecast for FY {FY} to {FilePath}", forecast.ProposedFiscalYear, filePath);
+                    return filePath;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to export budget forecast to Excel");
+                    throw;
+                }
+            }, cancellationToken);
         }
     }
 }

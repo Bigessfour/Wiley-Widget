@@ -69,8 +69,16 @@ namespace WileyWidget.WinForms.ViewModels
         public IReadOnlyList<string> Themes { get; } = new List<string>
         {
             "Office2019Colorful",
+            "Office2019Dark",
             "Office2019Black",
-            "Office2019White"
+            "Office2019White",
+            "Office2019DarkGray",
+            "Office2016Colorful",
+            "Office2016White",
+            "Office2016Black",
+            "Office2016DarkGray",
+            "HighContrastBlack",
+            "HighContrastWhite"
         };
 
         [ObservableProperty]
@@ -111,8 +119,19 @@ namespace WileyWidget.WinForms.ViewModels
         private string defaultExportPath = string.Empty;
 
         // XAI / AI settings
-        [ObservableProperty]
-        private bool enableAi = false;
+        private bool enableAi = true;
+
+        public bool EnableAi
+        {
+            get => enableAi;
+            set
+            {
+                if (SetProperty(ref enableAi, value))
+                {
+                    OnEnableAiChanged(value);
+                }
+            }
+        }
 
         [ObservableProperty]
         private string xaiApiKey = string.Empty;
@@ -208,7 +227,7 @@ namespace WileyWidget.WinForms.ViewModels
             HasUnsavedChanges = true;
         }
 
-        partial void OnEnableAiChanged(bool value)
+        private void OnEnableAiChanged(bool value)
         {
             _logger.LogInformation("EnableAI changed to: {EnableAI}", value);
             if (_settingsService != null)

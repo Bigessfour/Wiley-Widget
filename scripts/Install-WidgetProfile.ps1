@@ -1,4 +1,5 @@
 #!/usr/bin/env pwsh
+#Requires -Version 7.5.4
 <#
 .SYNOPSIS
     Install Wiley-Widget PowerShell Profile
@@ -12,6 +13,10 @@
 [CmdletBinding()]
 param()
 
+if ($PSVersionTable.PSVersion -lt [version]'7.5.4') {
+    throw "PowerShell 7.5.4+ is required. Current: $($PSVersionTable.PSVersion)"
+}
+
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║  Wiley-Widget PowerShell Profile Installation            ║" -ForegroundColor Cyan
@@ -19,13 +24,19 @@ Write-Host "╚═════════════════════�
 Write-Host ""
 
 # Get profile paths
-$sourceProfile = Join-Path (Split-Path $PSScriptRoot) "Microsoft.PowerShell_profile.ps1"
-$profileDir = Split-Path $PROFILE -Parent
-$profilePath = $PROFILE
+$workspaceRoot = Split-Path $PSScriptRoot -Parent
+$sourceProfile = Join-Path $workspaceRoot ".vscode\profile.ps1"
+$profileTargets = @(
+    $PROFILE.CurrentUserCurrentHost,
+    $PROFILE.CurrentUserAllHosts
+) | Select-Object -Unique
 
 Write-Host "📋 Profile Information:" -ForegroundColor Green
 Write-Host "  Source: $sourceProfile"
-Write-Host "  Target: $profilePath"
+Write-Host "  Targets:"
+foreach ($target in $profileTargets) {
+    Write-Host "    - $target"
+}
 Write-Host ""
 
 # Check if source exists
@@ -35,34 +46,36 @@ if (-not (Test-Path $sourceProfile)) {
     exit 1
 }
 
-# Create profile directory if needed
-if (-not (Test-Path $profileDir)) {
-    Write-Host "📁 Creating profile directory..." -ForegroundColor Yellow
-    $null = New-Item -ItemType Directory -Path $profileDir -Force
-    Write-Host "   ✅ Created: $profileDir" -ForegroundColor Green
+foreach ($profilePath in $profileTargets) {
+    $profileDir = Split-Path $profilePath -Parent
+
+    if (-not (Test-Path $profileDir)) {
+        Write-Host "📁 Creating profile directory: $profileDir" -ForegroundColor Yellow
+        $null = New-Item -ItemType Directory -Path $profileDir -Force
+        Write-Host "   ✅ Created: $profileDir" -ForegroundColor Green
+    }
+
+    if (Test-Path $profilePath) {
+        $backupPath = "$profilePath.backup.$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+        Write-Host "💾 Backing up existing profile: $profilePath" -ForegroundColor Yellow
+        Copy-Item -Path $profilePath -Destination $backupPath -Force
+        Write-Host "   ✅ Backup saved: $backupPath" -ForegroundColor Green
+    }
+
+    Write-Host "📦 Installing profile to: $profilePath" -ForegroundColor Yellow
+    Copy-Item -Path $sourceProfile -Destination $profilePath -Force
+    Write-Host "   ✅ Profile installed successfully" -ForegroundColor Green
 }
 
-# Backup existing profile if it exists
-if (Test-Path $profilePath) {
-    $backupPath = "$profilePath.backup.$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-    Write-Host "💾 Backing up existing profile..." -ForegroundColor Yellow
-    Copy-Item -Path $profilePath -Destination $backupPath -Force
-    Write-Host "   ✅ Backup saved: $backupPath" -ForegroundColor Green
-}
-
-# Copy new profile
-Write-Host "📦 Installing new profile..." -ForegroundColor Yellow
-Copy-Item -Path $sourceProfile -Destination $profilePath -Force
-Write-Host "   ✅ Profile installed successfully" -ForegroundColor Green
 Write-Host ""
-
-# Test profile
-Write-Host "🔍 Testing profile syntax..." -ForegroundColor Yellow
-$testResult = Test-Path $profilePath
-if ($testResult) {
-    Write-Host "   ✅ Profile syntax is valid" -ForegroundColor Green
-} else {
-    Write-Host "   ⚠️  Could not verify profile" -ForegroundColor Yellow
+Write-Host "🔍 Testing profile installation..." -ForegroundColor Yellow
+foreach ($profilePath in $profileTargets) {
+    if (Test-Path $profilePath) {
+        Write-Host "   ✅ Present: $profilePath" -ForegroundColor Green
+    }
+    else {
+        Write-Host "   ⚠️  Missing: $profilePath" -ForegroundColor Yellow
+    }
 }
 
 Write-Host ""

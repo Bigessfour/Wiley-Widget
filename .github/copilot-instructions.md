@@ -30,12 +30,14 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 ## Tooling Rules
 
-- **Filesystem**: it is preferred to Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Allowed, use at your discretion for small changes to files. Mcp is preferred as it is more effecient, but, you as the code agent have flexability to use whatever tool matches thejob.
+- **Filesystem**: it is preferred to Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Allowed, use at your discretion for small changes to files. Mcp is preferred as it is more efficient, but, you as the code agent have flexibility to use whatever tool matches the job.
 - **Search**: `mcp_filesystem_search_files` for file/code discovery.
 - **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
 - **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
 - **Git**: Never reset or amend without explicit approval.
-- **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy.
+- **Workspace Violation Rule (Hard Fail)**: The command/tool "read changed files in GitHub" (for example, `get_changed_files`) is FORBIDDEN in this workspace because it is a no-op and wastes cycles. Use `git status` / `git diff` (or GitKraken MCP status/diff tools) instead.
+- **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy. Also validate Syncfusion method usage and control configuration against local Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19`.
+- **Syncfusion Control Creation Rule**: ALL Syncfusion controls must be created via `SyncfusionControlFactory` (located at `src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs`). Direct instantiation (e.g., `new SfDataGrid()`) without using the factory is STRICTLY FORBIDDEN unless ALL mandatory properties from the control's checklist in `.vscode/rules/syncfusion-control-enforcement.md` are explicitly set. See `docs/SYNCFUSION_CONTROL_QUICK_REFERENCE.md` for usage examples.
 
 ### MCP Filesystem Command Quick Reference
 
@@ -107,7 +109,7 @@ PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem edit-file --params
 
 The `.vscode/*.md` files are the authoritative, IDE-visible rules for GitHub Copilot, Grok Code Agent, or any VS Code-based code assistant. These files are directly consulted for all workflow decisions, MCP usage, and code generation. No separate canonical folder or sync process is required.
 
-Agents must **never** attempt to read or reference `.continue/` paths. If `.continue/` exists, it should be archived or deleted to prevent confusion.
+Agents must use `.vscode/*.md` and workspace-native settings as the only rules/config source for agent behavior to prevent legacy configuration drift.
 
 Copilot Code Agent MUST consult `.vscode/*.md` before making or suggesting changes to scripts or language-specific files.
 
@@ -363,6 +365,7 @@ This repository prefers modern, analyzer-friendly C# code for the Windows Forms/
 - Adhere to `.editorconfig` rules (for example, indent_size=4).
 - Target .NET 10+ (net10.0-windows) where possible and use newer features (e.g., records, file-scoped namespaces, primary constructors, required members).
 - For Windows Forms apps, prioritize event-driven patterns; consider MVVM-like data-binding with CommunityToolkit.Mvvm for complex forms if applicable.
+- Use the `override` keyword for methods that hide inherited members, as seen in panel ClosePanel fixes.
 
 These guidelines train Copilot to produce analyzer-friendly code and reduce noise from Roslyn/C# analyzers.
 
@@ -766,7 +769,7 @@ public class MyService : IAsyncInitializable
 {
     public async Task InitializeAsync(CancellationToken ct) { /* heavy I/O here */ }
 }
-`````
+````
 
 ## Code Review Checklist
 
@@ -792,6 +795,7 @@ Before executing ANY code generation or file operation:
 8. [ ] Apply language-specific standards (C#/Python/PowerShell)
 9. [ ] Run validation (build/test tasks) before presenting results
 10. [ ] Check Problems panel for errors
+11. [ ] Enforce build/test serialization: run only one active build/test process at a time in this workspace
 
 **These are not suggestions - they are mandatory architectural rules. Violations must be fixed immediately.**
 
@@ -827,22 +831,36 @@ These guidelines provide guardrails without blocking progress when tools are una
 
 ## Terminal Guidance
 
-- PowerShell 7.5.4 syntax is preferred when running terminal commands.
+- PowerShell 7.5.4 is mandatory for interactive terminal and script execution.
+- Always use `pwsh` (PowerShell 7) rather than Windows PowerShell (`powershell`).
+- Script/tooling preflight should fail fast when `$PSVersionTable.PSVersion` is not `7.5.4`.
 - If a tool executes commands or uses tasks, treat syntax guidance as best-effort.
 - Use VS Code tasks for build/test when available.
 
 ## Syncfusion Documentation Rule (Scope)
 
 - Required when modifying Syncfusion controls or docking/ribbon behavior.
+- Recommended: Validate method/property usage against local Syncfusion Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19` in addition to MCP/docs.
 - Not required for unrelated business logic, configuration-only changes, or non-UI edits.
 
 ## C# Language and Framework Targets
 
 - Target C# 14 and net10.0-windows when the project supports them.
+- Set project language version explicitly to C# 14 (no preview language features in production code).
 - Do not introduce features that exceed the project language version.
 - Follow existing analyzers and .editorconfig even when using newer syntax.
+
+## Architecture Enforcement Addendum
+
+- **Syncfusion-first UI path:** When `UI:ShowRibbon` is true, `RibbonControlAdv` is the primary navigation surface. Do not introduce a competing native menu/navigation path for the same workflow.
+- **No competing theme systems:** Use `SfSkinManager` as the single source of truth. Do not add alternate theme managers, color palette systems, or ad-hoc per-control theme engines.
+- **Native control guardrail:** Native WinForms controls are allowed for container/layout primitives only. Do not use native controls to replace required Syncfusion control behavior when Syncfusion equivalents exist.
+- **Avoid reflection-based Syncfusion APIs:** Do not use reflection/dynamic property writes for Syncfusion control configuration in normal code paths. Prefer strongly typed APIs; if compatibility shims are needed, isolate them in one adapter with justification.
+- **Single startup composition path:** Keep one deterministic initialization order: license/theme initialization in `Program` first, then chrome, then docking, then deferred async work. Avoid duplicate fallback pipelines that reinitialize the same subsystem.
+- **No parallel builds/tests:** Do not run `dotnet build` or `dotnet test` concurrently in separate terminals; serialize validation runs and wait for the active run to finish.
 
 ## Hard No-Go (Still Strict)
 
 - Do not commit real secrets or credentials.
 - Avoid destructive operations without explicit approval.
+`````

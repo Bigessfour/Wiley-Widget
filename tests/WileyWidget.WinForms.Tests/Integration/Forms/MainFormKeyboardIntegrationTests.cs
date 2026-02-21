@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Tests.Integration;
 using WileyWidget.WinForms.Tests.Integration.TestUtilities;
@@ -33,7 +34,8 @@ public sealed class MainFormKeyboardIntegrationTests
                 WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled,
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.IThemeService>(provider),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.Abstractions.IWindowStateService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IFileImportService>(provider))
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IFileImportService>(provider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Factories.SyncfusionControlFactory>(provider))
         {
         }
 
@@ -66,7 +68,10 @@ public sealed class MainFormKeyboardIntegrationTests
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
         using var form = new TestMainForm(provider);
 
         try
@@ -101,7 +106,10 @@ public sealed class MainFormKeyboardIntegrationTests
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
-        using var provider = IntegrationTestServices.BuildProvider();
+        using var provider = IntegrationTestServices.BuildProvider(new System.Collections.Generic.Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
         using var form = new TestMainForm(provider);
         // _ = form.Handle;  // Commented out to avoid handle creation
         // form.CreateControl();  // Commented out to avoid control creation

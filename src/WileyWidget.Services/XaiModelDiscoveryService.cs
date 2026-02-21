@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,13 +17,15 @@ namespace WileyWidget.Services
     {
         private const string CacheKey = "XaiModelDiscoveryService.Models";
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IGrokApiKeyProvider _apiKeyProvider;
         private readonly IMemoryCache _cache;
         private readonly IConfiguration _configuration;
         private readonly ILogger<XaiModelDiscoveryService> _logger;
 
-        public XaiModelDiscoveryService(IHttpClientFactory httpClientFactory, IMemoryCache cache, IConfiguration configuration, ILogger<XaiModelDiscoveryService>? logger = null)
+        public XaiModelDiscoveryService(IHttpClientFactory httpClientFactory, IGrokApiKeyProvider apiKeyProvider, IMemoryCache cache, IConfiguration configuration, ILogger<XaiModelDiscoveryService>? logger = null)
         {
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _apiKeyProvider = apiKeyProvider ?? throw new ArgumentNullException(nameof(apiKeyProvider));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<XaiModelDiscoveryService>.Instance;
@@ -104,6 +107,16 @@ namespace WileyWidget.Services
 
                 var client = _httpClientFactory.CreateClient("GrokClient") ?? _httpClientFactory.CreateClient();
                 try { client.BaseAddress = new Uri(normalizedBase, UriKind.Absolute); } catch { }
+
+                var apiKey = _apiKeyProvider.ApiKey;
+                if (!string.IsNullOrWhiteSpace(apiKey))
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                }
+                else
+                {
+                    _logger.LogWarning("No API key provided by IGrokApiKeyProvider for model discovery");
+                }
 
                 // First attempt: language-models (full info)
                 var lmResp = await client.GetAsync(new Uri("/v1/language-models", UriKind.Relative), cancellationToken).ConfigureAwait(false);

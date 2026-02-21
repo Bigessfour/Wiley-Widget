@@ -53,8 +53,21 @@ public sealed record UIConfiguration
 
     /// <summary>
     /// Whether to auto-show the dashboard on startup.
+    /// Changed to true by default to provide a meaningful initial view when docking is enabled.
     /// </summary>
-    public bool AutoShowDashboard { get; init; } = false;
+    public bool AutoShowDashboard { get; init; } = true;
+
+    /// <summary>
+    /// Minimal mode - only JARVIS Chat and central document panel are created.
+    /// Prevents auto-show of any other panels on first run or when enabled.
+    /// </summary>
+    public bool MinimalMode { get; init; } = false;  // Set to false for full UI with visible side panels
+
+    /// <summary>
+    /// Whether to auto-show panels based on layout or defaults.
+    /// Enabled by default to provide immediate visual feedback when panels are loaded.
+    /// </summary>
+    public bool AutoShowPanels { get; init; } = true;
 
     /// <summary>
     /// Default fiscal year for financial views.
@@ -92,30 +105,58 @@ public sealed record UIConfiguration
             return new UIConfiguration();
         }
 
-        var isTestHarness = configuration.GetValue<bool>("UI:IsUiTestHarness", false);
+        static bool GetBoolean(IConfiguration config, string key, bool defaultValue)
+        {
+            var rawValue = config[key];
+            return bool.TryParse(rawValue, out var parsedValue) ? parsedValue : defaultValue;
+        }
+
+        static bool GetBooleanWithAliases(IConfiguration config, bool defaultValue, params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                var rawValue = config[key];
+                if (bool.TryParse(rawValue, out var parsedValue))
+                {
+                    return parsedValue;
+                }
+            }
+
+            return defaultValue;
+        }
+
+        static int GetInteger(IConfiguration config, string key, int defaultValue)
+        {
+            var rawValue = config[key];
+            return int.TryParse(rawValue, out var parsedValue) ? parsedValue : defaultValue;
+        }
+
+        var isTestHarness = GetBoolean(configuration, "UI:IsUiTestHarness", false);
 
         // Read form size pieces (allow Width/Height keys under UI:DefaultFormSize and UI:MinimumFormSize)
-        int defaultWidth = configuration.GetValue<int?>("UI:DefaultFormSize:Width") ?? 1400;
-        int defaultHeight = configuration.GetValue<int?>("UI:DefaultFormSize:Height") ?? 900;
-        int minWidth = configuration.GetValue<int?>("UI:MinimumFormSize:Width") ?? 1024;
-        int minHeight = configuration.GetValue<int?>("UI:MinimumFormSize:Height") ?? 768;
+        int defaultWidth = GetInteger(configuration, "UI:DefaultFormSize:Width", 1400);
+        int defaultHeight = GetInteger(configuration, "UI:DefaultFormSize:Height", 900);
+        int minWidth = GetInteger(configuration, "UI:MinimumFormSize:Width", 1024);
+        int minHeight = GetInteger(configuration, "UI:MinimumFormSize:Height", 768);
 
         return new UIConfiguration
         {
-            UseSyncfusionDocking = configuration.GetValue<bool?>("UI:UseSyncfusionDocking") ?? true,
+            UseSyncfusionDocking = GetBooleanWithAliases(configuration, true, "UI:UseSyncfusionDocking", "UI:UseDockingManager"),
             IsUiTestHarness = isTestHarness,
             DefaultTheme = configuration.GetValue<string?>("UI:DefaultTheme") ?? "Office2019Colorful",
-            ShowRibbon = configuration.GetValue<bool?>("UI:ShowRibbon") ?? !isTestHarness,
-            ShowMenuBar = configuration.GetValue<bool?>("UI:ShowMenuBar") ?? true,
-            ShowStatusBar = configuration.GetValue<bool?>("UI:ShowStatusBar") ?? true,
+            ShowRibbon = GetBoolean(configuration, "UI:ShowRibbon", !isTestHarness),
+            ShowMenuBar = GetBoolean(configuration, "UI:ShowMenuBar", true),
+            ShowStatusBar = GetBoolean(configuration, "UI:ShowStatusBar", true),
             DefaultFormSize = new Size(defaultWidth, defaultHeight),
             MinimumFormSize = new Size(minWidth, minHeight),
-            AutoShowDashboard = configuration.GetValue<bool?>("UI:AutoShowDashboard") ?? false,
-            DefaultFiscalYear = configuration.GetValue<int?>("UI:DefaultFiscalYear") ?? DateTime.UtcNow.Year,
-            EnableDockingLockDuringLoad = configuration.GetValue<bool?>("UI:EnableDockingLockDuringLoad") ?? true,
-            ThemeApplyMaxDepth = configuration.GetValue<int?>("UI:ThemeApplyMaxDepth") ?? 32,
+            AutoShowDashboard = GetBoolean(configuration, "UI:AutoShowDashboard", true),  // FIX: Match property default
+            MinimalMode = GetBoolean(configuration, "UI:MinimalMode", false),  // FIX: Match property default (false = full UI)
+            AutoShowPanels = GetBoolean(configuration, "UI:AutoShowPanels", true),  // FIX: Enable by default for better UX
+            DefaultFiscalYear = GetInteger(configuration, "UI:DefaultFiscalYear", DateTime.UtcNow.Year),
+            EnableDockingLockDuringLoad = GetBoolean(configuration, "UI:EnableDockingLockDuringLoad", true),
+            ThemeApplyMaxDepth = GetInteger(configuration, "UI:ThemeApplyMaxDepth", 32),
             ThemeApplySkipControlTypes = configuration.GetSection("UI:ThemeApplySkipControlTypes").Get<string[]>() ?? Array.Empty<string>(),
-            VerboseFirstChanceExceptions = configuration.GetValue<bool?>("Diagnostics:VerboseFirstChanceExceptions") ?? false
+            VerboseFirstChanceExceptions = GetBoolean(configuration, "Diagnostics:VerboseFirstChanceExceptions", false)
         };
     }
 

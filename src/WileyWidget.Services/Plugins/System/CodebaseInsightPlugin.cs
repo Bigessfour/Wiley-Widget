@@ -14,7 +14,7 @@ namespace WileyWidget.Services.Plugins.System
     public class CodebaseInsightPlugin
     {
         private const int MaxFileLengthChars = 20000;
-        
+
         /// <summary>
         /// Locates the source root by walking up from the base directory.
         /// </summary>

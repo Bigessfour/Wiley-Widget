@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using WileyWidget.Abstractions;
@@ -12,6 +13,7 @@ using WileyWidget.Models;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.ViewModels
@@ -29,6 +31,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IQuickBooksService _quickBooksService;
         private readonly IGlobalSearchService _globalSearchService;
         private readonly IStatusProgressService? _statusProgressService;
+        private readonly IUiDispatcher _uiDispatcher;
         private bool _disposed;
 
         [ObservableProperty]
@@ -122,7 +125,7 @@ namespace WileyWidget.WinForms.ViewModels
         public IAsyncRelayCommand SyncQuickBooksAccountsCommand { get; }
         public IAsyncRelayCommand<string> GlobalSearchCommand { get; }
 
-        public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService, IQuickBooksService quickBooksService, IGlobalSearchService globalSearchService, IStatusProgressService? statusProgressService = null)
+        public MainViewModel(ILogger<MainViewModel> logger, IDashboardService dashboardService, IAILoggingService aiLoggingService, IQuickBooksService quickBooksService, IGlobalSearchService globalSearchService, IStatusProgressService? statusProgressService = null, IUiDispatcher? uiDispatcher = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
@@ -130,6 +133,7 @@ namespace WileyWidget.WinForms.ViewModels
             _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
             _globalSearchService = globalSearchService ?? throw new ArgumentNullException(nameof(globalSearchService));
             _statusProgressService = statusProgressService;
+            _uiDispatcher = uiDispatcher ?? new InlineUiDispatcher();
 
             LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
             RefreshCommand = new AsyncRelayCommand(RefreshDataAsync);
@@ -152,17 +156,18 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 _logger.LogInformation("MainViewModel: RefreshDataAsync - Clearing and reloading dashboard data");
 
-                // Clear existing data
-                ActivityItems.Clear();
-                TotalBudget = 0;
-                TotalActual = 0;
-                Variance = 0;
-                ActiveAccountCount = 0;
-                TotalDepartments = 0;
-                ErrorMessage = null;
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    ActivityItems.Clear();
+                    TotalBudget = 0;
+                    TotalActual = 0;
+                    Variance = 0;
+                    ActiveAccountCount = 0;
+                    TotalDepartments = 0;
+                    ErrorMessage = null;
+                }, cancellationToken).ConfigureAwait(false);
 
-                // Reload data
-                await LoadDataAsync(cancellationToken);
+                await LoadDataAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -181,8 +186,11 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                IsLoading = true;
-                ErrorMessage = null;
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    IsLoading = true;
+                    ErrorMessage = null;
+                }, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("MainViewModel: LoadDataAsync - Loading dashboard data");
 
@@ -202,109 +210,72 @@ namespace WileyWidget.WinForms.ViewModels
                         var task = (Task<IEnumerable<DashboardItem>>?)getDashboardDataMethod.Invoke(
                             _dashboardService,
                             new object[] { cancellationToken });
-                        dashboardItems = await (task ?? Task.FromResult(Enumerable.Empty<DashboardItem>()));
+                        dashboardItems = await (task ?? Task.FromResult(Enumerable.Empty<DashboardItem>())).ConfigureAwait(false);
                     }
                     else
                     {
                         // Fall back to GetDashboardItemsAsync
                         _logger.LogDebug("MainViewModel: Calling GetDashboardItemsAsync");
-                        dashboardItems = await _dashboardService.GetDashboardItemsAsync(cancellationToken);
+                        dashboardItems = await _dashboardService.GetDashboardItemsAsync(cancellationToken).ConfigureAwait(false);
                     }
                 }
                 catch (Exception serviceEx)
                 {
-                    _logger.LogWarning(serviceEx, "Dashboard service call failed, loading fallback sample data");
-
-                    // Load comprehensive fallback data
-                    dashboardItems = GetSampleDashboardData();
-                    _logger.LogInformation("Loaded fallback dashboard data — {Count} items", dashboardItems?.Count() ?? 0);
-                    ErrorMessage = "Using fallback data (service unavailable)";
+                    _logger.LogWarning(serviceEx, "Dashboard service call failed; continuing with empty dashboard data");
+                    dashboardItems = Enumerable.Empty<DashboardItem>();
                 }
 
                 if (dashboardItems == null || !dashboardItems.Any())
                 {
-                    _logger.LogWarning("No dashboard data returned from service, using sample data");
-                    dashboardItems = GetSampleDashboardData();
-                    if (string.IsNullOrEmpty(ErrorMessage))
-                        ErrorMessage = "No data available, showing sample data";
+                    _logger.LogInformation("No dashboard data returned from service; using empty dashboard state.");
+                    dashboardItems = Enumerable.Empty<DashboardItem>();
                 }
 
                 _logger.LogInformation("MainViewModel: Retrieved {Count} dashboard items", dashboardItems?.Count() ?? 0);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Process dashboard items into properties
-                ProcessDashboard(dashboardItems!);
-
-                PopulateMonthlyRevenueData();
-
-                LastUpdateTime = DateTime.Now.ToString("g", System.Globalization.CultureInfo.CurrentCulture);
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    ProcessDashboard(dashboardItems!);
+                    PopulateMonthlyRevenueData();
+                    LastUpdateTime = DateTime.Now.ToString("g", CultureInfo.CurrentCulture);
+                }, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation("MainViewModel: Dashboard data loaded successfully. {ItemCount} items processed", ActivityItems.Count);
             }
             catch (OperationCanceledException ex)
             {
                 _logger.LogWarning(ex, "Dashboard data loading canceled");
-                ErrorMessage = null; // Cancellation is expected
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    ErrorMessage = null;
+                }, CancellationToken.None).ConfigureAwait(false);
                 throw; // Re-throw to propagate cancellation
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to load dashboard data");
-                ErrorMessage = $"Failed to load dashboard: {ex.Message}";
-
-                // Attempt to show sample data even on error
-                try
+                await InvokeOnUiThreadAsync(() =>
                 {
-                    ProcessDashboard(GetSampleDashboardData());
-                    _logger.LogInformation("Loaded sample data after error");
-                }
-                catch (Exception fallbackEx)
-                {
-                    _logger.LogError(fallbackEx, "Failed to load sample data fallback");
-                }
+                    ErrorMessage = $"Failed to load dashboard: {ex.Message}";
+                    ProcessDashboard(Enumerable.Empty<DashboardItem>());
+                }, CancellationToken.None).ConfigureAwait(false);
             }
             finally
             {
-                IsLoading = false;
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    IsLoading = false;
+                }, CancellationToken.None).ConfigureAwait(false);
             }
-        }
-
-        /// <summary>
-        /// Returns sample dashboard data for design-time or offline scenarios.
-        /// Uses FallbackDataService for comprehensive, consistent fallback metrics.
-        /// </summary>
-        private IEnumerable<DashboardItem> GetSampleDashboardData()
-        {
-            var fallbackData = FallbackDataService.GetFallbackDashboardData();
-            return fallbackData.Cast<DashboardItem>();
         }
 
         private void PopulateMonthlyRevenueData()
         {
+            AssertUiThreadBoundMutation();
             MonthlyRevenueData.Clear();
-
-            var now = DateTime.Now;
-            var monthNames = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-
-            for (int i = 11; i >= 0; i--)
-            {
-                var month = now.AddMonths(-i);
-                var monthName = monthNames[month.Month - 1];
-                var baseAmount = 100000m + (i * 15000m);
-                var previousAmount = Math.Max(baseAmount - 15000m, 0m);
-
-                MonthlyRevenueData.Add(new MonthlyRevenue
-                {
-                    Month = monthName,
-                    Amount = baseAmount,
-                    PreviousMonthAmount = previousAmount,
-                    Year = month.Year,
-                    MonthNumber = month.Month
-                });
-            }
-
-            _logger.LogDebug("PopulateMonthlyRevenueData: {Count} months loaded", MonthlyRevenueData.Count);
+            _logger.LogDebug("PopulateMonthlyRevenueData: no monthly revenue rows loaded.");
         }
 
         /// <summary>
@@ -323,35 +294,44 @@ namespace WileyWidget.WinForms.ViewModels
                 }
 
                 _logger.LogInformation("MainViewModel: InitializeAsync called (runtime mode)");
-                await LoadDataAsync(cancellationToken);
-                IsDataLoaded = true;
+                await LoadDataAsync(cancellationToken).ConfigureAwait(false);
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    IsDataLoaded = true;
+                }, cancellationToken).ConfigureAwait(false);
                 _logger.LogInformation("MainViewModel: InitializeAsync completed successfully");
             }
             catch (OperationCanceledException)
             {
                 _logger.LogInformation("MainViewModel initialization canceled");
-                ErrorMessage = null;
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    ErrorMessage = null;
+                }, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "MainViewModel initialization failed - continuing with empty dashboard data");
-                ErrorMessage = "Dashboard data load failed — showing empty dashboard";
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    ErrorMessage = "Dashboard data load failed — showing empty dashboard";
 
-                ActivityItems.Clear();
-                Metrics.Clear();
-                MonthlyRevenueData.Clear();
-                DepartmentSummaries.Clear();
-                FundSummaries.Clear();
+                    ActivityItems.Clear();
+                    Metrics.Clear();
+                    MonthlyRevenueData.Clear();
+                    DepartmentSummaries.Clear();
+                    FundSummaries.Clear();
 
-                TotalBudget = 0;
-                TotalActual = 0;
-                Variance = 0;
-                ActiveAccountCount = 0;
-                TotalDepartments = 0;
-                TotalBudgetGauge = 0;
-                RevenueGauge = 0;
-                ExpensesGauge = 0;
-                NetPositionGauge = 0;
+                    TotalBudget = 0;
+                    TotalActual = 0;
+                    Variance = 0;
+                    ActiveAccountCount = 0;
+                    TotalDepartments = 0;
+                    TotalBudgetGauge = 0;
+                    RevenueGauge = 0;
+                    ExpensesGauge = 0;
+                    NetPositionGauge = 0;
+                }, CancellationToken.None).ConfigureAwait(false);
             }
         }
 
@@ -360,8 +340,11 @@ namespace WileyWidget.WinForms.ViewModels
             if (isVisible && !IsDataLoaded && !IsLoading)
             {
                 _logger.LogInformation("Panel visible for first time; triggering lazy load");
-                await LoadDataAsync(CancellationToken.None);
-                IsDataLoaded = true;
+                await LoadDataAsync(CancellationToken.None).ConfigureAwait(false);
+                await InvokeOnUiThreadAsync(() =>
+                {
+                    IsDataLoaded = true;
+                }, CancellationToken.None).ConfigureAwait(false);
             }
         }
 
@@ -373,6 +356,7 @@ namespace WileyWidget.WinForms.ViewModels
         public void ProcessDashboard(IEnumerable<DashboardItem> dashboardItems)
         {
             ArgumentNullException.ThrowIfNull(dashboardItems);
+            AssertUiThreadBoundMutation();
 
             // Clear existing activity items before processing new data
             ActivityItems.Clear();
@@ -475,6 +459,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         private void UpdateDerivedMetrics()
         {
+            AssertUiThreadBoundMutation();
             IsPositiveVariance = Variance >= 0;
 
             VariancePercentage = TotalBudget > 0 ? Math.Abs(Variance / TotalBudget) * 100 : 0;
@@ -530,16 +515,9 @@ namespace WileyWidget.WinForms.ViewModels
                 else
                 {
                     _logger.LogWarning("QuickBooks accounts sync failed: {ErrorMessage}", syncResult.ErrorMessage);
-
-                    // Display fallback message if using cached/sample accounts
-                    if (syncResult.RecordsSynced > 0)
-                    {
-                        ErrorMessage = $"⚠ Sync failed - showing {syncResult.RecordsSynced} fallback accounts. {syncResult.ErrorMessage}";
-                    }
-                    else
-                    {
-                        ErrorMessage = $"✗ Sync failed: {syncResult.ErrorMessage}";
-                    }
+                    ErrorMessage = syncResult.RecordsSynced > 0
+                        ? $"⚠ Sync completed with issues: {syncResult.RecordsSynced} accounts processed. {syncResult.ErrorMessage}"
+                        : $"✗ Sync failed: {syncResult.ErrorMessage}";
                 }
 
                 // Refresh dashboard to show latest data
@@ -608,6 +586,30 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        private async Task InvokeOnUiThreadAsync(Action action, CancellationToken cancellationToken)
+        {
+            if (_uiDispatcher.CheckAccess())
+            {
+                AssertUiThreadBoundMutation();
+                action();
+                return;
+            }
+
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                AssertUiThreadBoundMutation();
+                action();
+            }, cancellationToken).ConfigureAwait(false);
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        private void AssertUiThreadBoundMutation([CallerMemberName] string? memberName = null)
+        {
+            if (!_uiDispatcher.CheckAccess())
+            {
+                throw new InvalidOperationException($"UI-bound mutation must occur on the UI thread ({memberName ?? "unknown"}).");
+            }
+        }
         public void Dispose()
         {
             if (_disposed) return;

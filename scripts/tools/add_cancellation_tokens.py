@@ -148,7 +148,9 @@ def append_token_param(params: str) -> str:
         return "CancellationToken cancellationToken = default"
 
     if "\n" in params:
-        return params.rstrip() + ",\n        CancellationToken cancellationToken = default"
+        return (
+            params.rstrip() + ",\n        CancellationToken cancellationToken = default"
+        )
 
     return params.rstrip() + ", CancellationToken cancellationToken = default"
 
@@ -185,7 +187,9 @@ def build_interface_replacements(text: str) -> list[Replacement]:
     return replacements
 
 
-def build_implementation_replacements(text: str, method_names: set[str]) -> list[Replacement]:
+def build_implementation_replacements(
+    text: str, method_names: set[str]
+) -> list[Replacement]:
     if not CLASS_IMPLEMENTS_REPO_PATTERN.search(text):
         return []
 
@@ -392,7 +396,9 @@ def main() -> int:
     apply_changes = args.apply and not force_dry_run
     dry_run = not apply_changes
 
-    interface_paths = [p for p in iter_cs_files(root, args.include_tests) if is_repo_interface(p)]
+    interface_paths = [
+        p for p in iter_cs_files(root, args.include_tests) if is_repo_interface(p)
+    ]
     repo_methods = collect_repo_methods(interface_paths)
 
     total_changes = 0

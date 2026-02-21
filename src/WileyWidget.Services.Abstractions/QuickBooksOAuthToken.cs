@@ -41,7 +41,7 @@ public sealed class QuickBooksOAuthToken
     /// <summary>
     /// Timestamp when the token was issued (UTC).
     /// </summary>
-    [JsonIgnore]
+    [JsonPropertyName("IssuedAtUtc")]
     public DateTime IssuedAtUtc { get; set; } = DateTime.UtcNow;
 
     /// <summary>

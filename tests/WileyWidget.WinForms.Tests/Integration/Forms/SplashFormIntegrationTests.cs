@@ -17,15 +17,20 @@ public sealed class SplashFormIntegrationTests
         {
             Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
             using var splash = new SplashForm();
-            SplashProgressChangedEventArgs? reported = null;
-            splash.ProgressChanged += (_, args) => reported = args;
+            var reports = new System.Collections.Generic.List<SplashProgressChangedEventArgs>();
+            splash.ProgressChanged += (_, args) => reports.Add(args);
 
             splash.Report(0.25, "Loading", isIndeterminate: false);
             splash.Complete("Done");
 
-            reported.Should().NotBeNull();
-            reported!.Progress.Should().Be(0.25);
-            reported.Message.Should().Be("Loading");
+            reports.Should().HaveCount(2);
+            reports[0].Progress.Should().Be(0.25);
+            reports[0].Message.Should().Be("Loading");
+            reports[0].IsIndeterminate.Should().BeFalse();
+
+            reports[1].Progress.Should().Be(1.0);
+            reports[1].Message.Should().Be("Done");
+            reports[1].IsIndeterminate.Should().BeFalse();
         }
         finally
         {

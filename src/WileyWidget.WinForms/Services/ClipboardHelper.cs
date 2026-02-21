@@ -43,7 +43,7 @@ public static class ClipboardHelper
         {
             var json = JsonSerializer.Serialize(data, JsonOptions);
             Clipboard.SetText(json, TextDataFormat.UnicodeText);
-            
+
             logger?.LogInformation(
                 "Copied {TypeName} to clipboard ({ByteCount} bytes)",
                 typeof(T).Name,
@@ -80,7 +80,7 @@ public static class ClipboardHelper
             }
 
             var deserialized = JsonSerializer.Deserialize<T>(json, JsonOptions);
-            
+
             logger?.LogInformation(
                 "Pasted {TypeName} from clipboard ({ByteCount} bytes)",
                 typeof(T).Name,
@@ -173,7 +173,7 @@ public static class ClipboardHelper
         try
         {
             var text = Clipboard.GetText(TextDataFormat.UnicodeText);
-            
+
             if (string.IsNullOrEmpty(text))
             {
                 logger?.LogWarning("Clipboard is empty");

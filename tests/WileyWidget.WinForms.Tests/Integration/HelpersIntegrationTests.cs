@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using WileyWidget.WinForms.Helpers;
-using WileyWidget.WinForms.Utils;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Tests.Integration;
 
 namespace WileyWidget.WinForms.Tests.Integration;
@@ -52,7 +52,7 @@ public sealed class HelpersIntegrationTests
         var executed = false;
 
         // Act
-        WileyWidget.WinForms.Utils.UIThreadHelper.ExecuteOnUIThread(form, () => executed = true);
+        UIThreadHelper.ExecuteOnUIThread(form, () => executed = true);
 
         // Assert
         executed.Should().BeTrue();
@@ -67,7 +67,7 @@ public sealed class HelpersIntegrationTests
         var executed = false;
 
         // Act
-        await WileyWidget.WinForms.Utils.UIThreadHelper.ExecuteOnUIThreadAsync(form, async () =>
+        await UIThreadHelper.ExecuteOnUIThreadAsync(form, async () =>
         {
             await Task.Delay(10);
             executed = true;

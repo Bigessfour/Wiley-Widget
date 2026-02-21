@@ -32,12 +32,17 @@ public class NullGrokSupercomputer : IGrokSupercomputer
 
     public Task<string> QueryAsync(string prompt, CancellationToken cancellationToken = default) => Task.FromResult("Offline: Grok is currently disconnected.");
 
-    public async IAsyncEnumerable<string> StreamQueryAsync(string prompt)
+    public async IAsyncEnumerable<string> StreamQueryAsync(string prompt, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        if (cancellationToken.IsCancellationRequested) yield break;
         yield return "Offline: ";
+        if (cancellationToken.IsCancellationRequested) yield break;
         yield return "Grok ";
+        if (cancellationToken.IsCancellationRequested) yield break;
         yield return "is ";
+        if (cancellationToken.IsCancellationRequested) yield break;
         yield return "currently ";
+        if (cancellationToken.IsCancellationRequested) yield break;
         yield return "disconnected.";
         await Task.CompletedTask;
     }

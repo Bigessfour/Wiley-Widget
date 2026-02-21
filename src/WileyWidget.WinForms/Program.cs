@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.AspNetCore.Components.WebView.WindowsForms;  // Add this using
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ using WileyWidget.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
+using Syncfusion.Blazor;  // Add this for Syncfusion Blazor services
 using Serilog;
 using WileyWidget.Services.Logging;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -102,6 +104,14 @@ namespace WileyWidget.WinForms
         [STAThread]
         static void Main(string[] args)
         {
+            // Handle test mode argument (sets environment variable for FlaUI integration tests)
+            if (args.Contains("--testmode"))
+            {
+                Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "true");
+                Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+                Console.WriteLine("[TEST MODE] Enabled - using test database and UI automation settings");
+            }
+
             // Set working directory to repo root for consistent logging paths
             var currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
             var repoRoot = FindRepoRoot(currentDir) ?? FindRepoRoot(new DirectoryInfo(AppContext.BaseDirectory));
@@ -114,10 +124,23 @@ namespace WileyWidget.WinForms
             EnsureLogDirectoryExists();
 
             // Configure Serilog logger manually for WinForms app
+            // IMPORTANT: Configuration order - later sources override earlier ones
+            // Order: 1) appsettings.json, 2) user secrets, 3) environment variables (last for highest priority)
+            var basePath = Directory.GetCurrentDirectory();
+            var appSettingsPath = "src/WileyWidget.WinForms/appsettings.json";
+
+            // If we are already in the project directory or the file isn't found at the repo-root relative path,
+            // fallback to local directory (handles both dev-from-root and direct-exe-run scenarios).
+            if (!File.Exists(Path.Combine(basePath, appSettingsPath)) && File.Exists(Path.Combine(basePath, "appsettings.json")))
+            {
+                appSettingsPath = "appsettings.json";
+            }
+
             var configuration = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("src/WileyWidget.WinForms/appsettings.json", optional: false, reloadOnChange: true)
+                .SetBasePath(basePath)
+                .AddJsonFile(appSettingsPath, optional: false, reloadOnChange: true)
                 .AddUserSecrets<Program>(optional: true)
+                .AddEnvironmentVariables()  // Environment variables last - highest priority
                 .Build();
 
             Log.Logger = new LoggerConfiguration()
@@ -126,6 +149,26 @@ namespace WileyWidget.WinForms
 
             Log.Information("Program.Main: Starting WileyWidget application");
             Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
+
+            // DEBUG: Log masked API key to verify configuration loading chain
+            var apiKeyFromConfig = configuration["xAI:ApiKey"] ?? configuration["XAI:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(apiKeyFromConfig))
+            {
+                var maskedKey = apiKeyFromConfig.Length > 8
+                    ? apiKeyFromConfig.Substring(0, 4) + "***" + apiKeyFromConfig.Substring(apiKeyFromConfig.Length - 4)
+                    : "***";
+                Log.Debug("[CONFIG DEBUG] xAI:ApiKey found in configuration chain: {MaskedKey} (length: {Length})", maskedKey, apiKeyFromConfig.Length);
+            }
+            else
+            {
+                Log.Warning("[CONFIG DEBUG] xAI:ApiKey NOT found in configuration chain (checked: appsettings.json, user secrets, environment variables)");
+            }
+
+            // Register Syncfusion license as early as possible — before any Syncfusion controls are instantiated
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Registering Syncfusion license (early)...");
+            Log.Information("Program.Main: Registering Syncfusion license (early - before splash)");
+            RegisterSyncfusionLicense();
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Syncfusion license registered (early)");
 
             StartSplash("Starting Wiley Widget...");
 
@@ -136,6 +179,17 @@ namespace WileyWidget.WinForms
             // Wire global exception handlers for unobserved async tasks and UI thread errors
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
+                var ex = e.Exception.GetBaseException();
+
+                // ✅ FIX (P3): Suppress BlockingCollection cancellation during shutdown (expected behavior)
+                if (ex is OperationCanceledException &&
+                    ex.StackTrace?.Contains("BlockingCollection", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    Log.Debug("Background task cancelled during shutdown (expected): {Message}", ex.Message);
+                    e.SetObserved();
+                    return;
+                }
+
                 Log.Error(e.Exception, "Unobserved task exception (fire-and-forget task raised error)");
                 e.SetObserved(); // Suppress crash, log only
             };
@@ -158,6 +212,13 @@ namespace WileyWidget.WinForms
 
             System.Windows.Forms.Application.ThreadException += static (s, e) =>
             {
+                if (e.Exception is NullReferenceException &&
+                    e.Exception.StackTrace?.Contains("Syncfusion.Windows.Forms.Tools.DockingManager.HostControl_Paint", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    Log.Warning(e.Exception, "[SYNCFUSION] Ignored known DockingManager HostControl paint null-reference exception");
+                    return;
+                }
+
                 Log.Error(e.Exception, "[CRITICAL] Unhandled UI thread exception - application will terminate with code -1");
                 // Log full exception details before showing dialog
                 var ex = e.Exception;
@@ -195,14 +256,10 @@ namespace WileyWidget.WinForms
 
                 _services = host.Services;
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Services assigned to _services");
+                Log.Information("ServiceProvider created successfully (services registered via ConfigureServices)");
 
-                // Diagnostic: List all registered services
-                try
-                {
-                    var serviceDescriptors = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IEnumerable<Microsoft.Extensions.DependencyInjection.ServiceDescriptor>>(host.Services);
-                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Total services registered: {(serviceDescriptors?.Count() ?? 0)}");
-                }
-                catch { }
+                // Syncfusion license was registered earlier (before splash) to ensure
+                // license is applied before any Syncfusion controls are instantiated.
 
                 // Phase 1: Theming
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Initializing theme...");
@@ -248,7 +305,11 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application initialization with configured startup timeout...");
                 Log.Information("Program.Main: Starting application initialization with timeout");
                 ReportSplash(0.7, "Initializing services...");
+                // CRITICAL: Use GetAwaiter().GetResult() to preserve STA thread mode for WinForms
+                // async Task Main breaks STA context after await, causing drag-drop registration failures
+                // See: errors-20260205.log - ThreadStateException during MainForm.OnHandleCreated
                 ExecuteStartupWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
+
                 Log.Information("Program.Main: Application initialization completed");
                 ReportSplash(0.85, "Starting application...");
 
@@ -282,6 +343,16 @@ namespace WileyWidget.WinForms
                     depth++;
                 }
                 Log.Fatal(ex, "Application start-up failed");
+
+                // [MODIFIED] Ensure the user sees the fatal crash reason before exit
+                try
+                {
+                    var coreError = ex.GetBaseException();
+                    var message = $"Wiley Widget failed to start.\n\nType: {ex.GetType().Name}\nMessage: {ex.Message}\n\nRoot Cause: {coreError.Message}\n\nCheck logs for full stack trace.";
+                    MessageBox.Show(message, "Fatal Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch { /* Suppress MessageBox failure in crash path */ }
+
                 // Re-throw so application exits with visible error
                 throw;
             }
@@ -362,8 +433,45 @@ namespace WileyWidget.WinForms
             Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration((context, config) =>
                 {
-                    // Ensure user-secrets are available even in non-standard host environments.
+                    // IMPORTANT: Configuration loading order - later sources override earlier ones.
+                    // Host.CreateDefaultBuilder() already adds appsettings.json and environment variables.
+                    // Since we set the working directory to the repo root, we must explicitly add the
+                    // project-specific appsettings.json from the src tree.
+                    var appSettingsPath = "src/WileyWidget.WinForms/appsettings.json";
+                    var envAppSettingsPath = $"src/WileyWidget.WinForms/appsettings.{context.HostingEnvironment.EnvironmentName}.json";
+
+                    // Fallback to local paths if running from within the project directory or bin folder
+                    if (!File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, appSettingsPath)) &&
+                        File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, "appsettings.json")))
+                    {
+                        appSettingsPath = "appsettings.json";
+                    }
+
+                    if (!File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, envAppSettingsPath)) &&
+                        File.Exists(Path.Combine(context.HostingEnvironment.ContentRootPath, $"appsettings.{context.HostingEnvironment.EnvironmentName}.json")))
+                    {
+                        envAppSettingsPath = $"appsettings.{context.HostingEnvironment.EnvironmentName}.json";
+                    }
+
+                    config.AddJsonFile(appSettingsPath, optional: false, reloadOnChange: true);
+                    config.AddJsonFile(envAppSettingsPath, optional: true, reloadOnChange: true);
+
+                    // We explicitly add user secrets AFTER CreateDefaultBuilder sets up defaults.
+                    // Then we re-add environment variables at the END to ensure they have highest priority.
+                    // This ensures: 1) appsettings.json, 2) appsettings.{Environment}.json, 3) user secrets, 4) environment variables
+
+                    // Remove environment variables that were added by CreateDefaultBuilder
+                    var envVarSources = config.Sources.Where(s => s.GetType().Name.Contains("EnvironmentVariables")).ToList();
+                    foreach (var source in envVarSources)
+                    {
+                        config.Sources.Remove(source);
+                    }
+
+                    // Re-add in correct order: user secrets first
                     config.AddUserSecrets<Program>(optional: true);
+
+                    // Then environment variables LAST (highest priority)
+                    config.AddEnvironmentVariables();
                 })
                 .ConfigureServices((hostContext, services) =>
                 {
@@ -372,6 +480,24 @@ namespace WileyWidget.WinForms
 
                     // Register WinForms-specific services
                     services.AddWinFormsServices(hostContext.Configuration);
+
+                    /// <summary>
+                    /// NEW: Register Blazor WebView services (required for BlazorWebView to initialize)
+                    /// Enables Windows Forms applications to host Blazor components and WebView controls.
+                    /// </summary>
+                    services.AddWindowsFormsBlazorWebView();
+#if DEBUG
+                    /// <summary>
+                    /// Optional: Enable developer tools for debugging Blazor components in Debug builds.
+                    /// Provides browser console access and component inspection capabilities.
+                    /// </summary>
+                    // Developer tools are available via AddBlazorWebViewDeveloperTools() if WebView2 supports it
+#endif
+                    /// <summary>
+                    /// NEW: Required for Syncfusion Blazor components (e.g., SfAIAssistView).
+                    /// Registers Syncfusion Blazor services and component infrastructure.
+                    /// </summary>
+                    services.AddSyncfusionBlazor();  // NEW: Required for Syncfusion Blazor components (e.g., SfAIAssistView)
                 })
                 .UseSerilog();
 
@@ -385,37 +511,53 @@ namespace WileyWidget.WinForms
                 themeName = AppThemeColors.DefaultTheme;
             }
 
-            if (!ThemeApplicationHelper.ValidateTheme(themeName))
-            {
-                Log.Warning("Theme '{Theme}' failed validation. Falling back to Default.", themeName);
-                themeName = "Default";
-            }
+            themeName = AppThemeColors.ValidateTheme(themeName);
 
-            // Load all required theme assemblies for Office2019Colorful and fallback themes
+            // Load Office2019Theme assembly (required for Office2019Colorful and related themes)
+            // Per Syncfusion best practices: Load assembly early, apply theme to individual forms
+            // Note: ApplicationVisualTheme is optional - theme cascade from form.SetVisualStyle is sufficient
             try
             {
-                // Primary theme: Office2019 (required for Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray)
-                AppThemeColors.EnsureThemeAssemblyLoaded();
-                Log.Information("✅ Loaded Office2019Theme assembly successfully - supports Office2019Colorful, Office2019Black, Office2019White, Office2019DarkGray");
-                Log.Debug("Debug test log from Program.cs");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - falling back to default theme");
-                // Fallback: continue without theme assembly, UI will use default rendering
-                themeName = "Default";
-            }
+                AppThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName);
+                Log.Information("✅ Syncfusion theme assemblies loaded - supports Office2019, Office2016, and HighContrast WinForms themes");
 
-            // Set application-level theme
-            try
-            {
+                // Optional: Set global theme property (not required per official demos, but useful for dynamic control creation)
                 SfSkinManager.ApplicationVisualTheme = themeName;
-                Log.Information("Syncfusion theme initialized: {Theme} (Office2019Theme assembly loaded and ready)", themeName);
+                Log.Information("Syncfusion theme initialized: {Theme}", themeName);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Failed to set ApplicationVisualTheme - falling back to Default theme");
-                SfSkinManager.ApplicationVisualTheme = "Default";
+                Log.Error(ex, "❌ Failed to load Office2019Theme assembly - UI will use default rendering");
+                // Non-fatal: continue without theme, controls will render with default styling
+            }
+        }
+
+        /// <summary>
+        /// Registers Syncfusion license from environment variable.
+        /// MUST be called BEFORE any Syncfusion controls are instantiated or theme assemblies are loaded.
+        /// </summary>
+        static void RegisterSyncfusionLicense()
+        {
+            var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+            if (string.IsNullOrWhiteSpace(licenseKey))
+            {
+                Log.Warning("⚠️ SYNCFUSION_LICENSE_KEY environment variable not set. Application will show trial/evaluation popup.");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Syncfusion license key missing - running in evaluation mode");
+                // Do not throw - missing license just shows trial popup, not a fatal error
+                return;
+            }
+
+            try
+            {
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                Log.Information("✅ Syncfusion license registered successfully");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Syncfusion license registered");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "❌ Failed to register Syncfusion license - application will show trial popup");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ❌ License registration failed: {ex.Message}");
+                // Do not throw - license failure is non-fatal, just shows trial watermark/popup
             }
         }
 

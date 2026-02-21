@@ -191,6 +191,12 @@ namespace WileyWidget.WinForms.Forms
             if (_disposed) return;
             if (_ctsDisposed) return;
 
+            var completionMessage = finalMessage ?? string.Empty;
+
+            // Always emit a deterministic final progress update so observers
+            // can reliably detect completion in both UI and headless modes.
+            Report(1.0, completionMessage, isIndeterminate: false);
+
             try
             {
                 _cts.Cancel();
@@ -214,8 +220,8 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        if (!string.IsNullOrEmpty(finalMessage))
-                            Log.Debug("[SPLASH] Complete: {Message}", finalMessage);
+                        if (!string.IsNullOrEmpty(completionMessage))
+                            Log.Debug("[SPLASH] Complete: {Message}", completionMessage);
                     }
                     catch (Exception ex)
                     {
@@ -233,7 +239,7 @@ namespace WileyWidget.WinForms.Forms
                 try
                 {
                     if (_messageLabel != null && !_messageLabel.IsDisposed)
-                        _messageLabel.Text = finalMessage ?? string.Empty;
+                        _messageLabel.Text = completionMessage;
 
                     if (_progressBar != null && !_progressBar.IsDisposed)
                     {
@@ -267,6 +273,16 @@ namespace WileyWidget.WinForms.Forms
                     Text = "Wiley Widget - Loading...",
                     ControlBox = false
                 };
+
+                // Apply Syncfusion theme to splash form
+                try
+                {
+                    WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(_form);
+                }
+                catch (Exception themeEx)
+                {
+                    Log.Debug(themeEx, "[SPLASH] Failed to apply theme to splash form (non-critical)");
+                }
 
                 var layout = new TableLayoutPanel
                 {
@@ -391,15 +407,21 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try
                     {
-                        if (form.IsHandleCreated)
+                        if (form.IsHandleCreated && !form.IsDisposed)
                         {
                             if (form.InvokeRequired)
                             {
-                                form.Invoke((Action)(() =>
+                                // Fire-and-forget invoke to avoid blocking or re-throwing if form disposes mid-call
+                                try
                                 {
-                                    try { form.Close(); } catch { }
-                                    try { Application.ExitThread(); } catch { }
-                                }));
+                                    form.BeginInvoke((Action)(() =>
+                                    {
+                                        if (form.IsDisposed) return;
+                                        try { form.Close(); } catch { }
+                                        try { Application.ExitThread(); } catch { }
+                                    }));
+                                }
+                                catch (ObjectDisposedException) { /* Already gone */ }
                             }
                             else
                             {

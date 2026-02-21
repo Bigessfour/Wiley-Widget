@@ -25,8 +25,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     private readonly IReportService _reportService;
     private readonly ILogger<ReportsViewModel> _logger;
     private readonly IAuditService _auditService;
-        private readonly IReportExportService? _exportService;
-        private readonly IBudgetRepository _budgetRepository;
+    private readonly IReportExportService? _exportService;
+    private readonly IBudgetRepository _budgetRepository;
 
     /// <summary>
     /// Available report types for the dropdown.
@@ -687,8 +687,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     {
         var dataSources = new Dictionary<string, object>();
 
-        // Generate sample data based on report type
-        // In production, this would come from real services
+        // Prepare report data based on report type
         List<ReportDataItem> previewTx = new();
         if (SelectedReportType == "Budget Comparison")
         {
@@ -713,14 +712,13 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                 switch (SelectedReportType)
                 {
                     case "Budget Summary":
-                        dataSources["BudgetData"] = GenerateSampleBudgetData();
+                        dataSources["BudgetData"] = CreateEmptyBudgetData();
                         break;
                     case "Account List":
-                        dataSources["AccountData"] = GenerateSampleAccountData();
+                        dataSources["AccountData"] = CreateEmptyAccountData();
                         break;
                     case "Monthly Transactions":
-                        // Simulate large dataset and update preview with pagination
-                        var allTx = GenerateSampleTransactionData(500); // larger set for pagination
+                        var allTx = CreateEmptyTransactionData();
                         dataSources["TransactionData"] = allTx;
 
                         // set preview page
@@ -731,10 +729,10 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
                         break;
                     case "Category Breakdown":
-                        dataSources["CategoryData"] = GenerateSampleCategoryData();
+                        dataSources["CategoryData"] = CreateEmptyCategoryData();
                         break;
                     case "Variance Analysis":
-                        dataSources["VarianceData"] = GenerateSampleVarianceData();
+                        dataSources["VarianceData"] = CreateEmptyVarianceData();
                         break;
                 }
             }, cancellationToken).ConfigureAwait(false);
@@ -798,7 +796,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         }
     }
 
-    #region Sample Data Generation (Replace with real service calls in production)
+    #region Empty Data Helpers
 
     private DataSet BuildBudgetComparisonDataSet(IEnumerable<BudgetEntry> entries)
     {
@@ -857,73 +855,29 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         return ds;
     }
 
-    private List<BudgetSummaryItem> GenerateSampleBudgetData()
+    private List<BudgetSummaryItem> CreateEmptyBudgetData()
     {
-        return
-        [
-            new("General Fund", 1500000m, 1200000m),
-            new("Water Fund", 800000m, 750000m),
-            new("Sewer Fund", 600000m, 580000m),
-            new("Streets Fund", 400000m, 420000m),
-            new("Parks Fund", 200000m, 180000m)
-        ];
+        return new List<BudgetSummaryItem>();
     }
 
-    private List<AccountItem> GenerateSampleAccountData()
+    private List<AccountItem> CreateEmptyAccountData()
     {
-        return
-        [
-            new("1000", "Cash - General", "Asset", 250000m),
-            new("1100", "Accounts Receivable", "Asset", 75000m),
-            new("2000", "Accounts Payable", "Liability", 45000m),
-            new("3000", "Fund Balance", "Equity", 500000m),
-            new("4000", "Property Tax Revenue", "Revenue", 1200000m),
-            new("5000", "Personnel Services", "Expense", 800000m)
-        ];
+        return new List<AccountItem>();
     }
 
-    private List<TransactionItem> GenerateSampleTransactionData(int count = 50)
+    private List<TransactionItem> CreateEmptyTransactionData()
     {
-        var transactions = new List<TransactionItem>();
-        var random = new Random(42);
-        var categories = new[] { "Payroll", "Utilities", "Supplies", "Maintenance", "Revenue" };
-
-        // Prevent invalid range
-        var daysRange = Math.Max(1, (ToDate - FromDate).Days);
-
-        for (int i = 0; i < count; i++)
-        {
-            var date = FromDate.AddDays(random.Next(daysRange));
-            var category = categories[random.Next(categories.Length)];
-            var amount = (decimal)(random.NextDouble() * 10000);
-            transactions.Add(new(date, $"TXN-{i + 1000}", category, amount));
-        }
-
-        return transactions.OrderBy(t => t.Date).ToList();
+        return new List<TransactionItem>();
     }
 
-    private List<CategoryBreakdownItem> GenerateSampleCategoryData()
+    private List<CategoryBreakdownItem> CreateEmptyCategoryData()
     {
-        return
-        [
-            new("Personnel", 800000m, 53.3m),
-            new("Operations", 300000m, 20.0m),
-            new("Capital", 200000m, 13.3m),
-            new("Debt Service", 150000m, 10.0m),
-            new("Other", 50000m, 3.3m)
-        ];
+        return new List<CategoryBreakdownItem>();
     }
 
-    private List<VarianceItem> GenerateSampleVarianceData()
+    private List<VarianceItem> CreateEmptyVarianceData()
     {
-        return
-        [
-            new("General Fund", 1500000m, 1200000m, 300000m, 20.0m),
-            new("Water Fund", 800000m, 750000m, 50000m, 6.3m),
-            new("Sewer Fund", 600000m, 580000m, 20000m, 3.3m),
-            new("Streets Fund", 400000m, 420000m, -20000m, -5.0m),
-            new("Parks Fund", 200000m, 180000m, 20000m, 10.0m)
-        ];
+        return new List<VarianceItem>();
     }
 
     /// <summary>

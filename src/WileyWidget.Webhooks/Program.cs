@@ -1,9 +1,15 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
+
+// Load configuration from appsettings.json and user secrets
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+builder.Configuration.AddUserSecrets<Program>(optional: true);
+builder.Configuration.AddEnvironmentVariables();
 
 var app = builder.Build();
 
@@ -41,7 +47,11 @@ app.MapPost("/qbo/webhooks", async (HttpRequest req) =>
     var signatureHeader = req.Headers["intuit-signature"].FirstOrDefault()
                          ?? req.Headers["X-Intuit-Signature"].FirstOrDefault();
 
-    var secret = Environment.GetEnvironmentVariable("QBO_WEBHOOKS_VERIFIER");
+    // Priority: User Secrets > Environment > appsettings.json
+    var secret = app.Configuration["Services:QuickBooks:Webhooks:VerifierToken"]
+                ?? Environment.GetEnvironmentVariable("QBO_WEBHOOKS_VERIFIER")
+                ?? app.Configuration["Services:QuickBooks:Webhooks:VerifierToken"];
+
     if (!string.IsNullOrWhiteSpace(secret))
     {
         try
@@ -70,7 +80,13 @@ app.MapPost("/qbo/webhooks", async (HttpRequest req) =>
     }
     else
     {
-        Console.WriteLine("[QBO Webhook] QBO_WEBHOOKS_VERIFIER not set; accepting without signature validation (dev only).");
+        var environment = app.Configuration["Services:QuickBooks:OAuth:Environment"] ?? "sandbox";
+        if (environment.Equals("production", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("[QBO Webhook] ERROR: Production mode requires VerifierToken in user secrets!");
+            return Results.StatusCode(503); // Service Unavailable - misconfigured
+        }
+        Console.WriteLine("[QBO Webhook] Sandbox mode: accepting without signature validation (dev only).");
     }
 
     Console.WriteLine($"[QBO Webhook] OK len={body?.Length ?? 0}");

@@ -9,6 +9,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Options;
 using Serilog;
 using WileyWidget.Models;
@@ -50,17 +52,31 @@ public class GrokSupercomputer(
     private readonly Microsoft.Extensions.Caching.Memory.IMemoryCache _cache = cache ?? throw new ArgumentNullException(nameof(cache));
     private readonly Microsoft.Extensions.Options.IOptions<WileyWidget.Models.AppOptions> _appOptions = appOptions ?? throw new ArgumentNullException(nameof(appOptions));
 
+    // Defensive collection limits to avoid large-memory spikes
+    private const int MaxCollectionItems = 2000;
+
     // Analysis thresholds and defaults
     private decimal VarianceHighThresholdPercent => _appOptions.Value.BudgetVarianceHighThresholdPercent;
     private decimal VarianceLowThresholdPercent => _appOptions.Value.BudgetVarianceLowThresholdPercent;
     private int HighConfidence => _appOptions.Value.AIHighConfidence;
     private int LowConfidence => _appOptions.Value.AILowConfidence;
 
-    private async Task<T> SafeCall<T>(string operation, Func<Task<T>> action, T fallback)
+    private async Task<T> SafeCall<T>(string operation, Func<CancellationToken, Task<T>> action, T fallback, CancellationToken cancellationToken = default)
     {
         try
         {
-            return await action();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("{Operation} canceled before start", operation);
+                throw new OperationCanceledException(cancellationToken);
+            }
+
+            return await action(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("{Operation} canceled during execution", operation);
+            throw;
         }
         catch (Exception ex)
         {
@@ -123,52 +139,61 @@ public class GrokSupercomputer(
             // Parallel fetch with resilience
             var budgetSummaryTask = SafeCall(
                 nameof(IBudgetRepository.GetBudgetSummaryAsync),
-                () => _budgetRepository.GetBudgetSummaryAsync(effectiveStartDate, effectiveEndDate),
-                new BudgetVarianceAnalysis());
+                ct => _budgetRepository.GetBudgetSummaryAsync(effectiveStartDate, effectiveEndDate, ct),
+                new BudgetVarianceAnalysis(),
+                cancellationToken);
 
             var varianceAnalysisTask = SafeCall(
                 nameof(IBudgetRepository.GetVarianceAnalysisAsync),
-                () => _budgetRepository.GetVarianceAnalysisAsync(effectiveStartDate, effectiveEndDate),
-                new BudgetVarianceAnalysis());
+                ct => _budgetRepository.GetVarianceAnalysisAsync(effectiveStartDate, effectiveEndDate, ct),
+                new BudgetVarianceAnalysis(),
+                cancellationToken);
 
             var departmentsTask = SafeCall(
                 nameof(IBudgetRepository.GetDepartmentBreakdownAsync),
-                () => _budgetRepository.GetDepartmentBreakdownAsync(effectiveStartDate, effectiveEndDate),
-                new List<DepartmentSummary>());
+                ct => _budgetRepository.GetDepartmentBreakdownAsync(effectiveStartDate, effectiveEndDate, ct),
+                new List<DepartmentSummary>(),
+                cancellationToken);
 
             var fundsTask = SafeCall(
                 nameof(IBudgetRepository.GetFundAllocationsAsync),
-                () => _budgetRepository.GetFundAllocationsAsync(effectiveStartDate, effectiveEndDate),
-                new List<FundSummary>());
+                ct => _budgetRepository.GetFundAllocationsAsync(effectiveStartDate, effectiveEndDate, ct),
+                new List<FundSummary>(),
+                cancellationToken);
 
             Task<IEnumerable<AuditEntry>> auditTask = enterpriseId.HasValue
                 ? SafeCall(
                     nameof(IAuditRepository.GetAuditTrailForEntityAsync),
-                    () => _auditRepository.GetAuditTrailForEntityAsync("Enterprise", enterpriseId.Value, effectiveStartDate, effectiveEndDate),
-                    Enumerable.Empty<AuditEntry>())
+                    ct => _auditRepository.GetAuditTrailForEntityAsync("Enterprise", enterpriseId.Value, effectiveStartDate, effectiveEndDate, ct),
+                    Enumerable.Empty<AuditEntry>(),
+                    cancellationToken)
                 : SafeCall(
                     nameof(IAuditRepository.GetAuditTrailAsync),
-                    () => _auditRepository.GetAuditTrailAsync(effectiveStartDate, effectiveEndDate),
-                    Enumerable.Empty<AuditEntry>());
+                    ct => _auditRepository.GetAuditTrailAsync(effectiveStartDate, effectiveEndDate, ct),
+                    Enumerable.Empty<AuditEntry>(),
+                    cancellationToken);
 
             var yearEndTask = SafeCall(
                 nameof(IBudgetRepository.GetYearEndSummaryAsync),
-                () => _budgetRepository.GetYearEndSummaryAsync(effectiveEndDate.Year),
-                new BudgetVarianceAnalysis());
+                ct => _budgetRepository.GetYearEndSummaryAsync(effectiveEndDate.Year, ct),
+                new BudgetVarianceAnalysis(),
+                cancellationToken);
 
             Task<ObservableCollection<Enterprise>> enterprisesTask = enterpriseId.HasValue
                 ? SafeCall(
                     nameof(IEnterpriseRepository.GetByIdAsync),
-                    async () =>
+                    async ct =>
                     {
-                        var entity = await _enterpriseRepository.GetByIdAsync(enterpriseId.Value);
+                        var entity = await _enterpriseRepository.GetByIdAsync(enterpriseId.Value, ct);
                         return new ObservableCollection<Enterprise>(entity != null ? new[] { entity } : Array.Empty<Enterprise>());
                     },
-                    new ObservableCollection<Enterprise>())
+                    new ObservableCollection<Enterprise>(),
+                    cancellationToken)
                 : SafeCall(
                     nameof(IEnterpriseRepository.GetAllAsync),
-                    async () => new ObservableCollection<Enterprise>((await _enterpriseRepository.GetAllAsync()) ?? Array.Empty<Enterprise>()),
-                    new ObservableCollection<Enterprise>());
+                    async ct => new ObservableCollection<Enterprise>((await _enterpriseRepository.GetAllAsync(ct)) ?? Array.Empty<Enterprise>()),
+                    new ObservableCollection<Enterprise>(),
+                    cancellationToken);
 
             await Task.WhenAll(budgetSummaryTask, varianceAnalysisTask, departmentsTask, fundsTask, auditTask, yearEndTask, enterprisesTask);
 
@@ -180,6 +205,38 @@ public class GrokSupercomputer(
             reportData.AuditEntries = new ObservableCollection<AuditEntry>(await auditTask);
             reportData.YearEndSummary = await yearEndTask;
             reportData.Enterprises = await enterprisesTask;
+
+            // Defensive trimming to avoid large in-memory collections causing spikes
+            try
+            {
+                if (reportData.Enterprises != null && reportData.Enterprises.Count > MaxCollectionItems)
+                {
+                    _logger.LogWarning("Trimming Enterprises collection from {Original} to {Max} items to avoid memory spike", reportData.Enterprises.Count, MaxCollectionItems);
+                    reportData.Enterprises = new ObservableCollection<Enterprise>(reportData.Enterprises.Take(MaxCollectionItems));
+                }
+
+                if (reportData.Departments != null && reportData.Departments.Count > MaxCollectionItems)
+                {
+                    _logger.LogWarning("Trimming Departments collection from {Original} to {Max} items to avoid memory spike", reportData.Departments.Count, MaxCollectionItems);
+                    reportData.Departments = new ObservableCollection<DepartmentSummary>(reportData.Departments.Take(MaxCollectionItems));
+                }
+
+                if (reportData.Funds != null && reportData.Funds.Count > MaxCollectionItems)
+                {
+                    _logger.LogWarning("Trimming Funds collection from {Original} to {Max} items to avoid memory spike", reportData.Funds.Count, MaxCollectionItems);
+                    reportData.Funds = new ObservableCollection<FundSummary>(reportData.Funds.Take(MaxCollectionItems));
+                }
+
+                if (reportData.AuditEntries != null && reportData.AuditEntries.Count > MaxCollectionItems)
+                {
+                    _logger.LogWarning("Trimming AuditEntries collection from {Original} to {Max} items to avoid memory spike", reportData.AuditEntries.Count, MaxCollectionItems);
+                    reportData.AuditEntries = new ObservableCollection<AuditEntry>(reportData.AuditEntries.Take(MaxCollectionItems));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Trimming collections failed - continuing without trim");
+            }
 
             // Apply enterprise filter if specified
             if (enterpriseId.HasValue)
@@ -266,6 +323,12 @@ public class GrokSupercomputer(
             }
 
             return reportData;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("FetchEnterpriseDataAsync canceled for enterprise {EnterpriseId}", enterpriseId);
+            try { _aiLoggingService.LogMetric("GrokSupercomputer.FetchEnterpriseData.Canceled", 1, new Dictionary<string, object> { ["EnterpriseId"] = enterpriseId?.ToString() ?? "all" }); } catch { }
+            throw;
         }
         catch (Exception ex)
         {
@@ -418,7 +481,7 @@ public class GrokSupercomputer(
             // Enhance with AI-powered insights
             try
             {
-                var aiInsights = await GenerateBudgetInsightsWithAIAsync(budget, variancePercent);
+                var aiInsights = await GenerateBudgetInsightsWithAIAsync(budget, variancePercent, cancellationToken).ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(aiInsights))
                 {
                     // Apply JARVIS personality to AI insights
@@ -580,7 +643,7 @@ public class GrokSupercomputer(
 
             var question = $"Please analyze this municipal utility data and provide insights. Context: {context}. Data: {dataJson}";
 
-            var analysis = await _aiService.GetInsightsAsync("Municipal Data Analysis", question);
+            var analysis = await _aiService.GetInsightsAsync("Municipal Data Analysis", question, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("Municipal data analysis completed using AI");
             return analysis;
@@ -624,7 +687,7 @@ Please provide:
 
 Focus on municipal utility operations and provide actionable insights.";
 
-            var aiResponse = await _aiService.GetInsightsAsync(context, question);
+            var aiResponse = await _aiService.GetInsightsAsync(context, question, cancellationToken).ConfigureAwait(false);
             return aiResponse;
         }
         catch (Exception ex)
@@ -672,7 +735,7 @@ Please provide:
 
 Focus on municipal finance best practices and operational efficiency.";
 
-            var analysis = await _aiService.GetInsightsAsync(context, question);
+            var analysis = await _aiService.GetInsightsAsync(context, question, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Municipal account analysis completed with AI insights");
             return analysis;
         }
@@ -704,7 +767,7 @@ Focus on municipal finance best practices and operational efficiency.";
 
             var question = $"Based on this municipal utility data, please generate specific, actionable recommendations for improving efficiency, reducing costs, and optimizing operations. Data: {dataJson}";
 
-            var recommendations = await _aiService.GetInsightsAsync("Recommendation Generation", question);
+            var recommendations = await _aiService.GetInsightsAsync("Recommendation Generation", question, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation("AI-powered recommendations generated successfully");
             return recommendations;
@@ -736,28 +799,30 @@ Focus on municipal finance best practices and operational efficiency.";
         {
             _logger.LogInformation("Executing AI query with prompt length: {Length}", prompt.Length);
 
-            var response = await _aiService.SendPromptAsync(prompt);
+            var sw = Stopwatch.StartNew();
+            var response = await _aiService.SendPromptAsync(prompt, cancellationToken).ConfigureAwait(false);
+            sw.Stop();
 
             var content = response.Content;
-            
+
             // Apply JARVIS personality
             if (!string.IsNullOrEmpty(content))
             {
-                content = _jarvisPersonality.ApplyPersonality(content, new AnalysisContext 
-                { 
+                content = _jarvisPersonality.ApplyPersonality(content, new AnalysisContext
+                {
                     AnalysisType = "General Query",
-                    RequiresDirectAttention = true 
+                    RequiresDirectAttention = true
                 });
             }
 
-            _aiLoggingService.LogMetric("GrokSupercomputer.QueryAsync.ResponseTime", 0, new Dictionary<string, object>
+            _aiLoggingService.LogMetric("GrokSupercomputer.QueryAsync.ResponseTime", sw.ElapsedMilliseconds, new Dictionary<string, object>
             {
                 ["PromptLength"] = prompt.Length,
                 ["ResponseLength"] = content?.Length ?? 0,
                 ["Success"] = true
             });
 
-            _logger.LogInformation("AI query completed successfully");
+            _logger.LogInformation("AI query completed successfully in {Ms}ms", sw.ElapsedMilliseconds);
             return content;
         }
         catch (Exception ex)
@@ -773,15 +838,27 @@ Focus on municipal finance best practices and operational efficiency.";
     /// </summary>
     /// <param name="prompt">The query prompt to send to the AI service</param>
     /// <returns>An asynchronous stream of the AI response</returns>
-    public async System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt)
+    public async System.Collections.Generic.IAsyncEnumerable<string> StreamQueryAsync(string prompt, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(prompt)) yield break;
 
         var systemPrompt = _jarvisPersonality.GetSystemPrompt();
-        
-        await foreach (var chunk in _aiService.StreamResponseAsync(prompt, systemPrompt))
+
+        var sw = Stopwatch.StartNew();
+        await foreach (var chunk in _aiService.StreamResponseAsync(prompt, systemPrompt, cancellationToken))
         {
             yield return chunk;
         }
+        sw.Stop();
+
+        try
+        {
+            _aiLoggingService.LogMetric("GrokSupercomputer.StreamQueryAsync.ResponseTime", sw.ElapsedMilliseconds, new Dictionary<string, object>
+            {
+                ["PromptLength"] = prompt.Length,
+                ["Success"] = true
+            });
+        }
+        catch { }
     }
 }

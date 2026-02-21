@@ -25,6 +25,7 @@ Get-Content src\WileyWidget.WinForms\WileyWidget.WinForms.csproj | Select-String
 ```
 
 **Expected Output:**
+
 ```xml
 <TargetFramework>net10.0-windows</TargetFramework>
 ```
@@ -37,6 +38,7 @@ Get-ChildItem "$env:USERPROFILE\.nuget\packages\syncfusion.sfdatagrid.winforms\3
 ```
 
 **Expected Output:**
+
 ```
 net10.0-windows7.0
 net8.0-windows7.0
@@ -53,6 +55,7 @@ dotnet list "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" package | Sel
 ```
 
 **Expected Packages (v32.1.19):**
+
 - ✅ Syncfusion.Core.WinForms
 - ✅ Syncfusion.Shared.Base
 - ✅ Syncfusion.Tools.Windows
@@ -97,6 +100,7 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Microsoft\VisualStudio\17.0_*\Des
 ```
 
 **Check VS version folder:**
+
 ```powershell
 Get-ChildItem "$env:LOCALAPPDATA\Microsoft\VisualStudio\" -Directory | Select-Object Name
 ```
@@ -136,6 +140,7 @@ C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\l
 ```
 
 **Repeat for:**
+
 - `syncfusion.core.winforms\...\Syncfusion.Core.WinForms.dll`
 - `syncfusion.gauge.windows\...\Syncfusion.Gauge.Windows.dll`
 - `syncfusion.chart.windows\...\Syncfusion.Chart.Windows.dll`
@@ -153,6 +158,7 @@ C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\l
    - Look for errors: `TypeLoadException`, `FileNotFoundException`, etc.
 
 **If errors appear:**
+
 - Copy the exact error message
 - Check if assembly binding is correct
 - Verify the control's namespace matches the using directive
@@ -199,6 +205,7 @@ $env:SYNCFUSION_MCP_API_KEY = "your-api-key-here"
 **Cause:** TFM mismatch (e.g., .NET Framework DLL in .NET 10 project)
 
 **Fix:**
+
 ```powershell
 # Verify package targets net10.0-windows
 dotnet list package --include-transitive | Select-String "Syncfusion" | Select-String "net10.0"
@@ -225,11 +232,13 @@ dotnet list package --include-transitive | Select-String "Syncfusion" | Select-S
 **Cause:** Assembly binding redirect or version conflict
 
 **Fix 1:** Check for duplicate package versions:
+
 ```powershell
 dotnet list package --include-transitive | Select-String "Syncfusion" | Group-Object
 ```
 
 **Fix 2:** Add explicit assembly reference:
+
 ```xml
 <Reference Include="Syncfusion.SfDataGrid.WinForms">
   <HintPath>$(NuGetPackageRoot)\syncfusion.sfdatagrid.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll</HintPath>
@@ -256,13 +265,13 @@ dotnet list package --include-transitive | Select-String "Syncfusion" | Group-Ob
 
 ## 🎓 Key Differences: .NET Framework vs .NET 10
 
-| Aspect | .NET Framework 4.8 | .NET 10 (Modern .NET) |
-|--------|-------------------|----------------------|
-| **Toolbox Integration** | Via Syncfusion installer VSIXs | Via NuGet package auto-discovery |
-| **Manual DLL Add** | Browse to `C:\Program Files\Syncfusion\...` | Browse to `%USERPROFILE%\.nuget\packages\...` |
-| **Designer Support** | Full out-of-box | Requires correct TFM package |
-| **Package Naming** | `Syncfusion.Grid.Windows` (Framework-specific) | `Syncfusion.SfDataGrid.WinForms` (cross-platform) |
-| **Installer Role** | Mandatory for Toolbox | Optional (license + templates only) |
+| Aspect                  | .NET Framework 4.8                             | .NET 10 (Modern .NET)                             |
+| ----------------------- | ---------------------------------------------- | ------------------------------------------------- |
+| **Toolbox Integration** | Via Syncfusion installer VSIXs                 | Via NuGet package auto-discovery                  |
+| **Manual DLL Add**      | Browse to `C:\Program Files\Syncfusion\...`    | Browse to `%USERPROFILE%\.nuget\packages\...`     |
+| **Designer Support**    | Full out-of-box                                | Requires correct TFM package                      |
+| **Package Naming**      | `Syncfusion.Grid.Windows` (Framework-specific) | `Syncfusion.SfDataGrid.WinForms` (cross-platform) |
+| **Installer Role**      | Mandatory for Toolbox                          | Optional (license + templates only)               |
 
 ---
 
@@ -284,15 +293,18 @@ Before requesting further support, verify:
 ## 🆘 Support Resources
 
 ### Official Syncfusion Support:
+
 - **Forum:** https://www.syncfusion.com/forums/windowsforms
 - **Support Ticket:** https://support.syncfusion.com/support/tickets/create
 - **Documentation:** https://help.syncfusion.com/windowsforms/overview
 
 ### MCP Server Help:
+
 - **Query via Copilot:** `@syncfusion-winforms [your question]`
 - **NPM Package:** https://www.npmjs.com/package/@syncfusion/winforms-assistant
 
 ### Repository-Specific:
+
 - Check `.vscode/copilot-instructions.md` for project-specific rules
 - Review `docs/SYNCFUSION_CHAT_PROFESSIONAL_GUIDE.md` for component usage
 

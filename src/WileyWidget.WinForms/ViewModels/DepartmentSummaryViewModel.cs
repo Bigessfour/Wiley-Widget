@@ -106,12 +106,14 @@ public partial class DepartmentSummaryViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Parameterless constructor for design-time/fallback scenarios.
-    /// Uses NullLogger and throws on data operations.
+    /// Uses NullLogger and throws on data operations. Only available in DEBUG builds.
     /// </summary>
+#if DEBUG
     public DepartmentSummaryViewModel()
         : this(new FallbackDepartmentRepository(), NullLogger<DepartmentSummaryViewModel>.Instance)
     {
     }
+#endif
 
     /// <summary>
     /// Loads department summary data asynchronously with proper cancellation support.
@@ -264,15 +266,10 @@ internal class FallbackDepartmentRepository : IDepartmentRepository
 {
     public Task<IEnumerable<Department>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        // Return sample data for design-time preview
-        var sampleDepartments = new List<Department>
-        {
-            new Department { Id = 1, Name = "Sales", DepartmentCode = "SALES" },
-            new Department { Id = 2, Name = "Marketing", DepartmentCode = "MKTG" },
-            new Department { Id = 3, Name = "IT", DepartmentCode = "IT" }
-        };
-
-        return Task.FromResult<IEnumerable<Department>>(sampleDepartments);
+        _ = cancellationToken;
+        // Return empty collection so production repositories provide authoritative data.
+        _ = NullLogger<DepartmentSummaryViewModel>.Instance; // ensure logger dependency available for diagnostics
+        return Task.FromResult<IEnumerable<Department>>(Array.Empty<Department>());
     }
 
     public Task<Department?> GetByIdAsync(int id, CancellationToken cancellationToken = default)

@@ -142,6 +142,7 @@ public class EnterpriseRepository : IEnterpriseRepository
         await using var context = await _contextFactory.CreateDbContextAsync();
         return await context.Enterprises
             .AsNoTracking()
+            .OrderByDescending(e => e.Id)
             .FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted);
     }
 
@@ -307,6 +308,8 @@ public class EnterpriseRepository : IEnterpriseRepository
         return await context.Enterprises
             .AsNoTracking()
             .Where(e => !e.IsDeleted && e.Name != null && e.Name.ToLower(CultureInfo.InvariantCulture) == lowerName)
+            .OrderByDescending(e => e.ModifiedDate ?? e.CreatedDate)
+            .ThenByDescending(e => e.Id)
             .FirstOrDefaultAsync();
     }
 

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.ListView;
 using System;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ namespace WileyWidget.WinForms.Dialogs
     /// Custom validation dialog for displaying validation errors in a scrollable list.
     /// Replaces MessageBox.Show() for better UX with multiple validation messages.
     /// </summary>
-    public sealed class ValidationDialog : Form
+    public sealed class ValidationDialog : SfForm
     {
         private System.Windows.Forms.Timer? _copyTimer;
         private readonly ILogger<ValidationDialog>? _logger;
@@ -65,6 +66,9 @@ namespace WileyWidget.WinForms.Dialogs
             ShowIcon = false;
             ShowInTaskbar = false;
             AutoScaleMode = AutoScaleMode.Dpi;
+
+            this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
+            this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
 
             // Main layout panel
             var mainPanel = new TableLayoutPanel
@@ -165,7 +169,7 @@ namespace WileyWidget.WinForms.Dialogs
             AcceptButton = _okButton;
 
             // Apply theme (cascades to all children)
-            ThemeColors.ApplyTheme(this);
+            WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
         }
 
         private void CopyButton_Click(object? sender, EventArgs e)

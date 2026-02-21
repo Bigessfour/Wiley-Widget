@@ -18,6 +18,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using System.ComponentModel;
+using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Business.Services;
 
@@ -68,6 +69,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
     private readonly object _cacheIndexLock = new object();
 
     public GrokRecommendationService(
+        IGrokApiKeyProvider apiKeyProvider,
         ILogger<GrokRecommendationService> logger,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
@@ -82,12 +84,20 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         // Apply configured cache duration if provided via options
         _cacheDuration = options?.Value.CacheDuration ?? TimeSpan.FromHours(2);
 
-        // Load xAI configuration
-        _apiKey = _configuration["XAI:ApiKey"];
+        // Load xAI configuration - use centralized IGrokApiKeyProvider for consistent env var handling
+        // This ensures XAI__ApiKey (double underscore) is properly resolved from environment
+        _apiKey = apiKeyProvider.ApiKey;
         _apiEndpoint = NormalizeChatCompletionsEndpoint(_configuration["XAI:Endpoint"]);
         _model = _configuration["XAI:Model"] ?? "grok-4.1";
         _useGrokApi = !string.IsNullOrWhiteSpace(_apiKey) &&
-                      _configuration.GetValue<bool>("XAI:Enabled", false);
+                      _configuration.GetValue<bool>("XAI:Enabled", true);
+
+        // Log API key source for diagnostics
+        _logger.LogInformation(
+            "[GrokRecommendation] Using API key from {Source} (Enabled: {UseGrokApi}, Validated: {IsValidated})",
+            apiKeyProvider.GetConfigurationSource(),
+            _useGrokApi,
+            apiKeyProvider.IsValidated);
 
         // Initialize Semantic Kernel if API is enabled
         if (_useGrokApi && !string.IsNullOrWhiteSpace(_apiKey))

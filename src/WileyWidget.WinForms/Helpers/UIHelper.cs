@@ -3,7 +3,9 @@ using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 
 namespace WileyWidget.WinForms.Helpers
 {
@@ -42,28 +44,22 @@ namespace WileyWidget.WinForms.Helpers
             }
 
             if (control == null)
-                 // If control is null, fallback to non-owned MessageBox
-                 return MessageBox.Show(message, title, buttons, icon);
+                // If control is null, fallback to non-owned MessageBox
+                return MessageBox.Show(message, title, buttons, icon);
 
             if (control.IsDisposed || !control.IsHandleCreated)
                 return DialogResult.None;
 
-            if (control.InvokeRequired)
+            try
             {
-                try
-                {
-                    return (DialogResult)control.Invoke(new Func<DialogResult>(() =>
-                        MessageBox.Show(control, message, title, buttons, icon)));
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogError(ex, "Failed to show message box on UI thread.");
-                    return DialogResult.None;
-                }
+                return control.ExecuteOnUIThread(
+                    () => MessageBox.Show(control, message, title, buttons, icon),
+                    logger);
             }
-            else
+            catch (Exception ex)
             {
-                return MessageBox.Show(control, message, title, buttons, icon);
+                logger?.LogError(ex, "Failed to show message box on UI thread.");
+                return DialogResult.None;
             }
         }
 
@@ -72,7 +68,7 @@ namespace WileyWidget.WinForms.Helpers
         /// </summary>
         public static void ShowErrorOnUI(Control control, string message, string title = "Error", ILogger? logger = null)
         {
-             ShowMessageOnUI(control, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error, logger);
+            ShowMessageOnUI(control, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error, logger);
         }
 
         /// <summary>
@@ -81,14 +77,7 @@ namespace WileyWidget.WinForms.Helpers
         public static void UpdateStatus(StatusBarAdvPanel panel, string message, Image? icon = null)
         {
             if (panel == null || panel.IsDisposed) return;
-
-             if (panel.InvokeRequired)
-             {
-                 panel.Invoke(new System.Action(() => UpdateStatus(panel, message, icon)));
-                 return;
-             }
-
-             panel.Text = message;
+            panel.InvokeIfRequired(() => panel.Text = message);
         }
 
         /// <summary>
@@ -97,15 +86,8 @@ namespace WileyWidget.WinForms.Helpers
         /// </summary>
         public static void ApplyTheme(Form form, string themeName)
         {
-             if (form == null || form.IsDisposed) return;
-
-             if (form.InvokeRequired)
-             {
-                 form.Invoke(new System.Action(() => ApplyTheme(form, themeName)));
-                 return;
-             }
-
-             ThemeColors.ApplyTheme(form, themeName);
+            if (form == null || form.IsDisposed) return;
+            form.InvokeIfRequired(() => ThemeColors.ApplyTheme(form, themeName));
         }
 
         /// <summary>
@@ -159,13 +141,28 @@ namespace WileyWidget.WinForms.Helpers
                 }
                 else if (isFallback && control is not Label)
                 {
-                    // For non-label controls, apply background color instead
-                    control.BackColor = Color.FromArgb(240, 240, 240);  // Light gray background
+                    // Removed manual BackColor to respect SfSkinManager theme cascade.
+                    // Apply Syncfusion theme to the control as a best-effort alternative for dynamically-created controls.
+                    try
+                    {
+                        control.ApplySyncfusionTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+                    }
+                    catch
+                    {
+                        // Best-effort: do not throw if theming fails
+                    }
                 }
                 else
                 {
-                    // Restore default styling
-                    control.BackColor = SystemColors.Control;
+                    // Restore theme-driven styling
+                    try
+                    {
+                        control.ApplySyncfusionTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+                    }
+                    catch
+                    {
+                        // Best-effort: do not throw if theming fails
+                    }
                 }
             }
             catch (Exception ex)

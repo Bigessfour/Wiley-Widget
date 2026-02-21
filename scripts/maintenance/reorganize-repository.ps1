@@ -89,7 +89,6 @@ try {
 
     $filesToRemove = @(
         "%APPDATA%",
-        ".continue",
         ".mcp",
         "node_modules",
         ".mypy_cache",
@@ -124,7 +123,6 @@ try {
 # ==============================================================================
 
 # IDE-specific configurations (user-specific)
-.continue/
 .mcp/
 
 # VS Code (keep shareable configs, ignore user-specific)

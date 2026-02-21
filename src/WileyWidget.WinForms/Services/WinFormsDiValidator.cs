@@ -8,6 +8,8 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Services;
 using WileyWidget.ViewModels;
 
@@ -338,7 +340,21 @@ namespace WileyWidget.WinForms.Services
 
             foreach (var panelType in scopedPanelTypes)
             {
-                var viewModelType = panelType.BaseType.GetGenericArguments()[0];
+                var genericArgs = panelType.BaseType?.GetGenericArguments();
+                if (genericArgs == null || genericArgs.Length == 0)
+                {
+                    result.Errors.Add($"✗ {panelType.Name} BaseType is not generic or has no arguments");
+                    continue;
+                }
+                var viewModelType = genericArgs[0];
+
+                // Skip abstract ViewModel types (e.g. ObservableObject used as a no-ViewModel placeholder)
+                if (viewModelType.IsAbstract)
+                {
+                    result.SuccessMessages.Add($"✓ {panelType.Name} ViewModel {viewModelType.Name} is abstract (no DI registration required)");
+                    continue;
+                }
+
                 try
                 {
                     // Check if ViewModel can be resolved from scoped provider

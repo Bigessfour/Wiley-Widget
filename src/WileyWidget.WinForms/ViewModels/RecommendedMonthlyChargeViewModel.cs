@@ -17,7 +17,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// </summary>
 public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposable
 {
-    private readonly ILogger<RecommendedMonthlyChargeViewModel> _logger;
+
     private readonly IDepartmentExpenseService? _departmentExpenseService;
     private readonly IGrokRecommendationService? _grokRecommendationService;
     protected IDbContextFactory<AppDbContext>? _dbContextFactory;
@@ -114,7 +114,6 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         IGrokRecommendationService? grokRecommendationService = null)
         : base(logger)
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _departmentExpenseService = departmentExpenseService;
         _grokRecommendationService = grokRecommendationService;
 
@@ -126,7 +125,7 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         // Initialize with sample data for design-time
         if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime)
         {
-            InitializeSampleData();
+            InitializeEmptyData();
         }
 
         _logger.LogDebug("RecommendedMonthlyChargeViewModel initialized");
@@ -163,8 +162,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             }
             else
             {
-                _logger.LogWarning("IDepartmentExpenseService not available - loading sample data");
-                LoadSampleDepartmentData();
+                _logger.LogWarning("IDepartmentExpenseService not available - loading empty department state");
+                ClearDepartmentData();
             }
 
             LoadBenchmarkData();
@@ -188,9 +187,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             ErrorMessage = $"Failed to refresh data: {ex.Message}";
             StatusText = "Error loading data";
 
-            // Fallback to sample data on error
-            _logger.LogWarning("Falling back to sample data due to error");
-            LoadSampleDepartmentData();
+            _logger.LogWarning("Applying empty department state due to data refresh error");
+            ClearDepartmentData();
             LoadBenchmarkData();
             CalculateTotals();
         }
@@ -224,6 +222,8 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             foreach (var dept in Departments)
             {
                 var existing = await context.DepartmentCurrentCharges
+                    .OrderByDescending(d => d.LastUpdated)
+                    .ThenByDescending(d => d.Id)
                     .FirstOrDefaultAsync(d => d.Department == dept.Department)
                     .ConfigureAwait(false);
 
@@ -491,84 +491,19 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading real department data - falling back to sample data");
-            LoadSampleDepartmentData();
+            _logger.LogError(ex, "Error loading real department data - using empty department state");
+            ClearDepartmentData();
         }
     }
 
-    /// <summary>
-    /// Loads sample department expense data (fallback when service unavailable)
-    /// </summary>
-    private void LoadSampleDepartmentData()
+    private void ClearDepartmentData()
     {
+        _logger.LogInformation("ClearDepartmentData called: clearing department collections.");
         Departments.Clear();
+        Benchmarks.Clear();
 
-        // Sample data - realistic values for design/testing
-        var departments = new[]
-        {
-            new DepartmentRateModel
-            {
-                Department = "Water",
-                MonthlyExpenses = 168000m,
-                CurrentCharge = 55.00m,
-                CustomerCount = 3200,
-                StateAverage = 55.00m,
-                AiAdjustmentFactor = 1.1m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Sewer",
-                MonthlyExpenses = 276000m,
-                CurrentCharge = 75.00m,
-                CustomerCount = 3200,
-                StateAverage = 75.00m,
-                AiAdjustmentFactor = 1.12m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Trash",
-                MonthlyExpenses = 78400m,
-                CurrentCharge = 30.00m,
-                CustomerCount = 2800,
-                StateAverage = 32.00m,
-                AiAdjustmentFactor = 1.08m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Apartments",
-                MonthlyExpenses = 38640m,
-                CurrentCharge = 120.00m,
-                CustomerCount = 280,
-                StateAverage = 135.00m,
-                AiAdjustmentFactor = 1.15m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Electric",
-                MonthlyExpenses = 195000m,
-                CurrentCharge = 85.00m,
-                CustomerCount = 2500,
-                StateAverage = 90.00m,
-                AiAdjustmentFactor = 1.1m
-            },
-            new DepartmentRateModel
-            {
-                Department = "Gas",
-                MonthlyExpenses = 92400m,
-                CurrentCharge = 45.00m,
-                CustomerCount = 2200,
-                StateAverage = 48.00m,
-                AiAdjustmentFactor = 1.1m
-            }
-        };
-
-        foreach (var dept in departments)
-        {
-            dept.UpdateSuggested(dept.AiAdjustmentFactor);
-            Departments.Add(dept);
-        }
-
-        _logger.LogDebug("Loaded {Count} sample departments", Departments.Count);
+        StatusText = "No department data available yet";
+        LastUpdated = DateTime.Now;
     }
 
     /// <summary>
@@ -661,17 +596,14 @@ public partial class RecommendedMonthlyChargeViewModel : ViewModelBase, IDisposa
             TotalCurrentRevenue, TotalMonthlyExpenses, OverallStatus);
     }
 
-    /// <summary>
-    /// Initializes sample data for design-time preview
-    /// </summary>
-    private void InitializeSampleData()
+    private void InitializeEmptyData()
     {
-        LoadSampleDepartmentData();
-        LoadBenchmarkData();
+        _logger.LogInformation("InitializeEmptyData called: initializing empty department collections.");
+        Departments.Clear();
+        Benchmarks.Clear();
         CalculateTotals();
-
+        StatusText = "No production data loaded";
         LastUpdated = DateTime.Now;
-        StatusText = "Design Mode - Sample Data";
     }
 
     public void Dispose()

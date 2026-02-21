@@ -12,6 +12,12 @@ namespace WileyWidget.WinForms.ViewModels;
 public abstract class ViewModelBase : ObservableObject
 {
     /// <summary>
+    /// Backing logger field used by existing code that references `_logger`.
+    /// This aliases the strongly-typed `Logger` property for backwards compatibility.
+    /// </summary>
+    protected readonly ILogger _logger;
+
+    /// <summary>
     /// Logger with guaranteed non-null instance (uses NullLogger fallback if DI fails)
     /// </summary>
     protected ILogger Logger { get; }
@@ -23,12 +29,22 @@ public abstract class ViewModelBase : ObservableObject
     protected ViewModelBase(ILogger? logger)
     {
         Logger = logger ?? CreateNullLogger();
+        _logger = Logger;
 
         // Warn if fallback was used (indicates DI misconfiguration)
         if (logger == null)
         {
             ConsoleOutputHelper.WriteLineSafe($"[WARNING] {GetType().Name}: ILogger is null - using NullLogger fallback");
         }
+    }
+
+    /// <summary>
+    /// Parameterless constructor for compatibility with derived ViewModels that do not provide logger via base call.
+    /// This delegates to the main constructor and uses the null-logger fallback.
+    /// </summary>
+    protected ViewModelBase()
+        : this(null)
+    {
     }
 
     /// <summary>

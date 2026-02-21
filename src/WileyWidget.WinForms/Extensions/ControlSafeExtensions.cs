@@ -5,6 +5,7 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
 using Serilog;
+using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Extensions
 {
@@ -47,7 +48,7 @@ namespace WileyWidget.WinForms.Extensions
 
             if (grid.InvokeRequired)
             {
-                grid.Invoke(new Action(() => SafeDispose(grid)));
+                grid.InvokeIfRequired(() => SafeDispose(grid));
                 return;
             }
 
@@ -73,7 +74,7 @@ namespace WileyWidget.WinForms.Extensions
 
             if (combo.InvokeRequired)
             {
-                combo.Invoke(new Action(() => SafeDispose(combo)));
+                combo.InvokeIfRequired(() => SafeDispose(combo));
                 return;
             }
 
@@ -98,7 +99,7 @@ namespace WileyWidget.WinForms.Extensions
 
             if (list.InvokeRequired)
             {
-                list.Invoke(new Action(() => SafeDispose(list)));
+                list.InvokeIfRequired(() => SafeDispose(list));
                 return;
             }
 
@@ -128,7 +129,7 @@ namespace WileyWidget.WinForms.Extensions
 
             if (control.InvokeRequired)
             {
-                control.Invoke(new Action(() => SafeDispose(control)));
+                control.InvokeIfRequired(() => SafeDispose(control));
                 return;
             }
 

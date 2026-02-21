@@ -126,4 +126,13 @@ public interface IBudgetRepository
     /// Returns the number of budget rows updated.
     /// </summary>
     Task<int> BulkUpdateActualsAsync(IDictionary<string, decimal> actualsByAccountNumber, int fiscalYear, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets historical budget summary for trend analysis (total budgets by fiscal year).
+    /// </summary>
+    /// <param name="yearsBack">Number of years to look back (e.g., 3 for last 3 years)</param>
+    /// <param name="currentFiscalYear">Current fiscal year as reference point</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of historical budget years with totals and year-over-year changes</returns>
+    Task<List<HistoricalBudgetYear>> GetHistoricalBudgetSummaryAsync(int yearsBack, int currentFiscalYear, CancellationToken cancellationToken = default);
 }

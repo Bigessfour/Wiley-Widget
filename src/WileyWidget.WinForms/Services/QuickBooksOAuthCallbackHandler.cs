@@ -15,7 +15,7 @@ namespace WileyWidget.WinForms.Services;
 
 /// <summary>
 /// HTTP listener for QuickBooks OAuth 2.0 callback.
-/// Listens on http://localhost:5000/callback for authorization code from Intuit.
+/// Listens on the configured RedirectUri (from appsettings.json) for authorization code from Intuit.
 /// Exchanges the code for access tokens and stores them.
 /// Per Intuit docs: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0
 /// </summary>
@@ -28,13 +28,15 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
     private Task? _listenerTask;
     private volatile bool _isListening;
+    private readonly List<Task> _activeHandlers = new();
+    private readonly object _activeHandlersLock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="QuickBooksOAuthCallbackHandler"/> class.
     /// </summary>
     /// <param name="logger">Logger instance</param>
     /// <param name="serviceProvider">Service provider for resolving dependencies</param>
-    /// <param name="listenUrl">URL to listen on (default: http://localhost:5000/)</param>
+    /// <param name="listenUrl">URL to listen on (must match RedirectUri from appsettings.json)</param>
     public QuickBooksOAuthCallbackHandler(
         ILogger<QuickBooksOAuthCallbackHandler> logger,
         IServiceProvider serviceProvider,
@@ -42,7 +44,13 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _listenUrl = listenUrl ?? "http://localhost:5000/";
+
+        if (string.IsNullOrWhiteSpace(listenUrl))
+        {
+            throw new ArgumentException("listenUrl must be provided from configuration (Services:QuickBooks:OAuth:RedirectUri)", nameof(listenUrl));
+        }
+
+        _listenUrl = listenUrl;
 
         if (!_listenUrl.EndsWith("/"))
         {
@@ -108,6 +116,24 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
                 await _listenerTask.ConfigureAwait(false);
             }
 
+            // Wait briefly for any active handlers to complete before stopping the listener.
+            Task[] handlersCopy;
+            lock (_activeHandlersLock)
+            {
+                handlersCopy = _activeHandlers.ToArray();
+            }
+
+            if (handlersCopy.Length > 0)
+            {
+                _logger.LogInformation("Waiting for {Count} active OAuth handler(s) to complete...", handlersCopy.Length);
+                var allHandlers = Task.WhenAll(handlersCopy);
+                var completed = await Task.WhenAny(allHandlers, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
+                if (completed != allHandlers)
+                {
+                    _logger.LogWarning("Timeout waiting for active OAuth handlers to complete; proceeding to stop listener.");
+                }
+            }
+
             _httpListener?.Stop();
             _logger.LogInformation("OAuth callback handler stopped");
         }
@@ -138,7 +164,21 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
                 if (completedTask == contextTask && contextTask.IsCompleted)
                 {
                     var context = await contextTask.ConfigureAwait(false);
-                    _ = HandleCallbackAsync(context, cancellationToken);
+
+                    // Track active handler tasks so StopListeningAsync can wait for them
+                    var handlerTask = HandleCallbackAsync(context, cancellationToken);
+                    lock (_activeHandlersLock)
+                    {
+                        _activeHandlers.Add(handlerTask);
+                    }
+
+                    _ = handlerTask.ContinueWith(t =>
+                    {
+                        lock (_activeHandlersLock)
+                        {
+                            _activeHandlers.Remove(t);
+                        }
+                    }, TaskScheduler.Default);
                 }
             }
             catch (ObjectDisposedException)
@@ -296,7 +336,22 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
         var buffer = Encoding.UTF8.GetBytes(html);
         response.ContentLength64 = buffer.Length;
 
-        await response.OutputStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Response write canceled while sending success response (likely shutdown).");
+        }
+        catch (IOException ioEx)
+        {
+            _logger.LogDebug(ioEx, "IOException when writing success response (likely connection aborted by client).");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected error writing success response to browser.");
+        }
     }
 
     /// <summary>
@@ -347,7 +402,22 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
         var buffer = Encoding.UTF8.GetBytes(html);
         response.ContentLength64 = buffer.Length;
 
-        await response.OutputStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await response.OutputStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Response write canceled while sending error response (likely shutdown).");
+        }
+        catch (IOException ioEx)
+        {
+            _logger.LogDebug(ioEx, "IOException when writing error response (likely connection aborted by client).");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Unexpected error writing error response to browser.");
+        }
     }
 
     /// <summary>

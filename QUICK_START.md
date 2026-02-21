@@ -23,6 +23,7 @@ Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Microsoft\VisualStudio\17.0_*\Com
 ## 🎯 Quick Tests
 
 ### Test 1: MCP Server Working?
+
 ```
 Open Copilot Chat → Ask → Agent → SyncfusionWinFormsAssistant
 Ask: "What packages do I need for SfDataGrid in .NET 10?"
@@ -30,12 +31,14 @@ Ask: "What packages do I need for SfDataGrid in .NET 10?"
 ```
 
 ### Test 2: Toolbox Working?
+
 ```
 View → Toolbox → Search: "SfDataGrid"
 ✅ Should see Syncfusion controls
 ```
 
 ### Test 3: Designer Working?
+
 ```
 Right-click WarRoomPanel.cs → View Designer
 ✅ Should load without errors
@@ -46,18 +49,21 @@ Right-click WarRoomPanel.cs → View Designer
 ## 🩺 Quick Fixes
 
 ### Controls Missing from Toolbox?
+
 ```powershell
 # Manual add: Toolbox → Choose Items → .NET Components → Browse to:
 C:\Users\[You]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll
 ```
 
 ### MCP Server Not Found?
+
 ```powershell
 # Regenerate config
 .\scripts\generate-vs-mcp-config.ps1
 ```
 
 ### Build Errors?
+
 ```powershell
 dotnet clean
 dotnet restore --force

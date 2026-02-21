@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace WileyWidget.WinForms.Exporters
 {
     /// <summary>
-    /// Stub exporter service for data export functionality.
+    /// Contract for exporting data to common business formats.
     /// </summary>
     public interface IDataExporter
     {

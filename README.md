@@ -299,7 +299,7 @@ All Views and ViewModels follow consistent namespace patterns:
 
 The application will:
 
-- Initialize the local SQL Server Express database (WileyWidgetDev)
+- Initialize the local SQL Server Express database (WileyWidget)
 - Load default Office2019Colorful theme via SfSkinManager
 - Display the main dashboard with budget management interface
 
@@ -2285,19 +2285,19 @@ WileyWidget implements a **comprehensive multi-layer testing strategy**:
 
 **Test Files by Category:**
 
-| Category          | Files                                                          | Target Coverage |
-| ----------------- | -------------------------------------------------------------- | --------------- |
-| **Forms**         | `DockingTests.cs`, `MainFormTests.cs`, `RibbonFactoryTests.cs` | 85%             |
-| **ViewModels**    | `MainViewModelTests.cs`, `DashboardViewModelTests.cs`          | 80%             |
-| **Services**      | `ThemeServiceTests.cs`, `ChatBridgeServiceTests.cs`            | 80%             |
-| **UI Components** | `GradientPanelExtTests.cs`, `ScopedPanelBaseTests.cs`          | 75%             |
-| **Docking**       | `DockingTests.cs` (NEW: Paint bug regression tests)            | 85%             |
+| Category          | Files                                                           | Target Coverage |
+| ----------------- | --------------------------------------------------------------- | --------------- |
+| **Forms**         | `DockingTests.cs`, `MainFormTests.cs`, `MainFormRibbonTests.cs` | 85%             |
+| **ViewModels**    | `MainViewModelTests.cs`, `DashboardViewModelTests.cs`           | 80%             |
+| **Services**      | `ThemeServiceTests.cs`, `ChatBridgeServiceTests.cs`             | 80%             |
+| **UI Components** | `GradientPanelExtTests.cs`, `ScopedPanelBaseTests.cs`           | 75%             |
+| **Docking**       | `DockingTests.cs` (NEW: Paint bug regression tests)             | 85%             |
 
 **UI Testing Focus (NEW on Polish Branch):**
 
 - ✅ `DockingManager_MaintainsNonEmptyChildCollection_PreventsPaintException()` - Paint race condition
 - ✅ `DockingInitializer_CreatesControlsBeforeSuspendingLayout_AvoidsPaintRaceCondition()` - Layout initialization
-- ✅ `RibbonFactory_EnsuresNonEmptyHeaderItems_PreventsPaintException()` - Ribbon paint safety
+- ✅ `Ribbon_EnsuresNonEmptyHeaderItems_PreventsPaintException()` - Ribbon paint safety
 - ✅ `DockingManager_HandlesVisibilityToggle_MaintainsNonEmptyState()` - State preservation
 
 #### **Integration Tests** (`WileyWidget.WinForms.Tests/Integration/`)

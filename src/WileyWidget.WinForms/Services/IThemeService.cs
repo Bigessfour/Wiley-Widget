@@ -19,6 +19,11 @@ public interface IThemeService
     string CurrentTheme { get; }
 
     /// <summary>
+    /// Gets a value indicating whether the current theme is a dark theme.
+    /// </summary>
+    bool IsDark { get; }
+
+    /// <summary>
     /// Applies the specified theme globally and notifies subscribers.
     /// This also persists the theme choice to application settings.
     /// </summary>

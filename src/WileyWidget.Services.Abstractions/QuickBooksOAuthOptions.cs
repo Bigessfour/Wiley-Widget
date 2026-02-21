@@ -26,7 +26,13 @@ public sealed class QuickBooksOAuthOptions
     /// Typically http://localhost:5000/callback for development.
     /// Must match the registered URI at developer.intuit.com.
     /// </summary>
-    public string? RedirectUri { get; set; }
+    public string? RedirectUri { get; set; } = "http://localhost:5000/callback";
+
+    /// <summary>
+    /// QuickBooks Company ID (Realm ID).
+    /// Loaded from user secrets or environment variable QUICKBOOKS_REALM_ID.
+    /// </summary>
+    public string? RealmId { get; set; }
 
     /// <summary>
     /// OAuth environment: "sandbox" or "production".

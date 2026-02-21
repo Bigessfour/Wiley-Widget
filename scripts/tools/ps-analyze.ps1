@@ -1,4 +1,4 @@
-#Requires -Version 7.5
+#Requires -Version 7.5.4
 [CmdletBinding()]
 param(
     [Parameter()][string]$Path = (Join-Path $PSScriptRoot '..'),
