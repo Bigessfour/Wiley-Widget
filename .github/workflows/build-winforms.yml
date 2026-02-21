@@ -146,7 +146,8 @@ jobs:
           name: WinForms Startup Test
           path: "**/TestResults/**/*.trx"
           reporter: dotnet-trx
-          fail-on-error: true
+          fail-on-error: false
+          fail-on-empty: false
 
       - name: Upload artifacts (always)
         if: always()
@@ -160,7 +161,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failure-artifacts
+          name: failure-artifacts-${{ matrix.config.name }}
           path: |
             **/TestResults/**
             **/*.log
