@@ -350,8 +350,10 @@ publish/win-x64/
 %USERPROFILE%/.nuget/packages/
 %USERPROFILE%\357\201\234.nuget\357\201\234packages/
 
-# Prevent ThemeService reintroduction - theme managed globally by SfSkinManager
+# Theme service implementation required by WinForms DI registration
+# Keep only the concrete WinForms service tracked; ignore any stray ThemeService copies elsewhere.
 **/ThemeService.cs
+!src/WileyWidget.WinForms/Services/ThemeService.cs
 
 # ==============================================================================
 # SYNCFUSION & PRISM REMOVAL - Never allow these back (2025-11-21)
