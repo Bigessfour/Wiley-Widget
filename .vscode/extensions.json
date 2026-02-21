@@ -2,10 +2,39 @@
   "recommendations": [
     "ms-dotnettools.csdevkit",
     "ms-dotnettools.csharp",
-    "ms-vscode.powershell",
+    "ms-dotnettools.vscode-dotnet-runtime",
+
+    // === Testing & Quality ===
+    "hbenl.vscode-test-explorer",
+    "formulahendry.dotnet-test-explorer",
+    "ryanluker.vscode-coverage-gutters",
+    "usernamehw.errorlens",
+
+    "redhat.vscode-xml",
+    "dotjoshjohnson.xml",
+
+    // === Python Support ===
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "ms-python.debugpy",
+    "charliermarsh.ruff",
+
+    // === Database & SQL ===
+    "ms-mssql.sql",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-mssql",
+
+    // === PowerShell & Scripting ===
+    "ms-vscode.PowerShell",
+
+    // === Git & Version Control ===
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "donjayamanne.githistory",
+
+    // === AI & Productivity ===
     "github.copilot",
     "github.copilot-chat",
-    "eamodio.gitlens",
     "sonarsource.sonarlint-vscode",
     "streetsidesoftware.code-spell-checker"
   ],

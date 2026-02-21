@@ -25,7 +25,7 @@
   // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
-  "terminal.integrated.hideAgentShellProcesses": false,
+  "terminal.integrated.hideAgentShellProcesses": true,
   "task.autoClose": true,
   "chat.tools.terminal.outputLocation": "terminal",
 
@@ -282,14 +282,7 @@
   "powershell.codeFormatting.autoCorrectAliases": true,
   "powershell.integratedConsole.showOnStartup": false,
 
-  // ============================================================================
-  // SonarLint Configuration
-  // ============================================================================
-  "sonarlint.rules": {
-    "cs:S1135": {
-      "level": "on"
-    }
-  },
+  // SonarLint removed from workspace per request
 
   // ============================================================================
   // TODO Highlighting
@@ -371,6 +364,18 @@
   // Terminal Configuration
   // ============================================================================
   // Default terminals to PowerShell 7.5.4 (`pwsh`) to match the PowerShell VS Code extension.
+  "terminal.integrated.defaultProfile.osx": "PowerShell",
+  "terminal.integrated.profiles.osx": {
+    "PowerShell": {
+      "path": "pwsh",
+      "args": [],
+      "icon": "terminal-powershell"
+    },
+    "zsh": {
+      "path": "zsh",
+      "args": []
+    }
+  },
   "terminal.integrated.defaultProfile.windows": "PowerShell 7.5.4",
   "terminal.integrated.automationProfile.windows": "PowerShell 7.5.4",
   "terminal.integrated.profiles.windows": {

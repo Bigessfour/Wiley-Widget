@@ -61,7 +61,8 @@
     <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
     <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-    <!-- NOTE: Intentionally pinned to 14.7.0.3 due to compatibility/regression issues observed with 15.0.0 in this application.
+    <!-- NOTE: Intentionally pinned to 14.7.0.3 due to compatibility/regression issues observed with 15.0.0 in this
+    application.
          Revisit upgrading to 15.x once the issues are resolved and full compatibility is verified. -->
     <PackageVersion Include="IppDotNetSdkForQuickBooksApiV3" Version="14.7.0.3" />
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.23.0" />
@@ -74,7 +75,7 @@
     <PackageVersion Include="ExcelDataReader" Version="3.8.0" />
     <PackageVersion Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <!-- PdfSharpCore removed - replaced with Syncfusion.Pdf for consistency -->
-        <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.102" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.102" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" />
     <PackageVersion Include="System.Management" Version="10.0.2" />
     <!-- ==================== SEMANTIC KERNEL 1.70.0 (Released ~Jan 23, 2026) ==================== -->

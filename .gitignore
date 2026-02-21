@@ -43,8 +43,7 @@ CoverageReport/
 TestResults/
 *.trx
 
-# Tool state and caches
-.sonarqube/
+
 .fleet/
 __pycache__/
 **/__pycache__/
