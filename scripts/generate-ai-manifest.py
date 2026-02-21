@@ -429,6 +429,15 @@ class AIManifestGenerator:
         for file_path in sorted(self.repo_root.rglob("*")):
             if not file_path.is_file():
                 continue
+
+            rel_path = self._norm(file_path)
+            if (
+                ".git" in rel_path
+                or "WebView2Runtime" in rel_path
+                or rel_path.endswith(".secret")
+            ):
+                continue
+
             if not self._should_include_file(file_path):
                 continue
             if self.max_files and len(files) >= self.max_files:
@@ -445,7 +454,7 @@ class AIManifestGenerator:
                 size_kb = round(size / 1024, 1)
                 last_modified = datetime.fromtimestamp(stat.st_mtime).isoformat()
                 relative_path = file_path.relative_to(self.repo_root)
-                rel_str = self._norm(file_path)
+                rel_str = rel_path
                 sha256 = self._calculate_sha256(file_path)
                 language = self._detect_language(file_path)
                 priority = self._calculate_priority(rel_str)

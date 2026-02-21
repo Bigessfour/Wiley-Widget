@@ -1,6 +1,6 @@
 # WileyWidget — AI Briefing
 
-> Generated: 2026-02-18 21:39 | Branch: `fix/validation/panels-warroom-customers-20260210` | Commit: `d2184250bd`
+> Generated: 2026-02-21 12:04 | Branch: `fix/validation/panels-warroom-customers-20260210` | Commit: `072fa868b5`
 
 ## Project Purpose
 
@@ -25,14 +25,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Critical Files (read these first)
 
-- `.git/logs/refs/heads/fix/remove-stray-mainform-pr-37` — MainForm — priority 100
-- `.git/logs/refs/remotes/origin/copilot/validate-mainform-cs` — MainForm — priority 100
-- `.git/logs/refs/remotes/origin/fix/remove-stray-mainform-pr-37` — MainForm — priority 100
-- `.git/refs/heads/fix/remove-stray-mainform-pr-37` — MainForm — priority 100
-- `.git/refs/remotes/origin/copilot/validate-mainform-cs` — MainForm — priority 100
-- `.git/refs/remotes/origin/fix/remove-stray-mainform-pr-37` — MainForm — priority 100
 - `src/WileyWidget.WinForms/Controls/Base/ICompletablePanel.cs` — Panel — priority 100
-- `src/WileyWidget.WinForms/Controls/Base/LegacyGradientPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Base/ScopedPanelBase.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/AccountEditPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/AccountsPanel.cs` — Panel — priority 100
@@ -45,39 +38,46 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/InsightFeedPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/PaymentsPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/ProactiveInsightsPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.Designer.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/RecommendedMonthlyChargePanel.cs` — Panel — priority 100
 
 ## Recommended Reading Order
 
-1. `.git/logs/refs/heads/fix/remove-stray-mainform-pr-37`
-2. `.git/logs/refs/remotes/origin/copilot/validate-mainform-cs`
-3. `.git/logs/refs/remotes/origin/fix/remove-stray-mainform-pr-37`
-4. `.git/refs/heads/fix/remove-stray-mainform-pr-37`
-5. `.git/refs/remotes/origin/copilot/validate-mainform-cs`
-6. `.git/refs/remotes/origin/fix/remove-stray-mainform-pr-37`
-7. `src/WileyWidget.WinForms/Controls/Base/ICompletablePanel.cs`
-8. `src/WileyWidget.WinForms/Controls/Base/LegacyGradientPanel.cs`
-9. `src/WileyWidget.WinForms/Controls/Base/ScopedPanelBase.cs`
-10. `src/WileyWidget.WinForms/Controls/Panels/AccountEditPanel.cs`
-11. `src/WileyWidget.WinForms/Controls/Panels/AccountsPanel.cs`
-12. `src/WileyWidget.WinForms/Controls/Panels/ActivityLogPanel.cs`
-13. `src/WileyWidget.WinForms/Controls/Panels/AnalyticsHubPanel.cs`
-14. `src/WileyWidget.WinForms/Controls/Panels/AuditLogPanel.cs`
-15. `src/WileyWidget.WinForms/Controls/Panels/AuditLogPanel.Layout.cs`
-16. `src/WileyWidget.WinForms/Controls/Panels/BudgetOverviewPanel.cs`
-17. `src/WileyWidget.WinForms/Controls/Panels/BudgetPanel.cs`
-18. `src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs`
-19. `src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs`
-20. `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs`
+1. `src/WileyWidget.WinForms/Controls/Base/ICompletablePanel.cs`
+2. `src/WileyWidget.WinForms/Controls/Base/ScopedPanelBase.cs`
+3. `src/WileyWidget.WinForms/Controls/Panels/AccountEditPanel.cs`
+4. `src/WileyWidget.WinForms/Controls/Panels/AccountsPanel.cs`
+5. `src/WileyWidget.WinForms/Controls/Panels/ActivityLogPanel.cs`
+6. `src/WileyWidget.WinForms/Controls/Panels/AnalyticsHubPanel.cs`
+7. `src/WileyWidget.WinForms/Controls/Panels/AuditLogPanel.cs`
+8. `src/WileyWidget.WinForms/Controls/Panels/AuditLogPanel.Layout.cs`
+9. `src/WileyWidget.WinForms/Controls/Panels/BudgetOverviewPanel.cs`
+10. `src/WileyWidget.WinForms/Controls/Panels/BudgetPanel.cs`
+11. `src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs`
+12. `src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs`
+13. `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs`
+14. `src/WileyWidget.WinForms/Controls/Panels/InsightFeedPanel.cs`
+15. `src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs`
+16. `src/WileyWidget.WinForms/Controls/Panels/PaymentsPanel.cs`
+17. `src/WileyWidget.WinForms/Controls/Panels/ProactiveInsightsPanel.cs`
+18. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs`
+19. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.Designer.cs`
+20. `src/WileyWidget.WinForms/Controls/Panels/RecommendedMonthlyChargePanel.cs`
 
 ## Architecture Summary
 
 | Component    | Count |
 | ------------ | ----- |
 | Views        | 20    |
-| Viewmodels   | 46    |
-| Panels       | 35    |
+| Viewmodels   | 48    |
+| Panels       | 34    |
 | Services     | 118   |
-| Controls     | 13    |
+| Controls     | 14    |
 | Repositories | 31    |
 | Factories    | 7     |
 
@@ -86,6 +86,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Forms/MainViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/AccountsViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/ActivityLogViewModel.cs`
+- `src/WileyWidget.WinForms/ViewModels/AdvancedScenariosTabViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/AnalyticsHubViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/AnalyticsViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/AuditLogViewModel.cs`
@@ -97,6 +98,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/ViewModels/DashboardViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/DepartmentSummaryViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAccountsViewModel.cs`
+- `src/WileyWidget.WinForms/ViewModels/IAdvancedScenariosTabViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAnalyticsHubViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAnalyticsViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAuditLogViewModel.cs`
@@ -111,13 +113,10 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/ViewModels/ILazyLoadViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/InsightFeedViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IQuickBooksViewModel.cs`
-- `src/WileyWidget.WinForms/ViewModels/IRecommendedMonthlyChargeViewModel.cs`
-- `src/WileyWidget.WinForms/ViewModels/IReportsViewModel.cs`
 
 ## Panels
 
 - `src/WileyWidget.WinForms/Controls/Base/ICompletablePanel.cs`
-- `src/WileyWidget.WinForms/Controls/Base/LegacyGradientPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Base/ScopedPanelBase.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/AccountEditPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/AccountsPanel.cs`
@@ -146,6 +145,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Controls/Supporting/CsvMappingWizardPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Supporting/PanelHeader.cs`
 - `src/WileyWidget.WinForms/Forms/RightDockPanelFactory.cs`
+- `src/WileyWidget.Models/Models/PanelItem.cs`
 
 ## Services
 
@@ -182,6 +182,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Controls
 
+- `src/WileyWidget.WinForms/Controls/Panels/AdvancedScenariosTabControl.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/JARVISChatUserControl.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/KpiCardControl.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/OverviewTabControl.cs`
@@ -200,9 +201,9 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Manifest Stats
 
-- Total files indexed: **6545**
+- Total files indexed: **1722**
 - Files with embedded content: **400**
-- Total source size: **347,612 KB**
+- Total source size: **42,648 KB**
 - Manifest mode: **full-context**
 
 ---
