@@ -193,7 +193,6 @@ namespace WileyWidget.WinForms.Forms
         // ---------------------------------------------------------------------------
         // Stubs referenced by partial files (ribbon, layout, search, document mgmt)
         // ---------------------------------------------------------------------------
-        private void LoadMruList() { /* MRU loading reserved for future impl */ }
 
         /// <summary>Opens the New Budget wizard.</summary>
         private void CreateNewBudget() { _logger?.LogDebug("CreateNewBudget stub"); }
