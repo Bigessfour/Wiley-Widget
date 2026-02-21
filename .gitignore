@@ -391,3 +391,4 @@ diagnostics/
 *.etlx
 *.bundle
 diagnostic-report.json
+WebView2Runtime/
