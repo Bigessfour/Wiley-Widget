@@ -512,12 +512,14 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     {
         // Create fresh scoped panel (DI magic)
         using var scope = _scopeFactory.CreateScope();
-        var editPanel = scope.ServiceProvider.GetRequiredService<AccountEditPanel>();
+        var editPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<AccountEditPanel>(scope.ServiceProvider);
 
         if (display != null)
         {
             // Load the real entity for editing
-            var repo = scope.ServiceProvider.GetRequiredService<IAccountsRepository>();
+            var repo = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<IAccountsRepository>(scope.ServiceProvider);
             var fullAccount = await repo.GetAccountByIdAsync(display.Id);
             if (fullAccount != null)
             {

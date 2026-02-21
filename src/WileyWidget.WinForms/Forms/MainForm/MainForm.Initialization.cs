@@ -98,7 +98,7 @@ public partial class MainForm
                     _logger?.LogInformation("[PANEL] Showing Dashboard");
                     // Ensure UI handle is available; small delay helps controls create handles on slower machines
                     try { await Task.Delay(100, cancellationToken); } catch (OperationCanceledException) { return; }
-                    _panelNavigator.ShowPanel<DashboardPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
+                    _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.FormHostPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
                     _logger?.LogInformation("Priority panels shown successfully");
                 }
                 catch (Exception ex)
@@ -108,18 +108,11 @@ public partial class MainForm
             }
 
             // Phase 2: Notify ViewModels of initial visibility for lazy loading
-            if (_dockingManager != null)
+            _logger?.LogInformation("Triggering initial visibility notifications for all controls");
+            foreach (Control control in this.Controls)
             {
-                _logger?.LogInformation("Triggering initial visibility notifications for all docked panels");
-                foreach (Control control in this.Controls)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (_dockingManager.GetEnableDocking(control))
-                    {
-                        await NotifyPanelVisibilityChangedAsync(control);
-                    }
-                }
+                cancellationToken.ThrowIfCancellationRequested();
+                await NotifyPanelVisibilityChangedAsync(control);
             }
 
             // ============================================================================
@@ -370,7 +363,7 @@ public partial class MainForm
                 try
                 {
                     _logger?.LogInformation("Showing initial dashboard panel...");
-                    ShowPanel<Controls.DashboardPanel>("Dashboard", null, DockingStyle.Top);
+                    ShowPanel<WileyWidget.WinForms.Controls.Panels.FormHostPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
                     _dashboardAutoShown = true;
                     _logger?.LogInformation("Initial dashboard panel shown successfully");
                 }
@@ -578,7 +571,7 @@ public partial class MainForm
     {
         try
         {
-            _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Analytics.AnalyticsHubPanel>("Analytics Hub", reportPath, DockingStyle.Right, allowFloating: true);
+            _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>("Analytics Hub", reportPath, DockingStyle.Right, allowFloating: true);
             _logger?.LogInformation("Analytics Hub panel shown with auto-load path: {ReportPath}", reportPath);
         }
         catch (Exception ex)
