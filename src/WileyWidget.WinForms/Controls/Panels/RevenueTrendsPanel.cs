@@ -10,11 +10,6 @@ using Microsoft.Extensions.Logging;
 using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
 using ChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
 using ChartSeriesType = Syncfusion.Windows.Forms.Chart.ChartSeriesType;
-using ChartAlignment = Syncfusion.Windows.Forms.Chart.ChartAlignment;
-using ChartDock = Syncfusion.Windows.Forms.Chart.ChartDock;
-using ChartSymbolShape = Syncfusion.Windows.Forms.Chart.ChartSymbolShape;
-using ChartValueType = Syncfusion.Windows.Forms.Chart.ChartValueType;
-using CategoryAxisDataBindModel = Syncfusion.Windows.Forms.Chart.CategoryAxisDataBindModel;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using Syncfusion.Windows.Forms.Tools;
@@ -84,7 +79,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     // Chart binding state (Syncfusion-recommended: bind model + batched updates)
     private ChartSeries? _monthlyRevenueSeries;
-    private CategoryAxisDataBindModel? _monthlyRevenueBindModel;
+
 
     private sealed class RevenueChartPoint
     {
@@ -407,8 +402,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // CHANGE 20: Added accessibility info to legend
         _chartControl.ShowLegend = true;
         _chartControl.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside;
-        _chartControl.LegendPosition = ChartDock.Bottom;
-        _chartControl.LegendAlignment = ChartAlignment.Center;
         _chartControl.Legend.Font = this.Font;
         // Legend colors inherited from global theme
     }
@@ -671,40 +664,31 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             {
                 _chartControl.Series.Clear();
                 _monthlyRevenueSeries = null;
-                _monthlyRevenueBindModel = null;
 
                 if (!ViewModel.MonthlyData.Any())
                     return;
 
-                var dataSource = new BindingList<RevenueChartPoint>(
-                    ViewModel.MonthlyData
-                        .Select(d => new RevenueChartPoint(d.Month, (double)d.Revenue))
-                        .ToList());
+                var revenuePoints = ViewModel.MonthlyData
+                    .Select(d => new RevenueChartPoint(d.Month, (double)d.Revenue))
+                    .ToList();
 
-                var bindModel = new CategoryAxisDataBindModel(dataSource)
+                var lineSeries = new ChartSeries("Monthly Revenue", ChartSeriesType.Line);
+
+                // Populate points directly (CategoryAxisDataBindModel unavailable in this assembly version)
+                for (int i = 0; i < revenuePoints.Count; i++)
                 {
-                    CategoryName = nameof(RevenueChartPoint.Month),
-                    YNames = new[] { nameof(RevenueChartPoint.Revenue) }
-                };
+                    lineSeries.Points.Add(i, revenuePoints[i].Revenue);
+                }
 
-                var lineSeries = new ChartSeries("Monthly Revenue", ChartSeriesType.Line)
-                {
-                    CategoryModel = bindModel
-                };
-
-                // Configure series style - CHANGE 24: No manual color assignments; rely on theme
-                // Per SfSkinManager authority, all colors (border, symbol, legend) cascade from ApplicationVisualTheme
-                lineSeries.Style.Border.Width = 2;  // Width only - color inherited from active theme
-                // Symbol colors (fill, border) automatically inherited from theme
-                lineSeries.Style.Symbol.Shape = ChartSymbolShape.Circle;
-                lineSeries.Style.Symbol.Size = new Size(8, 8);  // Size only - color inherited
+                // Configure series style
+                lineSeries.Style.Border.Width = 2;
+                lineSeries.Style.Symbol.Size = new Size(8, 8);
 
                 // Configure tooltip format
                 lineSeries.PointsToolTipFormat = "{1:C0}";
 
                 _chartControl.Series.Add(lineSeries);
                 _monthlyRevenueSeries = lineSeries;
-                _monthlyRevenueBindModel = bindModel;
             }
             finally
             {

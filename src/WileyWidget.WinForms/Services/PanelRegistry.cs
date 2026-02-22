@@ -57,8 +57,8 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel),   "QuickBooks",                   "Integration", DockingStyle.Right, false),
 
             // ── Home tab ────────────────────────────────────────────────────────
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel),       "Dashboard",    "Core Navigation", DockingStyle.Top,   false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl), "JARVIS Chat", "Core Navigation", DockingStyle.Right, true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel), "Enterprise Vital Signs", "Core Navigation", DockingStyle.Fill, true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl),     "JARVIS Chat",            "Core Navigation", DockingStyle.Right, true),
 
             // ── Utilities tab ───────────────────────────────────────────────────
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.CustomersPanel),                "Customers",                  "Utilities", DockingStyle.Right),

@@ -11,13 +11,14 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 
 namespace WileyWidget.WinForms.Tests.Integration;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class ErrorHandlingIntegrationTests
+public sealed class ErrorHandlingIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact]
     public void MainFormFactory_WithInvalidConfiguration_HandlesGracefully()

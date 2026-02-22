@@ -633,6 +633,9 @@ namespace WileyWidget.WinForms.ViewModels
 
             public Task PopulateDepartmentSummariesFromSanitationAsync(CancellationToken cancellationToken = default)
                 => Task.CompletedTask;
+
+            public Task<List<EnterpriseSnapshot>> GetEnterpriseSnapshotsAsync(CancellationToken ct = default)
+                => Task.FromResult(new List<EnterpriseSnapshot>());
         }
 
         private class FakeBudgetRepository : IBudgetRepository

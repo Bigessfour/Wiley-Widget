@@ -22,8 +22,9 @@ namespace WileyWidget.WinForms.Tests.Integration.Services;
 /// </summary>
 [Trait("Category", "Integration")]
 [Trait("Category", "AI")]
+[Collection("IntegrationTests")]
 [Trait("Category", "Resilience")]
-public class GrokAgentServiceResilienceTests
+public class GrokAgentServiceResilienceTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     /// <summary>
     /// Test: GetSimpleResponse with transient error (HTTP 500) retries successfully (3 attempts).

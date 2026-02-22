@@ -8,13 +8,14 @@ using Moq;
 using Xunit;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 
 namespace WileyWidget.WinForms.Tests.Integration;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class StartupOrchestratorIntegrationTests
+public sealed class StartupOrchestratorIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact]
     public async Task StartupOrchestrator_InitializeAsync_CompletesWithoutErrors()

@@ -1,12 +1,14 @@
 using System;
 using FluentAssertions;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-public sealed class SplashFormIntegrationTests
+public sealed class SplashFormIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact]
     public void Report_RaisesProgressChanged_InHeadlessMode()

@@ -5,10 +5,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using SPSE = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;
 using Xunit;
 using Xunit.Abstractions;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration.Mocks;
 using WileyWidget.WinForms.ViewModels;
 
@@ -20,15 +22,14 @@ namespace WileyWidget.WinForms.Tests.Integration;
 //   uses a local regex parser when they are null; ExportForecastAsync sets "not available";
 //   LoadAsync completes trivially. MockExcelExportService covers the export code path.
 
-[Collection("SyncfusionTheme")]
-public class WarRoomPanelIntegrationTests
+[Collection("IntegrationTests")]
+public class WarRoomPanelIntegrationTests : IntegrationTestBase
 {
     private readonly ITestOutputHelper _out;
 
-    // Matches the regex inside RunScenarioAsync — produces deterministic projections.
     private const string ValidInput = "Raise water rates 12% and inflation is 4% for 5 years";
 
-    public WarRoomPanelIntegrationTests(ITestOutputHelper output) => _out = output;
+    public WarRoomPanelIntegrationTests(ITestOutputHelper output, IntegrationTestFixture fixture) : base(fixture) => _out = output;
 
     private static WarRoomViewModel CreateVm() =>
         new(grokService:         null,   // sealed — local regex parser fallback
@@ -107,7 +108,7 @@ public class WarRoomPanelIntegrationTests
         var services = new ServiceCollection();
         services.AddScoped<WarRoomViewModel>(_ => CreateVm());
         var provider = services.BuildServiceProvider();
-        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+        var scopeFactory = SPSE.GetRequiredService<IServiceScopeFactory>(provider);
         var logger = Microsoft.Extensions.Logging.Abstractions
             .NullLogger<ScopedPanelBase<WarRoomViewModel>>.Instance;
 

@@ -88,13 +88,14 @@ PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem edit-file --params
 
 **MANDATORY: Consult these instruction files for all development work (single source of truth in .vscode):**
 
-| File                              | Applies To | Description                                                                                                                                                          |
-| --------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.vscode/approved-workflow.md`    | `**/*`     | **AGENT-OPTIMIZED WORKFLOW** - Must be consulted on EVERY prompt. Defines hard rules, tool decision matrix, phased execution, and validation commands. Never bypass. |
-| `.vscode/copilot-instructions.md` | `**/*`     | MCP enforcement rules, CI/CD feedback loop, daily workflow, testing strategy                                                                                         |
-| `.vscode/copilot-mcp-rules.md`    | `**/*`     | Complete MCP filesystem enforcement rules and violation examples                                                                                                     |
-| `.vscode/python-performance.md`   | `**/*.py`  | Python performance best practices                                                                                                                                    |
-| `.vscode/c-best-practices.md`     | `**/*.cs`  | C# best-practices rules                                                                                                                                              |
+| File                               | Applies To | Description                                                                                                                                                          |
+| ---------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.vscode/approved-workflow.md`     | `**/*`     | **AGENT-OPTIMIZED WORKFLOW** - Must be consulted on EVERY prompt. Defines hard rules, tool decision matrix, phased execution, and validation commands. Never bypass. |
+| `.vscode/copilot-instructions.md`  | `**/*`     | MCP enforcement rules, CI/CD feedback loop, daily workflow, testing strategy                                                                                         |
+| `.vscode/copilot-mcp-rules.md`     | `**/*`     | Complete MCP filesystem enforcement rules and violation examples                                                                                                     |
+| `.vscode/python-performance.md`    | `**/*.py`  | Python performance best practices                                                                                                                                    |
+| `.vscode/c-best-practices.md`      | `**/*.cs`  | C# best-practices rules                                                                                                                                              |
+| `docs/ENVIRONMENT_SCOPE_POLICY.md` | `**/*`     | Machine-scope environment variable canonical policy, alias compatibility window, and alignment/audit commands                                                        |
 
 **Workflow Priority Order:**
 

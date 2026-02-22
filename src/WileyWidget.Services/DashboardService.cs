@@ -477,5 +477,49 @@ namespace WileyWidget.Services
             _logger.LogInformation("PopulateDepartmentSummariesFromSanitationAsync: Loaded {DeptCount} departments with mapped budget data",
                 DepartmentSummaries.Count);
         }
+
+        public async Task<List<EnterpriseSnapshot>> GetEnterpriseSnapshotsAsync(CancellationToken ct = default)
+        {
+            var raw = await _budgetRepository.GetTownOfWileyBudgetDataAsync(ct);
+            if (!raw.Any()) return new List<EnterpriseSnapshot>();
+
+            var mapping = new Dictionary<string, string>
+            {
+                { "Water", "Water" },
+                { "Sewer", "Sewer" },
+                { "Trash", "Trash|Sanitation" },
+                { "Apartments", "Apartment|Housing" }
+            };
+
+            var results = new List<EnterpriseSnapshot>();
+
+            foreach (var (enterprise, keywords) in mapping)
+            {
+                var kw = keywords.Split('|');
+                var rows = raw.Where(r => kw.Any(k =>
+                    (r.MappedDepartment?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (r.FundOrDepartment?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false))).ToList();
+
+                var rev = rows.Where(r => r.Category == "Revenue").Sum(r => r.ActualYTD ?? 0);
+                var exp = rows.Where(r => r.Category == "Expense").Sum(r => r.ActualYTD ?? 0);
+
+                var snap = new EnterpriseSnapshot
+                {
+                    Name = enterprise,
+                    Revenue = rev,
+                    Expenses = exp
+                };
+
+                if (!snap.IsSelfSustaining && results.Any(r => r.IsSelfSustaining))
+                {
+                    var surplusPool = results.Where(r => r.NetPosition > 0).Sum(r => r.NetPosition);
+                    snap.CrossSubsidyNote = $"Funded by other enterprises (${surplusPool:N0} available)";
+                }
+
+                results.Add(snap);
+            }
+
+            return results;
+        }
     }
 }

@@ -4,14 +4,15 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class MainViewModelIntegrationTests
+public sealed class MainViewModelIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact]
     public void MainViewModel_InitializesWithServices()

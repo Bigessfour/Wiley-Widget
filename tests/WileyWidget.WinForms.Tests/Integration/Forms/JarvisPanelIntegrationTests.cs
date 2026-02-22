@@ -15,9 +15,9 @@ using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class JarvisPanelIntegrationTests
+public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     // NOTE: These tests are obsolete. RightDockPanelFactory was refactored to remove JARVIS chat.
     // JARVIS is managed through DockingManager panel navigation.

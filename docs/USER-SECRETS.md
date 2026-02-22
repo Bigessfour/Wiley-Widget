@@ -4,6 +4,10 @@
 
 This application uses .NET User Secrets for storing sensitive API keys and credentials locally. User secrets are stored outside the project directory and are never committed to source control.
 
+> Machine scope is the canonical environment source for runtime and MCP operations.
+> User secrets and user-scope environment values are supported as compatibility fallbacks during migration.
+> See `docs/ENVIRONMENT_SCOPE_POLICY.md` for canonical names and alias/deprecation policy.
+
 ## Configured Services
 
 ### xAI Grok API (Recommendation Service)

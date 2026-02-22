@@ -1,13 +1,15 @@
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using WileyWidget.WinForms;
+using WileyWidget.WinForms.Tests.Infrastructure;
+using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-public sealed class ProgramStartupIntegrationTests
+public sealed class ProgramStartupIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [Fact]
     public void CreateFallbackServiceProvider_ProvidesConfiguration()

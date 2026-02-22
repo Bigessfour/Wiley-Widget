@@ -28,6 +28,58 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>
 
+  <!--
+    Microsoft.WinForms.Utilities.Shared.dll is a transitive runtime dependency of
+    Microsoft.AspNetCore.Components.WebView.WindowsForms (required when any type inheriting
+    BlazorWebView — e.g. JARVISChatUserControl — is JIT-compiled).  The NuGet package
+    microsoft.winforms.designer.sdk only ships a compile-time reference assembly (ref/),
+    which the CLR rejects at runtime.  The real runtime copy lives inside the Visual Studio
+    installation.  The Target below finds it and copies it to the test-binary output so the
+    test runner can resolve it without any hardcoded environment configuration.
+  -->
+  <Target Name="CopyWinFormsUtilitiesShared" AfterTargets="Build">
+    <PropertyGroup>
+      <!-- Search VS 17/18 across all common editions -->
+      <_WinFormsUtilDll
+        Condition="'$(_WinFormsUtilDll)'=='' And Exists('$(ProgramFiles)\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll')">$(ProgramFiles)\Microsoft
+        Visual
+        Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll</_WinFormsUtilDll>
+      <_WinFormsUtilDll
+        Condition="'$(_WinFormsUtilDll)'=='' And Exists('$(ProgramFiles)\Microsoft Visual Studio\18\Enterprise\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll')">
+        $(ProgramFiles)\Microsoft
+        Visual
+        Studio\18\Enterprise\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll</_WinFormsUtilDll>
+      <_WinFormsUtilDll
+        Condition="'$(_WinFormsUtilDll)'=='' And Exists('$(ProgramFiles)\Microsoft Visual Studio\18\Professional\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll')">
+        $(ProgramFiles)\Microsoft
+        Visual
+        Studio\18\Professional\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll</_WinFormsUtilDll>
+      <_WinFormsUtilDll
+        Condition="'$(_WinFormsUtilDll)'=='' And Exists('$(ProgramFiles)\Microsoft Visual Studio\17\Community\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll')">$(ProgramFiles)\Microsoft
+        Visual
+        Studio\17\Community\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll</_WinFormsUtilDll>
+      <_WinFormsUtilDll
+        Condition="'$(_WinFormsUtilDll)'=='' And Exists('$(ProgramFiles)\Microsoft Visual Studio\17\Enterprise\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll')">
+        $(ProgramFiles)\Microsoft
+        Visual
+        Studio\17\Enterprise\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll</_WinFormsUtilDll>
+      <_WinFormsUtilDll
+        Condition="'$(_WinFormsUtilDll)'=='' And Exists('$(ProgramFiles)\Microsoft Visual Studio\17\Professional\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll')">
+        $(ProgramFiles)\Microsoft
+        Visual
+        Studio\17\Professional\Common7\IDE\CommonExtensions\Microsoft\Windows.Forms\Microsoft.WinForms.Utilities.Shared.dll</_WinFormsUtilDll>
+    </PropertyGroup>
+    <Copy
+      Condition="Exists('$(_WinFormsUtilDll)')"
+      SourceFiles="$(_WinFormsUtilDll)"
+      DestinationFolder="$(OutputPath)"
+      SkipUnchangedFiles="true"
+      ContinueOnError="WarnAndContinue" />
+    <Warning
+      Condition="!Exists('$(_WinFormsUtilDll)')"
+      Text="Microsoft.WinForms.Utilities.Shared.dll was not found in any Visual Studio installation. Tests that load BlazorWebView-derived types may fail with FileNotFoundException. Install Visual Studio 2022/2026 with the .NET Desktop workload." />
+  </Target>
+
   <ItemGroup>
     <Compile Remove="Unit\Startup\StartupOrchestratorTests.cs" />
   </ItemGroup>

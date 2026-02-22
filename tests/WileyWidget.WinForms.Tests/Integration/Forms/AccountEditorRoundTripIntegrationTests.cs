@@ -18,14 +18,15 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.ViewModels;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class AccountEditorRoundTripIntegrationTests
+public sealed class AccountEditorRoundTripIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     private const string SqlConnectionString = "Data Source=localhost\\SQLEXPRESS;Initial Catalog=WileyWidget;Integrated Security=True;Pooling=False;Encrypt=False;Trust Server Certificate=True";
 

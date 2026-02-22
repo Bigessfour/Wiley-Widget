@@ -8,12 +8,14 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.AI;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.DependencyInjection;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-public sealed class DependencyInjectionIntegrationTests
+public sealed class DependencyInjectionIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [Fact]
     public void AddWinFormsServices_Builds_WithScopeAndBuildValidation()

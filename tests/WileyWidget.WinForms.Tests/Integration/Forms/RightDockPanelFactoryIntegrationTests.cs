@@ -4,13 +4,15 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-public sealed class RightDockPanelFactoryIntegrationTests
+public sealed class RightDockPanelFactoryIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact(Skip = "Obsolete: RightDockPanelFactory no longer uses tabs or modes")]
     public void CreateRightDockPanel_CreatesTabsAndDefaultMode()

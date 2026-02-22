@@ -22,13 +22,14 @@ namespace WileyWidget.WinForms.Tests.Integration.Services;
 [Trait("Category", "Integration")]
 [Trait("Category", "AI")]
 [Trait("Category", "Streaming")]
-public sealed class GrokAgentServiceStreamingTests : IDisposable
+[Collection("IntegrationTests")]
+public sealed class GrokAgentServiceStreamingTests : IntegrationTestBase, IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly MockHttpMessageHandlerBuilder _mockBuilder;
     private bool _disposed;
 
-    public GrokAgentServiceStreamingTests()
+    public GrokAgentServiceStreamingTests(IntegrationTestFixture fixture) : base(fixture)
     {
         _mockBuilder = new MockHttpMessageHandlerBuilder();
         _serviceProvider = IntegrationTestServices.BuildAITestProvider();

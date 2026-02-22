@@ -13,9 +13,9 @@ using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class MainFormKeyboardIntegrationTests
+public sealed class MainFormKeyboardIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     private static void PumpMessages(int maxCount = 50)
     {

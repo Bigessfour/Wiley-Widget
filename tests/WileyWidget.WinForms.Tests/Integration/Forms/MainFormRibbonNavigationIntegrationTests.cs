@@ -13,8 +13,8 @@ using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
-[Collection("SyncfusionTheme")]
-public sealed class MainFormRibbonNavigationIntegrationTests
+[Collection("IntegrationTests")]
+public sealed class MainFormRibbonNavigationIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [WinFormsFact]
     public void RibbonNavigationButtons_Click_ActivatesExpectedPanel_ForAllNavTargets()

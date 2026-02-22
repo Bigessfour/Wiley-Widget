@@ -6,77 +6,46 @@ namespace WileyWidget.WinForms.Extensions
 {
     /// <summary>
     /// Centralized wiring/unwiring for Syncfusion classic ChartControl ChartRegion events.
-    /// Uses strongly-typed mouse-region events and reflection for click/double-click to avoid
-    /// hard dependency on event availability/signature across Syncfusion builds.
+    /// Subscriptions are performed via reflection to avoid a compile-time dependency on
+    /// ChartRegionMouseEventHandler/ChartRegionMouseEventArgs, which reside in the local
+    /// Syncfusion.Chart.Windows DLL whose internal CLR version may conflict with the NuGet
+    /// Syncfusion.Shared.Base package. All handlers are intentional no-ops; the wiring
+    /// ensures region interaction is consistently available for future customisation.
     /// </summary>
     internal sealed class ChartControlRegionEventWiring : IDisposable
     {
         private readonly ChartControl _chart;
-        private readonly ChartRegionMouseEventHandler _mouseRegionHandler;
+        private readonly Delegate? _mouseRegionHandler;
         private readonly Delegate? _chartRegionClickHandler;
         private readonly Delegate? _chartRegionDoubleClickHandler;
         private bool _disposed;
+
+        private static readonly string[] _mouseRegionEvents = new[]
+        {
+            "ChartRegionMouseDown", "ChartRegionMouseUp", "ChartRegionMouseMove",
+            "ChartRegionMouseHover", "ChartRegionMouseEnter", "ChartRegionMouseLeave"
+        };
 
         public ChartControlRegionEventWiring(ChartControl chart)
         {
             _chart = chart ?? throw new ArgumentNullException(nameof(chart));
 
-            _mouseRegionHandler = OnChartRegionMouseEvent;
+            _mouseRegionHandler  = TryCreateNoOpHandler(_chart, "ChartRegionMouseDown");
+            _chartRegionClickHandler       = TryCreateNoOpHandler(_chart, "ChartRegionClick");
+            _chartRegionDoubleClickHandler = TryCreateNoOpHandler(_chart, "ChartRegionDoubleClick");
 
-            // Documented chart region mouse events
-            _chart.ChartRegionMouseDown += _mouseRegionHandler;
-            _chart.ChartRegionMouseUp += _mouseRegionHandler;
-            _chart.ChartRegionMouseMove += _mouseRegionHandler;
-            _chart.ChartRegionMouseHover += _mouseRegionHandler;
-            _chart.ChartRegionMouseEnter += _mouseRegionHandler;
-            _chart.ChartRegionMouseLeave += _mouseRegionHandler;
+            foreach (var eventName in _mouseRegionEvents)
+                TryAddEventHandler(_chart, eventName, _mouseRegionHandler);
 
-            // Optional chart region click events (varies by Syncfusion build/signature)
-            _chartRegionClickHandler = TryCreateChartRegionHandler(_chart, "ChartRegionClick");
             if (_chartRegionClickHandler != null)
-            {
                 TryAddEventHandler(_chart, "ChartRegionClick", _chartRegionClickHandler);
-            }
 
-            _chartRegionDoubleClickHandler = TryCreateChartRegionHandler(_chart, "ChartRegionDoubleClick");
             if (_chartRegionDoubleClickHandler != null)
-            {
                 TryAddEventHandler(_chart, "ChartRegionDoubleClick", _chartRegionDoubleClickHandler);
-            }
         }
 
-        private static void OnChartRegionMouseEvent(object sender, ChartRegionMouseEventArgs e)
-        {
-            // Intentionally no-op: wiring is required so region interaction is available consistently.
-            // Panels can add additional behavior later without needing per-surface event discovery.
-            _ = sender;
-            _ = e;
-        }
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-            _disposed = true;
-
-            try { _chart.ChartRegionMouseDown -= _mouseRegionHandler; } catch { }
-            try { _chart.ChartRegionMouseUp -= _mouseRegionHandler; } catch { }
-            try { _chart.ChartRegionMouseMove -= _mouseRegionHandler; } catch { }
-            try { _chart.ChartRegionMouseHover -= _mouseRegionHandler; } catch { }
-            try { _chart.ChartRegionMouseEnter -= _mouseRegionHandler; } catch { }
-            try { _chart.ChartRegionMouseLeave -= _mouseRegionHandler; } catch { }
-
-            if (_chartRegionClickHandler != null)
-            {
-                TryRemoveEventHandler(_chart, "ChartRegionClick", _chartRegionClickHandler);
-            }
-
-            if (_chartRegionDoubleClickHandler != null)
-            {
-                TryRemoveEventHandler(_chart, "ChartRegionDoubleClick", _chartRegionDoubleClickHandler);
-            }
-        }
-
-        private static Delegate? TryCreateChartRegionHandler(ChartControl chart, string eventName)
+        /// <summary>Creates a no-op delegate matching the event's handler type via reflection.</summary>
+        private static Delegate? TryCreateNoOpHandler(ChartControl chart, string eventName)
         {
             try
             {
@@ -85,43 +54,54 @@ namespace WileyWidget.WinForms.Extensions
                 if (handlerType == null) return null;
 
                 var method = typeof(ChartControlRegionEventWiring).GetMethod(
-                    nameof(OnChartRegionMouseEvent),
+                    nameof(OnNoOpEvent),
                     BindingFlags.Static | BindingFlags.NonPublic);
 
                 if (method == null) return null;
-
                 return Delegate.CreateDelegate(handlerType, method, throwOnBindFailure: false);
             }
-            catch
-            {
-                return null;
-            }
+            catch { return null; }
         }
 
-        private static void TryAddEventHandler(ChartControl chart, string eventName, Delegate handler)
+        // No-op handler with the most permissive signature (object, object).
+        // Delegate.CreateDelegate binds this only if the event's delegate matches.
+        private static void OnNoOpEvent(object sender, EventArgs e) { }
+
+        public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
+
+            foreach (var eventName in _mouseRegionEvents)
+                TryRemoveEventHandler(_chart, eventName, _mouseRegionHandler);
+
+            if (_chartRegionClickHandler != null)
+                TryRemoveEventHandler(_chart, "ChartRegionClick", _chartRegionClickHandler);
+
+            if (_chartRegionDoubleClickHandler != null)
+                TryRemoveEventHandler(_chart, "ChartRegionDoubleClick", _chartRegionDoubleClickHandler);
+        }
+
+        private static void TryAddEventHandler(ChartControl chart, string eventName, Delegate? handler)
+        {
+            if (handler == null) return;
             try
             {
                 var evt = chart.GetType().GetEvent(eventName, BindingFlags.Instance | BindingFlags.Public);
                 evt?.AddEventHandler(chart, handler);
             }
-            catch
-            {
-                // Ignore: optional event or incompatible signature.
-            }
+            catch { }
         }
 
-        private static void TryRemoveEventHandler(ChartControl chart, string eventName, Delegate handler)
+        private static void TryRemoveEventHandler(ChartControl chart, string eventName, Delegate? handler)
         {
+            if (handler == null) return;
             try
             {
                 var evt = chart.GetType().GetEvent(eventName, BindingFlags.Instance | BindingFlags.Public);
                 evt?.RemoveEventHandler(chart, handler);
             }
-            catch
-            {
-                // Ignore: best-effort cleanup.
-            }
+            catch { }
         }
     }
 }

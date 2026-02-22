@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using WileyWidget.Models;
 
 namespace WileyWidget.Services.Abstractions
 {
@@ -39,6 +40,11 @@ namespace WileyWidget.Services.Abstractions
         /// Populates department summaries from Town of Wiley 2026 budget data using mapped departments
         /// </summary>
         Task PopulateDepartmentSummariesFromSanitationAsync(CancellationToken ct = default);
+
+        /// <summary>
+        /// Gets enterprise snapshots for vital signs display
+        /// </summary>
+        Task<List<EnterpriseSnapshot>> GetEnterpriseSnapshotsAsync(CancellationToken ct = default);
     }
 
     /// <summary>

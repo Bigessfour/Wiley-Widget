@@ -1,13 +1,15 @@
+using WileyWidget.WinForms.Tests.Infrastructure;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace WileyWidget.WinForms.Tests.Integration;
 
-public class TempTest
+[Collection("IntegrationTests")]
+public class TempTest : IntegrationTestBase
 {
     private readonly ITestOutputHelper _output;
 
-    public TempTest(ITestOutputHelper output)
+    public TempTest(ITestOutputHelper output, IntegrationTestFixture fixture) : base(fixture)
     {
         _output = output;
     }

@@ -11,17 +11,13 @@ using WileyWidget.Business.Services;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.Services.Abstractions;
 
+using WileyWidget.WinForms.Tests.Infrastructure;
+
 namespace WileyWidget.WinForms.Tests.Integration.Services.AI
 {
-    /// <summary>
-    /// Integration tests for GrokRecommendationService with IGrokApiKeyProvider.
-    /// Validates that GrokRecommendationService correctly uses the centralized API key provider
-    /// instead of reading directly from IConfiguration.
-    ///
-    /// This prevents the regression where XAI:ApiKey configuration inconsistency caused
-    /// the API key not to be properly resolved from environment variables.
-    /// </summary>
-    public class GrokRecommendationServiceApiKeyIntegrationTests : IDisposable
+    [Collection("IntegrationTests")]
+    public class GrokRecommendationServiceApiKeyIntegrationTests(IntegrationTestFixture fixture)
+        : IntegrationTestBase(fixture), IDisposable
     {
         private readonly Mock<ILogger<GrokRecommendationService>> _mockLogger =
             new Mock<ILogger<GrokRecommendationService>>();

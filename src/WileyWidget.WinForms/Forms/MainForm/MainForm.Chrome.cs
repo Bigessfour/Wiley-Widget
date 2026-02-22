@@ -669,8 +669,8 @@ public partial class MainForm
             // Helpers for button creation to save space?
             // Just pasting the logic from UI.cs
 
-            var dashboardBtn = new ToolStripButton("Dashboard") { Name = "Nav_Dashboard", AccessibleName = "Dashboard", Enabled = true };
-            dashboardBtn.Click += (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false);
+            var dashboardBtn = new ToolStripButton("Enterprise Vital Signs") { Name = "Nav_VitalSigns", AccessibleName = "Enterprise Vital Signs", Enabled = true };
+            dashboardBtn.Click += (s, e) => this.ShowPanel<EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
             accountsBtn.Click += (s, e) => { _logger?.LogInformation("Accounts navigation: ribbon-based docking not yet implemented"); };
@@ -803,7 +803,7 @@ public partial class MainForm
             // View Menu
             var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View", Image = CreateIconFromText("\uE8A7", 16) };
             // View > Dashboard
-            var dashboardMenuItem = new ToolStripMenuItem("&Dashboard", null, (s, e) => this.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right, allowFloating: false)) { Name = "Menu_View_Dashboard", ShortcutKeys = Keys.Control | Keys.D };
+            var dashboardMenuItem = new ToolStripMenuItem("&Enterprise Vital Signs", null, (s, e) => this.ShowPanel<EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false)) { Name = "Menu_View_VitalSigns", ShortcutKeys = Keys.Control | Keys.D };
 
             // View > Accounts
             var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => { _logger?.LogInformation("Accounts menu: ribbon-based docking not yet implemented"); }) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };

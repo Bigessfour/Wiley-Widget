@@ -182,24 +182,29 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
     /// <summary>
     /// Retrieve an environment variable from any reasonable scope.
-    /// Prefer process-level variables (container-friendly). If not present, attempt
-    /// to read user-level variables (Windows) but swallow any platform-specific
-    /// exceptions so callers remain cross-platform friendly.
+    /// Prefer machine-level variables first (canonical), then process-level,
+    /// then user-level for compatibility during migration.
     /// </summary>
     private static string? GetEnvironmentVariableAnyScope(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         try
         {
-            var v = Environment.GetEnvironmentVariable(name);
-            if (!string.IsNullOrWhiteSpace(v)) return v;
+            var machineValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
+            if (!string.IsNullOrWhiteSpace(machineValue)) return machineValue;
         }
         catch { /* ignore */ }
 
         try
         {
-            var uv = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
-            return uv;
+            var processValue = Environment.GetEnvironmentVariable(name);
+            if (!string.IsNullOrWhiteSpace(processValue)) return processValue;
+        }
+        catch { /* ignore */ }
+
+        try
+        {
+            return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
         }
         catch { return null; }
     }
@@ -216,7 +221,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
             if (!string.IsNullOrWhiteSpace(envClientCandidate))
             {
-                _logger.LogInformation("QBO_CLIENT_ID found in environment (process/user). Using env value.");
+                _logger.LogInformation("QBO_CLIENT_ID found in environment (machine/process/user). Using env value.");
             }
 
             _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
@@ -228,7 +233,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
             if (!string.IsNullOrWhiteSpace(envSecretCandidate))
             {
-                _logger.LogInformation("QBO_CLIENT_SECRET found in environment (process/user). Using env value.");
+                _logger.LogInformation("QBO_CLIENT_SECRET found in environment (machine/process/user). Using env value.");
             }
 
             _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
@@ -240,7 +245,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
             if (!string.IsNullOrWhiteSpace(envRealmCandidate))
             {
-                _logger.LogInformation("QBO_REALM_ID found in environment (process/user). Using env value.");
+                _logger.LogInformation("QBO_REALM_ID found in environment (machine/process/user). Using env value.");
             }
 
             _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)

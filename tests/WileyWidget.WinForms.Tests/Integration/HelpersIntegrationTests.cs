@@ -7,13 +7,14 @@ using Moq;
 using Xunit;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Utilities;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 
 namespace WileyWidget.WinForms.Tests.Integration;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class HelpersIntegrationTests
+public sealed class HelpersIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact]
     public void UIHelper_ShowMessageOnUI_DisplaysMessageBox()

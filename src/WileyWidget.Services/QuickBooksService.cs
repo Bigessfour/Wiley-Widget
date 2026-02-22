@@ -147,27 +147,29 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     /// <summary>
     /// Retrieve an environment variable from any reasonable scope.
-    /// Prefer process-level variables (container-friendly). If not present, attempt
-    /// to read user-level variables (Windows) but swallow any platform-specific
-    /// exceptions so callers remain cross-platform friendly.
+    /// Prefer machine-level variables first (canonical), then process-level,
+    /// then user-level for compatibility during migration.
     /// </summary>
     private static string? GetEnvironmentVariableAnyScope(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         try
         {
-            var v = Environment.GetEnvironmentVariable(name);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable('{name}') => {(v == null ? "<null>" : "<redacted>")}");
-            if (!string.IsNullOrWhiteSpace(v)) return v;
+            var machineValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
+            if (!string.IsNullOrWhiteSpace(machineValue)) return machineValue;
         }
         catch { /* ignore */ }
 
         try
         {
-            // Some callers on Windows may have user-scoped variables set; try that as a fallback.
-            var uv = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
-            Console.WriteLine($"[DIAGNOSTIC] GetEnvironmentVariable(User,'{name}') => {(uv == null ? "<null>" : "<redacted>")}");
-            return uv;
+            var processValue = Environment.GetEnvironmentVariable(name);
+            if (!string.IsNullOrWhiteSpace(processValue)) return processValue;
+        }
+        catch { /* ignore */ }
+
+        try
+        {
+            return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
         }
         catch { return null; }
     }
@@ -223,7 +225,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             var envClientCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_ID");
             if (!string.IsNullOrWhiteSpace(envClientCandidate))
             {
-                _logger.LogInformation("QBO_CLIENT_ID found in environment (process/user). Using env value for initialization.");
+                _logger.LogInformation("QBO_CLIENT_ID found in environment (machine/process/user). Using env value for initialization.");
             }
             else
             {
@@ -239,7 +241,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
             if (!string.IsNullOrWhiteSpace(envSecretCandidate))
             {
-                _logger.LogInformation("QBO_CLIENT_SECRET found in environment (process/user). Using env value for initialization.");
+                _logger.LogInformation("QBO_CLIENT_SECRET found in environment (machine/process/user). Using env value for initialization.");
             }
 
             _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
@@ -251,7 +253,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
             if (!string.IsNullOrWhiteSpace(envRealmCandidate))
             {
-                _logger.LogInformation("QBO_REALM_ID found in environment (process/user). Using env value for initialization.");
+                _logger.LogInformation("QBO_REALM_ID found in environment (machine/process/user). Using env value for initialization.");
             }
 
             _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)

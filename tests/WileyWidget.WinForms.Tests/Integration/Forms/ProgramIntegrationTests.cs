@@ -1,14 +1,15 @@
 using System;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-[Collection("SyncfusionTheme")]
-public sealed class ProgramIntegrationTests
+public sealed class ProgramIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [StaFact]
     public void Program_Services_InitializesCorrectly()

@@ -1,12 +1,14 @@
 using System;
 using FluentAssertions;
-using Xunit;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Tests.Infrastructure;
+using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration;
 
+[Collection("IntegrationTests")]
 [Trait("Category", "Integration")]
-public sealed class ConversationalAIHelperIntegrationTests
+public sealed class ConversationalAIHelperIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     [Fact]
     public void GetWelcomeMessage_JarvisPersonality_ReturnsJarvisWelcome()

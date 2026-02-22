@@ -25,7 +25,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - Ctrl+Shift+S: Save current layout
 /// - Ctrl+Shift+R: Reset layout to default
 /// - Ctrl+L: Lock/unlock panel docking
-/// - Alt+D: Show Dashboard panel
+/// - Alt+D: Show Enterprise Vital Signs panel
 /// - Alt+A: Show Accounts panel
 /// - Alt+B: Show Budget panel
 /// - Alt+C: Show Analytics Hub panel
@@ -239,7 +239,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.D))
         {
-            return TryShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right);
+            return TryShowPanel<EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill);
         }
 
         if (keyData == (Keys.Alt | Keys.R))
@@ -304,6 +304,8 @@ public partial class MainForm
             return false;
         }
     }
+
+
 
     /// <summary>
     /// Handles Enter key: Focus global search from non-text-box controls.

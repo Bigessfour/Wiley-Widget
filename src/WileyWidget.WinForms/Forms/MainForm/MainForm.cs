@@ -78,6 +78,9 @@ namespace WileyWidget.WinForms.Forms
         // Document management (used by MainForm.DocumentManagement.cs)
         private TabbedMDIManager? _tabbedMdi;
 
+        // Navigation service (used by OnShown)
+        private PanelNavigationService? _panelNavigationService;
+
         // Component container
         internal System.ComponentModel.IContainer? components;
 
@@ -229,6 +232,15 @@ namespace WileyWidget.WinForms.Forms
         {
             _dockingManager ??= new object();
             _logger?.LogDebug("InitializeSyncfusionDocking compatibility stub initialized");
+        }
+
+        /// <summary>
+        /// Ensures docking and tabbed document layout are initialized before panel navigation starts.
+        /// </summary>
+        private void InitializeDockingOrTabbedLayout()
+        {
+            InitializeSyncfusionDocking();
+            InitializeMDIManager();
         }
 
         /// <summary>Configures docking chrome layout placeholder for partial compatibility.</summary>

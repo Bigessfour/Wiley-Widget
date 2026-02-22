@@ -18,9 +18,9 @@
     "copilot-mcp-rules.md": "markdown"
   },
   "github.copilot.chat.welcomeMessage": "first",
-  "github.copilot.chat.tools.changes.enabled": false,
+  "github.copilot.chat.tools.changes.enabled": true,
   "github.copilot.editor.enableAutoCompletions": true,
-  "github.copilot.chat.agent.autoStartMcpServers": false,
+  "github.copilot.chat.agent.autoStartMcpServers": true,
 
   // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
@@ -83,6 +83,13 @@
     "mcp-debugger": {
       "command": "npx",
       "args": ["-y", "@debugmcp/mcp-debugger@0.17.0", "stdio", "--log-level", "info", "--log-file", "${workspaceFolder}\\logs\\mcp-debugger.log"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     }
   },
 
