@@ -1,0 +1,54 @@
+name: Grok CI Auto-Healer (Cloud Agent)
+
+on:
+  workflow_run:
+    workflows: ["Build & WinForms Integration Check"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  heal:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          token: ${{ secrets.PAT_FOR_AUTO_FIX }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests
+
+      - name: Call Grok Cloud Agent to fix
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          XAI_API_URL: ${{ secrets.XAI_API_URL }}
+          XAI_MODEL: ${{ vars.XAI_MODEL || 'grok-4-1-fast-reasoning' }}
+          GITHUB_TOKEN: ${{ secrets.PAT_FOR_AUTO_FIX }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          python .github/scripts/grok-ci-healer.py
+
+      - name: Auto-commit & push fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "fix(ci): auto-healed by Grok Cloud Agent"
+          branch: ${{ github.event.workflow_run.head_branch }}
