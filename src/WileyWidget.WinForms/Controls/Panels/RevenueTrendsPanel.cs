@@ -117,13 +117,25 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         ILogger<ScopedPanelBase<RevenueTrendsViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        Size = new Size(1400, 900);
+        MinimumSize = new Size(1024, 720);
+        Dock = DockStyle.Fill;
+
         // Initialize UI once, then apply theme and subscribe to changes
-        InitializeComponent();
+        SafeSuspendAndLayout(InitializeComponent);
 
         // Apply theme via SfSkinManager (single source of truth)
         try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
 
         SubscribeToThemeChanges();
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        MinimumSize = new Size(1024, 720);
+        PerformLayout();
+        Invalidate(true);
     }
 
     // InitializeComponent moved to RevenueTrendsPanel.Designer.cs for designer support

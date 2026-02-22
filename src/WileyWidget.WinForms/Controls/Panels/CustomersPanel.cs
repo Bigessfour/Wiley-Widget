@@ -120,8 +120,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         : base(scopeFactory, logger)
     {
         // Set preferred size for proper docking display (matches PreferredDockSize extension)
-        Size = new Size(580, 380);
-        MinimumSize = new Size(420, 360);
+        Size = new Size(1100, 760);
+        MinimumSize = new Size(1024, 720);
 
         // NOTE: InitializeControls() moved to OnViewModelResolved()
         ApplySyncfusionTheme();
@@ -129,12 +129,20 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _logger?.LogDebug("CustomersPanel initialized");
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        MinimumSize = new Size(1024, 720);
+        PerformLayout();
+        Invalidate(true);
+    }
+
     protected override void OnViewModelResolved(object? viewModel)
     {
         base.OnViewModelResolved(viewModel);
         if (viewModel is CustomersViewModel)
         {
-            InitializeControls();
+            SafeSuspendAndLayout(InitializeControls);
             WireupToolbarEventHandlers();
         }
     }

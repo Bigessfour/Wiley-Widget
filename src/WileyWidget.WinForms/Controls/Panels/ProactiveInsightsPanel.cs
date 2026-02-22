@@ -45,6 +45,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private EventHandler? _panelHeaderHelpHandler;
         private EventHandler? _panelHeaderPinToggledHandler;
         private ToolTip? _buttonToolTip;
+        private Label? _statusLabel;
 
         /// <summary>
         /// Creates a new instance of the ProactiveInsightsPanel.
@@ -67,7 +68,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _scopeFactory = scopeFactory ?? ResolveScopeFactory(_serviceProvider);
             _insightFeedLogger = insightFeedLogger ?? ResolveInsightFeedLogger(_serviceProvider);
 
-            InitializeComponent();
+            SafeSuspendAndLayout(InitializeComponent);
 
             VisibleChanged += (_, _) => QueueLayoutRefresh();
             SizeChanged += (_, _) => QueueLayoutRefresh();
@@ -81,6 +82,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
 
             _logger?.LogInformation("ProactiveInsightsPanel initialized successfully");
+        }
+
+        private void SafeSuspendAndLayout(System.Action buildAction)
+        {
+            SuspendLayout();
+            try
+            {
+                buildAction();
+            }
+            finally
+            {
+                ResumeLayout(false);
+                PerformLayout();
+            }
         }
 
         private void QueueLayoutRefresh()
@@ -113,14 +128,24 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Dock = DockStyle.Fill;
+            MinimumSize = new Size(1024, 720);
+            PerformLayout();
+            Invalidate(true);
+        }
+
         /// <summary>
         /// Initializes the UI controls with gradient panel header and insights feed.
         /// </summary>
         private void InitializeComponent()
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(560, 400);
-            MinimumSize = new Size(420, 360);
+            Dock = DockStyle.Fill;
+            Size = new Size(1100, 760);
+            MinimumSize = new Size(1024, 720);
             Padding = new Padding(8);
             AccessibleName = "Proactive Insights Panel";
             AccessibleDescription = "Displays proactive AI insights with header and actions";
@@ -158,7 +183,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader = new PanelHeader
             {
                 Dock = DockStyle.Fill,
-                Text = "Proactive AI Insights",
+                Title = "Proactive AI Insights",
                 AccessibleName = "Proactive Insights Title",
                 AccessibleDescription = "Title of the Proactive Insights panel"
             };
@@ -201,13 +226,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
 
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(this, currentTheme);
 
             // Refresh button (using SfButton for Syncfusion consistency)
             _btnRefresh = new SfButton
             {
-                Text = "🔄 Refresh",
+                Text = "&Refresh Insights",
                 AutoSize = false,
-                Size = new Size(100, 32),
+                Size = new Size(135, 32),
                 Name = "ProactiveRefresh",
                 AccessibleName = "Refresh Insights Button",
                 AccessibleDescription = "Click to refresh proactive insights",
@@ -216,7 +242,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TabStop = true
             };
             _buttonToolTip ??= new ToolTip();
-            _buttonToolTip.SetToolTip(_btnRefresh, "Refresh insights");
+            _buttonToolTip.SetToolTip(_btnRefresh, "Refresh the latest proactive insights.");
             SfSkinManager.SetVisualStyle(_btnRefresh, currentTheme);
             _btnRefresh.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnRefresh);
@@ -224,9 +250,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Clear button (using SfButton for Syncfusion consistency)
             _btnClear = new SfButton
             {
-                Text = "🗑️ Clear",
+                Text = "&Clear Insights",
                 AutoSize = false,
-                Size = new Size(85, 32),
+                Size = new Size(125, 32),
                 Name = "ProactiveClear",
                 AccessibleName = "Clear Insights Button",
                 AccessibleDescription = "Click to clear all proactive insights",
@@ -234,7 +260,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TabIndex = 2,
                 TabStop = true
             };
-            _buttonToolTip.SetToolTip(_btnClear, "Clear all insights");
+            _buttonToolTip.SetToolTip(_btnClear, "Clear insights from the current view.");
             SfSkinManager.SetVisualStyle(_btnClear, currentTheme);
             _btnClear.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnClear);
@@ -265,6 +291,18 @@ namespace WileyWidget.WinForms.Controls.Panels
                     AccessibleDescription = "Insight feed is unavailable because required runtime services are missing"
                 });
             }
+
+            _statusLabel = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 24,
+                Padding = new Padding(8, 0, 0, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Text = "Ready",
+                AccessibleName = "Proactive insights status"
+            };
+            Controls.Add(_statusLabel);
+            _statusLabel.BringToFront();
 
             // Hook up toolbar actions to named handlers so we can unsubscribe later
             _btnRefreshClickHandler = (s, e) => BtnRefresh_Click(s, e);
@@ -297,6 +335,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 _logger?.LogDebug(ex, "Failed to close ProactiveInsightsPanel via docking manager");
                 Visible = false;
+            }
+        }
+
+        private void SetStatusMessage(string message)
+        {
+            if (_statusLabel != null)
+            {
+                _statusLabel.Text = message;
             }
         }
 
@@ -398,12 +444,25 @@ namespace WileyWidget.WinForms.Controls.Panels
             try
             {
                 _logger?.LogInformation("[PROACTIVE_INSIGHTS] Refresh clicked");
+                SetStatusMessage("Refreshing proactive insights…");
+                if (_panelHeader != null)
+                {
+                    _panelHeader.IsLoading = true;
+                }
                 // Intentionally do not change public API; the child panel/ViewModel handles refresh mechanics
+                SetStatusMessage("Proactive insights refresh requested.");
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[PROACTIVE_INSIGHTS] Refresh action failed");
-                MessageBox.Show($"Failed to refresh insights: {ex.Message}", "Refresh Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                SetStatusMessage($"Unable to refresh insights: {ex.Message}");
+            }
+            finally
+            {
+                if (_panelHeader != null)
+                {
+                    _panelHeader.IsLoading = false;
+                }
             }
         }
 
@@ -424,11 +483,13 @@ namespace WileyWidget.WinForms.Controls.Panels
                     viewModel.LowPriorityCount = 0;
                     viewModel.StatusMessage = "Insights cleared";
                     _logger?.LogInformation("[PROACTIVE_INSIGHTS] Cleared visible insight cards");
+                    SetStatusMessage("Insights cleared.");
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[PROACTIVE_INSIGHTS] Clear action failed");
+                SetStatusMessage($"Unable to clear insights: {ex.Message}");
             }
         }
 

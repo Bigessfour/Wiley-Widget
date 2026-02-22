@@ -83,6 +83,14 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // NOTE: InitializeControls() moved to OnViewModelResolved()
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        MinimumSize = new Size(1024, 720);
+        PerformLayout();
+        Invalidate(true);
+    }
+
     #region ICompletablePanel Overrides
 
     /// <summary>
@@ -209,7 +217,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             return;
         }
-        InitializeControls();
+        SafeSuspendAndLayout(InitializeControls);
         BindViewModel();
         ApplyCurrentTheme();
     }
@@ -221,6 +229,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
         Name = "RecommendedMonthlyChargePanel";
         Size = new Size(1400, 900);
+        MinimumSize = new Size(1024, 720);
         Dock = DockStyle.Fill;
 
         // Error provider

@@ -104,6 +104,14 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
     }
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        MinimumSize = new Size(1024, 720);
+        PerformLayout();
+        Invalidate(true);
+    }
+
     /// <summary>
     /// Called after the ViewModel has been successfully resolved from the scoped service provider.
     /// Initializes controls and binds to the ViewModel.
@@ -116,7 +124,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Logger.LogWarning("ReportsPanel: ViewModel resolved as null — controls will not initialize.");
             return;
         }
-        InitializeControls();
+
+        SafeSuspendAndLayout(InitializeControls);
         BindViewModel();
 
         // Defer sizing validation - Reports has complex SplitContainer and grid layouts
@@ -212,7 +221,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         Name = "ReportsPanel";
         AccessibleName = "Reports"; // Panel title for UI automation
         Size = new Size(1400, 900);
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
+        MinimumSize = new Size(1024, 720);
         AutoScroll = false;
         Padding = Padding.Empty;
         // DockingManager will handle docking; do not set Dock here.

@@ -43,6 +43,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     private ToolStripStatusLabel? _recordCountLabel;
     private ToolStripStatusLabel? _lastRefreshLabel;
     private ErrorProvider? _errorProvider;
+    private ToolTip? _toolTip;
 
     // Global filter controls
     private SfComboBox? _fiscalYearComboBox;
@@ -80,9 +81,17 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         : base(scopeFactory, logger)
     {
         Size = new Size(1400, 900);
-        MinimumSize = new Size(1200, 700);
+        MinimumSize = new Size(1024, 720);
         Dock = DockStyle.Fill;
-        InitializeControls();
+        SafeSuspendAndLayout(InitializeControls);
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        MinimumSize = new Size(1024, 720);
+        PerformLayout();
+        Invalidate(true);
     }
 
     // -------------------------------------------------------------------------
@@ -109,6 +118,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         InitializeOverlays();
 
         _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink, BlinkRate = 0 };
+        _toolTip = new ToolTip();
 
         ApplyThemeToControls(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -149,7 +159,10 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             c.Dock = DockStyle.Fill;
             c.AllowNull = false;
+            c.AccessibleName = "Analytics fiscal year selector";
+            c.AccessibleDescription = "Select fiscal year for analytics data";
         });
+        _toolTip?.SetToolTip(_fiscalYearComboBox, "Choose the fiscal year to analyze.");
         _fyChanged = FiscalYear_SelectedIndexChanged;
         _fiscalYearComboBox.SelectedIndexChanged += _fyChanged;
         table.Controls.Add(_fiscalYearComboBox, 1, 0);
@@ -158,6 +171,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             new Label { Text = "Search:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 2, 0);
 
         _searchTextBox = ControlFactory.CreateTextBoxExt(t => t.Dock = DockStyle.Fill);
+        _searchTextBox.AccessibleName = "Analytics search";
+        _searchTextBox.AccessibleDescription = "Search analytics records";
+        _toolTip?.SetToolTip(_searchTextBox, "Search across analytics records.");
         _searchChanged = (s, e) =>
         {
             if (ViewModel != null)
@@ -168,8 +184,14 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = false };
         _refreshButton = ControlFactory.CreateSfButton("Refresh All", b => b.Width = 110);
+        _refreshButton.AccessibleName = "Refresh analytics";
+        _refreshButton.AccessibleDescription = "Refreshes all analytics tabs";
+        _toolTip?.SetToolTip(_refreshButton, "Refresh all analytics data.");
         _refreshButton.Click += async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
         _exportButton = ControlFactory.CreateSfButton("Export", b => b.Width = 90);
+        _exportButton.AccessibleName = "Export analytics";
+        _exportButton.AccessibleDescription = "Export analytics data to a file";
+        _toolTip?.SetToolTip(_exportButton, "Export analytics data from the active section.");
         _exportButton.Click += (s, e) => ExportHub();
         btnPanel.Controls.AddRange(new Control[] { _refreshButton, _exportButton });
         table.Controls.Add(btnPanel, 4, 0);
@@ -186,7 +208,10 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             t.ItemSize = new Size(150, 36);
             t.Alignment = TabAlignment.Top;
             t.TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererMetro);
+            t.AccessibleName = "Analytics sections";
+            t.AccessibleDescription = "Tabs for overview, trends, scenarios, and variances";
         });
+        _toolTip?.SetToolTip(_tabControl, "Switch between analytics sections.");
 
         _overviewTab = new OverviewTabControl(ViewModel?.Overview, Logger) { Dock = DockStyle.Fill };
         _trendsTab = new TrendsTabControl(ViewModel?.Trends, Logger) { Dock = DockStyle.Fill };
@@ -881,6 +906,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
                 ViewModel.PropertyChanged -= _vmChanged;
 
             _errorProvider?.Dispose();
+            _toolTip?.Dispose();
         }
 
         base.Dispose(disposing);
