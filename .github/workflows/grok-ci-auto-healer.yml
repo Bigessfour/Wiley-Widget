@@ -2,7 +2,7 @@ name: Grok CI Auto-Healer (Cloud Agent)
 
 on:
   workflow_run:
-    workflows: ["Build & WinForms Integration Check"]
+    workflows: [Build & WinForms Integration Check]
     types:
       - completed
 
@@ -31,7 +31,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: 3.x
 
       - name: Install dependencies
         run: python -m pip install --upgrade pip requests
