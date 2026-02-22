@@ -5,7 +5,7 @@ namespace WileyWidget.Models;
 
 /// <summary>
 /// Represents a data point for budget trend visualization.
-/// Used in DashboardViewModel for displaying budget trends over time.
+/// Used for displaying budget trends over time.
 /// </summary>
 public class BudgetTrendItem : INotifyPropertyChanged
 {

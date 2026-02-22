@@ -101,8 +101,7 @@ internal static class IntegrationTestServices
         services.AddScoped<BusinessInterfaces.IActivityLogRepository>(_ => Mock.Of<BusinessInterfaces.IActivityLogRepository>());
 
         // ViewModels needed by ribbon/nav panel activation in integration tests
-        services.AddScoped<IDashboardViewModel, DashboardViewModel>();
-        services.AddScoped<DashboardViewModel>();
+        services.AddScoped<EnterpriseVitalSignsViewModel>();
         services.AddScoped<MainViewModel>();
         services.AddScoped<AccountsViewModel>();
         services.AddScoped<ActivityLogViewModel>();
@@ -120,7 +119,11 @@ internal static class IntegrationTestServices
         services.AddScoped<WarRoomViewModel>();
         services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatViewModel>();
         services.AddScoped<WileyWidget.WinForms.Factories.SyncfusionControlFactory>();
-        services.AddWindowsFormsBlazorWebView();
+        // NOTE: AddWindowsFormsBlazorWebView() is intentionally NOT called here.
+        // BlazorWebView controls are created by WinForms Designer via InitializeComponent(), not via DI.
+        // Calling it would load Microsoft.WinForms.Utilities.Shared v1.6.0.0 (a .NET 6-era assembly
+        // absent from the .NET 10 WindowsDesktop runtime) during BuildServiceProvider(ValidateOnBuild=true),
+        // caching a process-wide CLR assembly load failure that poisons every subsequent test.
 
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
     }

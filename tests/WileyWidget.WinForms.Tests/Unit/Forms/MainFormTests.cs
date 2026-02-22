@@ -351,11 +351,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             var panelNavMock = new Mock<IPanelNavigationService>();
             var dashboardRequested = false;
-            panelNavMock.Setup(p => p.ShowForm<BudgetDashboardForm>(It.IsAny<string>(), It.IsAny<Syncfusion.Windows.Forms.Tools.DockingStyle>(), It.IsAny<bool>()))
+            panelNavMock.Setup(p => p.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(It.IsAny<string>(), It.IsAny<Syncfusion.Windows.Forms.Tools.DockingStyle>(), It.IsAny<bool>()))
                 .Callback(() => dashboardRequested = true)
                 .Verifiable();
             // Also accept overload with parameters object (null passed in production code)
-            panelNavMock.Setup(p => p.ShowForm<BudgetDashboardForm>(It.IsAny<string>(), It.IsAny<object?>(), It.IsAny<Syncfusion.Windows.Forms.Tools.DockingStyle>(), It.IsAny<bool>()))
+            panelNavMock.Setup(p => p.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(It.IsAny<string>(), It.IsAny<object?>(), It.IsAny<Syncfusion.Windows.Forms.Tools.DockingStyle>(), It.IsAny<bool>()))
                 .Callback(() => dashboardRequested = true)
                 .Verifiable();
 
@@ -398,7 +398,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             // Assert
             // Verify the overload with parameters (null) was called during initialization
-            panelNavMock.Verify(p => p.ShowForm<BudgetDashboardForm>(It.IsAny<string>(), It.IsAny<Syncfusion.Windows.Forms.Tools.DockingStyle>(), It.IsAny<bool>()), Times.AtLeastOnce);
+            panelNavMock.Verify(p => p.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(It.IsAny<string>(), It.IsAny<Syncfusion.Windows.Forms.Tools.DockingStyle>(), It.IsAny<bool>()), Times.AtLeastOnce);
 
             var mruList = form.GetPrivateField("_mruList") as List<string>;
             mruList.Should().NotBeNull();

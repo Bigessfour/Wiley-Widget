@@ -5,7 +5,7 @@ namespace WileyWidget.Models;
 
 /// <summary>
 /// Represents enterprise type statistics for dashboard visualization.
-/// Used in DashboardViewModel for displaying enterprise distribution by type.
+/// Used for displaying enterprise distribution by type.
 /// </summary>
 public class EnterpriseTypeItem : INotifyPropertyChanged
 {

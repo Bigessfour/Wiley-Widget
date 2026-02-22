@@ -246,16 +246,22 @@ namespace WileyWidget.WinForms.Configuration
                 return new Microsoft.Extensions.Caching.Memory.MemoryCache(options);
             });
 
-            // Blazor WebView Services (Required for BlazorWebView controls)
-            services.AddWindowsFormsBlazorWebView();
+            // Blazor WebView + Syncfusion Blazor Components
+            // ISOLATION: calls are wrapped in a [NoInlining] helper so the JIT defers
+            // loading Microsoft.AspNetCore.Components.WebView.WindowsForms.dll (and its
+            // transitive dependency Microsoft.WinForms.Utilities.Shared v1.6.0.0, shipped
+            // exclusively by microsoft.winforms.designer.sdk with PrivateAssets=all and
+            // therefore absent from the test runner output directory). Without this
+            // isolation the JIT-time assembly load is triggered even when the call is
+            // behind a dead-branch 'if', poisoning the entire test process.
+            // See IntegrationTestServices.cs and RegisterBlazorServices() below.
+            if (!(effectiveConfig?.GetValue<bool>("UI:IsUiTestHarness", false) ?? false))
+            {
+                RegisterBlazorServices(services);
+            }
 
             // Automation hooks for JARVIS UI validation
             services.AddSingleton<WileyWidget.WinForms.Automation.JarvisAutomationState>();
-
-            // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
-            // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in Syncfusion.Blazor.SmartComponents
-            // The package exists but the actual components/APIs are not released yet
-            services.AddSyncfusionBlazor();
 
             // Bind Grok recommendation options from configuration (appsettings: GrokRecommendation)
             // Use deferred options configuration so IConfiguration is resolved from the final provider (host builder)
@@ -649,9 +655,6 @@ namespace WileyWidget.WinForms.Configuration
             // TIER 3+ ADVANCED UI SERVICES (Enterprise Features)
             // =====================================================================
 
-            // Real-time Dashboard Service (Singleton - manages live data updates)
-            services.AddSingleton<RealtimeDashboardService>();
-
             // User Preferences Service (Singleton - manages user settings persistence)
             // Registered in core via AddWileyWidgetCoreServices(configuration)
 
@@ -701,14 +704,13 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<UtilityBillViewModel>();
             services.AddScoped<AccountsViewModel>();
             services.AddScoped<PaymentsViewModel>();
-            services.AddScoped<IDashboardViewModel, DashboardViewModel>();
-            services.AddScoped<DashboardViewModel>();
             services.AddScoped<IAnalyticsViewModel, AnalyticsViewModel>();
             services.AddScoped<AnalyticsViewModel>();
             services.AddScoped<IAnalyticsHubViewModel, AnalyticsHubViewModel>();
             services.AddScoped<AnalyticsHubViewModel>();
             services.AddScoped<ChartViewModel>();
             services.AddScoped<BudgetOverviewViewModel>();
+            services.AddScoped<EnterpriseVitalSignsViewModel>();
             services.AddScoped<IBudgetViewModel, BudgetViewModel>();
             services.AddScoped<BudgetViewModel>();
             services.AddScoped<ICustomersViewModel, CustomersViewModel>();
@@ -739,7 +741,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.ReportsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.SettingsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel>();
-            // FormHostPanel is used to host standalone Forms (e.g., BudgetDashboardForm) inside docking panels.
+            // FormHostPanel is used to host standalone Forms (e.g., RatesPage) inside docking panels.
             // Ensure it's registered so DI validation recognizes it and tests can resolve its dependencies.
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.FormHostPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel>();
@@ -758,7 +760,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.InsightFeedPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>();
-            // DashboardPanel removed in favor of BudgetDashboardForm (form-hosted). See migration.
+            services.AddScoped<EnterpriseVitalSignsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 
             // =====================================================================
@@ -783,7 +785,6 @@ namespace WileyWidget.WinForms.Configuration
 
             // Child Forms (Transient - Created/disposed as needed)
             // NOTE: RecommendedMonthlyChargePanel is now a UserControl panel - use IPanelNavigationService.ShowPanel<RecommendedMonthlyChargePanel>()
-            services.AddTransient<BudgetDashboardForm>();  // Budget dashboard as standalone form (not docked panel)
             // Rates page form (transient - created on demand via MainForm.ShowForm<TForm>)
             services.AddTransient<RatesPage>();
 
@@ -796,6 +797,41 @@ namespace WileyWidget.WinForms.Configuration
             // NOTES ON OMISSIONS
             // =====================================================================
             // - DbContext: Registered in Program.cs to avoid dual provider conflict
+        }
+
+        /// <summary>
+        /// Registers BlazorWebView and Syncfusion Blazor services.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// ISOLATION REQUIREMENT: This method MUST stay in a dedicated
+        /// <see langword="static"/> method decorated with
+        /// <see cref="System.Runtime.CompilerServices.MethodImplOptions.NoInlining"/>.
+        /// </para>
+        /// <para>
+        /// <c>AddWindowsFormsBlazorWebView()</c> causes the CLR to load
+        /// <c>Microsoft.AspNetCore.Components.WebView.WindowsForms.dll</c> at JIT-compile
+        /// time (including via its module initialiser). That DLL has a transitive
+        /// dependency on <c>Microsoft.WinForms.Utilities.Shared v1.6.0.0</c>, which is
+        /// shipped only by <c>microsoft.winforms.designer.sdk</c>
+        /// (<c>PrivateAssets=all</c>) and is therefore absent from the test runner output
+        /// directory. Because a <see langword="if"/>-branch guard inside the same method
+        /// does <em>not</em> prevent JIT-level assembly resolution, the call must live in
+        /// its own method so the JIT defers loading until the method is actually invoked —
+        /// which only happens when <c>UI:IsUiTestHarness</c> is <see langword="false"/>.
+        /// </para>
+        /// </remarks>
+        [System.Runtime.CompilerServices.MethodImpl(
+            System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private static void RegisterBlazorServices(IServiceCollection services)
+        {
+            services.AddWindowsFormsBlazorWebView();
+
+            // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
+            // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in
+            // Syncfusion.Blazor.SmartComponents — the package exists but the components/
+            // APIs are not yet released.
+            services.AddSyncfusionBlazor();
         }
     }
 

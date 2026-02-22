@@ -10,25 +10,20 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.Windows.Forms.Tools;
-using WileyWidget.WinForms.Extensions;
+using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Supporting;
-using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Factories;
 
 /// <summary>
 /// Factory for creating fully-configured Syncfusion controls with ALL required properties.
-///
 /// MANDATORY USAGE: This factory ensures no partial/incomplete control implementations.
 /// Per workspace rules (Syncfusion API Rule):
 /// - ALL Syncfusion API properties must be configured
 /// - Theme integration is mandatory
-/// - No "winging it" or incomplete setups
-///
-/// Before using ANY control type, consult Syncfusion WinForms documentation via MCP:
-/// - Use Syncfusion WinForms Assistant MCP for API documentation
-/// - Validate against local samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19
 /// </summary>
 public class SyncfusionControlFactory
 {
@@ -38,99 +33,48 @@ public class SyncfusionControlFactory
     public SyncfusionControlFactory(ILogger<SyncfusionControlFactory> logger, IThemeService? themeService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _currentTheme = themeService?.CurrentTheme ?? Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        _currentTheme = themeService?.CurrentTheme
+            ?? SfSkinManager.ApplicationVisualTheme
+            ?? "Office2019Colorful";
     }
 
-    #region SfDataGrid - Complete Configuration Template
+    #region SfDataGrid
 
-    /// <summary>
-    /// Creates a fully-configured SfDataGrid with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist (per Syncfusion API):
-    /// ✅ ThemeName - Theme integration
-    /// ✅ Dock/Size - Layout
-    /// ✅ AllowEditing - Edit behavior
-    /// ✅ AllowFiltering - Filter behavior
-    /// ✅ AllowSorting - Sort behavior
-    /// ✅ AllowResizingColumns - Column resize
-    /// ✅ SelectionMode - Selection behavior
-    /// ✅ AutoGenerateColumns - Column generation
-    /// ✅ EditorSelectionBehavior - Edit UX
-    /// ✅ AddNewRowPosition - Add row behavior
-    /// ✅ NavigationMode - Keyboard navigation
-    /// ✅ String filter protection - Prevent relational operator crashes
-    /// </summary>
     public SfDataGrid CreateSfDataGrid(Action<SfDataGrid>? configure = null)
     {
-        _logger.LogDebug("Creating SfDataGrid with full property configuration");
+        _logger.LogDebug("Creating SfDataGrid");
 
         var grid = new SfDataGrid
         {
-            // Theme integration (MANDATORY per SfSkinManager rule)
-
-            // Layout
             Dock = DockStyle.Fill,
-
-            // Core behaviors (all set explicitly - no defaults assumed)
             AllowEditing = true,
             AllowFiltering = true,
             AllowSorting = true,
             AllowResizingColumns = true,
             AllowDraggingColumns = true,
-            AllowGrouping = false, // Set explicitly
-
-            // Selection behavior
+            AllowGrouping = false,
             SelectionMode = GridSelectionMode.Single,
-
-            // Column generation
             AutoGenerateColumns = true,
-
-            // Edit behavior
             EditorSelectionBehavior = EditorSelectionBehavior.SelectAll,
-
-            // Add row behavior
             AddNewRowPosition = RowPosition.Bottom,
-
-            // Navigation
             NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Cell,
-
-            // Performance
             EnableDataVirtualization = true,
-
-            // Visual polish
             ShowRowHeader = false,
-            ShowToolTip = true
+            ShowToolTip = true,
         };
 
-        // Apply theme via SfSkinManager (single source of truth)
         grid.ApplySyncfusionTheme(_currentTheme, _logger);
-
-        // String filter protection (prevents System.InvalidOperationException)
         grid.PreventStringRelationalFilters(_logger);
-
-        // Allow caller to override/extend
         configure?.Invoke(grid);
 
-        _logger.LogInformation(
-            "SfDataGrid created: Theme={Theme}, Editing={Editing}, Filtering={Filtering}, Sorting={Sorting}",
-            grid.ThemeName, grid.AllowEditing, grid.AllowFiltering, grid.AllowSorting);
-
+        _logger.LogInformation("SfDataGrid created: Theme={Theme}", grid.ThemeName);
         return grid;
     }
 
     #endregion
 
-    #region SfButton - Complete Configuration Template
+    #region SfButton
 
-    /// <summary>
-    /// Creates a fully-configured SfButton with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ Text
-    /// ✅ Size
-    /// ✅ Font
-    /// </summary>
     public SfButton CreateSfButton(string text, Action<SfButton>? configure = null)
     {
         _logger.LogDebug("Creating SfButton: {Text}", text);
@@ -139,31 +83,18 @@ public class SyncfusionControlFactory
         {
             Text = text,
             Size = new Size(120, 32),
-            Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         };
 
         button.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(button);
-
         return button;
     }
 
     #endregion
 
-    #region ChartControl - Complete Configuration Template
+    #region ChartControl
 
-    /// <summary>
-    /// Creates a fully-configured ChartControl with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ Size/Dock
-    /// ✅ PrimaryXAxis configuration
-    /// ✅ PrimaryYAxis configuration
-    /// ✅ Series collection initialized
-    /// ✅ Legend visibility
-    /// ✅ Title
-    /// </summary>
     public ChartControl CreateChartControl(string title, Action<ChartControl>? configure = null)
     {
         _logger.LogDebug("Creating ChartControl: {Title}", title);
@@ -171,41 +102,48 @@ public class SyncfusionControlFactory
         var chart = new ChartControl
         {
             Dock = DockStyle.Fill,
-            Title = { Text = title },
-
-            // Visual settings
-            Legend = { Visible = true, Position = ChartDock.Bottom },
             ShowLegend = true,
-
-            // Interaction
             EnableMouseRotation = false,
-            AllowGradientPalette = true
+            AllowGradientPalette = true,
         };
-
-        // Configure primary axes (properties are read-only)
+        chart.Title.Text = title;
+        chart.Legend.Visible = true;
+        chart.Legend.Position = ChartDock.Bottom;
         chart.PrimaryXAxis.Title = "X Axis";
         chart.PrimaryYAxis.Title = "Y Axis";
 
         chart.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(chart);
+        return chart;
+    }
 
+    /// <summary>Creates a chart configured for reserve projections (alias entry point).</summary>
+    public ChartControl CreateSfChart(string title, Action<ChartControl>? configure = null)
+    {
+        _logger.LogDebug("Creating SfChart wrapper: {Title}", title);
+
+        var chart = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            ShowLegend = true,
+            EnableMouseRotation = false,
+            AllowGradientPalette = true,
+        };
+        chart.Title.Text = title;
+        chart.Legend.Visible = true;
+        chart.Legend.Position = ChartDock.Bottom;
+        chart.PrimaryXAxis.Title = "Fiscal Year";
+        chart.PrimaryYAxis.Title = "Projected Reserves";
+
+        chart.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(chart);
         return chart;
     }
 
     #endregion
 
-    #region TabControlAdv - Complete Configuration Template
+    #region TabControlAdv
 
-    /// <summary>
-    /// Creates a fully-configured TabControlAdv with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ Dock/Size
-    /// ✅ TabStyle
-    /// ✅ Alignment
-    /// ✅ CloseButtonVisible
-    /// </summary>
     public TabControlAdv CreateTabControlAdv(Action<TabControlAdv>? configure = null)
     {
         _logger.LogDebug("Creating TabControlAdv");
@@ -213,33 +151,21 @@ public class SyncfusionControlFactory
         var tabControl = new TabControlAdv
         {
             Dock = DockStyle.Fill,
-            TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererMetro),
+            TabStyle = typeof(TabRendererMetro),
             Alignment = TabAlignment.Top,
             SizeMode = Syncfusion.Windows.Forms.Tools.TabSizeMode.Fixed,
-            ItemSize = new Size(120, 32)
+            ItemSize = new Size(120, 32),
         };
 
         tabControl.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(tabControl);
-
         return tabControl;
     }
 
     #endregion
 
-    #region RibbonControlAdv - Complete Configuration Template
+    #region RibbonControlAdv
 
-    /// <summary>
-    /// Creates a fully-configured RibbonControlAdv with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ Dock
-    /// ✅ MenuButtonText
-    /// ✅ ShowQuickItemsDropDownButton
-    /// ✅ TitleAlignment
-    /// ✅ RibbonStyle
-    /// </summary>
     public RibbonControlAdv CreateRibbonControlAdv(string menuButtonText, Action<RibbonControlAdv>? configure = null)
     {
         _logger.LogDebug("Creating RibbonControlAdv");
@@ -248,92 +174,65 @@ public class SyncfusionControlFactory
         {
             MenuButtonText = menuButtonText,
             ShowQuickItemsDropDownButton = false,
-            TitleAlignment = Syncfusion.Windows.Forms.Tools.TextAlignment.Left,
+            TitleAlignment = TextAlignment.Left,
             RibbonStyle = RibbonStyle.Office2016,
-            OfficeColorScheme = Syncfusion.Windows.Forms.Tools.ToolStripEx.ColorScheme.Managed
+            OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
         };
-
-        // Dock must be set via special property (not regular DockStyle)
-        ribbon.Dock = (Syncfusion.Windows.Forms.Tools.DockStyleEx)DockStyle.Top;
+        ribbon.Dock = (DockStyleEx)DockStyle.Top;
 
         ribbon.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(ribbon);
-
         return ribbon;
     }
 
     #endregion
 
-    #region SfListView - Complete Configuration Template
+    #region SfListView
 
-    /// <summary>
-    /// Creates a fully-configured SfListView with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ Dock/Size
-    /// ✅ View
-    /// ✅ SelectionMode
-    /// ✅ ShowColumnHeader
-    /// </summary>
     public SfListView CreateSfListView(Action<SfListView>? configure = null)
     {
-        _logger.LogDebug("Creating SfListView with full property configuration");
+        _logger.LogDebug("Creating SfListView");
 
         var listView = new SfListView
         {
             Dock = DockStyle.Fill,
             ItemHeight = 28,
-            Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         };
 
         listView.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(listView);
-
         return listView;
     }
 
     #endregion
 
-    #region TextBoxExt - Complete Configuration Template
+    #region TextBoxExt
 
-    /// <summary>
-    /// Creates a fully-configured TextBoxExt with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ Size
-    /// ✅ Font
-    /// ✅ BorderStyle
-    /// </summary>
     public TextBoxExt CreateTextBoxExt(Action<TextBoxExt>? configure = null)
     {
-        _logger.LogDebug("Creating TextBoxExt with full property configuration");
+        _logger.LogDebug("Creating TextBoxExt");
 
         var textBox = new TextBoxExt
         {
             BorderStyle = BorderStyle.FixedSingle,
             Size = new Size(200, 28),
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-            CanOverrideStyle = false
+            CanOverrideStyle = false,
         };
 
         textBox.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(textBox);
-
         return textBox;
     }
 
     #endregion
 
-    #region SfComboBox - Complete Configuration Template
+    #region SfComboBox
 
-    /// <summary>
-    /// Creates a fully-configured SfComboBox with ALL essential properties set.
-    /// </summary>
     public SfComboBox CreateSfComboBox(Action<SfComboBox>? configure = null)
     {
-        _logger.LogDebug("Creating SfComboBox with full property configuration");
+        _logger.LogDebug("Creating SfComboBox");
 
         var comboBox = new SfComboBox
         {
@@ -341,45 +240,37 @@ public class SyncfusionControlFactory
             Width = 150,
             Height = 28,
             MaxDropDownItems = 10,
-            AllowDropDownResize = false
+            AllowDropDownResize = false,
         };
 
         comboBox.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(comboBox);
-
         return comboBox;
     }
 
     #endregion
 
-    #region SfNumericTextBox - Complete Configuration Template
+    #region SfNumericTextBox
 
-    /// <summary>
-    /// Creates a fully-configured SfNumericTextBox with ALL essential properties set.
-    /// </summary>
     public SfNumericTextBox CreateSfNumericTextBox(Action<SfNumericTextBox>? configure = null)
     {
-        _logger.LogDebug("Creating SfNumericTextBox with full property configuration");
+        _logger.LogDebug("Creating SfNumericTextBox");
 
         var numericTextBox = new SfNumericTextBox
         {
             Size = new Size(80, 24),
-            FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Numeric
+            FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Numeric,
         };
 
         numericTextBox.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(numericTextBox);
-
         return numericTextBox;
     }
 
     #endregion
 
-    #region CheckBoxAdv - Complete Configuration Template
+    #region CheckBoxAdv
 
-    /// <summary>
-    /// Creates a fully-configured CheckBoxAdv with ALL essential properties set.
-    /// </summary>
     public CheckBoxAdv CreateCheckBoxAdv(string text, Action<CheckBoxAdv>? configure = null)
     {
         _logger.LogDebug("Creating CheckBoxAdv: {Text}", text);
@@ -388,22 +279,18 @@ public class SyncfusionControlFactory
         {
             Text = text,
             AutoSize = true,
-            Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         };
 
         checkBox.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(checkBox);
-
         return checkBox;
     }
 
     #endregion
 
-    #region SplitContainerAdv - Complete Configuration Template
+    #region SplitContainerAdv
 
-    /// <summary>
-    /// Creates a fully-configured SplitContainerAdv with ALL essential properties set.
-    /// </summary>
     public SplitContainerAdv CreateSplitContainerAdv(Action<SplitContainerAdv>? configure = null)
     {
         _logger.LogDebug("Creating SplitContainerAdv");
@@ -413,22 +300,18 @@ public class SyncfusionControlFactory
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
             SplitterWidth = 6,
-            ThemeName = _currentTheme
+            ThemeName = _currentTheme,
         };
 
         splitContainer.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(splitContainer);
-
         return splitContainer;
     }
 
     #endregion
 
-    #region ProgressBarAdv - Complete Configuration Template
+    #region ProgressBarAdv
 
-    /// <summary>
-    /// Creates a fully-configured ProgressBarAdv with ALL essential properties set.
-    /// </summary>
     public ProgressBarAdv CreateProgressBarAdv(Action<ProgressBarAdv>? configure = null)
     {
         _logger.LogDebug("Creating ProgressBarAdv");
@@ -436,30 +319,18 @@ public class SyncfusionControlFactory
         var progressBar = new ProgressBarAdv
         {
             Size = new Size(200, 16),
-            ProgressStyle = ProgressBarStyles.Metro
+            ProgressStyle = ProgressBarStyles.Metro,
         };
 
         progressBar.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(progressBar);
-
         return progressBar;
     }
 
     #endregion
 
-    #region DockingManager - Complete Configuration Template
+    #region DockingManager
 
-    /// <summary>
-    /// Creates a fully-configured DockingManager with ALL essential properties set.
-    ///
-    /// Mandatory Properties Checklist:
-    /// ✅ ThemeName
-    /// ✅ HostForm (parent form)
-    /// ✅ HostControl (parent container)
-    /// ✅ ShowCaption
-    /// ✅ DockToFill
-    /// ✅ CloseEnabled
-    /// </summary>
     public DockingManager CreateDockingManager(Form hostForm, Control hostControl, Action<DockingManager>? configure = null)
     {
         _logger.LogDebug("Creating DockingManager for {FormType}", hostForm.GetType().Name);
@@ -471,55 +342,20 @@ public class SyncfusionControlFactory
             ShowCaption = false,
             DockToFill = false,
             CloseEnabled = true,
-            PersistState = false
+            PersistState = false,
         };
 
         configure?.Invoke(dockingManager);
-
         return dockingManager;
     }
 
     #endregion
 
-    #region SfChart (modernized wrapper)
+    #region SfRichTextBox
 
-    /// <summary>
-    /// Creates a chart configured for reserve projections using the current theme.
-    /// Uses the existing ChartControl for compatibility while exposing a modern factory entry point.
-    /// </summary>
-    public ChartControl CreateSfChart(string title, Action<ChartControl>? configure = null)
-    {
-        _logger.LogDebug("Creating SfChart wrapper: {Title}", title);
-
-        var chart = new ChartControl
-        {
-            Dock = DockStyle.Fill,
-            Title = { Text = title },
-            Legend = { Visible = true, Position = ChartDock.Bottom },
-            ShowLegend = true,
-            EnableMouseRotation = false,
-            AllowGradientPalette = true
-        };
-
-        chart.PrimaryXAxis.Title = "Fiscal Year";
-        chart.PrimaryYAxis.Title = "Projected Reserves";
-
-        chart.ApplySyncfusionTheme(_currentTheme, _logger);
-        configure?.Invoke(chart);
-
-        return chart;
-    }
-
-    #endregion
-
-    #region SfRichTextBox (narrative helper)
-
-    /// <summary>
-    /// Creates a themed RichTextBox for AI narrative output.
-    /// </summary>
     public RichTextBox CreateSfRichTextBox(Action<RichTextBox>? configure = null)
     {
-        _logger.LogDebug("Creating SfRichTextBox (RichTextBox themed)");
+        _logger.LogDebug("Creating SfRichTextBox");
 
         var rtb = new RichTextBox
         {
@@ -528,30 +364,26 @@ public class SyncfusionControlFactory
             BorderStyle = BorderStyle.FixedSingle,
             Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
             DetectUrls = true,
-            WordWrap = true
+            WordWrap = true,
         };
 
         rtb.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(rtb);
-
         return rtb;
     }
 
     #endregion
 
-    #region LoadingOverlay helper
+    #region LoadingOverlay
 
-    /// <summary>
-    /// Creates the standard loading overlay for panel operations.
-    /// </summary>
     public LoadingOverlay CreateLoadingOverlay(Action<LoadingOverlay>? configure = null)
     {
-        _logger.LogDebug("Creating LoadingOverlay helper");
+        _logger.LogDebug("Creating LoadingOverlay");
 
         var overlay = new LoadingOverlay
         {
             Dock = DockStyle.Fill,
-            Visible = false
+            Visible = false,
         };
 
         configure?.Invoke(overlay);
@@ -559,5 +391,145 @@ public class SyncfusionControlFactory
     }
 
     #endregion
+
+    // ── Static helpers (used by EnterpriseVitalSignsPanel without DI) ─────
+
+    // ── Static helpers (used by EnterpriseVitalSignsPanel without DI) ─────
+
+    /// <summary>
+    /// Creates a RadialGauge showing break-even ratio for an enterprise.
+    /// </summary>
+    public RadialGauge CreateCircularGauge(double currentRatio, string enterpriseName)
+    {
+        _logger.LogDebug("Creating CircularGauge: {Enterprise} = {Ratio:F1}%", enterpriseName, currentRatio);
+
+        var gauge = new RadialGauge
+        {
+            Dock = DockStyle.Fill,
+            Value = (float)currentRatio,
+            MinimumValue = 0,
+            MaximumValue = 150,
+            ShowTicks = true,
+            ShowScaleLabel = true,
+            GaugeLabel = $"{currentRatio:F1}%",
+        };
+
+        gauge.Ranges.Add(new Syncfusion.Windows.Forms.Gauge.Range
+        {
+            StartValue = 0,
+            EndValue = 99.9f,
+            Color = Color.Red,
+            InRange = true,
+            Height = 10,
+        });
+        gauge.Ranges.Add(new Syncfusion.Windows.Forms.Gauge.Range
+        {
+            StartValue = 100,
+            EndValue = 150,
+            Color = Color.Green,
+            InRange = true,
+            Height = 10,
+        });
+
+        gauge.ApplySyncfusionTheme(_currentTheme, _logger);
+
+        _logger.LogInformation("CircularGauge created for {Enterprise}", enterpriseName);
+        return gauge;
+    }
+
+    /// <summary>
+    /// Creates a fully composed enterprise gauge container including title, radial gauge, and value label.
+    /// </summary>
+    public Control CreateEnterpriseGauge(double currentRatio, string enterpriseName)
+    {
+        var container = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Padding = new Padding(8),
+        };
+
+        var titleLabel = new Label
+        {
+            Text = enterpriseName,
+            Dock = DockStyle.Top,
+            Height = 28,
+            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        var valueLabel = new Label
+        {
+            Text = $"{currentRatio:F1}%",
+            Dock = DockStyle.Bottom,
+            Height = 32,
+            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleCenter,
+            ForeColor = currentRatio >= 100 ? Color.Green : Color.Red,
+        };
+
+        var gauge = CreateCircularGauge(currentRatio, enterpriseName);
+
+        container.Controls.Add(gauge);
+        container.Controls.Add(valueLabel);
+        container.Controls.Add(titleLabel);
+        container.ApplySyncfusionTheme(_currentTheme, _logger);
+
+        _logger.LogDebug("Created enterprise gauge container for {Enterprise}", enterpriseName);
+        return container;
+    }
+
+    /// <summary>
+    /// Creates a ChartControl with Revenue, Expenses, Net Position, and Break Even series for one enterprise.
+    /// </summary>
+    public ChartControl CreateEnterpriseChart(EnterpriseSnapshot snapshot)
+    {
+        _logger.LogDebug("Creating EnterpriseChart: {Enterprise}", snapshot.Name);
+
+        var chart = new ChartControl
+        {
+            Dock = DockStyle.Fill,
+            ShowLegend = true,
+            EnableMouseRotation = false,
+            AllowGradientPalette = true,
+        };
+        chart.Title.Text = $"{snapshot.Name} — Financial Snapshot";
+        chart.PrimaryXAxis.Title = "Fiscal Year";
+        chart.PrimaryYAxis.Title = "Amount";
+
+        var fiscalYear = DateTime.Now.Year;
+
+        var revSeries = new ChartSeries("Revenue", ChartSeriesType.Column);
+        revSeries.Points.Add(fiscalYear, (double)snapshot.Revenue);
+        chart.Series.Add(revSeries);
+
+        var expSeries = new ChartSeries("Expenses", ChartSeriesType.Column);
+        expSeries.Points.Add(fiscalYear, (double)snapshot.Expenses);
+        chart.Series.Add(expSeries);
+
+        var netSeries = new ChartSeries("Net Position", ChartSeriesType.Area);
+        netSeries.Points.Add(fiscalYear, (double)snapshot.NetPosition);
+        chart.Series.Add(netSeries);
+
+        var breakEvenSeries = new ChartSeries("Break Even", ChartSeriesType.Line);
+        breakEvenSeries.Points.Add(fiscalYear, (double)snapshot.Expenses);
+        breakEvenSeries.Style.Border.Width = 3;
+        breakEvenSeries.Style.Border.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+        chart.Series.Add(breakEvenSeries);
+
+        chart.ApplySyncfusionTheme(_currentTheme, _logger);
+
+        _logger.LogInformation("EnterpriseChart created for {Enterprise}", snapshot.Name);
+        return chart;
+    }
+
+    /// <summary>
+    /// Creates a full multi-series enterprise chart alias for dashboard usage.
+    /// </summary>
+    public ChartControl CreateEnterpriseSnapshotChart(EnterpriseSnapshot snapshot)
+    {
+        var chart = CreateEnterpriseChart(snapshot);
+        _logger.LogDebug("Created enterprise snapshot chart for {Enterprise}", snapshot.Name);
+        return chart;
+    }
 }
 

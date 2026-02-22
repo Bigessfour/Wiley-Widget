@@ -439,17 +439,6 @@ namespace WileyWidget.WinForms.Services
 
             try
             {
-                if (string.Equals(panelName, "Dashboard", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (formHostPanel.HostedForm == null || formHostPanel.HostedForm.IsDisposed)
-                    {
-                        var dashboardForm = ActivatorUtilities.CreateInstance<BudgetDashboardForm>(_serviceProvider);
-                        formHostPanel.HostForm(dashboardForm);
-                    }
-
-                    return;
-                }
-
                 if (string.Equals(panelName, "Rates", StringComparison.OrdinalIgnoreCase))
                 {
                     if (formHostPanel.HostedForm == null || formHostPanel.HostedForm.IsDisposed)

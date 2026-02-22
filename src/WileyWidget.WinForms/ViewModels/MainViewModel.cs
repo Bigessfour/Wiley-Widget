@@ -378,11 +378,11 @@ namespace WileyWidget.WinForms.ViewModels
                                 Name = item.Title,
                                 Title = item.Title,
                                 Category = item.Category ?? "Budget",
-                                Value = (double)budget,
+                                Value = budget,
+                                PreviousValue = 0,
+                                PercentageChange = 0,
                                 Unit = "$",
-                                Trend = "Stable",
-                                ChangePercent = 0,
-                                Description = item.Description ?? string.Empty
+                                Status = "Neutral"
                             });
                         }
                         break;
@@ -395,11 +395,11 @@ namespace WileyWidget.WinForms.ViewModels
                                 Name = item.Title,
                                 Title = item.Title,
                                 Category = item.Category ?? "Actual",
-                                Value = (double)actual,
+                                Value = actual,
+                                PreviousValue = 0,
+                                PercentageChange = 0,
                                 Unit = "$",
-                                Trend = "Stable",
-                                ChangePercent = 0,
-                                Description = item.Description ?? string.Empty
+                                Status = "Neutral"
                             });
                         }
                         break;

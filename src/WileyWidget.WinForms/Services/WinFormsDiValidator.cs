@@ -208,7 +208,6 @@ namespace WileyWidget.WinForms.Services
                 typeof(ChartViewModel),
                 typeof(SettingsViewModel),
                 typeof(AccountsViewModel),
-                typeof(DashboardViewModel),
                 typeof(AnalyticsViewModel),
                 typeof(BudgetOverviewViewModel),
                 typeof(BudgetViewModel),
@@ -302,9 +301,23 @@ namespace WileyWidget.WinForms.Services
             var result = new WileyWidget.Services.Abstractions.DiValidationResult();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Find all types inheriting from ScopedPanelBase<T>
-            var scopedPanelTypes = System.Reflection.Assembly.GetExecutingAssembly()
-                .GetTypes()
+            // Find all types inheriting from ScopedPanelBase<T>.
+            // Use ReflectionTypeLoadException-safe enumeration: some types in WileyWidget.WinForms.dll
+            // (e.g. JARVISChatUserControl) reference Microsoft.AspNetCore.Components.WebView.WindowsForms
+            // which in turn depends on Microsoft.WinForms.Utilities.Shared v1.6.0.0 — absent from the
+            // .NET 10 WindowsDesktop shared runtime. GetTypes() throws ReflectionTypeLoadException for
+            // those types; we fall back to the subset that did load successfully.
+            IEnumerable<Type> allAssemblyTypes;
+            try
+            {
+                allAssemblyTypes = System.Reflection.Assembly.GetExecutingAssembly().GetTypes();
+            }
+            catch (System.Reflection.ReflectionTypeLoadException rtle)
+            {
+                allAssemblyTypes = rtle.Types.Where(t => t != null)!;
+            }
+
+            var scopedPanelTypes = allAssemblyTypes
                 .Where(t => t.IsClass && !t.IsAbstract && t.BaseType != null && t.BaseType.IsGenericType &&
                             t.BaseType.GetGenericTypeDefinition() == typeof(ScopedPanelBase<>))
                 .ToList();

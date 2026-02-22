@@ -88,24 +88,7 @@ public partial class MainForm
                 // Docking layout loading moved to OnShown for better timing
             }
 
-            // Phase 1: Show priority panels for faster startup
-            if (_uiConfig.UseSyncfusionDocking && _panelNavigator != null)
-            {
-                _logger?.LogInformation("Showing priority panels for faster startup");
-                try
-                {
-                    // Priority panels: Dashboard only to reduce clutter
-                    _logger?.LogInformation("[PANEL] Showing Dashboard");
-                    // Ensure UI handle is available; small delay helps controls create handles on slower machines
-                    try { await Task.Delay(100, cancellationToken); } catch (OperationCanceledException) { return; }
-                    _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.FormHostPanel>("Dashboard", DockingStyle.Right, allowFloating: true);
-                    _logger?.LogInformation("Priority panels shown successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Failed to show priority panels: {Type}: {Message}", ex.GetType().Name, ex.Message);
-                }
-            }
+            // Phase 1: Deprecated Dashboard auto-show removed.
 
             // Phase 2: Notify ViewModels of initial visibility for lazy loading
             _logger?.LogInformation("Triggering initial visibility notifications for all controls");
@@ -363,7 +346,7 @@ public partial class MainForm
                 try
                 {
                     _logger?.LogInformation("Showing initial dashboard panel...");
-                    ShowPanel<WileyWidget.WinForms.Controls.Panels.FormHostPanel>("Dashboard", DockingStyle.Top, allowFloating: true);
+                    ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
                     _dashboardAutoShown = true;
                     _logger?.LogInformation("Initial dashboard panel shown successfully");
                 }
@@ -765,6 +748,74 @@ public partial class MainForm
         {
             _logger?.LogWarning("Import failed for {File}: {Error}", Path.GetFileName(file), result.ErrorMessage);
             ShowErrorDialog("Import Failed", result.ErrorMessage ?? "Unknown error");
+        }
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+
+        try
+        {
+            _logger?.LogInformation("🌟 MainForm.OnShown - Wiley Widget launching default dashboard...");
+
+            if (_serviceProvider == null)
+            {
+                throw new InvalidOperationException("Service provider is not initialized.");
+            }
+
+            // ── 1. Make sure the docking/tab system is ready (do this BEFORE navigation service)
+            InitializeDockingOrTabbedLayout();
+
+            // ── 2. Create the navigation service (this was the missing piece!)
+            var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<Microsoft.Extensions.Logging.ILogger<PanelNavigationService>>(_serviceProvider);
+
+            _panelNavigationService = new PanelNavigationService(
+                owner: this,
+                serviceProvider: _serviceProvider,
+                logger: navLogger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PanelNavigationService>.Instance);
+
+            // If you're using the beautiful TabbedMDIManager layout (recommended for modern look)
+            if (_tabbedMdi != null)
+            {
+                _panelNavigationService.SetTabbedManager(_tabbedMdi);
+                _logger?.LogDebug("TabbedMDIManager wired to PanelNavigationService");
+            }
+
+            // ── 3. THE MONEY SHOT — Show Enterprise Vital Signs as the default FULL-SCREEN panel
+            _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+                panelName: "Enterprise Vital Signs",
+                preferredStyle: DockingStyle.Fill,
+                allowFloating: false);   // no floating the hero panel
+
+            // Bonus: Dock JARVIS Chat to the right so Steve can talk to Grok while looking at gauges
+            _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
+                panelName: "JARVIS Chat",
+                preferredStyle: DockingStyle.Right,
+                allowFloating: true);
+
+            _logger?.LogInformation("✅ SUCCESS — Enterprise Vital Signs is now the default home screen! " +
+                                    "Gauges loaded, charts spinning, council-ready in 3...2...1...");
+
+            // Optional victory lap — flash the status bar
+            _statusProgressService?.Complete("Startup", "Welcome to Wiley Widget — Municipal Finance, Supercharged!");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "💥 CRITICAL — Failed to show default panels in OnShown");
+
+            // Friendly mayor-friendly message (no scary stack traces)
+            MessageBox.Show(
+                "Whoops! The dashboard had a little hiccup starting up.\n\n" +
+                "Check the log file for details.\n\n" +
+                "We'll get this fixed faster than Brick can say 'Stay classy, Wiley!'",
+                "Wiley Widget Startup Issue",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+
+            // Still try to show something useful
+            _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.SettingsPanel>("Settings", DockingStyle.Fill);
         }
     }
 }

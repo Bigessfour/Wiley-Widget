@@ -24,8 +24,8 @@ using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Forms;
 
-[Collection("SyncfusionTheme")]
-public sealed class MainFormIntegrationTests
+[Collection("IntegrationTests")]
+public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
     private sealed class TestMainForm : MainForm
     {
@@ -183,7 +183,7 @@ public sealed class MainFormIntegrationTests
         form.ForceFullInitialization();
 
         // Open a document so switcher has content
-        form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right);
+        form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
         Application.DoEvents();
 
         try
@@ -232,7 +232,7 @@ public sealed class MainFormIntegrationTests
         try
         {
             // Show a panel so we have something to persist
-            form.ShowForm<BudgetDashboardForm>("Dashboard");
+            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
             Application.DoEvents();
 
             // Save
@@ -270,7 +270,7 @@ public sealed class MainFormIntegrationTests
             statusBar.Should().NotBeNull();
             qatCount.Should().BeGreaterThan(0, "QAT must be initialized after full chrome + professional features");
 
-            form.ShowForm<BudgetDashboardForm>("Dashboard");
+            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
             form.ShowPanel<AccountsPanel>("Accounts");
             Application.DoEvents();
 
@@ -383,7 +383,7 @@ public sealed class MainFormIntegrationTests
         form.CallOnLoad();
 
         // Open multiple panels to test full cleanup
-        form.ShowForm<BudgetDashboardForm>("Dashboard");
+        form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
         form.ShowPanel<AccountsPanel>("Accounts");
         Application.DoEvents();
 
@@ -499,7 +499,7 @@ public sealed class MainFormIntegrationTests
             form.ForceFullInitialization();
 
             // Open a few panels so navigation shortcuts have targets
-            form.ShowForm<BudgetDashboardForm>("Dashboard", DockingStyle.Right);
+            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
             form.ShowPanel<AccountsPanel>("Accounts");
             Application.DoEvents();
 
