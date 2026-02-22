@@ -245,8 +245,8 @@ public class AICacheWarmingService : IHostedService
     {
         return new List<(string, string)>
         {
-            ("Dashboard", "Summarize our financial health"),
-            ("Dashboard", "What alerts should I be aware of?"),
+            ("Enterprise Vital Signs", "Summarize our financial health"),
+            ("Enterprise Vital Signs", "What alerts should I be aware of?"),
             ("Operations", "What operational improvements can we make?")
         };
     }

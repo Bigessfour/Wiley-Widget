@@ -790,7 +790,7 @@ namespace WileyWidget.WinForms.Configuration
 
             // NOTE: Child forms removed - application now uses panel-based navigation via IPanelNavigationService
             // Legacy forms (ChartForm, SettingsForm, AccountsForm, etc.) have been superseded by UserControl panels
-            // (DashboardPanel, AccountsPanel, ChartPanel, BudgetOverviewPanel, DepartmentSummaryPanel, RevenueTrendsPanel, SettingsPanel)
+            // (EnterpriseVitalSignsPanel, AccountsPanel, ChartPanel, BudgetOverviewPanel, DepartmentSummaryPanel, RevenueTrendsPanel, SettingsPanel)
             // Panels are resolved via IPanelNavigationService.ShowPanel<TPanel>() which uses DI to create instances
 
             // =====================================================================

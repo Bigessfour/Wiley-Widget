@@ -106,10 +106,10 @@ public sealed class MainFormStartupIntegrationTests
             var autoShowDashboard = config?.GetValue<bool?>("UI:AutoShowDashboard") ?? false;
             if (autoShowDashboard)
             {
-                Console.WriteLine("[TEST] Waiting for DashboardPanel...");
+                Console.WriteLine("[TEST] Waiting for EnterpriseVitalSignsPanel...");
                 var dashboardLoaded = await IntegrationTestServices.WaitForConditionAsync(
-                    () => FindControl<FormHostPanel>(form) != null
-                          || string.Equals(GetPrivateField<string>(form, "_currentPanelName"), "Dashboard", StringComparison.OrdinalIgnoreCase),
+                    () => FindControl<EnterpriseVitalSignsPanel>(form) != null
+                          || string.Equals(GetPrivateField<string>(form, "_currentPanelName"), "Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase),
                     TimeSpan.FromSeconds(8),
                     pollInterval: TimeSpan.FromMilliseconds(200),
                     onTimeout: message =>

@@ -146,8 +146,8 @@ public partial class MainForm
         ["Account Editor"] = "\uE70F",      // Edit/pen — account editor panel
 
         // Home — Core Navigation
-        ["Dashboard"] = "\uE80F",           // View Dashboard
-        ["JARVIS Chat"] = "\uE720",          // Chat / Message bubble
+        ["Enterprise Vital Signs"] = "\uE80F",  // Enterprise vital signs (replaces Dashboard)
+        ["JARVIS Chat"] = "\uE720",              // Chat / Message bubble
 
         // Financials tab
         ["Budget"] = "\uE8F0",                          // Money/Calculator
@@ -208,7 +208,7 @@ public partial class MainForm
     /// 2. Embedded project resources: WileyWidget.WinForms.Resources.Icons.*
     /// 3. Segoe MDL2 Assets font glyphs (fallback)
     /// </summary>
-    /// <param name="iconName">Icon name (e.g., "Dashboard", "Budget", "Settings")</param>
+    /// <param name="iconName">Icon name (e.g., "EnterpriseVitalSigns", "Budget", "Settings")</param>
     /// <param name="size">Icon size in pixels (16, 32, 48, etc.)</param>
     /// <param name="fallbackGlyph">Segoe MDL2 glyph to use if icon not found</param>
     /// <returns>Icon image or null if not found</returns>
@@ -2034,22 +2034,22 @@ public partial class MainForm
         saveButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "QAT_SaveLayout", logger);
 #pragma warning restore CS0618
 
-        // Dashboard button
+        // Enterprise Vital Signs button (replaces deprecated Dashboard)
         var dashboardButton = new ToolStripButton
         {
-            Name = "QAT_Dashboard",
+            Name = "QAT_VitalSigns",
             DisplayStyle = ToolStripItemDisplayStyle.Image,
-            Image = CreateIconFromSegoeGlyph("\uE80F", 16, SystemColors.ControlText), // Dashboard icon
-            ToolTipText = "Open Dashboard",
+            Image = CreateIconFromSegoeGlyph("\uE80F", 16, SystemColors.ControlText), // Vital Signs icon
+            ToolTipText = "Open Enterprise Vital Signs",
             AutoSize = true,
             Enabled = true
         };
         dashboardButton.Click += (_, _) =>
         {
-            var dashboardEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Dashboard");
-            if (dashboardEntry != null)
+            var vitalSignsEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Enterprise Vital Signs");
+            if (vitalSignsEntry != null)
             {
-                SafeNavigate(form, "Dashboard", CreatePanelNavigationCommand(form, dashboardEntry, logger), logger);
+                SafeNavigate(form, "Enterprise Vital Signs", CreatePanelNavigationCommand(form, vitalSignsEntry, logger), logger);
             }
         };
 

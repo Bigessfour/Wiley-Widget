@@ -190,7 +190,7 @@ chart.Series.Add(series);
 
 **Impact on Codebase:**
 
-- 4 panels use CategoryAxisDataBindModel (RevenueTrendsPanel, BudgetDashboardForm, etc.)
+- 4 panels use CategoryAxisDataBindModel (RevenueTrendsPanel, EnterpriseVitalSignsPanel, etc.)
 - 7 panels use manual Points.Add() - easier to migrate
 - Refactor required, but straightforward (2-4 hours per panel)
 
@@ -292,7 +292,7 @@ Build `SfChartPocPanel.cs` to validate all 4 critical features before making go/
 
 | Panel                         | Chart Type     | Features                  | Migration Risk |
 | ----------------------------- | -------------- | ------------------------- | -------------- |
-| BudgetDashboardForm           | Column         | Zooming, toolbar          | Low            |
+| EnterpriseVitalSignsPanel     | Column         | Multi-series financials   | Low            |
 | RevenueTrendsPanel            | Line           | CategoryAxisDataBindModel | Medium         |
 | RecommendedMonthlyChargePanel | Column         | **Region events**         | **HIGH**       |
 | WarRoomPanel                  | Line + Column  | Scenario analysis         | Medium         |

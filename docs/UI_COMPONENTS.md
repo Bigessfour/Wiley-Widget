@@ -25,12 +25,12 @@ src/WileyWidget.WinForms/
 │   │   ├── DockingInitializer.cs   # Docking layout restoration
 │   │   ├── MainForm.RibbonHelpers.cs # Ribbon helper methods
 │   │   ├── StatusBarFactory.cs     # Status bar setup
-│   │   └── DashboardFactory.cs     # Dashboard panel creation
+│   │   └── PanelRegistry.cs        # Panel registration and defaults
 │   ├── Components/
 │   │   ├── JARVISAssist.razor      # Blazor chat component
 │   │   └── ...
 │   └── Panels/
-│       ├── DashboardPanel.cs       # Analytics & reports
+│       ├── EnterpriseVitalSignsPanel.cs # Core navigation financial overview
 │       ├── QuickBooksPanel.cs      # QuickBooks integration UI
 │       ├── AccountsPanel.cs        # Accounts management
 │       └── ActivityLogPanel.cs     # Activity/audit log
@@ -52,7 +52,7 @@ src/WileyWidget.WinForms/
 
 ### **Base Pattern: ScopedPanelBase**
 
-All scoped panels (Dashboard, QuickBooks, Accounts, etc.) inherit from `ScopedPanelBase`:
+All scoped panels (Enterprise Vital Signs, QuickBooks, Accounts, etc.) inherit from `ScopedPanelBase`:
 
 ```csharp
 public abstract class ScopedPanelBase : GradientPanelExt
@@ -92,9 +92,9 @@ public abstract class ScopedPanelBase : GradientPanelExt
 - ✅ Register with `IPanelNavigationService` for routing
 - ✅ Implement `IAsyncInitializable` for async startup work after MainForm shown
 
-### **DashboardPanel** (Analytics & Reporting)
+### **EnterpriseVitalSignsPanel** (Core Navigation)
 
-**File:** `src/WileyWidget.WinForms/UI/Panels/DashboardPanel.cs`
+**File:** `src/WileyWidget.WinForms/Controls/Panels/EnterpriseVitalSignsPanel.cs`
 
 **Components:**
 
@@ -425,7 +425,7 @@ All major panels implement `OnResize` to maintain responsive behavior across DPI
 ### **Pattern: Resize Handler**
 
 ```csharp
-public class DashboardPanel : ScopedPanelBase
+public class EnterpriseVitalSignsPanel : ScopedPanelBase<EnterpriseVitalSignsViewModel>
 {
     private SfDataGrid _grid;
 
@@ -561,7 +561,7 @@ Located in: `tests/WileyWidget.WinForms.Tests/Unit/Forms/`
 | `DockingTests.cs` | Docking manager, layout persistence, paint bug mitigation |
 | `MainFormTests.cs` | Form initialization, theme application, ribbon/status bar setup |
 | `MainFormRibbonTests.cs` | Ribbon structure, tab creation, commands |
-| `DashboardFactoryTests.cs` | Dashboard panel creation, grid binding |
+| `EnterpriseVitalSignsPanelIntegrationTests.cs` | Enterprise Vital Signs panel rendering and loading |
 
 ### **UI Validation Checklist**
 

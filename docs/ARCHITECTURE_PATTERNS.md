@@ -328,7 +328,7 @@ services.AddSingleton<IDockStateManager, DockStateManager>();
 services.AddScoped<MainForm>();
 
 // Panels (Scoped - same lifetime as MainForm, proper disposal)
-services.AddScoped<DashboardPanel>();
+services.AddScoped<EnterpriseVitalSignsPanel>();
 services.AddScoped<AccountsPanel>();
 services.AddScoped<BudgetOverviewPanel>();
 // ... all panels Scoped

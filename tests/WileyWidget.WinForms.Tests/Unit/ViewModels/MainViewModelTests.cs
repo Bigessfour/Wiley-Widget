@@ -42,7 +42,7 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels
                 new DashboardItem { Category = "variance", Value = "200", Title = "Variance" },
                 new DashboardItem { Category = "accounts", Value = "3", Title = "Accounts" },
                 new DashboardItem { Category = "departments", Value = "5", Title = "Departments" },
-                new DashboardItem { Category = "activity", Value = "Opened", Title = "Dashboard" }
+                new DashboardItem { Category = "activity", Value = "Opened", Title = "Enterprise Vital Signs" }
             };
 
             vm.ProcessDashboard(items);

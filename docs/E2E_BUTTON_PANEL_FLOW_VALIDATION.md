@@ -69,7 +69,7 @@ Panel Visible ✅
 | Audit Log & Activity             | AuditLogPanel                 | Views               | Bottom       | ✅                  |
 | **Budget Management & Analysis** | BudgetPanel                   | **Financials**      | Right        | ✅                  |
 | Customers                        | CustomersPanel                | Views               | Right        | ✅                  |
-| Dashboard                        | FormHostPanel                 | **Core Navigation** | Top          | ✅                  |
+| Enterprise Vital Signs           | EnterpriseVitalSignsPanel     | **Core Navigation** | Fill         | ✅                  |
 | Data Mapper                      | CsvMappingWizardPanel         | Views               | Right        | ✅                  |
 | Department Summary               | DepartmentSummaryPanel        | Views               | Right        | ✅                  |
 | Municipal Accounts               | AccountsPanel                 | Financials          | Left         | ✅                  |
@@ -426,17 +426,17 @@ services.AddScoped<AccountEditPanel>();
 
 ### Test Case 1: Core Navigation Group
 
-**Input:** Click "Dashboard" button in Core Navigation group  
-**Expected:** FormHostPanel shown in Top dock position  
+**Input:** Click "Enterprise Vital Signs" button in Core Navigation group  
+**Expected:** EnterpriseVitalSignsPanel shown in Fill dock position  
 **Validation Steps:**
 
-1. ✅ PanelRegistry has entry: `new PanelEntry(typeof(FormHostPanel), "Dashboard", "Core Navigation", DockingStyle.Top)`
-2. ✅ CreateCoreNavigationGroup filters by "Core Navigation" group → finds Dashboard
+1. ✅ PanelRegistry has entry: `new PanelEntry(typeof(EnterpriseVitalSignsPanel), "Enterprise Vital Signs", "Core Navigation", DockingStyle.Fill)`
+2. ✅ CreateCoreNavigationGroup filters by "Core Navigation" group → finds Enterprise Vital Signs
 3. ✅ Button created with command → CreatePanelNavigationCommand(form, entry)
-4. ✅ Reflection finds ShowPanel<FormHostPanel>(string, DockingStyle)
-5. ✅ Invokes: form.ShowPanel<FormHostPanel>("Dashboard", DockingStyle.Top)
-6. ✅ ExecuteDockedNavigation → PanelNavigationService.RegisterAndDockPanel<FormHostPanel>
-7. ✅ Panel appears in Top dock
+4. ✅ Reflection finds ShowPanel<EnterpriseVitalSignsPanel>(string, DockingStyle)
+5. ✅ Invokes: form.ShowPanel<EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill)
+6. ✅ ExecuteDockedNavigation → PanelNavigationService.RegisterAndDockPanel<EnterpriseVitalSignsPanel>
+7. ✅ Panel appears in Fill dock
 
 **Status:** ✅ Validated
 

@@ -318,7 +318,7 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             searchBox.Should().NotBeNull("Search textbox must exist");
             resultsList.Should().NotBeNull("Results list must exist");
 
-            searchBox!.Text = "dashboard";
+            searchBox!.Text = "enterprise";
             Application.DoEvents();
             // Pump messages instead of blocking the STA thread — allows async continuations to run
             var pumpSw = System.Diagnostics.Stopwatch.StartNew();
@@ -328,7 +328,7 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             // Guard: async search populate may not complete in all headless environments
             if (resultsData != null)
             {
-                resultsData.Should().NotBeNull("Search results must populate (at least Dashboard from PanelRegistry)");
+                resultsData.Should().NotBeNull("Search results must populate (at least Enterprise Vital Signs from PanelRegistry)");
             }
         }
         finally
@@ -512,11 +512,11 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             var expandedSearch = form.GetPrivateField("_searchDialog") as Form;
             if (expandedSearch != null) expandedSearch.Visible.Should().BeTrue("Ctrl+K should open search dialog");
 
-            // Alt+D → Dashboard activation
+            // Alt+D → Enterprise Vital Signs activation
             form.CallProcessCmdKey(ref msg, Keys.Alt | Keys.D);
             Application.DoEvents();
             // Guard: panel activation requires a real visible window session
-            // form.PanelNavigator?.GetActivePanelName().Should().Be("Dashboard");
+            // form.PanelNavigator?.GetActivePanelName().Should().Be("Enterprise Vital Signs");
 
             // Alt+A → Accounts
             form.CallProcessCmdKey(ref msg, Keys.Alt | Keys.A);

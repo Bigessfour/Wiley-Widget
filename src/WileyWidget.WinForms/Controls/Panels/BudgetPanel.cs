@@ -1192,7 +1192,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         BindViewModel();
 
-        // Auto-load budget data for the current fiscal year (similar to DashboardPanel pattern)
+        // Auto-load budget data for the current fiscal year (consistent with other scoped panel patterns)
         // Keep this on the UI thread to avoid cross-thread data-binding updates.
         _ = AutoLoadBudgetDataAsync();
     }

@@ -92,7 +92,7 @@ if (!centralDocumentPanel.IsDisposed)
 
 Run the application and test:
 
-- [ ] Click **"Dashboard"** → Dashboard panel appears in center/fill area
+- [ ] Click **"Enterprise Vital Signs"** → Enterprise Vital Signs panel appears in center/fill area
 - [ ] Click **"Municipal Accounts"** → Accounts panel appears on **LEFT** side (visible!)
 - [ ] Click **"Budget Management & Analysis"** → Budget panel appears on **RIGHT** side (visible!)
 - [ ] Click **"Settings"** → Settings panel appears and is visible

@@ -9,7 +9,7 @@
 .\scripts\test-all-panels.ps1
 
 # Validate specific panels
-.\scripts\test-all-panels.ps1 -PanelNames "DashboardPanel","AccountsPanel"
+.\scripts\test-all-panels.ps1 -PanelNames "EnterpriseVitalSignsPanel","AccountsPanel"
 
 # Get JSON output
 .\scripts\test-all-panels.ps1 -OutputFormat json
@@ -20,13 +20,13 @@
 ```powershell
 # Inspect SfDataGrid configuration
 npx --yes @modelcontextprotocol/cli call wileywidget-ui InspectSfDataGrid --params '{
-    "formTypeName": "WileyWidget.WinForms.Controls.DashboardPanel",
+    "formTypeName": "WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel",
     "includeSampleData": true
 }'
 
 # Check for null reference risks
 npx --yes @modelcontextprotocol/cli call wileywidget-ui DetectNullRisks --params '{
-    "formTypeNames": ["WileyWidget.WinForms.Controls.DashboardPanel"],
+    "formTypeNames": ["WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel"],
     "outputFormat": "json"
 }'
 ```

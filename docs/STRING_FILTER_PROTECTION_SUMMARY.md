@@ -41,7 +41,6 @@ These panels already had FilterChanging handlers and continue to work:
 
 - **AccountsPanel** - `_accountsGrid`
 - **BudgetPanel** - `_budgetGrid`
-- **BudgetDashboardForm** - `_detailsGrid`
 - **WarRoomPanel** - `_projectionsGrid`, `_departmentImpactGrid`
 
 ## Usage Pattern
