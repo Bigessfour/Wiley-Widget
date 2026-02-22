@@ -11,6 +11,7 @@ using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
@@ -24,9 +25,9 @@ namespace WileyWidget.WinForms.Controls.Panels
     /// Acts as a container for the InsightFeedPanel with toolbar and navigation controls.
     /// Integrates with SfSkinManager for theme cascading to all child controls.
     /// </summary>
-    public partial class ProactiveInsightsPanel : UserControl
+    public partial class ProactiveInsightsPanel : ScopedPanelBase<InsightFeedViewModel>
     {
-        private readonly ILogger<ProactiveInsightsPanel>? _logger;
+        private readonly ILogger<ProactiveInsightsPanel>? _panelLogger;
         private readonly IServiceProvider? _serviceProvider;
         private readonly IServiceScopeFactory? _scopeFactory;
         private readonly ILogger<ScopedPanelBase<InsightFeedViewModel>>? _insightFeedLogger;
@@ -50,7 +51,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// <summary>
         /// Creates a new instance of the ProactiveInsightsPanel.
         /// </summary>
-        internal ProactiveInsightsPanel() : this(ResolveLogger(), ResolveScopeFactory(), ResolveInsightFeedLogger(), ResolveServiceProvider())
+        internal ProactiveInsightsPanel() : this(ResolveLogger(), ResolveRequiredScopeFactory(), ResolveInsightFeedLogger(), ResolveServiceProvider())
         {
         }
 
@@ -62,9 +63,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             IServiceScopeFactory? scopeFactory = null,
             ILogger<ScopedPanelBase<InsightFeedViewModel>>? insightFeedLogger = null,
             IServiceProvider? serviceProvider = null)
+            : base(
+                scopeFactory ?? ResolveRequiredScopeFactory(serviceProvider ?? ResolveServiceProvider()),
+                ResolveScopedBaseLogger(serviceProvider ?? ResolveServiceProvider(), insightFeedLogger))
         {
             _serviceProvider = serviceProvider ?? ResolveServiceProvider();
-            _logger = logger ?? ResolveLogger(_serviceProvider);
+            _panelLogger = logger ?? ResolveLogger(_serviceProvider);
             _scopeFactory = scopeFactory ?? ResolveScopeFactory(_serviceProvider);
             _insightFeedLogger = insightFeedLogger ?? ResolveInsightFeedLogger(_serviceProvider);
 
@@ -73,29 +77,15 @@ namespace WileyWidget.WinForms.Controls.Panels
             VisibleChanged += (_, _) => QueueLayoutRefresh();
             SizeChanged += (_, _) => QueueLayoutRefresh();
 
-            _logger?.LogInformation("ProactiveInsightsPanel initializing");
+            _panelLogger?.LogInformation("ProactiveInsightsPanel initializing");
             ApplyTheme();
 
             this.PerformLayout();
             this.Refresh();
 
-            _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+            _panelLogger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
 
-            _logger?.LogInformation("ProactiveInsightsPanel initialized successfully");
-        }
-
-        private void SafeSuspendAndLayout(System.Action buildAction)
-        {
-            SuspendLayout();
-            try
-            {
-                buildAction();
-            }
-            finally
-            {
-                ResumeLayout(false);
-                PerformLayout();
-            }
+            _panelLogger?.LogInformation("ProactiveInsightsPanel initialized successfully");
         }
 
         private void QueueLayoutRefresh()
@@ -124,7 +114,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                _logger?.LogDebug(ex, "Deferred ProactiveInsightsPanel layout refresh failed");
+                _panelLogger?.LogDebug(ex, "Deferred ProactiveInsightsPanel layout refresh failed");
             }
         }
 
@@ -311,7 +301,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnClear.Click += _btnClearClickHandler;
         }
 
-        private void ClosePanel()
+        protected override void ClosePanel()
         {
             try
             {
@@ -333,7 +323,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                _logger?.LogDebug(ex, "Failed to close ProactiveInsightsPanel via docking manager");
+                _panelLogger?.LogDebug(ex, "Failed to close ProactiveInsightsPanel via docking manager");
                 Visible = false;
             }
         }
@@ -363,7 +353,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Failed to create InsightFeedPanel for ProactiveInsightsPanel");
+                _panelLogger?.LogError(ex, "Failed to create InsightFeedPanel for ProactiveInsightsPanel");
             }
 
             return null;
@@ -428,11 +418,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                     SfSkinManager.SetVisualStyle(_insightFeedPanel, currentTheme);
                 }
 
-                _logger?.LogDebug("Theme applied successfully to ProactiveInsightsPanel");
+                _panelLogger?.LogDebug("Theme applied successfully to ProactiveInsightsPanel");
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Failed to apply theme to ProactiveInsightsPanel");
+                _panelLogger?.LogError(ex, "Failed to apply theme to ProactiveInsightsPanel");
             }
         }
 
@@ -443,7 +433,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             try
             {
-                _logger?.LogInformation("[PROACTIVE_INSIGHTS] Refresh clicked");
+                _panelLogger?.LogInformation("[PROACTIVE_INSIGHTS] Refresh clicked");
                 SetStatusMessage("Refreshing proactive insights…");
                 if (_panelHeader != null)
                 {
@@ -454,7 +444,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "[PROACTIVE_INSIGHTS] Refresh action failed");
+                _panelLogger?.LogError(ex, "[PROACTIVE_INSIGHTS] Refresh action failed");
                 SetStatusMessage($"Unable to refresh insights: {ex.Message}");
             }
             finally
@@ -473,7 +463,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             try
             {
-                _logger?.LogInformation("[PROACTIVE_INSIGHTS] Clear clicked");
+                _panelLogger?.LogInformation("[PROACTIVE_INSIGHTS] Clear clicked");
 
                 if (_insightFeedPanel?.ViewModel is InsightFeedViewModel viewModel)
                 {
@@ -482,13 +472,13 @@ namespace WileyWidget.WinForms.Controls.Panels
                     viewModel.MediumPriorityCount = 0;
                     viewModel.LowPriorityCount = 0;
                     viewModel.StatusMessage = "Insights cleared";
-                    _logger?.LogInformation("[PROACTIVE_INSIGHTS] Cleared visible insight cards");
+                    _panelLogger?.LogInformation("[PROACTIVE_INSIGHTS] Cleared visible insight cards");
                     SetStatusMessage("Insights cleared.");
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "[PROACTIVE_INSIGHTS] Clear action failed");
+                _panelLogger?.LogError(ex, "[PROACTIVE_INSIGHTS] Clear action failed");
                 SetStatusMessage($"Unable to clear insights: {ex.Message}");
             }
         }
@@ -546,6 +536,19 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 return null;
             }
+        }
+
+        private static IServiceScopeFactory ResolveRequiredScopeFactory(IServiceProvider? provider = null)
+        {
+            return ResolveScopeFactory(provider) ?? throw new InvalidOperationException(
+                "IServiceScopeFactory is required to initialize ProactiveInsightsPanel.");
+        }
+
+        private static ILogger ResolveScopedBaseLogger(
+            IServiceProvider? provider,
+            ILogger<ScopedPanelBase<InsightFeedViewModel>>? logger)
+        {
+            return (ILogger?)logger ?? (ILogger?)ResolveInsightFeedLogger(provider) ?? NullLogger.Instance;
         }
 
         private static ILogger<ScopedPanelBase<InsightFeedViewModel>>? ResolveInsightFeedLogger(IServiceProvider? provider = null)
