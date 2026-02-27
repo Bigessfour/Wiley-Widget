@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Forms;
@@ -31,6 +33,8 @@ namespace WileyWidget.WinForms
         private static IServiceProvider? _services;
         private static MainForm? _mainFormInstance;
         private static SplashForm? _splashForm;
+        private static int _syncfusionLicenseRegistrationAttempted;
+        private static int _syncfusionUserSecretsGuidanceLogged;
 
         public static IServiceProvider Services => _services ?? CreateFallbackServiceProvider();
 
@@ -46,11 +50,13 @@ namespace WileyWidget.WinForms
             set => _mainFormInstance = value;
         }
 
-        internal static void StartSplash(string message)
+        internal static void StartSplash(string message, string? themeName = null)
         {
+            if (IsTestRuntime()) return;
+
             if (_splashForm == null)
             {
-                _splashForm = new SplashForm();
+                _splashForm = new SplashForm(themeName);
             }
 
             _splashForm.Report(0.05, message, isIndeterminate: true);
@@ -58,11 +64,15 @@ namespace WileyWidget.WinForms
 
         internal static void ReportSplash(double progress, string message, bool isIndeterminate = false)
         {
+            if (IsTestRuntime()) return;
+
             _splashForm?.Report(progress, message, isIndeterminate);
         }
 
         internal static void CompleteSplash(string message)
         {
+            if (IsTestRuntime()) return;
+
             if (_splashForm == null)
             {
                 return;
@@ -86,6 +96,12 @@ namespace WileyWidget.WinForms
         /// </summary>
         private static void ShowErrorDialog(string title, string message, Exception ex)
         {
+            if (IsTestRuntime())
+            {
+                Log.Warning("Suppressed error dialog in test runtime: {Title} - {Message}", title, message);
+                return;
+            }
+
             try
             {
                 MessageBox.Show(
@@ -101,11 +117,35 @@ namespace WileyWidget.WinForms
             }
         }
 
+        private static bool IsTestRuntime()
+        {
+            static bool IsTruthy(string variableName)
+            {
+                var value = Environment.GetEnvironmentVariable(variableName);
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return false;
+                }
+
+                return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(value, "on", StringComparison.OrdinalIgnoreCase);
+            }
+
+            return IsTruthy("WILEYWIDGET_UI_TESTS")
+                || IsTruthy("WILEYWIDGET_TESTS")
+                || IsTruthy("DOTNET_RUNNING_IN_TEST")
+                || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("VSTEST_SESSION_ID"))
+                || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XUNIT_TESTRUNNING"));
+        }
+
         [STAThread]
         static void Main(string[] args)
         {
             // Handle test mode argument (sets environment variable for FlaUI integration tests)
-            if (args.Contains("--testmode"))
+            if (args.Contains("--testmode", StringComparer.OrdinalIgnoreCase) ||
+                Environment.GetEnvironmentVariable("WILEY_TESTMODE") == "true")
             {
                 Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "true");
                 Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
@@ -143,6 +183,12 @@ namespace WileyWidget.WinForms
                 .AddEnvironmentVariables()  // Environment variables last - highest priority
                 .Build();
 
+            // Register Syncfusion license at the earliest point in startup,
+            // before any UI/bootstrap path could instantiate Syncfusion controls.
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Registering Syncfusion license (early)...");
+            RegisterSyncfusionLicense(configuration);
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Syncfusion license registration attempted (early)");
+
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(configuration)
                 .CreateLogger();
@@ -163,14 +209,25 @@ namespace WileyWidget.WinForms
             {
                 Log.Warning("[CONFIG DEBUG] xAI:ApiKey NOT found in configuration chain (checked: appsettings.json, user secrets, environment variables)");
             }
+            Log.Information("Program.Main: Syncfusion license registration was attempted before UI/bootstrap initialization");
 
-            // Register Syncfusion license as early as possible — before any Syncfusion controls are instantiated
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Registering Syncfusion license (early)...");
-            Log.Information("Program.Main: Registering Syncfusion license (early - before splash)");
-            RegisterSyncfusionLicense();
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Syncfusion license registered (early)");
+            // Read theme from configuration BEFORE creating splash to avoid visible theme flash
+            var splashThemeName = configuration["UI:Theme"] ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+            splashThemeName = WileyWidget.WinForms.Themes.ThemeColors.ValidateTheme(splashThemeName);
+            Log.Debug("Program.Main: Using theme '{Theme}' for splash screen", splashThemeName);
 
-            StartSplash("Starting Wiley Widget...");
+            // Ensure theme assembly is loaded BEFORE splash creation
+            try
+            {
+                WileyWidget.WinForms.Themes.ThemeColors.EnsureThemeAssemblyLoadedForTheme(splashThemeName);
+                Log.Debug("Program.Main: Theme assembly loaded for '{Theme}'", splashThemeName);
+            }
+            catch (Exception themeEx)
+            {
+                Log.Warning(themeEx, "Program.Main: Failed to pre-load theme assembly for '{Theme}' (non-critical)", splashThemeName);
+            }
+
+            StartSplash("Starting Wiley Widget...", splashThemeName);
 
             System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
             System.Windows.Forms.Application.EnableVisualStyles();
@@ -190,6 +247,18 @@ namespace WileyWidget.WinForms
                     return;
                 }
 
+                // WebView2 can surface E_ABORT during disposal/shutdown when controller creation is interrupted.
+                // This is expected in teardown races and should not be treated as a runtime fault.
+                if (ex is COMException comException
+                    && (uint)comException.HResult == 0x80004004
+                    && (ex.StackTrace?.Contains("WebView2", StringComparison.OrdinalIgnoreCase) == true
+                        || ex.StackTrace?.Contains("BlazorWebView", StringComparison.OrdinalIgnoreCase) == true))
+                {
+                    Log.Debug("Suppressed expected WebView2 shutdown abort (E_ABORT): {Message}", ex.Message);
+                    e.SetObserved();
+                    return;
+                }
+
                 Log.Error(e.Exception, "Unobserved task exception (fire-and-forget task raised error)");
                 e.SetObserved(); // Suppress crash, log only
             };
@@ -204,7 +273,7 @@ namespace WileyWidget.WinForms
                     try
                     {
                         var message = $"FATAL ERROR - Application terminating:\n\n{ex?.GetType().Name}: {ex?.Message}\n\nStack:\n{ex?.StackTrace}";
-                        MessageBox.Show(message, "Fatal Application Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        ShowErrorDialog("Fatal Application Error", message, ex ?? new InvalidOperationException(message));
                     }
                     catch { } // Ignore MessageBox errors during app shutdown
                 }
@@ -349,7 +418,7 @@ namespace WileyWidget.WinForms
                 {
                     var coreError = ex.GetBaseException();
                     var message = $"Wiley Widget failed to start.\n\nType: {ex.GetType().Name}\nMessage: {ex.Message}\n\nRoot Cause: {coreError.Message}\n\nCheck logs for full stack trace.";
-                    MessageBox.Show(message, "Fatal Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowErrorDialog("Fatal Startup Error", message, ex);
                 }
                 catch { /* Suppress MessageBox failure in crash path */ }
 
@@ -533,15 +602,21 @@ namespace WileyWidget.WinForms
         }
 
         /// <summary>
-        /// Registers Syncfusion license from environment variable.
+        /// Registers Syncfusion license from runtime configuration sources.
         /// MUST be called BEFORE any Syncfusion controls are instantiated or theme assemblies are loaded.
         /// </summary>
-        static void RegisterSyncfusionLicense()
+        static void RegisterSyncfusionLicense(IConfiguration? configuration)
         {
-            var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY");
+            if (Interlocked.Exchange(ref _syncfusionLicenseRegistrationAttempted, 1) == 1)
+            {
+                Log.Debug("Syncfusion license registration was already attempted earlier; skipping duplicate attempt.");
+                return;
+            }
+
+            var (licenseKey, source) = ResolveSyncfusionLicenseKey(configuration);
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
-                Log.Warning("⚠️ SYNCFUSION_LICENSE_KEY environment variable not set. Application will show trial/evaluation popup.");
+                Log.Warning("⚠️ Syncfusion license key not found. Checked user-secrets, configuration aliases, environment aliases, and encrypted vault. Application will show trial/evaluation popup.");
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Syncfusion license key missing - running in evaluation mode");
                 // Do not throw - missing license just shows trial popup, not a fatal error
                 return;
@@ -549,8 +624,16 @@ namespace WileyWidget.WinForms
 
             try
             {
+                if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")))
+                {
+                    Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", licenseKey, EnvironmentVariableTarget.Process);
+                    Log.Debug("Promoted resolved Syncfusion license key into Process environment for startup consistency");
+                }
+
+                LogUserSecretsGuidanceIfNeeded(source);
+
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
-                Log.Information("✅ Syncfusion license registered successfully");
+                Log.Information("✅ Syncfusion license registered successfully (source: {LicenseSource})", source ?? "unknown");
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Syncfusion license registered");
             }
             catch (Exception ex)
@@ -559,6 +642,203 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ❌ License registration failed: {ex.Message}");
                 // Do not throw - license failure is non-fatal, just shows trial watermark/popup
             }
+        }
+
+        private static readonly string[] SyncfusionLicenseKeyAliases =
+        {
+            "WILEY_SYNC_LIC_KEY",
+            "SYNCFUSION_LICENSE_KEY",
+            "Syncfusion:LicenseKey",
+            "Syncfusion__LicenseKey",
+            "Syncfusion-LicenseKey",
+            "SyncfusionLicenseKey",
+            "syncfusion-license-key"
+        };
+
+        private static (string? LicenseKey, string? Source) ResolveSyncfusionLicenseKey(IConfiguration? configuration)
+        {
+            IConfiguration? userSecretsConfiguration = null;
+            try
+            {
+                userSecretsConfiguration = new ConfigurationBuilder()
+                    .AddUserSecrets<Program>(optional: true)
+                    .Build();
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Unable to initialize user-secrets configuration for Syncfusion license resolution");
+            }
+
+            var candidates = new List<(string Source, string? Value)>();
+
+            // 1) Prefer user-secrets first (explicit requirement)
+            foreach (var alias in SyncfusionLicenseKeyAliases)
+            {
+                candidates.Add(($"UserSecrets:{alias}", userSecretsConfiguration?[alias]));
+            }
+
+            // 2) Then merged app configuration (appsettings + secrets + env per host configuration chain)
+            foreach (var alias in SyncfusionLicenseKeyAliases)
+            {
+                candidates.Add(($"Configuration:{alias}", configuration?[alias]));
+            }
+
+            // 3) Then raw environment aliases
+            foreach (var alias in SyncfusionLicenseKeyAliases)
+            {
+                candidates.Add(($"Environment:Process:{alias}", Environment.GetEnvironmentVariable(alias, EnvironmentVariableTarget.Process)));
+                candidates.Add(($"Environment:User:{alias}", Environment.GetEnvironmentVariable(alias, EnvironmentVariableTarget.User)));
+                candidates.Add(($"Environment:Machine:{alias}", Environment.GetEnvironmentVariable(alias, EnvironmentVariableTarget.Machine)));
+            }
+
+            foreach (var candidate in candidates)
+            {
+                var normalized = NormalizeLicenseKey(candidate.Value);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    return (normalized, candidate.Source);
+                }
+            }
+
+            var fromVault = TryResolveSyncfusionLicenseFromEncryptedVault(out var vaultSource);
+            if (!string.IsNullOrWhiteSpace(fromVault))
+            {
+                return (fromVault, vaultSource);
+            }
+
+            return (null, null);
+        }
+
+        private static string? TryResolveSyncfusionLicenseFromEncryptedVault(out string? source)
+        {
+            source = null;
+
+            try
+            {
+                using var vault = new EncryptedLocalSecretVaultService(NullLogger<EncryptedLocalSecretVaultService>.Instance);
+
+                var secretNames = new[]
+                {
+                    "SYNCFUSION_LICENSE_KEY",
+                    "syncfusion-license-key",
+                    "Syncfusion-LicenseKey",
+                    "Syncfusion__LicenseKey",
+                    "Syncfusion:LicenseKey",
+                    "SyncfusionLicenseKey"
+                };
+
+                foreach (var secretName in secretNames)
+                {
+                    var candidate = vault.GetSecret(secretName);
+                    var normalized = NormalizeLicenseKey(candidate);
+                    if (!string.IsNullOrWhiteSpace(normalized))
+                    {
+                        source = $"EncryptedVault:{secretName}";
+                        Log.Information("Loaded Syncfusion license key from encrypted secret vault ({SecretName})", secretName);
+                        return normalized;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Unable to read Syncfusion license key from encrypted secret vault");
+            }
+
+            return null;
+        }
+
+        private static string? NormalizeLicenseKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var trimmed = value.Trim();
+            if ((trimmed.StartsWith("\"", StringComparison.Ordinal) && trimmed.EndsWith("\"", StringComparison.Ordinal))
+                || (trimmed.StartsWith("'", StringComparison.Ordinal) && trimmed.EndsWith("'", StringComparison.Ordinal)))
+            {
+                trimmed = trimmed.Substring(1, trimmed.Length - 2).Trim();
+            }
+
+            if (trimmed.StartsWith("YOUR_SYNCFUSION_LICENSE_KEY", StringComparison.OrdinalIgnoreCase)
+                || trimmed.StartsWith("YOUR_", StringComparison.OrdinalIgnoreCase)
+                || trimmed.Contains("YOUR_LICENSE_KEY", StringComparison.OrdinalIgnoreCase)
+                || trimmed.Contains("SYNCFUSION_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase)
+                || trimmed.Contains("PLACEHOLDER", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return trimmed;
+        }
+
+        private static void LogUserSecretsGuidanceIfNeeded(string? resolvedSource)
+        {
+            if (Interlocked.Exchange(ref _syncfusionUserSecretsGuidanceLogged, 1) == 1)
+            {
+                return;
+            }
+
+            if (HasValidLicenseInUserSecrets())
+            {
+                return;
+            }
+
+            var hasFallbackScopeLicense = HasValidLicenseInEnvironmentScope(EnvironmentVariableTarget.User)
+                || HasValidLicenseInEnvironmentScope(EnvironmentVariableTarget.Machine)
+                || (!string.IsNullOrWhiteSpace(resolvedSource)
+                    && resolvedSource.StartsWith("EncryptedVault:", StringComparison.OrdinalIgnoreCase));
+
+            if (!hasFallbackScopeLicense)
+            {
+                return;
+            }
+
+            Log.Warning(
+                "Syncfusion license key resolved from {LicenseSource}, but no valid user-secrets entry was found. " +
+                "Microsoft Learn guidance recommends storing development secrets with Secret Manager. " +
+                "Set: dotnet user-secrets set \"Syncfusion:LicenseKey\" \"<key>\" --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+                resolvedSource ?? "unknown");
+        }
+
+        private static bool HasValidLicenseInUserSecrets()
+        {
+            try
+            {
+                var config = new ConfigurationBuilder()
+                    .AddUserSecrets<Program>(optional: true)
+                    .Build();
+
+                foreach (var alias in SyncfusionLicenseKeyAliases)
+                {
+                    var normalized = NormalizeLicenseKey(config[alias]);
+                    if (!string.IsNullOrWhiteSpace(normalized))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Unable to inspect user-secrets while evaluating Syncfusion license guidance logging");
+            }
+
+            return false;
+        }
+
+        private static bool HasValidLicenseInEnvironmentScope(EnvironmentVariableTarget scope)
+        {
+            foreach (var alias in SyncfusionLicenseKeyAliases)
+            {
+                var normalized = NormalizeLicenseKey(Environment.GetEnvironmentVariable(alias, scope));
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

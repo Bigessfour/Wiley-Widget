@@ -18,6 +18,7 @@ using Syncfusion.WinForms.ListView.Enums;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -31,6 +32,8 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 {
     private Payment? _existingPayment;
     private bool _isNew;
+
+    public bool HasSavedPayments { get; private set; }
 
     // Controls
     private TextBoxExt _txtCheckNumber = null!;
@@ -46,6 +49,8 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     private SfButton _btnSave = null!;
     private SfButton _btnCancel = null!;
     private SfButton _btnDelete = null!;
+    private PanelHeader _panelHeader = null!;
+    private ToolTip _toolTip = null!;
 
     // Data
     private List<MunicipalAccount> _accounts = new();
@@ -69,7 +74,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         : base(scopeFactory, logger)
     {
         _isNew = true;
-        InitializeComponent();
+        SafeSuspendAndLayout(InitializeComponent);
     }
 
     /// <summary>
@@ -79,6 +84,11 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     {
         _existingPayment = payment ?? throw new ArgumentNullException(nameof(payment));
         _isNew = false;
+
+        if (_panelHeader != null)
+        {
+            _panelHeader.Title = "Edit Payment";
+        }
     }
 
     public async Task LoadDataAsync(CancellationToken cancellationToken = default)
@@ -219,17 +229,26 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         SfSkinManager.SetVisualStyle(this, themeName);
 
         Name = "PaymentEditPanel";
-        Size = new System.Drawing.Size(900, 1050);
+        Size = new System.Drawing.Size(760, 900);
+        MinimumSize = new System.Drawing.Size(680, 580);
         Padding = new Padding(0);
         AutoScaleMode = AutoScaleMode.Dpi;  // High-DPI display support
 
+        _toolTip = new ToolTip
+        {
+            AutoPopDelay = 8000,
+            InitialDelay = 250,
+            ReshowDelay = 100,
+            ShowAlways = true
+        };
+
         // === MODERN FLUENT DESIGN LAYOUT ===
         // Base spacing unit: 8px (multiples of 8 for consistency)
-        const int ROW_SPACING = 24;        // 3 * 8px
-        const int SECTION_GAP = 48;        // 6 * 8px
-        const int CONTROL_HEIGHT = 40;     // Fluent-recommended touch target
-        const int MULTILINE_HEIGHT = 96;   // 12 * 8px
-        const int LABEL_WIDTH = 160;       // 20 * 8px
+        const int ROW_SPACING = 8;
+        const int SECTION_GAP = 20;
+        const int CONTROL_HEIGHT = 32;
+        const int MULTILINE_HEIGHT = 88;
+        const int LABEL_WIDTH = 140;
 
         // Main container with header
         var mainContainer = new TableLayoutPanel
@@ -239,35 +258,35 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             ColumnCount = 1,
             Padding = new Padding(0)
         };
-        mainContainer.RowStyles.Add(new RowStyle(SizeType.Absolute, 64)); // Header
+        mainContainer.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); // Header
         mainContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Form content
 
         // === HEADER ===
         var headerPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 16, 24, 16) // Base-8 padding
+            Padding = new Padding(16, 8, 16, 8)
         };
         // Apply theme to header panel instead of hard-coded background color
         SfSkinManager.SetVisualStyle(headerPanel, themeName);
 
-        var headerLabel = new Label
+        _panelHeader = new PanelHeader
         {
-            Text = _isNew ? "New Payment" : "Edit Payment",
-            Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold),
-            ForeColor = System.Drawing.Color.White,
+            Title = _isNew ? "New Payment" : "Edit Payment",
             Dock = DockStyle.Fill,
-            TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-            AutoSize = false
+            ShowRefreshButton = false,
+            ShowPinButton = false,
+            ShowHelpButton = false,
+            ShowCloseButton = false
         };
-        headerPanel.Controls.Add(headerLabel);
+        headerPanel.Controls.Add(_panelHeader);
         mainContainer.Controls.Add(headerPanel, 0, 0);
 
         // === SCROLLABLE FORM CONTENT ===
         var formPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(32, 24, 32, 24), // 4*BASE_UNIT, 3*BASE_UNIT
+            Padding = new Padding(20),
             AutoScroll = true
         };
 
@@ -299,7 +318,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 Font = new System.Drawing.Font("Segoe UI", 11F),
                 Height = CONTROL_HEIGHT,
                 Anchor = AnchorStyles.Left,
-                Width = 180
+                Width = 160
             }, ROW_SPACING);
 
         // Payment Date (width constraint: 200px)
@@ -313,7 +332,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 Font = new System.Drawing.Font("Segoe UI", 11F),
                 Height = CONTROL_HEIGHT,
                 Anchor = AnchorStyles.Left,
-                Width = 200
+                Width = 165
             }, ROW_SPACING);
 
         // === SECTION 2: PAYEE & AMOUNT (48px gap) ===
@@ -322,30 +341,31 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         // Payee with Add Vendor button
         var payeeContainer = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Anchor = AnchorStyles.Left,
             RowCount = 1,
             ColumnCount = 2,
             Padding = new Padding(0),
             Margin = new Padding(0),
             AutoSize = false,
-            Height = CONTROL_HEIGHT
-        };
-        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, CONTROL_HEIGHT));
-
-        _cmbPayee = new SfComboBox
-        {
-            Dock = DockStyle.Fill,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown,
-            ThemeName = themeName,
-            AllowNull = true,
-            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains,
-            AllowCaseSensitiveOnAutoComplete = false,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
             Height = CONTROL_HEIGHT,
-            Margin = new Padding(0, 0, 8, 0) // 8px gap before button
+            Width = 360
         };
+        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 320));
+        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32));
+
+        _cmbPayee = ControlFactory.CreateSfComboBox(combo =>
+        {
+            combo.Dock = DockStyle.Fill;
+            combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown;
+            combo.ThemeName = themeName;
+            combo.AllowNull = true;
+            combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            combo.AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains;
+            combo.AllowCaseSensitiveOnAutoComplete = false;
+            combo.Font = new System.Drawing.Font("Segoe UI", 11F);
+            combo.Height = CONTROL_HEIGHT;
+            combo.Margin = new Padding(0, 0, 8, 0); // 8px gap before button
+        });
         payeeContainer.Controls.Add(_cmbPayee, 0, 0);
 
         _btnAddVendor = new SfButton
@@ -375,7 +395,8 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 Font = new System.Drawing.Font("Segoe UI", 11F),
                 Height = CONTROL_HEIGHT,
                 Anchor = AnchorStyles.Left,
-                Width = 200
+                Width = 165,
+                TextAlign = HorizontalAlignment.Right
             }, ROW_SPACING);
 
         // === SECTION 3: ACCOUNT & DESCRIPTION (48px gap) ===
@@ -383,18 +404,19 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
         // Account (fills width)
         AddLabeledControl(mainLayout, ref row, "Account",
-            _cmbAccount = new SfComboBox
+            _cmbAccount = ControlFactory.CreateSfComboBox(combo =>
             {
-                Dock = DockStyle.Fill,
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown,
-                ThemeName = themeName,
-                AllowNull = true,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains,
-                AllowCaseSensitiveOnAutoComplete = false,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = CONTROL_HEIGHT
-            }, ROW_SPACING);
+                combo.Anchor = AnchorStyles.Left;
+                combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown;
+                combo.ThemeName = themeName;
+                combo.AllowNull = true;
+                combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                combo.AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains;
+                combo.AllowCaseSensitiveOnAutoComplete = false;
+                combo.Font = new System.Drawing.Font("Segoe UI", 11F);
+                combo.Height = CONTROL_HEIGHT;
+                combo.Width = 320;
+            }), ROW_SPACING);
 
         // Description (fixed 96px height, scrollable)
         AddLabeledControl(mainLayout, ref row, "Description",
@@ -438,7 +460,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 Font = new System.Drawing.Font("Segoe UI", 11F),
                 Height = CONTROL_HEIGHT,
                 Anchor = AnchorStyles.Left,
-                Width = 200
+                Width = 320
             }, ROW_SPACING);
 
         // Cleared checkbox
@@ -470,40 +492,46 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
         _btnSave = new SfButton
         {
-            Text = "Save",
+            Text = "&Save Changes",
             Width = 120,
             Height = 40,
             ThemeName = themeName,
             Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold),
             Margin = new Padding(8, 0, 0, 0),
-            Image = LoadIcon("Save32")
+            Image = LoadIcon("Save32"),
+            AccessibleName = "Save Changes"
         };
         _btnSave.Click += BtnSave_Click;
+        _toolTip.SetToolTip(_btnSave, "Save this payment (Ctrl+S). New entries stay open for additional payments.");
 
         _btnCancel = new SfButton
         {
-            Text = "Cancel",
+            Text = "&Cancel",
             Width = 120,
             Height = 40,
             ThemeName = themeName,
             Font = new System.Drawing.Font("Segoe UI", 11F),
             Margin = new Padding(8, 0, 0, 0),
-            Image = LoadIcon("Close32")
+            Image = LoadIcon("Close32"),
+            AccessibleName = "Cancel Edit"
         };
         _btnCancel.Click += (s, e) => ParentForm?.Close();
+        _toolTip.SetToolTip(_btnCancel, "Close without saving changes (Esc).");
 
         _btnDelete = new SfButton
         {
-            Text = "Delete",
+            Text = "&Delete Selected",
             Width = 120,
             Height = 40,
             ThemeName = themeName,
             Font = new System.Drawing.Font("Segoe UI", 11F),
             Visible = false,
             Margin = new Padding(8, 0, 0, 0),
-            Image = LoadIcon("Delete32")
+            Image = LoadIcon("Delete32"),
+            AccessibleName = "Delete Payment"
         };
         _btnDelete.Click += BtnDelete_Click;
+        _toolTip.SetToolTip(_btnDelete, "Delete this payment entry.");
 
         buttonPanel.Controls.Add(_btnCancel);
         buttonPanel.Controls.Add(_btnDelete);
@@ -520,6 +548,11 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         // Wire up autocomplete filters
         _cmbPayee.Filter = FilterVendors;
         _cmbAccount.Filter = FilterAccounts;
+
+        _toolTip.SetToolTip(_cmbPayee, "Select or enter the payee.");
+        _toolTip.SetToolTip(_numAmount, "Enter payment amount.");
+        _toolTip.SetToolTip(_cmbAccount, "Select the municipal account for this payment.");
+        _toolTip.SetToolTip(_cmbStatus, "Select the current payment status.");
     }
 
     // === HELPER METHODS FOR MODERN LAYOUT ===
@@ -533,10 +566,10 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         {
             Text = text,
             Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
-            ForeColor = System.Drawing.Color.FromArgb(0, 102, 204),
             AutoSize = true,
             Margin = new Padding(0, topMargin, 0, 16), // Consistent gap below header
-            Padding = new Padding(0)
+            Padding = new Padding(0),
+            UseMnemonic = false
         };
         layout.Controls.Add(header, 0, row);
         layout.SetColumnSpan(header, 2);
@@ -558,7 +591,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 TextAlign = System.Drawing.ContentAlignment.MiddleRight,
                 Anchor = AnchorStyles.Right,
                 AutoSize = true,
-                Padding = new Padding(0, 10, 12, 0) // Align vertically with 40px control
+                Padding = new Padding(0, 6, 12, 0)
             };
             layout.Controls.Add(label, 0, row);
         }
@@ -904,6 +937,10 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         {
             IsBusy = true;
 
+            var selectedStatus = _cmbStatus.SelectedItem?.ToString() ?? "Pending";
+            var isVoidStatus = IsVoidStatus(selectedStatus);
+            var amount = (decimal)(_numAmount.Value ?? 0);
+
             // Validate
             if (string.IsNullOrWhiteSpace(_txtCheckNumber.Text))
             {
@@ -917,9 +954,26 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 return;
             }
 
-            if (_numAmount.Value <= 0)
+            if (isVoidStatus)
+            {
+                if (amount != 0m)
+                {
+                    MessageBox.Show("Voided checks must have an amount of 0.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _numAmount.Value = 0;
+                    _numAmount.Focus();
+                    return;
+                }
+            }
+            else if (amount <= 0)
             {
                 MessageBox.Show("Amount must be greater than zero", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (_cmbAccount.SelectedIndex < 0)
+            {
+                MessageBox.Show("Please select a Municipal Account / Budget Category", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _cmbAccount.Focus();
                 return;
             }
 
@@ -958,11 +1012,11 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 payment.Payee = string.Empty;
                 payment.VendorId = null;
             }
-            payment.Amount = (decimal)(_numAmount.Value ?? 0);
+            payment.Amount = isVoidStatus ? 0m : amount;
             payment.Description = _txtDescription.Text.Trim();
             payment.Memo = _txtMemo.Text.Trim();
-            payment.Status = _cmbStatus.SelectedItem?.ToString() ?? "Pending";
-            payment.IsCleared = payment.Status == "Cleared";
+            payment.Status = selectedStatus;
+            payment.IsCleared = string.Equals(payment.Status, "Cleared", StringComparison.OrdinalIgnoreCase);
 
             // Set the associated account
             if (_cmbAccount.SelectedIndex >= 0 && _cmbAccount.SelectedItem is AccountDisplayItem selectedItem)
@@ -977,13 +1031,19 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             if (_isNew)
             {
                 await repository.AddAsync(payment, CancellationToken.None);
+                HasSavedPayments = true;
+
                 Logger?.LogInformation("PaymentEditPanel: Payment created successfully - CheckNumber: {CheckNumber}, Amount: {Amount}, Payee: {Payee}",
                     payment.CheckNumber, payment.Amount, payment.Payee);
-                MessageBox.Show("Payment created successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                PrepareForNextNewPaymentEntry();
+                return;
             }
             else
             {
                 await repository.UpdateAsync(payment, CancellationToken.None);
+                HasSavedPayments = true;
+
                 Logger?.LogInformation("PaymentEditPanel: Payment updated successfully - ID: {Id}, CheckNumber: {CheckNumber}, Amount: {Amount}",
                     payment.Id, payment.CheckNumber, payment.Amount);
                 MessageBox.Show("Payment updated successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -995,6 +1055,17 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 Logger?.LogDebug("PaymentEditPanel: DialogResult set to OK");
             }
             ParentForm?.Close();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            Logger?.LogWarning(ex, "PaymentEditPanel: Duplicate check number {CheckNumber}", _txtCheckNumber.Text?.Trim());
+            MessageBox.Show(
+                "That check number already exists. Enter a unique check number or edit the existing payment record.",
+                "Duplicate Check Number",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            _txtCheckNumber.Focus();
+            _txtCheckNumber.SelectAll();
         }
         catch (Exception ex)
         {
@@ -1058,6 +1129,23 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         }
     }
 
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (keyData == (Keys.Control | Keys.S))
+        {
+            BtnSave_Click(this, EventArgs.Empty);
+            return true;
+        }
+
+        if (keyData == Keys.Escape)
+        {
+            ParentForm?.Close();
+            return true;
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -1075,6 +1163,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             _cmbStatus?.Dispose();
             _cmbAccount?.Dispose();
             _chkCleared?.Dispose();
+            _toolTip?.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -1131,6 +1220,11 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 var status = _cmbStatus.SelectedItem?.ToString();
                 _chkCleared.Checked = status == "Cleared";
 
+                if (IsVoidStatus(status))
+                {
+                    _numAmount.Value = 0;
+                }
+
                 // Re-hook the event handler
                 _chkCleared.CheckedChanged += ChkCleared_CheckedChanged;
             }
@@ -1139,5 +1233,27 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         {
             Logger?.LogError(ex, "PaymentEditPanel: Error in CmbStatus_SelectedIndexChanged");
         }
+    }
+
+    private void PrepareForNextNewPaymentEntry()
+    {
+        _txtCheckNumber.Text = string.Empty;
+        _txtCheckNumber.Enabled = true;
+        _dtpPaymentDate.Value = DateTime.Now;
+        _cmbPayee.SelectedIndex = -1;
+        _cmbPayee.Text = string.Empty;
+        _numAmount.Value = 0;
+        _txtDescription.Text = string.Empty;
+        _txtMemo.Text = string.Empty;
+        _cmbAccount.SelectedIndex = -1;
+        _cmbStatus.SelectedItem = "Pending";
+        _chkCleared.Checked = false;
+        _txtCheckNumber.Focus();
+    }
+
+    private static bool IsVoidStatus(string? status)
+    {
+        return string.Equals(status?.Trim(), "Void", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(status?.Trim(), "Voided", StringComparison.OrdinalIgnoreCase);
     }
 }

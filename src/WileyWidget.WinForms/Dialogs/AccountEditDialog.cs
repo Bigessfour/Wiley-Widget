@@ -23,7 +23,8 @@ namespace WileyWidget.WinForms.Dialogs
             _editPanel.CancelRequested += (_, _) => { DialogResult = DialogResult.Cancel; Close(); };
 
             Text = "Municipal Account Editor";
-            Size = new Size(680, 780);
+            Size = new Size(760, 660);
+            MinimumSize = new Size(720, 620);
             StartPosition = FormStartPosition.CenterParent;
             MaximizeBox = false;
             MinimizeBox = false;

@@ -13,6 +13,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.Input.Events;
 using Syncfusion.Windows.Forms.Chart;
+using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Themes;
@@ -42,6 +43,7 @@ public class AdvancedScenariosTabControl : UserControl
     private RichTextBox? _narrativeBox;
     private Label? _statusLabel;
     private LoadingOverlay? _loadingOverlay;
+    private ToolTip? _toolTip;
 
     private PropertyChangedEventHandler? _vmChanged;
 
@@ -63,6 +65,12 @@ public class AdvancedScenariosTabControl : UserControl
     private void InitializeLayout()
     {
         Dock = DockStyle.Fill;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScroll = true;
+        MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        Padding = new Padding(8);
+        _toolTip = new ToolTip();
+
         var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -142,6 +150,9 @@ public class AdvancedScenariosTabControl : UserControl
             b.Width = 200;
             b.Height = 42;
         });
+        _runButton.AccessibleName = "Run scenario";
+        _runButton.AccessibleDescription = "Execute advanced scenario analysis";
+        _toolTip?.SetToolTip(_runButton, "Run the scenario with the selected assumptions.");
         _runButton.Click += RunButton_ClickAsync;
 
         _exportButton = _factory.CreateSfButton("Export", b =>
@@ -149,6 +160,9 @@ public class AdvancedScenariosTabControl : UserControl
             b.Width = 200;
             b.Height = 32;
         });
+        _exportButton.AccessibleName = "Export advanced scenario";
+        _exportButton.AccessibleDescription = "Export advanced scenario output";
+        _toolTip?.SetToolTip(_exportButton, "Export scenario projections.");
         _exportButton.Click += ExportButton_ClickAsync;
 
         _resetButton = _factory.CreateSfButton("Reset to Base", b =>
@@ -156,6 +170,9 @@ public class AdvancedScenariosTabControl : UserControl
             b.Width = 200;
             b.Height = 32;
         });
+        _resetButton.AccessibleName = "Reset scenario";
+        _resetButton.AccessibleDescription = "Reset advanced scenario inputs to baseline";
+        _toolTip?.SetToolTip(_resetButton, "Reset inputs to baseline assumptions.");
         _resetButton.Click += ResetButton_ClickAsync;
 
         buttons.Controls.AddRange(new Control[] { _runButton, _exportButton, _resetButton });
@@ -181,7 +198,10 @@ public class AdvancedScenariosTabControl : UserControl
             chart.PrimaryXAxis.Title = "Fiscal Year";
             chart.PrimaryYAxis.Title = "Projected Reserves";
             chart.ShowLegend = true;
+            chart.AccessibleName = "Scenario projection chart";
+            chart.AccessibleDescription = "Chart of reserve projection scenarios";
         });
+        _toolTip?.SetToolTip(_chart, "Visual comparison of baseline and alternate projections.");
 
         return _chart;
     }
@@ -215,6 +235,8 @@ public class AdvancedScenariosTabControl : UserControl
             grid.AllowFiltering = true;
             grid.AllowSorting = true;
             grid.SelectionMode = GridSelectionMode.Single;
+            grid.AccessibleName = "Projection details grid";
+            grid.AccessibleDescription = "Detailed year-by-year projection values";
 
             grid.Columns.Add(new GridTextColumn { MappingName = nameof(YearlyProjection.Year), HeaderText = "Year" });
             grid.Columns.Add(new GridNumericColumn { MappingName = nameof(YearlyProjection.ProjectedRevenue), HeaderText = "Revenue", Format = "C0" });
@@ -222,6 +244,7 @@ public class AdvancedScenariosTabControl : UserControl
             grid.Columns.Add(new GridNumericColumn { MappingName = nameof(YearlyProjection.ProjectedReserves), HeaderText = "Reserves", Format = "C0" });
             grid.Columns.Add(new GridNumericColumn { MappingName = nameof(YearlyProjection.RiskLevel), HeaderText = "Risk", Format = "P0" });
         });
+        _toolTip?.SetToolTip(_grid, "Detailed projection values by year.");
 
         return _grid;
     }
@@ -246,7 +269,10 @@ public class AdvancedScenariosTabControl : UserControl
             Font = new System.Drawing.Font("Segoe UI", 10.0f, System.Drawing.FontStyle.Bold)
         };
 
-        _narrativeBox = _factory.CreateSfRichTextBox(r => r.Text = "AI Analyst ready — run a scenario to begin.");
+        _narrativeBox = _factory.CreateRichTextBoxExt(r => r.Text = "AI Analyst ready — run a scenario to begin.");
+        _narrativeBox.AccessibleName = "AI narrative";
+        _narrativeBox.AccessibleDescription = "AI-generated summary of scenario outcomes";
+        _toolTip?.SetToolTip(_narrativeBox, "AI analysis and recommendations for the selected scenario.");
         panel.Controls.Add(heading, 0, 0);
         panel.Controls.Add(_narrativeBox, 0, 1);
         return panel;
@@ -282,7 +308,10 @@ public class AdvancedScenariosTabControl : UserControl
             n.NumberFormatInfo = format;
             n.Value = defaultValue;
             n.Dock = DockStyle.Fill;
+            n.AccessibleName = labelText;
+            n.AccessibleDescription = $"Input for {labelText.ToLowerInvariant()}";
         });
+        _toolTip?.SetToolTip(box, $"Set {labelText.ToLowerInvariant()}.");
         box.ValueChanged += changed;
 
         form.Controls.Add(label, 0, row);
@@ -501,6 +530,8 @@ public class AdvancedScenariosTabControl : UserControl
             {
                 _viewModel.PropertyChanged -= _vmChanged;
             }
+
+            _toolTip?.Dispose();
         }
         base.Dispose(disposing);
     }

@@ -9,6 +9,7 @@ using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
+using Syncfusion.Windows.Forms.PdfViewer;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Supporting;
@@ -178,7 +179,7 @@ public class SyncfusionControlFactory
             RibbonStyle = RibbonStyle.Office2016,
             OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
         };
-        ribbon.Dock = (DockStyleEx)DockStyle.Top;
+        ribbon.Dock = DockStyleEx.Top;
 
         ribbon.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(ribbon);
@@ -203,6 +204,51 @@ public class SyncfusionControlFactory
         listView.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(listView);
         return listView;
+    }
+
+    #endregion
+
+    #region AutoComplete
+
+    public AutoComplete CreateAutoComplete(Action<AutoComplete>? configure = null)
+    {
+        _logger.LogDebug("Creating AutoComplete");
+
+        var autoComplete = new AutoComplete
+        {
+            IgnoreCase = true,
+            AutoSortList = true,
+            AutoSerialize = false,
+            AutoAddItem = false,
+            AdjustHeightToItemCount = true,
+            ShowCloseButton = false,
+            ShowGripper = false,
+            MaxNumberofSuggestion = 12,
+            BorderType = AutoCompleteBorderTypes.Sizable,
+            ThemeName = _currentTheme,
+        };
+
+        configure?.Invoke(autoComplete);
+        return autoComplete;
+    }
+
+    #endregion
+
+    #region PdfViewerControl
+
+    public PdfViewerControl CreatePdfViewerControl(Action<PdfViewerControl>? configure = null)
+    {
+        _logger.LogDebug("Creating PdfViewerControl");
+
+        var pdfViewer = new PdfViewerControl
+        {
+            Dock = DockStyle.Fill,
+            Name = "PdfViewerControl",
+        };
+
+        pdfViewer.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(pdfViewer);
+        return pdfViewer;
     }
 
     #endregion
@@ -246,6 +292,25 @@ public class SyncfusionControlFactory
         comboBox.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(comboBox);
         return comboBox;
+    }
+
+    #endregion
+
+    #region SfDateTimeEdit
+
+    public SfDateTimeEdit CreateSfDateTimeEdit(Action<SfDateTimeEdit>? configure = null)
+    {
+        _logger.LogDebug("Creating SfDateTimeEdit");
+
+        var dateTimeEdit = new SfDateTimeEdit
+        {
+            Width = 140,
+            DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate,
+        };
+
+        dateTimeEdit.ApplySyncfusionTheme(_currentTheme, _logger);
+        configure?.Invoke(dateTimeEdit);
+        return dateTimeEdit;
     }
 
     #endregion
@@ -351,11 +416,11 @@ public class SyncfusionControlFactory
 
     #endregion
 
-    #region SfRichTextBox
+    #region RichTextBoxExt
 
-    public RichTextBox CreateSfRichTextBox(Action<RichTextBox>? configure = null)
+    public RichTextBox CreateRichTextBoxExt(Action<RichTextBox>? configure = null)
     {
-        _logger.LogDebug("Creating SfRichTextBox");
+        _logger.LogDebug("Creating RichTextBoxExt");
 
         var rtb = new RichTextBox
         {

@@ -57,7 +57,7 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Loads recent payments from the repository (default: last 20)
+    /// Loads all payments from the repository for full history visibility.
     /// </summary>
     [RelayCommand]
     private async Task LoadPaymentsAsync()
@@ -65,12 +65,11 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
         try
         {
             IsLoading = true;
-            StatusMessage = "Loading recent payments...";
+            StatusMessage = "Loading payment history...";
 
             var cancellationToken = ReplaceCancellationTokenSource();
 
-            // Load the most recent 20 payments by default for better performance
-            var payments = await _paymentRepository.GetRecentAsync(20, cancellationToken);
+            var payments = await _paymentRepository.GetAllAsync(cancellationToken);
 
             Payments.Clear();
             foreach (var payment in payments)
@@ -78,8 +77,10 @@ public sealed partial class PaymentsViewModel : ObservableObject, IDisposable
                 Payments.Add(payment);
             }
 
-            StatusMessage = $"Loaded {Payments.Count} recent payments";
-            _logger.LogInformation("PaymentsViewModel: Loaded {Count} recent payments", Payments.Count);
+            StatusMessage = Payments.Count == 1
+                ? "Loaded 1 payment from history"
+                : $"Loaded {Payments.Count} payments from history";
+            _logger.LogInformation("PaymentsViewModel: Loaded {Count} payments from history", Payments.Count);
         }
         catch (OperationCanceledException)
         {

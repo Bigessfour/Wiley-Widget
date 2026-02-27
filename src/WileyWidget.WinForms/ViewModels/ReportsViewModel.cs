@@ -490,9 +490,31 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task ExportToPdfAsync(CancellationToken cancellationToken = default)
     {
+        var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+        var filePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "WileyWidget",
+            "Reports",
+            fileName
+        );
+
+        await ExportToPdfFileAsync(filePath, cancellationToken);
+    }
+
+    /// <summary>
+    /// Export the current report to PDF at the specified file path.
+    /// </summary>
+    public async Task ExportToPdfFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
         if (ReportViewer == null)
         {
             ErrorMessage = "Report viewer not initialized.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            ErrorMessage = "Export path cannot be empty.";
             return;
         }
 
@@ -502,16 +524,6 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             ErrorMessage = null;
             StatusMessage = "Exporting to PDF...";
 
-            // Generate default file path
-            var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-            var filePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "WileyWidget",
-                "Reports",
-                fileName
-            );
-
-            // Ensure directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
             var progress = new Progress<double>(p => StatusMessage = $"Exporting PDF... {p:P0}");
@@ -520,7 +532,6 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             StatusMessage = $"Exported to: {filePath}";
             _logger.LogInformation("Report exported to PDF: {FilePath}", filePath);
 
-            // Audit the successful export
             try
             {
                 await _auditService.AuditAsync("ReportGenerated", new { Report = SelectedReportType, Path = filePath, Format = "PDF", Timestamp = DateTime.UtcNow });
@@ -530,7 +541,6 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                 _logger.LogWarning(ax, "Failed to write audit event for report export (PDF)");
             }
 
-            // Open the file location
             System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
         }
         catch (Exception ex)
@@ -538,10 +548,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             ErrorMessage = $"Failed to export PDF: {ex.Message}";
             _logger.LogError(ex, "Failed to export report to PDF");
 
-            // Audit the failure
             try
             {
-                await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = (string?)null, Format = "PDF", Error = ex.Message, Timestamp = DateTime.UtcNow });
+                await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = filePath, Format = "PDF", Error = ex.Message, Timestamp = DateTime.UtcNow });
             }
             catch (Exception ax)
             {
@@ -560,9 +569,31 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task ExportToExcelAsync(CancellationToken cancellationToken = default)
     {
+        var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+        var filePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "WileyWidget",
+            "Reports",
+            fileName
+        );
+
+        await ExportToExcelFileAsync(filePath, cancellationToken);
+    }
+
+    /// <summary>
+    /// Export the current report to Excel at the specified file path.
+    /// </summary>
+    public async Task ExportToExcelFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
         if (ReportViewer == null)
         {
             ErrorMessage = "Report viewer not initialized.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            ErrorMessage = "Export path cannot be empty.";
             return;
         }
 
@@ -572,16 +603,6 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             ErrorMessage = null;
             StatusMessage = "Exporting to Excel...";
 
-            // Generate default file path
-            var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-            var filePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                "WileyWidget",
-                "Reports",
-                fileName
-            );
-
-            // Ensure directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
             var progress = new Progress<double>(p => StatusMessage = $"Exporting Excel... {p:P0}");
@@ -590,7 +611,6 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             StatusMessage = $"Exported to: {filePath}";
             _logger.LogInformation("Report exported to Excel: {FilePath}", filePath);
 
-            // Audit the successful export
             try
             {
                 await _auditService.AuditAsync("ReportGenerated", new { Report = SelectedReportType, Path = filePath, Format = "Excel", Timestamp = DateTime.UtcNow });
@@ -600,7 +620,6 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                 _logger.LogWarning(ax, "Failed to write audit event for report export (Excel)");
             }
 
-            // Open the file location
             System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
         }
         catch (Exception ex)
@@ -608,10 +627,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             ErrorMessage = $"Failed to export Excel: {ex.Message}";
             _logger.LogError(ex, "Failed to export report to Excel");
 
-            // Audit the failure
             try
             {
-                await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = (string?)null, Format = "Excel", Error = ex.Message, Timestamp = DateTime.UtcNow });
+                await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = filePath, Format = "Excel", Error = ex.Message, Timestamp = DateTime.UtcNow });
             }
             catch (Exception ax)
             {

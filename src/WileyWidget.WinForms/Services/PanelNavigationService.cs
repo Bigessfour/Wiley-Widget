@@ -44,6 +44,7 @@ namespace WileyWidget.WinForms.Services
     {
         private const int MinimumFloatingWidth = 900;
         private const int MinimumFloatingHeight = 620;
+        private const int MinimumPanelTopInsetLogical = 8;
         private const int ScreenPadding = 40;
         private const double DefaultScreenUsageRatio = 0.82;
 
@@ -230,6 +231,12 @@ namespace WileyWidget.WinForms.Services
 
         private void ShowFloating(Control panelOrForm, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle = Syncfusion.Windows.Forms.Tools.DockingStyle.Right)
         {
+            if (_owner.IsDisposed || _owner.Disposing)
+            {
+                _logger.LogWarning("[PANEL_NAV] ShowFloating skipped — owner is disposed/disposing for panel '{PanelName}'", panelName);
+                return;
+            }
+
             Form host;
             UserControl? hostedPanel = null;
 
@@ -299,21 +306,66 @@ namespace WileyWidget.WinForms.Services
             PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
         }
 
+        /// <summary>
+        /// Validates and corrects MDI child form properties after creation.
+        /// Only writes properties whose values differ from the desired state to avoid
+        /// triggering <see cref="Control.RecreateHandle"/> (e.g. changing ShowInTaskbar on a
+        /// live handle triggers RecreateHandle → potential ObjectDisposedException in Maximized MDI).
+        /// Per Microsoft docs, MdiParent must be assigned before the form is shown and
+        /// ideally before the handle is created; <see cref="CreateMDIChild"/> owns that assignment.
+        /// </summary>
         private void PrepareHostForMdi(Form host, string panelName)
         {
-            host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
-            host.ShowInTaskbar = false;
-            host.StartPosition = FormStartPosition.Manual;
+            if (host.IsDisposed || host.Disposing)
+            {
+                _logger.LogWarning("[PANEL_NAV] PrepareHostForMdi skipped — host is disposed/disposing for '{PanelName}'", panelName);
+                return;
+            }
 
+            if (host.RecreatingHandle)
+            {
+                _logger.LogWarning("[PANEL_NAV] PrepareHostForMdi skipped — host is mid-RecreateHandle for '{PanelName}'", panelName);
+                return;
+            }
+
+            // Title — safe to set at any time.
+            if (string.IsNullOrWhiteSpace(host.Text))
+            {
+                host.Text = panelName;
+            }
+
+            // ShowInTaskbar — changing this on a form whose handle is already created triggers
+            // UpdateStyles() → RecreateHandle(). Only write when the value actually differs so
+            // re-entrant calls on an existing cached host are safe no-ops.
+            if (host.ShowInTaskbar)
+            {
+                host.ShowInTaskbar = false;
+            }
+
+            // StartPosition is consumed at Show() time; writing it after the form is
+            // already visible has no effect, so guard to avoid misleading state writes.
+            if (!host.Visible && host.StartPosition != FormStartPosition.Manual)
+            {
+                host.StartPosition = FormStartPosition.Manual;
+            }
+
+            // MinimumSize — safe to mutate at any time.
             if (host.MinimumSize != Size.Empty)
             {
                 _logger.LogDebug("[PANEL_NAV] Resetting non-default MinimumSize {MinimumSize} for MDI host '{PanelName}'", host.MinimumSize, panelName);
                 host.MinimumSize = Size.Empty;
             }
 
+            // Owner must be null for MDI children — clearing after handle creation is safe.
             if (host.Owner != null)
             {
                 host.Owner = null;
+            }
+
+            // Sanity check: CreateMDIChild should have assigned MdiParent before this method runs.
+            if (!host.IsMdiChild)
+            {
+                _logger.LogWarning("[PANEL_NAV] PrepareHostForMdi: host '{PanelName}' is not an MDI child — MdiParent may not have been set before handle creation.", panelName);
             }
         }
 
@@ -377,6 +429,7 @@ namespace WileyWidget.WinForms.Services
             {
                 panel.Dock = DockStyle.Fill;
                 panel.Margin = Padding.Empty;
+                ApplyMinimumTopInset(panel);
                 var minimumWidth = Math.Max(640, panel.MinimumSize.Width);
                 var minimumHeight = Math.Max(420, panel.MinimumSize.Height);
                 panel.MinimumSize = new Size(minimumWidth, minimumHeight);
@@ -409,8 +462,47 @@ namespace WileyWidget.WinForms.Services
             panel.Visible = true;
             panel.Dock = DockStyle.Fill;
             panel.BringToFront();
+            ResetAutoScrollOffsets(panel);
             EnsureControlVisibleAndLaidOut(panel);
             EnsureControlVisibleAndLaidOut(host);
+        }
+
+        private static void ApplyMinimumTopInset(Control control)
+        {
+            var dpi = control.DeviceDpi > 0 ? control.DeviceDpi : 96;
+            var scale = dpi / 96f;
+            var minimumTopInset = (int)Math.Ceiling(MinimumPanelTopInsetLogical * scale);
+
+            if (control.Padding.Top >= minimumTopInset)
+            {
+                return;
+            }
+
+            control.Padding = new Padding(
+                control.Padding.Left,
+                minimumTopInset,
+                control.Padding.Right,
+                control.Padding.Bottom);
+        }
+
+        private static void ResetAutoScrollOffsets(Control root)
+        {
+            if (root is ScrollableControl scrollable && scrollable.AutoScroll)
+            {
+                try
+                {
+                    scrollable.AutoScrollPosition = Point.Empty;
+                }
+                catch
+                {
+                    // Best effort.
+                }
+            }
+
+            foreach (Control child in root.Controls)
+            {
+                ResetAutoScrollOffsets(child);
+            }
         }
 
         private void TryInitializeAsyncPanel(Control panel, string panelName)
@@ -487,7 +579,33 @@ namespace WileyWidget.WinForms.Services
                 return;
             }
 
+            // === FIX: Guard against CreateHandle race (handle not ready yet) ===
+            if (control is Form form)
+            {
+                if (!form.IsHandleCreated)
+                {
+                    // Defer layout until handle is created (Syncfusion v32.2.3 stability)
+                    form.Shown += (s, e) =>
+                    {
+                        if (!form.IsDisposed)
+                            EnsureControlVisibleAndLaidOut(form);
+                    };
+                    return;
+                }
+            }
+            else if (!control.IsHandleCreated)
+            {
+                // For non-form controls, queue event and retry
+                control.HandleCreated += (s, e) =>
+                {
+                    if (!control.IsDisposed)
+                        EnsureControlVisibleAndLaidOut(control);
+                };
+                return;
+            }
+
             control.Visible = true;
+            control.BringToFront();
             control.PerformLayout();
             control.Invalidate(true);
             control.Update();
@@ -519,6 +637,8 @@ namespace WileyWidget.WinForms.Services
                     if (hostedPanel != null && !hostedPanel.IsDisposed)
                     {
                         hostedPanel.Dock = DockStyle.Fill;
+                        ApplyMinimumTopInset(hostedPanel);
+                        ResetAutoScrollOffsets(hostedPanel);
                         EnsureControlVisibleAndLaidOut(hostedPanel);
                     }
                 }));
@@ -645,9 +765,30 @@ namespace WileyWidget.WinForms.Services
         }
 
         /// <summary>
-        /// Creates an MDI child form to host a panel.
-        /// Used when owner is MDI container.
+        /// Creates an MDI child form to host a panel, or returns the cached instance.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// <b>Handle-creation order matters.</b> In WinForms, accessing
+        /// <see cref="Control.Handle"/> on a control whose parent has no HWND yet forces the
+        /// parent's handle to be created first. <see cref="EnsurePanelAttached"/> calls
+        /// <c>_ = panel.Handle</c> to trigger <c>OnHandleCreated</c> for ViewModel wiring,
+        /// which means the host form's HWND is created as a side effect.
+        /// </para>
+        /// <para>
+        /// Properties that affect <see cref="Control.CreateParams"/> (e.g.
+        /// <see cref="Form.ShowInTaskbar"/>, <see cref="Form.FormBorderStyle"/>) and
+        /// <see cref="Form.MdiParent"/> trigger <see cref="Control.RecreateHandle"/> when set
+        /// after the HWND is live. A RecreateHandle on a Maximized MDI child can race with
+        /// MDI client bookkeeping inside <see cref="Form.CreateHandle"/> and throw
+        /// <see cref="ObjectDisposedException"/> — the crash observed in <c>OnShown</c>.
+        /// </para>
+        /// <para>
+        /// The fix (per Microsoft docs — <em>"assign MdiParent before calling Show()"</em>):
+        /// set <see cref="Form.MdiParent"/> in the object initializer so the HWND is born
+        /// with the <c>WS_CHILD</c> style applied — no RecreateHandle is ever triggered.
+        /// </para>
+        /// </remarks>
         private Form CreateMDIChild(string panelName, UserControl? panel)
         {
             if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
@@ -659,15 +800,40 @@ namespace WileyWidget.WinForms.Services
                 return existing;
             }
 
+            if (_owner.IsDisposed || _owner.Disposing)
+            {
+                _logger.LogWarning("[PANEL_NAV] CreateMDIChild skipped — owner is disposed/disposing for panel '{PanelName}'", panelName);
+                throw new ObjectDisposedException(nameof(_owner),
+                    $"Cannot create MDI child for '{panelName}': owner form is disposed or disposing.");
+            }
+
+            if (!_owner.IsMdiContainer)
+            {
+                _logger.LogWarning("[PANEL_NAV] CreateMDIChild: owner is not an MDI container for '{PanelName}'. Falling back to floating host.", panelName);
+                return GetOrCreateHost(panelName, panel, Syncfusion.Windows.Forms.Tools.DockingStyle.Right);
+            }
+
+            // All CreateParams-affecting properties (ShowInTaskbar, FormBorderStyle, etc.)
+            // and MdiParent are set here, before any HWND exists. EnsurePanelAttached below
+            // forces panel.Handle which also creates the host HWND as a side effect — but by
+            // then the form is already wired as an MDI child (WS_CHILD), so no RecreateHandle
+            // is ever triggered. Per MS docs: child.MdiParent = this; child.Show();
             var mdiChild = new Form
             {
                 Text = panelName,
-                FormBorderStyle = FormBorderStyle.Sizable,
+                // FormBorderStyle.None: TabbedMDIManager provides all chrome via the tab strip.
+                // Sizable would render a caption bar INSIDE the tabbed area — nested-window look.
+                FormBorderStyle = FormBorderStyle.None,
                 ShowIcon = false,
+                ShowInTaskbar = false,                   // Must precede HWND creation
+                StartPosition = FormStartPosition.Manual, // Must precede Show()
                 WindowState = FormWindowState.Maximized,
                 AutoScaleMode = AutoScaleMode.Dpi,
-                MinimumSize = new Size(0, 0),
-                Padding = Padding.Empty
+                MinimumSize = Size.Empty,
+                Padding = Padding.Empty,
+                // Assign MdiParent before EnsurePanelAttached forces HWND creation so the
+                // form's native window is created as WS_CHILD in one shot — never re-created.
+                MdiParent = _owner,
             };
 
             if (panel != null)
@@ -677,16 +843,19 @@ namespace WileyWidget.WinForms.Services
 
             EnsureTrackedHost(panelName, mdiChild);
 
-            // Apply theme
-            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            // Apply theme — SfSkinManager handles pre-handle state gracefully.
+            var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme
+                ?? "Office2019Colorful";
             Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(mdiChild, currentTheme);
+
+            _logger.LogDebug("[PANEL_NAV] MDI child created for '{PanelName}' (IsMdiChild={IsMdiChild})", panelName, mdiChild.IsMdiChild);
 
             return mdiChild;
         }
 
         private void ExecuteOnUiThread(Action action)
         {
-            if (_owner.IsDisposed) return;
+            if (_owner.IsDisposed || _owner.Disposing) return;
 
             if (_owner.InvokeRequired)
             {

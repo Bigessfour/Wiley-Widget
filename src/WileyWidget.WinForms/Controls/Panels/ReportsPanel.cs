@@ -28,6 +28,7 @@ using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
+using Syncfusion.XlsIO;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using Syncfusion.WinForms.Controls.Styles;
@@ -35,6 +36,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Factories;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -63,9 +65,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private SfComboBox? _reportSelector;
     private SfButton? _loadReportButton;
     private SfButton? _exportPdfButton;
+    private SfButton? _previewPdfButton;
+    private SfButton? _createExcelButton;
     private SfButton? _exportExcelButton;
     private SfButton? _printButton;
     private SfButton? _parametersButton;
+    private bool _isPdfPreviewInProgress;
 
     // Parameters panel
     private Panel? _parametersPanel;
@@ -77,11 +82,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     private SplitContainerAdv? _mainSplitContainer;
     private SplitContainerAdv? _parametersSplitContainer;
 
+    // Canonical skeleton fields
+    private readonly SyncfusionControlFactory? _factory;
+    private TableLayoutPanel? _content;
+
     // Event handlers for proper cleanup (Pattern A & K)
     private EventHandler? _panelHeaderRefreshClickedHandler;
     private EventHandler? _panelHeaderCloseClickedHandler;
     private EventHandler? _loadReportButtonClickHandler;
     private EventHandler? _exportPdfButtonClickHandler;
+    private EventHandler? _previewPdfButtonClickHandler;
+    private EventHandler? _createExcelButtonClickHandler;
     private EventHandler? _exportExcelButtonClickHandler;
     private EventHandler? _printButtonClickHandler;
     private EventHandler? _parametersButtonClickHandler;
@@ -93,15 +104,36 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="ReportsPanel"/> class with direct dependencies.
+    /// </summary>
+    /// <param name="vm">The ViewModel instance.</param>
+    /// <param name="factory">The Syncfusion control factory.</param>
+    internal ReportsPanel(ReportsViewModel vm, SyncfusionControlFactory factory)
+        : base(vm, ResolveLogger())
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        AutoScaleMode = AutoScaleMode.Dpi;
+        SafeSuspendAndLayout(InitializeControls);
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ReportsPanel"/> class.
     /// </summary>
     /// <param name="scopeFactory">The service scope factory for creating scopes.</param>
     /// <param name="logger">Logger instance for diagnostic logging.</param>
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
     public ReportsPanel(
         IServiceScopeFactory scopeFactory,
         ILogger<ScopedPanelBase<ReportsViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        _factory = ControlFactory;
+    }
+
+    private static ILogger ResolveLogger()
+    {
+        return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ReportsPanel>>(Program.Services)
+            ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ReportsPanel>.Instance;
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -110,6 +142,30 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         MinimumSize = new Size(1024, 720);
         PerformLayout();
         Invalidate(true);
+    }
+
+    /// <summary>
+    /// Implements ICompletablePanel lifecycle: LoadAsync
+    /// </summary>
+    public override async Task LoadAsync(CancellationToken ct)
+    {
+        if (_loadingOverlay != null)
+        {
+            _loadingOverlay.Visible = true;
+        }
+
+        try
+        {
+            LoadAvailableReports();
+            await Task.CompletedTask; // Placeholder for async operations if needed
+        }
+        finally
+        {
+            if (_loadingOverlay != null)
+            {
+                _loadingOverlay.Visible = false;
+            }
+        }
     }
 
     /// <summary>
@@ -224,8 +280,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         MinimumSize = new Size(1024, 720);
         AutoScroll = false;
         Padding = Padding.Empty;
+        // Apply theme for cascade to all child controls
+        SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
         // DockingManager will handle docking; do not set Dock here.
-        // BackColor will be set by ApplyTheme
 
         // Panel header
         _panelHeader = new PanelHeader
@@ -248,6 +305,20 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _panelHeader.CloseClicked += _panelHeaderCloseClickedHandler;
         Controls.Add(_panelHeader);
 
+        // Canonical _content root
+        _content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            AutoSize = false,
+            Name = "ReportsPanelContent"
+        };
+        _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
         // Main layout container with parameters panel support
         _parametersSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
@@ -264,7 +335,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Padding = new Padding(LayoutTokens.PanelPadding),
             BorderStyle = BorderStyle.None,
         };
-        SfSkinManager.SetVisualStyle(_parametersPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Use TableLayoutPanel for parameters panel layout
         var parametersLayout = new TableLayoutPanel
@@ -393,7 +463,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
         };
-        SfSkinManager.SetVisualStyle(_toolbarPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Use FlowLayoutPanel for toolbar controls
         var toolbarFlow = new FlowLayoutPanel
@@ -487,6 +556,38 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _exportPdfButton.Click += _exportPdfButtonClickHandler;
         toolbarFlow.Controls.Add(_exportPdfButton);
 
+        _previewPdfButton = ControlFactory.CreateSfButton("Pre&view PDF", button =>
+        {
+            button.Name = "Toolbar_PreviewPdf";
+            button.AccessibleName = "Preview PDF";
+            button.AccessibleDescription = "Preview the report in an embedded PDF viewer";
+            button.AutoSize = true;
+            button.Enabled = false;
+            button.TabIndex = 5;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
+        var previewPdfTooltip = new ToolTip();
+        previewPdfTooltip.SetToolTip(_previewPdfButton, "Generate a temporary PDF and preview it in-app (Alt+V)");
+        _previewPdfButtonClickHandler = async (s, e) => await PreviewReportAsPdfAsync();
+        _previewPdfButton.Click += _previewPdfButtonClickHandler;
+        toolbarFlow.Controls.Add(_previewPdfButton);
+
+        _createExcelButton = ControlFactory.CreateSfButton("Create E&xcel", button =>
+        {
+            button.Name = "Toolbar_CreateExcel";
+            button.AccessibleName = "Create Excel Workbook";
+            button.AccessibleDescription = "Create a new Excel workbook using Syncfusion XlsIO";
+            button.AutoSize = true;
+            button.Enabled = true;
+            button.TabIndex = 6;
+            button.Margin = new Padding(0, 0, 10, 0);
+        });
+        var createExcelTooltip = new ToolTip();
+        createExcelTooltip.SetToolTip(_createExcelButton, "Create an Excel workbook from code (Alt+X)");
+        _createExcelButtonClickHandler = async (s, e) => await CreateExcelWorkbookAsync();
+        _createExcelButton.Click += _createExcelButtonClickHandler;
+        toolbarFlow.Controls.Add(_createExcelButton);
+
         _exportExcelButton = ControlFactory.CreateSfButton("Export &Excel", button =>
         {
             button.Name = "Toolbar_ExportExcel";
@@ -494,7 +595,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             button.AccessibleDescription = "Export the report to Excel spreadsheet";
             button.AutoSize = true;
             button.Enabled = false;
-            button.TabIndex = 5;
+            button.TabIndex = 7;
             button.Margin = new Padding(0, 0, 10, 0);
         });
         var exportExcelTooltip = new ToolTip();
@@ -511,7 +612,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             button.AccessibleDescription = "Print the current report";
             button.AutoSize = true;
             button.Enabled = false;
-            button.TabIndex = 6;
+            button.TabIndex = 8;
             button.Margin = new Padding(0, 0, 10, 0);
         });
         var printTooltip = new ToolTip();
@@ -533,7 +634,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
         };
-        SfSkinManager.SetVisualStyle(viewerPanel, currentTheme);
 
         // Initialize FastReport viewer container
         _reportViewerContainer = new Panel
@@ -543,7 +643,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.FixedSingle,
         };
-        SfSkinManager.SetVisualStyle(_reportViewerContainer, currentTheme);
 
         // Initialize FastReport
         _fastReport = new Report();
@@ -567,7 +666,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _mainSplitContainer.Panel2.Controls.Add(viewerPanel);
 
         _parametersSplitContainer.Panel2.Controls.Add(_mainSplitContainer);
-        Controls.Add(_parametersSplitContainer);
+        _content!.Controls.Add(_parametersSplitContainer, 0, 0);
+        Controls.Add(_content);
 
         // Status strip
         _statusStrip = new StatusStrip
@@ -697,11 +797,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         if (_exportPdfButton != null)
             _exportPdfButton.Enabled = !isLoading && hasReport;
 
+        if (_previewPdfButton != null)
+            _previewPdfButton.Enabled = !isLoading && hasReport && !_isPdfPreviewInProgress;
+
+        if (_createExcelButton != null)
+            _createExcelButton.Enabled = !isLoading;
+
         if (_exportExcelButton != null)
             _exportExcelButton.Enabled = !isLoading && hasReport;
 
         if (_printButton != null)
-            _printButton.Enabled = !isLoading && hasReport;
+            _printButton.Enabled = !isLoading && hasReport && !_isPdfPreviewInProgress;
     }
 
     private void LoadAvailableReports()
@@ -897,48 +1003,49 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         }
     }
 
-    private Task ExportToPdfAsync(CancellationToken cancellationToken = default)
+    private async Task ExportToPdfAsync(CancellationToken cancellationToken = default)
     {
-        if (ViewModel == null) return Task.CompletedTask;
+        if (ViewModel == null)
+        {
+            return;
+        }
 
         try
         {
-            using var saveDialog = new SaveFileDialog
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(ReportsPanel)}.Pdf",
+                dialogTitle: "Export Report to PDF",
+                filter: "PDF files (*.pdf)|*.pdf",
+                defaultExtension: "pdf",
+                defaultFileName: $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
+                exportAction: (filePath, ct) => ViewModel.ExportToPdfFileAsync(filePath, ct),
+                statusCallback: UpdateStatus,
+                logger: Logger,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSkipped)
             {
-                Filter = "PDF files (*.pdf)|*.pdf",
-                DefaultExt = "pdf",
-                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
-                Title = "Export Report to PDF"
-            };
-
-            if (saveDialog.ShowDialog() == DialogResult.OK)
-            {
-                UpdateStatus("Exporting to PDF...");
-
-                // Use FastReport's PDF export if available
-                if (_fastReport != null)
-                {
-                    // Note: FastReport Open Source doesn't include PDF export
-                    // This would require FastReport.NET (commercial) or alternative solution
-                    MessageBox.Show(
-                        "PDF export is not available in FastReport Open Source.\r\n\r\n" +
-                        "To enable PDF export, consider:\r\n" +
-                        "1. Upgrading to FastReport.NET (commercial)\r\n" +
-                        "2. Using the ViewModel's ExportToPdfAsync method with alternate export service\r\n" +
-                        "3. Using Print to PDF functionality",
-                        "Export Not Available",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-
-                    UpdateStatus("PDF export not available in FastReport Open Source");
-                    Logger.LogInformation("PDF export requested but not available in FastReport Open Source");
-                }
-                else
-                {
-                    MessageBox.Show("No report is currently loaded.", "Export Failed",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
+
+            if (result.IsCancelled)
+            {
+                UpdateStatus("PDF export cancelled.");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                UpdateStatus($"PDF export failed: {result.ErrorMessage}");
+                MessageBox.Show($"Failed to export to PDF:\r\n{result.ErrorMessage}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            UpdateStatus($"PDF export completed: {result.FilePath}");
         }
         catch (Exception ex)
         {
@@ -948,50 +1055,145 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        return Task.CompletedTask;
     }
 
-    private Task ExportToExcelAsync(CancellationToken cancellationToken = default)
+    private async Task PreviewReportAsPdfAsync(CancellationToken cancellationToken = default)
     {
-        if (ViewModel == null) return Task.CompletedTask;
+        if (ViewModel == null || _isPdfPreviewInProgress)
+        {
+            return;
+        }
+
+        string previewFilePath = string.Empty;
 
         try
         {
-            using var saveDialog = new SaveFileDialog
-            {
-                Filter = "Excel files (*.xlsx)|*.xlsx",
-                DefaultExt = "xlsx",
-                FileName = $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
-                Title = "Export Report to Excel"
-            };
+            _isPdfPreviewInProgress = true;
+            UpdateButtonStates();
+            UpdateStatus("Preparing PDF preview...");
 
-            if (saveDialog.ShowDialog() == DialogResult.OK)
-            {
-                UpdateStatus("Exporting to Excel...");
+            var previewDirectory = Path.Combine(Path.GetTempPath(), "WileyWidget", "PdfPreview");
+            Directory.CreateDirectory(previewDirectory);
 
-                // Use FastReport's Excel export if available
-                if (_fastReport != null)
+            previewFilePath = Path.Combine(
+                previewDirectory,
+                $"ReportPreview_{DateTime.Now:yyyyMMdd_HHmmss_fff}.pdf");
+
+            await ViewModel.ExportToPdfFileAsync(previewFilePath, cancellationToken);
+
+            if (!File.Exists(previewFilePath))
+            {
+                throw new FileNotFoundException("Generated preview file was not found.", previewFilePath);
+            }
+
+            ShowPdfPreviewDialog(previewFilePath);
+            UpdateStatus("PDF preview closed");
+        }
+        catch (OperationCanceledException)
+        {
+            UpdateStatus("PDF preview cancelled.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to preview PDF report");
+            UpdateStatus($"PDF preview failed: {ex.Message}");
+            MessageBox.Show($"Failed to preview PDF:\r\n{ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            _isPdfPreviewInProgress = false;
+            UpdateButtonStates();
+
+            if (!string.IsNullOrWhiteSpace(previewFilePath) && File.Exists(previewFilePath))
+            {
+                try
                 {
-                    // Note: FastReport Open Source doesn't include Excel export
-                    // This would require FastReport.NET (commercial) or alternative solution
-                    MessageBox.Show(
-                        "Excel export is not available in FastReport Open Source.\r\n\r\n" +
-                        "To enable Excel export, consider:\r\n" +
-                        "1. Upgrading to FastReport.NET (commercial)\r\n" +
-                        "2. Using the ViewModel's ExportToExcelAsync method with alternate export service",
-                        "Export Not Available",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
-
-                    UpdateStatus("Excel export not available in FastReport Open Source");
-                    Logger.LogInformation("Excel export requested but not available in FastReport Open Source");
+                    File.Delete(previewFilePath);
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.Show("No report is currently loaded.", "Export Failed",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Logger.LogDebug(ex, "Failed to delete temporary preview file: {PreviewFilePath}", previewFilePath);
                 }
             }
+        }
+    }
+
+    private void ShowPdfPreviewDialog(string pdfFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(pdfFilePath) || !File.Exists(pdfFilePath))
+        {
+            throw new FileNotFoundException("PDF preview file was not found.", pdfFilePath);
+        }
+
+        using var previewForm = new Form
+        {
+            Text = $"PDF Preview - {Path.GetFileName(pdfFilePath)}",
+            StartPosition = FormStartPosition.CenterParent,
+            Width = 1200,
+            Height = 800,
+            MinimumSize = new System.Drawing.Size(900, 600),
+            ShowInTaskbar = false,
+        };
+
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(previewForm, currentTheme);
+
+        var pdfViewerControl = ControlFactory.CreatePdfViewerControl(viewer =>
+        {
+            viewer.Name = "ReportsPdfPreviewViewer";
+            viewer.AccessibleName = "Report PDF Preview Viewer";
+            viewer.AccessibleDescription = "Embedded PDF preview for generated reports";
+        });
+
+        previewForm.Controls.Add(pdfViewerControl);
+        pdfViewerControl.Load(pdfFilePath);
+        previewForm.ShowDialog(this);
+    }
+
+    private async Task ExportToExcelAsync(CancellationToken cancellationToken = default)
+    {
+        if (ViewModel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(ReportsPanel)}.Excel",
+                dialogTitle: "Export Report to Excel",
+                filter: "Excel files (*.xlsx)|*.xlsx",
+                defaultExtension: "xlsx",
+                defaultFileName: $"Report_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                exportAction: (filePath, ct) => ViewModel.ExportToExcelFileAsync(filePath, ct),
+                statusCallback: UpdateStatus,
+                logger: Logger,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSkipped)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                UpdateStatus("Excel export cancelled.");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                UpdateStatus($"Excel export failed: {result.ErrorMessage}");
+                MessageBox.Show($"Failed to export to Excel:\r\n{result.ErrorMessage}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            UpdateStatus($"Excel export completed: {result.FilePath}");
         }
         catch (Exception ex)
         {
@@ -1001,51 +1203,288 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        return Task.CompletedTask;
+    }
+
+    private async Task CreateExcelWorkbookAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(ReportsPanel)}.CreateExcel",
+                dialogTitle: "Create Excel Workbook",
+                filter: "Excel files (*.xlsx)|*.xlsx",
+                defaultExtension: "xlsx",
+                defaultFileName: $"ExcelCreate_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                exportAction: GenerateExcelWorkbookAsync,
+                statusCallback: UpdateStatus,
+                logger: Logger,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSkipped)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "An Excel create operation is already in progress.", "Create Excel",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                UpdateStatus("Excel workbook creation cancelled.");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                UpdateStatus($"Excel workbook creation failed: {result.ErrorMessage}");
+                MessageBox.Show($"Failed to create Excel workbook:\r\n{result.ErrorMessage}",
+                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            UpdateStatus($"Excel workbook created: {result.FilePath}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to create Excel workbook");
+            UpdateStatus($"Excel workbook creation failed: {ex.Message}");
+            MessageBox.Show($"Failed to create Excel workbook:\r\n{ex.Message}",
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private static Task GenerateExcelWorkbookAsync(string filePath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            using var excelEngine = new ExcelEngine();
+            var application = excelEngine.Excel;
+            application.DefaultVersion = ExcelVersion.Xlsx;
+
+            var workbook = application.Workbooks.Create(4);
+
+            var wsForecastSummary = workbook.Worksheets[0];
+            wsForecastSummary.Name = "BudgetForecastSummary";
+            wsForecastSummary.Range["A1:E1"].Merge();
+            wsForecastSummary.Range["A1"].Text = "BUDGET FORECAST SUMMARY";
+            wsForecastSummary.Range["A1"].CellStyle.Font.Bold = true;
+            wsForecastSummary.Range["A1"].CellStyle.Font.Size = 16;
+            wsForecastSummary.Range["A1"].CellStyle.Color = System.Drawing.Color.Navy;
+            wsForecastSummary.Range["A1"].CellStyle.Font.Color = ExcelKnownColors.White;
+
+            wsForecastSummary.Range["A3"].Text = "EnterpriseName";
+            wsForecastSummary.Range["B3"].Text = "Wiley Sanitation District";
+            wsForecastSummary.Range["A4"].Text = "CurrentFiscalYear";
+            wsForecastSummary.Range["B4"].Number = 2025;
+            wsForecastSummary.Range["A5"].Text = "ProposedFiscalYear";
+            wsForecastSummary.Range["B5"].Number = 2026;
+            wsForecastSummary.Range["A6"].Text = "GeneratedDate";
+            wsForecastSummary.Range["B6"].DateTime = DateTime.Now;
+            wsForecastSummary.Range["B6"].NumberFormat = "yyyy-MM-dd HH:mm:ss";
+            wsForecastSummary.Range["A8"].Text = "TotalCurrentBudget";
+            wsForecastSummary.Range["B8"].Number = 512000;
+            wsForecastSummary.Range["B8"].NumberFormat = "\"$\"#,##0.00";
+            wsForecastSummary.Range["A9"].Text = "TotalProposedBudget";
+            wsForecastSummary.Range["B9"].Number = 538750;
+            wsForecastSummary.Range["B9"].NumberFormat = "\"$\"#,##0.00";
+            wsForecastSummary.Range["A10"].Text = "TotalIncrease";
+            wsForecastSummary.Range["B10"].Formula = "=B9-B8";
+            wsForecastSummary.Range["B10"].NumberFormat = "\"$\"#,##0.00";
+            wsForecastSummary.Range["A11"].Text = "TotalIncreasePercent";
+            wsForecastSummary.Range["B11"].Formula = "=IF(B8=0,0,B10/B8)";
+            wsForecastSummary.Range["B11"].NumberFormat = "0.00%";
+            wsForecastSummary.Range["A12"].Text = "InflationRate";
+            wsForecastSummary.Range["B12"].Number = 0.032;
+            wsForecastSummary.Range["B12"].NumberFormat = "0.00%";
+            wsForecastSummary.Range["A14:D14"].Merge();
+            wsForecastSummary.Range["A14"].Text = "Summary";
+            wsForecastSummary.Range["A14"].CellStyle.Font.Bold = true;
+            wsForecastSummary.Range["A15:E16"].Merge();
+            wsForecastSummary.Range["A15"].Text = "Forecast reflects inflation-adjusted operating costs and targeted service improvements.";
+            wsForecastSummary.Range["A3:A12"].CellStyle.Font.Bold = true;
+            wsForecastSummary.UsedRange.AutofitColumns();
+
+            var wsLineItems = workbook.Worksheets[1];
+            wsLineItems.Name = "BudgetForecastLineItems";
+            var lineItemHeaders = new[]
+            {
+                "Category", "Description", "CurrentAmount", "ProposedAmount", "Increase", "IncreasePercent", "Justification", "IsGoalDriven"
+            };
+
+            for (var index = 0; index < lineItemHeaders.Length; index++)
+            {
+                var cell = wsLineItems.Range[1, index + 1];
+                cell.Text = lineItemHeaders[index];
+                cell.CellStyle.Font.Bold = true;
+                cell.CellStyle.Color = System.Drawing.Color.SteelBlue;
+                cell.CellStyle.Font.Color = ExcelKnownColors.White;
+            }
+
+            var lineItems = new[]
+            {
+                new { Category = "Operations", Description = "Fleet maintenance", CurrentAmount = 45000d, ProposedAmount = 48200d, Justification = "Aging vehicles and parts inflation", IsGoalDriven = true },
+                new { Category = "Operations", Description = "Fuel and utilities", CurrentAmount = 62000d, ProposedAmount = 65600d, Justification = "Energy market volatility", IsGoalDriven = false },
+                new { Category = "Administration", Description = "Training and certification", CurrentAmount = 18000d, ProposedAmount = 21000d, Justification = "Compliance and safety targets", IsGoalDriven = true },
+                new { Category = "Capital", Description = "Pump station upgrades", CurrentAmount = 125000d, ProposedAmount = 139500d, Justification = "Deferred maintenance backlog", IsGoalDriven = true },
+                new { Category = "Public Outreach", Description = "Community programs", CurrentAmount = 9000d, ProposedAmount = 11000d, Justification = "Expanded public education", IsGoalDriven = false },
+            };
+
+            var lineItemsStartRow = 2;
+            for (var index = 0; index < lineItems.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var rowNumber = lineItemsStartRow + index;
+                wsLineItems.Range[rowNumber, 1].Text = lineItems[index].Category;
+                wsLineItems.Range[rowNumber, 2].Text = lineItems[index].Description;
+                wsLineItems.Range[rowNumber, 3].Number = lineItems[index].CurrentAmount;
+                wsLineItems.Range[rowNumber, 3].NumberFormat = "\"$\"#,##0.00";
+                wsLineItems.Range[rowNumber, 4].Number = lineItems[index].ProposedAmount;
+                wsLineItems.Range[rowNumber, 4].NumberFormat = "\"$\"#,##0.00";
+                wsLineItems.Range[rowNumber, 5].Formula = $"=D{rowNumber}-C{rowNumber}";
+                wsLineItems.Range[rowNumber, 5].NumberFormat = "\"$\"#,##0.00";
+                wsLineItems.Range[rowNumber, 6].Formula = $"=IF(C{rowNumber}=0,0,E{rowNumber}/C{rowNumber})";
+                wsLineItems.Range[rowNumber, 6].NumberFormat = "0.00%";
+                wsLineItems.Range[rowNumber, 7].Text = lineItems[index].Justification;
+                wsLineItems.Range[rowNumber, 8].Text = lineItems[index].IsGoalDriven ? "Yes" : "No";
+            }
+
+            var lineItemsTotalsRow = lineItemsStartRow + lineItems.Length;
+            wsLineItems.Range[lineItemsTotalsRow, 1].Text = "TOTAL";
+            wsLineItems.Range[lineItemsTotalsRow, 3].Formula = $"=SUM(C{lineItemsStartRow}:C{lineItemsTotalsRow - 1})";
+            wsLineItems.Range[lineItemsTotalsRow, 4].Formula = $"=SUM(D{lineItemsStartRow}:D{lineItemsTotalsRow - 1})";
+            wsLineItems.Range[lineItemsTotalsRow, 5].Formula = $"=SUM(E{lineItemsStartRow}:E{lineItemsTotalsRow - 1})";
+            wsLineItems.Range[lineItemsTotalsRow, 6].Formula = $"=IF(C{lineItemsTotalsRow}=0,0,E{lineItemsTotalsRow}/C{lineItemsTotalsRow})";
+            wsLineItems.Range[lineItemsTotalsRow, 3, lineItemsTotalsRow, 5].NumberFormat = "\"$\"#,##0.00";
+            wsLineItems.Range[lineItemsTotalsRow, 6].NumberFormat = "0.00%";
+            wsLineItems.Range[lineItemsTotalsRow, 1, lineItemsTotalsRow, 8].CellStyle.Font.Bold = true;
+            wsLineItems.AutoFilters.FilterRange = wsLineItems.Range[1, 1, lineItemsTotalsRow - 1, 8];
+            wsLineItems.Range["A1"].FreezePanes();
+            wsLineItems.UsedRange.AutofitColumns();
+
+            var wsRevenues = workbook.Worksheets[2];
+            wsRevenues.Name = "BudgetComparison_Revenues";
+            var comparisonHeaders = new[]
+            {
+                "Account", "Description", "ProposedBudget", "Actual_11_2025", "Remaining", "PercentOfBudget"
+            };
+
+            for (var index = 0; index < comparisonHeaders.Length; index++)
+            {
+                var cell = wsRevenues.Range[1, index + 1];
+                cell.Text = comparisonHeaders[index];
+                cell.CellStyle.Font.Bold = true;
+                cell.CellStyle.Color = System.Drawing.Color.LightBlue;
+            }
+
+            var revenueRows = new[]
+            {
+                new { Account = "4100", Description = "Service Charges", ProposedBudget = 280000d, Actual = 262450d },
+                new { Account = "4200", Description = "Permit Fees", ProposedBudget = 36000d, Actual = 34220d },
+                new { Account = "4300", Description = "Interest Income", ProposedBudget = 12000d, Actual = 11610d },
+            };
+
+            var revenuesStartRow = 2;
+            for (var index = 0; index < revenueRows.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var rowNumber = revenuesStartRow + index;
+                wsRevenues.Range[rowNumber, 1].Text = revenueRows[index].Account;
+                wsRevenues.Range[rowNumber, 2].Text = revenueRows[index].Description;
+                wsRevenues.Range[rowNumber, 3].Number = revenueRows[index].ProposedBudget;
+                wsRevenues.Range[rowNumber, 4].Number = revenueRows[index].Actual;
+                wsRevenues.Range[rowNumber, 5].Formula = $"=C{rowNumber}-D{rowNumber}";
+                wsRevenues.Range[rowNumber, 6].Formula = $"=IF(C{rowNumber}=0,0,D{rowNumber}/C{rowNumber})";
+                wsRevenues.Range[rowNumber, 3, rowNumber, 5].NumberFormat = "\"$\"#,##0.00";
+                wsRevenues.Range[rowNumber, 6].NumberFormat = "0.00%";
+            }
+
+            var revenuesTotalsRow = revenuesStartRow + revenueRows.Length;
+            wsRevenues.Range[revenuesTotalsRow, 1].Text = "TOTAL";
+            wsRevenues.Range[revenuesTotalsRow, 3].Formula = $"=SUM(C{revenuesStartRow}:C{revenuesTotalsRow - 1})";
+            wsRevenues.Range[revenuesTotalsRow, 4].Formula = $"=SUM(D{revenuesStartRow}:D{revenuesTotalsRow - 1})";
+            wsRevenues.Range[revenuesTotalsRow, 5].Formula = $"=SUM(E{revenuesStartRow}:E{revenuesTotalsRow - 1})";
+            wsRevenues.Range[revenuesTotalsRow, 6].Formula = $"=IF(C{revenuesTotalsRow}=0,0,D{revenuesTotalsRow}/C{revenuesTotalsRow})";
+            wsRevenues.Range[revenuesTotalsRow, 3, revenuesTotalsRow, 5].NumberFormat = "\"$\"#,##0.00";
+            wsRevenues.Range[revenuesTotalsRow, 6].NumberFormat = "0.00%";
+            wsRevenues.Range[revenuesTotalsRow, 1, revenuesTotalsRow, 6].CellStyle.Font.Bold = true;
+            wsRevenues.AutoFilters.FilterRange = wsRevenues.Range[1, 1, revenuesTotalsRow - 1, 6];
+            wsRevenues.UsedRange.AutofitColumns();
+
+            var wsExpenses = workbook.Worksheets[3];
+            wsExpenses.Name = "BudgetComparison_Expenses";
+            for (var index = 0; index < comparisonHeaders.Length; index++)
+            {
+                var cell = wsExpenses.Range[1, index + 1];
+                cell.Text = comparisonHeaders[index];
+                cell.CellStyle.Font.Bold = true;
+                cell.CellStyle.Color = System.Drawing.Color.LightBlue;
+            }
+
+            var expenseRows = new[]
+            {
+                new { Account = "5100", Description = "Salaries and Benefits", ProposedBudget = 198000d, Actual = 187350d },
+                new { Account = "5200", Description = "Contract Services", ProposedBudget = 84500d, Actual = 81220d },
+                new { Account = "5300", Description = "Equipment and Supplies", ProposedBudget = 56250d, Actual = 54480d },
+            };
+
+            var expensesStartRow = 2;
+            for (var index = 0; index < expenseRows.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var rowNumber = expensesStartRow + index;
+                wsExpenses.Range[rowNumber, 1].Text = expenseRows[index].Account;
+                wsExpenses.Range[rowNumber, 2].Text = expenseRows[index].Description;
+                wsExpenses.Range[rowNumber, 3].Number = expenseRows[index].ProposedBudget;
+                wsExpenses.Range[rowNumber, 4].Number = expenseRows[index].Actual;
+                wsExpenses.Range[rowNumber, 5].Formula = $"=C{rowNumber}-D{rowNumber}";
+                wsExpenses.Range[rowNumber, 6].Formula = $"=IF(C{rowNumber}=0,0,D{rowNumber}/C{rowNumber})";
+                wsExpenses.Range[rowNumber, 3, rowNumber, 5].NumberFormat = "\"$\"#,##0.00";
+                wsExpenses.Range[rowNumber, 6].NumberFormat = "0.00%";
+            }
+
+            var expensesTotalsRow = expensesStartRow + expenseRows.Length;
+            wsExpenses.Range[expensesTotalsRow, 1].Text = "TOTAL";
+            wsExpenses.Range[expensesTotalsRow, 3].Formula = $"=SUM(C{expensesStartRow}:C{expensesTotalsRow - 1})";
+            wsExpenses.Range[expensesTotalsRow, 4].Formula = $"=SUM(D{expensesStartRow}:D{expensesTotalsRow - 1})";
+            wsExpenses.Range[expensesTotalsRow, 5].Formula = $"=SUM(E{expensesStartRow}:E{expensesTotalsRow - 1})";
+            wsExpenses.Range[expensesTotalsRow, 6].Formula = $"=IF(C{expensesTotalsRow}=0,0,D{expensesTotalsRow}/C{expensesTotalsRow})";
+            wsExpenses.Range[expensesTotalsRow, 3, expensesTotalsRow, 5].NumberFormat = "\"$\"#,##0.00";
+            wsExpenses.Range[expensesTotalsRow, 6].NumberFormat = "0.00%";
+            wsExpenses.Range[expensesTotalsRow, 1, expensesTotalsRow, 6].CellStyle.Font.Bold = true;
+            wsExpenses.AutoFilters.FilterRange = wsExpenses.Range[1, 1, expensesTotalsRow - 1, 6];
+            wsExpenses.UsedRange.AutofitColumns();
+
+            using var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+            workbook.SaveAs(stream);
+        }, cancellationToken);
     }
 
     private async Task PrintReportAsync(CancellationToken cancellationToken = default)
     {
-        if (ViewModel == null) return;
+        if (ViewModel == null)
+        {
+            return;
+        }
+
+        if (!ViewModel.HasReportLoaded)
+        {
+            MessageBox.Show("No report is currently loaded.", "Print Failed",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
 
         try
         {
-            UpdateStatus("Printing report...");
-
-            if (_fastReport != null)
-            {
-                // Use FastReport's print functionality
-                // Show print dialog
-                await Task.Run(() =>
-                {
-                    try
-                    {
-                        // Note: FastReport Open Source may have limited Print() support
-                        // Alternative: use ViewModel's PrintAsync method
-                        Logger.LogInformation("Print functionality requested - may vary in FastReport Open Source");
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError(ex, "FastReport print failed");
-                        throw;
-                    }
-                }).ConfigureAwait(false);
-
-                MessageBox.Show(
-                    "Print functionality may vary in FastReport Open Source.\r\n\r\n" +
-                    "Consider using Export to PDF and then print from your PDF viewer.",
-                    "Print Information",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
-                UpdateStatus("Print option shown");
-                Logger.LogDebug("Print requested");
-            }
-            else
-            {
-                MessageBox.Show("No report is currently loaded.", "Print Failed",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
+            UpdateStatus("Opening print preview...");
+            Logger.LogDebug("Opening embedded PDF preview for print workflow");
+            await PreviewReportAsPdfAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -1107,6 +1546,10 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                     _loadReportButton.Click -= _loadReportButtonClickHandler;
                 if (_exportPdfButton != null && _exportPdfButtonClickHandler != null)
                     _exportPdfButton.Click -= _exportPdfButtonClickHandler;
+                if (_previewPdfButton != null && _previewPdfButtonClickHandler != null)
+                    _previewPdfButton.Click -= _previewPdfButtonClickHandler;
+                if (_createExcelButton != null && _createExcelButtonClickHandler != null)
+                    _createExcelButton.Click -= _createExcelButtonClickHandler;
                 if (_exportExcelButton != null && _exportExcelButtonClickHandler != null)
                     _exportExcelButton.Click -= _exportExcelButtonClickHandler;
                 if (_printButton != null && _printButtonClickHandler != null)
@@ -1160,6 +1603,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 // Dispose buttons
                 _loadReportButton?.SafeDispose();
                 _exportPdfButton?.SafeDispose();
+                _previewPdfButton?.SafeDispose();
+                _createExcelButton?.SafeDispose();
                 _exportExcelButton?.SafeDispose();
                 _printButton?.SafeDispose();
                 _parametersButton?.SafeDispose();

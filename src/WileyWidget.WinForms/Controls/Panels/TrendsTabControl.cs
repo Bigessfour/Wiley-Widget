@@ -31,6 +31,7 @@ public partial class TrendsTabControl : UserControl
     private ChartControl? _departmentChart;
     private Panel? _controlsPanel;
     private LoadingOverlay? _loadingOverlay;
+    private ToolTip? _toolTip;
 
     private NumericUpDownExt? _projectionYearsSpinner;
 
@@ -55,6 +56,11 @@ public partial class TrendsTabControl : UserControl
     private void InitializeControls()
     {
         this.Dock = DockStyle.Fill;
+        this.AutoScaleMode = AutoScaleMode.Dpi;
+        this.AutoScroll = true;
+        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        this.Padding = new Padding(8);
+        _toolTip = new ToolTip();
 
         var mainSplit = new SplitContainer
         {
@@ -107,8 +113,11 @@ public partial class TrendsTabControl : UserControl
             Minimum = 1,
             Maximum = 10,
             Value = 3,
-            Dock = DockStyle.Fill
+            Dock = DockStyle.Fill,
+            AccessibleName = "Projection years",
+            AccessibleDescription = "Number of years included in the trend projection"
         };
+        _toolTip?.SetToolTip(_projectionYearsSpinner, "Choose how many years to project.");
         _projectionYearsSpinner.ValueChanged += (s, e) =>
         {
             if (_viewModel != null)
@@ -160,8 +169,11 @@ public partial class TrendsTabControl : UserControl
         _trendsChart = new ChartControl
         {
             Dock = DockStyle.Fill,
+            AccessibleName = "Budget trends chart",
+            AccessibleDescription = "Chart showing historical budget and actual trends",
             Title = { Text = "Budget Trends (Budgeted vs Actual)" }
         };
+        _toolTip?.SetToolTip(_trendsChart, "Budgeted versus actual trends over time.");
         _trendsChart.PrimaryXAxis.Title = "Period";
         _trendsChart.PrimaryYAxis.Title = "Amount ($)";
         _trendsChart.EnableXZooming = true;
@@ -174,8 +186,11 @@ public partial class TrendsTabControl : UserControl
         _forecastChart = new ChartControl
         {
             Dock = DockStyle.Fill,
+            AccessibleName = "Reserve forecast chart",
+            AccessibleDescription = "Chart showing projected reserve balances",
             Title = { Text = "Reserve Forecast" }
         };
+        _toolTip?.SetToolTip(_forecastChart, "Projected reserve balance over time.");
         _forecastChart.PrimaryXAxis.Title = "Date";
         _forecastChart.PrimaryYAxis.Title = "Predicted Reserves ($)";
         _forecastChart.EnableXZooming = true;
@@ -188,8 +203,11 @@ public partial class TrendsTabControl : UserControl
         _departmentChart = new ChartControl
         {
             Dock = DockStyle.Fill,
+            AccessibleName = "Department variance chart",
+            AccessibleDescription = "Chart showing average variance by department",
             Title = { Text = "Department Variance Analysis" }
         };
+        _toolTip?.SetToolTip(_departmentChart, "Average variance percentage by department.");
         _departmentChart.PrimaryXAxis.Title = "Department";
         _departmentChart.PrimaryYAxis.Title = "Average Variance %";
         _departmentChart.EnableXZooming = true;
@@ -286,5 +304,15 @@ public partial class TrendsTabControl : UserControl
             System.Diagnostics.Debug.WriteLine($"Trends LoadAsync error: {ex.Message}");
             _logger.LogError(ex, "[TrendsTabControl] LoadAsync failed");
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _toolTip?.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }

@@ -70,6 +70,11 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
     private ObservableCollection<MunicipalAccountDisplay> accounts = new();
 
     /// <summary>
+    /// Gets the filtered account entries collection used for grid binding.
+    /// </summary>
+    public ObservableCollection<MunicipalAccountDisplay> FilteredAccountEntries => Accounts;
+
+    /// <summary>
     /// Gets or sets the currently selected fund filter.
     /// </summary>
     [ObservableProperty]

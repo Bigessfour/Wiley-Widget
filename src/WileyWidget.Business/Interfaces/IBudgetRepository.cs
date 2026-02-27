@@ -60,6 +60,8 @@ public interface IBudgetRepository
     /// </summary>
     Task AddAsync(BudgetEntry budgetEntry, CancellationToken cancellationToken = default);
 
+    Task<bool> ExistsAsync(string accountNumber, int fiscalYear, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Updates an existing budget entry
     /// </summary>

@@ -38,6 +38,9 @@ namespace WileyWidget.WinForms.Services.AI
 
             // Initialize API key from configuration hierarchy
             InitializeApiKey();
+
+            // Validate API key length to detect truncated or masked values
+            ValidateApiKeyLength();
         }
 
         /// <summary>
@@ -173,6 +176,39 @@ namespace WileyWidget.WinForms.Services.AI
                 "  1. Machine environment (canonical): setx /M XAI__ApiKey <your-key>\n" +
                 "  2. User Secrets (compatibility): dotnet user-secrets set XAI:ApiKey <your-key>\n" +
                 "  3. User environment (compatibility): setx XAI__ApiKey <your-key>");
+        }
+
+        /// <summary>
+        /// Validate API key length to detect truncated or masked values.
+        /// Grok API keys (xai-***) are typically 84 characters in length.
+        /// Partial loads or masked values from early configuration may be incomplete.
+        /// </summary>
+        private void ValidateApiKeyLength()
+        {
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                // Already logged in InitializeApiKey, no need to duplicate
+                return;
+            }
+
+            // Grok API keys are typically 84 characters (xai- prefix + token)
+            // If we see something significantly shorter, it's likely masked or truncated
+            if (_apiKey.Length < 80)
+            {
+                _logger?.LogWarning(
+                    "[Grok] API key appears truncated or masked (length: {Length}, expected: ~84). " +
+                    "Source: {Source}. This may cause validation to fail. " +
+                    "Ensure full key is configured without quotes or masking.",
+                    _apiKey.Length,
+                    _configurationSource);
+            }
+            else
+            {
+                _logger?.LogDebug(
+                    "[Grok] API key length validated: {Length} characters from {Source}",
+                    _apiKey.Length,
+                    _configurationSource);
+            }
         }
 
         /// <summary>

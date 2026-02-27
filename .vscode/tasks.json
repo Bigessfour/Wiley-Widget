@@ -1440,35 +1440,6 @@
 			"isBackground": false
 		},
 		{
-			"label": "test: ribbon-navigation-with-trx",
-			"dependsOn": [
-				"maintenance: Kill Test Processes"
-			],
-			"command": "dotnet",
-			"args": [
-				"test",
-				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
-				"--filter",
-				"MainFormRibbonNavigationIntegrationTests",
-				"--logger",
-				"trx",
-				"--results-directory",
-				"${workspaceFolder}/TestResults",
-				"--no-build",
-				"-v",
-				"normal"
-			],
-			"type": "shell",
-			"group": "test",
-			"problemMatcher": "$msCompile",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "dedicated"
-			}
-		},
-		{
 			"label": "test: DI integration (final)",
 			"type": "shell",
 			"command": "dotnet",
@@ -1506,6 +1477,48 @@
 				"console;verbosity=normal"
 			],
 			"group": "test"
+		},
+		{
+			"label": "temp: test flaui all filtered",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~FlaUiTests",
+				"--no-restore",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: test flaui suite",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--no-build",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~FlaUiTests",
+				"--logger",
+				"trx;LogFileName=flaui-suite.trx",
+				"--results-directory",
+				"TestResults",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "Run Jarvis FlaUI test",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter FullyQualifiedName~JarvisChat --logger \"trx;LogFileName=jarvis.trx\" -v minimal",
+			"isBackground": false
 		}
 	]
 }

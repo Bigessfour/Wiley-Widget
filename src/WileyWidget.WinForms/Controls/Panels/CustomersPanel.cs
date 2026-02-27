@@ -1397,22 +1397,48 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         try
         {
-            using var dialog = new SaveFileDialog
+            if (ViewModel == null)
             {
-                Filter = "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
-                DefaultExt = "csv",
-                FileName = $"Customers_{DateTime.Now:yyyyMMdd}.csv",
-                Title = "Export Customers to CSV"
-            };
-
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                _logger.LogDebug("Exporting customers to {File}", dialog.FileName);
-                if (ViewModel != null)
-                {
-                    await ViewModel.ExportToCsvCommand.ExecuteAsync(dialog.FileName);
-                }
+                MessageBox.Show("Cannot export because the Customers view model is unavailable.", "Export Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
+
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(CustomersPanel)}.Csv",
+                dialogTitle: "Export Customers to CSV",
+                filter: "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+                defaultExtension: "csv",
+                defaultFileName: $"Customers_{DateTime.Now:yyyyMMdd}.csv",
+                exportAction: (filePath, ct) => ViewModel.ExportToCsvCommand.ExecuteAsync(filePath),
+                statusCallback: UpdateStatus,
+                logger: _logger,
+                cancellationToken: cancellationToken);
+
+            if (result.IsSkipped)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                UpdateStatus("Export cancelled.");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                UpdateStatus("Export failed.");
+                MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            UpdateStatus("Export completed successfully.");
+            _logger.LogDebug("Exporting customers to {File}", result.FilePath);
         }
         catch (Exception ex)
         {

@@ -37,6 +37,7 @@ using ValidationResult = WileyWidget.WinForms.Controls.Base.ValidationResult;
 using Syncfusion.Drawing;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Factories;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -57,6 +58,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         public const string AiSettingsHelpLong = "This group controls the application's xAI (Grok) integration:\n\n- Enable AI: Turn on/off xAI features. When disabled, the application falls back to rule-based recommendations.\n- API Endpoint: URL used to send requests.\n- Model: Select the AI model. Different models may produce different recommendations and explanations.\n- API Key: Your private API key. It is stored securely and is never written to logs. Changing it takes effect for subsequent requests.\n- Timeout: Maximum seconds to wait for a response.\n- Max Tokens: Maximum response size; higher values allow longer completions and may increase cost.\n- Temperature: Controls randomness; lower values make outputs more deterministic.\n\nNote: Changing these settings only affects future AI requests. Cached recommendations or explanations will remain until they expire or are cleared.";
         public const string AiSettingsLearnMoreLabel = "Learn more...";
         public const string AiSettingsDialogTitle = "AI Settings Help";
+        public const string SecretSaveFailedTitle = "Key Save Failed";
+        public const string SecretSaveWarningsTitle = "Key Save Warnings";
     }
 
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
@@ -69,6 +72,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         #endregion
 
         private readonly string _themeName = ThemeColors.CurrentTheme;
+        private SettingsSecretsPersistenceService? _settingsSecretsPersistenceService;
         public new object? DataContext { get; private set; }
 
         #region UI Control Fields
@@ -97,6 +101,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         private TextBoxExt? _txtXaiApiEndpoint;
         private TextBoxExt? _txtXaiApiKey;
         private Syncfusion.WinForms.Controls.SfButton? _btnShowApiKey;
+        private TextBoxExt? _txtSyncfusionLicenseKey;
+        private Syncfusion.WinForms.Controls.SfButton? _btnShowSyncfusionLicenseKey;
         private Syncfusion.WinForms.ListView.SfComboBox? _cmbXaiModel;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numXaiTimeout;
         private Syncfusion.WinForms.Input.SfNumericTextBox? _numXaiMaxTokens;
@@ -113,6 +119,11 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         // Validation and binding
         private ErrorProvider? _errorProvider;
+
+        // Canonical skeleton fields
+        private readonly SyncfusionControlFactory? _factory;
+        private TableLayoutPanel? _content;
+        private LoadingOverlay? _loader;
         private BindingSource? _bindingSource;
         private WileyWidget.WinForms.Controls.Supporting.ErrorProviderBinding? _errorBinding;
 
@@ -131,6 +142,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private EventHandler? _txtXaiApiEndpointChangedHandler;
         private EventHandler? _cmbXaiModelSelectedHandler;
         private EventHandler? _txtXaiApiKeyChangedHandler;
+        private EventHandler? _txtSyncfusionLicenseKeyChangedHandler;
         private Syncfusion.WinForms.Input.ValueChangedEventHandler? _numXaiTimeoutChangedHandler;
         private Syncfusion.WinForms.Input.ValueChangedEventHandler? _numXaiMaxTokensChangedHandler;
         private Syncfusion.WinForms.Input.ValueChangedEventHandler? _numXaiTemperatureChangedHandler;
@@ -139,6 +151,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private Syncfusion.WinForms.Input.ValueChangedEventHandler? _numAutoSaveIntervalChangedHandler;
         private EventHandler? _cmbLogLevelSelectedHandler;
         private EventHandler? _btnShowApiKeyClickHandler;
+        private EventHandler? _btnShowSyncfusionLicenseKeyClickHandler;
         private LinkLabelLinkClickedEventHandler? _lnkAiLearnMoreHandler;
         private EventHandler? _btnBrowseExportPathClickHandler;
         private EventHandler? _btnSaveClickHandler;
@@ -146,16 +159,31 @@ namespace WileyWidget.WinForms.Controls.Panels
         #endregion
 
         /// <summary>
+        /// Canonical constructor with direct dependencies.
+        /// </summary>
+        public SettingsPanel(SettingsViewModel vm, SyncfusionControlFactory factory)
+            : base(vm, ResolveLogger())
+        {
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            AutoScaleMode = AutoScaleMode.Dpi;
+            Size = new Size(1100, 760);
+            MinimumSize = new Size(1024, 720);
+            SafeSuspendAndLayout(InitializeComponent);
+        }
+
+        /// <summary>
         /// Constructor that accepts required dependencies from DI container.
         /// </summary>
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public SettingsPanel(
             IServiceScopeFactory scopeFactory,
             Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> logger)
             : base(scopeFactory, logger)
         {
+            _factory = ControlFactory;
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(500, 360);
-            MinimumSize = new Size(420, 360);
+            Size = new Size(1100, 760);
+            MinimumSize = new Size(1024, 720);
         }
 
         /// <summary>
@@ -188,22 +216,15 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private static Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> ResolveLogger()
         {
-            if (Program.Services == null)
-            {
-                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve ILogger");
-                throw new InvalidOperationException("SettingsPanel requires DI services to be initialized. Ensure Program.Services is set before creating SettingsPanel.");
-            }
-            try
-            {
-                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<SettingsViewModel>>>(Program.Services);
-                Serilog.Log.Debug("SettingsPanel: ILogger resolved from DI container");
-                return logger;
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve ILogger from DI");
-                throw;
-            }
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<SettingsPanel>>(Program.Services)
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsPanel>.Instance;
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            MinimumSize = new Size(1024, 720);
+            PerformLayout();
         }
 
         /// <summary>
@@ -219,14 +240,18 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             DataContext = viewModel;
+            _settingsSecretsPersistenceService = ServiceProvider.GetService(typeof(SettingsSecretsPersistenceService)) as SettingsSecretsPersistenceService;
 
-            InitializeComponent();
-            SetupBindings();
-            SetupEventHandlers();
-            ApplyCurrentTheme();
+            SafeSuspendAndLayout(() =>
+            {
+                InitializeComponent();
+                SetupBindings();
+                SetupEventHandlers();
+                ApplyCurrentTheme();
 
-            // Set initial font selection
-            SetInitialFontSelection();
+                // Set initial font selection
+                SetInitialFontSelection();
+            });
 
             // Watch for unsaved changes - enable/disable Save button
             ViewModel.PropertyChanged += (s, e) =>
@@ -356,6 +381,10 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             AutoScaleMode = AutoScaleMode.Dpi;
             Padding = Padding.Empty;
+            MinimumSize = new Size(1024, 720);
+
+            // Apply theme for cascade to all child controls
+            SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
             // Panel header
             _panelHeader = new PanelHeader
@@ -369,11 +398,19 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader.CloseClicked += (s, e) => ClosePanel();
             Controls.Add(_panelHeader);
 
-            // Status strip (bottom)
-            _statusStrip = new StatusStrip { SizingGrip = false, Dock = DockStyle.Bottom };
-            _statusLabel = new ToolStripStatusLabel { Text = "Ready", Spring = true };
-            _statusStrip.Items.Add(_statusLabel);
-            Controls.Add(_statusStrip);
+            // Canonical _content root
+            _content = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 1,
+                Padding = Padding.Empty,
+                Margin = Padding.Empty,
+                AutoSize = false,
+                Name = "SettingsPanelContent"
+            };
+            _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Main container: FlowLayoutPanel for vertical stacking of groups
             var mainFlowPanel = new FlowLayoutPanel
@@ -383,7 +420,27 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoScroll = true,
                 Padding = new Padding(GROUP_PADDING)
             };
-            Controls.Add(mainFlowPanel);
+            _content.Controls.Add(mainFlowPanel, 0, 0);
+
+            // Status strip (bottom)
+            _statusStrip = new StatusStrip { SizingGrip = false, Dock = DockStyle.Bottom };
+            _statusLabel = new ToolStripStatusLabel { Text = "Ready", Spring = true };
+            _statusStrip.Items.Add(_statusLabel);
+            Controls.Add(_statusStrip);
+
+            // Add content root to controls
+            Controls.Add(_content);
+
+            // Loading overlay
+            if (_factory != null)
+            {
+                _loader = _factory.CreateLoadingOverlay(overlay =>
+                {
+                    overlay.Dock = DockStyle.Fill;
+                    overlay.Visible = false;
+                });
+                Controls.Add(_loader);
+            }
 
             _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
             _tooltip = new ToolTip();
@@ -521,7 +578,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Group 5: AI Settings
             var aiGroup = new GroupBox { Text = "AI / xAI Settings", AutoSize = true };
-            var aiTable = CreateTableLayoutPanel(8, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
+            var aiTable = CreateTableLayoutPanel(9, new ColumnStyle(SizeType.Absolute, LABEL_WIDTH), new ColumnStyle(SizeType.Percent, 100F));
             aiTable.Controls.Add(new Label { Text = "Enable AI:", Anchor = AnchorStyles.Left }, 0, 0);
             _chkEnableAi = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
@@ -573,7 +630,26 @@ namespace WileyWidget.WinForms.Controls.Panels
             apiKeyPanel.Controls.Add(_btnShowApiKey);
             aiTable.Controls.Add(apiKeyPanel, 1, 3);
             _aiToolTip?.SetToolTip(_txtXaiApiKey, "API key stored securely (not logged).");
-            aiTable.Controls.Add(new Label { Text = "Timeout (s):", Anchor = AnchorStyles.Left }, 0, 4);
+            aiTable.Controls.Add(new Label { Text = "Syncfusion License:", Anchor = AnchorStyles.Left }, 0, 4);
+            var syncfusionLicensePanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true };
+            _txtSyncfusionLicenseKey = ControlFactory.CreateTextBoxExt(textBox =>
+            {
+                textBox.Name = "txtSyncfusionLicenseKey";
+                textBox.Width = 180;
+                textBox.MaxLength = 500;
+                textBox.UseSystemPasswordChar = true;
+                textBox.Text = ViewModel?.SyncfusionLicenseKey ?? string.Empty;
+            });
+            syncfusionLicensePanel.Controls.Add(_txtSyncfusionLicenseKey);
+            _btnShowSyncfusionLicenseKey = ControlFactory.CreateSfButton("Show", button =>
+            {
+                button.Name = "btnShowSyncfusionLicenseKey";
+                button.Size = new Size(50, 24);
+            });
+            syncfusionLicensePanel.Controls.Add(_btnShowSyncfusionLicenseKey);
+            aiTable.Controls.Add(syncfusionLicensePanel, 1, 4);
+            _aiToolTip?.SetToolTip(_txtSyncfusionLicenseKey, "Syncfusion license key stored securely.");
+            aiTable.Controls.Add(new Label { Text = "Timeout (s):", Anchor = AnchorStyles.Left }, 0, 5);
             _numXaiTimeout = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numXaiTimeout";
@@ -582,9 +658,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.MaxValue = 300;
                 textBox.Value = ViewModel?.XaiTimeout ?? 30;
             });
-            aiTable.Controls.Add(_numXaiTimeout, 1, 4);
+            aiTable.Controls.Add(_numXaiTimeout, 1, 5);
             _aiToolTip?.SetToolTip(_numXaiTimeout, "Maximum time (seconds) to wait for response.");
-            aiTable.Controls.Add(new Label { Text = "Max tokens:", Anchor = AnchorStyles.Left }, 0, 5);
+            aiTable.Controls.Add(new Label { Text = "Max tokens:", Anchor = AnchorStyles.Left }, 0, 6);
             _numXaiMaxTokens = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numXaiMaxTokens";
@@ -593,8 +669,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.MaxValue = 65536;
                 textBox.Value = ViewModel?.XaiMaxTokens ?? 2000;
             });
-            aiTable.Controls.Add(_numXaiMaxTokens, 1, 5);
-            aiTable.Controls.Add(new Label { Text = "Temperature:", Anchor = AnchorStyles.Left }, 0, 6);
+            aiTable.Controls.Add(_numXaiMaxTokens, 1, 6);
+            aiTable.Controls.Add(new Label { Text = "Temperature:", Anchor = AnchorStyles.Left }, 0, 7);
             _numXaiTemperature = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numXaiTemperature";
@@ -603,14 +679,14 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.MaxValue = 1.0;
                 textBox.Value = ViewModel?.XaiTemperature ?? 0.7;
             });
-            aiTable.Controls.Add(_numXaiTemperature, 1, 6);
+            aiTable.Controls.Add(_numXaiTemperature, 1, 7);
             _aiToolTip?.SetToolTip(_numXaiTemperature, "Response randomness (0=deterministic, 1=varied).");
-            aiTable.Controls.Add(new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Anchor = AnchorStyles.Left }, 0, 7);
+            aiTable.Controls.Add(new Label { Text = SettingsPanelResources.AiSettingsHelpShort, Anchor = AnchorStyles.Left }, 0, 8);
             aiTable.Controls.Add(_lnkAiLearnMore = new LinkLabel
             {
                 Text = SettingsPanelResources.AiSettingsLearnMoreLabel,
                 AutoSize = true
-            }, 1, 7);
+            }, 1, 8);
             aiGroup.Controls.Add(aiTable);
             mainFlowPanel.Controls.Add(aiGroup);
 
@@ -720,6 +796,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _chkEnableAi?.DataBindings.Clear();
             _txtXaiApiEndpoint?.DataBindings.Clear();
             _txtXaiApiKey?.DataBindings.Clear();
+            _txtSyncfusionLicenseKey?.DataBindings.Clear();
             _cmbXaiModel?.DataBindings.Clear();
             _numXaiTimeout?.DataBindings.Clear();
             _numXaiMaxTokens?.DataBindings.Clear();
@@ -937,6 +1014,16 @@ namespace WileyWidget.WinForms.Controls.Panels
                     DataSourceUpdateMode.OnPropertyChanged);
             }
 
+            if (_txtSyncfusionLicenseKey != null)
+            {
+                _txtSyncfusionLicenseKey.DataBindings.Add(
+                    nameof(TextBox.Text),
+                    bindingSource,
+                    nameof(ViewModel.SyncfusionLicenseKey),
+                    true,
+                    DataSourceUpdateMode.OnPropertyChanged);
+            }
+
             if (_cmbXaiModel != null)
             {
                 _cmbXaiModel.DataBindings.Add(
@@ -993,6 +1080,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                     try { _errorBinding.MapControl(nameof(ViewModel.XaiApiEndpoint), _txtXaiApiEndpoint!); } catch { }
                     try { _errorBinding.MapControl(nameof(ViewModel.XaiApiKey), _txtXaiApiKey!); } catch { }
+                    try { _errorBinding.MapControl(nameof(ViewModel.SyncfusionLicenseKey), _txtSyncfusionLicenseKey!); } catch { }
                     try { _errorBinding.MapControl(nameof(ViewModel.XaiModel), _cmbXaiModel!); } catch { }
                 }
             }
@@ -1051,6 +1139,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             _txtXaiApiKeyChangedHandler = (s, e) => { if (IsLoaded) SetHasUnsavedChanges(true); };
             if (_txtXaiApiKey != null) _txtXaiApiKey.TextChanged += _txtXaiApiKeyChangedHandler;
 
+            _txtSyncfusionLicenseKeyChangedHandler = (s, e) => { if (IsLoaded) SetHasUnsavedChanges(true); };
+            if (_txtSyncfusionLicenseKey != null) _txtSyncfusionLicenseKey.TextChanged += _txtSyncfusionLicenseKeyChangedHandler;
+
             _numXaiTimeoutChangedHandler = (s, e) => { if (IsLoaded) SetHasUnsavedChanges(true); };
             if (_numXaiTimeout != null) _numXaiTimeout.ValueChanged += _numXaiTimeoutChangedHandler;
 
@@ -1074,6 +1165,19 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _btnShowApiKeyClickHandler = (s, e) => { if (_txtXaiApiKey != null) { _txtXaiApiKey.UseSystemPasswordChar = !_txtXaiApiKey.UseSystemPasswordChar; if (s is Syncfusion.WinForms.Controls.SfButton btn) btn.Text = _txtXaiApiKey.UseSystemPasswordChar ? "Show" : "Hide"; } };
             if (_btnShowApiKey != null) _btnShowApiKey.Click += _btnShowApiKeyClickHandler;
+
+            _btnShowSyncfusionLicenseKeyClickHandler = (s, e) =>
+            {
+                if (_txtSyncfusionLicenseKey != null)
+                {
+                    _txtSyncfusionLicenseKey.UseSystemPasswordChar = !_txtSyncfusionLicenseKey.UseSystemPasswordChar;
+                    if (s is Syncfusion.WinForms.Controls.SfButton btn)
+                    {
+                        btn.Text = _txtSyncfusionLicenseKey.UseSystemPasswordChar ? "Show" : "Hide";
+                    }
+                }
+            };
+            if (_btnShowSyncfusionLicenseKey != null) _btnShowSyncfusionLicenseKey.Click += _btnShowSyncfusionLicenseKeyClickHandler;
 
             _lnkAiLearnMoreHandler = (s, e) => ShowAiHelpDialog();
             if (_lnkAiLearnMore != null) _lnkAiLearnMore.LinkClicked += _lnkAiLearnMoreHandler;
@@ -1109,6 +1213,40 @@ namespace WileyWidget.WinForms.Controls.Panels
                 }
 
                 UpdateStatus("Saving settings...");
+
+                if (_settingsSecretsPersistenceService != null && ViewModel != null)
+                {
+                    var persistenceResult = await _settingsSecretsPersistenceService
+                        .PersistAsync(ViewModel.SyncfusionLicenseKey, ViewModel.XaiApiKey, CancellationToken.None)
+                        .ConfigureAwait(true);
+
+                    if (!persistenceResult.Success)
+                    {
+                        var message = string.IsNullOrWhiteSpace(persistenceResult.ErrorMessage)
+                            ? "Unable to persist secure keys to user-secrets/environment."
+                            : persistenceResult.ErrorMessage;
+
+                        UpdateStatus(message, isError: true);
+                        MessageBox.Show(
+                            this,
+                            message,
+                            SettingsPanelResources.SecretSaveFailedTitle,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    if (persistenceResult.Warnings.Count > 0)
+                    {
+                        MessageBox.Show(
+                            this,
+                            string.Join(Environment.NewLine, persistenceResult.Warnings),
+                            SettingsPanelResources.SecretSaveWarningsTitle,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                    }
+                }
+
                 ViewModel?.SaveCommand?.Execute(null);
 
                 UpdateStatus("Settings saved successfully", isError: false);
@@ -1170,6 +1308,16 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (ViewModel != null)
                 {
                     await (ViewModel.LoadCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
+
+                    if (_settingsSecretsPersistenceService != null)
+                    {
+                        var secretsSnapshot = await _settingsSecretsPersistenceService.LoadCurrentAsync(cancellationToken).ConfigureAwait(true);
+                        ViewModel.SyncfusionLicenseKey = secretsSnapshot.SyncfusionLicenseKey ?? string.Empty;
+                        ViewModel.XaiApiKey = string.IsNullOrWhiteSpace(secretsSnapshot.XaiApiKey)
+                            ? ViewModel.XaiApiKey
+                            : secretsSnapshot.XaiApiKey;
+                    }
+
                     Logger.LogInformation("SettingsPanel: settings loaded successfully");
                     SetHasUnsavedChanges(false);
                 }
@@ -1367,6 +1515,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 try { if (_txtXaiApiEndpoint != null) _txtXaiApiEndpoint.TextChanged -= _txtXaiApiEndpointChangedHandler; } catch { }
                 try { if (_cmbXaiModel != null) _cmbXaiModel.SelectedIndexChanged -= _cmbXaiModelSelectedHandler; } catch { }
                 try { if (_txtXaiApiKey != null) _txtXaiApiKey.TextChanged -= _txtXaiApiKeyChangedHandler; } catch { }
+                try { if (_txtSyncfusionLicenseKey != null) _txtSyncfusionLicenseKey.TextChanged -= _txtSyncfusionLicenseKeyChangedHandler; } catch { }
                 try { if (_numXaiTimeout != null) _numXaiTimeout.ValueChanged -= _numXaiTimeoutChangedHandler; } catch { }
                 try { if (_numXaiMaxTokens != null) _numXaiMaxTokens.ValueChanged -= _numXaiMaxTokensChangedHandler; } catch { }
                 try { if (_numXaiTemperature != null) _numXaiTemperature.ValueChanged -= _numXaiTemperatureChangedHandler; } catch { }
@@ -1375,6 +1524,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 try { if (_numAutoSaveInterval != null) _numAutoSaveInterval.ValueChanged -= _numAutoSaveIntervalChangedHandler; } catch { }
                 try { if (_cmbLogLevel != null) _cmbLogLevel.SelectedIndexChanged -= _cmbLogLevelSelectedHandler; } catch { }
                 try { if (_btnShowApiKey != null) _btnShowApiKey.Click -= _btnShowApiKeyClickHandler; } catch { }
+                try { if (_btnShowSyncfusionLicenseKey != null) _btnShowSyncfusionLicenseKey.Click -= _btnShowSyncfusionLicenseKeyClickHandler; } catch { }
                 try { if (_lnkAiLearnMore != null) _lnkAiLearnMore.LinkClicked -= _lnkAiLearnMoreHandler; } catch { }
                 try { if (_btnBrowseExportPath != null) _btnBrowseExportPath.Click -= _btnBrowseExportPathClickHandler; } catch { }
                 try { if (_btnSave != null) _btnSave.Click -= _btnSaveClickHandler; } catch { }
@@ -1407,6 +1557,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 try { _txtXaiApiEndpoint?.Dispose(); } catch { }
                 try { _txtXaiApiKey?.Dispose(); } catch { }
                 try { _btnShowApiKey?.Dispose(); } catch { }
+                try { _txtSyncfusionLicenseKey?.Dispose(); } catch { }
+                try { _btnShowSyncfusionLicenseKey?.Dispose(); } catch { }
                 try { _numXaiTimeout?.Dispose(); } catch { }
                 try { _numXaiMaxTokens?.Dispose(); } catch { }
                 try { _numXaiTemperature?.Dispose(); } catch { }

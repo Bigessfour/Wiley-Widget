@@ -19,10 +19,24 @@ namespace WileyWidget.WinForms.Helpers
         private const string UiTestEnvVar = "WILEYWIDGET_UI_TESTS";
         private const string TestEnvVar = "WILEYWIDGET_TESTS";
 
+        private static bool IsTruthyEnvironmentVariable(string variableName)
+        {
+            var value = Environment.GetEnvironmentVariable(variableName);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "on", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsUiTestMode()
         {
-            return string.Equals(Environment.GetEnvironmentVariable(UiTestEnvVar), "true", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(Environment.GetEnvironmentVariable(TestEnvVar), "true", StringComparison.OrdinalIgnoreCase);
+            return IsTruthyEnvironmentVariable(UiTestEnvVar)
+                || IsTruthyEnvironmentVariable(TestEnvVar);
         }
 
         /// <summary>

@@ -83,6 +83,12 @@ public class BudgetRepository : IBudgetRepository
         }
     }
 
+    private void InvalidateFiscalYearCaches(int fiscalYear)
+    {
+        try { _cache.Remove($"BudgetEntries_FiscalYear_{fiscalYear}"); } catch { }
+        try { _cache.Remove($"BudgetEntries_Sewer_Year_{fiscalYear}"); } catch { }
+    }
+
     /// <summary>
     /// Gets budget hierarchy for a fiscal year
     /// </summary>
@@ -445,6 +451,15 @@ public class BudgetRepository : IBudgetRepository
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.BudgetEntries.Add(budgetEntry);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateFiscalYearCaches(budgetEntry.FiscalYear);
+    }
+
+    public async Task<bool> ExistsAsync(string accountNumber, int fiscalYear, CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.BudgetEntries
+            .AnyAsync(b => b.AccountNumber == accountNumber && b.FiscalYear == fiscalYear, cancellationToken);
     }
 
     /// <summary>
@@ -459,6 +474,7 @@ public class BudgetRepository : IBudgetRepository
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.BudgetEntries.Update(budgetEntry);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateFiscalYearCaches(budgetEntry.FiscalYear);
     }
 
     /// <summary>
@@ -471,8 +487,10 @@ public class BudgetRepository : IBudgetRepository
         var budgetEntry = await context.BudgetEntries.FindAsync(new object[] { id }, cancellationToken);
         if (budgetEntry != null)
         {
+            var fiscalYear = budgetEntry.FiscalYear;
             context.BudgetEntries.Remove(budgetEntry);
             await context.SaveChangesAsync(cancellationToken);
+            InvalidateFiscalYearCaches(fiscalYear);
         }
     }
 
@@ -862,9 +880,7 @@ public class BudgetRepository : IBudgetRepository
 
             await context.SaveChangesAsync(cancellationToken);
 
-            // Invalidate common fiscal-year caches
-            try { _cache.Remove($"BudgetEntries_FiscalYear_{fiscalYear}"); } catch { }
-            try { _cache.Remove($"BudgetEntries_Sewer_Year_{fiscalYear}"); } catch { }
+            InvalidateFiscalYearCaches(fiscalYear);
 
             activity?.SetTag("rows.updated", updatableEntries.Count);
             activity?.SetStatus(ActivityStatusCode.Ok);

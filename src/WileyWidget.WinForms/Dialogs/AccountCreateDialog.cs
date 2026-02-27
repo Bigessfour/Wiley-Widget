@@ -57,11 +57,13 @@ namespace WileyWidget.WinForms.Dialogs
         private void InitializeDialog()
         {
             Text = "Create New Municipal Account";
-            Size = new Size(500, 500);
+            Size = new Size(760, 620);
+            MinimumSize = new Size(720, 580);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
+            AutoScaleMode = AutoScaleMode.Dpi;
 
             this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
             this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
@@ -70,8 +72,8 @@ namespace WileyWidget.WinForms.Dialogs
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
-                RowCount = 8,
-                Padding = new Padding(10)
+                RowCount = 7,
+                Padding = new Padding(20)
             };
 
             // Column styles
@@ -79,10 +81,11 @@ namespace WileyWidget.WinForms.Dialogs
             mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             // Row styles
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 7; i++)
             {
-                mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 35));
+                mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
             }
+            mainPanel.RowStyles[4] = new RowStyle(SizeType.Absolute, 96); // Description
 
             int row = 0;
 
@@ -90,6 +93,8 @@ namespace WileyWidget.WinForms.Dialogs
             AddLabel(mainPanel, "Account Number *:", row, 0);
             _accountNumberTextBox = AddTextBox(mainPanel, row++, 1);
             _accountNumberTextBox.MaxLength = 20;
+            _accountNumberTextBox.Width = 160;
+            _accountNumberTextBox.MinimumSize = new Size(160, 32);
 
             // Account Name
             AddLabel(mainPanel, "Account Name *:", row, 0);
@@ -108,7 +113,14 @@ namespace WileyWidget.WinForms.Dialogs
 
             // Description
             AddLabel(mainPanel, "Description:", row, 0);
-            _descriptionTextBox = AddTextBox(mainPanel, row++, 1);
+            _descriptionTextBox = new TextBox
+            {
+                Multiline = true,
+                ScrollBars = ScrollBars.Vertical,
+                Dock = DockStyle.Fill,
+                MinimumSize = new Size(320, 88)
+            };
+            mainPanel.Controls.Add(_descriptionTextBox, 1, row++);
             _descriptionTextBox.MaxLength = 500;
 
             // Department
@@ -125,23 +137,23 @@ namespace WileyWidget.WinForms.Dialogs
             {
                 FlowDirection = FlowDirection.RightToLeft,
                 Dock = DockStyle.Bottom,
-                Height = 50,
-                Padding = new Padding(10)
+                Height = 56,
+                Padding = new Padding(12)
             };
 
             _createButton = new SfButton
             {
                 Text = "Create",
-                Width = 80,
-                Height = 30
+                Width = 112,
+                Height = 34
             };
             _createButton.Click += CreateButton_Click;
 
             _cancelButton = new SfButton
             {
                 Text = "Cancel",
-                Width = 80,
-                Height = 30
+                Width = 112,
+                Height = 34
             };
             _cancelButton.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
@@ -170,7 +182,11 @@ namespace WileyWidget.WinForms.Dialogs
         {
             var textBox = new TextBox
             {
-                Dock = DockStyle.Fill
+                AutoSize = false,
+                Anchor = AnchorStyles.Left,
+                Width = 320,
+                Height = 32,
+                MinimumSize = new Size(320, 32)
             };
             panel.Controls.Add(textBox, col, row);
             return textBox;
@@ -180,7 +196,10 @@ namespace WileyWidget.WinForms.Dialogs
         {
             var comboBox = new ComboBox
             {
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left,
+                Width = 320,
+                Height = 32,
+                MinimumSize = new Size(320, 32),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             panel.Controls.Add(comboBox, col, row);
@@ -191,7 +210,11 @@ namespace WileyWidget.WinForms.Dialogs
         {
             var numeric = new NumericUpDownExt
             {
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left,
+                Width = 165,
+                Height = 32,
+                MinimumSize = new Size(165, 32),
+                TextAlign = HorizontalAlignment.Right,
                 Minimum = 0,
                 Maximum = decimal.MaxValue,
                 DecimalPlaces = 2

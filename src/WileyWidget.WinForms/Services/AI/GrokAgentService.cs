@@ -108,6 +108,7 @@ namespace WileyWidget.WinForms.Services.AI
         private bool _disposed = false;
         private readonly bool _ownsHttpClient;
         private readonly XAIBuiltInTools.XAIToolConfiguration? _toolConfiguration;  // xAI built-in tools configuration
+        private readonly bool TestMode;  // Test mode flag for bypassing heavy initialization
         private const string ChatHistoryCacheKeyPrefix = "grok_chat_history_";
         private const int ChatHistoryCacheDurationMinutes = 30;
 
@@ -156,6 +157,17 @@ namespace WileyWidget.WinForms.Services.AI
             _serviceProvider = serviceProvider;
             _jarvisPersonality = jarvisPersonality;
             _memoryCache = memoryCache;
+
+            // Initialize test mode flag
+            TestMode = IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS")) ||
+                       IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"));
+
+            static bool IsTruthy(string? value) =>
+                !string.IsNullOrWhiteSpace(value) &&
+                (string.Equals(value, "1", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(value, "on", StringComparison.OrdinalIgnoreCase));
 
             // Load xAI tools configuration
             _toolConfiguration = LoadToolConfiguration(config, logger);
@@ -294,6 +306,15 @@ namespace WileyWidget.WinForms.Services.AI
             if (_initializationFailed)
             {
                 _logger?.LogWarning("[XAI] GrokAgentService initialization previously failed, skipping");
+                return;
+            }
+
+            // === TEST MODE BYPASS (eliminates ~1.7s delay in FLAUI runs) ===
+            if (TestMode)
+            {
+                _logger?.LogInformation("🔬 GrokAgentService skipped - TEST MODE");
+                _isInitialized = true;
+                _kernel = Kernel.CreateBuilder().Build(); // minimal empty kernel
                 return;
             }
 

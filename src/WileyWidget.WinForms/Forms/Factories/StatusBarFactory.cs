@@ -58,6 +58,9 @@ namespace WileyWidget.WinForms.Forms
             var panels = new List<StatusBarAdvPanel>();
 
             // 5. Status label (short state descriptor) – keeps legacy references happy
+            // ✅ Semantic status color exception (see SfSkinManager rule): Ready=Green, Error=Red, Warning=Yellow.
+            // The caller (Chrome.cs) applies SfSkinManager.SetVisualStyle to the parent StatusBarAdv;
+            // this ForeColor represents a deliberate success-state indicator, not a theme override.
             var statusLabelPanel = new StatusBarAdvPanel
             {
                 Name = "StatusLabel",
@@ -66,7 +69,7 @@ namespace WileyWidget.WinForms.Forms
                 HAlign = HorzFlowAlign.Left,
                 BorderStyle = BorderStyle.None,
                 AutoSize = false,
-                ForeColor = Color.Green,
+                ForeColor = Color.Green, // semantic: success/ready state — allowed exception
                 AccessibleName = "Status label",
                 AccessibleDescription = "High-level application status"
             };

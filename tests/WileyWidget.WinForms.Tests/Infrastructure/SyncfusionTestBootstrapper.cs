@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
@@ -28,12 +29,17 @@ internal static class SyncfusionTestBootstrapper
             }
             catch { /* best-effort: some test hosts may reject these calls */ }
 
-            var licenseKey = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY")
-                             ?? Environment.GetEnvironmentVariable("Syncfusion__LicenseKey");
+            var licenseKey = ResolveSyncfusionLicenseKey();
 
             if (!string.IsNullOrWhiteSpace(licenseKey))
             {
+                Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", licenseKey, EnvironmentVariableTarget.Process);
+                Environment.SetEnvironmentVariable("Syncfusion__LicenseKey", licenseKey, EnvironmentVariableTarget.Process);
                 SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+            }
+            else
+            {
+                Console.WriteLine("[TEST-BOOTSTRAP] Syncfusion license key not found in process/user/machine env or user-secrets; tests may show trial dialogs.");
             }
         }
         catch
@@ -93,6 +99,77 @@ internal static class SyncfusionTestBootstrapper
         {
             // Best-effort safeguard for test-host WinForms paint exceptions.
         }
+    }
+
+    private static string? ResolveSyncfusionLicenseKey()
+    {
+        string?[] envCandidates =
+        {
+            Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.Process),
+            Environment.GetEnvironmentVariable("Syncfusion__LicenseKey", EnvironmentVariableTarget.Process),
+            Environment.GetEnvironmentVariable("Syncfusion:LicenseKey", EnvironmentVariableTarget.Process),
+            Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.User),
+            Environment.GetEnvironmentVariable("Syncfusion__LicenseKey", EnvironmentVariableTarget.User),
+            Environment.GetEnvironmentVariable("Syncfusion:LicenseKey", EnvironmentVariableTarget.User),
+            Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.Machine),
+            Environment.GetEnvironmentVariable("Syncfusion__LicenseKey", EnvironmentVariableTarget.Machine),
+            Environment.GetEnvironmentVariable("Syncfusion:LicenseKey", EnvironmentVariableTarget.Machine)
+        };
+
+        foreach (var candidate in envCandidates)
+        {
+            var normalized = NormalizeSecret(candidate);
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                return normalized;
+            }
+        }
+
+        try
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddUserSecrets<WileyWidget.WinForms.Program>(optional: true)
+                .Build();
+
+            var fromUserSecrets = NormalizeSecret(configuration["Syncfusion:LicenseKey"])
+                ?? NormalizeSecret(configuration["SYNCFUSION_LICENSE_KEY"])
+                ?? NormalizeSecret(configuration["Syncfusion__LicenseKey"]);
+
+            if (!string.IsNullOrWhiteSpace(fromUserSecrets))
+            {
+                return fromUserSecrets;
+            }
+        }
+        catch
+        {
+            // Best effort for environments where user-secrets is unavailable.
+        }
+
+        return null;
+    }
+
+    private static string? NormalizeSecret(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        var trimmed = rawValue.Trim();
+        if ((trimmed.StartsWith("\"", StringComparison.Ordinal) && trimmed.EndsWith("\"", StringComparison.Ordinal))
+            || (trimmed.StartsWith("'", StringComparison.Ordinal) && trimmed.EndsWith("'", StringComparison.Ordinal)))
+        {
+            trimmed = trimmed.Substring(1, trimmed.Length - 2).Trim();
+        }
+
+        if (trimmed.StartsWith("YOUR_SYNCFUSION_LICENSE_KEY", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Contains("SYNCFUSION_LICENSE_KEY_HERE", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Contains("PLACEHOLDER", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return trimmed;
     }
 
     private static bool IsKnownSyncfusionPaintException(Exception exception)

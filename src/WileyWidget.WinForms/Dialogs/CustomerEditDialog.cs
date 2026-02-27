@@ -67,11 +67,13 @@ namespace WileyWidget.WinForms.Dialogs
         private void InitializeDialog()
         {
             Text = "Edit Customer";
-            Size = new Size(600, 700);
+            Size = new Size(760, 840);
+            MinimumSize = new Size(720, 760);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
+            AutoScaleMode = AutoScaleMode.Dpi;
 
             this.Style.Border = new Pen(SystemColors.WindowFrame, 1);
             this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
@@ -81,21 +83,24 @@ namespace WileyWidget.WinForms.Dialogs
 
             var mainPanel = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 ColumnCount = 2,
                 RowCount = 20,
-                Padding = new Padding(10)
+                Padding = new Padding(20),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
 
             // Column styles
-            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
             mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             // Row styles
             for (int i = 0; i < 20; i++)
             {
-                mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
+                mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
             }
+            mainPanel.RowStyles[18] = new RowStyle(SizeType.Absolute, 96); // Notes
 
             int row = 0;
 
@@ -103,6 +108,8 @@ namespace WileyWidget.WinForms.Dialogs
             AddLabel(mainPanel, "Account #:", row, 0);
             _accountNumberTextBox = AddTextBox(mainPanel, row++, 1);
             _accountNumberTextBox.MaxLength = 20;
+            _accountNumberTextBox.Width = 160;
+            _accountNumberTextBox.MinimumSize = new Size(160, 32);
 
             // First Name
             AddLabel(mainPanel, "First Name:", row, 0);
@@ -138,11 +145,15 @@ namespace WileyWidget.WinForms.Dialogs
             AddLabel(mainPanel, "Service State:", row, 0);
             _serviceStateTextBox = AddTextBox(mainPanel, row++, 1);
             _serviceStateTextBox.MaxLength = 2;
+            _serviceStateTextBox.Width = 80;
+            _serviceStateTextBox.MinimumSize = new Size(80, 32);
 
             // Service ZIP
             AddLabel(mainPanel, "Service ZIP:", row, 0);
             _serviceZipCodeTextBox = AddTextBox(mainPanel, row++, 1);
             _serviceZipCodeTextBox.MaxLength = 10;
+            _serviceZipCodeTextBox.Width = 165;
+            _serviceZipCodeTextBox.MinimumSize = new Size(165, 32);
 
             // Mailing Address
             AddLabel(mainPanel, "Mailing Address:", row, 0);
@@ -158,16 +169,22 @@ namespace WileyWidget.WinForms.Dialogs
             AddLabel(mainPanel, "Mailing State:", row, 0);
             _mailingStateTextBox = AddTextBox(mainPanel, row++, 1);
             _mailingStateTextBox.MaxLength = 2;
+            _mailingStateTextBox.Width = 80;
+            _mailingStateTextBox.MinimumSize = new Size(80, 32);
 
             // Mailing ZIP
             AddLabel(mainPanel, "Mailing ZIP:", row, 0);
             _mailingZipCodeTextBox = AddTextBox(mainPanel, row++, 1);
             _mailingZipCodeTextBox.MaxLength = 10;
+            _mailingZipCodeTextBox.Width = 165;
+            _mailingZipCodeTextBox.MinimumSize = new Size(165, 32);
 
             // Phone
             AddLabel(mainPanel, "Phone:", row, 0);
             _phoneNumberTextBox = AddTextBox(mainPanel, row++, 1);
             _phoneNumberTextBox.MaxLength = 15;
+            _phoneNumberTextBox.Width = 165;
+            _phoneNumberTextBox.MinimumSize = new Size(165, 32);
 
             // Email
             AddLabel(mainPanel, "Email:", row, 0);
@@ -178,6 +195,8 @@ namespace WileyWidget.WinForms.Dialogs
             AddLabel(mainPanel, "Meter #:", row, 0);
             _meterNumberTextBox = AddTextBox(mainPanel, row++, 1);
             _meterNumberTextBox.MaxLength = 20;
+            _meterNumberTextBox.Width = 165;
+            _meterNumberTextBox.MinimumSize = new Size(165, 32);
 
             // Service Location
             AddLabel(mainPanel, "Location:", row, 0);
@@ -193,37 +212,46 @@ namespace WileyWidget.WinForms.Dialogs
             AddLabel(mainPanel, "Notes:", row, 0);
             _notesTextBox = AddTextBox(mainPanel, row++, 1);
             _notesTextBox.Multiline = true;
-            _notesTextBox.Height = 60;
+            _notesTextBox.Dock = DockStyle.Fill;
+            _notesTextBox.MinimumSize = new Size(320, 88);
+            _notesTextBox.Height = 88;
 
             // Buttons
             var buttonPanel = new FlowLayoutPanel
             {
                 FlowDirection = FlowDirection.RightToLeft,
                 Dock = DockStyle.Bottom,
-                Height = 50,
-                Padding = new Padding(10)
+                Height = 56,
+                Padding = new Padding(12)
             };
 
             _saveButton = new SfButton
             {
                 Text = "Save",
-                Width = 80,
-                Height = 30
+                Width = 112,
+                Height = 34
             };
             _saveButton.Click += SaveButton_Click;
 
             _cancelButton = new SfButton
             {
                 Text = "Cancel",
-                Width = 80,
-                Height = 30
+                Width = 112,
+                Height = 34
             };
             _cancelButton.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
             buttonPanel.Controls.Add(_cancelButton);
             buttonPanel.Controls.Add(_saveButton);
 
-            Controls.Add(mainPanel);
+            var contentHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true
+            };
+            contentHost.Controls.Add(mainPanel);
+
+            Controls.Add(contentHost);
             Controls.Add(buttonPanel);
 
             AcceptButton = _saveButton;
@@ -245,7 +273,11 @@ namespace WileyWidget.WinForms.Dialogs
         {
             var textBox = new TextBox
             {
-                Dock = DockStyle.Fill
+                AutoSize = false,
+                Anchor = AnchorStyles.Left,
+                Width = 320,
+                Height = 32,
+                MinimumSize = new Size(320, 32)
             };
             panel.Controls.Add(textBox, col, row);
             return textBox;
@@ -255,7 +287,10 @@ namespace WileyWidget.WinForms.Dialogs
         {
             var comboBox = new ComboBox
             {
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left,
+                Width = 320,
+                Height = 32,
+                MinimumSize = new Size(320, 32),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             panel.Controls.Add(comboBox, col, row);

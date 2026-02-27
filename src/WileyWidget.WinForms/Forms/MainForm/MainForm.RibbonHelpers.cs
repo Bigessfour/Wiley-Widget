@@ -35,7 +35,7 @@ namespace WileyWidget.WinForms.Forms;
 /// - TabIndex, TabStop                 : Keyboard navigation order
 ///
 /// APPEARANCE PROPERTIES:
-/// - RibbonStyle                       : Office2016 (visual style)
+/// - RibbonStyle                       : Office2007/2010/2013/2016/2019 (dynamically set based on theme)
 /// - LauncherStyle                     : Metro (group launcher icon style)
 /// - BorderStyle                       : None (frameless appearance)
 /// - ShowCaption                       : true (show title bar)
@@ -296,7 +296,22 @@ public partial class MainForm
                 form.EnsurePanelNavigatorInitialized();
 
                 // ONE LINE TO RULE THEM ALL
-                form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
+                var shown = form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
+                if (!shown && typeof(UserControl).IsAssignableFrom(entry.PanelType))
+                {
+                    logger?.LogWarning("[RIBBON_NAV] Primary ShowPanel(Type) failed for {Panel}; attempting generic fallback", entry.DisplayName);
+
+                    var genericShowPanel = typeof(MainForm).GetMethod(
+                        nameof(MainForm.ShowPanel),
+                        new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
+
+                    if (genericShowPanel != null)
+                    {
+                        genericShowPanel
+                            .MakeGenericMethod(entry.PanelType)
+                            .Invoke(form, new object[] { entry.DisplayName, entry.DefaultDock, true });
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -347,6 +362,14 @@ public partial class MainForm
             else if (resolvedTheme.Contains("Office2013", StringComparison.OrdinalIgnoreCase))
             {
                 style = RibbonStyle.Office2013;
+            }
+            else if (resolvedTheme.Contains("Office2019", StringComparison.OrdinalIgnoreCase))
+            {
+                style = RibbonStyle.Office2016; // Office2019 maps to Office2016 per Syncfusion conventions
+            }
+            else if (resolvedTheme.Contains("Office2016", StringComparison.OrdinalIgnoreCase))
+            {
+                style = RibbonStyle.Office2016;
             }
 
             ribbon.RibbonStyle = style;
@@ -501,7 +524,8 @@ public partial class MainForm
             if (sender is ToolStripEx strip)
             {
                 _logger?.LogInformation("Ribbon launcher clicked for group {GroupName}", strip.Name);
-                ApplyStatus($"{strip.Text} options are not configured yet.");
+                ApplyStatus($"Opening settings for {strip.Text}.");
+                ShowPanel<Controls.Panels.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
             }
             else
             {
@@ -575,6 +599,14 @@ public partial class MainForm
             backStageView.HostForm = form;
             backStageView.HostControl = ribbon;
 
+            void CloseBackStageMenu()
+            {
+                if (backStageView.BackStage != null)
+                {
+                    backStageView.BackStage.Visible = false;
+                }
+            }
+
             var infoTab = new Syncfusion.Windows.Forms.BackStageTab
             {
                 Text = "Info",
@@ -604,10 +636,7 @@ public partial class MainForm
                 {
                     SafeExecute((RibbonCommand)(() => SafeNavigate(form, "Settings", CreatePanelNavigationCommand(form, settingsEntry, logger), logger)), "BackStage_Settings", logger);
                 }
-                if (backStageView.BackStage != null)
-                {
-                    backStageView.BackStage.Visible = false;
-                }
+                CloseBackStageMenu();
             };
 
             var optionsPanel = new FlowLayoutPanel
@@ -638,16 +667,32 @@ public partial class MainForm
 
             var newBudgetButton = new SfButton { Text = "New Budget", Width = 220, Height = 40 };
 #pragma warning disable CS0618
-            newBudgetButton.Click += (_, _) => SafeExecute((RibbonCommand)form.CreateNewBudget, "BackStage_NewBudget", logger);
+            newBudgetButton.Click += (_, _) =>
+            {
+                SafeExecute((RibbonCommand)form.CreateNewBudget, "BackStage_NewBudget", logger);
+                CloseBackStageMenu();
+            };
 
             var openBudgetButton = new SfButton { Text = "Open Budget", Width = 220, Height = 40 };
-            openBudgetButton.Click += (_, _) => SafeExecute((RibbonCommand)form.OpenBudget, "BackStage_OpenBudget", logger);
+            openBudgetButton.Click += (_, _) =>
+            {
+                SafeExecute((RibbonCommand)form.OpenBudget, "BackStage_OpenBudget", logger);
+                CloseBackStageMenu();
+            };
 
             var saveLayoutButton = new SfButton { Text = "Save Layout", Width = 220, Height = 40 };
-            saveLayoutButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "BackStage_SaveLayout", logger);
+            saveLayoutButton.Click += (_, _) =>
+            {
+                SafeExecute((RibbonCommand)form.SaveCurrentLayout, "BackStage_SaveLayout", logger);
+                CloseBackStageMenu();
+            };
 
             var exportButton = new SfButton { Text = "Export Data", Width = 220, Height = 40 };
-            exportButton.Click += (_, _) => SafeExecute((RibbonCommand)form.ExportData, "BackStage_ExportData", logger);
+            exportButton.Click += (_, _) =>
+            {
+                SafeExecute((RibbonCommand)form.ExportData, "BackStage_ExportData", logger);
+                CloseBackStageMenu();
+            };
 #pragma warning restore CS0618
 
             // Apply theme to backstage buttons
@@ -678,14 +723,19 @@ public partial class MainForm
                 Name = "BackStage_Exit",
                 Placement = Syncfusion.Windows.Forms.BackStageItemPlacement.Bottom
             };
-            exitButton.Click += (_, _) => SafeExecute((RibbonCommand)(() => form.Close()), "BackStage_Exit", logger);
+            exitButton.Click += (_, _) =>
+            {
+                CloseBackStageMenu();
+                SafeExecute((RibbonCommand)(() => form.Close()), "BackStage_Exit", logger);
+            };
 
             backStage.Controls.Clear();
+            backStage.Controls.Add(fileTab);
             backStage.Controls.Add(infoTab);
             backStage.Controls.Add(optionsTab);
             backStage.Controls.Add(separator);
             backStage.Controls.Add(exitButton);
-            backStage.SelectedTab = infoTab;
+            backStage.SelectedTab = fileTab;
 
             return backStageView;
         }
@@ -727,6 +777,16 @@ public partial class MainForm
         catch (Exception ex)
         {
             logger?.LogDebug(ex, "Failed to set visual style for strip {Name}", name);
+        }
+
+        // Ensure an explicit AutomationId is available for UI automation (Syncfusion 32.2.3 stability fix)
+        try
+        {
+            SetAutomationId(strip, name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for strip {Name}", name);
         }
 
         return strip;
@@ -968,6 +1028,15 @@ public partial class MainForm
             }
         };
 
+        try
+        {
+            SetAutomationId(button, name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for button {Name}", name);
+        }
+
         return button;
     }
 
@@ -1032,6 +1101,15 @@ public partial class MainForm
             }
         };
 
+        try
+        {
+            SetAutomationId(button, name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for small button {Name}", name);
+        }
+
         return button;
     }
 
@@ -1064,6 +1142,18 @@ public partial class MainForm
                 logger?.LogError(ex, "Gallery item {ItemText} failed", text);
             }
         };
+
+        // Give gallery items a deterministic Name and AutomationId for UI automation
+        try
+        {
+            var sanitized = System.Text.RegularExpressions.Regex.Replace(text ?? string.Empty, "[^\\w]", string.Empty);
+            item.Name = string.IsNullOrWhiteSpace(sanitized) ? $"Gallery_{Guid.NewGuid():N}" : $"Gallery_{sanitized}";
+            SetAutomationId(item, item.Name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for gallery item {Text}", text);
+        }
 
         return item;
     }
@@ -1379,6 +1469,9 @@ public partial class MainForm
         searchStack.Items.Add(label);
         searchStack.Items.Add(searchBox);
 
+        try { SetAutomationId(label, label.Name, logger); } catch (Exception ex) { logger?.LogDebug(ex, "Failed to set AutomationId for label {Name}", label.Name); }
+        try { SetAutomationId(searchBox, searchBox.Name, logger); } catch (Exception ex) { logger?.LogDebug(ex, "Failed to set AutomationId for search box {Name}", searchBox.Name); }
+
         var themeCombo = new ToolStripComboBoxEx
         {
             Name = "ThemeCombo",
@@ -1438,6 +1531,8 @@ public partial class MainForm
                 logger?.LogError(ex, "Failed to apply theme {Theme}", selectedTheme);
             }
         };
+
+        try { SetAutomationId(themeCombo, themeCombo.Name, logger); } catch (Exception ex) { logger?.LogDebug(ex, "Failed to set AutomationId for theme combo {Name}", themeCombo.Name); }
 
         strip.Items.Add(searchStack);
         strip.Items.Add(CreateRibbonSeparator());
@@ -1977,123 +2072,6 @@ public partial class MainForm
         }
     }
 
-    private static void InitializeQuickAccessToolbar(RibbonControlAdv ribbon, ILogger? logger, bool isUiTestRuntime, params ToolStripButton[] buttons)
-    {
-        if (ribbon?.Header == null)
-        {
-            return;
-        }
-
-        try
-        {
-            if (isUiTestRuntime)
-            {
-                ribbon.QuickPanelVisible = false;
-                ribbon.ShowQuickItemsDropDownButton = false;
-                return;
-            }
-
-            ribbon.QuickPanelVisible = true;
-            ribbon.ShowQuickItemsDropDownButton = true;
-
-            foreach (var button in buttons.Where(static b => b != null && b.Enabled))
-            {
-                try
-                {
-                    ribbon.Header.AddQuickItem(button);
-                }
-                catch (Exception ex)
-                {
-                    logger?.LogDebug(ex, "Failed to add quick access button {ButtonName}", button.Name);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug(ex, "Failed to initialize quick access toolbar");
-        }
-    }
-
-    /// <summary>
-    /// Creates default Quick Access Toolbar buttons with icons and tooltips.
-    /// QAT provides one-click access to frequently used commands.
-    /// </summary>
-    private static ToolStripButton[] CreateDefaultQuickAccessToolbarButtons(MainForm form, string theme, ILogger? logger)
-    {
-        // Save Layout button
-        var saveButton = new ToolStripButton
-        {
-            Name = "QAT_Save",
-            DisplayStyle = ToolStripItemDisplayStyle.Image,
-            Image = CreateIconFromSegoeGlyph("\uE74E", 16, SystemColors.ControlText), // Save icon
-            ToolTipText = "Save layout (Ctrl+Shift+S)",
-            AutoSize = true,
-            Enabled = true
-        };
-#pragma warning disable CS0618
-        saveButton.Click += (_, _) => SafeExecute((RibbonCommand)form.SaveCurrentLayout, "QAT_SaveLayout", logger);
-#pragma warning restore CS0618
-
-        // Enterprise Vital Signs button (replaces deprecated Dashboard)
-        var dashboardButton = new ToolStripButton
-        {
-            Name = "QAT_VitalSigns",
-            DisplayStyle = ToolStripItemDisplayStyle.Image,
-            Image = CreateIconFromSegoeGlyph("\uE80F", 16, SystemColors.ControlText), // Vital Signs icon
-            ToolTipText = "Open Enterprise Vital Signs",
-            AutoSize = true,
-            Enabled = true
-        };
-        dashboardButton.Click += (_, _) =>
-        {
-            var vitalSignsEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Enterprise Vital Signs");
-            if (vitalSignsEntry != null)
-            {
-                SafeNavigate(form, "Enterprise Vital Signs", CreatePanelNavigationCommand(form, vitalSignsEntry, logger), logger);
-            }
-        };
-
-        // Settings button
-        var settingsButton = new ToolStripButton
-        {
-            Name = "QAT_Settings",
-            DisplayStyle = ToolStripItemDisplayStyle.Image,
-            Image = CreateIconFromSegoeGlyph("\uE713", 16, SystemColors.ControlText), // Settings gear
-            ToolTipText = "Settings (Ctrl+Alt+S)",
-            AutoSize = true,
-            Enabled = true
-        };
-        settingsButton.Click += (_, _) =>
-        {
-            var settingsEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Settings");
-            if (settingsEntry != null)
-            {
-                SafeNavigate(form, "Settings", CreatePanelNavigationCommand(form, settingsEntry, logger), logger);
-            }
-        };
-
-        // Budget button
-        var budgetButton = new ToolStripButton
-        {
-            Name = "QAT_Budget",
-            DisplayStyle = ToolStripItemDisplayStyle.Image,
-            Image = CreateIconFromSegoeGlyph("\uE8F0", 16, SystemColors.ControlText), // Budget/Money icon
-            ToolTipText = "Budget Management",
-            AutoSize = true,
-            Enabled = true
-        };
-        budgetButton.Click += (_, _) =>
-        {
-            var budgetEntry = PanelRegistry.Panels.FirstOrDefault(p => p.DisplayName == "Budget Management & Analysis");
-            if (budgetEntry != null)
-            {
-                SafeNavigate(form, "Budget Management & Analysis", CreatePanelNavigationCommand(form, budgetEntry, logger), logger);
-            }
-        };
-
-        return new[] { saveButton, dashboardButton, budgetButton, settingsButton };
-    }
-
     private static void AttachRibbonLayoutHandlers(MainForm form, RibbonControlAdv ribbon, ToolStripTabItem homeTab, ToolStripTabItem? layoutContextTab, bool isUiTestRuntime, ILogger? logger)
     {
         if (form == null || ribbon == null || isUiTestRuntime)
@@ -2172,6 +2150,58 @@ public partial class MainForm
     private static bool IsBackStageControl(Control control)
     {
         return control?.GetType().Name.Contains("BackStage") ?? false;
+    }
+
+    /// <summary>
+    /// Attempts to set an explicit AutomationId on a control or ToolStripItem.
+    /// Uses reflection to set a public "AutomationId" property when available (Syncfusion controls),
+    /// and falls back to populating AccessibleName/Name/Tag to improve UIA stability.
+    /// </summary>
+    private static void SetAutomationId(object? element, string automationId, ILogger? logger)
+    {
+        if (element == null || string.IsNullOrWhiteSpace(automationId))
+        {
+            return;
+        }
+
+        try
+        {
+            var type = element.GetType();
+            var prop = type.GetProperty("AutomationId", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.IgnoreCase);
+            if (prop != null && prop.CanWrite && prop.PropertyType == typeof(string))
+            {
+                prop.SetValue(element, automationId);
+                logger?.LogDebug("Set AutomationId via property on {Type} => {Id}", type.Name, automationId);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "SetAutomationId: reflection assignment failed for {Type}", element.GetType().Name);
+        }
+
+        try
+        {
+            if (element is ToolStripItem tsi)
+            {
+                try { if (string.IsNullOrWhiteSpace(tsi.AccessibleName)) tsi.AccessibleName = automationId; } catch { }
+                try { if (string.IsNullOrWhiteSpace(tsi.Name)) tsi.Name = automationId; } catch { }
+                try { if (tsi.Tag == null) tsi.Tag = $"AutomationId:{automationId}"; } catch { }
+                return;
+            }
+
+            if (element is Control c)
+            {
+                try { if (string.IsNullOrWhiteSpace(c.AccessibleName)) c.AccessibleName = automationId; } catch { }
+                try { if (string.IsNullOrWhiteSpace(c.Name)) c.Name = automationId; } catch { }
+                try { if (c.Tag == null) c.Tag = $"AutomationId:{automationId}"; } catch { }
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "SetAutomationId: fallback assignment failed for {Type}", element.GetType().Name);
+        }
     }
 
 }

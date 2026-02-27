@@ -47,6 +47,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private StatusStrip? _statusStrip;
         private ToolStripStatusLabel? _statusLabel;
         private ErrorProvider? _errorProvider;
+        private ToolTip? _toolTip;
 
         // Event handlers for cleanup
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
@@ -64,12 +65,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             : base(scopeFactory, logger)
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(540, 400);
-            MinimumSize = new Size(420, 360);
+            Size = new Size(1100, 760);
+            MinimumSize = new Size(1024, 720);
 
             // Apply theme via SfSkinManager (single source of truth)
             try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
-            SetupUI();
+            SafeSuspendAndLayout(SetupUI);
             SubscribeToThemeChanges();
         }
 
@@ -106,6 +107,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
             _panelHeaderCloseHandler = (s, e) => ClosePanel();
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
+            _toolTip = new ToolTip();
+            _toolTip.SetToolTip(_panelHeader, "Refresh department metrics or close this panel.");
             rootTable.Controls.Add(_panelHeader, 0, 0);
 
             // Row 2: Summary panel with cards
@@ -164,6 +167,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AccessibleName = "Department metrics grid",
                 AccessibleDescription = "Grid displaying budget metrics for each department"
             };
+            _toolTip.SetToolTip(_metricsGrid, "Detailed budget and variance metrics by department.");
 
             ConfigureGridColumns();
             rootTable.Controls.Add(_metricsGrid, 0, 2);
@@ -241,6 +245,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 AutoSize = false,
                 AccessibleName = $"{title} value"
             };
+            _toolTip?.SetToolTip(lblValue, description);
             cardPanel.Controls.Add(lblValue);
 
             parent.Controls.Add(cardPanel, columnIndex, 0);
@@ -634,17 +639,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
-        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// Called when panel is first shown. Base timer handles ForceFullLayout.
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
-
-            BeginInvoke(() =>
-            {
-                ForceFullLayout();
-                Logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
-            });
+            // Note: ForceFullLayout is handled by base timer - no need to call it again
         }
 
         /// <summary>
@@ -693,6 +693,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 try { _summaryCardsPanel?.Dispose(); } catch { }
                 try { _summaryPanel?.Dispose(); } catch { }
                 try { _errorProvider?.Dispose(); } catch { }
+                try { _toolTip?.Dispose(); } catch { }
             }
 
             base.Dispose(disposing);

@@ -1,0 +1,320 @@
+AccountNumber,Name,RawType,QboAccountType,LocalType,LocalTypeDescription,SourcePage,TypeInferred
+110,CASH IN BANK,Bank,Bank,0,Cash,1,false
+110.1,CASH-BASEBALL FIELD PROJECT,Bank,Bank,0,Cash,1,false
+120,INVESTMENTS,Bank,Bank,0,Cash,1,false
+130,INTERGOVERNMENTAL RECEIVABLE,Bank,Bank,0,Cash,1,false
+140,GRANT RECEIVABLE,Bank,Bank,0,Cash,1,false
+210,ACCOUNTS PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,1,false
+290,BASEBALL FIELF PROJECT LOAN . WALKING TRAIL LOAN . DUE TO/FROM TOW GENERAL FUND . DUE TO/FROM TOW UTILITY FUND . FUND BALANCE,Other Current Liability,OtherCurrentLiability,6,Payables,1,true
+30000,Opening Bal,Equity,Equity,10,FundBalance,1,false
+32000,Unrestricted Net Assets,Equity,Equity,10,FundBalance,1,true
+370,GAIN/LOSS DISPOSAL OF ASSETS,Income,Income,16,Revenue,1,true
+360,TRANSFER FROM REC FUND,Income,Income,16,Revenue,1,true
+211.1,BALLFIELD ACCRUED INTEREST,Other Current Liability,OtherCurrentLiability,6,Payables,1,true
+212.2,WALKING TRAIL ACCRUED INTEREST,Other Current Liability,OtherCurrentLiability,6,Payables,1,true
+1120,CASH IN BANK - BASEBALL/SOFTBAL,Bank,Bank,0,Cash,2,false
+1130,SAVINGS ACCOUNT,Bank,Bank,0,Cash,2,false
+1840,BUILDINGS,Bank,Bank,0,Cash,2,false
+1860,EQUIPMENT,Bank,Bank,0,Cash,2,false
+1900,ACCUMULATED DEPRICIATION,Other Current Asset,Bank,0,Cash,2,false
+271,Retained Earnings,Equity,Equity,10,FundBalance,2,false
+4110.2,VOLLEYBALL DUES,Income,Income,16,Revenue,2,true
+01,CHECKING ACCOUNT-Enterprise,Bank,Bank,0,Cash,4,false
+02,WSD-General Fund,Bank,Bank,0,Cash,4,false
+51.3,LEGACY BANK CD #6469,Bank,Bank,0,Cash,4,true
+2000,Undeposited Funds,Other Current Asset,Bank,0,Cash,4,false
+80,CONSTRUCTION IN PROGRESS,Bank,Bank,0,Cash,4,true
+05,ACCOUNTS RECEIVABLE,Accounts Receivable,AccountsReceivable,0,Cash,4,false
+15.7,INTERGOVERNMENTAL RECEIVABLE,Bank,Bank,0,Cash,4,false
+32,CASH WITH COUNTY TREASURER,Bank,Bank,0,Cash,4,true
+40,LAND,Bank,Bank,0,Cash,4,true
+41,SEWER SYSTEM,Bank,Bank,0,Cash,4,true
+42,EQUIPMENT,Bank,Bank,0,Cash,4,true
+43,FURNITURE & FIXTURES,Bank,Bank,0,Cash,4,true
+46,ACCUMULATED DEPRECIATION,Bank,Bank,0,Cash,4,true
+55,PREPAID INSURANCE,Bank,Bank,0,Cash,4,true
+205,DEFERRED REVENUE - PROPERTY TAX,Other Current Liability,OtherCurrentLiability,6,Payables,4,true
+215,DEFERRED REVENUE-RESCUE FUND,Other Current Liability,OtherCurrentLiability,6,Payables,4,true
+217.1,FEDERAL W/H TAXES PAYBALE,Other Current Liability,OtherCurrentLiability,6,Payables,4,true
+217.2,STATE W/H TAXES PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,4,true
+217.3,SOC SEC W/H TAXES PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,4,true
+222,DUE TO/FROM SANITATION DISTRICT,Other Current Liability,OtherCurrentLiability,6,Payables,4,false
+301,SEWAGE SALES,Income,Income,16,Revenue,4,true
+302,TAP FEES,Income,Income,16,Revenue,4,true
+310,GENERAL PROPERTY TAXES,Income,Income,16,Revenue,4,true
+310.1,DELINQUENT GEN. PROPERTY TAXES,Income,Income,16,Revenue,4,true
+311,S.0. TAXES,Income,Income,16,Revenue,4,true
+312,TAXA,Income,Income,16,Revenue,4,true
+313,SENIOR HOMESTEAD EXEMPTION,Income,Income,16,Revenue,4,true
+315,INTEREST ON INVESTMENTS Income,Income,Income,16,Revenue,4,true
+320,PENALTIES & INTEREST ON TAXES,Income,Income,16,Revenue,4,true
+320.1,REFUND TAX OVERPAYMENT,Income,Income,16,Revenue,4,true
+321,MISCELLANEOUS,Income,Income,16,Revenue,4,false
+322,WSD POND PROJECT GRANTS,Income,Income,16,Revenue,4,true
+323,WSD-AMER RESCUE FUND-PONDS PROJ,Income,Income,16,Revenue,4,true
+492,MILAGE REIMBURSMENT,Expense,Expense,24,Expense,4,false
+210.1,CD LOAN INTEREST,Other Current Liability,OtherCurrentLiability,6,Payables,4,true
+401,PERMITS & ASSESSMENTS,Expense,Expense,24,Expense,5,false
+401.1,BANK SERVICE & INTEREST CHARGE,Expense,Expense,24,Expense,5,false
+401.2,INTEREST EXPENSE-TRASH TRUCK,Expense,Expense,24,Expense,5,false
+405,OUTSIDE SERVICE - LAB FEES,Expense,Expense,24,Expense,5,false
+405.1,"BUDGET, AUDIT, LEGAL",Expense,Expense,24,Expense,5,false
+410,OFFICE SUPPLIES/POSTAGE,Expense,Expense,24,Expense,5,false
+413.4,EDUCATION,Expense,Expense,24,Expense,5,false
+415,CAPITAL OUTLAY,Expense,Expense,24,Expense,5,false
+416,DUES & SUBSCRIPTIONS,Expense,Expense,24,Expense,5,false
+418,SERVICE CONTRACT/WARRANTY,Expense,Expense,24,Expense,5,false
+420,COLLECTION FEE,Expense,Expense,24,Expense,5,false
+425,SUPPLIES & EXPENSES,Expense,Expense,24,Expense,5,false
+430,GIFTS/APPRECIATION,Expense,Expense,24,Expense,5,false
+432.53,SEWER CLEANING,Expense,Expense,24,Expense,5,false
+433.51,SALARIES,Expense,Expense,24,Expense,5,false
+435,LAGOON CLEANING,Expense,Expense,24,Expense,5,false
+440,DEPRECIATION,Expense,Expense,24,Expense,5,false
+445,COUNTY TREASURER FEES,Expense,Expense,24,Expense,5,false
+483,PAYROLL TAXES - FICA/UNEMPLOYMT,Expense,Expense,24,Expense,5,false
+484,WATER PROJECT EXPENSES,Expense,Expense,24,Expense,5,false
+485,ENGINEERING,Expense,Expense,24,Expense,5,false
+486,TRANSFER TO CAPITAL PROJECTS,Expense,Expense,24,Expense,5,false
+487,INTEREST - RURAL DEVELOP. LOAN,Expense,Expense,24,Expense,5,false
+489,PICKUP USAGE FEE,Expense,Expense,24,Expense,5,false
+490,TRASFER TO UTILITY FUNDS,Expense,Expense,24,Expense,5,false
+491,TRANSFER TO CC FUND,Expense,Expense,24,Expense,5,false
+493,TRANSFER TO OTHER FUNDS,Expense,Expense,24,Expense,5,false
+101,CASH IN VRSI GRANT CHKG ACCT/TF,Bank,Bank,0,Cash,6,false
+101.1,CASH IN OPER. CHKG ACCT/HILDA,Bank,Bank,0,Cash,6,false
+105,CERTIFICATE OF DEPOSIT #5002,Bank,Bank,0,Cash,6,false
+106,CERTIFICATE OF DEPOSIT #5001,Bank,Bank,0,Cash,6,true
+107,CERTIFICATE OF DEPOSIT #5288,Other Current Asset,Bank,0,Cash,6,false
+108,CERTIFICATE OF DEPOSIT #5745,Bank,Bank,0,Cash,6,true
+202,ACCOUNTS PAYABLE - VRSI GRANT,Accounts Payable,AccountsPayable,6,Payables,6,false
+202.1,ACCOUNTS PAYABLE - OPERATE ACCT,Other Current Liability,OtherCurrentLiability,6,Payables,6,true
+206,DEFERRED REV SIDEWALK TRAIL,Other Current Liability,OtherCurrentLiability,6,Payables,6,true
+223,DUE TO/FROM CC OPERATING ACCT,Accounts Payable,AccountsPayable,6,Payables,6,false
+319.1,MISCELLANEOUS INCOME Income,Income,Income,16,Revenue,6,true
+330,INTERGOVERNMENTAL REV-PRWS CNTY,Income,Income,16,Revenue,6,true
+334,SEVERENCE TAX,Income,Income,16,Revenue,6,true
+334.1,HRSA GRANT,Income,Income,16,Revenue,6,true
+334.2,COLO RURAL HEALTH GRANT,Income,Income,16,Revenue,6,true
+361,INTEREST ON INVESTMENTS,Income,Income,16,Revenue,6,true
+364,INSURANCE PROCEEDS Income,Income,Income,16,Revenue,6,true
+364.1,LEASE PAYMENTS PRINCIPAL,Income,Income,16,Revenue,6,true
+367,DONATIONS,Income,Income,16,Revenue,6,true
+367.5,TRANSFER FROM TOW GENERAL,Income,Income,16,Revenue,6,true
+368,MISCELLANEOUS,Income,Income,16,Revenue,6,false
+369,VAN RENTAL,Income,Income,16,Revenue,6,true
+155,PREPAID,Expense,Expense,24,Expense,6,false
+402,BANK SERVICE CHARGES/PENALTIES,Expense,Expense,24,Expense,6,true
+3.2,ACTIVITY DIRECTOR SALARY,Bank,Bank,0,Cash,6,true
+3.3,PAYROLL TAXES - FICA & UNEMP,Bank,Bank,0,Cash,6,true
+3.4,EDUCATION/TRAVEL,Bank,Bank,0,Cash,6,true
+4.1,UTILITIES,Bank,Bank,0,Cash,6,true
+5.17,OFFICE SUPPLIES/EQUIPMENT,Bank,Bank,0,Cash,6,true
+5.2,LEGAL EXPENSE - ATTORNEY,Expense,Expense,24,Expense,6,false
+5.21,ADMINISTRATIVE EXPENSES,Bank,Bank,0,Cash,6,true
+415.53,INSURANCE - BLDG/PROP/LIAB,Expense,Expense,24,Expense,7,false
+415.54,INSURANCE - VAN,Expense,Expense,24,Expense,7,false
+417,COUNTY TREASURER FEES,Expense,Expense,24,Expense,7,false
+419.41,JANITORIAL SERVICE SALARY,Expense,Expense,24,Expense,7,false
+419.42,BUILDING MAINT/SUPPLIES,Expense,Expense,24,Expense,7,false
+441,SUMMER READING SUPPLIES/EQUIP,Expense,Expense,24,Expense,7,false
+461,Advertising and Promotion,Expense,Expense,24,Expense,7,false
+66900,Reconciliation Discrepancies,Expense,Expense,24,Expense,7,false
+141,BUILDINGS,Fixed Asset,FixedAsset,0,Cash,8,false
+142,EQUIPMENT,Fixed Asset,FixedAsset,0,Cash,8,false
+146,ACCUMULATED DEPRECIATION,Fixed Asset,FixedAsset,0,Cash,8,false
+101.5,REPAIRS ACCOUNT Other,Asset,Bank,0,Cash,8,false
+143,IMPROVEMENTS Other,Asset,Bank,0,Cash,8,false
+241,SECURITY DEPOSITS,Other Current Liability,OtherCurrentLiability,6,Payables,8,false
+211,PERM. LOAN SBW,Long Term Liability,OtherCurrentLiability,6,Payables,8,false
+212,LOAN ACCOUNT-12141,Long Term Liability,OtherCurrentLiability,6,Payables,8,false
+362,RENT RECEIPTS Income,Income,Income,16,Revenue,8,true
+363,GAIN/LOSS ON DISPOSAL OF A Income,Income,Income,16,Revenue,8,true
+400,BAD DEBT EXPENSE,Expense,Expense,24,Expense,8,false
+415.175,COUNTY TAX ASSMT,Expense,Expense,24,Expense,8,false
+415.210,ADMINISTRATIVE EXPENSE,Expense,Expense,24,Expense,8,false
+415.220,BANK SERVICE CHARGES,Expense,Expense,24,Expense,8,false
+419.420,DO NOT USE/PRIOR MAINT,Expense,Expense,24,Expense,9,false
+419.5,BLDGS & GROUNDS - UTILITIES,Expense,Expense,24,Expense,9,false
+419.6,COMMUNITY CENTER UTILITIES,Expense,Expense,24,Expense,9,false
+471.2,PERM LOAN- SBW,Expense,Expense,24,Expense,9,false
+472.2,LOAN INTEREST,Expense,Expense,24,Expense,9,false
+480,INSURANCE - PROPERTY/AUTO/LIAB,Expense,Expense,24,Expense,9,false
+482,Equipment Rental,Expense,Expense,24,Expense,9,false
+485.2,Miscellaneous Expense,Expense,Expense,24,Expense,9,false
+485.3,Postage and Delivery,Expense,Expense,24,Expense,9,false
+102,PETTY CASH,Bank,Bank,0,Cash,10,false
+103.2,KEY PUMP DEPOSIT (WG & O),Bank,Bank,0,Cash,10,false
+103.3,PO BOX KEY DEPOSIT Other,Asset,Bank,0,Cash,10,false
+1000,*Accounts Receivable,Accounts Receivable,AccountsReceivable,0,Cash,10,false
+15.4,ACCOUNTS RECEIVABLE - MISC,Bank,Bank,0,Cash,10,false
+15.41,ACCOUNTS RECEIVABLE - SIDEWALK,Bank,Bank,0,Cash,10,false
+15.5,INSURANCE - PROPERTY/BLDG/AUTO,Bank,Bank,0,Cash,10,false
+15.71,ACCOUNTS RECEIVABLE - COUNT R&B,Bank,Bank,0,Cash,10,false
+15.72,HOUSING AUTHORITY RECEIVABLE,Bank,Bank,0,Cash,10,false
+16,ALLOWANCE FOR DOUBTFUL ACCOUNT Other,Asset,Bank,0,Cash,10,false
+12100,Inventory,Asset,Bank,0,Cash,10,false
+132,CASH WITH COUNTY TREASURER,Bank,Bank,0,Cash,10,true
+50,SIDEWALK AND TRAIL PROJECT,Bank,Bank,0,Cash,10,true
+51,INVESTMENTS CEBT CD#0221375820,Bank,Bank,0,Cash,10,true
+52,TOWN OF WILEY - UTL RD RESERVE,Bank,Bank,0,Cash,10,true
+53,PREPAID,Expense,Expense,24,Expense,10,false
+155.1,PREPAID DUES & SUBSCRIPTIONS,Bank,Bank,0,Cash,10,true
+156,Wiley Hay Days,Bank,Bank,0,Cash,10,true
+160,HAROLD SMITH PARK CHECKING,Bank,Bank,0,Cash,10,true
+202.2,CC CITY OF LAMAR ELEC - PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+203,ACCRUED PAYROLL,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+205.10,DEFERRED REVENUE - FLOOD GRANT,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+205.20,DEFERRED REVENUE - RENTS,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+206.5,DEFERRED REVENUE ARP,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+2110,Direct Deposit Liabilities,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+2120,Payroll,Asset,Bank,0,Cash,10,false
+216,PAYROLL CLEARING,Other Current Liability,OtherCurrentLiability,6,Payables,10,true
+217.4,PAYROLL w/h - GARNISHMENT,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+217.5,STATE UNEMP TAX PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+217.6,FEDERAL UNEMP TAX PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+217.7,FAMLI TAX PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+217.8,SIMPLE IRA PAYABLE,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+221,DUE TO/FROM CONSERVATION TRUST,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+222.5,DUE TO FROM WSD-GENERAL,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+223.2,DUE TO/FROM BROOKSIDE,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+223.5,DUE TO/FROM CC#2 FUND,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+224,DUE TO/FROM WILEY HAY DAY,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+225,DUE TO/FROM UTILITY FUND,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+226,REVOLVING LOAN-SIDEWALK TRAIL,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+24000,Payroll Liabilities,Other Current Liability,OtherCurrentLiability,6,Payables,11,true
+10.5,RECYCLING (INCOME),Bank,Bank,0,Cash,11,true
+1.1,ACCRUED INTEREST (PARK DRY WELL,Bank,Bank,0,Cash,11,true
+1.2,SENIOR HOMESTEAD EXEMPTION,Bank,Bank,0,Cash,11,true
+318.1,OCCUPATIONAL TAX - PTI,Income,Income,16,Revenue,11,true
+318.2,FRANCHISE FEE,Income,Income,16,Revenue,11,true
+319,PENALTIES & INTEREST ON TAXES,Income,Income,16,Revenue,11,true
+321.1,LIQUOR LICENSES,Income,Income,16,Revenue,11,true
+321.7,PERMIT - FIREWORKS,Income,Income,16,Revenue,11,true
+322.5,PET CLINIC - DON'T USE,Income,Income,16,Revenue,11,true
+322.7,DOG LICENSES,Income,Income,16,Revenue,11,true
+324,WEED CONTROL,Income,Income,16,Revenue,11,true
+332.100,MINERAL LEASE,Income,Income,16,Revenue,11,true
+333,CIGARETTE TAX,Income,Income,16,Revenue,11,true
+334.31,HIGHWAY USERS TAX,Income,Income,16,Revenue,11,true
+335,COVID RELIEF FUNDS,Income,Income,16,Revenue,11,true
+336,SALES TAX REVENUE,Income,Income,16,Revenue,11,true
+337.17,COUNTY ROAD & BRIDGE,Income,Income,16,Revenue,12,true
+340,Harold Smith Park GRANT,Income,Income,16,Revenue,12,true
+341.4,COPIES/FAX REVENUE,Income,Income,16,Revenue,12,true
+350,WILEY HAY DAYS DONATIONS,Income,Income,16,Revenue,12,true
+355,GOCO GRANT-MASTER PLAN,Income,Income,16,Revenue,12,true
+362.5,WALKING TRAIL DONATIONS,Income,Income,16,Revenue,12,true
+362.6,ESGAR FOUNDAION/PARK EQUIP,Income,Income,16,Revenue,12,true
+365,DIVIDENDS,Income,Income,16,Revenue,12,true
+372.1,TRANSFER FROM OTHER FUNDS,Income,Income,16,Revenue,12,true
+372.2,TRANSFER FROM UTILITY FUND,Income,Income,16,Revenue,12,true
+372.3,BCL GROUND MAINTENANCE,Income,Income,16,Revenue,12,true
+373,PICKUP USAGE FEE,Income,Income,16,Revenue,12,true
+374,CODE ENFORCEMENT FINES,Income,Income,16,Revenue,12,true
+375,CAPITAL OUTLAY-PARK GRANT,Income,Income,16,Revenue,12,true
+412,SIDEWALK TRAIL EXPENSES,Expense,Expense,24,Expense,12,true
+412.5,Brookside Drive Development,Expense,Expense,24,Expense,12,true
+413.1,MAYOR,Expense,Expense,24,Expense,12,false
+413.2,ADMIN - CLERK SALARY,Expense,Expense,24,Expense,12,true
+413.21,ADMIN - DEPUTY CLERK SALARY,Expense,Expense,24,Expense,12,true
+413.22,ADMIN - CODE ENFORCEMENT,Expense,Expense,24,Expense,12,true
+413.3,PAYROLL TAXES - FICA,Expense,Expense,24,Expense,12,true
+3.5,TRAVEL & TRANSPORTATION,Bank,Bank,0,Cash,12,true
+3.6,PAYROLL TAXES - UNEMP INS,Bank,Bank,0,Cash,12,true
+3.7,FAMLI,Bank,Bank,0,Cash,12,true
+3.8,SIMPLE IRA-COMPANY,Bank,Bank,0,Cash,12,true
+5.11,AUDIT & BUDGET,Expense,Expense,24,Expense,12,false
+5.12,PROFESSIONAL SERVICES,Bank,Bank,0,Cash,12,true
+5.175,COUNTY TAX ASSESSMENT,Bank,Bank,0,Cash,12,true
+5.18,POSTAGE,Bank,Bank,0,Cash,12,true
+5.19,", OFFICE EQUIPMENT",Bank,Bank,0,Cash,12,true
+5.51,INSURANCE - PUB LIAB/LIAB/UMBRL,Bank,Bank,0,Cash,12,true
+415.52,INSURANCE - WORKER'S COMP,Expense,Expense,24,Expense,13,false
+415.75,PET CLINIC,Expense,Expense,24,Expense,13,false
+415.76,RECYCLING (EXPENSE),Expense,Expense,24,Expense,13,false
+416.2,PREPAID EXPENSE,Expense,Expense,24,Expense,13,false
+419.43,GARAGE IMPROVEMENTS,Expense,Expense,24,Expense,13,false
+419.44,", BUILDING SUPPLIES/MAINTENANCE",Expense,Expense,24,Expense,13,false
+419.7,COMMUNITY CENTER SALARY,Expense,Expense,24,Expense,13,false
+431,STREETS - MAINT/SUPPLIES,Expense,Expense,24,Expense,13,false
+431.1,STREETS - SNOW & ICE REMOVAL,Expense,Expense,24,Expense,13,false
+431.4,STREETS - SALARY,Expense,Expense,24,Expense,13,false
+431.41,STREET SALARIES - PART TIME,Expense,Expense,24,Expense,13,false
+431.5,STREETS 0 GRAVEL,Expense,Expense,24,Expense,13,false
+431.6,STREETS -SEAL COATING/SURFACING,Expense,Expense,24,Expense,13,false
+431.61,STREET SIGNS,Expense,Expense,24,Expense,13,false
+431.7,STREETS/REPLACING,Expense,Expense,24,Expense,13,false
+432.2,STREETS EQUIP - REPAIR/MAINT,Expense,Expense,24,Expense,13,false
+432.3,STREET LIGHTING,Expense,Expense,24,Expense,13,false
+432.4,STREET EQUIP - FUEL,Expense,Expense,24,Expense,13,false
+432.51,STREETS - EQUIPMENT,Expense,Expense,24,Expense,13,false
+433,SHOP SUPPLIES/EQUIPMENT,Expense,Expense,24,Expense,13,false
+433.1,CC - CAP OUTLAY - LAMAR ELEC,Expense,Expense,24,Expense,13,false
+433.2,CAPITOL PROJECT,Expense,Expense,24,Expense,13,false
+433.3,PUBLIC SAFETY,Expense,Expense,24,Expense,13,false
+451.1,PARK - SALARY,Expense,Expense,24,Expense,13,false
+451.2,PARK - PART TIME SALARY,Expense,Expense,24,Expense,13,false
+452,PARK - SUPPLIES/REPAIRS,Expense,Expense,24,Expense,13,false
+452.1,PARK - UTILITIES,Expense,Expense,24,Expense,13,false
+453,TRASH SUPPLIES/REPAIRS,Expense,Expense,24,Expense,13,false
+454,TRASH DISPOSAL-TRASH SERVICE,Expense,Expense,24,Expense,13,false
+455,ELECTIONS - SUPPLIES,Expense,Expense,24,Expense,13,false
+456,MISQUITO SPRAYING,Expense,Expense,24,Expense,13,false
+459,FIRE DISTRICT PAYMENT,Expense,Expense,24,Expense,13,false
+460.1,ADMIN-CLERK SALARIES,Expense,Expense,24,Expense,13,false
+462,INT/PENALTIES W/H TAXES,Expense,Expense,24,Expense,14,false
+465,CHRISTMAS LIGHTING CONTEST,Expense,Expense,24,Expense,14,false
+481,FEMA,Expense,Expense,24,Expense,14,false
+485.4,MEALS,Expense,Expense,24,Expense,14,false
+495,CAPITAL OUTLAY,Expense,Expense,24,Expense,14,false
+49900,Uncategorized Income,Income,Income,16,Revenue,14,false
+18,GRANT RECEIVABLE Other,Asset,Bank,0,Cash,15,false
+21,ACCOUNTS RECEIVABLE - WSD,Bank,Bank,0,Cash,15,true
+2100,Inventory,Asset,Bank,0,Cash,15,false
+43.5,PREPAID EXPENSES,Bank,Bank,0,Cash,15,true
+51.1,INVESTMENTS - C D,Bank,Bank,0,Cash,15,true
+51.2,INVESTMENTS - CD #1358,Bank,Bank,0,Cash,15,true
+61,FIXED ASSETS,Bank,Bank,0,Cash,15,true
+61.5,REPLACEMENT WELL,Bank,Bank,0,Cash,15,true
+61.6,WALKER WELL WATER PROJECT,Bank,Bank,0,Cash,15,true
+62.0,TRASH TRUCK,Bank,Bank,0,Cash,15,true
+69,ACCUMULATED DEPRECIATION,Bank,Bank,0,Cash,15,true
+0.1,PROFESSIONAL SERVICES,Bank,Bank,0,Cash,15,true
+1.3,WALKER WELL LOAN (USDA RD),Bank,Bank,0,Cash,15,true
+1.4,RVS SOFTWARE - PRINTER,Bank,Bank,0,Cash,15,true
+1.5,RVS SOFTWARE - SOFTWARE PROGRAM,Bank,Bank,0,Cash,15,true
+1.6,"TRASH TRUCK, AND DUMPSTRS",Bank,Bank,0,Cash,15,true
+10,Direct Deposit Liabilities,Bank,Bank,0,Cash,15,true
+7.1,FEDERAL w/h PAYABLE,Bank,Bank,0,Cash,15,true
+7.2,STATE w/h PAYABLE,Bank,Bank,0,Cash,15,true
+7.3,SOC SEC w/h PAYABLE,Bank,Bank,0,Cash,15,true
+264,CONTRIBUTED CAPITAL,Other Current Liability,OtherCurrentLiability,6,Payables,15,true
+270,DUE TO/FROM GENERAL FUND,Other Current Liability,OtherCurrentLiability,6,Payables,15,true
+270.1,DUE TO/FROM CONSERVATION TRUST,Other Current Liability,OtherCurrentLiability,6,Payables,16,true
+270.2,DUE TO/FROM BROOKSIDE,Other Current Liability,OtherCurrentLiability,6,Payables,16,true
+271.0,FUND BALANCE,Other Current Liability,OtherCurrentLiability,6,Payables,16,true
+272,RETAINED EARNINGS,Other Current Liability,OtherCurrentLiability,6,Payables,16,true
+273,DEFERRED GRANT REVENUE,Other Current Liability,OtherCurrentLiability,6,Payables,16,true
+319.2,DOLA GRANT - WATER PROJECT,Income,Income,16,Revenue,16,true
+319.3,USDA RD GRANT - WATER PROJECT,Income,Income,16,Revenue,16,true
+319.4,WATER TANK REPLACEMENT PROJECT,Income,Income,16,Revenue,16,true
+319.5,USDA BACKHOE GRANT,Income,Income,16,Revenue,16,true
+348,TRASH SALES,Income,Income,16,Revenue,16,true
+366,BCL MANAGEMENT FEE,Income,Income,16,Revenue,16,true
+392,GAIN/LOSS DISPOSAL OF ASSETS,Income,Income,16,Revenue,16,true
+393,SALE OF SUPPLIES,Income,Income,16,Revenue,16,true
+401.3,DEPRECIATION EXPENSE-TRASH TRUC,Expense,Expense,24,Expense,16,true
+9.4,FUEL,Expense,Expense,24,Expense,16,false
+442,BUILDING MAINTENANCE,Expense,Expense,24,Expense,17,false
+455.10,SALARIES-TRASH,Expense,Expense,24,Expense,17,false
+455.11,LEASE PAYMENT-TRASH TRUCK,Expense,Expense,24,Expense,17,false
+460,SUPT SALARIES,Expense,Expense,24,Expense,17,false
+460.12,ADMIN-WATER PT SALARIES,Expense,Expense,24,Expense,17,false
+460.2,ADMIN - DEPUTY CLERK SALARIES,Expense,Expense,24,Expense,17,false
+467,OTHER ADMINISTRATIVE EXPENSES,Expense,Expense,24,Expense,17,false
+468,PUBLICATIONS/ADVERTISING,Expense,Expense,24,Expense,17,false
+470,OUTSIDE SERVICE - LAB FEES,Expense,Expense,24,Expense,17,false
+480.1,INSURANCE - WORKMAN'S COMP,Expense,Expense,24,Expense,17,false
+480.2,INSURANCE - TRASH TRUCK AND DUM,Expense,Expense,24,Expense,17,false
+50000,Cost of Goods Sold,Cost of Goods Sold,Expense,24,Expense,17,false

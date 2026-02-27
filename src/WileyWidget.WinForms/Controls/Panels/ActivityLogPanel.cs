@@ -11,6 +11,7 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Factories;
 using Syncfusion.WinForms.DataGrid;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using System;
@@ -48,6 +49,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             get => (ActivityLogViewModel?)base.ViewModel;
             set => base.ViewModel = value;
         }
+        private readonly SyncfusionControlFactory? _factory;
         private SfDataGrid? _activityGrid;
         private PanelHeader? _panelHeader;
         private System.Windows.Forms.Timer? _autoRefreshTimer;
@@ -59,17 +61,35 @@ namespace WileyWidget.WinForms.Controls.Panels
         private CancellationTokenSource? _autoRefreshCancellationTokenSource;
         private readonly SemaphoreSlim _refreshSemaphore = new SemaphoreSlim(1, 1);
         private SplitContainerAdv? _gridSplit;
+        private TableLayoutPanel? _content;
+        private LoadingOverlay? _loader;
         private TableLayoutPanel? _mainTable;
+        private ToolTip? _toolTip;
         private bool _gridInitialized = false;
 
         /// <summary>
         /// Initializes a new instance with required DI dependencies.
         /// </summary>
+        public ActivityLogPanel(ActivityLogViewModel vm, SyncfusionControlFactory factory)
+            : base(vm, ResolveLogger())
+        {
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+
+            AutoScaleMode = AutoScaleMode.Dpi;
+            Padding = new Padding(12);
+
+            SafeSuspendAndLayout(CreateControls);
+            ApplyTheme();
+            InitializeAutoRefresh();
+        }
+
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public ActivityLogPanel(
             IServiceScopeFactory scopeFactory,
             ILogger<ScopedPanelBase<ActivityLogViewModel>> logger)
             : base(scopeFactory, logger)
         {
+            _factory = ControlFactory;
             // Set AutoScaleMode for proper DPI scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -77,12 +97,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.Padding = new Padding(12);
 
             // Create controls programmatically instead of using InitializeComponent
-            CreateControls();
+            SafeSuspendAndLayout(CreateControls);
             ApplyTheme();
             // SetupUI() moved to OnShown after _activityGrid is created
             InitializeAutoRefresh();
             // LoadInitialData() moved to OnViewModelResolved to ensure ViewModel is available
         }
+
+        private static ILogger ResolveLogger()
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ActivityLogPanel>>(Program.Services)
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
+        }
+
+        private SyncfusionControlFactory Factory => _factory ?? ControlFactory;
 
         protected override void OnViewModelResolved(object? viewModel)
         {
@@ -121,7 +149,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(400, 250); // header(52) + buttons(36) + grid minimum(~100) + margin
+            MinimumSize = new Size(1024, 720);
 
             // Panel Header - added directly to Controls with Dock = Top
             _panelHeader = new PanelHeader
@@ -139,6 +167,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader.CloseClicked += (s, e) => ClosePanel();
             _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Activity Log Help: This panel shows recent navigation and system activities.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
             _panelHeader.PinToggled += (s, e) => { Logger?.LogDebug("Pin toggled on ActivityLogPanel"); /* Pin logic */ };
+            _toolTip = new ToolTip();
+            _toolTip.SetToolTip(_panelHeader, "Refresh, pin, or close the activity log.");
 
             // Main TableLayoutPanel root (now starts with content, header is above)
             var mainTable = new TableLayoutPanel
@@ -148,6 +178,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 RowCount = 2,
                 ColumnCount = 1
             };
+            _content = mainTable;
 
             // Row 0: Button controls
             mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
@@ -163,44 +194,44 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
 
             // Control buttons - add right-docked controls first
-            _btnExport = new SfButton
+            _btnExport = Factory.CreateSfButton("Export", button =>
             {
-                Text = "Export",
-                AutoSize = true,
-                Dock = DockStyle.Right,
-                Padding = new Padding(8)
-            };
+                button.AutoSize = true;
+                button.Dock = DockStyle.Right;
+                button.Padding = new Padding(8);
+            });
             _btnExport.Click += OnExportClicked;
             _btnExport.AccessibleName = "Export Activity Log";
             _btnExport.AccessibleDescription = "Export activity log entries to CSV file";
             _btnExport.TabIndex = 2;
+            _toolTip.SetToolTip(_btnExport, "Export activity entries to CSV.");
             buttonPanel.Controls.Add(_btnExport);
 
-            _btnClearLog = new SfButton
+            _btnClearLog = Factory.CreateSfButton("Clear", button =>
             {
-                Text = "Clear",
-                AutoSize = true,
-                Dock = DockStyle.Right,
-                Padding = new Padding(8)
-            };
+                button.AutoSize = true;
+                button.Dock = DockStyle.Right;
+                button.Padding = new Padding(8);
+            });
             _btnClearLog.Click += OnClearLogClicked;
             _btnClearLog.AccessibleName = "Clear Activity Log";
             _btnClearLog.AccessibleDescription = "Clears all activity log entries";
             _btnClearLog.TabIndex = 3;
+            _toolTip.SetToolTip(_btnClearLog, "Clear all entries from the activity log.");
             buttonPanel.Controls.Add(_btnClearLog);
 
-            _chkAutoRefresh = new CheckBoxAdv
+            _chkAutoRefresh = Factory.CreateCheckBoxAdv("Auto-refresh", checkBox =>
             {
-                Text = "Auto-refresh",
-                AutoSize = true,
-                Checked = true,
-                Dock = DockStyle.Right,
-                Padding = new Padding(8)
-            };
+                checkBox.AutoSize = true;
+                checkBox.Checked = true;
+                checkBox.Dock = DockStyle.Right;
+                checkBox.Padding = new Padding(8);
+            });
             _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
             _chkAutoRefresh.AccessibleName = "Auto Refresh";
             _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
             _chkAutoRefresh.TabIndex = 4;
+            _toolTip.SetToolTip(_chkAutoRefresh, "Automatically refresh activity entries.");
             buttonPanel.Controls.Add(_chkAutoRefresh);
 
             mainTable.Controls.Add(buttonPanel, 0, 0);
@@ -216,6 +247,15 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             Controls.Add(mainTable);
             _mainTable = mainTable;
+
+            _loader = Factory.CreateLoadingOverlay(overlay =>
+            {
+                overlay.Dock = DockStyle.Fill;
+                overlay.Visible = false;
+                overlay.Message = "Loading activity log...";
+            });
+            Controls.Add(_loader);
+            _loader.BringToFront();
 
             this.ResumeLayout(false);
         }
@@ -249,24 +289,24 @@ namespace WileyWidget.WinForms.Controls.Panels
                 }
 
                 // Create SplitContainer AFTER the parent is fully sized
-                _gridSplit = new SplitContainerAdv
+                _gridSplit = Factory.CreateSplitContainerAdv(splitter =>
                 {
-                    Name = "GridSplit",
-                    Dock = DockStyle.Fill,
-                    Orientation = Orientation.Horizontal,
-                    SplitterDistance = 0 // No header in split, just the grid
-                };
+                    splitter.Name = "GridSplit";
+                    splitter.Dock = DockStyle.Fill;
+                    splitter.Orientation = Orientation.Horizontal;
+                    splitter.SplitterDistance = 0;
+                });
 
                 // Data grid in the split container
-                _activityGrid = new SfDataGrid
+                _activityGrid = Factory.CreateSfDataGrid(grid =>
                 {
-                    Name = "ActivityGrid",
-                    Dock = DockStyle.Fill,
-                    AllowResizingColumns = true,
-                    AllowSorting = true,
-                    AllowFiltering = true,
-                    ShowBusyIndicator = false
-                };
+                    grid.Name = "ActivityGrid";
+                    grid.Dock = DockStyle.Fill;
+                    grid.AllowResizingColumns = true;
+                    grid.AllowSorting = true;
+                    grid.AllowFiltering = true;
+                    grid.ShowBusyIndicator = false;
+                });
                 _activityGrid.AccessibleName = "Activity Log Grid";
                 _activityGrid.AccessibleDescription = "Grid listing recent activity entries";
                 _activityGrid.TabIndex = 1;
@@ -320,7 +360,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
-        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// Called when panel is first shown. Configure splitter distance.
+        /// Note: base.OnShown timer handles ForceFullLayout automatically.
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
@@ -328,9 +369,8 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             BeginInvoke(() =>
             {
-                ForceFullLayout();
                 if (_gridSplit != null) _gridSplit.SplitterDistance = 280;
-                Logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
+                Logger?.LogDebug("[{Panel}] Splitter configured after layout", GetType().Name);
             });
         }
 
@@ -424,23 +464,49 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void OnClearLogClicked(object? sender, EventArgs e) => ClearActivityLog();
 
-        private void OnExportClicked(object? sender, EventArgs e)
+        private async void OnExportClicked(object? sender, EventArgs e)
         {
             try
             {
-                using (SaveFileDialog dialog = new SaveFileDialog
+                if (ViewModel?.ActivityEntries == null || ViewModel.ActivityEntries.Count == 0)
                 {
-                    Filter = "CSV Files|*.csv|All Files|*.*",
-                    FileName = $"ActivityLog_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.csv",
-                    Title = "Export Activity Log"
-                })
-                {
-                    if (dialog.ShowDialog() == DialogResult.OK)
-                    {
-                        ExportToCSV(dialog.FileName);
-                        MessageBox.Show($"Activity log exported to {Path.GetFileName(dialog.FileName)}.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
+                    MessageBox.Show("No activity entries to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
+
+                var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                    owner: this,
+                    operationKey: $"{nameof(ActivityLogPanel)}.Csv",
+                    dialogTitle: "Export Activity Log",
+                    filter: "CSV Files (*.csv)|*.csv|All Files (*.*)|*.*",
+                    defaultExtension: "csv",
+                    defaultFileName: $"ActivityLog_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.csv",
+                    exportAction: (filePath, ct) =>
+                    {
+                        ExportToCSV(filePath);
+                        return Task.CompletedTask;
+                    },
+                    logger: Logger,
+                    cancellationToken: CancellationToken.None);
+
+                if (result.IsSkipped)
+                {
+                    MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (result.IsCancelled)
+                {
+                    return;
+                }
+
+                if (!result.IsSuccess)
+                {
+                    MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                MessageBox.Show($"Activity log exported to {Path.GetFileName(result.FilePath)}.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -611,6 +677,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 var ct_op = RegisterOperation();
                 IsBusy = true;
+                if (_loader != null)
+                {
+                    _loader.Visible = true;
+                }
                 await ViewModel.LoadActivityAsync();
                 SetHasUnsavedChanges(false);
             }
@@ -620,8 +690,23 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             finally
             {
+                if (_loader != null)
+                {
+                    _loader.Visible = false;
+                }
                 IsBusy = false;
             }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
+            {
+                MinimumSize = new Size(1024, 720);
+            }
+
+            PerformLayout();
         }
 
         protected override void Dispose(bool disposing)
@@ -675,6 +760,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                     _bindingSource = null;
                 }
 
+                if (_loader != null)
+                {
+                    try { _loader.Dispose(); } catch { }
+                    _loader = null;
+                }
+
                 if (_activityGrid != null)
                 {
                     try { _activityGrid.DataSource = null; } catch { }
@@ -684,6 +775,8 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 try { _panelHeader?.Dispose(); } catch { }
                 _panelHeader = null;
+                try { _toolTip?.Dispose(); } catch { }
+                _toolTip = null;
 
                 // Dispose semaphore
                 try { _refreshSemaphore?.Dispose(); } catch { }

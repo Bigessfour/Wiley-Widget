@@ -37,6 +37,7 @@ public partial class OverviewTabControl : UserControl
     private ChartControl? _varianceChart;
     private SfDataGrid? _metricsGrid;
     private LoadingOverlay? _loadingOverlay;
+    private ToolTip? _toolTip;
 
     public bool IsLoaded { get; private set; }
 
@@ -59,6 +60,11 @@ public partial class OverviewTabControl : UserControl
     private void InitializeControls()
     {
         this.Dock = DockStyle.Fill;
+        this.AutoScaleMode = AutoScaleMode.Dpi;
+        this.AutoScroll = true;
+        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        this.Padding = new Padding(8);
+        _toolTip = new ToolTip();
 
         var mainSplit = new SplitContainerAdv
         {
@@ -113,6 +119,7 @@ public partial class OverviewTabControl : UserControl
             AccessibleName = "Budget variance chart",
             AccessibleDescription = "Displays budget vs actual variance by department"
         };
+        _toolTip?.SetToolTip(_varianceChart, "Variance chart by department.");
         split.Panel1.Controls.Add(_varianceChart);
 
         InitializeMetricsGrid(split.Panel2);
@@ -128,8 +135,11 @@ public partial class OverviewTabControl : UserControl
             AllowEditing = false,
             AllowGrouping = true,
             AutoGenerateColumns = false,
-            ThemeName = themeName
+            ThemeName = themeName,
+            AccessibleName = "Overview metrics grid",
+            AccessibleDescription = "Department-level budget metrics for the overview tab"
         }.PreventStringRelationalFilters(null, "DepartmentName");
+        _toolTip?.SetToolTip(_metricsGrid, "Detailed overview metrics.");
 
         GridColumn[] columns =
         [
@@ -282,6 +292,7 @@ public partial class OverviewTabControl : UserControl
         {
             try { _viewModel!.PropertyChanged -= ViewModel_PropertyChanged; }
             catch { /* suppress */ }
+            _toolTip?.Dispose();
         }
         base.Dispose(disposing);
     }

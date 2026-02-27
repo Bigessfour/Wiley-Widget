@@ -84,16 +84,44 @@ public class BudgetEntry : IAuditable
     [NotMapped]
     public decimal PercentOfBudgetFraction => BudgetedAmount > 0 ? Math.Round(ActualAmount / BudgetedAmount, 4) : 0m;
 
+    /// <summary>Gets the remaining budget amount (Proposed minus Spent). What the Mayor wants to see.</summary>
+    [NotMapped]
+    public decimal RemainingAmount => BudgetedAmount - ActualAmount;
+
+    /// <summary>Gets percent remaining as a 0-1 fraction for P2 grid columns. Green = crushing it. Red = call the council.</summary>
+    [NotMapped]
+    public decimal PercentRemainingFraction => BudgetedAmount > 0 ? Math.Round((BudgetedAmount - ActualAmount) / BudgetedAmount, 4) : 0m;
+
     // Entity-specific computed helpers for UI presentation (Town of Wiley vs Wiley Sanitation District)
     [NotMapped]
     public string EntityName => Fund?.Name ?? MunicipalAccount?.Name ?? FundType.ToString();
 
     // Account and Department name helpers for datagrid display
     [NotMapped]
-    public string AccountName => MunicipalAccount?.Name ?? string.Empty;
+    public string AccountName
+    {
+        // Show MunicipalAccount name when linked; fall back to editable Description otherwise.
+        get => !string.IsNullOrWhiteSpace(MunicipalAccount?.Name) ? MunicipalAccount!.Name : Description;
+        // Writes go to Description so the grid column is fully editable.
+        set => Description = value;
+    }
+
+    [NotMapped]
+    public string AccountTypeName => MunicipalAccount?.Type.ToString() ?? "Unknown";
 
     [NotMapped]
     public string DepartmentName => Department?.Name ?? string.Empty;
+
+    [NotMapped]
+    public string FundTypeDescription => FundType.ToString();
+
+    [NotMapped]
+    public decimal VarianceAmount => Variance;
+
+    [NotMapped]
+    public decimal VariancePercentage => BudgetedAmount != 0m
+        ? Math.Round(Variance / BudgetedAmount, 4)
+        : 0m;
 
     [NotMapped]
     public decimal TownOfWileyBudgetedAmount => IsTownOfWiley() ? BudgetedAmount : 0m;

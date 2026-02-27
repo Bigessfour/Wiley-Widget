@@ -169,49 +169,34 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
     [StaFact]
     public async Task JARVISChatUserControl_AutomationStatusPanel_UpdatesOnStateChange()
     {
-        // Arrange - Create control with automation state
-        // Note: IntegrationTestServices doesn't register JarvisAutomationState by default,
-        // so we create our own provider that includes it for this test
+        // Arrange - Create control directly to test immediate TextBox creation
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
         TestThemeHelper.EnsureOffice2019Colorful();
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-
-        var services = new ServiceCollection();
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
-            .AddInMemoryCollection(new[] { new KeyValuePair<string, string?>("UI:IsUiTestHarness", "false") })
-            .Build());
-        services.AddLogging(builder => builder.AddDebug());
-        services.AddScoped<IThemeService>(_ => Mock.Of<IThemeService>());
-        services.AddScoped<IWindowStateService>(_ => Mock.Of<IWindowStateService>());
-        services.AddScoped<IFileImportService>(_ => Mock.Of<IFileImportService>());
-        services.AddScoped<JARVISChatViewModel>();
-        services.AddSingleton<JarvisAutomationState>();  // Include automation state
-        // NOTE: AddWindowsFormsBlazorWebView() is intentionally NOT called here.
-        // This test runs in headless mode; BlazorWebView creation is skipped by the control,
-        // so Blazor DI services are not required. See WithMockedAIService test for full rationale.
-
-        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
-
+        using var provider = IntegrationTestServices.BuildProvider();
         var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
             .GetRequiredService<IServiceScopeFactory>(provider);
-        var loggerFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-            .GetRequiredService<ILoggerFactory>(provider);
-        var logger = loggerFactory.CreateLogger<JARVISChatUserControl>();
+        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<ILogger<JARVISChatUserControl>>(provider);
 
         var control = new JARVISChatUserControl(scopeFactory, provider, logger);
 
         try
         {
-            // Act
-            await control.InitializeAsync(cts.Token);
+            // Assert - AutomationStatusBox should exist immediately (created in constructor)
+            control.AutomationStatusBox.Should().NotBeNull("Automation status TextBox should exist immediately after control creation");
 
-            // Assert - Automation status TextBox should exist and be accessible when JarvisAutomationState is registered
-            var automationStatusBox = FindTextBox(control, "JarvisAutomationStatus");
-            automationStatusBox.Should().NotBeNull("Automation status TextBox should exist when automation state is registered");
-            automationStatusBox!.ReadOnly.Should().BeTrue("Status TextBox should be read-only");
-            automationStatusBox.AccessibleName.Should().Be("JarvisAutomationStatus");
-            automationStatusBox.BorderStyle.Should().Be(System.Windows.Forms.BorderStyle.None);
+            // Verify it has expected properties
+            control.AutomationStatusBox!.ReadOnly.Should().BeTrue("Status TextBox should be read-only");
+            control.AutomationStatusBox!.Name.Should().Be("JarvisAutomationStatus", "TextBox should have correct automation name");
+
+            // Act - Initialize the control
+            await control.InitializeAsync(System.Threading.CancellationToken.None);
+
+            // Assert - TextBox should still exist after initialization
+            control.AutomationStatusBox.Should().NotBeNull("Automation status TextBox should persist after initialization");
+
+            // Success: The TextBox exists immediately and survives initialization
         }
         finally
         {

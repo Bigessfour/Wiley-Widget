@@ -1,24 +1,10 @@
 #nullable enable
 
-using System;
-using System.Drawing;
 using System.Windows.Forms;
-using Syncfusion.Windows.Forms;
-using Syncfusion.WinForms.DataGrid.Events;
-using Syncfusion.WinForms.Controls;
-using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Controls.Supporting;
-using Syncfusion.Windows.Forms.Gauge;
-using Syncfusion.WinForms.ListView;
-using Syncfusion.WinForms.Input;
-using System.ComponentModel;
-using WileyWidget.WinForms.ViewModels;
-using WileyWidget.WinForms.Controls.Base;
-using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.WinForms.DataGrid;
 using Syncfusion.Windows.Forms.Tools;
+using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Helpers;
-using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -45,7 +31,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Row 1: Header + toolbar
-            _panelHeader ??= new PanelHeader { Dock = DockStyle.Fill, Name = "AuditPanelHeader" };
+            _header ??= new PanelHeader { Dock = DockStyle.Fill, Name = "AuditPanelHeader" };
 
             // Toolbar container on the right side
             var toolbar = new FlowLayoutPanel
@@ -81,7 +67,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Header row: header on left, toolbar on right inside a panel
             var headerHost = new Panel { Dock = DockStyle.Fill, Margin = new Padding(0) };
-            headerHost.Controls.Add(_panelHeader);
+            headerHost.Controls.Add(_header);
             headerHost.Controls.Add(toolbar);
 
             root.Controls.Add(headerHost, 0, 0);
@@ -137,18 +123,18 @@ namespace WileyWidget.WinForms.Controls.Panels
             root.Controls.Add(_mainSplit, 0, 2);
 
             // Overlays (floating) - created but hidden
-            _loadingOverlay ??= new LoadingOverlay { Dock = DockStyle.Fill, Visible = false, Name = "AuditLoadingOverlay" };
+            _loader ??= new LoadingOverlay { Dock = DockStyle.Fill, Visible = false, Name = "AuditLoadingOverlay" };
             _noDataOverlay ??= new NoDataOverlay { Dock = DockStyle.Fill, Visible = false, Name = "AuditNoDataOverlay" };
             _chartLoadingOverlay ??= new LoadingOverlay { Dock = DockStyle.Fill, Visible = false, Name = "ChartLoadingOverlay" };
 
             // Add root and overlays to the control
             Controls.Add(root);
-            Controls.Add(_loadingOverlay);
+            Controls.Add(_loader);
             Controls.Add(_noDataOverlay);
             Controls.Add(_chartLoadingOverlay);
 
             // Bring overlays to front
-            _loadingOverlay.BringToFront();
+            _loader.BringToFront();
             _noDataOverlay.BringToFront();
             _chartLoadingOverlay.BringToFront();
 

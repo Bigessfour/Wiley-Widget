@@ -8,7 +8,7 @@ using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
-using FlaUI.UIA3;
+using FlaUI.UIA2;
 using Syncfusion.Windows.Forms.Tools;
 using Xunit;
 using Xunit.Abstractions;
@@ -28,11 +28,19 @@ public class WileyWidgetIntegrationCollection : ICollectionFixture<WileyWidgetIn
 /// <summary>
 /// Shared fixture for integration tests - manages app lifecycle.
 /// </summary>
-public class WileyWidgetIntegrationFixture : IDisposable
+public sealed class WileyWidgetIntegrationFixture : IDisposable
 {
+    private bool _disposed;
+
     public void Dispose()
     {
-        // Cleanup if needed
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        GC.SuppressFinalize(this);
     }
 }
 
@@ -54,6 +62,7 @@ public abstract class BasePanelIntegrationTest<TPanel> : IAsyncLifetime, IDispos
 
     private Process? _process;
     private readonly string _artifactsRoot;
+    private bool _disposed;
 
     protected BasePanelIntegrationTest(ITestOutputHelper output, WileyWidgetIntegrationFixture fixture)
     {
@@ -98,25 +107,136 @@ public abstract class BasePanelIntegrationTest<TPanel> : IAsyncLifetime, IDispos
         if (_process.HasExited)
         {
             _output.WriteLine($"Process exited during delay with code {_process.ExitCode}");
+
+            if (_process.ExitCode == 0 && await TryAttachToExistingProcessAsync(exePath, _process.Id))
+            {
+                _output.WriteLine($"🔁 Attached to existing WileyWidget process after startup handoff — MainWindow Title: {_mainWindow?.Title ?? "null"}");
+                return;
+            }
+
             throw new InvalidOperationException($"Process exited during startup delay with code {_process.ExitCode}");
         }
 
-        _automation = new UIA3Automation();
+        _automation = new UIA2Automation();
         _app = FlaUI.Core.Application.Attach(_process.Id);
         _mainWindow = _app.GetMainWindow(_automation);
 
         _output.WriteLine($"🚀 App launched — MainWindow Title: {_mainWindow?.Title ?? "null"}");
     }
 
+    private async Task<bool> TryAttachToExistingProcessAsync(string exePath, int exitedProcessId)
+    {
+        var processName = Path.GetFileNameWithoutExtension(exePath);
+        var timeoutAt = DateTime.UtcNow.AddSeconds(10);
+
+        while (DateTime.UtcNow < timeoutAt)
+        {
+            var candidates = Process.GetProcessesByName(processName);
+
+            foreach (var candidate in candidates)
+            {
+                var keepCandidate = false;
+
+                try
+                {
+                    if (candidate.Id == exitedProcessId || candidate.HasExited)
+                    {
+                        continue;
+                    }
+
+                    var automation = new UIA2Automation();
+                    var app = FlaUI.Core.Application.Attach(candidate.Id);
+                    var mainWindow = app.GetMainWindow(automation);
+
+                    if (mainWindow is null)
+                    {
+                        app.Dispose();
+                        automation.Dispose();
+                        continue;
+                    }
+
+                    _app?.Dispose();
+                    _automation?.Dispose();
+
+                    _app = app;
+                    _automation = automation;
+                    _mainWindow = mainWindow;
+
+                    _process?.Dispose();
+                    _process = candidate;
+                    keepCandidate = true;
+
+                    return true;
+                }
+                catch
+                {
+                    // ignore transient attach failures while UI tree stabilizes
+                }
+                finally
+                {
+                    if (!keepCandidate)
+                    {
+                        candidate.Dispose();
+                    }
+                }
+            }
+
+            await Task.Delay(500);
+        }
+
+        return false;
+    }
+
     public Task DisposeAsync()
     {
-        _app?.Dispose();
-        _automation?.Dispose();
-        _process?.Kill(true);
+        Dispose(true);
         return Task.CompletedTask;
     }
 
-    public void Dispose() => DisposeAsync().GetAwaiter().GetResult();
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+            _app?.Dispose();
+            _app = null;
+
+            _automation?.Dispose();
+            _automation = null;
+
+            if (_process is not null)
+            {
+                try
+                {
+                    if (!_process.HasExited)
+                    {
+                        _process.Kill(true);
+                    }
+                }
+                catch
+                {
+                    // best-effort cleanup in tests
+                }
+                finally
+                {
+                    _process.Dispose();
+                    _process = null;
+                }
+            }
+        }
+
+        _disposed = true;
+    }
 
     // ====================== NAVIGATION HELPERS ======================
 

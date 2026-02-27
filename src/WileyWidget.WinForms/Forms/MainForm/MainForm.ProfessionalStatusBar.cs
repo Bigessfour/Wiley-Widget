@@ -23,9 +23,6 @@ public partial class MainForm
     private System.Windows.Forms.Timer? _memoryUpdateTimer;
     private System.Windows.Forms.Timer? _clockUpdateTimer;
     private ToolTip? _statusBarToolTip;
-#pragma warning disable CS0169 // Field is never used
-    private Button? _cancelOperationButton;
-#pragma warning restore CS0169
 
     /// <summary>
     /// Initializes professional status bar with system information panels.
@@ -91,12 +88,15 @@ public partial class MainForm
     /// </summary>
     private void CreateConnectionPanel()
     {
+        // ✅ Semantic status color exception: Connected=Green, Disconnected=Red.
+        // See UpdateConnectionStatus() for the runtime toggle. Both colors are standard .NET
+        // Color values used as connection-state indicators, not theme overrides.
         _connectionPanel = new StatusBarAdvPanel
         {
             Text = "● Connected",
             Width = 100,
             BorderStyle = BorderStyle.Fixed3D,
-            ForeColor = Color.Green
+            ForeColor = Color.Green // semantic: connected/success state — allowed exception
         };
 
         _connectionPanel.Click += OnConnectionPanelClick;
@@ -184,7 +184,9 @@ public partial class MainForm
 
             _memoryPanel.Text = $"Memory: {memoryMB} MB";
 
-            // Change color based on memory usage
+            // Semantic threshold colors (allowed exception — warning/error indicators).
+            // In the normal state ResetForeColor() removes any prior explicit assignment
+            // so SfSkinManager theme cascade governs the text color (Req 1 compliance).
             if (memoryMB > 1000) // Over 1 GB
             {
                 _memoryPanel.ForeColor = Color.Red;
@@ -195,7 +197,7 @@ public partial class MainForm
             }
             else
             {
-                _memoryPanel.ForeColor = _statusBar?.ForeColor ?? SystemColors.ControlText;
+                _memoryPanel.ResetForeColor(); // Let SfSkinManager theme cascade govern color
             }
         }
         catch (Exception ex)
@@ -359,12 +361,14 @@ Click to refresh connection...";
             userMenu.Items.Add("Profile Settings", null, (s, args) =>
             {
                 _logger?.LogDebug("Profile settings clicked");
-                MessageBoxAdv.Show(this, "Profile settings not yet implemented", "Info",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ShowPanel<Controls.Panels.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                ApplyStatus("Opened profile settings.");
             });
             userMenu.Items.Add("Change Password", null, (s, args) =>
             {
                 _logger?.LogDebug("Change password clicked");
+                ShowPanel<Controls.Panels.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                ApplyStatus("Open Settings to manage security options.");
             });
             userMenu.Items.Add(new ToolStripSeparator());
             userMenu.Items.Add("Sign Out", null, (s, args) =>

@@ -30,8 +30,8 @@ namespace WileyWidget.WinForms.Services
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
 
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+            cancellationToken.ThrowIfCancellationRequested();
+            var normalizedPath = EnsureOutputPath(filePath);
 
             var view = grid.View;
             if (view == null)
@@ -39,6 +39,8 @@ namespace WileyWidget.WinForms.Services
 
             return Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 using var excelEngine = new ExcelEngine();
                 var workbook = excelEngine.Excel.Workbooks.Create(1);
                 var worksheet = workbook.Worksheets[0];
@@ -53,7 +55,8 @@ namespace WileyWidget.WinForms.Services
                 grid.ExportToExcel(view, options, worksheet);
 
                 workbook.Version = ExcelVersion.Xlsx;
-                workbook.SaveAs(filePath);
+                cancellationToken.ThrowIfCancellationRequested();
+                workbook.SaveAs(normalizedPath);
             }, cancellationToken);
         }
 
@@ -68,8 +71,8 @@ namespace WileyWidget.WinForms.Services
             if (grid == null)
                 throw new ArgumentNullException(nameof(grid));
 
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+            cancellationToken.ThrowIfCancellationRequested();
+            var normalizedPath = EnsureOutputPath(filePath);
 
             var view = grid.View;
             if (view == null)
@@ -77,6 +80,8 @@ namespace WileyWidget.WinForms.Services
 
             return Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 using var document = new PdfDocument();
                 document.PageSettings.Orientation = PdfPageOrientation.Landscape;
                 document.PageSettings.Margins.All = 20;
@@ -93,8 +98,9 @@ namespace WileyWidget.WinForms.Services
 
                 pdfGrid.Draw(page, new PointF(0, 0));
 
-                document.Save(filePath);
-            });
+                cancellationToken.ThrowIfCancellationRequested();
+                document.Save(normalizedPath);
+            }, cancellationToken);
         }
 
         /// <summary>
@@ -109,11 +115,13 @@ namespace WileyWidget.WinForms.Services
             if (chart == null)
                 throw new ArgumentNullException(nameof(chart));
 
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+            cancellationToken.ThrowIfCancellationRequested();
+            var normalizedPath = EnsureOutputPath(filePath);
 
             return Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 using var document = new PdfDocument();
                 document.PageSettings.Margins.All = 20;
                 var page = document.Pages.Add();
@@ -153,8 +161,23 @@ namespace WileyWidget.WinForms.Services
                     throw new InvalidOperationException($"Failed to export chart to PDF: {ex.Message}", ex);
                 }
 
-                document.Save(filePath);
-            });
+                cancellationToken.ThrowIfCancellationRequested();
+                document.Save(normalizedPath);
+            }, cancellationToken);
+        }
+
+        private static string EnsureOutputPath(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+
+            var normalizedPath = Path.GetFullPath(filePath);
+            var directory = Path.GetDirectoryName(normalizedPath);
+            if (string.IsNullOrWhiteSpace(directory))
+                throw new InvalidOperationException("The output directory could not be determined.");
+
+            Directory.CreateDirectory(directory);
+            return normalizedPath;
         }
     }
 }

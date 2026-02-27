@@ -102,6 +102,24 @@ protected void SafeSuspendAndLayout(Action build)
 }
 ```
 
+### Canonical Sizing Properties (All Panels)
+
+Use this property baseline on every panel/control surface to prevent clipped controls and layout drift:
+
+- `Dock = DockStyle.Fill` for root panel containers.
+- `AutoScaleMode = AutoScaleMode.Dpi` for DPI-safe rendering.
+- `MinimumSize` set to a role-based floor:
+  - Docked/root panels: `1024x720` logical
+  - Embedded/tab panels: `960x600` logical
+  - Dialog-hosted panels: `760x640` logical (or larger when required by content)
+- `AutoScroll = true` for embedded/tab surfaces that can host fixed-width/fixed-column content.
+- Prefer layout containers (`TableLayoutPanel`, `FlowLayoutPanel`) over manual pixel positioning for actions.
+- Avoid all-absolute row/column sizing in complex layouts; keep at least one `Percent` stretch region.
+
+Implementation note: these defaults are centralized in `ScopedPanelBase` via
+`RecommendedDockedPanelMinimumLogicalSize`, `RecommendedEmbeddedPanelMinimumLogicalSize`,
+and `RecommendedDialogPanelMinimumLogicalSize`.
+
 ## 4) Ribbon & Navigation Rules
 
 - Home tab: Enterprise Vital Signs as primary surface; JARVIS Chat as right-side companion.

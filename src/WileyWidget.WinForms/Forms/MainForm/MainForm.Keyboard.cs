@@ -161,8 +161,7 @@ public partial class MainForm
         {
             try
             {
-                // SaveCurrentLayout();
-                _logger?.LogDebug("SaveCurrentLayout not yet implemented");
+                SaveCurrentLayout();
                 return true;
             }
             catch (System.IO.IOException ioEx)
@@ -186,8 +185,7 @@ public partial class MainForm
         {
             try
             {
-                // ResetLayout();
-                _logger?.LogDebug("ResetLayout not yet implemented");
+                ResetLayout();
                 return true;
             }
             catch (InvalidOperationException invEx)
@@ -204,8 +202,7 @@ public partial class MainForm
         {
             try
             {
-                // TogglePanelLocking();
-                _logger?.LogDebug("TogglePanelLocking not yet implemented");
+                TogglePanelLocking();
                 return true;
             }
             catch (InvalidOperationException invEx)

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Input;
 using Syncfusion.WinForms.ListView;
@@ -22,6 +23,9 @@ public partial class MainForm
     private Form? _searchDialog;
     private TextBoxExt? _globalSearchBox;
     private SfListView? _searchResultsList;
+    private AutoComplete? _globalSearchAutoComplete;
+    private readonly HashSet<string> _globalSearchSuggestions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<SearchResult> _searchDialogResults = new();
 
     /// <summary>
     /// Shows the global search dialog (Ctrl+K).
@@ -71,6 +75,7 @@ public partial class MainForm
             _globalSearchBox.KeyDown += OnSearchBoxKeyDown;
 
             _searchDialog.Controls.Add(_globalSearchBox);
+            InitializeGlobalSearchAutoComplete();
 
             // Results list (created via SyncfusionControlFactory)
             _searchResultsList = _controlFactory?.CreateSfListView(listView =>
@@ -86,11 +91,18 @@ public partial class MainForm
 
             _searchDialog.Controls.Add(_searchResultsList);
 
+            _searchResultsList.DoubleClick += OnSearchResultDoubleClick;
+            _searchResultsList.KeyDown += OnSearchResultsKeyDown;
+
             _searchDialog.FormClosed += (s, e) =>
             {
+                _globalSearchAutoComplete?.Dispose();
+                _globalSearchAutoComplete = null;
                 _searchDialog = null;
                 _globalSearchBox = null;
                 _searchResultsList = null;
+                _globalSearchSuggestions.Clear();
+                _searchDialogResults.Clear();
             };
 
             _searchDialog.Show(this);
@@ -107,71 +119,146 @@ public partial class MainForm
     /// </summary>
     private async Task PerformGlobalSearchDialogAsync(string query)
     {
-        if (string.IsNullOrWhiteSpace(query) || _searchResultsList == null)
+        if (_searchResultsList == null)
         {
             return;
         }
 
         try
         {
-            var results = new List<SearchResult>();
-
-            // Search panels
-            var panelResults = PanelRegistry.Panels
-                .Where(p => p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .Select(p => new SearchResult
-                {
-                    Name = p.DisplayName,
-                    Type = "Panel",
-                    Description = $"Open {p.DisplayName} in {p.DefaultGroup} group",
-                    Action = () => ShowPanel(p.PanelType, p.DisplayName, p.DefaultDock)
-                })
-                .ToList();
-
-            results.AddRange(panelResults);
-
-            // Search ribbon commands (simplified - expand based on your needs)
-            if ("settings".Contains(query, StringComparison.OrdinalIgnoreCase))
+            var normalizedQuery = query?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalizedQuery))
             {
-                results.Add(new SearchResult
-                {
-                    Name = "Application Settings",
-                    Type = "Command",
-                    Description = "Open application settings panel",
-                    Action = () => _panelNavigator?.ShowPanel<Controls.Panels.SettingsPanel>("Settings")
-                });
+                _searchDialogResults.Clear();
+                _searchResultsList.DataSource = Array.Empty<string>();
+                return;
             }
 
-            if ("save".Contains(query, StringComparison.OrdinalIgnoreCase))
+            List<SearchResult> results = new();
+
+            using var scope = _serviceProvider?.CreateScope();
+            var searchService = scope != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IGlobalSearchService>(scope.ServiceProvider)
+                : null;
+
+            if (searchService != null)
             {
-                results.Add(new SearchResult
-                {
-                    Name = "Save Layout",
-                    Type = "Command",
-                    Description = "Save current workspace layout",
-                    Action = () => SaveWorkspaceLayout()
-                });
+                var globalResult = await searchService.SearchAsync(normalizedQuery).ConfigureAwait(true);
+                results = globalResult.Matches
+                    .Select(match => new SearchResult
+                    {
+                        Name = match.Title,
+                        Type = match.Category,
+                        Description = match.Description,
+                        Action = BuildSearchAction(match)
+                    })
+                    .OrderBy(result => result.Type)
+                    .ThenBy(result => result.Name)
+                    .ToList();
+            }
+            else
+            {
+                _logger?.LogWarning("Global search service is unavailable; no results can be produced for '{Query}'", normalizedQuery);
             }
 
-            if ("reset".Contains(query, StringComparison.OrdinalIgnoreCase))
-            {
-                results.Add(new SearchResult
-                {
-                    Name = "Reset Layout",
-                    Type = "Command",
-                    Description = "Reset workspace to default layout",
-                    Action = () => ResetLayoutToDefault()
-                });
-            }
+            _searchDialogResults.Clear();
+            _searchDialogResults.AddRange(results);
+            RefreshGlobalSearchSuggestions(results, normalizedQuery);
 
-            _logger?.LogDebug("Global search returned {Count} results for query: {Query}", results.Count, query);
+            var displayRows = results.Count == 0
+                ? new List<string> { "No matches found." }
+                : results.Select(result => result.DisplayText).ToList();
 
-            await Task.CompletedTask;
+            _searchResultsList.DataSource = displayRows;
+            _logger?.LogDebug("Global search dialog rendered {Count} results for query: {Query}", results.Count, normalizedQuery);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error performing global search");
         }
+    }
+
+    private void InitializeGlobalSearchAutoComplete()
+    {
+        if (_searchDialog == null || _globalSearchBox == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _globalSearchAutoComplete = _controlFactory?.CreateAutoComplete(autoComplete =>
+            {
+                autoComplete.ParentForm = _searchDialog;
+                autoComplete.MatchMode = AutoCompleteMatchModes.Automatic;
+            });
+
+            if (_globalSearchAutoComplete == null)
+            {
+                _logger?.LogWarning("SyncfusionControlFactory did not provide AutoComplete for global search dialog");
+                return;
+            }
+
+            foreach (var suggestion in BuildInitialGlobalSearchSuggestions())
+            {
+                _globalSearchSuggestions.Add(suggestion);
+            }
+
+            _globalSearchAutoComplete.DataSource = _globalSearchSuggestions.OrderBy(value => value).ToList();
+            _globalSearchAutoComplete.SetAutoComplete(_globalSearchBox, AutoCompleteModes.AutoSuggest);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to initialize global search AutoComplete; global search will continue without suggestions");
+        }
+    }
+
+    private void RefreshGlobalSearchSuggestions(IEnumerable<SearchResult> results, string query)
+    {
+        if (_globalSearchAutoComplete == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            _globalSearchSuggestions.Add(query.Trim());
+        }
+
+        foreach (var result in results)
+        {
+            if (!string.IsNullOrWhiteSpace(result.Name))
+            {
+                _globalSearchSuggestions.Add(result.Name);
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.Description) && result.Description.Length <= 120)
+            {
+                _globalSearchSuggestions.Add(result.Description);
+            }
+        }
+
+        _globalSearchAutoComplete.DataSource = _globalSearchSuggestions.OrderBy(value => value).ToList();
+    }
+
+    private IEnumerable<string> BuildInitialGlobalSearchSuggestions()
+    {
+        var panelSuggestions = PanelRegistry.Panels
+            .SelectMany(panel => new[] { panel.DisplayName, panel.DefaultGroup })
+            .Where(value => !string.IsNullOrWhiteSpace(value));
+
+        return panelSuggestions
+            .Concat(new[]
+            {
+                "Activity Log",
+                "Dashboard",
+                "Reports",
+                "Customers",
+                "Accounts",
+                "Payments",
+                "Settings"
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -182,11 +269,31 @@ public partial class MainForm
         if (_searchResultsList == null) return;
 
         // Handle key events
+        if (e.KeyCode == Keys.Enter)
+        {
+            ExecuteSelectedSearchResult();
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            return;
+        }
+
         if (e.KeyCode == Keys.Escape)
         {
             _searchDialog?.Close();
             e.Handled = true;
         }
+    }
+
+    private void OnSearchResultsKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Enter)
+        {
+            return;
+        }
+
+        ExecuteSelectedSearchResult();
+        e.Handled = true;
+        e.SuppressKeyPress = true;
     }
 
     /// <summary>
@@ -196,13 +303,82 @@ public partial class MainForm
     {
         try
         {
-            _logger?.LogDebug("Search result selected");
-            _searchDialog?.Close();
+            ExecuteSelectedSearchResult();
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error executing search result action");
         }
+    }
+
+    private void ExecuteSelectedSearchResult()
+    {
+        if (_searchDialogResults.Count == 0)
+        {
+            return;
+        }
+
+        var selectedIndex = TryGetSelectedSearchResultIndex();
+        if (selectedIndex < 0 || selectedIndex >= _searchDialogResults.Count)
+        {
+            return;
+        }
+
+        var selected = _searchDialogResults[selectedIndex];
+        try
+        {
+            selected.Action?.Invoke();
+            _logger?.LogDebug("Executed global search result {Type}:{Name}", selected.Type, selected.Name);
+            _searchDialog?.Close();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed executing global search result {Type}:{Name}", selected.Type, selected.Name);
+        }
+    }
+
+    private int TryGetSelectedSearchResultIndex()
+    {
+        if (_searchResultsList == null)
+        {
+            return -1;
+        }
+
+        try
+        {
+            var selectedIndexProperty = _searchResultsList.GetType().GetProperty("SelectedIndex");
+            if (selectedIndexProperty?.GetValue(_searchResultsList) is int selectedIndex)
+            {
+                return selectedIndex;
+            }
+        }
+        catch
+        {
+            // Fallback below.
+        }
+
+        return _searchDialogResults.Count == 1 ? 0 : -1;
+    }
+
+    private System.Action? BuildSearchAction(GlobalSearchMatch match)
+    {
+        if (!string.IsNullOrWhiteSpace(match.TargetPanelName))
+        {
+            var panel = PanelRegistry.Panels.FirstOrDefault(entry =>
+                string.Equals(entry.DisplayName, match.TargetPanelName, StringComparison.OrdinalIgnoreCase));
+
+            if (panel != null)
+            {
+                return () => ShowPanel(panel.PanelType, panel.DisplayName, panel.DefaultDock);
+            }
+        }
+
+        if (string.Equals(match.Category, "Activity", StringComparison.OrdinalIgnoreCase))
+        {
+            return () => ShowPanel<Controls.Panels.ActivityLogPanel>("Activity Log", DockingStyle.Bottom, allowFloating: true);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -214,5 +390,6 @@ public partial class MainForm
         public string Type { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public System.Action? Action { get; set; }
+        public string DisplayText => $"[{Type}] {Name} — {Description}";
     }
 }

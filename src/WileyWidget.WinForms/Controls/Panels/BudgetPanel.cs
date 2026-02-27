@@ -93,6 +93,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     // Event handlers for proper cleanup
     private EventHandler? _panelHeaderRefreshHandler;
+    private EventHandler? _panelHeaderHelpHandler;
     private EventHandler? _panelHeaderCloseHandler;
     private EventHandler? _searchTextChangedHandler;
     private EventHandler? _fiscalYearChangedHandler;
@@ -104,6 +105,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private EventHandler? _underBudgetCheckChangedHandler;
     private EventHandler<MappingAppliedEventArgs>? _mappingWizardAppliedHandler;
     private EventHandler? _mappingWizardCancelledHandler;
+    private ToolTip? _controlToolTip;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BudgetPanel"/> class.
@@ -115,12 +117,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         ILogger<ScopedPanelBase<BudgetViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        InitializeComponent();
+        SafeSuspendAndLayout(InitializeComponent);
 
         // Apply DPI-aware minimum size before layout initialization
         MinimumSize = new Size(
             (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200.0f),
-            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(700.0f)
+            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720.0f)
         );
 
         // NOTE: InitializeControls() moved to OnViewModelResolved()
@@ -133,7 +135,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Wire up VisibleChanged event for SplitContainer configuration (happens when panel becomes visible)
         this.VisibleChanged += BudgetPanel_VisibleChanged;
 
-        Logger.LogInformation("BudgetPanel initialized");
+        Logger.LogInformation("BudgetPanel constructor completed — waiting for OnViewModelResolved");
     }
 
     private void DeferSizeValidation()
@@ -183,22 +185,27 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Management & Analysis" };
+        _panelHeader.ShowHelpButton = true;
         _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
+        _panelHeaderHelpHandler = PanelHeader_HelpClicked;
+        _panelHeader.HelpClicked += _panelHeaderHelpHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
         Controls.Add(_panelHeader);
 
-        // Main split container - proportional sizing with SafeSplitterDistanceHelper
-        // Ensures filter panel (Panel1) stays ≥120px while grid (Panel2) stays ≥50% of remaining height
+        // Main split container - top/bottom layout
+        // Ensures summary+filters remain visible while preserving space for the grid
         _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(split =>
         {
             split.Dock = DockStyle.Fill;
-            split.Orientation = Orientation.Vertical;
-            split.SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(150.0f);
+            split.Orientation = Orientation.Horizontal;
+            split.SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
         });
         // Note: SafeSplitterDistanceHelper.ConfigureSafeSplitContainer is deferred to avoid sizing exceptions
         // during initialization. The helper will configure min sizes when the container is properly sized.
+
+        Controls.Add(_mainSplitContainer);
 
         // Top panel - Summary and filters
         InitializeTopPanel();
@@ -235,14 +242,15 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         };
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
-
-        Controls.Add(_mainSplitContainer);
         Controls.Add(_statusStrip);
 
         // Theme changes handled by SfSkinManager cascade
 
         // Set tab order
         SetTabOrder();
+
+        // Rich, plain-language tooltips for key controls and workflows
+        InitializeTooltips();
 
         // Explicit overlay Z-order management: LoadingOverlay on bottom, NoDataOverlay on top
         _loadingOverlay?.SendToBack();
@@ -256,6 +264,277 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // SplitContainer configuration moved to OnShown event to avoid early initialization issues
         // See: https://github.com/dotnet/winforms/issues/4000 for timing issues with SplitContainer
+    }
+
+    private void InitializeTooltips()
+    {
+        _controlToolTip ??= new ToolTip
+        {
+            AutoPopDelay = 15000,
+            InitialDelay = 350,
+            ReshowDelay = 120,
+            ShowAlways = true
+        };
+
+        ConfigurePanelHeaderHelpButton();
+
+        if (_searchTextBox != null)
+        {
+            _controlToolTip.SetToolTip(_searchTextBox, "Type to filter by account number or description");
+        }
+
+        if (_fiscalYearComboBox != null)
+        {
+            _controlToolTip.SetToolTip(_fiscalYearComboBox, "Filter budget rows to a specific fiscal year.");
+        }
+
+        if (_entityComboBox != null)
+        {
+            _controlToolTip.SetToolTip(_entityComboBox, "Filter by legal entity or fund owner (for example Town of Wiley or WSD).");
+        }
+
+        if (_departmentComboBox != null)
+        {
+            _controlToolTip.SetToolTip(_departmentComboBox, "Filter results to one department.");
+        }
+
+        if (_fundTypeComboBox != null)
+        {
+            _controlToolTip.SetToolTip(_fundTypeComboBox, "Filter by fund type classification from your chart of accounts.");
+        }
+
+        if (_varianceThresholdTextBox != null)
+        {
+            _controlToolTip.SetToolTip(_varianceThresholdTextBox, "Show only rows with variance greater than this amount.");
+        }
+
+        if (_overBudgetCheckBox != null)
+        {
+            _controlToolTip.SetToolTip(_overBudgetCheckBox, "Limit view to accounts where actual spending is above budget.");
+        }
+
+        if (_underBudgetCheckBox != null)
+        {
+            _controlToolTip.SetToolTip(_underBudgetCheckBox, "Limit view to accounts that are currently under budget.");
+        }
+
+        if (_budgetGrid != null)
+        {
+            _controlToolTip.SetToolTip(_budgetGrid, BuildBudgetGridTooltipText());
+        }
+
+        if (_mappingWizardPanel != null)
+        {
+            _controlToolTip.SetToolTip(_mappingWizardPanel,
+                "CSV Mapping Wizard: map incoming columns to WileyWidget fields before import. " +
+                "Use this to align your chart of accounts as the single source of truth.");
+        }
+
+        if (_loadBudgetsButton != null)
+        {
+            _controlToolTip.SetToolTip(_loadBudgetsButton, "Reload budget data for the selected filters and fiscal year.");
+        }
+
+        if (_addEntryButton != null)
+        {
+            _controlToolTip.SetToolTip(_addEntryButton, "Create a new budget line item in the selected fiscal year.");
+        }
+
+        if (_editEntryButton != null)
+        {
+            _controlToolTip.SetToolTip(_editEntryButton, "Edit the currently selected budget line.");
+        }
+
+        if (_deleteEntryButton != null)
+        {
+            _controlToolTip.SetToolTip(_deleteEntryButton, "Delete the selected budget line item.");
+        }
+
+        if (_importCsvButton != null)
+        {
+            _controlToolTip.SetToolTip(_importCsvButton, "Import your full Chart of Accounts from Deb's PDF (uses the mapping wizard)");
+        }
+
+        if (_exportCsvButton != null)
+        {
+            _controlToolTip.SetToolTip(_exportCsvButton, "Export the current grid view as CSV for downstream analysis.");
+        }
+
+        if (_exportPdfButton != null)
+        {
+            _controlToolTip.SetToolTip(_exportPdfButton, "Generate a professional PDF report for Town Council");
+        }
+
+        if (_exportExcelButton != null)
+        {
+            _controlToolTip.SetToolTip(_exportExcelButton, "Export the current budget analysis to Excel for further review.");
+        }
+    }
+
+    private void PanelHeader_HelpClicked(object? sender, EventArgs e)
+    {
+        using var helpForm = new BudgetHelpForm();
+        helpForm.ShowDialog(this);
+    }
+
+    private static string BuildBudgetGridTooltipText()
+    {
+        return "Budget worksheet legend:\r\n" +
+               "• Account Number / Account Name: your chart of accounts identity.\r\n" +
+               "• Department / Entity / Fund Type: reporting dimensions for filtering and audits.\r\n" +
+               "• Total Budgeted: approved amount for the account.\r\n" +
+               "• Total Actual: posted spending from payments linked by MunicipalAccountId.\r\n" +
+               "• % of Budget: actual ÷ budgeted.\r\n" +
+               "• TOW Budgeted / TOW Actual: Town of Wiley slice.\r\n" +
+               "• WSD Budgeted / WSD Actual: Wiley Sanitation District slice.\r\n" +
+               "• Encumbrance: committed but not yet paid amount.\r\n" +
+               "• Variance / Variance %: difference between budget and actual.";
+    }
+
+    private static bool TryGetBudgetColumnTooltip(string? mappingName, out string tooltipText)
+    {
+        switch (mappingName)
+        {
+            case "AccountNumber":
+                tooltipText = "Official chart of accounts number used for posting and rollups.";
+                return true;
+            case "AccountName":
+                tooltipText = "Human-readable account description from your chart of accounts.";
+                return true;
+            case "DepartmentName":
+                tooltipText = "Department responsible for the account line.";
+                return true;
+            case "EntityName":
+                tooltipText = "Entity/fund owner (for example Town of Wiley or WSD).";
+                return true;
+            case "FundTypeDescription":
+                tooltipText = "Fund classification used for financial reporting.";
+                return true;
+            case "BudgetedAmount":
+                tooltipText = "Approved total budget for this account.";
+                return true;
+            case "ActualAmount":
+                tooltipText = "Actual posted spending linked from payments via MunicipalAccountId.";
+                return true;
+            case "PercentOfBudgetFraction":
+                tooltipText = "Percent consumed: actual divided by budgeted amount.";
+                return true;
+            case "TownOfWileyBudgetedAmount":
+                tooltipText = "Town of Wiley portion of the budgeted amount.";
+                return true;
+            case "TownOfWileyActualAmount":
+                tooltipText = "Town of Wiley portion of posted actual spending.";
+                return true;
+            case "WsdBudgetedAmount":
+                tooltipText = "Wiley Sanitation District portion of the budgeted amount.";
+                return true;
+            case "WsdActualAmount":
+                tooltipText = "Wiley Sanitation District portion of posted actual spending.";
+                return true;
+            case "EncumbranceAmount":
+                tooltipText = "Committed amount not yet fully paid.";
+                return true;
+            case "VarianceAmount":
+                tooltipText = "Budgeted minus actual spending for this line.";
+                return true;
+            case "VariancePercentage":
+                tooltipText = "Variance as a percentage relative to budgeted amount.";
+                return true;
+            default:
+                tooltipText = string.Empty;
+                return false;
+        }
+    }
+
+    private void ConfigurePanelHeaderHelpButton()
+    {
+        if (_panelHeader == null || _controlToolTip == null)
+        {
+            return;
+        }
+
+        var helpButton = FindPanelHeaderHelpButton(_panelHeader);
+        if (helpButton == null)
+        {
+            return;
+        }
+
+        helpButton.Image = null;
+        helpButton.AutoSize = false;
+        helpButton.Size = new Size(32, 32);
+        helpButton.Text = "?";
+        helpButton.AccessibleName = "Help";
+        helpButton.AccessibleDescription = "How This Budget Panel Works";
+        _controlToolTip.SetToolTip(helpButton, "How This Budget Panel Works");
+    }
+
+    private static SfButton? FindPanelHeaderHelpButton(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            if (child is SfButton button &&
+                string.Equals(button.AccessibleName, "Help", StringComparison.OrdinalIgnoreCase))
+            {
+                return button;
+            }
+
+            if (child.HasChildren)
+            {
+                var nestedMatch = FindPanelHeaderHelpButton(child);
+                if (nestedMatch != null)
+                {
+                    return nestedMatch;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void ConfigureBudgetGridHeaderTooltips()
+    {
+        if (_budgetGrid == null || _budgetGrid.Columns.Count == 0)
+        {
+            return;
+        }
+
+        _budgetGrid.ShowToolTip = true;
+        _budgetGrid.ShowHeaderToolTip = true;
+
+        foreach (var column in _budgetGrid.Columns)
+        {
+            column.ShowToolTip = true;
+            column.ShowHeaderToolTip = true;
+        }
+    }
+
+    private void BudgetGrid_ToolTipOpening(object? sender, ToolTipOpeningEventArgs e)
+    {
+        if (_budgetGrid == null || e?.Column == null)
+        {
+            return;
+        }
+
+        // Customize only header hover tooltips.
+        // Syncfusion API: DataGridIndexResolver.GetHeaderIndex returns the header row index.
+        var headerRowIndex = DataGridIndexResolver.GetHeaderIndex(_budgetGrid.TableControl);
+        if (e.RowIndex != headerRowIndex || e.Record != null)
+        {
+            return;
+        }
+
+        if (!TryGetBudgetColumnTooltip(e.Column.MappingName, out var columnTooltip))
+        {
+            return;
+        }
+
+        var tooltipInfo = new Syncfusion.WinForms.Controls.ToolTipInfo();
+        tooltipInfo.Items.Add(new Syncfusion.WinForms.Controls.ToolTipItem
+        {
+            Text = $"{e.Column.HeaderText}: {columnTooltip}"
+        });
+
+        e.ToolTipInfo = tooltipInfo;
     }
 
     private void InitializeTopPanel()
@@ -296,6 +575,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Text = "Total Budgeted: $0.00",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true,
             AccessibleName = "Total Budgeted",
             AccessibleDescription = "Sum of all budgeted amounts across entries"
         };
@@ -306,6 +586,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Text = "Total Actual: $0.00",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true,
             AccessibleName = "Total Actual",
             AccessibleDescription = "Sum of all actual amounts across entries"
         };
@@ -316,6 +597,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Text = "Total Variance: $0.00",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true,
             AccessibleName = "Total Variance",
             AccessibleDescription = "Difference between budgeted and actual amounts"
         };
@@ -326,6 +608,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Text = "Percent Used: 0.00%",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true,
             AccessibleName = "Percent Used",
             AccessibleDescription = "Percentage of budget consumed by actual spending"
         };
@@ -336,6 +619,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Text = "Over Budget: 0",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true,
             AccessibleName = "Over Budget Count",
             AccessibleDescription = "Number of entries exceeding budget"
         };
@@ -346,6 +630,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Text = "Under Budget: 0",
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
+            AutoEllipsis = true,
             AccessibleName = "Under Budget Count",
             AccessibleDescription = "Number of entries within budget"
         };
@@ -387,15 +672,24 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             RowCount = 3
         };
 
-        for (int i = 0; i < 6; i++)
-            filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.67f));
+        // Label/Input column pairs with wider input regions to reduce truncation.
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12f));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 21f));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12f));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 21f));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 12f));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22f));
+        filterTable.RowStyles.Add(new RowStyle(SizeType.Percent, 33.34f));
+        filterTable.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
+        filterTable.RowStyles.Add(new RowStyle(SizeType.Percent, 33.33f));
 
         // Row 1: Search and Fiscal Year
         var searchLabel = new Label
         {
             Text = "Search:",
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight
+            TextAlign = ContentAlignment.MiddleRight,
+            AutoEllipsis = true
         };
 
         _searchTextBox = ControlFactory.CreateTextBoxExt(textBox =>
@@ -416,7 +710,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Fiscal Year:",
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight
+            TextAlign = ContentAlignment.MiddleRight,
+            AutoEllipsis = true
         };
 
         _fiscalYearComboBox = ControlFactory.CreateSfComboBox(combo =>
@@ -443,7 +738,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Entity:",
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight
+            TextAlign = ContentAlignment.MiddleRight,
+            AutoEllipsis = true
         };
 
         _entityComboBox = ControlFactory.CreateSfComboBox(combo =>
@@ -469,7 +765,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Department:",
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight
+            TextAlign = ContentAlignment.MiddleRight,
+            AutoEllipsis = true
         };
 
         _departmentComboBox = ControlFactory.CreateSfComboBox(combo =>
@@ -489,7 +786,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Fund Type:",
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight
+            TextAlign = ContentAlignment.MiddleRight,
+            AutoEllipsis = true
         };
 
         _fundTypeComboBox = ControlFactory.CreateSfComboBox(combo =>
@@ -512,12 +810,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Text = "Variance >:",
             Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleRight
+            TextAlign = ContentAlignment.MiddleRight,
+            AutoEllipsis = true
         };
 
         _varianceThresholdTextBox = ControlFactory.CreateTextBoxExt(textBox =>
         {
-            textBox.Text = "1000";
+            textBox.Text = string.Empty;
             textBox.Dock = DockStyle.Fill;
             textBox.Margin = new Padding(5);
             textBox.TabIndex = 5;
@@ -608,6 +907,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             MappingName = "AccountNumber",
             HeaderText = "Account Number",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = true
         });
 
@@ -615,14 +915,16 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             MappingName = "AccountName",
             HeaderText = "Account Name",
-            AllowEditing = true
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(220.0f),
+            AllowEditing = false
         });
 
         _budgetGrid.Columns.Add(new GridTextColumn
         {
             MappingName = "DepartmentName",
             HeaderText = "Department",
-            AllowEditing = true
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(140.0f),
+            AllowEditing = false
         });
 
         // Entity / Fund column
@@ -630,6 +932,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             MappingName = "EntityName",
             HeaderText = "Entity",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = false
         });
 
@@ -638,6 +941,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             MappingName = "FundTypeDescription",
             HeaderText = "Fund Type",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = false
         });
 
@@ -647,6 +951,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "BudgetedAmount",
             HeaderText = "Total Budgeted",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = true
         });
 
@@ -655,6 +960,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "ActualAmount",
             HeaderText = "Total Actual",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = true
         });
 
@@ -664,6 +970,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "PercentOfBudgetFraction",
             HeaderText = "% of Budget",
             Format = "P2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110.0f),
             AllowEditing = false
         });
 
@@ -673,6 +980,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "TownOfWileyBudgetedAmount",
             HeaderText = "TOW Budgeted",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = false
         });
 
@@ -681,6 +989,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "TownOfWileyActualAmount",
             HeaderText = "TOW Actual",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = false
         });
 
@@ -690,6 +999,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "WsdBudgetedAmount",
             HeaderText = "WSD Budgeted",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = false
         });
 
@@ -698,6 +1008,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "WsdActualAmount",
             HeaderText = "WSD Actual",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(130.0f),
             AllowEditing = false
         });
 
@@ -706,6 +1017,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "EncumbranceAmount",
             HeaderText = "Encumbrance",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f),
             AllowEditing = true
         });
 
@@ -714,6 +1026,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "VarianceAmount",
             HeaderText = "Variance",
             Format = "C2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f),
             AllowEditing = false
         });
 
@@ -722,9 +1035,13 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             MappingName = "VariancePercentage",
             HeaderText = "Variance %",
             Format = "P2",
+            MinimumWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110.0f),
             AllowEditing = false
         });
 
+        ConfigureBudgetGridHeaderTooltips();
+
+        _budgetGrid.ToolTipOpening += BudgetGrid_ToolTipOpening;
         _budgetGrid.CurrentCellActivated += BudgetGrid_CurrentCellActivated;
         _budgetGrid.FilterChanging += BudgetGrid_FilterChanging;
 
@@ -765,15 +1082,16 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         var buttonTable = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 8,
+            ColumnCount = 9,
             RowCount = 1,
             AutoSize = false,
-            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800.0f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(30.0f))
+            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(960.0f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(30.0f))
         };
 
-        // Use absolute column widths (120px) instead of percentage for consistent button sizing
+        // Keep consistent button widths while preserving a stretch region to avoid clipping drift.
         for (int i = 0; i < 8; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f)));
+        buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
         _loadBudgetsButton = ControlFactory.CreateSfButton("&Load Budgets", button =>
         {
@@ -847,6 +1165,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         buttonTable.Controls.Add(_exportCsvButton, 5, 0);
         buttonTable.Controls.Add(_exportPdfButton, 6, 0);
         buttonTable.Controls.Add(_exportExcelButton, 7, 0);
+        buttonTable.Controls.Add(new Panel { Dock = DockStyle.Fill, Margin = new Padding(0) }, 8, 0);
 
         _buttonPanel!.Controls.Add(buttonTable);
         bottomPanel.Controls.Add(_buttonPanel);
@@ -1163,55 +1482,30 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider so this panel can bind safely.
     /// </summary>
-    protected override void OnViewModelResolved(object? viewModel)
+    protected override void OnViewModelResolved(BudgetViewModel? viewModel)
     {
-        Logger.LogInformation("BudgetPanel.OnViewModelResolved called - ViewModel type: {Type}, IsNull: {IsNull}",
-            viewModel?.GetType().Name ?? "null", viewModel == null);
-
         base.OnViewModelResolved(viewModel);
-        if (viewModel is not BudgetViewModel)
+
+        if (viewModel is null)
         {
-            Logger.LogWarning("BudgetPanel.OnViewModelResolved: ViewModel is not BudgetViewModel (actual type: {Type})",
-                viewModel?.GetType().Name ?? "null");
+            Logger.LogWarning("BudgetPanel.OnViewModelResolved — ViewModel was null");
             return;
         }
 
-        Logger.LogInformation("BudgetPanel.OnViewModelResolved: Calling InitializeControls()");
-
-        // Initialize UI controls now that ViewModel is available
         try
         {
+            Logger.LogInformation("BudgetPanel.OnViewModelResolved — building UI");
+
             InitializeControls();
-            Logger.LogInformation("BudgetPanel.OnViewModelResolved: InitializeControls() completed successfully");
+            BindViewModel();
+            _ = LoadAsync();
+
+            Logger.LogInformation("BudgetPanel fully initialized and ready — glory achieved");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "BudgetPanel.OnViewModelResolved: FAILED to initialize controls");
-            throw;
-        }
-
-        BindViewModel();
-
-        // Auto-load budget data for the current fiscal year (consistent with other scoped panel patterns)
-        // Keep this on the UI thread to avoid cross-thread data-binding updates.
-        _ = AutoLoadBudgetDataAsync();
-    }
-
-    private async Task AutoLoadBudgetDataAsync()
-    {
-        try
-        {
-            await Task.Delay(100).ConfigureAwait(true); // Allow UI to settle after control creation
-            if (!IsDisposed && ViewModel?.LoadBudgetsCommand != null)
-            {
-                Logger.LogInformation("BudgetPanel: Auto-loading budget data for fiscal year {Year}", ViewModel.SelectedFiscalYear);
-                await ViewModel.LoadBudgetsCommand.ExecuteAsync(null).ConfigureAwait(true);
-                Logger.LogInformation("BudgetPanel: Auto-load completed");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "BudgetPanel: Failed to auto-load budget data");
+            Logger.LogError(ex, "BudgetPanel.OnViewModelResolved failed");
+            MessageBox.Show($"BudgetPanel failed to initialize: {ex.Message}", "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1230,15 +1524,26 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         try
         {
-            // Clamp mins first (Syncfusion default min 25, but we want 120/300)
-            _mainSplitContainer.Panel1MinSize = Math.Max(25, Math.Min(120, _mainSplitContainer.Width - 300 - _mainSplitContainer.SplitterWidth - 10));
-            _mainSplitContainer.Panel2MinSize = Math.Max(25, Math.Min(300, _mainSplitContainer.Width - 120 - _mainSplitContainer.SplitterWidth - 10));
+            // Clamp mins first (Syncfusion default min 25) using HEIGHT because orientation is Horizontal.
+            var minimumTopPanel = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(220.0f);
+            var minimumBottomPanel = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(260.0f);
+            var splitterWidth = _mainSplitContainer.SplitterWidth;
+            var availableHeight = _mainSplitContainer.Height;
+
+            if (availableHeight <= minimumTopPanel + minimumBottomPanel + splitterWidth)
+            {
+                minimumTopPanel = Math.Max(25, (availableHeight - splitterWidth) / 2);
+                minimumBottomPanel = Math.Max(25, availableHeight - splitterWidth - minimumTopPanel);
+            }
+
+            _mainSplitContainer.Panel1MinSize = minimumTopPanel;
+            _mainSplitContainer.Panel2MinSize = minimumBottomPanel;
 
             // Safe distance
             int minDist = _mainSplitContainer.Panel1MinSize;
-            int maxDist = _mainSplitContainer.Width - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
-            int target = 150;
-            int safeDist = Math.Clamp(target, minDist, maxDist);
+            int maxDist = _mainSplitContainer.Height - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
+            int target = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
+            int safeDist = Math.Clamp(target, minDist, Math.Max(minDist, maxDist));
 
             _mainSplitContainer.SplitterDistance = safeDist;
 
@@ -1249,8 +1554,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             _mainSplitContainer.Panel2?.PerformLayout();
 
             Logger.LogInformation(
-                "BudgetPanel SplitContainer configured in VisibleChanged: Panel1Min={P1}, Panel2Min={P2}, Distance={D}, Width={W}",
-                _mainSplitContainer.Panel1MinSize, _mainSplitContainer.Panel2MinSize, safeDist, _mainSplitContainer.Width);
+                "BudgetPanel SplitContainer configured in VisibleChanged: Panel1Min={P1}, Panel2Min={P2}, Distance={D}, Height={H}",
+                _mainSplitContainer.Panel1MinSize, _mainSplitContainer.Panel2MinSize, safeDist, _mainSplitContainer.Height);
 
             // Queue a full recursive layout pass so any deeply nested controls also render.
             BeginInvoke(new System.Action(ForceFullLayout));
@@ -1260,7 +1565,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Logger.LogError(ex, "BudgetPanel SplitContainer config failed in VisibleChanged - using fallback");
             try
             {
-                _mainSplitContainer.SplitterDistance = _mainSplitContainer.Width / 2;  // safe fallback
+                _mainSplitContainer.SplitterDistance = _mainSplitContainer.Height / 2;  // safe fallback
             }
             catch
             {
@@ -1269,7 +1574,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    private void BudgetGrid_CurrentCellActivated(object? sender, EventArgs e)
+    private void BudgetGrid_CurrentCellActivated(object? sender, CurrentCellActivatedEventArgs e)
     {
         // Track that user is editing grid cell
         SetHasUnsavedChanges(true);
@@ -1849,40 +2154,53 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         if (ViewModel == null) return;
 
-        using var saveFileDialog = new SaveFileDialog
+        BeginInvoke(new Func<Task>(async () =>
         {
-            Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
-            Title = "Export Budget Entries to CSV",
-            FileName = $"Budget_Entries_{DateTime.Now:yyyyMMdd}.csv"
-        };
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(BudgetPanel)}.Csv",
+                dialogTitle: "Export Budget Entries to CSV",
+                filter: "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                defaultExtension: "csv",
+                defaultFileName: $"Budget_Entries_{DateTime.Now:yyyyMMdd}.csv",
+                exportAction: async (filePath, cancellationToken) =>
+                {
+                    IsBusy = true;
+                    try
+                    {
+                        await ViewModel.ExportToCsvCommand.ExecuteAsync(filePath);
+                    }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                },
+                statusCallback: UpdateStatus,
+                logger: Logger,
+                cancellationToken: CancellationToken.None);
 
-        if (saveFileDialog.ShowDialog() == DialogResult.OK)
-        {
-            BeginInvoke(new Func<Task>(async () =>
+            if (result.IsSkipped)
             {
-                var operationToken = RegisterOperation();
-                IsBusy = true;
-                try
-                {
-                    await ViewModel.ExportToCsvCommand.ExecuteAsync(saveFileDialog.FileName);
-                    UpdateStatus("CSV export completed successfully");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogDebug("CSV export cancelled");
-                    UpdateStatus("CSV export cancelled");
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "CSV export failed");
-                    UpdateStatus($"CSV export failed: {ex.Message}");
-                }
-                finally
-                {
-                    IsBusy = false;
-                }
-            }));
-        }
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                Logger.LogDebug("CSV export cancelled");
+                UpdateStatus("CSV export cancelled");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                Logger.LogError("CSV export failed: {ErrorMessage}", result.ErrorMessage);
+                UpdateStatus($"CSV export failed: {result.ErrorMessage}");
+                return;
+            }
+
+            UpdateStatus("CSV export completed successfully");
+        }));
     }
 
     private void MappingWizardPanel_MappingApplied(object? sender, MappingAppliedEventArgs e)
@@ -1923,80 +2241,106 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         if (ViewModel == null) return;
 
-        using var saveFileDialog = new SaveFileDialog
+        BeginInvoke(new Func<Task>(async () =>
         {
-            Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
-            Title = "Export Budget Entries to PDF",
-            FileName = $"Budget_Report_{DateTime.Now:yyyyMMdd}.pdf"
-        };
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(BudgetPanel)}.Pdf",
+                dialogTitle: "Export Budget Entries to PDF",
+                filter: "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*",
+                defaultExtension: "pdf",
+                defaultFileName: $"Budget_Report_{DateTime.Now:yyyyMMdd}.pdf",
+                exportAction: async (filePath, cancellationToken) =>
+                {
+                    IsBusy = true;
+                    try
+                    {
+                        await ViewModel.ExportToPdfCommand.ExecuteAsync(filePath);
+                    }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                },
+                statusCallback: UpdateStatus,
+                logger: Logger,
+                cancellationToken: CancellationToken.None);
 
-        if (saveFileDialog.ShowDialog() == DialogResult.OK)
-        {
-            BeginInvoke(new Func<Task>(async () =>
+            if (result.IsSkipped)
             {
-                var operationToken = RegisterOperation();
-                IsBusy = true;
-                try
-                {
-                    await ViewModel.ExportToPdfCommand.ExecuteAsync(saveFileDialog.FileName);
-                    UpdateStatus("PDF export completed successfully");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogDebug("PDF export cancelled");
-                    UpdateStatus("PDF export cancelled");
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "PDF export failed");
-                    UpdateStatus($"PDF export failed: {ex.Message}");
-                }
-                finally
-                {
-                    IsBusy = false;
-                }
-            }));
-        }
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                Logger.LogDebug("PDF export cancelled");
+                UpdateStatus("PDF export cancelled");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                Logger.LogError("PDF export failed: {ErrorMessage}", result.ErrorMessage);
+                UpdateStatus($"PDF export failed: {result.ErrorMessage}");
+                return;
+            }
+
+            UpdateStatus("PDF export completed successfully");
+        }));
     }
 
     private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
-        using var saveFileDialog = new SaveFileDialog
+        BeginInvoke(new Func<Task>(async () =>
         {
-            Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
-            Title = "Export Budget Entries to Excel",
-            FileName = $"Budget_Entries_{DateTime.Now:yyyyMMdd}.xlsx"
-        };
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(BudgetPanel)}.Excel",
+                dialogTitle: "Export Budget Entries to Excel",
+                filter: "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
+                defaultExtension: "xlsx",
+                defaultFileName: $"Budget_Entries_{DateTime.Now:yyyyMMdd}.xlsx",
+                exportAction: async (filePath, cancellationToken) =>
+                {
+                    IsBusy = true;
+                    try
+                    {
+                        await ViewModel.ExportToExcelCommand.ExecuteAsync(filePath);
+                    }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                },
+                statusCallback: UpdateStatus,
+                logger: Logger,
+                cancellationToken: CancellationToken.None);
 
-        if (saveFileDialog.ShowDialog() == DialogResult.OK)
-        {
-            BeginInvoke(new Func<Task>(async () =>
+            if (result.IsSkipped)
             {
-                var operationToken = RegisterOperation();
-                IsBusy = true;
-                try
-                {
-                    await ViewModel.ExportToExcelCommand.ExecuteAsync(saveFileDialog.FileName);
-                    UpdateStatus("Excel export completed successfully");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.LogDebug("Excel export cancelled");
-                    UpdateStatus("Excel export cancelled");
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Excel export failed");
-                    UpdateStatus($"Excel export failed: {ex.Message}");
-                }
-                finally
-                {
-                    IsBusy = false;
-                }
-            }));
-        }
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                Logger.LogDebug("Excel export cancelled");
+                UpdateStatus("Excel export cancelled");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                Logger.LogError("Excel export failed: {ErrorMessage}", result.ErrorMessage);
+                UpdateStatus($"Excel export failed: {result.ErrorMessage}");
+                return;
+            }
+
+            UpdateStatus("Excel export completed successfully");
+        }));
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -2212,6 +2556,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     protected override void OnLoad(EventArgs e)
     {
+        base.OnLoad(e);
+
         if (ViewModel == null) return;
 
         try
@@ -2230,7 +2576,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// </summary>
     public override async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (IsLoaded) return; // Prevent double-load
+        if (IsLoaded || IsBusy) return; // Prevent double-load and re-entrant loads
 
         if (ViewModel == null) return;
 
@@ -2245,18 +2591,21 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
 
             UpdateStatus("Data loaded successfully");
+            IsLoaded = true;
             SetHasUnsavedChanges(false); // Clear dirty flag after load
         }
         catch (OperationCanceledException)
         {
             Logger.LogDebug("Load operation cancelled");
             UpdateStatus("Load cancelled");
+            IsLoaded = false;
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error loading data");
             UpdateStatus($"Error: {ex.Message}");
             MessageBox.Show($"Error loading data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            IsLoaded = false;
         }
         finally
         {
@@ -2319,7 +2668,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         BeginInvoke(() =>
         {
             ForceFullLayout();
-            if (_mainSplitContainer != null) _mainSplitContainer.SplitterDistance = 320;
+            if (_mainSplitContainer != null)
+            {
+                var target = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
+                var maxDist = _mainSplitContainer.Height - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
+                _mainSplitContainer.SplitterDistance = Math.Clamp(target, _mainSplitContainer.Panel1MinSize, Math.Max(_mainSplitContainer.Panel1MinSize, maxDist));
+            }
             Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
         });
     }
@@ -2337,6 +2691,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             {
                 if (_panelHeaderRefreshHandler != null)
                     _panelHeader.RefreshClicked -= _panelHeaderRefreshHandler;
+                if (_panelHeaderHelpHandler != null)
+                    _panelHeader.HelpClicked -= _panelHeaderHelpHandler;
                 if (_panelHeaderCloseHandler != null)
                     _panelHeader.CloseClicked -= _panelHeaderCloseHandler;
             }
@@ -2395,12 +2751,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             if (_budgetGrid != null)
             {
                 _budgetGrid.QueryCellStyle -= BudgetGrid_QueryCellStyle;
+                _budgetGrid.ToolTipOpening -= BudgetGrid_ToolTipOpening;
                 _budgetGrid.CurrentCellActivated -= BudgetGrid_CurrentCellActivated;
                 _budgetGrid.FilterChanging -= BudgetGrid_FilterChanging;
             }
 
             // Dispose BindingSource
             try { _budgetBindingSource?.Dispose(); } catch { }
+            try { _controlToolTip?.Dispose(); } catch { }
 
             // SafeDispose for Syncfusion controls
             _budgetGrid?.SafeClearDataSource();

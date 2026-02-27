@@ -6,48 +6,48 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
-using Syncfusion.Windows.Forms.Chart;
-using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
-using Syncfusion.WinForms.DataGridConverter;
-using Syncfusion.XlsIO;
-using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.Models;
-using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Models;
-using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
 /// <summary>
-/// Lightweight Accounts panel that hosts the AccountsViewModel in a dockable UserControl.
-/// Provides a data grid with CRUD toolbar for managing municipal accounts.
-/// Implements ICompletablePanel to track load state and validation status.
+/// Chart of Accounts panel — manages municipal accounts with CRUD toolbar, filtering,
+/// search, and Excel export.  Implements the Sacred Panel Skeleton
+/// (WileyWidgetUIStandards §1): constructor takes pre-built ViewModel + factory,
+/// all Syncfusion controls created via <see cref="SyncfusionControlFactory"/>.
 /// </summary>
-public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
+public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, ICompletablePanel
 {
-    private PanelHeader? _header;
-    private Syncfusion.WinForms.DataGrid.SfDataGrid? _accountsGrid;
-    private TableLayoutPanel? _layout;
+    // ── Sacred Panel Skeleton mandatory fields ───────────────────────────────
+    private readonly AccountsViewModel _vm;
+    private readonly SyncfusionControlFactory _factory;
+    private PanelHeader _header = null!;
+    private TableLayoutPanel _content = null!;     // root fill container
+    private LoadingOverlay _loader = null!;
+
+    // ── Panel-specific fields ────────────────────────────────────────────────
+    private SfDataGrid? _accountsGrid;
+    private TableLayoutPanel? _layout;              // inner 2-row layout (toolbar + grid)
     private BindingSource? _accountsBinding;
     private ErrorProvider? _errorProvider;
     private FlowLayoutPanel? _toolbarPanel;
-    private DpiAwareImageService? _imageService;
     private SfButton? _createButton;
     private SfButton? _editButton;
     private SfButton? _deleteButton;
@@ -59,49 +59,39 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     private TextBoxExt? _searchBox;
     private ToolTip? _buttonToolTips;
 
-    // Event handlers for proper cleanup
     private Syncfusion.WinForms.DataGrid.Events.SelectionChangedEventHandler? _gridSelectionChangedHandler;
     private Syncfusion.WinForms.DataGrid.Events.CellClickEventHandler? _gridCellDoubleClickHandler;
 
-    /// <summary>
-    /// Maximum row count threshold for grid validation.
-    /// Warn if 0 rows; error if exceeds this (e.g., database corruption or bad query).
-    /// </summary>
     private const int MaxGridRowsThreshold = 10000;
 
     /// <summary>
-    /// Initializes a new instance with DI-resolved ViewModel and logger.
+    /// Sacred Panel Skeleton constructor: ViewModel and factory are injected directly
+    /// by the DI container — no <see cref="IServiceScopeFactory"/> required.
     /// </summary>
-    public AccountsPanel(IServiceScopeFactory scopeFactory, ILogger<AccountsPanel> logger, DpiAwareImageService imageService)
-        : base(scopeFactory, logger)
+    public AccountsPanel(
+        AccountsViewModel vm,
+        SyncfusionControlFactory factory)
+        : base(vm, Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<AccountsPanel>>(Program.Services))
     {
-        _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
-        Logger?.LogDebug("[ACCOUNTS_CTOR] Constructor started");
+        _vm = vm ?? throw new ArgumentNullException(nameof(vm));
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
 
-        // Set AutoScaleMode for proper DPI scaling
-        this.AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Padding = new Padding(12);
+        MinimumSize = new Size(
+            RecommendedDockedPanelMinimumLogicalWidth,
+            RecommendedDockedPanelMinimumLogicalHeight);
 
-        // Add padding for proper spacing
-        this.Padding = new Padding(12);
-
-        // Set preferred size for proper docking display (matches PreferredDockSize extension)
-        this.Size = new Size(900, 560);
-        this.MinimumSize = new Size(600, 420);
-
-        InitializeControls();
+        SafeSuspendAndLayout(InitializeLayout);
+        BindViewModel();
         Load += AccountsPanel_Load;
+    }
 
-        // NEW: Force VM resolution check right after controls are built (Syncfusion timing pattern)
-        if (ViewModel != null)
-        {
-            Logger?.LogDebug("[ACCOUNTS_CTOR] ViewModel available in constructor, triggering early bind");
-            BindViewModelCommands();
-        }
-
-        Logger?.LogDebug("[ACCOUNTS_CTOR] Constructor complete - Load event wired, controls initialized");
-
-        // Wire up keyboard shortcuts via ProcessCmdKey override
-        // (KeyPreview not available on UserControl)
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        MinimumSize = RecommendedDockedPanelMinimumLogicalSize;
+        PerformLayout();
     }
 
     /// <summary>
@@ -111,45 +101,23 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// </summary>
     private async void AccountsPanel_Load(object? sender, EventArgs e)
     {
-        Logger?.LogInformation("[ACCOUNTS_LOAD] ✅ Load event FIRED - sender: {Sender}, ViewModel: {VM}, IsLazy: {IsLazy}",
-            sender?.GetType().Name ?? "null",
-            ViewModel?.GetType().Name ?? "null",
-            ViewModel is ILazyLoadViewModel);
+        Logger?.LogInformation("[ACCOUNTS_LOAD] Load event fired — IsLazy: {IsLazy}", _vm is ILazyLoadViewModel);
 
-        // Trigger lazy load through ILazyLoadViewModel pattern
-        if (ViewModel is ILazyLoadViewModel lazyLoad)
+        if (_vm is ILazyLoadViewModel lazyLoad)
         {
-            Logger?.LogDebug("[ACCOUNTS_LOAD] Starting lazy load via OnVisibilityChangedAsync");
             try
             {
                 await lazyLoad.OnVisibilityChangedAsync(true);
-                Logger?.LogDebug("[ACCOUNTS_LOAD] ✅ Lazy load completed successfully");
+                Logger?.LogDebug("[ACCOUNTS_LOAD] Lazy load completed");
 
-                // CRITICAL: After data loads, refresh the grid to display accounts.
-                // The grid was bound at BindViewModel() time when the Accounts collection was empty.
-                // We must explicitly refresh here to trigger layout and painting.
                 if (_accountsGrid != null && _layout != null)
                 {
-                    // Ensure grid has the current data source
-                    _accountsGrid.DataSource = ViewModel.Accounts;
-
-                    // Suspend layout during refresh to prevent flicker
+                    _accountsGrid.DataSource = _vm.FilteredAccountEntries;
                     _layout.SuspendLayout();
-
-                    // Refresh grid rendering
                     _accountsGrid.Refresh();
                     _accountsGrid.Invalidate();
-
-                    // Ensure proper layout for docked controls
-                    _layout.ResumeLayout(true);
-                    this.PerformLayout();
-
-                    Logger?.LogInformation("[GRID_REFRESH] ✅ Post-load refresh: Grid DataSource={Type}, RowCount={Rows}, Accounts={Count}",
-                        _accountsGrid.DataSource?.GetType().Name ?? "null",
-                        _accountsGrid.RowCount,
-                        (ViewModel?.Accounts?.Count ?? 0));
-                    Logger?.LogDebug("[GRID_REFRESH] Grid details: Rows={Rows}, Columns={Cols}, Visible={Vis}",
-                        _accountsGrid.RowCount, _accountsGrid.Columns.Count, _accountsGrid.Visible);
+                    _layout.ResumeLayout(false);
+                    PerformLayout();
                 }
             }
             catch (Exception ex)
@@ -164,45 +132,50 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// </summary>
     protected override void OnViewModelResolved(AccountsViewModel? viewModel)
     {
-        Logger?.LogDebug("[ACCOUNTS_VM_RESOLVED] OnViewModelResolved called - ViewModel type: {Type}, IsNull: {IsNull}",
-            viewModel?.GetType().Name ?? "null", viewModel == null);
-
         base.OnViewModelResolved(viewModel);
 
         if (viewModel != null)
         {
-            Logger?.LogDebug("[ACCOUNTS_VM_RESOLVED] ViewModel is AccountsViewModel - Accounts count: {Count}, IsDataLoaded: {Loaded}",
-                viewModel.Accounts?.Count ?? 0, viewModel.IsDataLoaded);
-            BindViewModel();
+            Logger?.LogDebug("[ACCOUNTS_VM_RESOLVED] ViewModel resolved, binding commands");
             BindViewModelCommands();
-        }
-        else
-        {
-            Logger?.LogWarning("[ACCOUNTS_VM_RESOLVED] ViewModel is null! Panel binding skipped.");
         }
     }
 
-    private void InitializeControls()
+    private void InitializeLayout()
     {
-        SuspendLayout();
-        _logger.LogDebug("[ACCOUNTS_PANEL] InitializeControls START");
+        Logger?.LogDebug("[ACCOUNTS_PANEL] InitializeLayout START");
+
+        // root fill container (Sacred Panel Skeleton)
+        _content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 2
+        };
+        _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _content.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // header slot
+        _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // body
 
         // Panel header (docked to top)
-        _header = new PanelHeader
+        _header = new PanelHeader(_factory)
         {
             Dock = DockStyle.Top,
             Title = "Chart of Accounts",
-            MinimumSize = new Size(0, 52), // Prevent collapse
+            MinimumSize = new Size(0, 52),
             Height = 52
         };
         _header.AccessibleName = "Chart of Accounts Panel Header";
         _header.AccessibleDescription = "Municipal Chart of Accounts management panel with CRUD operations and filtering";
-        _header.RefreshClicked += RefreshButton_Click;
+        _header.RefreshClicked += (s, e) => _vm.RefreshCommand.Execute(null);
         _header.CloseClicked += (s, e) => ClosePanel();
         _header.HelpClicked += (s, e) => ShowChartOfAccountsHelp();
         _header.PinToggled += (s, e) => { /* Pin logic */ };
+
+        _loader = _factory.CreateLoadingOverlay();
+
+        Controls.Add(_content);
         Controls.Add(_header);
-        _logger.LogDebug("[ACCOUNTS_PANEL] Header added: Height={Height}, Visible={Visible}", _header.Height, _header.Visible);
+        _header.BringToFront();
 
         // Main content layout (toolbar + grid)
         _layout = new TableLayoutPanel
@@ -228,130 +201,74 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         };
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar panel configured: Height={Height}", _toolbarPanel.Height);
 
-        // Get active theme for button styling
-        var activeTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-
-        // Create Button - fully configured with Syncfusion properties
-        _createButton = new SfButton
+        // Toolbar buttons — created via factory (no manual ThemeName)
+        _createButton = _factory.CreateSfButton("New Account", btn =>
         {
-            Text = "New Account",
-            AutoSize = true,
-            ThemeName = activeTheme,
-            AccessibilityEnabled = true,
-            AutoEllipsis = true,
-            FocusRectangleVisible = true,
-            Padding = new Padding(8, 4, 8, 4),
-            TextMargin = new Padding(2),
-            CanApplyTheme = true,
-            CanOverrideStyle = false,
-            Name = "btnNewAccount",
-            AccessibleName = "New Account"
-        };
-        _createButton.AccessibleDescription = "Create a new municipal account";
-        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
+            btn.AutoSize = true;
+            btn.AccessibilityEnabled = true;
+            btn.AutoEllipsis = true;
+            btn.FocusRectangleVisible = true;
+            btn.Padding = new Padding(8, 4, 8, 4);
+            btn.TextMargin = new Padding(2);
+            btn.Name = "btnNewAccount";
+            btn.AccessibleName = "New Account";
+            btn.AccessibleDescription = "Create a new municipal account";
+        });
 
-        // Edit Button - fully configured
-        _editButton = new SfButton
+        _editButton = _factory.CreateSfButton("Edit", btn =>
         {
-            Text = "Edit",
-            AutoSize = true,
-            Enabled = false,
-            ThemeName = activeTheme,
-            AccessibilityEnabled = true,
-            AutoEllipsis = true,
-            FocusRectangleVisible = true,
-            Padding = new Padding(8, 4, 8, 4),
-            TextMargin = new Padding(2),
-            CanApplyTheme = true,
-            CanOverrideStyle = false,
-            Name = "btnEdit",
-            AccessibleName = "Edit"
-        };
-        _editButton.AccessibleDescription = "Edit the selected account";
-        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
+            btn.AutoSize = true;
+            btn.Enabled = false;
+            btn.AccessibilityEnabled = true;
+            btn.AutoEllipsis = true;
+            btn.FocusRectangleVisible = true;
+            btn.Padding = new Padding(8, 4, 8, 4);
+            btn.TextMargin = new Padding(2);
+            btn.Name = "btnEdit";
+            btn.AccessibleName = "Edit";
+            btn.AccessibleDescription = "Edit the selected account";
+        });
 
-        // Delete Button - fully configured
-        _deleteButton = new SfButton
+        _deleteButton = _factory.CreateSfButton("Delete", btn =>
         {
-            Text = "Delete",
-            AutoSize = true,
-            Enabled = false,
-            ThemeName = activeTheme,
-            AccessibilityEnabled = true,
-            AutoEllipsis = true,
-            FocusRectangleVisible = true,
-            Padding = new Padding(8, 4, 8, 4),
-            TextMargin = new Padding(2),
-            CanApplyTheme = true,
-            CanOverrideStyle = false,
-            Name = "btnDelete",
-            AccessibleName = "Delete"
-        };
-        _deleteButton.AccessibleDescription = "Delete the selected account";
-        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
+            btn.AutoSize = true;
+            btn.Enabled = false;
+            btn.AccessibilityEnabled = true;
+            btn.AutoEllipsis = true;
+            btn.FocusRectangleVisible = true;
+            btn.Padding = new Padding(8, 4, 8, 4);
+            btn.TextMargin = new Padding(2);
+            btn.Name = "btnDelete";
+            btn.AccessibleName = "Delete";
+            btn.AccessibleDescription = "Delete the selected account";
+        });
 
-        // Refresh Button - fully configured
-        _refreshButton = new SfButton
+        _refreshButton = _factory.CreateSfButton("Refresh", btn =>
         {
-            Text = "Refresh",
-            AutoSize = true,
-            ThemeName = activeTheme,
-            AccessibilityEnabled = true,
-            AutoEllipsis = true,
-            FocusRectangleVisible = true,
-            Padding = new Padding(8, 4, 8, 4),
-            TextMargin = new Padding(2),
-            CanApplyTheme = true,
-            CanOverrideStyle = false,
-            Name = "btnRefresh",
-            AccessibleName = "Refresh"
-        };
-        _refreshButton.AccessibleDescription = "Refresh account list from database";
-        // Command will be bound in BindViewModelCommands() - Syncfusion MVVM pattern
+            btn.AutoSize = true;
+            btn.AccessibilityEnabled = true;
+            btn.AutoEllipsis = true;
+            btn.FocusRectangleVisible = true;
+            btn.Padding = new Padding(8, 4, 8, 4);
+            btn.TextMargin = new Padding(2);
+            btn.Name = "btnRefresh";
+            btn.AccessibleName = "Refresh";
+            btn.AccessibleDescription = "Refresh account list from database";
+        });
 
-        // Export to Excel Button - professional feature for auditors
-        _exportButton = new SfButton
+        _exportButton = _factory.CreateSfButton("Export Excel", btn =>
         {
-            Text = "Export Excel",
-            AutoSize = true,
-            ThemeName = activeTheme,
-            AccessibilityEnabled = true,
-            AutoEllipsis = true,
-            FocusRectangleVisible = true,
-            Padding = new Padding(8, 4, 8, 4),
-            TextMargin = new Padding(2),
-            CanApplyTheme = true,
-            CanOverrideStyle = false,
-            Name = "btnExportExcel",
-            AccessibleName = "Export to Excel"
-        };
-        _exportButton.AccessibleDescription = "Export the account list to Excel spreadsheet";
+            btn.AutoSize = true;
+            btn.AccessibilityEnabled = true;
+            btn.AutoEllipsis = true;
+            btn.FocusRectangleVisible = true;
+            btn.Padding = new Padding(8, 4, 8, 4);
+            btn.TextMargin = new Padding(2);
+            btn.Name = "btnExportExcel";
+            btn.AccessibleName = "Export to Excel";
+            btn.AccessibleDescription = "Export the account list to Excel spreadsheet";
+        });
         _exportButton.Click += ExportButton_Click;
-
-        // === ICON ASSIGNMENT FOR TOOLBAR BUTTONS (Optional Polish) ===
-        try
-        {
-            // Get 16x16 icons for toolbar buttons
-            _createButton.Image = _imageService.GetImage("add");
-            _editButton.Image = _imageService.GetImage("edit");
-            _deleteButton.Image = _imageService.GetImage("delete");
-            _refreshButton.Image = _imageService.GetImage("refresh");
-            _exportButton.Image = _imageService.GetImage("export");
-
-            // Layout: icon on left, text on right
-            foreach (var btn in new[] { _createButton, _editButton, _deleteButton, _refreshButton, _exportButton })
-            {
-                btn.TextImageRelation = TextImageRelation.ImageBeforeText;
-                btn.ImageAlign = ContentAlignment.MiddleLeft;
-                btn.AutoSize = true; // Recalculate size with icon
-            }
-
-            Logger?.LogDebug("[ACCOUNTS_ICONS] ✅ Toolbar button icons assigned successfully");
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogWarning(ex, "[ACCOUNTS_ICONS] ⚠️ Failed to load button icons - UI will display text only");
-        }
 
         // Fund Filter Dropdown
         var fundLabel = new Label
@@ -363,23 +280,20 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Name = "lblFundFilter"
         };
 
-        _fundFilterComboBox = new SfComboBox
+        _fundFilterComboBox = _factory.CreateSfComboBox(c =>
         {
-            Width = 120,
-            Height = 28,
-            ThemeName = activeTheme,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            Name = "cmbFundFilter",
-            AccessibleName = "Fund Filter",
-            Margin = new Padding(0, 8, 4, 8)
-        };
-        _fundFilterComboBox.AccessibleDescription = "Filter accounts by fund type";
-        // Initial placeholder - will be populated when ViewModel is resolved
+            c.Width = 120;
+            c.Height = 28;
+            c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+            c.Name = "cmbFundFilter";
+            c.AccessibleName = "Fund Filter";
+            c.AccessibleDescription = "Filter accounts by fund type";
+            c.Margin = new Padding(0, 8, 4, 8);
+        });
         _fundFilterComboBox.DataSource = new List<object> { "All" };
         _fundFilterComboBox.DisplayMember = "ToString";
         _fundFilterComboBox.ValueMember = "ToString";
-        _fundFilterComboBox.SelectedIndex = 0; // "All"
-        SfSkinManager.SetVisualStyle(_fundFilterComboBox, activeTheme);
+        _fundFilterComboBox.SelectedIndex = 0;
         _fundFilterComboBox.SelectedIndexChanged += FundFilterComboBox_SelectedIndexChanged;
 
         // Account Type Filter Dropdown
@@ -392,23 +306,20 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Name = "lblAccountTypeFilter"
         };
 
-        _accountTypeFilterComboBox = new SfComboBox
+        _accountTypeFilterComboBox = _factory.CreateSfComboBox(c =>
         {
-            Width = 100,
-            Height = 28,
-            ThemeName = activeTheme,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            Name = "cmbAccountTypeFilter",
-            AccessibleName = "Account Type Filter",
-            Margin = new Padding(0, 8, 4, 8)
-        };
-        _accountTypeFilterComboBox.AccessibleDescription = "Filter accounts by account type";
-        // Initial placeholder - will be populated when ViewModel is resolved
+            c.Width = 100;
+            c.Height = 28;
+            c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+            c.Name = "cmbAccountTypeFilter";
+            c.AccessibleName = "Account Type Filter";
+            c.AccessibleDescription = "Filter accounts by account type";
+            c.Margin = new Padding(0, 8, 4, 8);
+        });
         _accountTypeFilterComboBox.DataSource = new List<object> { "All" };
         _accountTypeFilterComboBox.DisplayMember = "ToString";
         _accountTypeFilterComboBox.ValueMember = "ToString";
         _accountTypeFilterComboBox.SelectedIndex = 0;
-        SfSkinManager.SetVisualStyle(_accountTypeFilterComboBox, activeTheme);
         _accountTypeFilterComboBox.SelectedIndexChanged += AccountTypeFilterComboBox_SelectedIndexChanged;
 
         // Department Filter Dropdown
@@ -421,23 +332,20 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Name = "lblDepartmentFilter"
         };
 
-        _departmentFilterComboBox = new SfComboBox
+        _departmentFilterComboBox = _factory.CreateSfComboBox(c =>
         {
-            Width = 120,
-            Height = 28,
-            ThemeName = activeTheme,
-            DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            Name = "cmbDepartmentFilter",
-            AccessibleName = "Department Filter",
-            Margin = new Padding(0, 8, 4, 8)
-        };
-        _departmentFilterComboBox.AccessibleDescription = "Filter accounts by department";
-        // Initial placeholder - will be populated when ViewModel is resolved
+            c.Width = 120;
+            c.Height = 28;
+            c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+            c.Name = "cmbDepartmentFilter";
+            c.AccessibleName = "Department Filter";
+            c.AccessibleDescription = "Filter accounts by department";
+            c.Margin = new Padding(0, 8, 4, 8);
+        });
         _departmentFilterComboBox.DataSource = new List<object> { "All" };
         _departmentFilterComboBox.DisplayMember = "ToString";
         _departmentFilterComboBox.ValueMember = "ToString";
         _departmentFilterComboBox.SelectedIndex = 0;
-        SfSkinManager.SetVisualStyle(_departmentFilterComboBox, activeTheme);
         _departmentFilterComboBox.SelectedIndexChanged += DepartmentFilterComboBox_SelectedIndexChanged;
 
         // Search Label and Box - for filtering accounts
@@ -450,20 +358,17 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             Name = "lblSearch"
         };
 
-        _searchBox = new TextBoxExt
+        _searchBox = _factory.CreateTextBoxExt(t =>
         {
-            // UX Best Practices: Microsoft Fluent (280-320px), Material Design (280px+), Apple HIG (250-300px)
-            Width = 300,              // Increased from 250 - allows longer search terms without truncation
-            Height = 30,              // Increased from 28 - better touch target (Fluent: 32px, Material: 36px)
-            MinimumSize = new Size(200, 30),  // Prevents over-shrinking when panel resizes
-            ThemeName = activeTheme,
-            Name = "txtSearch",
-            AccessibleName = "Search",
-            Margin = new Padding(0, 8, 4, 8),
-            BorderStyle = BorderStyle.FixedSingle,  // Clean, modern appearance
-            Font = new Font(this.Font.FontFamily, 9.5F, FontStyle.Regular)  // Slightly larger for readability
-        };
-        _searchBox.AccessibleDescription = "Type to search accounts by account number, name, description, fund, or department";
+            t.Width = 300;
+            t.Height = 30;
+            t.MinimumSize = new Size(200, 30);
+            t.Name = "txtSearch";
+            t.AccessibleName = "Search";
+            t.AccessibleDescription = "Type to search accounts by account number, name, description, fund, or department";
+            t.Margin = new Padding(0, 8, 4, 8);
+            t.BorderStyle = BorderStyle.FixedSingle;
+        });
         _searchBox.TextChanged += SearchBox_TextChanged;
 
         // Configure tooltips for buttons (accessibility enhancement)
@@ -501,14 +406,15 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         });
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar has {Count} buttons and search box", _toolbarPanel.Controls.Count);
 
-        _layout.Controls.Add(_toolbarPanel, 0, 0);
-        _toolbarPanel.BringToFront(); // Ensure Z-order
+        _content.Controls.Add(_toolbarPanel, 0, 0);
+        _toolbarPanel.BringToFront();
 
         // Accounts data grid
-        _accountsGrid = ControlFactory.CreateSfDataGrid(grid =>
+        _accountsGrid = _factory.CreateSfDataGrid(grid =>
         {
             grid.Dock = DockStyle.Fill;
             grid.AutoGenerateColumns = false;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells;
             grid.AllowFiltering = true;
             grid.AllowGrouping = true;
             grid.ShowGroupDropArea = true;
@@ -523,7 +429,6 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             grid.ShowValidationErrorToolTip = true;
             grid.Name = "dataGridAccounts";
             grid.AccessibleName = "Accounts Grid";
-            grid.ThemeName = activeTheme;
         });
         _accountsGrid.AccessibleDescription = "Data grid showing municipal funds, account balances, budgets, and departments. Use arrow keys to navigate, Enter or F2 to edit, Delete to remove";
         _accountsGrid.SelectionChanged += _gridSelectionChangedHandler = Grid_SelectionChanged;
@@ -547,7 +452,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         // Configure grid columns
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountNumber", HeaderText = "Account #", MinimumWidth = 90, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells });
-        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountName", HeaderText = "Account Name", AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill });
+        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountName", HeaderText = "Account Name", MinimumWidth = 160, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "FundName", HeaderText = "Fund", MinimumWidth = 80 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountType", HeaderText = "Type", MinimumWidth = 80 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "CurrentBalance", HeaderText = "Balance", FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency, MinimumWidth = 100 });
@@ -580,31 +485,16 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
         _accountsGrid.EndInit();
 
-        // Note: String column filter operators are restricted via Grid_FilterChanging event handler
-        // to prevent InvalidOperationException on relational operators (>, <, >=, <=)
-        // See Grid_FilterChanging method for implementation details
-
-        _logger.LogDebug("[ACCOUNTS_PANEL] Grid configured with {Count} columns", _accountsGrid.Columns.Count);
-
-        _layout.Controls.Add(_accountsGrid, 0, 1);
-
         _errorProvider = new ErrorProvider(this);
 
-        this.Controls.Add(_layout);
+        _content.Controls.Add(_toolbarPanel, 0, 0);
+        _toolbarPanel.BringToFront();
+        _content.Controls.Add(_accountsGrid, 0, 1);
 
-        // Apply theme via SfSkinManager
-        var theme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme);
+        Controls.Add(_loader);
+        _loader.BringToFront();
 
-        ResumeLayout(true);
-        this.PerformLayout();
-        this.Refresh();
-
-        // Ensure controls are visible and in correct Z-order
-        _header?.BringToFront();
-        _layout?.BringToFront();
-
-        _logger.LogInformation("[ACCOUNTS_PANEL] InitializeControls COMPLETE - Header visible: {HeaderVisible}, Toolbar visible: {ToolbarVisible}, Grid visible: {GridVisible}",
+        Logger?.LogInformation("[ACCOUNTS_PANEL] InitializeLayout COMPLETE — header={HeaderVisible} toolbar={ToolbarVisible} grid={GridVisible}",
             _header?.Visible ?? false, _toolbarPanel?.Visible ?? false, _accountsGrid?.Visible ?? false);
     }
 
@@ -761,16 +651,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         try
         {
-            if (ViewModel == null || _fundFilterComboBox == null)
-                return;
+            if (_fundFilterComboBox == null) return;
 
             MunicipalFundType? selectedFund = null;
             if (_fundFilterComboBox.SelectedIndex > 0 && _fundFilterComboBox.SelectedItem is MunicipalFundType fund)
-            {
                 selectedFund = fund;
-            }
-            ViewModel.SelectedFund = selectedFund;
-            _logger?.LogDebug("[FUND_FILTER] Selected fund: {Fund}", selectedFund?.ToString() ?? "All");
+
+            _vm.SelectedFund = selectedFund;
         }
         catch (Exception ex)
         {
@@ -785,16 +672,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         try
         {
-            if (ViewModel == null || _accountTypeFilterComboBox == null)
-                return;
+            if (_accountTypeFilterComboBox == null) return;
 
             AccountType? selectedType = null;
             if (_accountTypeFilterComboBox.SelectedIndex > 0 && _accountTypeFilterComboBox.SelectedItem is AccountType type)
-            {
                 selectedType = type;
-            }
-            ViewModel.SelectedAccountType = selectedType;
-            _logger?.LogDebug("[ACCOUNT_TYPE_FILTER] Selected type: {Type}", selectedType?.ToString() ?? "All");
+
+            _vm.SelectedAccountType = selectedType;
         }
         catch (Exception ex)
         {
@@ -809,16 +693,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         try
         {
-            if (ViewModel == null || _departmentFilterComboBox == null)
-                return;
+            if (_departmentFilterComboBox == null) return;
 
             string? selectedDepartment = null;
             if (_departmentFilterComboBox.SelectedIndex > 0 && _departmentFilterComboBox.SelectedItem is string dept)
-            {
                 selectedDepartment = dept;
-            }
-            ViewModel.SelectedDepartment = selectedDepartment;
-            _logger?.LogDebug("[DEPARTMENT_FILTER] Selected department: {Department}", selectedDepartment ?? "All");
+
+            _vm.SelectedDepartment = selectedDepartment;
         }
         catch (Exception ex)
         {
@@ -828,14 +709,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
     private void BindViewModel()
     {
-        if (ViewModel == null)
-        {
-            _logger.LogWarning("[BINDING] ViewModel is null; skipping binding");
-            return;
-        }
+        if (_accountsGrid == null) return;
 
         _logger.LogDebug("[BINDING] Starting AccountsPanel ViewModel binding. Accounts count: {Count}",
-            ViewModel.Accounts?.Count ?? 0);
+            _vm.Accounts?.Count ?? 0);
 
         // Populate filter dropdowns now that ViewModel is available
         PopulateFilterDropdowns();
@@ -846,7 +723,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             _accountsGrid.BeginUpdate();
 
             _logger.LogDebug("[BINDING] Binding grid directly to Accounts collection");
-            _accountsGrid.DataSource = ViewModel.Accounts;
+            _accountsGrid.DataSource = _vm.FilteredAccountEntries;
             _logger.LogDebug("[BINDING] Grid bound. DataSource type: {Type}, RowCount: {RowCount}",
                 _accountsGrid.DataSource?.GetType().Name ?? "null",
                 _accountsGrid.RowCount);
@@ -856,16 +733,16 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             _accountsGrid.EndUpdate();
         }
 
-        // Bind header title to ViewModel.Title property using BindingSource
+        // Bind header title to _vm.Title property using BindingSource
         if (_header != null)
         {
             if (_accountsBinding == null)
             {
-                _accountsBinding = new BindingSource { DataSource = ViewModel };
+                _accountsBinding = new BindingSource { DataSource = _vm };
             }
             else
             {
-                _accountsBinding.DataSource = ViewModel;
+                _accountsBinding.DataSource = _vm;
             }
 
             // Clear existing bindings to avoid duplicate bindings
@@ -873,13 +750,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             _header.DataBindings.Add(
                 nameof(_header.Title),
                 _accountsBinding,
-                nameof(ViewModel.Title),
+                nameof(_vm.Title),
                 false,
                 DataSourceUpdateMode.OnPropertyChanged);
         }
 
         // Subscribe to ViewModel property changes for reactive updates
-        if (ViewModel is INotifyPropertyChanged observable)
+        if (_vm is INotifyPropertyChanged observable)
         {
             observable.PropertyChanged += ViewModel_PropertyChanged;
             _logger.LogDebug("[BINDING] Subscribed to ViewModel PropertyChanged events");
@@ -919,35 +796,35 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 _departmentFilterComboBox.SelectedIndexChanged -= DepartmentFilterComboBox_SelectedIndexChanged;
 
             // Populate Fund filter
-            if (_fundFilterComboBox != null && ViewModel.AvailableFunds != null)
+            if (_fundFilterComboBox != null && _vm.AvailableFunds != null)
             {
                 var fundItems = new List<object> { "All" };
-                fundItems.AddRange(ViewModel.AvailableFunds.Cast<object>());
+                fundItems.AddRange(_vm.AvailableFunds.Cast<object>());
                 _fundFilterComboBox.DataSource = fundItems;
                 _fundFilterComboBox.SelectedIndex = 0;
-                _fundFilterComboBox.Refresh();  // Syncfusion magic for immediate display
+                _fundFilterComboBox.Refresh();
                 _logger?.LogDebug("[FILTER_POPULATE] Fund filter populated with {Count} items", fundItems.Count);
             }
 
             // Populate Account Type filter
-            if (_accountTypeFilterComboBox != null && ViewModel.AvailableAccountTypes != null)
+            if (_accountTypeFilterComboBox != null && _vm.AvailableAccountTypes != null)
             {
                 var accountTypeItems = new List<object> { "All" };
-                accountTypeItems.AddRange(ViewModel.AvailableAccountTypes.Cast<object>());
+                accountTypeItems.AddRange(_vm.AvailableAccountTypes.Cast<object>());
                 _accountTypeFilterComboBox.DataSource = accountTypeItems;
                 _accountTypeFilterComboBox.SelectedIndex = 0;
-                _accountTypeFilterComboBox.Refresh();  // Syncfusion magic for immediate display
+                _accountTypeFilterComboBox.Refresh();
                 _logger?.LogDebug("[FILTER_POPULATE] Account Type filter populated with {Count} items", accountTypeItems.Count);
             }
 
             // Populate Department filter
-            if (_departmentFilterComboBox != null && ViewModel.AvailableDepartments != null)
+            if (_departmentFilterComboBox != null && _vm.AvailableDepartments != null)
             {
                 var departmentItems = new List<object> { "All" };
-                departmentItems.AddRange(ViewModel.AvailableDepartments.Cast<object>());
+                departmentItems.AddRange(_vm.AvailableDepartments.Cast<object>());
                 _departmentFilterComboBox.DataSource = departmentItems;
                 _departmentFilterComboBox.SelectedIndex = 0;
-                _departmentFilterComboBox.Refresh();  // Syncfusion magic for immediate display
+                _departmentFilterComboBox.Refresh();
                 _logger?.LogDebug("[FILTER_POPULATE] Department filter populated with {Count} items", departmentItems.Count);
             }
 
@@ -982,16 +859,16 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ViewModel.Accounts))
+        if (e.PropertyName == nameof(_vm.Accounts))
         {
             // Refresh grid when Accounts collection reference changes
             if (_accountsGrid != null)
             {
                 _accountsGrid.BeginUpdate();
                 _logger.LogDebug("[BINDING] Accounts collection reference changed, rebinding grid");
-                _accountsGrid.DataSource = ViewModel?.Accounts;
+                _accountsGrid.DataSource = _vm.FilteredAccountEntries;
                 _accountsGrid.Refresh();
-                _logger.LogDebug("[BINDING] Accounts collection changed, rebound grid with {Count} items", ViewModel?.Accounts?.Count ?? 0);
+                _logger.LogDebug("[BINDING] Accounts collection changed, rebound grid with {Count} items", _vm.Accounts?.Count ?? 0);
                 ApplySearchFilter();
                 _accountsGrid.EndUpdate();
             }
@@ -1002,20 +879,14 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         if (_accountsGrid?.SelectedItem is MunicipalAccountDisplay selectedAccount)
         {
-            if (ViewModel != null)
-            {
-                ViewModel.SelectedAccount = selectedAccount;
-            }
+            _vm.SelectedAccount = selectedAccount;
             if (_editButton != null) _editButton.Enabled = true;
             if (_deleteButton != null) _deleteButton.Enabled = true;
             _logger.LogDebug("Grid selection changed: {AccountNumber}", selectedAccount.AccountNumber);
         }
         else
         {
-            if (ViewModel != null)
-            {
-                ViewModel.SelectedAccount = null;
-            }
+            _vm.SelectedAccount = null;
             if (_editButton != null) _editButton.Enabled = false;
             if (_deleteButton != null) _deleteButton.Enabled = false;
             _logger.LogDebug("Grid selection cleared");
@@ -1029,14 +900,11 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         if (_accountsGrid?.SelectedItem is MunicipalAccountDisplay selectedAccount)
         {
-            if (ViewModel != null)
-            {
-                ViewModel.SelectedAccount = selectedAccount;
-            }
+            _vm.SelectedAccount = selectedAccount;
 
-            if (ViewModel?.EditAccountCommand?.CanExecute(selectedAccount) ?? false)
+            if (_vm.EditAccountCommand?.CanExecute(selectedAccount) ?? false)
             {
-                _ = ViewModel.EditAccountCommand.ExecuteAsync(selectedAccount);
+                _ = _vm.EditAccountCommand.ExecuteAsync(selectedAccount);
             }
         }
     }
@@ -1045,25 +913,20 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     {
         if (_accountsGrid?.SelectedItem is MunicipalAccountDisplay selectedFromGrid)
         {
-            if (ViewModel != null)
-            {
-                ViewModel.SelectedAccount = selectedFromGrid;
-            }
-
+            _vm.SelectedAccount = selectedFromGrid;
             return selectedFromGrid;
         }
 
-        return ViewModel?.SelectedAccount;
+        return _vm.SelectedAccount;
     }
 
     private async void CreateAccount(object? sender = null, EventArgs? e = null)
     {
         try
         {
-            // Use the new ViewModel command that handles dialog internally
-            if (ViewModel?.CreateAccountCommand?.CanExecute(null) ?? false)
+            if (_vm.CreateAccountCommand?.CanExecute(null) ?? false)
             {
-                await ViewModel.CreateAccountCommand.ExecuteAsync(null);
+                await _vm.CreateAccountCommand.ExecuteAsync(null);
             }
         }
         catch (Exception ex)
@@ -1084,44 +947,30 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         {
             _logger.LogDebug("EditAccount method called");
 
-            if (ViewModel == null)
+            if (_vm.SelectedAccount == null)
             {
-                _logger.LogError("EditAccount: ViewModel is null");
-                MessageBox.Show("ViewModel not available. Cannot edit account.", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            if (ViewModel.SelectedAccount == null)
-            {
-                _logger.LogWarning("EditAccount: No account selected");
                 MessageBox.Show("No account selected. Please select an account to edit.", "Information",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var selectedDisplay = ViewModel.SelectedAccount;
-            _logger.LogDebug("EditAccount: Attempting to edit account {AccountNumber}", selectedDisplay.AccountNumber);
+            var selectedDisplay = _vm.SelectedAccount;
 
-            if (ViewModel.EditAccountCommand == null)
+            if (_vm.EditAccountCommand == null)
             {
-                _logger.LogError("EditAccount: EditAccountCommand is null");
                 MessageBox.Show("Edit command not available.", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            if (!ViewModel.EditAccountCommand.CanExecute(selectedDisplay))
+            if (!_vm.EditAccountCommand.CanExecute(selectedDisplay))
             {
-                _logger.LogWarning("EditAccount: EditAccountCommand.CanExecute returned false");
                 MessageBox.Show("Cannot edit this account.", "Information",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            _logger.LogDebug("EditAccount: Executing EditAccountCommand");
-            await ViewModel.EditAccountCommand.ExecuteAsync(selectedDisplay);
-            _logger.LogDebug("EditAccount: EditAccountCommand completed successfully");
+            await _vm.EditAccountCommand.ExecuteAsync(selectedDisplay);
         }
         catch (Exception ex)
         {
@@ -1140,44 +989,30 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         {
             _logger.LogDebug("DeleteButton_Click method called");
 
-            if (ViewModel == null)
+            if (_vm.SelectedAccount == null)
             {
-                _logger.LogError("DeleteButton_Click: ViewModel is null");
-                MessageBox.Show("ViewModel not available. Cannot delete account.", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            if (ViewModel.SelectedAccount == null)
-            {
-                _logger.LogWarning("DeleteButton_Click: No account selected");
                 MessageBox.Show("No account selected. Please select an account to delete.", "Information",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var selectedDisplay = ViewModel.SelectedAccount;
-            _logger.LogDebug("DeleteButton_Click: Attempting to delete account {AccountNumber}", selectedDisplay.AccountNumber);
+            var selectedDisplay = _vm.SelectedAccount;
 
-            if (ViewModel.DeleteAccountCommand == null)
+            if (_vm.DeleteAccountCommand == null)
             {
-                _logger.LogError("DeleteButton_Click: DeleteAccountCommand is null");
                 MessageBox.Show("Delete command not available.", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            if (!ViewModel.DeleteAccountCommand.CanExecute(selectedDisplay))
+            if (!_vm.DeleteAccountCommand.CanExecute(selectedDisplay))
             {
-                _logger.LogWarning("DeleteButton_Click: DeleteAccountCommand.CanExecute returned false");
                 MessageBox.Show("Cannot delete this account.", "Information",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            _logger.LogDebug("DeleteButton_Click: Executing DeleteAccountCommand");
-            await ViewModel.DeleteAccountCommand.ExecuteAsync(selectedDisplay);
-            _logger.LogDebug("DeleteButton_Click: DeleteAccountCommand completed successfully");
+            await _vm.DeleteAccountCommand.ExecuteAsync(selectedDisplay);
         }
         catch (Exception ex)
         {
@@ -1195,9 +1030,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         try
         {
             _logger.LogDebug("Refresh button clicked");
-            if (ViewModel?.RefreshCommand?.CanExecute(null) ?? false)
+            if (_vm.RefreshCommand?.CanExecute(null) ?? false)
             {
-                await ViewModel.RefreshCommand.ExecuteAsync(null);
+                await _vm.RefreshCommand.ExecuteAsync(null);
             }
         }
         catch (Exception ex)
@@ -1239,47 +1074,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
                 }
             }
 
-            // 1. Validate ViewModel is resolved
-            if (ViewModel == null)
-            {
-                var item = new ValidationItem(
-                    "ViewModel",
-                    "ViewModel not resolved; cannot validate grid data.",
-                    ValidationSeverity.Error,
-                    this);
-                errors.Add(item);
-
-                if (_errorProvider != null && _accountsGrid != null)
-                {
-                    var errorAction = new System.Action(() => _errorProvider.SetError(_accountsGrid, "ViewModel is null"));
-                    if (InvokeRequired)
-                        Invoke(errorAction);
-                    else
-                        errorAction();
-                }
-
-                Logger?.LogWarning("ValidateAsync: ViewModel is null");
-            }
-
+            // 1. Validate ViewModel is resolved (always resolved via ctor now)
             // 2. Validate Accounts collection is not null
-            if (ViewModel?.Accounts == null)
+            if (_vm.Accounts == null)
             {
-                var item = new ValidationItem(
-                    "Accounts",
+                errors.Add(new ValidationItem("Accounts",
                     "Accounts collection is null; grid cannot be populated.",
-                    ValidationSeverity.Error,
-                    _accountsGrid);
-                errors.Add(item);
-
-                if (_errorProvider != null && _accountsGrid != null)
-                {
-                    var errorAction = new System.Action(() => _errorProvider.SetError(_accountsGrid, "Accounts collection is null"));
-                    if (InvokeRequired)
-                        Invoke(errorAction);
-                    else
-                        errorAction();
-                }
-
+                    ValidationSeverity.Error, _accountsGrid));
                 Logger?.LogWarning("ValidateAsync: Accounts collection is null");
             }
 
@@ -1338,9 +1139,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             }
 
             // 5. Validate row count
-            if (_accountsGrid != null && ViewModel?.Accounts != null)
+            if (_accountsGrid != null && _vm.Accounts != null)
             {
-                int rowCount = ViewModel.Accounts.Count;
+                int rowCount = _vm.Accounts.Count;
 
                 if (rowCount == 0)
                 {
@@ -1374,9 +1175,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
             }
 
             // 6. Validate data quality: Balance and Budget numeric columns
-            if (_accountsGrid != null && ViewModel?.Accounts != null && ViewModel.Accounts.Count > 0)
+            if (_accountsGrid != null && _vm.Accounts != null && _vm.Accounts.Count > 0)
             {
-                var dataQualityErrors = ValidateDataQuality(ViewModel.Accounts);
+                var dataQualityErrors = ValidateDataQuality(_vm.Accounts);
                 if (dataQualityErrors.Any())
                 {
                     errors.AddRange(dataQualityErrors);
@@ -1565,29 +1366,29 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// </summary>
     public override async Task LoadAsync(CancellationToken ct)
     {
-        if (ViewModel == null)
-        {
-            return;
-        }
-
         try
         {
             using var linkedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(ct, RegisterOperation());
             var operationCancellationToken = linkedCancellationSource.Token;
             IsBusy = true;
+            if (_loader != null)
+            {
+                _loader.Visible = true;
+                _loader.BringToFront();
+            }
 
-            if (ViewModel is ILazyLoadViewModel lazyLoadViewModel)
+            if (_vm is ILazyLoadViewModel lazyLoadViewModel)
             {
                 await lazyLoadViewModel.OnVisibilityChangedAsync(true);
             }
-            else if (ViewModel.LoadAccountsCommand.CanExecute(null))
+            else if (_vm.LoadAccountsCommand.CanExecute(null))
             {
-                await ViewModel.LoadAccountsCommand.ExecuteAsync(operationCancellationToken);
+                await _vm.LoadAccountsCommand.ExecuteAsync(operationCancellationToken);
             }
 
             if (_accountsGrid != null)
             {
-                _accountsGrid.DataSource = ViewModel.Accounts;
+                _accountsGrid.DataSource = _vm.FilteredAccountEntries;
                 _accountsGrid.Refresh();
             }
 
@@ -1599,6 +1400,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
         }
         finally
         {
+            if (_loader != null)
+            {
+                _loader.Visible = false;
+            }
             IsBusy = false;
         }
     }
@@ -1617,98 +1422,55 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>
     /// </summary>
     private void BindViewModelCommands()
     {
-        if (ViewModel == null)
-        {
-            _logger?.LogWarning("[BIND_COMMANDS] ViewModel is null; cannot bind commands");
-            return;
-        }
-
         if (_createButton != null)
         {
-            _createButton.Command = ViewModel.CreateAccountCommand;
+            _createButton.Command = _vm.CreateAccountCommand;
             _createButton.CommandParameter = null;
-            _logger?.LogDebug("[BIND_COMMANDS] Create button → CreateAccountCommand");
         }
 
         if (_editButton != null)
-        {
-            _editButton.Command = ViewModel.EditAccountCommand;
-            // CommandParameter is dynamically resolved via ViewModel.SelectedAccount
-            _logger?.LogDebug("[BIND_COMMANDS] Edit button → EditAccountCommand");
-        }
+            _editButton.Command = _vm.EditAccountCommand;
 
         if (_deleteButton != null)
-        {
-            _deleteButton.Command = ViewModel.DeleteAccountCommand;
-            // CommandParameter is dynamically resolved via ViewModel.SelectedAccount
-            _logger?.LogDebug("[BIND_COMMANDS] Delete button → DeleteAccountCommand");
-        }
+            _deleteButton.Command = _vm.DeleteAccountCommand;
 
         if (_refreshButton != null)
         {
-            _refreshButton.Command = ViewModel.RefreshCommand;
+            _refreshButton.Command = _vm.RefreshCommand;
             _refreshButton.CommandParameter = null;
-            _logger?.LogDebug("[BIND_COMMANDS] Refresh button → RefreshCommand");
         }
-
-        _logger?.LogInformation("[BIND_COMMANDS] ✅ All toolbar button commands bound successfully");
     }
-
     /// <summary>
     /// Sets up two-way DataBindings for filter dropdown controls.
-    /// Syncfusion SfComboBox supports databinding to ViewModel properties for automatic UI sync.
     /// </summary>
     private void BindFilterDropdowns()
     {
         try
         {
-            if (ViewModel == null)
-            {
-                _logger?.LogWarning("[BIND_FILTERS] ViewModel is null; cannot bind filters");
-                return;
-            }
-
-            // Clear any existing bindings to avoid duplicates
             _fundFilterComboBox?.DataBindings.Clear();
             _accountTypeFilterComboBox?.DataBindings.Clear();
             _departmentFilterComboBox?.DataBindings.Clear();
 
-            // Two-way binding: UI ↔ ViewModel (Syncfusion pattern)
-            // When user changes dropdown → ViewModel.Selected* updates → VM partial method fires → grid filters
             if (_fundFilterComboBox != null)
             {
                 _fundFilterComboBox.DataBindings.Add(
-                    "SelectedItem",
-                    ViewModel,
-                    nameof(ViewModel.SelectedFund),
-                    true,
-                    DataSourceUpdateMode.OnPropertyChanged);
-                _logger?.LogDebug("[BIND_FILTERS] Fund filter bound to ViewModel.SelectedFund");
+                    "SelectedItem", _vm, nameof(_vm.SelectedFund),
+                    true, DataSourceUpdateMode.OnPropertyChanged);
             }
 
             if (_accountTypeFilterComboBox != null)
             {
                 _accountTypeFilterComboBox.DataBindings.Add(
-                    "SelectedItem",
-                    ViewModel,
-                    nameof(ViewModel.SelectedAccountType),
-                    true,
-                    DataSourceUpdateMode.OnPropertyChanged);
-                _logger?.LogDebug("[BIND_FILTERS] Account Type filter bound to ViewModel.SelectedAccountType");
+                    "SelectedItem", _vm, nameof(_vm.SelectedAccountType),
+                    true, DataSourceUpdateMode.OnPropertyChanged);
             }
 
             if (_departmentFilterComboBox != null)
             {
                 _departmentFilterComboBox.DataBindings.Add(
-                    "SelectedItem",
-                    ViewModel,
-                    nameof(ViewModel.SelectedDepartment),
-                    true,
-                    DataSourceUpdateMode.OnPropertyChanged);
-                _logger?.LogDebug("[BIND_FILTERS] Department filter bound to ViewModel.SelectedDepartment");
+                    "SelectedItem", _vm, nameof(_vm.SelectedDepartment),
+                    true, DataSourceUpdateMode.OnPropertyChanged);
             }
-
-            _logger?.LogInformation("[BIND_FILTERS] ✅ All filter dropdowns bound successfully");
         }
         catch (Exception ex)
         {
@@ -1773,17 +1535,17 @@ For technical support or feature requests, contact your Wiley Widget administrat
     /// <summary>
     /// Exports the current account list to an Excel spreadsheet.
     /// Includes all visible columns and respects current filtering/search state.
-    /// Uses Syncfusion ExcelEngine per ExportService pattern.
+    /// Uses shared export workflow and ExportService.
     /// </summary>
-    private void ExportButton_Click(object? sender, EventArgs e)
+    private async void ExportButton_Click(object? sender, EventArgs e)
     {
         try
         {
             _logger?.LogDebug("ExportButton_Click: Starting Excel export");
 
-            if (_accountsGrid == null || ViewModel == null)
+            if (_accountsGrid == null)
             {
-                MessageBox.Show("Cannot export: Grid or ViewModel not available.", "Export Error",
+                MessageBox.Show("Cannot export: Grid not available.", "Export Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -1796,53 +1558,50 @@ For technical support or feature requests, contact your Wiley Widget administrat
                 return;
             }
 
-            // Show save file dialog
-            using var saveDialog = new SaveFileDialog
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(AccountsPanel)}.Excel",
+                dialogTitle: "Export Chart of Accounts to Excel",
+                filter: "Excel Workbook (*.xlsx)|*.xlsx|Excel 97-2003 (*.xls)|*.xls",
+                defaultExtension: "xlsx",
+                defaultFileName: $"ChartOfAccounts_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+                exportAction: (filePath, cancellationToken) => ExportService.ExportGridToExcelAsync(_accountsGrid, filePath, cancellationToken),
+                logger: _logger,
+                cancellationToken: CancellationToken.None);
+
+            if (result.IsSkipped)
             {
-                Filter = "Excel Workbook (*.xlsx)|*.xlsx|Excel 97-2003 (*.xls)|*.xls",
-                DefaultExt = "xlsx",
-                FileName = $"ChartOfAccounts_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
-                Title = "Export Chart of Accounts to Excel"
-            };
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
-            if (saveDialog.ShowDialog(this) == DialogResult.OK)
+            if (result.IsCancelled)
             {
-                _logger?.LogInformation("Exporting accounts to: {FilePath}", saveDialog.FileName);
+                return;
+            }
 
-                // Use Syncfusion's Excel export (matching ExportService.cs pattern)
-                using var excelEngine = new ExcelEngine();
-                var workbook = excelEngine.Excel.Workbooks.Create(1);
-                var worksheet = workbook.Worksheets[0];
+            if (!result.IsSuccess)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
-                var options = new ExcelExportingOptions
+            _logger?.LogInformation("Excel export completed successfully: {RowCount} accounts exported",
+                _vm.Accounts?.Count ?? 0);
+
+            var openResult = MessageBox.Show(
+                $"Export completed successfully!\n\n{_vm.Accounts?.Count ?? 0} accounts exported to:\n{result.FilePath}\n\nOpen the file now?",
+                "Export Complete",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (openResult == DialogResult.Yes)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    ExcelVersion = ExcelVersion.Xlsx,
-                    ExportStackedHeaders = true
-                };
-
-                // Export grid to worksheet
-                _accountsGrid.ExportToExcel(view, options, worksheet);
-                workbook.Version = ExcelVersion.Xlsx;
-                workbook.SaveAs(saveDialog.FileName);
-
-                _logger?.LogInformation("Excel export completed successfully: {RowCount} accounts exported",
-                    ViewModel.Accounts?.Count ?? 0);
-
-                // Offer to open the file
-                var result = MessageBox.Show(
-                    $"Export completed successfully!\n\n{ViewModel.Accounts?.Count ?? 0} accounts exported to:\n{saveDialog.FileName}\n\nOpen the file now?",
-                    "Export Complete",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Information);
-
-                if (result == DialogResult.Yes)
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = saveDialog.FileName,
-                        UseShellExecute = true
-                    });
-                }
+                    FileName = result.FilePath,
+                    UseShellExecute = true
+                });
             }
         }
         catch (Exception ex)

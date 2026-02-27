@@ -24,6 +24,7 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Syncfusion.Tools.Windows" />
     <PackageReference Include="FlaUI.Core" />
+    <PackageReference Include="FlaUI.UIA2" />
     <PackageReference Include="FlaUI.UIA3" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
   </ItemGroup>

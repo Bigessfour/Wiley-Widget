@@ -74,6 +74,11 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
     public ObservableCollection<AuditEntry> Entries { get; } = new();
 
     /// <summary>
+    /// Gets the filtered audit entries collection used for grid binding.
+    /// </summary>
+    public ObservableCollection<AuditEntry> FilteredAuditEntries => Entries;
+
+    /// <summary>
     /// Observable collection of chart points for chart display.
     /// </summary>
     public ObservableCollection<AuditChartPoint> ChartData { get; } = new();

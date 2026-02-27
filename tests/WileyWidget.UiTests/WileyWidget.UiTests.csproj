@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <OutputType>Library</OutputType>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="Xunit.StaFact" />
+        <PackageReference Include="FluentAssertions" />
+        <PackageReference Include="FlaUI.Core" />
+        <PackageReference Include="FlaUI.UIA2" />
+        <PackageReference Include="FlaUI.UIA3" />
+        <PackageReference Include="Moq" />
+        <PackageReference Include="coverlet.collector" />
+        <PackageReference Include="Syncfusion.Tools.Windows" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.Abstractions\WileyWidget.Abstractions.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.Business\WileyWidget.Business.csproj" />
+        <ProjectReference Include="..\..\src\WileyWidget.Services\WileyWidget.Services.csproj" />
+        <ProjectReference Include="..\WileyWidget.WinForms.Tests\WileyWidget.WinForms.Tests.csproj" />
+    </ItemGroup>
+
+</Project>

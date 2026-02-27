@@ -125,6 +125,26 @@ namespace WileyWidget.WinForms.ViewModels
         [ObservableProperty]
         private int entriesUnderBudget;
 
+        /// <summary>Gets or sets total budgeted revenues (positive = good).</summary>
+        [ObservableProperty]
+        private decimal totalRevenuesBudgeted;
+
+        /// <summary>Gets or sets actual revenues collected.</summary>
+        [ObservableProperty]
+        private decimal totalRevenuesActual;
+
+        /// <summary>Gets or sets total budgeted expenditures.</summary>
+        [ObservableProperty]
+        private decimal totalExpendituresBudgeted;
+
+        /// <summary>Gets or sets actual expenditures spent.</summary>
+        [ObservableProperty]
+        private decimal totalExpendituresActual;
+
+        /// <summary>Gets or sets net budget position (Revenues - Expenditures). Positive = surplus.</summary>
+        [ObservableProperty]
+        private decimal netBudgetPosition;
+
         // Grouping properties
 
         /// <summary>Gets or sets the field name to group entries by.</summary>
@@ -294,7 +314,7 @@ namespace WileyWidget.WinForms.ViewModels
                 var year = SelectedFiscalYear > 0 ? SelectedFiscalYear : (SelectedPeriod?.Year ?? DateTime.Now.Year);
                 _logger.LogInformation("Loading budget entries for fiscal year {Year}", year);
 
-                var entries = await _budgetRepository.GetByFiscalYearAsync(year);
+                var entries = (await _budgetRepository.GetByFiscalYearAsync(year, cancellationToken)).ToList();
                 BudgetEntries = new ObservableCollection<BudgetEntry>(entries);
                 FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(entries);
 
@@ -324,7 +344,7 @@ namespace WileyWidget.WinForms.ViewModels
 
                 await RefreshAnalysisAsync();
 
-                StatusText = $"Loaded {BudgetEntries.Count} budget entries";
+                StatusText = $"Loaded all {BudgetEntries.Count} budget entries for fiscal year {year}";
                 _logger.LogInformation("Loaded {Count} budget entries for year {Year}", BudgetEntries.Count, year);
             }
             catch (Exception ex)
@@ -374,17 +394,46 @@ namespace WileyWidget.WinForms.ViewModels
         public async Task AddEntryAsync(BudgetEntry entry, CancellationToken cancellationToken = default)
         {
             if (entry == null) return;
+
             try
             {
-                await _budgetRepository.AddAsync(entry);
-                BudgetEntries.Add(entry);
-                _logger.LogInformation("Added budget entry {Id}", entry.Id);
+                // Check if it already exists (defensive)
+                var exists = await _budgetRepository.ExistsAsync(entry.AccountNumber, entry.FiscalYear, cancellationToken);
+                if (exists)
+                {
+                    // If dialog already asked, this should not happen — but safety net
+                    var dupMsg = $"Account {entry.AccountNumber} already exists for FY {entry.FiscalYear}. Use Edit instead.";
+                    _logger.LogWarning("AddEntryAsync duplicate prevented: Account={Account} FY={Year}", entry.AccountNumber, entry.FiscalYear);
+                    ErrorMessage = dupMsg;
+                    StatusText = "Duplicate prevented";
+                    return;
+                }
+
+                await _budgetRepository.AddAsync(entry, cancellationToken);
+
+                RunOnUiThread(() =>
+                {
+                    BudgetEntries.Insert(0, entry);
+                    FilteredBudgetEntries.Insert(0, entry);
+                    NotifyCollectionRefresh();
+                });
+
+                await ApplyFiltersAsync(cancellationToken);
+                _logger.LogInformation("Added new budget entry {Account} FY {Year}", entry.AccountNumber, entry.FiscalYear);
+                StatusText = "Budget entry added successfully";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "AddEntryAsync failed");
-                ErrorMessage = ex.Message;
+                ErrorMessage = $"Error adding entry: {ex.Message}";
+                StatusText = "Add failed";
             }
+        }
+
+        // Optional helper — add to IBudgetRepository too if you want clean architecture
+        public async Task<bool> ExistsAsync(string accountNumber, int fiscalYear, CancellationToken ct = default)
+        {
+            return await _budgetRepository.ExistsAsync(accountNumber, fiscalYear, ct);
         }
 
         /// <summary>
@@ -398,16 +447,16 @@ namespace WileyWidget.WinForms.ViewModels
             if (entry == null) return;
             try
             {
-                await _budgetRepository.UpdateAsync(entry);
-                var existing = BudgetEntries.FirstOrDefault(e => e.Id == entry.Id);
-                if (existing != null)
+                await _budgetRepository.UpdateAsync(entry, cancellationToken);
+
+                RunOnUiThread(() =>
                 {
-                    var idx = BudgetEntries.IndexOf(existing);
-                    if (idx >= 0)
-                    {
-                        BudgetEntries[idx] = entry;
-                    }
-                }
+                    ReplaceEntry(BudgetEntries, entry);
+                    ReplaceEntry(FilteredBudgetEntries, entry);
+                    NotifyCollectionRefresh();
+                });
+
+                await ApplyFiltersAsync(cancellationToken);
                 _logger.LogInformation("Updated budget entry {Id}", entry.Id);
             }
             catch (Exception ex)
@@ -427,12 +476,16 @@ namespace WileyWidget.WinForms.ViewModels
         {
             try
             {
-                await _budgetRepository.DeleteAsync(id);
-                var existing = BudgetEntries.FirstOrDefault(e => e.Id == id);
-                if (existing != null)
+                await _budgetRepository.DeleteAsync(id, cancellationToken);
+
+                RunOnUiThread(() =>
                 {
-                    BudgetEntries.Remove(existing);
-                }
+                    RemoveEntry(BudgetEntries, id);
+                    RemoveEntry(FilteredBudgetEntries, id);
+                    NotifyCollectionRefresh();
+                });
+
+                await ApplyFiltersAsync(cancellationToken);
                 _logger.LogInformation("Deleted budget entry {Id}", id);
             }
             catch (Exception ex)
@@ -515,8 +568,14 @@ namespace WileyWidget.WinForms.ViewModels
                             continue;
                         }
 
-                        await _budgetRepository.AddAsync(entry);
-                        BudgetEntries.Add(entry);
+                        await _budgetRepository.AddAsync(entry, cancellationToken);
+
+                        RunOnUiThread(() =>
+                        {
+                            BudgetEntries.Add(entry);
+                            FilteredBudgetEntries.Add(entry);
+                        });
+
                         imported.Add(entry);
                     }
                     catch (Exception exRow)
@@ -527,6 +586,8 @@ namespace WileyWidget.WinForms.ViewModels
 
                 if (imported.Count > 0)
                 {
+                    await ApplyFiltersAsync(cancellationToken);
+                    NotifyCollectionRefresh();
                     _logger.LogInformation("Imported {Count} budget entries from {File}", imported.Count, filePath);
                 }
                 if (errors.Count > 0)
@@ -659,8 +720,14 @@ namespace WileyWidget.WinForms.ViewModels
                             continue;
                         }
 
-                        await _budgetRepository.AddAsync(entry);
-                        BudgetEntries.Add(entry);
+                        await _budgetRepository.AddAsync(entry, cancellationToken);
+
+                        RunOnUiThread(() =>
+                        {
+                            BudgetEntries.Add(entry);
+                            FilteredBudgetEntries.Add(entry);
+                        });
+
                         imported.Add(entry);
 
                         progress?.Report($"Imported {imported.Count} rows...");
@@ -673,6 +740,8 @@ namespace WileyWidget.WinForms.ViewModels
 
                 if (imported.Count > 0)
                 {
+                    await ApplyFiltersAsync(cancellationToken);
+                    NotifyCollectionRefresh();
                     _logger.LogInformation("Imported {Count} budget entries from {File}", imported.Count, filePath);
                 }
                 if (errors.Count > 0)
@@ -899,6 +968,36 @@ namespace WileyWidget.WinForms.ViewModels
             await RefreshAnalysisAsync();
         }
 
+        private void ReplaceEntry(ObservableCollection<BudgetEntry> targetCollection, BudgetEntry replacement)
+        {
+            var existing = targetCollection.FirstOrDefault(entry => entry.Id == replacement.Id);
+            if (existing == null)
+            {
+                return;
+            }
+
+            var existingIndex = targetCollection.IndexOf(existing);
+            if (existingIndex >= 0)
+            {
+                targetCollection[existingIndex] = replacement;
+            }
+        }
+
+        private void RemoveEntry(ObservableCollection<BudgetEntry> targetCollection, int entryId)
+        {
+            var existing = targetCollection.FirstOrDefault(entry => entry.Id == entryId);
+            if (existing != null)
+            {
+                targetCollection.Remove(existing);
+            }
+        }
+
+        private void NotifyCollectionRefresh()
+        {
+            OnPropertyChanged(nameof(BudgetEntries));
+            OnPropertyChanged(nameof(FilteredBudgetEntries));
+        }
+
         /// <summary>
         /// Clears all active filters and resets the filtered collection.
         /// </summary>
@@ -936,21 +1035,40 @@ namespace WileyWidget.WinForms.ViewModels
         {
             var entries = FilteredBudgetEntries.Any() ? FilteredBudgetEntries : BudgetEntries;
 
-            // Compute analysis totals on background thread to avoid blocking UI
             var totals = await Task.Run(() =>
             {
                 var list = entries.ToList();
-                var totalBudgeted = list.Sum(e => e.BudgetedAmount);
-                var totalActual = list.Sum(e => e.ActualAmount);
+
+                var revBudget = list.Where(e => e.MunicipalAccount?.Type == AccountType.Revenue ||
+                                               string.Equals(e.AccountTypeName, "Revenue", StringComparison.OrdinalIgnoreCase))
+                                    .Sum(e => e.BudgetedAmount);
+
+                var revActual = list.Where(e => e.MunicipalAccount?.Type == AccountType.Revenue ||
+                                               string.Equals(e.AccountTypeName, "Revenue", StringComparison.OrdinalIgnoreCase))
+                                    .Sum(e => e.ActualAmount);
+
+                var expBudget = list.Where(e => e.MunicipalAccount?.Type == AccountType.Expense ||
+                                               string.Equals(e.AccountTypeName, "Expenditure", StringComparison.OrdinalIgnoreCase))
+                                    .Sum(e => e.BudgetedAmount);
+
+                var expActual = list.Where(e => e.MunicipalAccount?.Type == AccountType.Expense ||
+                                               string.Equals(e.AccountTypeName, "Expenditure", StringComparison.OrdinalIgnoreCase))
+                                    .Sum(e => e.ActualAmount);
+
+                var netPosition = revActual - expActual;  // or (revBudget - expBudget) depending on your preference
+
+                var totalBudgeted = revBudget + expBudget;
+                var totalActual = revActual + expActual;
                 var totalVariance = totalBudgeted - totalActual;
                 var totalEncumbrance = list.Sum(e => e.EncumbranceAmount);
                 var percentUsed = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
-                var entriesOverBudget = list.Count(e => e.ActualAmount > e.BudgetedAmount);
-                var entriesUnderBudget = list.Count(e => e.ActualAmount <= e.BudgetedAmount);
-                return (totalBudgeted, totalActual, totalVariance, totalEncumbrance, percentUsed, entriesOverBudget, entriesUnderBudget);
+                var entriesOver = list.Count(e => e.ActualAmount > e.BudgetedAmount); // still useful for expenditures
+                var entriesUnder = list.Count(e => e.ActualAmount <= e.BudgetedAmount);
+
+                return (totalBudgeted, totalActual, totalVariance, totalEncumbrance, percentUsed, entriesOver, entriesUnder,
+                        revBudget, revActual, expBudget, expActual, netPosition);
             }, cancellationToken).ConfigureAwait(false);
 
-            // Assign computed values to properties on UI thread
             RunOnUiThread(() =>
             {
                 TotalBudgeted = totals.totalBudgeted;
@@ -958,13 +1076,18 @@ namespace WileyWidget.WinForms.ViewModels
                 TotalVariance = totals.totalVariance;
                 TotalEncumbrance = totals.totalEncumbrance;
                 PercentUsed = totals.percentUsed;
-                EntriesOverBudget = totals.entriesOverBudget;
-                EntriesUnderBudget = totals.entriesUnderBudget;
+                EntriesOverBudget = totals.entriesOver;
+                EntriesUnderBudget = totals.entriesUnder;
+
+                TotalRevenuesBudgeted = totals.revBudget;
+                TotalRevenuesActual = totals.revActual;
+                TotalExpendituresBudgeted = totals.expBudget;
+                TotalExpendituresActual = totals.expActual;
+                NetBudgetPosition = totals.netPosition;
             });
 
-            _logger.LogInformation(
-                "Budget analysis: Total Budgeted={Budgeted:C}, Actual={Actual:C}, Variance={Variance:C}, {PercentUsed:F2}% used, Over={Over}, Under={Under}",
-                TotalBudgeted, TotalActual, TotalVariance, PercentUsed, EntriesOverBudget, EntriesUnderBudget);
+            _logger.LogInformation("Budget analysis refreshed — Revenues {RevB:C} / {RevA:C} | Expenditures {ExpB:C} / {ExpA:C} | Net {Net:C}",
+                totals.revBudget, totals.revActual, totals.expBudget, totals.expActual, totals.netPosition);
         }
 
         /// <summary>
@@ -1047,6 +1170,19 @@ namespace WileyWidget.WinForms.ViewModels
                 };
 
                 await _budgetRepository.AddAsync(newEntry);
+
+                if (newEntry.FiscalYear == SelectedFiscalYear)
+                {
+                    RunOnUiThread(() =>
+                    {
+                        BudgetEntries.Insert(0, newEntry);
+                        FilteredBudgetEntries.Insert(0, newEntry);
+                    });
+                }
+
+                NotifyCollectionRefresh();
+                await ApplyFiltersAsync(cancellationToken);
+
                 StatusText = $"Copied entry {entry.AccountNumber} to FY {newEntry.FiscalYear}";
                 _logger.LogInformation("Copied budget entry {AccountNumber} to FY {Year}", entry.AccountNumber, newEntry.FiscalYear);
             }
@@ -1097,6 +1233,8 @@ namespace WileyWidget.WinForms.ViewModels
                 StatusText = $"Applied {adjustmentPercent:+0.##;-0.##}% adjustment to {count} entries";
                 _logger.LogInformation("Applied {Percent}% adjustment to {Count} entries", adjustmentPercent, entries.Count);
 
+                NotifyCollectionRefresh();
+                await ApplyFiltersAsync(cancellationToken);
                 await RefreshAnalysisAsync();
             }
             catch (Exception ex)

@@ -13,6 +13,7 @@ using Syncfusion.WinForms.Input;
 using System.ComponentModel;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Controls.Supporting;
 using Syncfusion.Windows.Forms;
@@ -65,6 +66,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private Panel? _gridPanel;
     private Panel? _buttonPanel;
     private SplitContainerAdv? _mainSplitContainer;
+    private TableLayoutPanel? _content;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private PanelHeader? _panelHeader;
@@ -73,6 +75,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     private ToolTip? _toolTip;
     private Panel? topPanel;
     private Panel? bottomPanel;
+    private readonly SyncfusionControlFactory? _factory;
 
     private PropertyChangedEventHandler? ViewModelPropertyChangedHandler;
     private NotifyCollectionChangedEventHandler? _billsCollectionChangedHandler;
@@ -96,11 +99,32 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Constructor
 
+    public UtilityBillPanel(UtilityBillViewModel vm, SyncfusionControlFactory factory)
+        : base(vm, ResolveLogger())
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
+
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
     public UtilityBillPanel(
         IServiceScopeFactory scopeFactory,
         ILogger<ScopedPanelBase<UtilityBillViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        _factory = ControlFactory;
+    }
+
+    private static ILogger ResolveLogger()
+    {
+        return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<UtilityBillPanel>>(Program.Services)
+            ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<UtilityBillPanel>.Instance;
+    }
+
+    private SyncfusionControlFactory Factory => _factory ?? ControlFactory;
+
+    private IServiceProvider? ResolveServiceProvider()
+    {
+        return _scope?.ServiceProvider ?? Program.Services;
     }
 
     #endregion
@@ -118,7 +142,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             _uiSyncContext = System.Threading.SynchronizationContext.Current;
 
-            InitializeControls();
+            SafeSuspendAndLayout(InitializeControls);
             BindViewModel();
             ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -144,8 +168,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         // Set up panel properties (matches PreferredDockSize extension)
         Text = "Utility Bills";
-        Size = new Size(560, 400);
-        MinimumSize = new Size(420, 360);
+        Size = new Size(1100, 760);
+        MinimumSize = new Size(1024, 720);
+        AutoScaleMode = AutoScaleMode.Dpi;
         AutoScroll = false;
         Padding = Padding.Empty;
 
@@ -178,7 +203,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Controls.Add(_panelHeader);
 
         // Main split container (bills top, customers bottom)
-        _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
+        _mainSplitContainer = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = Orientation.Horizontal;
@@ -186,10 +211,24 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, (int)DpiAware.LogicalToDeviceUnits(500f));
 
+        _content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            AutoSize = false,
+            Name = "UtilityBillPanelContent"
+        };
+        _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        _content.Controls.Add(_mainSplitContainer, 0, 0);
+
         InitializeTopPanel();
         InitializeBottomPanel();
 
-        Controls.Add(_mainSplitContainer);
+        Controls.Add(_content);
 
         // Status strip
         _statusStrip = new StatusStrip
@@ -240,8 +279,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
         };
-        var theme1 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(topPanel, theme1);
 
         // Summary panel with KPIs
         InitializeSummaryPanel();
@@ -267,8 +304,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
         };
-        var theme2 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(_summaryPanel, theme2);
 
         var summaryTable = new TableLayoutPanel
         {
@@ -315,8 +350,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
         };
-        var theme3 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(_buttonPanel, theme3);
 
         var buttonFlow = new FlowLayoutPanel
         {
@@ -378,7 +411,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private SfButton CreateButton(string text, Size size, int tabIndex)
     {
-        return ControlFactory.CreateSfButton(text, button =>
+        return Factory.CreateSfButton(text, button =>
         {
             button.Size = size;
             button.TabIndex = tabIndex;
@@ -394,10 +427,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
         };
-        var theme4 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(_gridPanel, theme4);
-
-        _billsGrid = ControlFactory.CreateSfDataGrid(grid =>
+        _billsGrid = Factory.CreateSfDataGrid(grid =>
         {
             grid.Dock = DockStyle.Fill;
             grid.AutoGenerateColumns = false;
@@ -408,7 +438,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             grid.AllowResizingColumns = true;
             grid.AllowDraggingColumns = true;
             grid.ShowGroupDropArea = true;
-            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells;
+            grid.EnableDataVirtualization = true;
             grid.SelectionMode = GridSelectionMode.Single;
             grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
             grid.ShowRowHeader = true;
@@ -504,8 +535,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Padding = new Padding(LayoutTokens.PanelPadding),
             BorderStyle = BorderStyle.None,
         };
-        var theme5 = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(_buttonPanel, theme5);
 
         var buttonTable = new TableLayoutPanel
         {
@@ -517,7 +546,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         for (int i = 0; i < 6; i++)
             buttonTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16.67f));
 
-        _createBillButton = ControlFactory.CreateSfButton("&Create Bill", button =>
+        _createBillButton = Factory.CreateSfButton("&Create Bill", button =>
         {
             button.TabIndex = 2;
             button.AccessibleName = "Create Bill";
@@ -525,7 +554,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         _createBillButton.Click += async (s, e) => await ViewModel.CreateBillCommand.ExecuteAsync(null);
 
-        _saveBillButton = ControlFactory.CreateSfButton("&Save Bill", button =>
+        _saveBillButton = Factory.CreateSfButton("&Save Bill", button =>
         {
             button.TabIndex = 3;
             button.AccessibleName = "Save Bill";
@@ -533,7 +562,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         _saveBillButton.Click += async (s, e) => await ViewModel.SaveBillCommand.ExecuteAsync(null);
 
-        _deleteBillButton = ControlFactory.CreateSfButton("&Delete Bill", button =>
+        _deleteBillButton = Factory.CreateSfButton("&Delete Bill", button =>
         {
             button.TabIndex = 4;
             button.AccessibleName = "Delete Bill";
@@ -541,7 +570,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         _deleteBillButton.Click += async (s, e) => await ViewModel.DeleteBillCommand.ExecuteAsync(null);
 
-        _markPaidButton = ControlFactory.CreateSfButton("&Mark Paid", button =>
+        _markPaidButton = Factory.CreateSfButton("&Mark Paid", button =>
         {
             button.TabIndex = 5;
             button.AccessibleName = "Mark Paid";
@@ -549,7 +578,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         _markPaidButton.Click += async (s, e) => await ViewModel.MarkAsPaidCommand.ExecuteAsync(null);
 
-        _generateReportButton = ControlFactory.CreateSfButton("&Generate Report", button =>
+        _generateReportButton = Factory.CreateSfButton("&Generate Report", button =>
         {
             button.TabIndex = 6;
             button.AccessibleName = "Generate Report";
@@ -557,7 +586,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         _generateReportButton.Click += async (s, e) => await ViewModel.GenerateReportCommand.ExecuteAsync(null);
 
-        _refreshButton = ControlFactory.CreateSfButton("&Refresh", button =>
+        _refreshButton = Factory.CreateSfButton("&Refresh", button =>
         {
             button.TabIndex = 7;
             button.AccessibleName = "Refresh";
@@ -585,7 +614,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
         };
-        SfSkinManager.SetVisualStyle(bottomPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         // Filter panel
         var filterPanel = new Panel
@@ -595,7 +623,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Padding = new Padding((int)DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
         };
-        SfSkinManager.SetVisualStyle(filterPanel, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
 
         var filterTable = new TableLayoutPanel
         {
@@ -609,7 +636,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15f));
 
-        _searchTextBox = ControlFactory.CreateTextBoxExt(textBox =>
+        _searchTextBox = Factory.CreateTextBoxExt(textBox =>
         {
             textBox.Dock = DockStyle.Fill;
             textBox.PlaceholderText = "Search bills or customers...";
@@ -620,7 +647,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _toolTip!.SetToolTip(_searchTextBox, "Search by bill number, customer name, or account number");
 
-        _statusFilterComboBox = ControlFactory.CreateSfComboBox(combo =>
+        _statusFilterComboBox = Factory.CreateSfComboBox(combo =>
         {
             combo.Dock = DockStyle.Fill;
             combo.TabIndex = 10;
@@ -634,7 +661,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _statusFilterComboBox.SelectedIndexChanged += StatusFilterComboBox_SelectedIndexChanged;
         _toolTip.SetToolTip(_statusFilterComboBox, "Filter bills by status");
 
-        _overdueOnlyCheckBox = ControlFactory.CreateCheckBoxAdv("Overdue Only", checkBox =>
+        _overdueOnlyCheckBox = Factory.CreateCheckBoxAdv("Overdue Only", checkBox =>
         {
             checkBox.Dock = DockStyle.Fill;
             checkBox.TabIndex = 11;
@@ -666,10 +693,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
             BorderStyle = BorderStyle.None,
         };
-        var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(customersPanel, theme);
-
-        _customersGrid = ControlFactory.CreateSfDataGrid(grid =>
+        _customersGrid = Factory.CreateSfDataGrid(grid =>
         {
             grid.Dock = DockStyle.Fill;
             grid.AutoGenerateColumns = false;
@@ -677,7 +701,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             grid.AllowResizingColumns = true;
             grid.AllowSorting = true;
             grid.AllowFiltering = true;
-            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells;
+            grid.EnableDataVirtualization = true;
             grid.SelectionMode = GridSelectionMode.Single;
             grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
             grid.ShowRowHeader = false;
@@ -1140,7 +1165,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
-        // Queue async export on the UI thread
         BeginInvoke(new Func<Task>(async () =>
         {
             try
@@ -1157,32 +1181,52 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 if (view.Records?.Count == 0)
                 {
                     MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    UpdateStatus("No bills available to export.");
                     return;
                 }
 
-                using var saveDialog = new SaveFileDialog
-                {
-                    Filter = "Excel Files|*.xlsx",
-                    Title = "Export Utility Bills",
-                    FileName = $"UtilityBills_{DateTime.Now:yyyyMMdd}.xlsx"
-                };
+                var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                    owner: this,
+                    operationKey: $"{nameof(UtilityBillPanel)}.Excel",
+                    dialogTitle: "Export Utility Bills",
+                    filter: "Excel Files (*.xlsx)|*.xlsx",
+                    defaultExtension: "xlsx",
+                    defaultFileName: $"UtilityBills_{DateTime.Now:yyyyMMdd}.xlsx",
+                    exportAction: (filePath, cancellationToken) => ExportService.ExportGridToExcelAsync(_billsGrid, filePath, cancellationToken),
+                    statusCallback: UpdateStatus,
+                    logger: Logger,
+                    cancellationToken: CancellationToken.None);
 
-                if (saveDialog.ShowDialog() == DialogResult.OK)
+                if (result.IsSkipped)
                 {
-                    UpdateStatus("Exporting to Excel...");
-                    await ExportService.ExportGridToExcelAsync(_billsGrid, saveDialog.FileName);
-                    UpdateStatus("Export completed successfully");
-
-                    MessageBox.Show(
-                        $"Bills exported successfully to:\n{saveDialog.FileName}",
-                        "Export Successful",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
+
+                if (result.IsCancelled)
+                {
+                    UpdateStatus("Export cancelled.");
+                    return;
+                }
+
+                if (!result.IsSuccess)
+                {
+                    UpdateStatus("Export failed.");
+                    MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                UpdateStatus("Export completed successfully");
+                MessageBox.Show(
+                    $"Bills exported successfully to:\n{result.FilePath}",
+                    "Export Successful",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error exporting to Excel");
+                UpdateStatus("Export failed.");
                 MessageBox.Show(
                     $"Error exporting to Excel: {ex.Message}",
                     "Export Error",
@@ -1215,9 +1259,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             Logger.LogError(ex, "Error refreshing data");
             UpdateStatus($"Error: {ex.Message}");
 
-            if (ServiceProvider != null)
+            var serviceProvider = ResolveServiceProvider();
+            if (serviceProvider != null)
             {
-                var errorService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(ServiceProvider);
+                var errorService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(serviceProvider);
                 errorService?.ReportError(ex, "Failed to refresh utility bill data", showToUser: true);
             }
         }
@@ -1236,12 +1281,24 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             Logger.LogError(ex, "Error executing command");
 
-            if (ServiceProvider != null)
+            var serviceProvider = ResolveServiceProvider();
+            if (serviceProvider != null)
             {
-                var errorService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(ServiceProvider);
+                var errorService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ErrorReportingService>(serviceProvider);
                 errorService?.ReportError(ex, "An error occurred while processing your request", showToUser: true);
             }
         }
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
+        {
+            MinimumSize = new Size(1024, 720);
+        }
+
+        PerformLayout();
     }
 
     private void UpdateStatus(string message)

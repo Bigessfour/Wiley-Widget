@@ -7,6 +7,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -104,6 +105,7 @@ public partial class MainForm
             // ============================================================================
             try
             {
+                Console.WriteLine("[NAVIGATION] Starting to enable navigation buttons");
                 if (_navigationStrip != null && IsHandleCreated && !IsDisposed)
                 {
                     this.InvokeIfRequired(() =>
@@ -113,16 +115,20 @@ public partial class MainForm
                         {
                             if (item is ToolStripButton button && !button.Enabled)
                             {
+                                Console.WriteLine($"[NAVIGATION] Enabling navigation button: {button.Text ?? button.Name}");
                                 button.Enabled = true;
                                 enabledCount++;
                             }
                         }
+                        Console.WriteLine($"[NAVIGATION] Enabled {enabledCount} navigation buttons");
                         _logger?.LogDebug("[NAVIGATION] Enabled {Count} navigation buttons", enabledCount);
                     });
                 }
+                Console.WriteLine("[NAVIGATION] Finished enabling navigation buttons");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[NAVIGATION] Error enabling navigation buttons: {ex.Message}");
                 _logger?.LogWarning(ex, "[NAVIGATION] Unexpected error enabling navigation buttons (non-critical)");
             }
 
@@ -498,6 +504,7 @@ public partial class MainForm
             int totalLoaded = (loadedMru as System.Collections.ICollection) is System.Collections.ICollection coll ? coll.Count : loadedMru.Count();
             int filtered = totalLoaded - _mruList.Count;
             _logger?.LogDebug("MRU list loaded: {Count} items ({TotalLoaded} loaded, {Filtered} filtered)", _mruList.Count, totalLoaded, filtered);
+            RefreshMruMenu();
         }
         catch (Exception ex)
         {
@@ -620,12 +627,15 @@ public partial class MainForm
                 try
                 {
                     _windowStateService.AddToMru(file);
-                    // Update in-memory list directly instead of reloading
-                    if (!_mruList.Contains(file))
+                    var existingIndex = _mruList.IndexOf(file);
+                    if (existingIndex >= 0)
                     {
-                        _mruList.Insert(0, file); // Add to front for MRU behavior
-                        if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1); // Limit to 10 items
+                        _mruList.RemoveAt(existingIndex);
                     }
+
+                    _mruList.Insert(0, file);
+                    if (_mruList.Count > 10) _mruList.RemoveAt(_mruList.Count - 1);
+                    RefreshMruMenu();
                 }
                 catch (DirectoryNotFoundException dnfEx)
                 {
@@ -755,6 +765,10 @@ public partial class MainForm
     {
         base.OnShown(e);
 
+        var onShownStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var redrawSuspended = TrySuspendRedraw("ONSHOWN");
+        SuspendLayout();
+
         try
         {
             _logger?.LogInformation("🌟 MainForm.OnShown - Wiley Widget launching default dashboard...");
@@ -764,10 +778,14 @@ public partial class MainForm
                 throw new InvalidOperationException("Service provider is not initialized.");
             }
 
+            var dockingStopwatch = System.Diagnostics.Stopwatch.StartNew();
             // ── 1. Make sure the docking/tab system is ready (do this BEFORE navigation service)
             InitializeDockingOrTabbedLayout();
+            dockingStopwatch.Stop();
+            _logger?.LogDebug("OnShown Phase 1 (Docking setup) in {ElapsedMs}ms", dockingStopwatch.ElapsedMilliseconds);
 
             // ── 2. Create the navigation service (this was the missing piece!)
+            var navServiceStopwatch = System.Diagnostics.Stopwatch.StartNew();
             var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
                 .GetService<Microsoft.Extensions.Logging.ILogger<PanelNavigationService>>(_serviceProvider);
 
@@ -783,39 +801,193 @@ public partial class MainForm
                 _logger?.LogDebug("TabbedMDIManager wired to PanelNavigationService");
             }
 
-            // ── 3. THE MONEY SHOT — Show Enterprise Vital Signs as the default FULL-SCREEN panel
-            _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
-                panelName: "Enterprise Vital Signs",
-                preferredStyle: DockingStyle.Fill,
-                allowFloating: false);   // no floating the hero panel
+            // Synchronise _panelNavigator (used by Navigation.cs ShowPanel<T>/ShowForm<T>/ClosePanel)
+            // with the concrete instance created here, so that both fields always share the same
+            // PanelNavigationService and no second instance is lazily constructed on first navigation.
+            _panelNavigator = _panelNavigationService;
 
-            // Bonus: Dock JARVIS Chat to the right so Steve can talk to Grok while looking at gauges
-            _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
-                panelName: "JARVIS Chat",
-                preferredStyle: DockingStyle.Right,
-                allowFloating: true);
+            navServiceStopwatch.Stop();
+            _logger?.LogDebug("OnShown Phase 2 (Navigation service setup) in {ElapsedMs}ms", navServiceStopwatch.ElapsedMilliseconds);
 
-            _logger?.LogInformation("✅ SUCCESS — Enterprise Vital Signs is now the default home screen! " +
-                                    "Gauges loaded, charts spinning, council-ready in 3...2...1...");
+            // ── 3. PERF OPTIMIZATION: Defer ALL panel creation to reduce OnShown blocking time (~150ms gain)
+            // Show form immediately, load panels asynchronously
+            _logger?.LogDebug("OnShown Phase 3: Deferring panel creation for faster perceived startup");
 
-            // Optional victory lap — flash the status bar
-            _statusProgressService?.Complete("Startup", "Welcome to Wiley Widget — Municipal Finance, Supercharged!");
+            // Defer primary panel creation to unblock OnShown completion.
+            // ShowPanel is synchronous — no async/await required here.
+            // The previous double-BeginInvoke (async void inside async void) caused FlaUI tests
+            // to time out because the outer lambda exited before the inner lambda even queued on
+            // the UI thread, leaving panels invisible to UI Automation for 30-90 s per test.
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    if (_panelNavigationService == null || IsDisposed || Disposing)
+                    {
+                        return;
+                    }
+
+                    var primaryPanelStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+                        panelName: "Enterprise Vital Signs",
+                        preferredStyle: DockingStyle.Fill,
+                        allowFloating: false);   // no floating the hero panel
+                    primaryPanelStopwatch.Stop();
+                    _logger?.LogDebug("Deferred Phase 3a (Enterprise Vital Signs) in {ElapsedMs}ms", primaryPanelStopwatch.ElapsedMilliseconds);
+
+                    // Optional victory lap — flash the status bar
+                    _statusProgressService?.Complete("Startup", "Welcome to Wiley Widget — Municipal Finance, Supercharged!");
+                }
+                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+                {
+                    _logger?.LogDebug(ex, "Deferred panel load hit handle race — retrying after delay");
+                    // Small synchronous retry; Thread.Sleep is acceptable here because this
+                    // BeginInvoke already runs after OnShown (form is visible) and the sleep is
+                    // limited to the rare handle-race path only.
+                    System.Threading.Thread.Sleep(100);
+                    if (!IsDisposed)
+                        _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+                            panelName: "Enterprise Vital Signs",
+                            preferredStyle: DockingStyle.Fill,
+                            allowFloating: false);
+                }
+                catch (Exception primaryEx)
+                {
+                    _logger?.LogError(primaryEx, "Failed to load primary panel in deferred phase");
+                    UIHelper.ShowMessageOnUI(
+                        this,
+                        "Whoops! The dashboard had a little hiccup starting up.\n\n" +
+                        "Check the log file for details.\n\n" +
+                        "We'll get this fixed faster than Brick can say 'Stay classy, Wiley!'",
+                        "Wiley Widget Startup Issue",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning,
+                        _logger);
+
+                    // Still try to show something useful
+                    try
+                    {
+                        _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.SettingsPanel>("Settings", DockingStyle.Fill);
+                    }
+                    catch (Exception fallbackPanelEx)
+                    {
+                        _logger?.LogWarning(fallbackPanelEx, "Failed to load fallback Settings panel after primary startup panel failure");
+                    }
+                }
+            }));
+
+            // Defer secondary panel even further to reduce startup thrash
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                try
+                {
+                    if (_panelNavigationService == null || IsDisposed || Disposing)
+                    {
+                        return;
+                    }
+
+                    if (!ShouldAutoOpenJarvisOnStartup())
+                    {
+                        _logger?.LogDebug("OnShown deferred phase: JARVIS Chat auto-open skipped");
+                        return;
+                    }
+
+                    _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
+                        panelName: "JARVIS Chat",
+                        preferredStyle: DockingStyle.Right,
+                        allowFloating: true);
+
+                    _logger?.LogDebug("OnShown deferred phase: JARVIS Chat opened");
+                }
+                catch (Exception deferredEx)
+                {
+                    _logger?.LogWarning(deferredEx, "Failed to open deferred JARVIS Chat panel during OnShown");
+                }
+            }));
+
+            // Req 5 (IAsyncInitializable): call InitializeAsync after panels are deferred.
+            // Handles theme propagation, visibility notifications, and nav-strip hardening.
+            // NOTE: Do NOT cast an async lambda to MethodInvoker — that creates an async-void
+            // delegate whose Task is silently dropped.  Fire the Task explicitly and attach an
+            // error-continuation on the UI scheduler so failures are still logged.
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                _ = InitializeAsync(CancellationToken.None).ContinueWith(
+                    t => _logger?.LogError(
+                        t.Exception?.InnerException ?? t.Exception,
+                        "InitializeAsync failed during OnShown deferred invoke"),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted,
+                    TaskScheduler.FromCurrentSynchronizationContext());
+            }));
+
+            _logger?.LogInformation("✅ SUCCESS — OnShown completed, panels loading asynchronously for faster startup");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "💥 CRITICAL — Failed to show default panels in OnShown");
+            _logger?.LogError(ex, "💥 CRITICAL — Failed during OnShown initialization");
 
-            // Friendly mayor-friendly message (no scary stack traces)
-            MessageBox.Show(
-                "Whoops! The dashboard had a little hiccup starting up.\n\n" +
-                "Check the log file for details.\n\n" +
-                "We'll get this fixed faster than Brick can say 'Stay classy, Wiley!'",
-                "Wiley Widget Startup Issue",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-
-            // Still try to show something useful
-            _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.SettingsPanel>("Settings", DockingStyle.Fill);
+            // Show error in deferred context, not blocking OnShown
+            BeginInvoke(() =>
+            {
+                UIHelper.ShowMessageOnUI(
+                    this,
+                    "Whoops! The application had a little hiccup starting up.\n\n" +
+                    "Check the log file for details.\n\n" +
+                    "We'll get this fixed faster than Brick can say 'Stay classy, Wiley!'",
+                    "Wiley Widget Startup Issue",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning,
+                    _logger);
+            });
         }
+        finally
+        {
+            ResumeLayout(performLayout: true);
+            ResumeRedraw(redrawSuspended, "ONSHOWN");
+            onShownStopwatch.Stop();
+            _logger?.LogInformation("OnShown completed in {ElapsedMs}ms", onShownStopwatch.ElapsedMilliseconds);
+        }
+    }
+
+    private bool ShouldAutoOpenJarvisOnStartup()
+    {
+        if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
+        {
+            // Allow an explicit test override to auto-open JARVIS during UI automation runs.
+            // Tests may set WILEYWIDGET_UI_AUTOMATION_JARVIS=true to force the panel open
+            var jarvisAuto = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS");
+            if (string.Equals(jarvisAuto, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: Jarvis automation override detected; auto-opening JARVIS for UI automation");
+                return true;
+            }
+
+            return false;
+        }
+
+        var disableAutoOpen = Environment.GetEnvironmentVariable("WILEYWIDGET_DISABLE_STARTUP_JARVIS");
+        if (string.Equals(disableAutoOpen, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(disableAutoOpen, "1", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Microsoft.WinForms.Utilities.Shared.dll is a transitive dependency of BlazorWebView
+        // It's part of Visual Studio IDE tooling and not guaranteed to be present in all
+        // .NET 10 WindowsDesktop runtime installations. If missing, JARVIS may fail, but
+        // the application should still function. Log at Debug level to avoid alarming users.
+        var winFormsUtilitiesSharedPath = Path.Combine(AppContext.BaseDirectory, "Microsoft.WinForms.Utilities.Shared.dll");
+        if (!File.Exists(winFormsUtilitiesSharedPath))
+        {
+            _logger?.LogDebug(
+                "Optional JARVIS dependency not found: {DependencyPath}. " +
+                "JARVIS Assistant may not function correctly if BlazorWebView is unavailable. " +
+                "Ensure Visual Studio with .NET Desktop workload is installed for full functionality.",
+                winFormsUtilitiesSharedPath);
+            // Don't block startup - allow JARVIS to attempt initialization and fail gracefully if needed
+        }
+
+        return true;
     }
 }

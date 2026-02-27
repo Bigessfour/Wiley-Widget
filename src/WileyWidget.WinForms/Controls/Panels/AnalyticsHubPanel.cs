@@ -22,6 +22,7 @@ using TabPageAdv = Syncfusion.Windows.Forms.Tools.TabPageAdv;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 
@@ -678,40 +679,59 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     private async Task ExportHubAsync(CancellationToken ct)
     {
         var tabName = GetCurrentTabName();
-        using var dlg = new SaveFileDialog
+
+        var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+            owner: this,
+            operationKey: $"{nameof(AnalyticsHubPanel)}.{tabName}.Csv",
+            dialogTitle: $"Export {tabName}",
+            filter: "CSV Files (*.csv)|*.csv",
+            defaultExtension: "csv",
+            defaultFileName: $"Analytics_{tabName}_{DateTime.Now:yyyyMMdd_HHmm}.csv",
+            exportAction: async (filePath, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                IsBusy = true;
+                ShowLoadingOverlay($"Exporting {tabName}...");
+                UpdateStatus($"Exporting {tabName}...");
+
+                try
+                {
+                    await ExportCurrentTabToCsvAsync(filePath, cancellationToken);
+                }
+                finally
+                {
+                    IsBusy = false;
+                    HideLoadingOverlay();
+                }
+            },
+            statusCallback: UpdateStatus,
+            logger: _logger,
+            cancellationToken: ct);
+
+        if (result.IsSkipped)
         {
-            Filter = "CSV Files|*.csv",
-            Title = $"Export {tabName}",
-            FileName = $"Analytics_{tabName}_{DateTime.Now:yyyyMMdd_HHmm}.csv"
-        };
-        if (dlg.ShowDialog() != DialogResult.OK) return;
-
-        try
-        {
-            ct.ThrowIfCancellationRequested();
-            IsBusy = true;
-            ShowLoadingOverlay($"Exporting {tabName}...");
-            UpdateStatus($"Exporting {tabName}...");
-
-            await ExportCurrentTabToCsvAsync(dlg.FileName, ct);
-
-            UpdateStatus("Export completed successfully");
-            MessageBox.Show(
-                $"Export completed:\n{dlg.FileName}",
-                "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.",
+                "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
         }
-        catch (OperationCanceledException) { UpdateStatus("Export cancelled"); }
-        catch (Exception ex)
+
+        if (result.IsCancelled)
         {
-            _logger?.LogError(ex, "Failed to export analytics data");
+            UpdateStatus("Export cancelled");
+            return;
+        }
+
+        if (!result.IsSuccess)
+        {
             UpdateStatus("Export failed");
-            ShowErrorOverlay($"Export failed: {ex.Message}");
+            ShowErrorOverlay($"Export failed: {result.ErrorMessage}");
+            return;
         }
-        finally
-        {
-            IsBusy = false;
-            HideLoadingOverlay();
-        }
+
+        UpdateStatus("Export completed successfully");
+        MessageBox.Show(
+            $"Export completed:\n{result.FilePath}",
+            "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private string GetCurrentTabName() => _tabControl?.SelectedIndex switch
@@ -874,17 +894,12 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     // -------------------------------------------------------------------------
 
     /// <summary>
-    /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+    /// Called when panel is first shown. Base timer handles ForceFullLayout.
     /// </summary>
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
-
-        BeginInvoke(() =>
-        {
-            ForceFullLayout();
-            Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
-        });
+        // Note: ForceFullLayout is handled by base timer - no need to call it again
     }
 
     /// <inheritdoc/>

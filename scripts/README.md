@@ -167,6 +167,7 @@ def test_get_dotnet_processes_success(self, mock_run):
 ## 🔧 Development Guidelines
 
 - **Python First**: All new scripts should be Python-based
+- **Validation Exception**: Panel compliance audits are maintained in `scripts/validation/Validate-PanelDoneChecklist.ps1`
 - **Modular Design**: Separate concerns into focused scripts
 - **Error Handling**: Use try/catch with proper exit codes
 - **Logging**: Use structured logging for all operations

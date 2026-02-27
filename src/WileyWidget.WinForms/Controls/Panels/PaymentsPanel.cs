@@ -16,6 +16,7 @@ using Syncfusion.WinForms.DataGrid.Events;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
@@ -28,6 +29,8 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// </summary>
 public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 {
+    private const string StatusSymbolHeaderText = "●";
+
     private SfDataGrid _paymentsGrid = null!;
     private SfButton _btnAdd = null!;
     private SfButton _btnEdit = null!;
@@ -35,11 +38,14 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
     private SfButton _btnRefresh = null!;
     private SfButton _btnExport = null!;
     private TextBox _txtSearch = null!;
+    private PanelHeader _panelHeader = null!;
+    private Label _statusLabel = null!;
+    private ToolTip _toolTip = null!;
 
     public PaymentsPanel(IServiceScopeFactory scopeFactory, ILogger<PaymentsPanel> logger)
         : base(scopeFactory, logger)
     {
-        InitializeControls();
+        SafeSuspendAndLayout(InitializeControls);
 
         // CRITICAL FIX: Load data when panel is loaded
         Load += PaymentsPanel_Load;
@@ -55,33 +61,51 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
     {
         try
         {
-            IsBusy = true;
+            SetBusyState(isBusy: true, statusMessage: "Loading payments…");
 
             if (ViewModel == null)
             {
                 Logger?.LogError("PaymentsPanel: ViewModel is null");
+                SetStatusMessage("Unable to load payments.");
                 return;
             }
 
+            EnsureGridBinding();
+
             // Load payments
             await ViewModel.LoadPaymentsCommand.ExecuteAsync(null);
+
+            EnsureGridBinding(forceRebindWhenOutOfSync: true);
 
             // CRITICAL FIX: Force grid refresh after loading data
             // The grid may not auto-refresh even though Payments is ObservableCollection
             if (_paymentsGrid?.View != null)
             {
+                if (string.IsNullOrWhiteSpace(_txtSearch?.Text))
+                {
+                    _paymentsGrid.View.Filter = null;
+                    _paymentsGrid.View.RefreshFilter();
+                }
+                else
+                {
+                    ApplySearchFilter();
+                }
+
                 _paymentsGrid.View.Refresh();
                 Logger?.LogDebug("PaymentsPanel: Grid refreshed after loading {Count} payments", ViewModel.Payments.Count);
             }
+
+            var loadedCount = ViewModel.Payments.Count;
+            SetStatusMessage(loadedCount == 1 ? "Loaded 1 payment." : $"Loaded {loadedCount} payments.");
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "PaymentsPanel: LoadDataAsync failed");
+            SetStatusMessage("Unable to load payments. See logs for details.");
         }
         finally
         {
-            IsBusy = false;
-            UpdateExportButtonState();
+            SetBusyState(isBusy: false);
         }
     }
 
@@ -92,22 +116,50 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
         Name = "PaymentsPanel";
         Size = new System.Drawing.Size(1000, 600);
+        MinimumSize = new System.Drawing.Size(1024, 720);
         Dock = DockStyle.Fill;
+
+        var panelPadding = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f);
+        var headerRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(56f);
+        var toolbarRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(60f);
+        var statusRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(30f);
 
         var mainLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            RowCount = 3,
+            RowCount = 4,
             ColumnCount = 1,
-            Padding = new Padding(10)
+            Padding = new Padding(panelPadding)
         };
 
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50)); // Toolbar
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, headerRowHeight)); // Header
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, toolbarRowHeight)); // Toolbar
         mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Grid
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, statusRowHeight)); // Status
+
+        _panelHeader = new PanelHeader
+        {
+            Title = "Payments",
+            Dock = DockStyle.Fill,
+            ShowPinButton = false,
+            ShowHelpButton = false,
+            ShowCloseButton = false,
+            ShowRefreshButton = true
+        };
+        _panelHeader.RefreshClicked += PanelHeader_RefreshClicked;
+        mainLayout.Controls.Add(_panelHeader, 0, 0);
+
+        _toolTip = new ToolTip
+        {
+            AutoPopDelay = 8000,
+            InitialDelay = 250,
+            ReshowDelay = 100,
+            ShowAlways = true
+        };
 
         // Toolbar
         var toolbar = CreateToolbar(themeName);
-        mainLayout.Controls.Add(toolbar, 0, 0);
+        mainLayout.Controls.Add(toolbar, 0, 1);
 
         // Grid
         _paymentsGrid = new SfDataGrid
@@ -122,17 +174,19 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             SelectionMode = Syncfusion.WinForms.DataGrid.Enums.GridSelectionMode.Single,
             ThemeName = themeName,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-            RowHeight = 40  // Increased for better readability
+            RowHeight = 40,  // Increased for better readability
+            AccessibleName = "Payments Grid"
         }.PreventStringRelationalFilters(_logger, "Status", "CheckNumber", "Payee", "Description");
 
         // Status icon column
         _paymentsGrid.Columns.Add(new GridTextColumn
         {
             MappingName = nameof(Payment.Status),
-            HeaderText = "●",
+            HeaderText = StatusSymbolHeaderText,
             MinimumWidth = 40,
             AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells,
-            AllowSorting = false
+            AllowSorting = false,
+            AllowFiltering = false
         });
         _paymentsGrid.Columns.Add(new GridTextColumn
         {
@@ -238,11 +292,58 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         _paymentsGrid.TableSummaryRows.Add(summaryRow);
 
         _paymentsGrid.SelectionChanged += (s, e) => UpdateButtonStates();
+        _paymentsGrid.CellClick += Grid_CellClick;
         _paymentsGrid.KeyDown += Grid_KeyDown;  // Keyboard shortcuts
 
-        mainLayout.Controls.Add(_paymentsGrid, 0, 1);
+        EnsureGridBinding();
+
+        mainLayout.Controls.Add(_paymentsGrid, 0, 2);
+
+        _statusLabel = new Label
+        {
+            Dock = DockStyle.Fill,
+            TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+            AutoEllipsis = true,
+            Text = "Ready",
+            Padding = new Padding(4, 0, 0, 0),
+            AccessibleName = "Payments Status"
+        };
+        mainLayout.Controls.Add(_statusLabel, 0, 3);
 
         Controls.Add(mainLayout);
+
+        SetStatusMessage("Ready");
+    }
+
+    private void EnsureGridBinding(bool forceRebindWhenOutOfSync = false)
+    {
+        if (ViewModel == null || _paymentsGrid == null)
+        {
+            return;
+        }
+
+        if (!ReferenceEquals(_paymentsGrid.DataSource, ViewModel.Payments))
+        {
+            _paymentsGrid.DataSource = ViewModel.Payments;
+            Logger?.LogDebug("PaymentsPanel: Bound grid DataSource to Payments collection ({Count} items)", ViewModel.Payments.Count);
+            return;
+        }
+
+        if (!forceRebindWhenOutOfSync || _paymentsGrid.View == null)
+        {
+            return;
+        }
+
+        var hasSearchFilter = !string.IsNullOrWhiteSpace(_txtSearch?.Text);
+        var visibleRecords = _paymentsGrid.View.Records?.Count ?? 0;
+
+        if (!hasSearchFilter && ViewModel.Payments.Count > 0 && visibleRecords == 0)
+        {
+            _paymentsGrid.DataSource = null;
+            _paymentsGrid.DataSource = ViewModel.Payments;
+            _paymentsGrid.View.Refresh();
+            Logger?.LogWarning("PaymentsPanel: Rebound DataSource because grid records were out of sync with loaded payments ({Count})", ViewModel.Payments.Count);
+        }
     }
 
     private Panel CreateToolbar(string themeName)
@@ -280,69 +381,79 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         // Add Payment button - green icon
         _btnAdd = new SfButton
         {
-            Text = "Add Payment",
+            Text = "&Add Payment",
             Width = 130,
             Height = 38,
             ThemeName = themeName,
-            TextImageRelation = TextImageRelation.ImageBeforeText
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            AccessibleName = "Add Payment"
         };
         _btnAdd.Image = LoadIcon("New32");
         _btnAdd.Click += BtnAdd_Click;
+        _toolTip.SetToolTip(_btnAdd, "Create a new payment (Ctrl+N)");
         toolbar.Controls.Add(_btnAdd);
 
         // Edit button
         _btnEdit = new SfButton
         {
-            Text = "Edit",
+            Text = "&Edit",
             Width = 100,
             Height = 38,
             ThemeName = themeName,
             Enabled = false,
-            TextImageRelation = TextImageRelation.ImageBeforeText
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            AccessibleName = "Edit Payment"
         };
         _btnEdit.Image = LoadIcon("Edit32");
         _btnEdit.Click += BtnEdit_Click;
+        _toolTip.SetToolTip(_btnEdit, "Edit selected payment (Enter or F2)");
         toolbar.Controls.Add(_btnEdit);
 
         // Delete button
         _btnDelete = new SfButton
         {
-            Text = "Delete",
+            Text = "&Delete",
             Width = 100,
             Height = 38,
             ThemeName = themeName,
             Enabled = false,
-            TextImageRelation = TextImageRelation.ImageBeforeText
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            AccessibleName = "Delete Payment"
         };
         _btnDelete.Image = LoadIcon("Delete32");
         _btnDelete.Click += BtnDelete_Click;
+        _toolTip.SetToolTip(_btnDelete, "Delete selected payment (Delete)");
         toolbar.Controls.Add(_btnDelete);
 
         // Refresh button
         _btnRefresh = new SfButton
         {
-            Text = "Refresh",
+            Text = "&Refresh",
             Width = 110,
             Height = 38,
             ThemeName = themeName,
-            TextImageRelation = TextImageRelation.ImageBeforeText
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            AccessibleName = "Refresh Payments"
         };
         _btnRefresh.Image = LoadIcon("Refresh32");
-        _btnRefresh.Click += async (s, e) => await ViewModel!.RefreshCommand.ExecuteAsync(null);
+        _btnRefresh.Click += async (s, e) => await LoadDataAsync();
+        _toolTip.SetToolTip(_btnRefresh, "Reload payments from the data source (F5)");
         toolbar.Controls.Add(_btnRefresh);
 
         // Export to Excel button
         _btnExport = new SfButton
         {
-            Text = "Export to Excel",
+            Text = "E&xport to Excel",
             Width = 140,
             Height = 38,
             ThemeName = themeName,
             Enabled = false,
-            TextImageRelation = TextImageRelation.ImageBeforeText
+            TextImageRelation = TextImageRelation.ImageBeforeText,
+            AccessibleName = "Export Payments"
         };
         _btnExport.Image = LoadIcon("Excel32");
         _btnExport.Click += BtnExport_Click;
+        _toolTip.SetToolTip(_btnExport, "Export current grid data to Excel (Ctrl+E)");
         toolbar.Controls.Add(_btnExport);
 
         // Separator
@@ -350,14 +461,13 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             Text = "  |",
             AutoSize = true,
-            Padding = new Padding(5, 0, 10, 0),
-            ForeColor = System.Drawing.Color.LightGray
+            Padding = new Padding(5, 0, 10, 0)
         });
 
         // Search section
         toolbar.Controls.Add(new Label
         {
-            Text = "Search:",
+            Text = "&Search:",
             TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
             AutoSize = true,
             Padding = new Padding(0, 8, 8, 0)
@@ -365,15 +475,22 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
         _txtSearch = new TextBox
         {
-            Width = 220,
+            Width = 260,
             Height = 30,
             PlaceholderText = "Type to filter...",
-            Padding = new Padding(4)
+            Padding = new Padding(4),
+            AccessibleName = "Search Payments"
         };
         _txtSearch.TextChanged += (s, e) => ApplySearchFilter();
+        _toolTip.SetToolTip(_txtSearch, "Filter by payee, check number, or description (Ctrl+F)");
         toolbar.Controls.Add(_txtSearch);
 
         return toolbar;
+    }
+
+    private async void PanelHeader_RefreshClicked(object? sender, EventArgs e)
+    {
+        await LoadDataAsync();
     }
 
     private async void BtnAdd_Click(object? sender, EventArgs e)
@@ -396,7 +513,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
                 FormBorderStyle = FormBorderStyle.Sizable,
                 StartPosition = FormStartPosition.CenterParent,
                 MinimizeBox = false,
-                MaximizeBox = false
+                MaximizeBox = false,
+                AutoScaleMode = AutoScaleMode.Dpi
             };
 
             editPanel.Dock = DockStyle.Fill;
@@ -404,12 +522,14 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
             dialog.Shown += async (s, args) => await editPanel.LoadDataAsync();
 
-            if (dialog.ShowDialog() == DialogResult.OK)
+            var dialogResult = dialog.ShowDialog();
+
+            if (editPanel.HasSavedPayments)
             {
-                Logger?.LogInformation("PaymentsPanel: Payment saved successfully, reloading data");
+                Logger?.LogInformation("PaymentsPanel: Add payment dialog saved one or more payments, reloading data");
                 await LoadDataAsync();
             }
-            else
+            else if (dialogResult != DialogResult.OK)
             {
                 Logger?.LogDebug("PaymentsPanel: Add payment dialog cancelled");
             }
@@ -444,7 +564,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
                 FormBorderStyle = FormBorderStyle.Sizable,
                 StartPosition = FormStartPosition.CenterParent,
                 MinimizeBox = false,
-                MaximizeBox = false
+                MaximizeBox = false,
+                AutoScaleMode = AutoScaleMode.Dpi
             };
 
             editPanel.Dock = DockStyle.Fill;
@@ -474,10 +595,11 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         if (ViewModel?.SelectedPayment == null) return;
 
         var result = MessageBox.Show(
-            $"Are you sure you want to delete payment {ViewModel.SelectedPayment.CheckNumber} to {ViewModel.SelectedPayment.Payee}?",
-            "Confirm Delete",
+            $"Delete payment {ViewModel.SelectedPayment.CheckNumber} to {ViewModel.SelectedPayment.Payee}?\n\nThis action cannot be undone.",
+            "Delete Payment",
             MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question);
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
 
         if (result == DialogResult.Yes)
         {
@@ -517,25 +639,95 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             case Keys.N when e.Control:
                 BtnAdd_Click(sender, e);
                 e.Handled = true;
+                e.SuppressKeyPress = true;
                 break;
             case Keys.Delete:
                 if (_btnDelete.Enabled)
                     BtnDelete_Click(sender, e);
                 e.Handled = true;
+                e.SuppressKeyPress = true;
                 break;
             case Keys.Enter:
                 if (_btnEdit.Enabled)
                     BtnEdit_Click(sender, e);
                 e.Handled = true;
+                e.SuppressKeyPress = true;
                 break;
             case Keys.F when e.Control:
                 _txtSearch.Focus();
                 e.Handled = true;
+                e.SuppressKeyPress = true;
                 break;
             case Keys.F5:
                 _btnRefresh.PerformClick();
                 e.Handled = true;
+                e.SuppressKeyPress = true;
                 break;
+        }
+    }
+
+    private async void Grid_CellClick(object? sender, CellClickEventArgs e)
+    {
+        if (e.DataColumn == null || e.DataRow?.RowData is not Payment payment)
+        {
+            return;
+        }
+
+        if (!string.Equals(e.DataColumn.GridColumn?.MappingName, nameof(Payment.IsCleared), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await TogglePaymentClearedAsync(payment);
+    }
+
+    private async Task TogglePaymentClearedAsync(Payment payment)
+    {
+        if (ServiceProvider == null)
+        {
+            Logger?.LogError("PaymentsPanel: ServiceProvider is null while toggling cleared state");
+            return;
+        }
+
+        if (IsVoidedStatus(payment.Status))
+        {
+            SetStatusMessage($"Check {payment.CheckNumber} is void and cannot be marked cleared.");
+            _paymentsGrid?.View?.Refresh();
+            return;
+        }
+
+        var originalIsCleared = payment.IsCleared;
+        var originalStatus = payment.Status;
+
+        payment.IsCleared = !payment.IsCleared;
+        if (payment.IsCleared)
+        {
+            payment.Status = "Cleared";
+        }
+        else if (string.Equals(payment.Status, "Cleared", StringComparison.OrdinalIgnoreCase))
+        {
+            payment.Status = "Pending";
+        }
+
+        try
+        {
+            var repository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IPaymentRepository>(ServiceProvider);
+            await repository.UpdateAsync(payment, CancellationToken.None);
+
+            _paymentsGrid?.View?.Refresh();
+            SetStatusMessage(payment.IsCleared
+                ? $"Marked check {payment.CheckNumber} as cleared."
+                : $"Marked check {payment.CheckNumber} as pending.");
+        }
+        catch (Exception ex)
+        {
+            payment.IsCleared = originalIsCleared;
+            payment.Status = originalStatus;
+            _paymentsGrid?.View?.Refresh();
+
+            Logger?.LogError(ex, "PaymentsPanel: Failed to toggle cleared state for payment {PaymentId}", payment.Id);
+            SetStatusMessage("Unable to update cleared status. See logs for details.");
+            MessageBox.Show("Unable to update cleared status.", "Payments", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -562,52 +754,31 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         var payment = e.DataRow?.RowData as Payment;
         if (payment == null) return;
 
-        // Status column - sophisticated color-coded indicators with icons
-        if (e.Column.MappingName == nameof(Payment.Status))
+        // Status icon column
+        if (IsStatusSymbolColumn(e))
         {
             e.Style.Font.Size = 13F;
             e.Style.Font.Bold = true;
 
-            var statusColor = payment.Status?.ToLowerInvariant() switch
-            {
-                "cleared" => System.Drawing.Color.FromArgb(40, 167, 69),       // Green ✓
-                "pending" => System.Drawing.Color.FromArgb(255, 193, 7),       // Orange ⏱
-                "void" => System.Drawing.Color.FromArgb(220, 53, 69),          // Red ✕
-                "cancelled" => System.Drawing.Color.FromArgb(108, 117, 125),   // Gray ⊘
-                _ => System.Drawing.Color.FromArgb(0, 123, 255)                // Blue ?
-            };
+            var normalizedStatus = NormalizePaymentStatus(payment);
+            e.Style.TextColor = GetStatusSymbolColor(normalizedStatus);
+            e.DisplayText = GetStatusSymbolGlyph(normalizedStatus);
 
-            e.Style.TextColor = statusColor;
-            // Use Unicode symbols for better visual distinction
-            e.DisplayText = payment.Status?.ToLowerInvariant() switch
-            {
-                "cleared" => "✓",
-                "pending" => "⏱",
-                "void" => "✕",
-                "cancelled" => "⊘",
-                _ => "?"
-            };
+            return;
         }
 
-        // Amount column - bold, color-coded based on payment status
+        // Status text column remains human-readable
+        if (e.Column.MappingName == nameof(Payment.Status))
+        {
+            e.Style.Font.Size = 10F;
+            e.Style.Font.Bold = false;
+        }
+
+        // Amount column - emphasize currency for scanability
         if (e.Column.MappingName == nameof(Payment.Amount))
         {
             e.Style.Font.Size = 10F;
             e.Style.Font.Bold = true;
-            e.DisplayText = $"${payment.Amount:F2}";
-
-            if (payment.IsCleared)
-            {
-                e.Style.TextColor = System.Drawing.Color.FromArgb(40, 167, 69); // Green for cleared
-            }
-            else if (payment.Amount > 10000)
-            {
-                e.Style.TextColor = System.Drawing.Color.FromArgb(220, 53, 69); // Red for large amounts
-            }
-            else
-            {
-                e.Style.TextColor = System.Drawing.Color.FromArgb(0, 0, 0); // Black for normal amounts
-            }
         }
 
         // Date column styling
@@ -624,58 +795,133 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         }
     }
 
+    private static bool IsStatusSymbolColumn(QueryCellStyleEventArgs e)
+    {
+        if (!string.Equals(e.Column.MappingName, nameof(Payment.Status), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return string.Equals(e.Column.HeaderText, StatusSymbolHeaderText, StringComparison.Ordinal);
+    }
+
+    private static System.Drawing.Color GetStatusSymbolColor(string? normalizedStatus) => normalizedStatus switch
+    {
+        "cleared" or "posted" or "paid" or "complete" or "completed" => System.Drawing.Color.Green,
+        "pending" => System.Drawing.Color.Orange,
+        "processing" or "in progress" or "in-progress" or "scheduled" or "on hold" or "on-hold" => System.Drawing.Color.Orange,
+        "void" or "voided" or "rejected" or "failed" or "error" => System.Drawing.Color.Red,
+        "cancelled" or "canceled" => System.Drawing.Color.Orange,
+        _ => System.Drawing.Color.DimGray
+    };
+
+    private static string GetStatusSymbolGlyph(string? normalizedStatus) => normalizedStatus switch
+    {
+        "cleared" or "posted" or "paid" or "complete" or "completed" => "✓",
+        "pending" => "⏱",
+        "processing" or "in progress" or "in-progress" or "scheduled" => "⏱",
+        "on hold" or "on-hold" => "⏸",
+        "void" or "voided" or "rejected" or "failed" or "error" => "✕",
+        "cancelled" or "canceled" => "⊘",
+        _ => "•"
+    };
+
+    private static string NormalizePaymentStatus(Payment payment)
+    {
+        if (payment.IsCleared)
+        {
+            return "cleared";
+        }
+
+        return payment.Status?.Trim().ToLowerInvariant() ?? string.Empty;
+    }
+
+    private static bool IsVoidedStatus(string? status)
+    {
+        return string.Equals(status?.Trim(), "Void", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(status?.Trim(), "Voided", StringComparison.OrdinalIgnoreCase);
+    }
+
     private async void BtnExport_Click(object? sender, EventArgs e)
     {
         try
         {
+            SetStatusMessage("Preparing export…");
+
             var view = _paymentsGrid.View;
             if (view == null)
             {
                 MessageBox.Show("Grid is still loading. Please try again once data is ready.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetStatusMessage("Export is not available while the grid is loading.");
                 return;
             }
 
             if (view.Records?.Count == 0)
             {
                 MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetStatusMessage("No payments available to export.");
                 return;
             }
 
-            var saveDialog = new SaveFileDialog
-            {
-                Filter = "Excel Files (*.xlsx)|*.xlsx",
-                FileName = $"Payments_{DateTime.Now:yyyyMMdd}.xlsx",
-                Title = "Export Payments to Excel"
-            };
-
-            if (saveDialog.ShowDialog() == DialogResult.OK)
-            {
-                var previousCursor = Cursor.Current;
-                Cursor.Current = Cursors.WaitCursor;
-                try
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(PaymentsPanel)}.Excel",
+                dialogTitle: "Export Payments to Excel",
+                filter: "Excel Files (*.xlsx)|*.xlsx",
+                defaultExtension: "xlsx",
+                defaultFileName: $"Payments_{DateTime.Now:yyyyMMdd}.xlsx",
+                exportAction: async (filePath, cancellationToken) =>
                 {
-                    await ExportService.ExportGridToExcelAsync(_paymentsGrid, saveDialog.FileName);
-                }
-                finally
-                {
-                    Cursor.Current = previousCursor;
-                }
-
-                MessageBox.Show("Export completed successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                if (MessageBox.Show("Would you like to open the exported file?", "Open File", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    SetBusyState(isBusy: true, statusMessage: "Exporting payments…");
+                    try
                     {
-                        FileName = saveDialog.FileName,
-                        UseShellExecute = true
-                    });
-                }
+                        await ExportService.ExportGridToExcelAsync(_paymentsGrid, filePath, cancellationToken);
+                    }
+                    finally
+                    {
+                        SetBusyState(isBusy: false);
+                    }
+                },
+                statusCallback: SetStatusMessage,
+                logger: Logger,
+                cancellationToken: CancellationToken.None);
+
+            if (result.IsSkipped)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                SetStatusMessage("Export cancelled.");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                SetStatusMessage("Export failed. See logs for details.");
+                MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            SetStatusMessage(view.Records?.Count == 1 ? "Exported 1 payment." : $"Exported {view.Records?.Count ?? 0} payments.");
+            MessageBox.Show("Export completed successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            if (MessageBox.Show("Would you like to open the exported file?", "Open File", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = result.FilePath,
+                    UseShellExecute = true
+                });
             }
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "PaymentsPanel: Error exporting to Excel");
+            SetBusyState(isBusy: false);
+            SetStatusMessage("Export failed. See logs for details.");
             MessageBox.Show($"Error exporting to Excel: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -741,12 +987,21 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
     /// </summary>
     private void ApplySearchFilter()
     {
+        EnsureGridBinding();
+
+        if (_paymentsGrid?.View == null)
+        {
+            return;
+        }
+
         var searchText = _txtSearch.Text?.Trim();
 
         if (string.IsNullOrEmpty(searchText))
         {
             _paymentsGrid.View.Filter = null;
             _paymentsGrid.View.RefreshFilter();
+            var totalCount = ViewModel?.Payments.Count ?? 0;
+            SetStatusMessage(totalCount == 1 ? "Showing all 1 payment." : $"Showing all {totalCount} payments.");
             return;
         }
 
@@ -761,15 +1016,49 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             return false;
         };
         _paymentsGrid.View.RefreshFilter();
+
+        var filteredCount = _paymentsGrid.View.Records?.Count ?? 0;
+        SetStatusMessage(filteredCount == 1 ? "Showing 1 matching payment." : $"Showing {filteredCount} matching payments.");
+    }
+
+    private void SetBusyState(bool isBusy, string? statusMessage = null)
+    {
+        IsBusy = isBusy;
+
+        if (_panelHeader != null)
+        {
+            _panelHeader.IsLoading = isBusy;
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            SetStatusMessage(statusMessage);
+        }
+
+        UpdateExportButtonState();
+    }
+
+    private void SetStatusMessage(string message)
+    {
+        if (_statusLabel != null)
+        {
+            _statusLabel.Text = message;
+        }
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
+            if (_panelHeader != null)
+            {
+                _panelHeader.RefreshClicked -= PanelHeader_RefreshClicked;
+            }
+
             if (_paymentsGrid != null)
             {
                 _paymentsGrid.QueryCellStyle -= Grid_QueryCellStyle;
+                _paymentsGrid.CellClick -= Grid_CellClick;
                 _paymentsGrid.Dispose();
             }
             _btnAdd?.Dispose();
@@ -777,6 +1066,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             _btnDelete?.Dispose();
             _btnRefresh?.Dispose();
             _btnExport?.Dispose();
+            _toolTip?.Dispose();
+            _panelHeader?.Dispose();
         }
         base.Dispose(disposing);
     }

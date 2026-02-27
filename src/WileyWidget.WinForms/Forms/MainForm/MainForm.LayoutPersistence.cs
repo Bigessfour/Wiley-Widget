@@ -22,10 +22,6 @@ public partial class MainForm
     private const string LayoutDirectory = "Layouts";
     private const string DefaultLayoutFile = "default.xml";
     private const string AutoSaveLayoutFile = "autosave.xml";
-
-#pragma warning disable CS0169 // Field is never used
-    private AppStateSerializer? _workspaceSerializer;
-#pragma warning restore CS0169
     private readonly Dictionary<string, string> _namedWorkspaces = new();
 
     /// <summary>
@@ -53,9 +49,9 @@ public partial class MainForm
             SaveMDIDocumentState(serializer);
 
             InitializeMDIManager();
-            if (_mdiManager != null)
+            if (_tabbedMdi != null)
             {
-                _mdiManager.SaveTabGroupStates(serializer);
+                _tabbedMdi.SaveTabGroupStates(serializer);
             }
 
             // Save status bar state
@@ -100,9 +96,9 @@ public partial class MainForm
             RestoreRibbonState(serializer);
 
             InitializeMDIManager();
-            if (_mdiManager != null)
+            if (_tabbedMdi != null)
             {
-                _mdiManager.LoadTabGroupStates(serializer);
+                _tabbedMdi.LoadTabGroupStates(serializer);
             }
 
             // Restore MDI documents
@@ -242,7 +238,7 @@ public partial class MainForm
         {
             var openPanels = new List<string>();
 
-            var mdiChildren = _mdiManager?.MdiChildren ?? this.MdiChildren;
+            var mdiChildren = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
 
             foreach (var child in mdiChildren)
             {
@@ -302,7 +298,7 @@ public partial class MainForm
                         var windowState = (FormWindowState)(windowStateObj ?? FormWindowState.Normal);
 
                         // Apply restored state to newly opened document
-                        var mdiChildren = _mdiManager?.MdiChildren ?? this.MdiChildren;
+                        var mdiChildren = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
                         var mdiChild = mdiChildren.LastOrDefault();
                         if (mdiChild != null)
                         {

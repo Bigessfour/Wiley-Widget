@@ -3,6 +3,8 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.DataGrid;
 using System.Collections;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -272,7 +274,8 @@ namespace WileyWidget.WinForms.Forms
         private async Task ExportActiveGridToExcel(CancellationToken cancellationToken = default)
         {
             await ExportActiveGridInternal("Excel Files (*.xlsx)|*.xlsx", "xlsx", "GridExport.xlsx",
-                (grid, path) => WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(grid, path, cancellationToken));
+                (grid, path, ct) => WileyWidget.WinForms.Services.ExportService.ExportGridToExcelAsync(grid, path, ct),
+                cancellationToken);
         }
 
         /// <summary>
@@ -283,13 +286,19 @@ namespace WileyWidget.WinForms.Forms
         private async Task ExportActiveGridToPdf(CancellationToken cancellationToken = default)
         {
             await ExportActiveGridInternal("PDF Files (*.pdf)|*.pdf", "pdf", "GridExport.pdf",
-                (grid, path) => WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(grid, path, cancellationToken));
+                (grid, path, ct) => WileyWidget.WinForms.Services.ExportService.ExportGridToPdfAsync(grid, path, ct),
+                cancellationToken);
         }
 
         /// <summary>
         /// Internal helper for grid exports with common dialog and error handling logic.
         /// </summary>
-        private async Task ExportActiveGridInternal(string filter, string ext, string defaultName, Func<SfDataGrid, string, Task> exportAction)
+        private async Task ExportActiveGridInternal(
+            string filter,
+            string ext,
+            string defaultName,
+            Func<SfDataGrid, string, CancellationToken, Task> exportAction,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -297,42 +306,55 @@ namespace WileyWidget.WinForms.Forms
                 if (grid == null || grid.IsDisposed)
                 {
                     _logger?.LogDebug("Export: No active grid found");
+                    ApplyStatus("No active grid available to export.");
+                    ShowErrorDialog("Export Data", "Select a panel with a grid before exporting.");
                     return;
                 }
 
                 // Validate data before export
-                if (grid.View.Records?.Count == 0)
+                if ((grid.View?.Records?.Count ?? 0) == 0)
                 {
+                    ApplyStatus("No data available to export.");
                     MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                using var save = new SaveFileDialog
-                {
-                    Filter = filter,
-                    DefaultExt = ext,
-                    FileName = defaultName
-                };
+                var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                    owner: this,
+                    operationKey: $"{nameof(MainForm)}.ActiveGrid.{ext}",
+                    dialogTitle: $"Export Grid to {ext.ToUpperInvariant()}",
+                    filter: filter,
+                    defaultExtension: ext,
+                    defaultFileName: defaultName,
+                    exportAction: (filePath, ct) => exportAction(grid, filePath, ct),
+                    statusCallback: message => ApplyStatus(message),
+                    logger: _logger,
+                    cancellationToken: cancellationToken);
 
-                if (save.ShowDialog(this) == DialogResult.OK)
+                if (result.IsSkipped)
                 {
-                    if (string.IsNullOrWhiteSpace(save.FileName)) return;
-
-                    try
-                    {
-                        await exportAction(grid, save.FileName);
-                        _logger?.LogInformation("Exported grid to {Ext}: {Path}", ext.ToUpperInvariant(), save.FileName);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogWarning(ex, "Export to {Ext} failed", ext);
-                        MessageBox.Show(this, $"Failed to export grid: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
+
+                if (result.IsCancelled)
+                {
+                    return;
+                }
+
+                if (!result.IsSuccess)
+                {
+                    ApplyStatus("Export failed.");
+                    MessageBox.Show(this, $"Failed to export grid: {result.ErrorMessage}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                ApplyStatus($"Export complete: {System.IO.Path.GetFileName(result.FilePath)}");
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Export dialog or setup failed");
+                ApplyStatus("Export failed.");
             }
         }
 
@@ -550,18 +572,64 @@ namespace WileyWidget.WinForms.Forms
 
         #endregion
 
-        #region Stub methods (legacy docking code - no-ops for TabbedMDI)
+        #region Status and error helpers
 
-        /// <summary>Stub: ApplyStatus - not used in TabbedMDI mode</summary>
-        private void ApplyStatus(string text) { /* TabbedMDI doesn't need status updates */ }
-
-        /// <summary>Stub: ShowErrorDialog - kept for compatibility with initialization code</summary>
-        private void ShowErrorDialog(string title, string message)
+        /// <summary>Applies status text to the status bar in a UI-thread-safe manner.</summary>
+        private void ApplyStatus(string text)
         {
-            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            try
+            {
+                var statusText = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
+
+                void updateStatus()
+                {
+                    if (_statusTextPanel != null && !_statusTextPanel.IsDisposed)
+                    {
+                        _statusTextPanel.Text = statusText;
+                    }
+
+                    if (_statusLabel != null && !_statusLabel.IsDisposed)
+                    {
+                        _statusLabel.Text = string.IsNullOrWhiteSpace(statusText) ? "Ready" : statusText;
+                    }
+
+                    if (_statusBar != null && !_statusBar.IsDisposed)
+                    {
+                        _statusBar.Invalidate();
+                        _statusBar.Update();
+                    }
+                }
+
+                if (InvokeRequired)
+                {
+                    BeginInvoke((System.Action)updateStatus);
+                }
+                else
+                {
+                    updateStatus();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "ApplyStatus failed");
+            }
         }
 
-        /// <summary>Stub: ShowErrorDialog with exception - kept for compatibility</summary>
+        /// <summary>Shows an error dialog and updates status text.</summary>
+        private void ShowErrorDialog(string title, string message)
+        {
+            ApplyStatus(message);
+
+            if (IsUiTestEnvironment() || _uiConfig.IsUiTestHarness)
+            {
+                _logger?.LogDebug("Suppressed error dialog in test mode: {Title} - {Message}", title, message);
+                return;
+            }
+
+            UIHelper.ShowMessageOnUI(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error, _logger);
+        }
+
+        /// <summary>Shows an error dialog with exception logging and status update.</summary>
         private void ShowErrorDialog(string title, string message, Exception ex)
         {
             _logger?.LogError(ex, "{Title}: {Message}", title, message);

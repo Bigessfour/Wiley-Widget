@@ -43,27 +43,62 @@ namespace WileyWidget.WinForms.Services
 
         public async Task<GlobalSearchResult> SearchAsync(string query)
         {
+            var normalizedQuery = query?.Trim() ?? string.Empty;
+
             if (string.IsNullOrWhiteSpace(query))
             {
-                return new GlobalSearchResult { Query = query, TotalResults = 0 };
+                return new GlobalSearchResult { Query = normalizedQuery, TotalResults = 0 };
             }
 
             try
             {
-                _logger.LogInformation("Global search started: '{Query}'", query);
+                _logger.LogInformation("Global search started: '{Query}'", normalizedQuery);
 
                 var result = new GlobalSearchResult
                 {
-                    Query = query,
+                    Query = normalizedQuery,
                     SearchedAt = DateTime.UtcNow,
                     TotalResults = 0
                 };
 
-                // Search in activity log
-                // Future: Add searches in accounts, budgets, reports repositories
-                // For now, provide placeholder structure for expansion
+                var activities = await _activityLogService.GetActivityEntriesAsync().ConfigureAwait(false);
+                var activityMatches = activities
+                    .Where(activity =>
+                        activity.Activity.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                        activity.Details.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                        activity.Category.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                        activity.Status.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(activity => activity.Timestamp)
+                    .Take(50)
+                    .Select(activity => new GlobalSearchMatch
+                    {
+                        Title = activity.Activity,
+                        Category = "Activity",
+                        Description = $"{activity.Category} • {activity.Status} • {activity.Timestamp:g} — {activity.Details}",
+                        TargetPanelName = "Activity Log"
+                    });
 
-                _logger.LogInformation("Global search completed for '{Query}': {ResultCount} results", query, result.TotalResults);
+                var panelMatches = PanelRegistry.Panels
+                    .Where(panel =>
+                        panel.DisplayName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                        panel.DefaultGroup.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                    .Select(panel => new GlobalSearchMatch
+                    {
+                        Title = panel.DisplayName,
+                        Category = "Panel",
+                        Description = $"Open panel in {panel.DefaultGroup}",
+                        TargetPanelName = panel.DisplayName
+                    });
+
+                result.Matches = activityMatches
+                    .Concat(panelMatches)
+                    .GroupBy(match => $"{match.Category}|{match.Title}", StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .ToList();
+
+                result.TotalResults = result.Matches.Count;
+
+                _logger.LogInformation("Global search completed for '{Query}': {ResultCount} results", normalizedQuery, result.TotalResults);
 
                 // Raise event for UI updates
                 SearchResultsAvailable?.Invoke(this, new GlobalSearchResultsEventArgs(result));
@@ -72,10 +107,21 @@ namespace WileyWidget.WinForms.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Global search failed for query '{Query}'", query);
+                _logger.LogError(ex, "Global search failed for query '{Query}'", normalizedQuery);
                 throw;
             }
         }
+    }
+
+    /// <summary>
+    /// Represents a single global-search match.
+    /// </summary>
+    public class GlobalSearchMatch
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string? TargetPanelName { get; set; }
     }
 
     /// <summary>
@@ -86,8 +132,7 @@ namespace WileyWidget.WinForms.Services
         public string? Query { get; set; }
         public int TotalResults { get; set; }
         public DateTime SearchedAt { get; set; }
-
-        // Future: Add properties for AccountSearchResults, BudgetSearchResults, ReportSearchResults
+        public System.Collections.Generic.List<GlobalSearchMatch> Matches { get; set; } = new();
     }
 
     /// <summary>

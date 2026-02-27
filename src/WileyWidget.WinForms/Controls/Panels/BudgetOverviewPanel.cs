@@ -29,6 +29,7 @@ using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -101,11 +102,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         public BudgetOverviewPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<BudgetOverviewViewModel>> logger)
             : base(scopeFactory, logger)
         {
-            InitializeComponent();
+            SafeSuspendAndLayout(() =>
+            {
+                InitializeComponent();
 
-            // Apply theme via SfSkinManager (single source of truth)
-            try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
-            SetupUI();
+                // Apply theme via SfSkinManager (single source of truth)
+                try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
+                SetupUI();
+            });
             // BindViewModel() moved to OnViewModelResolved to ensure ViewModel is resolved first
         }
 
@@ -172,7 +176,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             // the fixed chrome (header 52 + toolbar 48 + summary cards 80 + statusbar 24 = 204)
             // never collapses and leaves a blank panel.
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(800, 450); // 204px fixed chrome + ~246 for grid/chart
+            MinimumSize = new Size(1024, 720);
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
 
             this.ResumeLayout(false);
@@ -809,68 +813,65 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 if (ViewModel == null) return;
 
-                using var sfd = new SaveFileDialog
-                {
-                    Filter = "CSV Files|*.csv",
-                    DefaultExt = "csv",
-                    FileName = $"budget-overview-{ViewModel.SelectedFiscalYear}.csv"
-                };
+                var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                    owner: this,
+                    operationKey: $"{nameof(BudgetOverviewPanel)}.Csv",
+                    dialogTitle: "Export Budget Overview to CSV",
+                    filter: "CSV Files (*.csv)|*.csv",
+                    defaultExtension: "csv",
+                    defaultFileName: $"budget-overview-{ViewModel.SelectedFiscalYear}.csv",
+                    exportAction: async (filePath, ct) =>
+                    {
+                        var sb = new StringBuilder();
+                        sb.AppendLine("Department,Budgeted,Actual,Variance,Variance %,Over Budget");
 
-                if (sfd.ShowDialog() != DialogResult.OK) return;
+                        foreach (var metric in ViewModel.Metrics)
+                        {
+                            sb.AppendLine(string.Concat(
+                                '"', metric.DepartmentName, '"', ",",
+                        metric.BudgetedAmount.ToString(CultureInfo.InvariantCulture), ",",
+                        metric.Amount.ToString(CultureInfo.InvariantCulture), ",",
+                        metric.Variance.ToString(CultureInfo.InvariantCulture), ",",
+                        metric.VariancePercent.ToString("F2", CultureInfo.InvariantCulture), ",",
+                        metric.IsOverBudget.ToString(CultureInfo.InvariantCulture)));
+                        }
 
-                // Sanitize file path
-                var filePath = Path.GetFullPath(sfd.FileName);
-                if (!IsValidFilePath(filePath))
+                        sb.AppendLine();
+                        sb.AppendLine(string.Concat(
+                            '"', "TOTAL", '"', ",",
+                            ViewModel.TotalBudget.ToString(CultureInfo.InvariantCulture), ",",
+                            ViewModel.TotalActual.ToString(CultureInfo.InvariantCulture), ",",
+                            ViewModel.TotalVariance.ToString(CultureInfo.InvariantCulture), ",",
+                            ViewModel.OverallVariancePercent.ToString("F2", CultureInfo.InvariantCulture), ","));
+
+                        await File.WriteAllTextAsync(filePath, sb.ToString(), ct);
+                    },
+                    logger: Logger,
+                    cancellationToken: cancellationToken);
+
+                if (result.IsSkipped)
                 {
-                    MessageBox.Show("Invalid file path", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                var sb = new StringBuilder();
-                sb.AppendLine("Department,Budgeted,Actual,Variance,Variance %,Over Budget");
-
-                foreach (var metric in ViewModel.Metrics)
+                if (result.IsCancelled)
                 {
-                    sb.AppendLine(string.Concat(
-                        '"', metric.DepartmentName, '"', ",",
-                metric.BudgetedAmount.ToString(CultureInfo.InvariantCulture), ",",
-                metric.Amount.ToString(CultureInfo.InvariantCulture), ",",
-                metric.Variance.ToString(CultureInfo.InvariantCulture), ",",
-                metric.VariancePercent.ToString("F2", CultureInfo.InvariantCulture), ",",
-                metric.IsOverBudget.ToString(CultureInfo.InvariantCulture)));
+                    return;
                 }
 
-                // Summary row
-                sb.AppendLine();
-                sb.AppendLine(string.Concat(
-                    '"', "TOTAL", '"', ",",
-                    ViewModel.TotalBudget.ToString(CultureInfo.InvariantCulture), ",",
-                    ViewModel.TotalActual.ToString(CultureInfo.InvariantCulture), ",",
-                    ViewModel.TotalVariance.ToString(CultureInfo.InvariantCulture), ",",
-                    ViewModel.OverallVariancePercent.ToString("F2", CultureInfo.InvariantCulture), ","));
+                if (!result.IsSuccess)
+                {
+                    MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
 
-                await File.WriteAllTextAsync(filePath, sb.ToString());
-                MessageBox.Show($"Exported to {filePath}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Exported to {result.FilePath}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "BudgetOverviewPanel: Export to CSV failed");
                 MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private static bool IsValidFilePath(string? path)
-        {
-            if (string.IsNullOrWhiteSpace(path)) return false;
-            try
-            {
-                var fi = new FileInfo(path);
-                return fi.DirectoryName != null && Directory.Exists(fi.DirectoryName) &&
-                       !Path.GetInvalidPathChars().Any(c => fi.Name.Contains(c));
-            }
-            catch
-            {
-                return false;
             }
         }
 
@@ -1066,17 +1067,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
-        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// Called when panel is first shown. Base timer handles ForceFullLayout.
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
-
-            BeginInvoke(() =>
-            {
-                ForceFullLayout();
-                Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
-            });
+            // Note: ForceFullLayout is handled by base timer - no need to call it again
         }
 
         protected override void Dispose(bool disposing)

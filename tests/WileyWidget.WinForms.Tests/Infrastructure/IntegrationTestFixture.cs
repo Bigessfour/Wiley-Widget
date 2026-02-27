@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -28,6 +29,18 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
     public AppDbContext Db => SPSE.GetRequiredService<AppDbContext>(_fixtureScope!.ServiceProvider);
 
     public IServiceScope CreateScope() => _provider!.CreateScope();
+
+    public string TestAppPath
+    {
+        get
+        {
+            string config = "Debug";
+#if !DEBUG
+            config = "Release";
+#endif
+            return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "src", "WileyWidget.WinForms", "bin", config, "net10.0-windows", "WileyWidget.WinForms.exe"));
+        }
+    }
 
     public Task InitializeAsync()
     {

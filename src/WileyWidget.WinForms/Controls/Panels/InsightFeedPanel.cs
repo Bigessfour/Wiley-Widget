@@ -64,7 +64,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         public InsightFeedPanel(IServiceScopeFactory? scopeFactory = null, ILogger<ScopedPanelBase<InsightFeedViewModel>>? logger = null)
             : base(scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory)), (ILogger?)logger ?? NullLogger.Instance)
         {
-            InitializeComponent();
+            SafeSuspendAndLayout(InitializeComponent);
 
 
             _logger?.LogInformation("InsightFeedPanel initializing");
@@ -115,7 +115,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 // Provide breathing room and protect from collapsing
                 this.Padding = new Padding(8);
-                this.MinimumSize = new Size(320, 240);
+                this.MinimumSize = new Size(1024, 720);
                 this.AccessibleName = "Insight Feed Panel";
                 this.AccessibleDescription = "Displays proactive insights and the data grid";
 
@@ -166,7 +166,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 };
                 _topPanel.Controls.Add(_toolStrip);
 
-                _btnRefresh = new ToolStripButton("🔄 Refresh")
+                _btnRefresh = new ToolStripButton("Refresh")
                 {
                     ToolTipText = "Manually refresh insights",
                     Name = "RefreshButton",
@@ -180,6 +180,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 _panelHeader = new PanelHeader
                 {
                     Dock = DockStyle.Fill,
+                    Title = "Insight Feed",
                     AccessibleName = "Insights Header",
                     AccessibleDescription = "Title area for the insights feed"
                 };
@@ -540,18 +541,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
-        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// Called when panel is first shown. Base timer handles ForceFullLayout.
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
-
-            BeginInvoke(() =>
-            {
-                ForceFullLayout();
-                _insightsGrid?.PerformLayout();
-                _logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
-            });
+            // Note: ForceFullLayout is handled by base timer - no need to call it again
         }
 
         protected override void Dispose(bool disposing)

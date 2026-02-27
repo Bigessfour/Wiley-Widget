@@ -589,4 +589,121 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
         }
 #pragma warning restore CS0618
     }
+
+    [WinFormsFact]
+    public void RibbonBudgetButton_Click_ShowsInitializedBudgetPanel()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:IsUiTestHarness"] = "true",
+            ["UI:ShowRibbon"] = "true",
+            ["UI:ShowStatusBar"] = "false",
+            ["UI:AutoShowDashboard"] = "false",
+            ["UI:UseSyncfusionDocking"] = "false",
+            ["UI:MinimalMode"] = "false"
+        });
+        using var form = IntegrationTestServices.CreateMainForm(provider);
+        _ = form.Handle;
+
+        try
+        {
+            form.InvokeInitializeChrome();
+            PumpMessages(8);
+
+            var ribbon = GetPrivateField<RibbonControlAdv>(form, "_ribbon");
+            ribbon.Should().NotBeNull("Ribbon must be initialized before Budget navigation click");
+
+            var ensureNavigatorMethod = typeof(MainForm).GetMethod("EnsurePanelNavigatorInitialized", BindingFlags.Instance | BindingFlags.NonPublic);
+            ensureNavigatorMethod.Should().NotBeNull();
+            ensureNavigatorMethod!.Invoke(form, null);
+
+            var findItemsMethod = typeof(MainForm).GetMethod(
+                "FindToolStripItems",
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(RibbonControlAdv), typeof(Func<ToolStripItem, bool>) },
+                modifiers: null);
+
+            findItemsMethod.Should().NotBeNull("MainForm should expose ToolStrip discovery helper");
+
+            var items = findItemsMethod!.Invoke(form, new object[]
+            {
+                ribbon!,
+                new Func<ToolStripItem, bool>(item =>
+                    item.Tag is string tag &&
+                    tag.StartsWith("Nav:", StringComparison.OrdinalIgnoreCase))
+            }) as IEnumerable<ToolStripItem>;
+
+            var budgetButton = (items ?? Enumerable.Empty<ToolStripItem>())
+                .OfType<ToolStripButton>()
+                .FirstOrDefault(button =>
+                    button.Tag is string tag &&
+                    string.Equals(tag[4..].Trim(), "Budget Management & Analysis", StringComparison.OrdinalIgnoreCase));
+
+            budgetButton.Should().NotBeNull("Budget navigation button should exist in ribbon navigation groups");
+            budgetButton!.Enabled.Should().BeTrue("Budget navigation button must be enabled");
+
+            budgetButton.PerformClick();
+            Application.DoEvents();
+            Application.DoEvents();
+            Application.DoEvents();
+
+            var navigator = form.PanelNavigator;
+            navigator.Should().NotBeNull("PanelNavigator should be available after chrome initialization");
+            navigator!.GetActivePanelName().Should().Be("Budget Management & Analysis");
+
+            var cachedPanelsField = navigator.GetType().GetField("_cachedPanels", BindingFlags.Instance | BindingFlags.NonPublic);
+            cachedPanelsField.Should().NotBeNull();
+
+            var cachedPanels = cachedPanelsField!.GetValue(navigator) as System.Collections.IDictionary;
+            cachedPanels.Should().NotBeNull();
+
+            Control? budgetPanel = null;
+            foreach (System.Collections.DictionaryEntry entry in cachedPanels!)
+            {
+                if (entry.Value is not Control control || control.IsDisposed || control is Form)
+                {
+                    continue;
+                }
+
+                var key = entry.Key as string;
+                var isBudgetKey = string.Equals(key, "Budget Management & Analysis", StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(control.Text, "Budget Management", StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(control.GetType().Name, "BudgetPanel", StringComparison.OrdinalIgnoreCase);
+
+                if (isBudgetKey)
+                {
+                    budgetPanel = control;
+                    break;
+                }
+            }
+
+            budgetPanel.Should().NotBeNull("Budget panel should be cached after ribbon click");
+            budgetPanel!.Controls.Count.Should().BeGreaterThan(0, "Budget panel should initialize and render child controls");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+#pragma warning restore CS0618
+    }
+
+    private static void PumpMessages(int iterations)
+    {
+        for (var index = 0; index < iterations; index++)
+        {
+            Application.DoEvents();
+        }
+    }
+
+    private static T? GetPrivateField<T>(object target, string fieldName) where T : class
+    {
+        return target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(target) as T;
+    }
 }

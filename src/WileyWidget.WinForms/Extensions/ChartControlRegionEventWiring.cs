@@ -30,8 +30,8 @@ namespace WileyWidget.WinForms.Extensions
         {
             _chart = chart ?? throw new ArgumentNullException(nameof(chart));
 
-            _mouseRegionHandler  = TryCreateNoOpHandler(_chart, "ChartRegionMouseDown");
-            _chartRegionClickHandler       = TryCreateNoOpHandler(_chart, "ChartRegionClick");
+            _mouseRegionHandler = TryCreateNoOpHandler(_chart, "ChartRegionMouseDown");
+            _chartRegionClickHandler = TryCreateNoOpHandler(_chart, "ChartRegionClick");
             _chartRegionDoubleClickHandler = TryCreateNoOpHandler(_chart, "ChartRegionDoubleClick");
 
             foreach (var eventName in _mouseRegionEvents)

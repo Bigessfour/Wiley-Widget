@@ -198,6 +198,9 @@ namespace WileyWidget.WinForms.Services
                         await Task.Delay(50).ConfigureAwait(false);
                         _logger.LogInformation("Initializing IAsyncInitializable services in background...");
 
+                        // [FIX] Wait for main form handle + Shown event before starting background warmup (Syncfusion v32.2.3 stability)
+                        await Task.Delay(300);
+
                         // [FIX] Use IServiceScopeFactory consistently to ensure background threads have a stable scope
                         using (var scope = _scopeFactory.CreateScope())
                         {

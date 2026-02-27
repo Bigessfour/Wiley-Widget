@@ -25,6 +25,7 @@ using WileyWidget.WinForms.Dialogs;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
@@ -96,8 +97,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         private CheckBoxAdv chkActive = null!;
         private SfButton btnSave = null!;
         private SfButton btnCancel = null!;
+        private readonly SyncfusionControlFactory? _factory;
+        private TableLayoutPanel? _content;
+        private LoadingOverlay? _loader;
         private TableLayoutPanel _mainLayout = null!;
         private Panel _buttonPanel = null!;
+        private PanelHeader? _panelHeader;
 
         // === DATA MANAGEMENT ===
         private MunicipalAccountEditModel _editModel = null!;
@@ -109,6 +114,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private DpiAwareImageService? _imageService;
         private bool _isNew;
         private BindingList<Fund>? _fundBindingList;
+        private SyncfusionControlFactory Factory => _factory ?? ControlFactory;
 
         // === EVENT HANDLER STORAGE FOR CLEANUP ===
         private EventHandler? _saveHandler;
@@ -131,9 +137,26 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// For new account creation, use the DI constructor.
         /// For editing, create via DI and call SetExistingAccount() to configure.
         /// </summary>
+        public AccountEditPanel(AccountsViewModel vm, SyncfusionControlFactory factory)
+            : base(vm, ResolveLogger())
+        {
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            _imageService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<DpiAwareImageService>(Program.Services);
+
+            AutoScaleMode = AutoScaleMode.Dpi;
+
+            _existingAccount = null;
+            _isNew = true;
+            _editModel = new MunicipalAccountEditModel(null);
+            _bindingSource = new BindingSource { DataSource = _editModel };
+            SafeSuspendAndLayout(InitializeComponent);
+        }
+
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<AccountsViewModel>> logger, DpiAwareImageService imageService)
             : base(scopeFactory, logger)
         {
+            _factory = ControlFactory;
             _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
 
             // Set AutoScaleMode for proper DPI scaling
@@ -143,7 +166,13 @@ namespace WileyWidget.WinForms.Controls.Panels
             _isNew = true;
             _editModel = new MunicipalAccountEditModel(null);
             _bindingSource = new BindingSource { DataSource = _editModel };
-            InitializeComponent();
+            SafeSuspendAndLayout(InitializeComponent);
+        }
+
+        private static ILogger ResolveLogger()
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<AccountEditPanel>>(Program.Services)
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AccountEditPanel>.Instance;
         }
 
         /// <summary>
@@ -346,10 +375,25 @@ namespace WileyWidget.WinForms.Controls.Panels
                 return;
             }
 
-            DataContext = _editModel;
-            BindControls();
-            SetupValidation();
-            await LoadDataAsync(ct);
+            if (_loader != null)
+            {
+                _loader.Visible = true;
+            }
+
+            try
+            {
+                DataContext = _editModel;
+                BindControls();
+                SetupValidation();
+                await LoadDataAsync(ct);
+            }
+            finally
+            {
+                if (_loader != null)
+                {
+                    _loader.Visible = false;
+                }
+            }
         }
 
         /// <summary>
@@ -382,10 +426,22 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _toolTip = new ToolTip();
-            this.Padding = new Padding(8);
+            this.Padding = new Padding(20);
             this.AutoScroll = true;
-            this.MinimumSize = new Size(640, 720);
-            this.Size = new Size(640, 720);
+            this.MinimumSize = new Size(1024, 720);
+            this.Size = new Size(1100, 780);
+
+            _panelHeader = new PanelHeader
+            {
+                Dock = DockStyle.Top,
+                Title = _isNew ? "Create Account" : "Edit Account",
+                ShowRefreshButton = false,
+                ShowHelpButton = false,
+                ShowPinButton = false,
+                ShowCloseButton = true
+            };
+            _panelHeader.CloseClicked += BtnCancel_Click;
+            Controls.Add(_panelHeader);
 
             // === CREATE MAIN TABLE LAYOUT ===
             _mainLayout = new TableLayoutPanel
@@ -394,30 +450,31 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ColumnCount = 2,
                 RowCount = 11, // Title + 9 fields + button panel
                 AutoSize = false,
-                Padding = new Padding(6)
+                Padding = new Padding(20)
             };
+            _content = _mainLayout;
 
-            // Responsive columns: labels auto-size, editor column takes remaining width
+            // Canonical finance form columns: fixed label column + flexible editor column
             _mainLayout.ColumnStyles.Clear();
-            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56)); // Title
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Account Number
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Name
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 104)); // Description
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Department
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Fund
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Type
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Balance
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52)); // Budget
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); // Active
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68)); // Button Panel
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); // Title
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Account Number
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Name
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Description
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Department
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Fund
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Type
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Balance
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Budget
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Active
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64)); // Button Panel
 
             // === TITLE ROW (Row 0) ===
             lblTitle = new Label
             {
-                Text = _isNew ? "Create New Account" : "Edit Account",
+                Text = "Account Details",
                 AutoSize = false,
                 Height = 32,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -434,22 +491,25 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblAccountNumber, 0, 1);
 
-            txtAccountNumber = new TextBoxExt
+            txtAccountNumber = Factory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtAccountNumber",
-                MaxLength = 20,
-                AccessibleName = "Account Number",
-                AccessibleDescription = "Enter the unique account number",
-                Enabled = _isNew,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 1,
-                ThemeName = themeName,
-            };
+                textBox.Name = "txtAccountNumber";
+                textBox.MaxLength = 20;
+                textBox.AccessibleName = "Account Number";
+                textBox.AccessibleDescription = "Enter the unique account number";
+                textBox.Enabled = _isNew;
+                textBox.AutoSize = false;
+                textBox.Anchor = AnchorStyles.Left;
+                textBox.Width = 160;
+                textBox.Height = 32;
+                textBox.Margin = new Padding(0, 4, 0, 4);
+                textBox.MinimumSize = new Size(160, 32);
+                textBox.TabIndex = 1;
+            });
             _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
             _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
 
@@ -460,21 +520,24 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblName, 0, 2);
 
-            txtName = new TextBoxExt
+            txtName = Factory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtName",
-                MaxLength = 100,
-                AccessibleName = "Account Name",
-                AccessibleDescription = "Enter the descriptive name for this account",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 2,
-                ThemeName = themeName,
-            };
+                textBox.Name = "txtName";
+                textBox.MaxLength = 100;
+                textBox.AccessibleName = "Account Name";
+                textBox.AccessibleDescription = "Enter the descriptive name for this account";
+                textBox.AutoSize = false;
+                textBox.Anchor = AnchorStyles.Left;
+                textBox.Width = 320;
+                textBox.Height = 32;
+                textBox.Margin = new Padding(0, 4, 0, 4);
+                textBox.MinimumSize = new Size(320, 32);
+                textBox.TabIndex = 2;
+            });
             _mainLayout.Controls.Add(txtName, 1, 2);
             _toolTip.SetToolTip(txtName, "Descriptive name (e.g., 'Cash - General Fund')");
 
@@ -485,23 +548,24 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.TopRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblDescription, 0, 3);
 
-            txtDescription = new TextBoxExt
+            txtDescription = Factory.CreateTextBoxExt(textBox =>
             {
-                Name = "txtDescription",
-                MaxLength = 500,
-                AccessibleName = "Description",
-                AccessibleDescription = "Enter optional description",
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 3,
-                ThemeName = themeName,
-            };
+                textBox.Name = "txtDescription";
+                textBox.MaxLength = 500;
+                textBox.AccessibleName = "Description";
+                textBox.AccessibleDescription = "Enter optional description";
+                textBox.AutoSize = false;
+                textBox.Multiline = true;
+                textBox.ScrollBars = ScrollBars.Vertical;
+                textBox.Dock = DockStyle.Fill;
+                textBox.Margin = new Padding(0, 4, 0, 4);
+                textBox.MinimumSize = new Size(320, 88);
+                textBox.TabIndex = 3;
+            });
             _mainLayout.Controls.Add(txtDescription, 1, 3);
             _toolTip.SetToolTip(txtDescription, "Optional detailed description");
 
@@ -512,25 +576,27 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblDepartment, 0, 4);
 
-            cmbDepartment = new SfComboBox
+            cmbDepartment = Factory.CreateSfComboBox(comboBox =>
             {
-                Name = "cmbDepartment",
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                MaxDropDownItems = 10,
-                DropDownWidth = 300,
-                AccessibleName = "Department",
-                AccessibleDescription = "Select the department this account belongs to",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 4,
-                ThemeName = themeName,
-            };
+                comboBox.Name = "cmbDepartment";
+                comboBox.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                comboBox.ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection;
+                comboBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                comboBox.MaxDropDownItems = 10;
+                comboBox.DropDownWidth = 300;
+                comboBox.AccessibleName = "Department";
+                comboBox.AccessibleDescription = "Select the department this account belongs to";
+                comboBox.Anchor = AnchorStyles.Left;
+                comboBox.Width = 320;
+                comboBox.Height = 32;
+                comboBox.Margin = new Padding(0, 4, 0, 4);
+                comboBox.MinimumSize = new Size(320, 32);
+                comboBox.TabIndex = 4;
+            });
             _mainLayout.Controls.Add(cmbDepartment, 1, 4);
             _toolTip.SetToolTip(cmbDepartment, "Select owning department");
 
@@ -541,25 +607,27 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblFund, 0, 5);
 
-            cmbFund = new SfComboBox
+            cmbFund = Factory.CreateSfComboBox(comboBox =>
             {
-                Name = "cmbFund",
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown,
-                ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                MaxDropDownItems = 10,
-                DropDownWidth = 300,
-                AccessibleName = "Fund Type",
-                AccessibleDescription = "Select a municipal fund type for this account",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 5,
-                ThemeName = themeName,
-            };
+                comboBox.Name = "cmbFund";
+                comboBox.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown;
+                comboBox.ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection;
+                comboBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                comboBox.MaxDropDownItems = 10;
+                comboBox.DropDownWidth = 300;
+                comboBox.AccessibleName = "Fund Type";
+                comboBox.AccessibleDescription = "Select a municipal fund type for this account";
+                comboBox.Anchor = AnchorStyles.Left;
+                comboBox.Width = 320;
+                comboBox.Height = 32;
+                comboBox.Margin = new Padding(0, 4, 0, 4);
+                comboBox.MinimumSize = new Size(320, 32);
+                comboBox.TabIndex = 5;
+            });
             _mainLayout.Controls.Add(cmbFund, 1, 5);
             _toolTip.SetToolTip(cmbFund, "Select existing fund from database");
 
@@ -570,25 +638,27 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblType, 0, 6);
 
-            cmbType = new SfComboBox
+            cmbType = Factory.CreateSfComboBox(comboBox =>
             {
-                Name = "cmbType",
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                MaxDropDownItems = 10,
-                DropDownWidth = 250,
-                AccessibleName = "Account Type",
-                AccessibleDescription = "Select the account type",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 6,
-                ThemeName = themeName,
-            };
+                comboBox.Name = "cmbType";
+                comboBox.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                comboBox.ComboBoxMode = Syncfusion.WinForms.ListView.Enums.ComboBoxMode.SingleSelection;
+                comboBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                comboBox.MaxDropDownItems = 10;
+                comboBox.DropDownWidth = 250;
+                comboBox.AccessibleName = "Account Type";
+                comboBox.AccessibleDescription = "Select the account type";
+                comboBox.Anchor = AnchorStyles.Left;
+                comboBox.Width = 320;
+                comboBox.Height = 32;
+                comboBox.Margin = new Padding(0, 4, 0, 4);
+                comboBox.MinimumSize = new Size(320, 32);
+                comboBox.TabIndex = 6;
+            });
             _mainLayout.Controls.Add(cmbType, 1, 6);
             _toolTip.SetToolTip(cmbType, "Select account type (Asset, Liability, Revenue, Expense)");
 
@@ -599,26 +669,29 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblBalance, 0, 7);
 
-            numBalance = new SfNumericTextBox
+            numBalance = Factory.CreateSfNumericTextBox(numericTextBox =>
             {
-                Name = "numBalance",
-                AllowNull = false,
-                Value = 0,
-                MinValue = (double)decimal.MinValue,
-                MaxValue = (double)decimal.MaxValue,
-                AccessibleName = "Balance",
-                AccessibleDescription = "Enter the current account balance",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 7,
-                ThemeName = themeName,
-                FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                NumberFormatInfo = CurrencyFormat,
-            };
+                numericTextBox.Name = "numBalance";
+                numericTextBox.AllowNull = false;
+                numericTextBox.Value = 0;
+                numericTextBox.MinValue = (double)decimal.MinValue;
+                numericTextBox.MaxValue = (double)decimal.MaxValue;
+                numericTextBox.AccessibleName = "Balance";
+                numericTextBox.AccessibleDescription = "Enter the current account balance";
+                numericTextBox.Anchor = AnchorStyles.Left;
+                numericTextBox.Width = 165;
+                numericTextBox.Height = 32;
+                numericTextBox.Margin = new Padding(0, 4, 0, 4);
+                numericTextBox.MinimumSize = new Size(165, 32);
+                numericTextBox.TabIndex = 7;
+                numericTextBox.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
+                numericTextBox.NumberFormatInfo = CurrencyFormat;
+                numericTextBox.TextAlign = HorizontalAlignment.Right;
+            });
             // Set decimal digits via NumberFormatInfo
             numBalance.NumberFormatInfo.CurrencyDecimalDigits = 2;
             _mainLayout.Controls.Add(numBalance, 1, 7);
@@ -631,26 +704,29 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 10, 3),
+                Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblBudget, 0, 8);
 
-            numBudget = new SfNumericTextBox
+            numBudget = Factory.CreateSfNumericTextBox(numericTextBox =>
             {
-                Name = "numBudget",
-                AllowNull = false,
-                Value = 0,
-                MinValue = 0,
-                MaxValue = (double)decimal.MaxValue,
-                AccessibleName = "Budget Amount",
-                AccessibleDescription = "Enter the budgeted amount for this account",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 8,
-                ThemeName = themeName,
-                FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                NumberFormatInfo = CurrencyFormat,
-            };
+                numericTextBox.Name = "numBudget";
+                numericTextBox.AllowNull = false;
+                numericTextBox.Value = 0;
+                numericTextBox.MinValue = 0;
+                numericTextBox.MaxValue = (double)decimal.MaxValue;
+                numericTextBox.AccessibleName = "Budget Amount";
+                numericTextBox.AccessibleDescription = "Enter the budgeted amount for this account";
+                numericTextBox.Anchor = AnchorStyles.Left;
+                numericTextBox.Width = 165;
+                numericTextBox.Height = 32;
+                numericTextBox.Margin = new Padding(0, 4, 0, 4);
+                numericTextBox.MinimumSize = new Size(165, 32);
+                numericTextBox.TabIndex = 8;
+                numericTextBox.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
+                numericTextBox.NumberFormatInfo = CurrencyFormat;
+                numericTextBox.TextAlign = HorizontalAlignment.Right;
+            });
             // Set decimal digits via NumberFormatInfo
             numBudget.NumberFormatInfo.CurrencyDecimalDigits = 2;
             _mainLayout.Controls.Add(numBudget, 1, 8);
@@ -666,20 +742,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
             _mainLayout.Controls.Add(lblActive, 0, 9);
 
-            chkActive = new CheckBoxAdv
+            chkActive = Factory.CreateCheckBoxAdv("Is Active", checkBox =>
             {
-                Name = "chkActive",
-                Text = "Is Active",
-                Checked = true,
-                AutoSize = false,
-                Height = 30,
-                AccessibleName = "Active Status",
-                AccessibleDescription = "Check to mark this account as active",
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0, 3, 0, 3),
-                TabIndex = 9,
-                ThemeName = themeName,
-            };
+                checkBox.Name = "chkActive";
+                checkBox.Checked = true;
+                checkBox.AutoSize = true;
+                checkBox.AccessibleName = "Active Status";
+                checkBox.AccessibleDescription = "Check to mark this account as active";
+                checkBox.Anchor = AnchorStyles.Left;
+                checkBox.Margin = new Padding(0, 4, 0, 4);
+                checkBox.TabIndex = 9;
+            });
             _mainLayout.Controls.Add(chkActive, 1, 9);
             _toolTip.SetToolTip(chkActive, "Indicates whether this account is currently active");
 
@@ -690,34 +763,42 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Padding = new Padding(0, 8, 0, 0)
             };
 
-            btnSave = new SfButton
+            var buttonFlow = new FlowLayoutPanel
             {
-                Name = "btnSave",
-                Text = _isNew ? "&Create" : "&Save",
-                Width = 112,
-                Height = 36,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                AccessibleName = _isNew ? "Create Account" : "Save Account",
-                AccessibleDescription = "Save the account changes",
-                TabIndex = 10,
-                ThemeName = themeName,
-                Margin = new Padding(0, 0, 10, 0),
+                Dock = DockStyle.Right,
+                FlowDirection = FlowDirection.RightToLeft,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
+
+            btnSave = Factory.CreateSfButton(_isNew ? "&Create" : "&Save", button =>
+            {
+                button.Name = "btnSave";
+                button.Width = 112;
+                button.Height = 36;
+                button.Anchor = AnchorStyles.None;
+                button.AccessibleName = _isNew ? "Create Account" : "Save Account";
+                button.AccessibleDescription = "Save the account changes";
+                button.TabIndex = 10;
+                button.Margin = new Padding(8, 0, 0, 0);
+            });
             _saveHandler = BtnSave_Click;
             btnSave.Click += _saveHandler;
 
-            btnCancel = new SfButton
+            btnCancel = Factory.CreateSfButton("&Cancel", button =>
             {
-                Name = "btnCancel",
-                Text = "&Cancel",
-                Width = 112,
-                Height = 36,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                AccessibleName = "Cancel",
-                AccessibleDescription = "Cancel and discard changes",
-                TabIndex = 11,
-                ThemeName = themeName,
-            };
+                button.Name = "btnCancel";
+                button.Width = 112;
+                button.Height = 36;
+                button.Anchor = AnchorStyles.None;
+                button.AccessibleName = "Cancel";
+                button.AccessibleDescription = "Cancel and discard changes";
+                button.TabIndex = 11;
+                button.Margin = new Padding(0);
+            });
             _cancelHandler = BtnCancel_Click;
             btnCancel.Click += _cancelHandler;
 
@@ -725,14 +806,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             CancelRequested += OnCancelRequested;
             SaveCompleted += OnSaveCompleted;
 
-            // Position buttons: Cancel first (rightmost), then Save to its left
-            btnCancel.Left = _buttonPanel.ClientSize.Width - btnCancel.Width - 10;
-            btnCancel.Top = 10;
-            btnSave.Left = btnCancel.Left - btnSave.Width - 10;
-            btnSave.Top = 10;
-
-            _buttonPanel.Controls.Add(btnCancel);
-            _buttonPanel.Controls.Add(btnSave);
+            // Add buttons in right-to-left flow: Cancel on the far right, Save to its left
+            buttonFlow.Controls.Add(btnCancel);
+            buttonFlow.Controls.Add(btnSave);
+            _buttonPanel.Controls.Add(buttonFlow);
 
             // === ICON ASSIGNMENT FOR DIALOG BUTTONS (Optional Polish) ===
             try
@@ -758,6 +835,15 @@ namespace WileyWidget.WinForms.Controls.Panels
             _mainLayout.SetColumnSpan(_buttonPanel, 2);
 
             Controls.Add(_mainLayout);
+
+            _loader = Factory.CreateLoadingOverlay(overlay =>
+            {
+                overlay.Dock = DockStyle.Fill;
+                overlay.Visible = false;
+                overlay.Message = "Loading account editor...";
+            });
+            Controls.Add(_loader);
+            _loader.BringToFront();
 
             ResumeLayout(false);
             PerformLayout();
@@ -789,6 +875,17 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (sender is not WileyWidget.WinForms.Dialogs.AccountEditDialog)
                     e.Cancel = true;
             }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
+            {
+                MinimumSize = new Size(1024, 720);
+            }
+
+            PerformLayout();
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)
@@ -1274,17 +1371,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         /// <summary>
-        /// Triggers a deferred ForceFullLayout after DockingManager finishes its resize pass.
+        /// Called when panel is first shown. Base timer handles ForceFullLayout.
         /// </summary>
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
-
-            BeginInvoke(() =>
-            {
-                ForceFullLayout();
-                Logger?.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
-            });
+            // Note: ForceFullLayout is handled by base timer - no need to call it again
         }
 
         /// <summary>
@@ -1308,6 +1400,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (_bindingCompleteHandler != null && _bindingSource != null)
                 {
                     _bindingSource.BindingComplete -= _bindingCompleteHandler;
+                }
+
+                if (_panelHeader != null)
+                {
+                    _panelHeader.CloseClicked -= BtnCancel_Click;
                 }
 
                 // Clear all data bindings
@@ -1335,6 +1432,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 _bindingSource?.Dispose();
                 _mainLayout?.Dispose();
                 _buttonPanel?.Dispose();
+                _panelHeader?.Dispose();
+                _loader?.Dispose();
             }
 
             base.Dispose(disposing);

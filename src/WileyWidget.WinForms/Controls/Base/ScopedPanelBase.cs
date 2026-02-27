@@ -21,6 +21,47 @@ namespace WileyWidget.WinForms.Controls.Base
     /// </summary>
     public abstract class ScopedPanelBase : UserControl
     {
+        // ── Canonical layout constants (Sacred Panel Skeleton §3) ──────────────────────────
+        // Const int dimensions allow compile-time use; Size fields provide a convenient composite.
+
+        /// <summary>Logical pixel width floor for docked / hero panels at 96 DPI.</summary>
+        public const int RecommendedDockedPanelMinimumLogicalWidth = 1024;
+        /// <summary>Logical pixel height floor for docked / hero panels at 96 DPI.</summary>
+        public const int RecommendedDockedPanelMinimumLogicalHeight = 720;
+
+        /// <summary>Logical pixel width floor for dialog-hosted panels at 96 DPI.</summary>
+        public const int RecommendedDialogPanelMinimumLogicalWidth = 760;
+        /// <summary>Logical pixel height floor for dialog-hosted panels at 96 DPI.</summary>
+        public const int RecommendedDialogPanelMinimumLogicalHeight = 640;
+
+        /// <summary>Logical pixel width floor for embedded / tab panels at 96 DPI.</summary>
+        public const int RecommendedEmbeddedPanelMinimumLogicalWidth = 960;
+        /// <summary>Logical pixel height floor for embedded / tab panels at 96 DPI.</summary>
+        public const int RecommendedEmbeddedPanelMinimumLogicalHeight = 600;
+
+        /// <summary>Minimum top padding (logical px) to prevent content clipping under docking captions.</summary>
+        public const int RecommendedTopInsetLogical = 8;
+
+        /// <summary>Full logical minimum size for docked / root panels.
+        /// Derived from <see cref="RecommendedDockedPanelMinimumLogicalWidth"/> ×
+        /// <see cref="RecommendedDockedPanelMinimumLogicalHeight"/>.</summary>
+        public static readonly Size RecommendedDockedPanelMinimumLogicalSize =
+            new(RecommendedDockedPanelMinimumLogicalWidth, RecommendedDockedPanelMinimumLogicalHeight);
+
+        /// <summary>Full logical minimum size for dialog-hosted panels.
+        /// Derived from <see cref="RecommendedDialogPanelMinimumLogicalWidth"/> ×
+        /// <see cref="RecommendedDialogPanelMinimumLogicalHeight"/>.</summary>
+        public static readonly Size RecommendedDialogPanelMinimumLogicalSize =
+            new(RecommendedDialogPanelMinimumLogicalWidth, RecommendedDialogPanelMinimumLogicalHeight);
+
+        /// <summary>Full logical minimum size for embedded / tab panels.
+        /// Derived from <see cref="RecommendedEmbeddedPanelMinimumLogicalWidth"/> ×
+        /// <see cref="RecommendedEmbeddedPanelMinimumLogicalHeight"/>.</summary>
+        public static readonly Size RecommendedEmbeddedPanelMinimumLogicalSize =
+            new(RecommendedEmbeddedPanelMinimumLogicalWidth, RecommendedEmbeddedPanelMinimumLogicalHeight);
+
+        private bool _initialLayoutSuspended;
+
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
         public virtual object? UntypedViewModel => null;
 
@@ -33,6 +74,159 @@ namespace WileyWidget.WinForms.Controls.Base
                 true);
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new SizeF(96F, 96F);
+
+            SuspendLayout();
+            _initialLayoutSuspended = true;
+        }
+
+        protected override void OnCreateControl()
+        {
+            base.OnCreateControl();
+
+            if (_initialLayoutSuspended)
+            {
+                _initialLayoutSuspended = false;
+                ResumeLayout(performLayout: false);
+                PerformLayout();
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            if (Dock == DockStyle.None)
+            {
+                Dock = DockStyle.Fill;
+            }
+
+            if (MinimumSize == Size.Empty)
+            {
+                MinimumSize = GetRecommendedMinimumSize();
+            }
+
+            EnsureMinimumTopInset();
+            ResetAutoScrollOffsets(this);
+
+            PerformLayout();
+            Invalidate(true);
+        }
+
+        protected virtual int GetMinimumTopInsetLogical() => RecommendedTopInsetLogical;
+
+        protected void EnsureMinimumTopInset()
+        {
+            var minimumTopInsetLogical = GetMinimumTopInsetLogical();
+            if (minimumTopInsetLogical <= 0)
+            {
+                return;
+            }
+
+            var minimumTopInset = ScaleLogicalToDevice(new Size(0, minimumTopInsetLogical)).Height;
+            if (Padding.Top >= minimumTopInset)
+            {
+                return;
+            }
+
+            Padding = new Padding(Padding.Left, minimumTopInset, Padding.Right, Padding.Bottom);
+        }
+
+        protected static void ResetAutoScrollOffsets(Control root)
+        {
+            if (root is ScrollableControl scrollable && scrollable.AutoScroll)
+            {
+                try
+                {
+                    scrollable.AutoScrollPosition = Point.Empty;
+                }
+                catch
+                {
+                    // Best-effort reset for controls that reject AutoScrollPosition assignment.
+                }
+            }
+
+            foreach (Control child in root.Controls)
+            {
+                ResetAutoScrollOffsets(child);
+            }
+        }
+
+        protected virtual Size GetRecommendedMinimumSize()
+        {
+            var hostForm = FindForm();
+            var isDialogHost = hostForm?.Modal == true ||
+                               hostForm?.FormBorderStyle == FormBorderStyle.FixedDialog ||
+                               hostForm?.FormBorderStyle == FormBorderStyle.FixedToolWindow ||
+                               hostForm?.FormBorderStyle == FormBorderStyle.SizableToolWindow;
+
+            var logicalSize = isDialogHost
+                ? RecommendedDialogPanelMinimumLogicalSize
+                : RecommendedDockedPanelMinimumLogicalSize;
+
+            return ScaleLogicalToDevice(logicalSize);
+        }
+
+        protected Size ScaleLogicalToDevice(Size logicalSize)
+        {
+            var dpi = DeviceDpi <= 0 ? 96 : DeviceDpi;
+            if (dpi == 96)
+            {
+                return logicalSize;
+            }
+
+            var scale = dpi / 96f;
+            return new Size(
+                (int)Math.Ceiling(logicalSize.Width * scale),
+                (int)Math.Ceiling(logicalSize.Height * scale));
+        }
+
+        /// <summary>
+        /// Canonical layout-suspension wrapper mandated by the Sacred Panel Skeleton
+        /// (WileyWidgetUIStandards §1 and §3).  Call once from the panel constructor—
+        /// typically via a private <c>InitializeLayout()</c> delegate—to batch all
+        /// control creation inside a single <c>SuspendLayout</c> / <c>ResumeLayout</c>
+        /// + <c>PerformLayout</c> cycle.  This is the only approved way to initialise
+        /// panel controls; do not call <c>SuspendLayout</c>/<c>ResumeLayout</c> manually.
+        /// </summary>
+        /// <param name="buildAction">The layout-build delegate. Must not be <see langword="null"/>.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="buildAction"/> is <see langword="null"/>.</exception>
+        protected void SafeSuspendAndLayout(Action buildAction)
+        {
+            if (buildAction is null)
+                throw new ArgumentNullException(nameof(buildAction));
+
+            SuspendLayout();
+            try
+            {
+                buildAction();
+            }
+            finally
+            {
+                ResumeLayout(performLayout: false);
+                PerformLayout();
+            }
+        }
+
+        /// <summary>
+        /// Public entry point for external callers (e.g.
+        /// <c>MainForm.DockingManager_DockStateChanged</c>) to trigger a post-dock layout
+        /// refresh on this panel (Standards Req 3).
+        /// Derived generic panels override this to call the richer <c>ForceFullLayout()</c>.
+        /// </summary>
+        public virtual void TriggerForceFullLayout()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            SuspendLayout();
+            try
+            {
+                PerformLayout();
+                Invalidate(true);
+                Update();
+            }
+            finally
+            {
+                ResumeLayout(performLayout: true);
+            }
         }
     }
 
@@ -89,6 +283,28 @@ namespace WileyWidget.WinForms.Controls.Base
             Load += ScopedPanelBase_Load;
         }
 
+        /// <summary>
+        /// Direct-injection constructor: accepts a pre-built ViewModel and optional logger.
+        /// Used by the Sacred Panel Skeleton (WileyWidgetUIStandards §1) when the DI lifetime
+        /// is managed externally and a <see cref="SyncfusionControlFactory"/> is injected
+        /// directly into the panel constructor.  The scope is not created in this path;
+        /// <see cref="ControlFactory"/> is unavailable — panels must use the injected factory.
+        /// </summary>
+        /// <param name="vm">Pre-built ViewModel instance supplied by the DI container.</param>
+        /// <param name="logger">Optional logger; defaults to <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance"/>.</param>
+        protected ScopedPanelBase(TViewModel vm, ILogger? logger = null)
+        {
+            _scope = null;
+            _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+
+            ViewModel = vm ?? throw new ArgumentNullException(nameof(vm));
+            OnViewModelResolved(ViewModel);
+            _logger.LogDebug("[{Panel}] Initialized (direct-injection) — ViewModel: {VmType}",
+                GetType().Name, ViewModel.GetType().Name);
+
+            Load += ScopedPanelBase_Load;
+        }
+
         protected virtual void OnViewModelResolved(TViewModel? vm) { }
         protected virtual void OnViewModelResolved(object? vm)
         {
@@ -123,6 +339,17 @@ namespace WileyWidget.WinForms.Controls.Base
             var mainForm = hostForm as MainForm
                         ?? hostForm?.Owner as MainForm;
 
+            // Walk up the parent control chain — handles DockingManager + nested hosting in 32.2.3
+            if (mainForm == null)
+            {
+                Control? p = Parent;
+                while (p != null)
+                {
+                    if (p is MainForm mf) { mainForm = mf; break; }
+                    p = p.Parent;
+                }
+            }
+
             if (mainForm != null)
             {
                 // Check if this is a floating form (not the main form itself)
@@ -142,7 +369,7 @@ namespace WileyWidget.WinForms.Controls.Base
             else
             {
                 Visible = false;
-                _logger?.LogWarning("[{Panel}] ClosePanel fallback: MainForm not reachable, set Visible=false", GetType().Name);
+                _logger?.LogDebug("[{Panel}] ClosePanel fallback: MainForm not reachable, set Visible=false", GetType().Name);
             }
         }
 
@@ -191,6 +418,15 @@ namespace WileyWidget.WinForms.Controls.Base
 
             _logger?.LogDebug("[{Panel}] ForceFullLayout completed ({W}x{H})", GetType().Name, Width, Height);
         }
+
+        /// <summary>
+        /// Public bridge that allows external callers — such as
+        /// <c>MainForm.DockingManager_DockStateChanged</c> — to invoke
+        /// <see cref="ForceFullLayout"/> after the Syncfusion DockingManager
+        /// completes a dock or undock pass (Standards Req 3).
+        /// </summary>
+        /// <inheritdoc/>
+        public override void TriggerForceFullLayout() => ForceFullLayout();
 
         private static void PerformLayoutRecursive(Control control)
         {
@@ -294,6 +530,11 @@ namespace WileyWidget.WinForms.Controls.Base
         {
             base.OnVisibleChanged(e);
             _logger?.LogTrace("[{Panel}] Visibility → {Visible} ({W}x{H})", GetType().Name, Visible, Width, Height);
+            if (Visible)
+            {
+                EnsureMinimumTopInset();
+                ResetAutoScrollOffsets(this);
+            }
             QueueDeferredLayoutPass(e);
         }
 
@@ -321,13 +562,9 @@ namespace WileyWidget.WinForms.Controls.Base
                 OnShown(e);
             }
 
-            BeginInvoke(new Action(() =>
-            {
-                if (!IsDisposed && IsHandleCreated && Visible)
-                {
-                    ForceFullLayout();
-                }
-            }));
+            // ✅ PERF FIX: Remove immediate ForceFullLayout call to prevent layout thrashing
+            // The OnShown timer (180ms) will handle the final layout pass after all resize operations complete
+            // This prevents 7+ redundant layout calls within 200ms (one per Visible/SizeChanged event)
         }
 
         /// <summary>

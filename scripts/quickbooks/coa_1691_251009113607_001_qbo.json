@@ -1,0 +1,1916 @@
+[
+  {
+    "AcctNum": "110",
+    "Name": "CASH IN BANK",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "110.1",
+    "Name": "CASH-BASEBALL FIELD PROJECT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "120",
+    "Name": "INVESTMENTS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "130",
+    "Name": "INTERGOVERNMENTAL RECEIVABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "140",
+    "Name": "GRANT RECEIVABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "210",
+    "Name": "ACCOUNTS PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "290",
+    "Name": "BASEBALL FIELF PROJECT LOAN . WALKING TRAIL LOAN . DUE TO/FROM TOW GENERAL FUND . DUE TO/FROM TOW UTILITY FUND . FUND BALANCE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "30000",
+    "Name": "Opening Bal",
+    "AccountType": "Equity",
+    "Active": true
+  },
+  {
+    "AcctNum": "32000",
+    "Name": "Unrestricted Net Assets",
+    "AccountType": "Equity",
+    "Active": true
+  },
+  {
+    "AcctNum": "370",
+    "Name": "GAIN/LOSS DISPOSAL OF ASSETS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "360",
+    "Name": "TRANSFER FROM REC FUND",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "211.1",
+    "Name": "BALLFIELD ACCRUED INTEREST",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "212.2",
+    "Name": "WALKING TRAIL ACCRUED INTEREST",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "1120",
+    "Name": "CASH IN BANK - BASEBALL/SOFTBAL",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1130",
+    "Name": "SAVINGS ACCOUNT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1840",
+    "Name": "BUILDINGS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1860",
+    "Name": "EQUIPMENT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1900",
+    "Name": "ACCUMULATED DEPRICIATION",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "271",
+    "Name": "Retained Earnings",
+    "AccountType": "Equity",
+    "Active": true
+  },
+  {
+    "AcctNum": "4110.2",
+    "Name": "VOLLEYBALL DUES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "01",
+    "Name": "CHECKING ACCOUNT-Enterprise",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "02",
+    "Name": "WSD-General Fund",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "51.3",
+    "Name": "LEGACY BANK CD #6469",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "2000",
+    "Name": "Undeposited Funds",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "80",
+    "Name": "CONSTRUCTION IN PROGRESS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "05",
+    "Name": "ACCOUNTS RECEIVABLE",
+    "AccountType": "AccountsReceivable",
+    "Active": true
+  },
+  {
+    "AcctNum": "15.7",
+    "Name": "INTERGOVERNMENTAL RECEIVABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "32",
+    "Name": "CASH WITH COUNTY TREASURER",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "40",
+    "Name": "LAND",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "41",
+    "Name": "SEWER SYSTEM",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "42",
+    "Name": "EQUIPMENT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "43",
+    "Name": "FURNITURE & FIXTURES",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "46",
+    "Name": "ACCUMULATED DEPRECIATION",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "55",
+    "Name": "PREPAID INSURANCE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "205",
+    "Name": "DEFERRED REVENUE - PROPERTY TAX",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "215",
+    "Name": "DEFERRED REVENUE-RESCUE FUND",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.1",
+    "Name": "FEDERAL W/H TAXES PAYBALE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.2",
+    "Name": "STATE W/H TAXES PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.3",
+    "Name": "SOC SEC W/H TAXES PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "222",
+    "Name": "DUE TO/FROM SANITATION DISTRICT",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "301",
+    "Name": "SEWAGE SALES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "302",
+    "Name": "TAP FEES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "310",
+    "Name": "GENERAL PROPERTY TAXES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "310.1",
+    "Name": "DELINQUENT GEN. PROPERTY TAXES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "311",
+    "Name": "S.0. TAXES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "312",
+    "Name": "TAXA",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "313",
+    "Name": "SENIOR HOMESTEAD EXEMPTION",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "315",
+    "Name": "INTEREST ON INVESTMENTS Income",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "320",
+    "Name": "PENALTIES & INTEREST ON TAXES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "320.1",
+    "Name": "REFUND TAX OVERPAYMENT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "321",
+    "Name": "MISCELLANEOUS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "322",
+    "Name": "WSD POND PROJECT GRANTS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "323",
+    "Name": "WSD-AMER RESCUE FUND-PONDS PROJ",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "492",
+    "Name": "MILAGE REIMBURSMENT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "210.1",
+    "Name": "CD LOAN INTEREST",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "401",
+    "Name": "PERMITS & ASSESSMENTS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "401.1",
+    "Name": "BANK SERVICE & INTEREST CHARGE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "401.2",
+    "Name": "INTEREST EXPENSE-TRASH TRUCK",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "405",
+    "Name": "OUTSIDE SERVICE - LAB FEES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "405.1",
+    "Name": "BUDGET, AUDIT, LEGAL",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "410",
+    "Name": "OFFICE SUPPLIES/POSTAGE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "413.4",
+    "Name": "EDUCATION",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415",
+    "Name": "CAPITAL OUTLAY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "416",
+    "Name": "DUES & SUBSCRIPTIONS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "418",
+    "Name": "SERVICE CONTRACT/WARRANTY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "420",
+    "Name": "COLLECTION FEE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "425",
+    "Name": "SUPPLIES & EXPENSES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "430",
+    "Name": "GIFTS/APPRECIATION",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "432.53",
+    "Name": "SEWER CLEANING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "433.51",
+    "Name": "SALARIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "435",
+    "Name": "LAGOON CLEANING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "440",
+    "Name": "DEPRECIATION",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "445",
+    "Name": "COUNTY TREASURER FEES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "483",
+    "Name": "PAYROLL TAXES - FICA/UNEMPLOYMT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "484",
+    "Name": "WATER PROJECT EXPENSES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "485",
+    "Name": "ENGINEERING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "486",
+    "Name": "TRANSFER TO CAPITAL PROJECTS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "487",
+    "Name": "INTEREST - RURAL DEVELOP. LOAN",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "489",
+    "Name": "PICKUP USAGE FEE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "490",
+    "Name": "TRASFER TO UTILITY FUNDS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "491",
+    "Name": "TRANSFER TO CC FUND",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "493",
+    "Name": "TRANSFER TO OTHER FUNDS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "101",
+    "Name": "CASH IN VRSI GRANT CHKG ACCT/TF",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "101.1",
+    "Name": "CASH IN OPER. CHKG ACCT/HILDA",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "105",
+    "Name": "CERTIFICATE OF DEPOSIT #5002",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "106",
+    "Name": "CERTIFICATE OF DEPOSIT #5001",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "107",
+    "Name": "CERTIFICATE OF DEPOSIT #5288",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "108",
+    "Name": "CERTIFICATE OF DEPOSIT #5745",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "202",
+    "Name": "ACCOUNTS PAYABLE - VRSI GRANT",
+    "AccountType": "AccountsPayable",
+    "Active": true
+  },
+  {
+    "AcctNum": "202.1",
+    "Name": "ACCOUNTS PAYABLE - OPERATE ACCT",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "206",
+    "Name": "DEFERRED REV SIDEWALK TRAIL",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "223",
+    "Name": "DUE TO/FROM CC OPERATING ACCT",
+    "AccountType": "AccountsPayable",
+    "Active": true
+  },
+  {
+    "AcctNum": "319.1",
+    "Name": "MISCELLANEOUS INCOME Income",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "330",
+    "Name": "INTERGOVERNMENTAL REV-PRWS CNTY",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "334",
+    "Name": "SEVERENCE TAX",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "334.1",
+    "Name": "HRSA GRANT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "334.2",
+    "Name": "COLO RURAL HEALTH GRANT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "361",
+    "Name": "INTEREST ON INVESTMENTS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "364",
+    "Name": "INSURANCE PROCEEDS Income",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "364.1",
+    "Name": "LEASE PAYMENTS PRINCIPAL",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "367",
+    "Name": "DONATIONS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "367.5",
+    "Name": "TRANSFER FROM TOW GENERAL",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "368",
+    "Name": "MISCELLANEOUS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "369",
+    "Name": "VAN RENTAL",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "155",
+    "Name": "PREPAID",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "402",
+    "Name": "BANK SERVICE CHARGES/PENALTIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.2",
+    "Name": "ACTIVITY DIRECTOR SALARY",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.3",
+    "Name": "PAYROLL TAXES - FICA & UNEMP",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.4",
+    "Name": "EDUCATION/TRAVEL",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "4.1",
+    "Name": "UTILITIES",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.17",
+    "Name": "OFFICE SUPPLIES/EQUIPMENT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.2",
+    "Name": "LEGAL EXPENSE - ATTORNEY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.21",
+    "Name": "ADMINISTRATIVE EXPENSES",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.53",
+    "Name": "INSURANCE - BLDG/PROP/LIAB",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.54",
+    "Name": "INSURANCE - VAN",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "417",
+    "Name": "COUNTY TREASURER FEES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.41",
+    "Name": "JANITORIAL SERVICE SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.42",
+    "Name": "BUILDING MAINT/SUPPLIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "441",
+    "Name": "SUMMER READING SUPPLIES/EQUIP",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "461",
+    "Name": "Advertising and Promotion",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "66900",
+    "Name": "Reconciliation Discrepancies",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "141",
+    "Name": "BUILDINGS",
+    "AccountType": "FixedAsset",
+    "Active": true
+  },
+  {
+    "AcctNum": "142",
+    "Name": "EQUIPMENT",
+    "AccountType": "FixedAsset",
+    "Active": true
+  },
+  {
+    "AcctNum": "146",
+    "Name": "ACCUMULATED DEPRECIATION",
+    "AccountType": "FixedAsset",
+    "Active": true
+  },
+  {
+    "AcctNum": "101.5",
+    "Name": "REPAIRS ACCOUNT Other",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "143",
+    "Name": "IMPROVEMENTS Other",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "241",
+    "Name": "SECURITY DEPOSITS",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "211",
+    "Name": "PERM. LOAN SBW",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "212",
+    "Name": "LOAN ACCOUNT-12141",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "362",
+    "Name": "RENT RECEIPTS Income",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "363",
+    "Name": "GAIN/LOSS ON DISPOSAL OF A Income",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "400",
+    "Name": "BAD DEBT EXPENSE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.175",
+    "Name": "COUNTY TAX ASSMT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.210",
+    "Name": "ADMINISTRATIVE EXPENSE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.220",
+    "Name": "BANK SERVICE CHARGES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.420",
+    "Name": "DO NOT USE/PRIOR MAINT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.5",
+    "Name": "BLDGS & GROUNDS - UTILITIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.6",
+    "Name": "COMMUNITY CENTER UTILITIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "471.2",
+    "Name": "PERM LOAN- SBW",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "472.2",
+    "Name": "LOAN INTEREST",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "480",
+    "Name": "INSURANCE - PROPERTY/AUTO/LIAB",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "482",
+    "Name": "Equipment Rental",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "485.2",
+    "Name": "Miscellaneous Expense",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "485.3",
+    "Name": "Postage and Delivery",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "102",
+    "Name": "PETTY CASH",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "103.2",
+    "Name": "KEY PUMP DEPOSIT (WG & O)",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "103.3",
+    "Name": "PO BOX KEY DEPOSIT Other",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1000",
+    "Name": "*Accounts Receivable",
+    "AccountType": "AccountsReceivable",
+    "Active": true
+  },
+  {
+    "AcctNum": "15.4",
+    "Name": "ACCOUNTS RECEIVABLE - MISC",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "15.41",
+    "Name": "ACCOUNTS RECEIVABLE - SIDEWALK",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "15.5",
+    "Name": "INSURANCE - PROPERTY/BLDG/AUTO",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "15.71",
+    "Name": "ACCOUNTS RECEIVABLE - COUNT R&B",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "15.72",
+    "Name": "HOUSING AUTHORITY RECEIVABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "16",
+    "Name": "ALLOWANCE FOR DOUBTFUL ACCOUNT Other",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "12100",
+    "Name": "Inventory",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "132",
+    "Name": "CASH WITH COUNTY TREASURER",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "50",
+    "Name": "SIDEWALK AND TRAIL PROJECT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "51",
+    "Name": "INVESTMENTS CEBT CD#0221375820",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "52",
+    "Name": "TOWN OF WILEY - UTL RD RESERVE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "53",
+    "Name": "PREPAID",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "155.1",
+    "Name": "PREPAID DUES & SUBSCRIPTIONS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "156",
+    "Name": "Wiley Hay Days",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "160",
+    "Name": "HAROLD SMITH PARK CHECKING",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "202.2",
+    "Name": "CC CITY OF LAMAR ELEC - PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "203",
+    "Name": "ACCRUED PAYROLL",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "205.10",
+    "Name": "DEFERRED REVENUE - FLOOD GRANT",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "205.20",
+    "Name": "DEFERRED REVENUE - RENTS",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "206.5",
+    "Name": "DEFERRED REVENUE ARP",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "2110",
+    "Name": "Direct Deposit Liabilities",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "2120",
+    "Name": "Payroll",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "216",
+    "Name": "PAYROLL CLEARING",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.4",
+    "Name": "PAYROLL w/h - GARNISHMENT",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.5",
+    "Name": "STATE UNEMP TAX PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.6",
+    "Name": "FEDERAL UNEMP TAX PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.7",
+    "Name": "FAMLI TAX PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "217.8",
+    "Name": "SIMPLE IRA PAYABLE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "221",
+    "Name": "DUE TO/FROM CONSERVATION TRUST",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "222.5",
+    "Name": "DUE TO FROM WSD-GENERAL",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "223.2",
+    "Name": "DUE TO/FROM BROOKSIDE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "223.5",
+    "Name": "DUE TO/FROM CC#2 FUND",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "224",
+    "Name": "DUE TO/FROM WILEY HAY DAY",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "225",
+    "Name": "DUE TO/FROM UTILITY FUND",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "226",
+    "Name": "REVOLVING LOAN-SIDEWALK TRAIL",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "24000",
+    "Name": "Payroll Liabilities",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "10.5",
+    "Name": "RECYCLING (INCOME)",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1.1",
+    "Name": "ACCRUED INTEREST (PARK DRY WELL",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1.2",
+    "Name": "SENIOR HOMESTEAD EXEMPTION",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "318.1",
+    "Name": "OCCUPATIONAL TAX - PTI",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "318.2",
+    "Name": "FRANCHISE FEE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "319",
+    "Name": "PENALTIES & INTEREST ON TAXES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "321.1",
+    "Name": "LIQUOR LICENSES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "321.7",
+    "Name": "PERMIT - FIREWORKS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "322.5",
+    "Name": "PET CLINIC - DON'T USE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "322.7",
+    "Name": "DOG LICENSES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "324",
+    "Name": "WEED CONTROL",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "332.100",
+    "Name": "MINERAL LEASE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "333",
+    "Name": "CIGARETTE TAX",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "334.31",
+    "Name": "HIGHWAY USERS TAX",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "335",
+    "Name": "COVID RELIEF FUNDS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "336",
+    "Name": "SALES TAX REVENUE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "337.17",
+    "Name": "COUNTY ROAD & BRIDGE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "340",
+    "Name": "Harold Smith Park GRANT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "341.4",
+    "Name": "COPIES/FAX REVENUE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "350",
+    "Name": "WILEY HAY DAYS DONATIONS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "355",
+    "Name": "GOCO GRANT-MASTER PLAN",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "362.5",
+    "Name": "WALKING TRAIL DONATIONS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "362.6",
+    "Name": "ESGAR FOUNDAION/PARK EQUIP",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "365",
+    "Name": "DIVIDENDS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "372.1",
+    "Name": "TRANSFER FROM OTHER FUNDS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "372.2",
+    "Name": "TRANSFER FROM UTILITY FUND",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "372.3",
+    "Name": "BCL GROUND MAINTENANCE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "373",
+    "Name": "PICKUP USAGE FEE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "374",
+    "Name": "CODE ENFORCEMENT FINES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "375",
+    "Name": "CAPITAL OUTLAY-PARK GRANT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "412",
+    "Name": "SIDEWALK TRAIL EXPENSES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "412.5",
+    "Name": "Brookside Drive Development",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "413.1",
+    "Name": "MAYOR",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "413.2",
+    "Name": "ADMIN - CLERK SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "413.21",
+    "Name": "ADMIN - DEPUTY CLERK SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "413.22",
+    "Name": "ADMIN - CODE ENFORCEMENT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "413.3",
+    "Name": "PAYROLL TAXES - FICA",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.5",
+    "Name": "TRAVEL & TRANSPORTATION",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.6",
+    "Name": "PAYROLL TAXES - UNEMP INS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.7",
+    "Name": "FAMLI",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "3.8",
+    "Name": "SIMPLE IRA-COMPANY",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.11",
+    "Name": "AUDIT & BUDGET",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.12",
+    "Name": "PROFESSIONAL SERVICES",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.175",
+    "Name": "COUNTY TAX ASSESSMENT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.18",
+    "Name": "POSTAGE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.19",
+    "Name": ", OFFICE EQUIPMENT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "5.51",
+    "Name": "INSURANCE - PUB LIAB/LIAB/UMBRL",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.52",
+    "Name": "INSURANCE - WORKER'S COMP",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.75",
+    "Name": "PET CLINIC",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "415.76",
+    "Name": "RECYCLING (EXPENSE)",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "416.2",
+    "Name": "PREPAID EXPENSE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.43",
+    "Name": "GARAGE IMPROVEMENTS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.44",
+    "Name": ", BUILDING SUPPLIES/MAINTENANCE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "419.7",
+    "Name": "COMMUNITY CENTER SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431",
+    "Name": "STREETS - MAINT/SUPPLIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.1",
+    "Name": "STREETS - SNOW & ICE REMOVAL",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.4",
+    "Name": "STREETS - SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.41",
+    "Name": "STREET SALARIES - PART TIME",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.5",
+    "Name": "STREETS 0 GRAVEL",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.6",
+    "Name": "STREETS -SEAL COATING/SURFACING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.61",
+    "Name": "STREET SIGNS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "431.7",
+    "Name": "STREETS/REPLACING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "432.2",
+    "Name": "STREETS EQUIP - REPAIR/MAINT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "432.3",
+    "Name": "STREET LIGHTING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "432.4",
+    "Name": "STREET EQUIP - FUEL",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "432.51",
+    "Name": "STREETS - EQUIPMENT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "433",
+    "Name": "SHOP SUPPLIES/EQUIPMENT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "433.1",
+    "Name": "CC - CAP OUTLAY - LAMAR ELEC",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "433.2",
+    "Name": "CAPITOL PROJECT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "433.3",
+    "Name": "PUBLIC SAFETY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "451.1",
+    "Name": "PARK - SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "451.2",
+    "Name": "PARK - PART TIME SALARY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "452",
+    "Name": "PARK - SUPPLIES/REPAIRS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "452.1",
+    "Name": "PARK - UTILITIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "453",
+    "Name": "TRASH SUPPLIES/REPAIRS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "454",
+    "Name": "TRASH DISPOSAL-TRASH SERVICE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "455",
+    "Name": "ELECTIONS - SUPPLIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "456",
+    "Name": "MISQUITO SPRAYING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "459",
+    "Name": "FIRE DISTRICT PAYMENT",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "460.1",
+    "Name": "ADMIN-CLERK SALARIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "462",
+    "Name": "INT/PENALTIES W/H TAXES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "465",
+    "Name": "CHRISTMAS LIGHTING CONTEST",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "481",
+    "Name": "FEMA",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "485.4",
+    "Name": "MEALS",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "495",
+    "Name": "CAPITAL OUTLAY",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "49900",
+    "Name": "Uncategorized Income",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "18",
+    "Name": "GRANT RECEIVABLE Other",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "21",
+    "Name": "ACCOUNTS RECEIVABLE - WSD",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "2100",
+    "Name": "Inventory",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "43.5",
+    "Name": "PREPAID EXPENSES",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "51.1",
+    "Name": "INVESTMENTS - C D",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "51.2",
+    "Name": "INVESTMENTS - CD #1358",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "61",
+    "Name": "FIXED ASSETS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "61.5",
+    "Name": "REPLACEMENT WELL",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "61.6",
+    "Name": "WALKER WELL WATER PROJECT",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "62.0",
+    "Name": "TRASH TRUCK",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "69",
+    "Name": "ACCUMULATED DEPRECIATION",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "0.1",
+    "Name": "PROFESSIONAL SERVICES",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1.3",
+    "Name": "WALKER WELL LOAN (USDA RD)",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1.4",
+    "Name": "RVS SOFTWARE - PRINTER",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1.5",
+    "Name": "RVS SOFTWARE - SOFTWARE PROGRAM",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "1.6",
+    "Name": "TRASH TRUCK, AND DUMPSTRS",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "10",
+    "Name": "Direct Deposit Liabilities",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "7.1",
+    "Name": "FEDERAL w/h PAYABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "7.2",
+    "Name": "STATE w/h PAYABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "7.3",
+    "Name": "SOC SEC w/h PAYABLE",
+    "AccountType": "Bank",
+    "Active": true
+  },
+  {
+    "AcctNum": "264",
+    "Name": "CONTRIBUTED CAPITAL",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "270",
+    "Name": "DUE TO/FROM GENERAL FUND",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "270.1",
+    "Name": "DUE TO/FROM CONSERVATION TRUST",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "270.2",
+    "Name": "DUE TO/FROM BROOKSIDE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "271.0",
+    "Name": "FUND BALANCE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "272",
+    "Name": "RETAINED EARNINGS",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "273",
+    "Name": "DEFERRED GRANT REVENUE",
+    "AccountType": "OtherCurrentLiability",
+    "Active": true
+  },
+  {
+    "AcctNum": "319.2",
+    "Name": "DOLA GRANT - WATER PROJECT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "319.3",
+    "Name": "USDA RD GRANT - WATER PROJECT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "319.4",
+    "Name": "WATER TANK REPLACEMENT PROJECT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "319.5",
+    "Name": "USDA BACKHOE GRANT",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "348",
+    "Name": "TRASH SALES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "366",
+    "Name": "BCL MANAGEMENT FEE",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "392",
+    "Name": "GAIN/LOSS DISPOSAL OF ASSETS",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "393",
+    "Name": "SALE OF SUPPLIES",
+    "AccountType": "Income",
+    "Active": true
+  },
+  {
+    "AcctNum": "401.3",
+    "Name": "DEPRECIATION EXPENSE-TRASH TRUC",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "9.4",
+    "Name": "FUEL",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "442",
+    "Name": "BUILDING MAINTENANCE",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "455.10",
+    "Name": "SALARIES-TRASH",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "455.11",
+    "Name": "LEASE PAYMENT-TRASH TRUCK",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "460",
+    "Name": "SUPT SALARIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "460.12",
+    "Name": "ADMIN-WATER PT SALARIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "460.2",
+    "Name": "ADMIN - DEPUTY CLERK SALARIES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "467",
+    "Name": "OTHER ADMINISTRATIVE EXPENSES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "468",
+    "Name": "PUBLICATIONS/ADVERTISING",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "470",
+    "Name": "OUTSIDE SERVICE - LAB FEES",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "480.1",
+    "Name": "INSURANCE - WORKMAN'S COMP",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "480.2",
+    "Name": "INSURANCE - TRASH TRUCK AND DUM",
+    "AccountType": "Expense",
+    "Active": true
+  },
+  {
+    "AcctNum": "50000",
+    "Name": "Cost of Goods Sold",
+    "AccountType": "Expense",
+    "Active": true
+  }
+]

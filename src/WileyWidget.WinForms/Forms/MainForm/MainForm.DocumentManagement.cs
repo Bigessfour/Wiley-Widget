@@ -21,7 +21,6 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public partial class MainForm
 {
-    private TabbedMDIManager? _mdiManager;
     private readonly Dictionary<string, Form> _openDocuments = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -37,19 +36,8 @@ public partial class MainForm
     /// </summary>
     private void InitializeMDIManager()
     {
-        if (_mdiManager == null && _tabbedMdi != null)
+        if (_tabbedMdi != null)
         {
-            _mdiManager = _tabbedMdi;
-            _logger?.LogDebug("MDI Manager alias restored from _tabbedMdi field");
-        }
-
-        if (_mdiManager != null)
-        {
-            if (!ReferenceEquals(_tabbedMdi, _mdiManager))
-            {
-                _tabbedMdi = _mdiManager;
-            }
-
             _logger?.LogDebug("MDI Manager already initialized");
             return;
         }
@@ -63,35 +51,34 @@ public partial class MainForm
             this.MdiChildrenMinimizedAnchorBottom = false;
 
             // Create TabbedMDI manager
-            _mdiManager = new TabbedMDIManager
+            _tabbedMdi = new TabbedMDIManager
             {
                 AttachedTo = this
             };
 
-            _tabbedMdi = _mdiManager;
-
             // Configure appearance
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-            _mdiManager.ThemeName = currentTheme;
-            _mdiManager.ThemesEnabled = true;
-            _mdiManager.TabStyle = typeof(TabRendererOffice2016Colorful);
-            _mdiManager.ShowCloseButton = true;
-            _mdiManager.CloseButtonVisible = true;
+            _tabbedMdi.ThemeName = currentTheme;
+            _tabbedMdi.ThemesEnabled = true;
+            // Derive TabStyle from the active theme so the tab renderer matches Office2019 etc.
+            // Office2016Colorful was hardcoded previously and caused a visual mismatch.
+            _tabbedMdi.TabStyle = ResolveTabStyle(currentTheme);
+            _tabbedMdi.ShowCloseButton = true;
+            _tabbedMdi.CloseButtonVisible = true;
 
             // Tab behavior
-            _mdiManager.AllowTabGroupCustomizing = true;
-            _mdiManager.TabControlAdded += OnTabControlAdded;
-            _mdiManager.TabControlRemoved += OnTabControlRemoved;
+            _tabbedMdi.AllowTabGroupCustomizing = true;
+            _tabbedMdi.TabControlAdded += OnTabControlAdded;
+            _tabbedMdi.TabControlRemoved += OnTabControlRemoved;
 
             // Apply theme
-            SfSkinManager.SetVisualStyle(_mdiManager, currentTheme);
+            SfSkinManager.SetVisualStyle(_tabbedMdi, currentTheme);
 
             _logger?.LogInformation("TabbedMDI Manager initialized successfully with theme {Theme}", currentTheme);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to initialize TabbedMDI Manager");
-            _mdiManager = null;
             _tabbedMdi = null;
         }
     }
@@ -157,7 +144,9 @@ public partial class MainForm
     {
         try
         {
-            _logger?.LogDebug("Tab added: {TabText}", e.TabControl.Text);
+            // Get tab name from associated MDI child form or fallback to TabControl properties
+            var tabName = GetTabName(e.TabControl);
+            _logger?.LogDebug("Tab added: {TabText}", tabName);
 
             // Apply theme to new tab
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
@@ -176,12 +165,42 @@ public partial class MainForm
     {
         try
         {
-            _logger?.LogDebug("Tab removed: {TabText}", e.TabControl.Text);
+            // Get tab name from associated MDI child form or fallback to TabControl properties
+            var tabName = GetTabName(e.TabControl);
+            _logger?.LogDebug("Tab removed: {TabText}", tabName);
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Error handling tab control removed");
         }
+    }
+
+    /// <summary>
+    /// Gets the tab name from a TabControl, checking multiple sources.
+    /// </summary>
+    private string GetTabName(Control tabControl)
+    {
+        // Try TabControl.Text first
+        if (!string.IsNullOrWhiteSpace(tabControl.Text))
+        {
+            return tabControl.Text;
+        }
+
+        // Try to find associated MDI child form by searching parent hierarchy
+        var current = tabControl.Parent;
+        while (current != null)
+        {
+            if (current is Form form && form.MdiParent == this)
+            {
+                return form.Text;
+            }
+            current = current.Parent;
+        }
+
+        // Fallback to control name or default
+        return !string.IsNullOrWhiteSpace(tabControl.Name)
+            ? tabControl.Name
+            : "(unnamed)";
     }
 
     /// <summary>
@@ -201,7 +220,7 @@ public partial class MainForm
     /// </summary>
     private void CloseAllDocuments()
     {
-        var children = _mdiManager?.MdiChildren ?? this.MdiChildren;
+        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
         foreach (var child in children.ToArray())
         {
             child.Close();
@@ -216,7 +235,7 @@ public partial class MainForm
         var activeChild = this.ActiveMdiChild;
         if (activeChild == null) return;
 
-        var children = _mdiManager?.MdiChildren ?? this.MdiChildren;
+        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
         foreach (var child in children.Where(c => c != activeChild).ToArray())
         {
             child.Close();
@@ -226,14 +245,14 @@ public partial class MainForm
     /// <summary>
     /// Gets the count of open MDI documents.
     /// </summary>
-    private int GetOpenDocumentCount() => _mdiManager?.MdiChildren?.Length ?? this.MdiChildren?.Length ?? 0;
+    private int GetOpenDocumentCount() => _tabbedMdi?.MdiChildren?.Length ?? this.MdiChildren?.Length ?? 0;
 
     /// <summary>
     /// Gets all open document names.
     /// </summary>
     private IEnumerable<string> GetOpenDocumentNames()
     {
-        return _mdiManager?.MdiChildren?.Select(c => c.Text) ?? this.MdiChildren?.Select(c => c.Text) ?? Enumerable.Empty<string>();
+        return _tabbedMdi?.MdiChildren?.Select(c => c.Text) ?? this.MdiChildren?.Select(c => c.Text) ?? Enumerable.Empty<string>();
     }
 
     /// <summary>
@@ -241,7 +260,7 @@ public partial class MainForm
     /// </summary>
     private void ActivateNextDocument()
     {
-        var children = _mdiManager?.MdiChildren ?? this.MdiChildren;
+        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
         if (children == null || children.Length == 0) return;
 
         var activeIndex = Array.IndexOf(children, this.ActiveMdiChild);
@@ -254,11 +273,36 @@ public partial class MainForm
     /// </summary>
     private void ActivatePreviousDocument()
     {
-        var children = _mdiManager?.MdiChildren ?? this.MdiChildren;
+        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
         if (children == null || children.Length == 0) return;
 
         var activeIndex = Array.IndexOf(children, this.ActiveMdiChild);
         var prevIndex = activeIndex <= 0 ? children.Length - 1 : activeIndex - 1;
         children[prevIndex].Activate();
+    }
+
+    /// <summary>
+    /// Maps the active SfSkinManager theme name to the closest available Syncfusion
+    /// <see cref="TabbedMDIManager.TabStyle"/> renderer for visual consistency.
+    /// The Syncfusion Tools assembly ships <see cref="TabRendererOffice2016Colorful"/> and
+    /// <see cref="TabRendererMetro"/> in the version used here; Office2019/Dark themes use
+    /// the Office2016 renderer which is the closest visual match.
+    /// </summary>
+    private static Type ResolveTabStyle(string themeName)
+    {
+        if (string.IsNullOrWhiteSpace(themeName))
+            return typeof(TabRendererOffice2016Colorful);
+
+        // Normalise: "Office2019Dark" → "office2019dark"
+        var key = themeName.Replace(" ", string.Empty, StringComparison.Ordinal)
+                           .ToLowerInvariant();
+
+        // Metro / HighContrast variants get the Metro renderer; everything else gets Office2016.
+        return key switch
+        {
+            var t when t.StartsWith("metro", StringComparison.Ordinal) => typeof(TabRendererMetro),
+            var t when t.StartsWith("highcontrast", StringComparison.Ordinal) => typeof(TabRendererMetro),
+            _ => typeof(TabRendererOffice2016Colorful)
+        };
     }
 }

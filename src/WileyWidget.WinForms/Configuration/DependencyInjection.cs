@@ -365,6 +365,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<SettingsService>();
             services.AddSingleton<ISettingsService>(sp => DI.ServiceProviderServiceExtensions.GetRequiredService<SettingsService>(sp));
             services.AddSingleton<ISecretVaultService, EncryptedLocalSecretVaultService>();
+            services.AddSingleton<SettingsSecretsPersistenceService>();
             services.AddSingleton<HealthCheckService>();
             services.AddSingleton<ErrorReportingService>();
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
@@ -443,14 +444,19 @@ namespace WileyWidget.WinForms.Configuration
             // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
             services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
 
-            // AI Services (Scoped - may hold request-specific context)
-            services.AddScoped<IAIService, GrokAgentService>();
+            // AI Services (Singleton - heavy initialization, shared across application)
+            // ✅ CRITICAL FIX: GrokAgentService is Singleton to prevent duplicate initialization
+            // Previous Scoped lifetime caused multiple instances across different scopes,
+            // resulting in duplicate plugin discovery (10 plugins × 2 scopes = performance waste)
+            services.AddSingleton<IAIService, GrokAgentService>();
             services.AddScoped<JarvisGrokBridgeHandler>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
             services.AddSingleton<IXaiModelDiscoveryService, XaiModelDiscoveryService>();
 
-            services.TryAddScoped<IAILoggingService, AILoggingService>();
+            // ✅ OPTIMIZATION: AILoggingService tracks application-wide AI usage metrics (query counts, response times)
+            // Singleton lifetime ensures consistent metrics across the entire application
+            services.TryAddSingleton<IAILoggingService, AILoggingService>();
 
             // AI-Powered Search and Analysis Services
             // Register OpenAI embedding generator for semantic search (using OpenAI endpoint as fallback)
@@ -485,8 +491,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
             services.AddSingleton<IConversationRepository, EfConversationRepository>();
 
-            // JARVIS Personality Service (Scoped - depends on IAILoggingService which is scoped)
-            services.AddScoped<IJARVISPersonalityService, JARVISPersonalityService>();
+            // JARVIS Personality Service (Singleton - pure transformation service with no per-request state)
+            // ✅ OPTIMIZATION: Changed from Scoped to Singleton - no request-specific data, only transforms AI responses
+            services.AddSingleton<IJARVISPersonalityService, JARVISPersonalityService>();
 
             // Telemetry Logging Service (Scoped - writes to database)
             services.AddScoped<global::WileyWidget.Services.Abstractions.ITelemetryLogService, TelemetryLogService>();
@@ -605,11 +612,12 @@ namespace WileyWidget.WinForms.Configuration
                 .AddCheck<GrokHealthCheck>("grok-api", tags: new[] { "startup", "ai" })
                 .AddCheck<ChatHistoryHealthCheck>("chat-history", tags: new[] { "startup", "persistence" });
 
-            // Grok AI agent service (Scoped - depends on IJARVISPersonalityService which is scoped)
-            // Register as Scoped since it depends on scoped services. Heavy initialization is deferred to InitializeAsync().
-            // NOTE: Scoped lifetime is correct here: GrokAgentService is instantiated per-scope and can safely depend on scoped dependencies.
+            // Grok AI agent service (Singleton - shared across application, heavy initialization)
+            // ✅ CRITICAL FIX: Changed from Scoped to Singleton to prevent duplicate initialization
+            // Heavy initialization (plugin discovery, Semantic Kernel build) only happens once
+            // Scoped dependencies are resolved on-demand via IServiceProvider
             // ✅ ENHANCED: Explicitly inject IHttpClientFactory to ensure proper connection pooling and prevent socket exhaustion
-            services.TryAddScoped<GrokAgentService>(sp =>
+            services.TryAddSingleton<GrokAgentService>(sp =>
             {
                 var apiKeyProvider = DI.ServiceProviderServiceExtensions.GetRequiredService<IGrokApiKeyProvider>(sp);
                 var config = DI.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(sp);
@@ -634,7 +642,8 @@ namespace WileyWidget.WinForms.Configuration
 
             // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
             // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered
-            services.AddScoped<WileyWidget.Abstractions.IAsyncInitializable>(sp =>
+            // Singleton lifetime ensures this registration points to the same instance as IAIService/GrokAgentService
+            services.AddSingleton<WileyWidget.Abstractions.IAsyncInitializable>(sp =>
                 DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp));
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)

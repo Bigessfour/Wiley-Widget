@@ -35,10 +35,16 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToPdfAsync(object data, string filePath, CancellationToken cancellationToken = default)
     {
-        _logger.Information("Exporting data to PDF: {FilePath}", filePath);
+        ArgumentNullException.ThrowIfNull(data);
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedPath = EnsureOutputPath(filePath);
+
+        _logger.Information("Exporting data to PDF: {FilePath}", normalizedPath);
 
         await Task.Run(() =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (var document = new PdfDocument())
             {
                 var page = document.Pages.Add();
@@ -89,6 +95,7 @@ public class ReportExportService : IReportExportService
                             // Start new page if needed
                             if (yPosition > page.GetClientSize().Height - 100)
                             {
+                                cancellationToken.ThrowIfCancellationRequested();
                                 page = document.Pages.Add();
                                 gfx = page.Graphics;
                                 yPosition = 40;
@@ -113,6 +120,7 @@ public class ReportExportService : IReportExportService
                         // Start new page if needed
                         if (yPosition > page.GetClientSize().Height - 100)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             page = document.Pages.Add();
                             gfx = page.Graphics;
                             yPosition = 40;
@@ -121,10 +129,11 @@ public class ReportExportService : IReportExportService
                 }
 
                 // Save the document
-                document.Save(filePath);
-                _logger.Information("PDF export completed successfully: {FilePath}", filePath);
+                cancellationToken.ThrowIfCancellationRequested();
+                document.Save(normalizedPath);
+                _logger.Information("PDF export completed successfully: {FilePath}", normalizedPath);
             }
-        });
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -132,9 +141,15 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToExcelAsync(object data, string filePath, CancellationToken cancellationToken = default)
     {
-        _logger.Information("Exporting data to Excel: {FilePath}", filePath);
+        ArgumentNullException.ThrowIfNull(data);
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedPath = EnsureOutputPath(filePath);
+
+        _logger.Information("Exporting data to Excel: {FilePath}", normalizedPath);
         await Task.Run(() =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (var excelEngine = new ExcelEngine())
             {
                 var application = excelEngine.Excel;
@@ -169,6 +184,8 @@ public class ReportExportService : IReportExportService
                         // Add data rows
                         foreach (var item in items)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             for (int i = 0; i < properties.Length; i++)
                             {
                                 var value = properties[i].GetValue(item);
@@ -204,14 +221,15 @@ public class ReportExportService : IReportExportService
                 }
 
                 // Save the workbook
-                using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                cancellationToken.ThrowIfCancellationRequested();
+                using (var stream = new FileStream(normalizedPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     workbook.SaveAs(stream);
                 }
 
-                _logger.Information("Excel export completed successfully: {FilePath}", filePath);
+                _logger.Information("Excel export completed successfully: {FilePath}", normalizedPath);
             }
-        });
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -219,13 +237,19 @@ public class ReportExportService : IReportExportService
     /// </summary>
     public async Task ExportToCsvAsync(IEnumerable<object> data, string filePath, CancellationToken cancellationToken = default)
     {
-        _logger.Information("Exporting data to CSV: {FilePath}", filePath);
+        ArgumentNullException.ThrowIfNull(data);
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedPath = EnsureOutputPath(filePath);
+
+        _logger.Information("Exporting data to CSV: {FilePath}", normalizedPath);
         await Task.Run(() =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var items = data.ToList();
             if (!items.Any()) return;
 
-            using (var writer = new StreamWriter(filePath))
+            using (var writer = new StreamWriter(normalizedPath))
             {
                 // Get properties from first item
                 var properties = items.First().GetType().GetProperties()
@@ -239,6 +263,8 @@ public class ReportExportService : IReportExportService
                 // Write data rows
                 foreach (var item in items)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     var values = properties.Select(p =>
                     {
                         var value = p.GetValue(item)?.ToString() ?? "";
@@ -248,9 +274,9 @@ public class ReportExportService : IReportExportService
                     writer.WriteLine(line);
                 }
 
-                _logger.Information("CSV export completed successfully: {FilePath}, Rows: {RowCount}", filePath, items.Count);
+                _logger.Information("CSV export completed successfully: {FilePath}, Rows: {RowCount}", normalizedPath, items.Count);
             }
-        });
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -267,12 +293,15 @@ public class ReportExportService : IReportExportService
     public async Task ExportComplianceReportToPdfAsync(ComplianceReport report, string filePath, CancellationToken cancellationToken = default)
     {
         if (report == null) throw new ArgumentNullException(nameof(report));
-        if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedPath = EnsureOutputPath(filePath);
 
-        _logger.Information("Exporting compliance report to PDF: {FilePath}, EnterpriseId: {EnterpriseId}", filePath, report.EnterpriseId);
+        _logger.Information("Exporting compliance report to PDF: {FilePath}, EnterpriseId: {EnterpriseId}", normalizedPath, report.EnterpriseId);
 
         await Task.Run(() =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (var document = new PdfDocument())
             {
                 var page = document.Pages.Add();
@@ -311,6 +340,8 @@ public class ReportExportService : IReportExportService
                 {
                     foreach (var v in report.Violations)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         var line = $"- [{v.Severity}] {v.Regulation}: {v.Description}";
                         if (line.Length > 100) line = line.Substring(0, 97) + "...";
                         gfx.DrawString(line, bodyFont, brush, new PointF(leftMargin + 10, y));
@@ -346,6 +377,8 @@ public class ReportExportService : IReportExportService
                 {
                     foreach (var r in report.Recommendations)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         var recText = $"- {r}";
                         if (recText.Length > 100) recText = recText.Substring(0, 97) + "...";
                         gfx.DrawString(recText, bodyFont, brush, new PointF(leftMargin + 10, y));
@@ -366,11 +399,12 @@ public class ReportExportService : IReportExportService
                 }
 
                 // Save document
-                document.Save(filePath);
+                cancellationToken.ThrowIfCancellationRequested();
+                document.Save(normalizedPath);
                 _logger.Information("Compliance report PDF export completed: {FilePath}, Violations: {ViolationCount}",
-                    filePath, report.Violations?.Count ?? 0);
+                    normalizedPath, report.Violations?.Count ?? 0);
             }
-        });
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -379,12 +413,15 @@ public class ReportExportService : IReportExportService
     public async Task ExportComplianceReportToExcelAsync(ComplianceReport report, string filePath, CancellationToken cancellationToken = default)
     {
         if (report == null) throw new ArgumentNullException(nameof(report));
-        if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentNullException(nameof(filePath));
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedPath = EnsureOutputPath(filePath);
 
-        _logger.Information("Exporting compliance report to Excel: {FilePath}, EnterpriseId: {EnterpriseId}", filePath, report.EnterpriseId);
+        _logger.Information("Exporting compliance report to Excel: {FilePath}, EnterpriseId: {EnterpriseId}", normalizedPath, report.EnterpriseId);
 
         await Task.Run(() =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (var excelEngine = new ExcelEngine())
             {
                 var application = excelEngine.Excel;
@@ -432,6 +469,8 @@ public class ReportExportService : IReportExportService
                 {
                     foreach (var v in report.Violations)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         wsViolations.Range[row, 1].Text = v.Regulation ?? string.Empty;
                         wsViolations.Range[row, 2].Text = v.Description ?? string.Empty;
                         wsViolations.Range[row, 3].Text = v.Severity.ToString();
@@ -453,6 +492,8 @@ public class ReportExportService : IReportExportService
                 {
                     foreach (var rec in report.Recommendations)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
+
                         wsReco.Range[rRow, 1].Text = rec;
                         rRow++;
                     }
@@ -460,15 +501,16 @@ public class ReportExportService : IReportExportService
                 wsReco.UsedRange.AutofitColumns();
 
                 // Save workbook
-                using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                cancellationToken.ThrowIfCancellationRequested();
+                using (var stream = new FileStream(normalizedPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     workbook.SaveAs(stream);
                 }
 
                 _logger.Information("Compliance report Excel export completed: {FilePath}, Violations: {ViolationCount}, Recommendations: {RecCount}",
-                    filePath, report.Violations?.Count ?? 0, report.Recommendations?.Count ?? 0);
+                    normalizedPath, report.Violations?.Count ?? 0, report.Recommendations?.Count ?? 0);
             }
-        });
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -484,5 +526,23 @@ public class ReportExportService : IReportExportService
             return "\"" + value.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
         }
         return value;
+    }
+
+    private static string EnsureOutputPath(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            throw new ArgumentNullException(nameof(filePath));
+        }
+
+        var normalizedPath = Path.GetFullPath(filePath);
+        var directory = Path.GetDirectoryName(normalizedPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            throw new InvalidOperationException("The output directory could not be determined.");
+        }
+
+        Directory.CreateDirectory(directory);
+        return normalizedPath;
     }
 }

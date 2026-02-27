@@ -32,6 +32,7 @@ public partial class VariancesTabControl : UserControl
     private SfDataGrid? _variancesGrid;
     private Panel? _filterPanel;
     private LoadingOverlay? _loadingOverlay;
+    private ToolTip? _toolTip;
 
     private TextBox? _searchTextBox;
     private ComboBox? _departmentFilter;
@@ -59,6 +60,11 @@ public partial class VariancesTabControl : UserControl
     private void InitializeControls()
     {
         this.Dock = DockStyle.Fill;
+        this.AutoScaleMode = AutoScaleMode.Dpi;
+        this.AutoScroll = true;
+        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        this.Padding = new Padding(8);
+        _toolTip = new ToolTip();
 
         var mainSplit = new SplitContainer
         {
@@ -103,11 +109,23 @@ public partial class VariancesTabControl : UserControl
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));   // Dept combo
 
         var searchLabel = new Label { Text = "Search:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _searchTextBox = new TextBox { Dock = DockStyle.Fill };
+        _searchTextBox = new TextBox
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Variance search",
+            AccessibleDescription = "Search variance records"
+        };
+        _toolTip?.SetToolTip(_searchTextBox, "Search by department or account.");
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
 
         var deptLabel = new Label { Text = "Department:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _departmentFilter = new ComboBox { Dock = DockStyle.Fill };
+        _departmentFilter = new ComboBox
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Department filter",
+            AccessibleDescription = "Filter variance records by department"
+        };
+        _toolTip?.SetToolTip(_departmentFilter, "Filter results by department.");
         _departmentFilter.Items.AddRange(new[] { "All", "Sales", "Marketing", "Operations", "HR", "Finance" });
         _departmentFilter.SelectedIndex = 0;
         _departmentFilter.SelectedIndexChanged += DepartmentFilter_SelectedIndexChanged;
@@ -131,8 +149,11 @@ public partial class VariancesTabControl : UserControl
             AllowSorting = true,
             AllowFiltering = true,
             AutoGenerateColumns = false,
-            ThemeName = themeName
+            ThemeName = themeName,
+            AccessibleName = "Variances grid",
+            AccessibleDescription = "Tabular view of variance records"
         }.PreventStringRelationalFilters(null, "Department", "Account");
+        _toolTip?.SetToolTip(_variancesGrid, "Variance records by department and account.");
 
         GridColumn[] columns =
         [
@@ -252,6 +273,7 @@ public partial class VariancesTabControl : UserControl
             if (_variancesGrid != null) _variancesGrid.QueryCellStyle -= VariancesGrid_QueryCellStyle;
             if (_viewModel != null && _viewModelPropertyChangedHandler != null)
                 _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
+            _toolTip?.Dispose();
         }
         base.Dispose(disposing);
     }

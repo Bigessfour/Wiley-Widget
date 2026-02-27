@@ -7,6 +7,7 @@ using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Factories;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -43,6 +44,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private ProgressBarAdv? _loadingSpinner;
         private ToolTip? _toolTip;
         private DpiAwareImageService? _imageService;
+        /// <summary>Optional factory injected via the Sacred Panel Skeleton constructor path.</summary>
+        private SyncfusionControlFactory? _factory;
 
         private bool _isPinned;
         private bool _isLoading;
@@ -217,8 +220,32 @@ namespace WileyWidget.WinForms.Controls.Supporting
             }
         }
 
-        public PanelHeader() : this(null)
+        public PanelHeader() : this((DpiAwareImageService?)null)
         {
+        }
+
+        /// <summary>
+        /// Initialises the header via the <see cref="SyncfusionControlFactory"/> (Sacred Panel
+        /// Skeleton §1 and Syncfusion Control Creation Rule in WileyWidgetUIStandards §6).
+        /// All <see cref="Syncfusion.WinForms.Controls.SfButton"/> and
+        /// <see cref="ProgressBarAdv"/> instances are created through the factory so that
+        /// mandatory theming and property enforcement is guaranteed.
+        /// </summary>
+        public PanelHeader(SyncfusionControlFactory factory)
+        {
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+            Margin = Padding.Empty;
+            Padding = Padding.Empty;
+
+            try
+            {
+                var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+                SfSkinManager.SetVisualStyle(this, theme);
+            }
+            catch { /* Theme application is best-effort */ }
+
+            InitializeComponent();
+            UpdatePinButtonAppearance();
         }
 
         /// <summary>
@@ -275,6 +302,90 @@ namespace WileyWidget.WinForms.Controls.Supporting
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        // ── Factory-aware control-creation helpers ──────────────────────────
+
+        /// <summary>
+        /// Creates a header action button via the injected <see cref="SyncfusionControlFactory"/>
+        /// when available, or falls back to direct instantiation for the
+        /// <see cref="PanelHeader(DpiAwareImageService?)"/> code-path and design-time use.
+        /// </summary>
+        private SfButton CreateActionButton(string text, int width, int height, string accessibleName)
+        {
+            var margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V);
+            var size = new Size(width, height);
+
+            if (_factory != null)
+            {
+                return _factory.CreateSfButton(text, btn =>
+                {
+                    btn.AutoSize = false;
+                    btn.Size = size;
+                    btn.Margin = margin;
+                    btn.AccessibleName = accessibleName;
+                    btn.TabStop = true;
+                    btn.TextImageRelation = TextImageRelation.ImageBeforeText;
+                    btn.ImageAlign = ContentAlignment.MiddleCenter;
+                });
+            }
+
+            return new SfButton
+            {
+                Text = text,
+                AutoSize = false,
+                Size = size,
+                Margin = margin,
+                AccessibleName = accessibleName,
+                TabStop = true,
+                TextImageRelation = TextImageRelation.ImageBeforeText,
+                ImageAlign = ContentAlignment.MiddleCenter,
+            };
+        }
+
+        /// <summary>
+        /// Creates the loading spinner via the factory when available, otherwise falls back
+        /// to direct instantiation.
+        /// </summary>
+        private ProgressBarAdv CreateLoadingSpinner(int width, int height)
+        {
+            var size = new Size(width, height);
+            var margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V);
+
+            if (_factory != null)
+            {
+                return _factory.CreateProgressBarAdv(pb =>
+                {
+                    pb.Value = 50;
+                    pb.Maximum = 100;
+                    pb.Minimum = 0;
+                    pb.AutoSize = false;
+                    pb.Margin = margin;
+                    pb.Size = size;
+                    pb.Visible = false;
+                    pb.ProgressStyle = ProgressBarStyles.WaitingGradient;
+                    pb.WaitingGradientWidth = 10;
+                    pb.TextVisible = false;
+                    pb.TextShadow = false;
+                });
+            }
+
+            return new ProgressBarAdv
+            {
+                Value = 50,
+                Maximum = 100,
+                Minimum = 0,
+                AutoSize = false,
+                Margin = margin,
+                Size = size,
+                Visible = false,
+                ProgressStyle = ProgressBarStyles.WaitingGradient,
+                WaitingGradientWidth = 10,
+                TextVisible = false,
+                TextShadow = false,
+            };
+        }
+
+        // ── Layout init ────────────────────────────────────────────────────────
+
         private void InitializeComponent()
         {
             Height = HEADER_HEIGHT;
@@ -312,18 +423,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Margin = new Padding(0)
             };
 
-            // Refresh button (with optional icon)
-            _btnRefresh = new SfButton
-            {
-                Text = "Refresh",
-                AutoSize = false,
-                Size = new Size(buttonWidth, buttonHeight),
-                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                AccessibleName = "Refresh",
-                TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText,
-                ImageAlign = ContentAlignment.MiddleCenter
-            };
+            // Refresh button — created via factory when available (Syncfusion Control Creation Rule)
+            _btnRefresh = CreateActionButton("Refresh", buttonWidth, buttonHeight, "Refresh");
             if (_imageService != null)
             {
                 try
@@ -353,34 +454,13 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
             _toolTip.SetToolTip(_btnRefresh, "Refresh data\n\nReloads the current view with latest information from the server.\n\nKeyboard: Alt+R");
 
-            // Loading spinner (ProgressBarAdv, set to marquee-style for continuous animation)
-            _loadingSpinner = new ProgressBarAdv
-            {
-                Value = 50, // Mid-range value creates visual feedback
-                Maximum = 100,
-                Minimum = 0,
-                AutoSize = false,
-                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                Size = new Size(24, Math.Max(12, buttonHeight - 4)),
-                Visible = false,
-                ProgressStyle = ProgressBarStyles.WaitingGradient, // Enable animation
-                WaitingGradientWidth = 10
-            };
+            // Loading spinner (ProgressBarAdv, marquee-style) — created via factory when available
+            _loadingSpinner = CreateLoadingSpinner(24, Math.Max(12, buttonHeight - 4));
             _loadingSpinner.AccessibleName = "Loading indicator - Data is being refreshed, please wait";
             _toolTip.SetToolTip(_loadingSpinner, "Loading in progress\n\nOperation may take a few moments");
 
-            // Pin button (with optional icon)
-            _btnPin = new SfButton
-            {
-                Text = "Pin",
-                AutoSize = false,
-                Size = new Size(buttonWidth, buttonHeight),
-                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                AccessibleName = "Pin",
-                TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText,
-                ImageAlign = ContentAlignment.MiddleCenter
-            };
+            // Pin button — created via factory when available
+            _btnPin = CreateActionButton("Pin", buttonWidth, buttonHeight, "Pin");
             _btnPin.Click += PinButton_Click;
             _btnPin.KeyDown += (s, e) =>
             {
@@ -392,19 +472,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
             UpdatePinButtonIcon(); // Apply icon and tooltip after initialization
 
-            // Help button (with optional icon)
-            _btnHelp = new SfButton
-            {
-                Text = "Help",
-                AutoSize = false,
-                Size = new Size(buttonWidth, buttonHeight),
-                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                AccessibleName = "Help",
-                Visible = _helpButtonVisible,
-                TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText,
-                ImageAlign = ContentAlignment.MiddleCenter
-            };
+            // Help button — created via factory when available
+            _btnHelp = CreateActionButton("Help", buttonWidth, buttonHeight, "Help");
+            _btnHelp.Visible = _helpButtonVisible;
             if (_imageService != null)
             {
                 try
@@ -433,18 +503,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
             _toolTip.SetToolTip(_btnHelp, "Show help\n\nDisplays additional information and guidance for this panel.\n\nKeyboard: Alt+H");
 
-            // Close button (with optional icon)
-            _btnClose = new SfButton
-            {
-                Text = "Close",
-                AutoSize = false,
-                Size = new Size(buttonWidth, buttonHeight),
-                Margin = new Padding(BUTTON_MARGIN_H, BUTTON_MARGIN_V, BUTTON_MARGIN_H, BUTTON_MARGIN_V),
-                AccessibleName = "Close",
-                TabStop = true,
-                TextImageRelation = TextImageRelation.ImageBeforeText,
-                ImageAlign = ContentAlignment.MiddleCenter
-            };
+            // Close button — created via factory when available
+            _btnClose = CreateActionButton("Close", buttonWidth, buttonHeight, "Close");
             if (_imageService != null)
             {
                 try

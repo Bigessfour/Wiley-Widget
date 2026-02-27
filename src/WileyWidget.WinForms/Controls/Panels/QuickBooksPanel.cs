@@ -37,6 +37,7 @@ using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Factories;
 using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.Services;
 // using WileyWidget.WinForms.Utils; // Consolidated
@@ -69,6 +70,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private bool _splittersConfigured = false; // Ensures ConfigureSplitContainersSafely runs only once after layout
 
     // Main layout containers (organized using SplitContainerAdv for professional layout)
+    private TableLayoutPanel? _content;
     private Panel? _mainPanel;
     private SplitContainerAdv? _splitContainerMain;
     private SplitContainerAdv? _splitContainerTop;
@@ -122,6 +124,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private MouseEventHandler? _gridMouseDoubleClickHandler;
     private QueryCellStyleEventHandler? _gridQueryCellStyleHandler;
     private Syncfusion.Windows.Forms.Tools.Events.SplitterMoveEventHandler? _splitterMovingHandler;
+    private readonly SyncfusionControlFactory? _factory;
 
     #endregion
 
@@ -287,13 +290,36 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <summary>
     /// Initializes a new instance of the <see cref="QuickBooksPanel"/> class.
     /// </summary>
+    public QuickBooksPanel(QuickBooksViewModel vm, SyncfusionControlFactory factory)
+        : base(vm, ResolveLogger())
+    {
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        ThemeColors.EnsureThemeAssemblyLoaded(Logger);
+        SafeSuspendAndLayout(InitializeComponent);
+    }
+
+    [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
     public QuickBooksPanel(
         IServiceScopeFactory scopeFactory,
         ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
         : base(scopeFactory, logger)
     {
+        _factory = ControlFactory;
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
-        InitializeComponent();
+        SafeSuspendAndLayout(InitializeComponent);
+    }
+
+    private static ILogger ResolveLogger()
+    {
+        return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<QuickBooksPanel>>(Program.Services)
+            ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<QuickBooksPanel>.Instance;
+    }
+
+    private SyncfusionControlFactory Factory => _factory ?? ControlFactory;
+
+    private IServiceProvider? ResolveServiceProvider()
+    {
+        return _scope?.ServiceProvider ?? Program.Services;
     }
 
     /// <summary>
@@ -305,8 +331,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         base.OnHandleCreated(e);
 
-        var dpiW = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(640f);
-        var dpiH = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(480f);
+        var dpiW = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1024f);
+        var dpiH = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720f);
         var newMin = new Size(
             Math.Max(MinimumSize.Width, dpiW),
             Math.Max(MinimumSize.Height, dpiH));
@@ -584,7 +610,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         finally
         {
             // Always resume layout and reset flags in correct order
-            ResumeLayout(true);
+            // ✅ PERF FIX: Use ResumeLayout(false) to prevent immediate layout thrashing
+            ResumeLayout(false);
             _layoutNestingDepth--;
             _inResize = false;
         }
@@ -976,7 +1003,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         Name = "QuickBooksPanel";
         Size = new Size(1400, 900);
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(640f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(480f));
+        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1024f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720f));
         Padding = Padding.Empty;
         Dock = DockStyle.Fill;
 
@@ -1027,7 +1054,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Hierarchical SplitContainerAdv Layout:
         // Main (Horizontal Splitter) -> Top (Vertical Splitter: Conn vs Ops) + Bottom (Horizontal Splitter: Summary vs History)
 
-        _splitContainerTop = ControlFactory.CreateSplitContainerAdv(splitter =>
+        _splitContainerTop = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Name = "SplitContainerTop";
             splitter.Dock = DockStyle.Fill;
@@ -1039,7 +1066,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _splitContainerTop.Panel1.Controls.Add(_connectionPanel!);
         _splitContainerTop.Panel2.Controls.Add(_operationsPanel!);
 
-        _splitContainerBottom = ControlFactory.CreateSplitContainerAdv(splitter =>
+        _splitContainerBottom = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Name = "SplitContainerBottom";
             splitter.Dock = DockStyle.Fill;
@@ -1051,7 +1078,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _splitContainerBottom.Panel1.Controls.Add(_summaryPanel!);
         _splitContainerBottom.Panel2.Controls.Add(_historyPanel!);
 
-        _splitContainerMain = ControlFactory.CreateSplitContainerAdv(splitter =>
+        _splitContainerMain = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Name = "SplitContainerMain";
             splitter.Dock = DockStyle.Fill;
@@ -1064,7 +1091,22 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _splitContainerMain.Panel2.Controls.Add(_splitContainerBottom);
 
         _mainPanel.Controls.Add(_splitContainerMain);
-        Controls.Add(_mainPanel);
+
+        _content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 1,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            AutoSize = false,
+            Name = "QuickBooksPanelContent"
+        };
+        _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        _content.Controls.Add(_mainPanel, 0, 0);
+
+        Controls.Add(_content);
 
         // Force initial layout calculation before setting SplitterDistance
         this.SuspendLayout();
@@ -1366,10 +1408,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             BorderStyle = BorderStyle.None,
             Padding = Padding.Empty
         };
-        SfSkinManager.SetVisualStyle(topPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
         // Vertical split: left = connection, right = operations (safe deferred sizing)
-        var splitTop = ControlFactory.CreateSplitContainerAdv(splitter =>
+        var splitTop = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = Orientation.Vertical;
@@ -1498,7 +1539,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Padding = new Padding(0, 2, 0, 0)
         };
 
-        _connectButton = ControlFactory.CreateSfButton("Connect", button =>
+        _connectButton = Factory.CreateSfButton("Connect", button =>
         {
             button.Size = new Size(DpiHeight(85f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1512,7 +1553,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _connectButton.Click += _connectButtonClickHandler;
         buttonPanel.Controls.Add(_connectButton);
 
-        _disconnectButton = ControlFactory.CreateSfButton("Disconnect", button =>
+        _disconnectButton = Factory.CreateSfButton("Disconnect", button =>
         {
             button.Size = new Size(DpiHeight(100f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1532,7 +1573,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _disconnectButton.Click += _disconnectButtonClickHandler;
         buttonPanel.Controls.Add(_disconnectButton);
 
-        _testConnectionButton = ControlFactory.CreateSfButton("Test Connection", button =>
+        _testConnectionButton = Factory.CreateSfButton("Test Connection", button =>
         {
             button.Size = new Size(DpiHeight(120f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1615,7 +1656,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Margin = new Padding(0, 10, 0, 0)  // Added top margin for button spacing
         };
 
-        _syncDataButton = ControlFactory.CreateSfButton("🔄 Sync Data", button =>
+        _syncDataButton = Factory.CreateSfButton("🔄 Sync Data", button =>
         {
             button.Size = new Size(DpiHeight(120f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1635,7 +1676,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _syncDataButton.Click += _syncDataButtonClickHandler;
         buttonPanel.Controls.Add(_syncDataButton);
 
-        _importAccountsButton = ControlFactory.CreateSfButton("📥 Import Chart of Accounts", button =>
+        _importAccountsButton = Factory.CreateSfButton("📥 Import Chart of Accounts", button =>
         {
             button.Size = new Size(DpiHeight(170f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1652,7 +1693,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         tableLayout.Controls.Add(buttonPanel, 0, 0);
 
         // Sync progress bar with professional styling
-        _syncProgressBar = ControlFactory.CreateProgressBarAdv(progress =>
+        _syncProgressBar = Factory.CreateProgressBarAdv(progress =>
         {
             progress.Dock = DockStyle.Fill;
             progress.Height = DpiHeight(25f);
@@ -1729,7 +1770,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         toolbarPanel.Controls.Add(filterLabel);
 
         // Filter text box with professional sizing
-        _filterTextBox = ControlFactory.CreateTextBoxExt(textBox =>
+        _filterTextBox = Factory.CreateTextBoxExt(textBox =>
         {
             textBox.Size = new Size(DpiHeight(220f), DpiHeight(28f));
             textBox.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1748,7 +1789,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         toolbarPanel.Controls.Add(_filterTextBox);
 
         // History toolbar buttons with professional sizing
-        _refreshHistoryButton = ControlFactory.CreateSfButton("🔄 Refresh", button =>
+        _refreshHistoryButton = Factory.CreateSfButton("🔄 Refresh", button =>
         {
             button.Size = new Size(DpiHeight(95f), DpiHeight(32f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1762,7 +1803,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _refreshHistoryButton.Click += _refreshHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_refreshHistoryButton);
 
-        _clearHistoryButton = ControlFactory.CreateSfButton("🗑 Clear", button =>
+        _clearHistoryButton = Factory.CreateSfButton("🗑 Clear", button =>
         {
             button.Size = new Size(DpiHeight(75f), DpiHeight(32f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1785,7 +1826,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _clearHistoryButton.Click += _clearHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_clearHistoryButton);
 
-        _exportHistoryButton = ControlFactory.CreateSfButton("📤 Export CSV", button =>
+        _exportHistoryButton = Factory.CreateSfButton("📤 Export CSV", button =>
         {
             button.Size = new Size(DpiHeight(105f), DpiHeight(32f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1797,20 +1838,34 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _sharedTooltip?.SetToolTip(_exportHistoryButton, "Click to export sync history as a CSV file");
         _exportHistoryButtonClickHandler = async (s, e) =>
         {
-            var filePath = ShowExportFilePickerDialog();
-            if (filePath != null && ViewModel != null)
+            if (ViewModel == null)
             {
-                try
+                MessageBox.Show("Export is unavailable because QuickBooks history is not initialized.",
+                    "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                owner: this,
+                operationKey: $"{nameof(QuickBooksPanel)}.SyncHistory.Csv",
+                dialogTitle: "Export QuickBooks Sync History",
+                filter: "CSV Files (*.csv)|*.csv|Excel Files (*.xlsx)|*.xlsx|Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+                defaultExtension: "csv",
+                defaultFileName: $"QuickBooks_SyncHistory_{DateTime.Now:yyyy-MM-dd_HHmmss}.csv",
+                exportAction: async (filePath, cancellationToken) =>
                 {
                     IsBusy = true;
                     UpdateStatus("Exporting sync history...");
 
-                    using (var writer = new StreamWriter(filePath, false, Encoding.UTF8))
+                    try
                     {
+                        using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
                         await writer.WriteLineAsync("Timestamp,Operation,Status,Records Processed,Duration,Message");
 
                         foreach (var record in ViewModel.FilteredSyncHistory)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+
                             var line = string.Join(",", new[]
                             {
                                 $"\"{record.FormattedTimestamp}\"",
@@ -1820,23 +1875,49 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                                 $"\"{record.FormattedDuration}\"",
                                 $"\"{EscapeCsvField(record.Message)}\""
                             });
+
                             await writer.WriteLineAsync(line);
                         }
                     }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                },
+                statusCallback: message => UpdateStatus(message),
+                logger: Logger,
+                cancellationToken: CancellationToken.None);
 
-                    UpdateStatus($"Exported {ViewModel.FilteredSyncHistory.Count} records to {Path.GetFileName(filePath)}");
-                    MessageBox.Show($"Exported {ViewModel.FilteredSyncHistory.Count} records to {Path.GetFileName(filePath)}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                catch (Exception ex)
+            if (result.IsSkipped)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.",
+                    "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (result.IsCancelled)
+            {
+                UpdateStatus("Export cancelled.");
+                return;
+            }
+
+            if (!result.IsSuccess)
+            {
+                try
                 {
-                    Logger.LogError(ex, "Failed to export sync history");
-                    MessageBox.Show($"Export failed: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    UpdateStatus("Export failed.");
+                    MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 finally
                 {
                     IsBusy = false;
                 }
+
+                return;
             }
+
+            UpdateStatus($"Exported {ViewModel.FilteredSyncHistory.Count} records to {Path.GetFileName(result.FilePath)}");
+            MessageBox.Show($"Exported {ViewModel.FilteredSyncHistory.Count} records to {Path.GetFileName(result.FilePath)}", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
         };
         _exportHistoryButton.Click += _exportHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_exportHistoryButton);
@@ -1879,7 +1960,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void CreateSyncHistoryGrid()
     {
-        _syncHistoryGrid = ControlFactory.CreateSfDataGrid(grid =>
+        _syncHistoryGrid = Factory.CreateSfDataGrid(grid =>
         {
             grid.AutoGenerateColumns = false;
             grid.AllowResizingColumns = true;
@@ -1890,7 +1971,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
             grid.RowHeight = DpiHeight(30f);
             grid.HeaderRowHeight = DpiHeight(36f);
-            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells;
+            grid.EnableDataVirtualization = true;
             grid.AccessibleName = "Sync History Grid";
             grid.AccessibleDescription = "Grid displaying QuickBooks sync history records with sortable columns and status indicators";
             grid.TabIndex = 10;
@@ -2259,10 +2341,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         try
         {
-            // Apply Office2019Colorful theme to entire panel for vibrant, professional appearance
-            // Per Syncfusion documentation: https://help.syncfusion.com/windowsforms/themes/office-2019-theme
-            // SfSkinManager automatically cascades theme to all child controls
-            SfSkinManager.SetVisualStyle(this, "Office2019Colorful");
+            var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            SfSkinManager.SetVisualStyle(this, themeName);
 
             // Grid font styling only (colors come from theme)
             if (_syncHistoryGrid != null)
@@ -2272,7 +2352,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 _syncHistoryGrid.Style.CellStyle.Font.Size = 9f;
             }
 
-            Logger.LogDebug("Office2019Colorful theme applied successfully to QuickBooksPanel");
+            Logger.LogDebug("{Theme} theme applied successfully to QuickBooksPanel", themeName);
         }
         catch (Exception ex)
         {
@@ -2354,7 +2434,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Logger.LogInformation("Starting QuickBooks OAuth flow");
 
             // Resolve services from the scoped service provider
-            var serviceProvider = this.ServiceProvider
+            var serviceProvider = ResolveServiceProvider()
                 ?? throw new InvalidOperationException("Service provider not available");
 
             // Start the OAuth callback handler (listens on port 5000)
@@ -3023,29 +3103,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             MessageBoxIcon.Question);
 
         return result == DialogResult.Yes;
-    }
-
-    /// <summary>
-    /// Shows file picker dialog for exporting sync history.
-    /// Returns the selected file path, or null if cancelled.
-    /// </summary>
-    public string? ShowExportFilePickerDialog()
-    {
-        var saveDialog = new SaveFileDialog
-        {
-            Title = "Export QuickBooks Sync History",
-            Filter = "CSV Files (*.csv)|*.csv|Excel Files (*.xlsx)|*.xlsx|Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
-            DefaultExt = "csv",
-            FileName = $"QuickBooks_SyncHistory_{DateTime.Now:yyyy-MM-dd_HHmmss}.csv",
-            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
-        };
-
-        if (saveDialog.ShowDialog() == DialogResult.OK)
-        {
-            return saveDialog.FileName;
-        }
-
-        return null;
     }
 
     /// <summary>

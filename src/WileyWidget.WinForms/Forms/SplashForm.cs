@@ -29,6 +29,7 @@ namespace WileyWidget.WinForms.Forms
     internal sealed class SplashForm : IDisposable
     {
         private readonly bool _isHeadless;
+        private readonly string _themeName;
         private readonly ManualResetEventSlim _uiReady = new(false);
         private readonly CancellationTokenSource _cts = new();
         private bool _disposed;
@@ -41,9 +42,12 @@ namespace WileyWidget.WinForms.Forms
 
         public event EventHandler<SplashProgressChangedEventArgs>? ProgressChanged;
 
-        public SplashForm()
+        public SplashForm(string? themeName = null)
         {
-            Log.Debug("[SPLASH] SplashForm constructor started");
+            _themeName = string.IsNullOrWhiteSpace(themeName)
+                ? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme
+                : themeName;
+            Log.Debug("[SPLASH] SplashForm constructor started with theme: {Theme}", _themeName);
 
             _isHeadless = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS"), "true", StringComparison.OrdinalIgnoreCase)
                           || !Environment.UserInteractive;
@@ -270,18 +274,21 @@ namespace WileyWidget.WinForms.Forms
                     ShowInTaskbar = false,
                     Width = 520,
                     Height = 160,
+                    MinimumSize = new System.Drawing.Size(520, 160),
                     Text = "Wiley Widget - Loading...",
-                    ControlBox = false
+                    ControlBox = false,
+                    AccessibleName = "Startup splash"
                 };
 
-                // Apply Syncfusion theme to splash form
+                // Apply Syncfusion theme to splash form (using theme passed from Program.Main)
                 try
                 {
-                    WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(_form);
+                    WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(_form, _themeName);
+                    Log.Debug("[SPLASH] Applied theme '{Theme}' to splash form", _themeName);
                 }
                 catch (Exception themeEx)
                 {
-                    Log.Debug(themeEx, "[SPLASH] Failed to apply theme to splash form (non-critical)");
+                    Log.Debug(themeEx, "[SPLASH] Failed to apply theme '{Theme}' to splash form (non-critical)", _themeName);
                 }
 
                 var layout = new TableLayoutPanel
@@ -299,7 +306,9 @@ namespace WileyWidget.WinForms.Forms
                     Dock = DockStyle.Fill,
                     AutoSize = false,
                     Text = "Initializing...",
-                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                    AccessibleName = "Splash status message",
+                    AccessibleDescription = "Current startup progress message"
                 };
 
                 _progressBar = new ProgressBarAdv
@@ -307,7 +316,9 @@ namespace WileyWidget.WinForms.Forms
                     Dock = DockStyle.Fill,
                     Minimum = 0,
                     Maximum = 100,
-                    Value = 0
+                    Value = 0,
+                    AccessibleName = "Splash progress",
+                    AccessibleDescription = "Startup progress indicator"
                 };
 
                 layout.Controls.Add(_messageLabel, 0, 0);

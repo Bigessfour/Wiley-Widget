@@ -1,6 +1,6 @@
 # WileyWidget — AI Briefing
 
-> Generated: 2026-02-21 12:04 | Branch: `fix/validation/panels-warroom-customers-20260210` | Commit: `072fa868b5`
+> Generated: 2026-02-27 08:48 | Branch: `feature/panel-standardization-final-20260221` | Commit: `e7ada2242c`
 
 ## Project Purpose
 
@@ -37,6 +37,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Controls/Panels/BudgetPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs` — Panel — priority 100
+- `src/WileyWidget.WinForms/Controls/Panels/EnterpriseVitalSignsPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/InsightFeedPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs` — Panel — priority 100
@@ -44,7 +45,6 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Controls/Panels/ProactiveInsightsPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs` — Panel — priority 100
 - `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.Designer.cs` — Panel — priority 100
-- `src/WileyWidget.WinForms/Controls/Panels/RecommendedMonthlyChargePanel.cs` — Panel — priority 100
 
 ## Recommended Reading Order
 
@@ -60,14 +60,14 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 10. `src/WileyWidget.WinForms/Controls/Panels/BudgetPanel.cs`
 11. `src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs`
 12. `src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs`
-13. `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs`
-14. `src/WileyWidget.WinForms/Controls/Panels/InsightFeedPanel.cs`
-15. `src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs`
-16. `src/WileyWidget.WinForms/Controls/Panels/PaymentsPanel.cs`
-17. `src/WileyWidget.WinForms/Controls/Panels/ProactiveInsightsPanel.cs`
-18. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs`
-19. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.Designer.cs`
-20. `src/WileyWidget.WinForms/Controls/Panels/RecommendedMonthlyChargePanel.cs`
+13. `src/WileyWidget.WinForms/Controls/Panels/EnterpriseVitalSignsPanel.cs`
+14. `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs`
+15. `src/WileyWidget.WinForms/Controls/Panels/InsightFeedPanel.cs`
+16. `src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs`
+17. `src/WileyWidget.WinForms/Controls/Panels/PaymentsPanel.cs`
+18. `src/WileyWidget.WinForms/Controls/Panels/ProactiveInsightsPanel.cs`
+19. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs`
+20. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.Designer.cs`
 
 ## Architecture Summary
 
@@ -75,11 +75,11 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 | ------------ | ----- |
 | Views        | 20    |
 | Viewmodels   | 48    |
-| Panels       | 34    |
-| Services     | 118   |
+| Panels       | 35    |
+| Services     | 119   |
 | Controls     | 14    |
 | Repositories | 31    |
-| Factories    | 7     |
+| Factories    | 6     |
 
 ## ViewModels
 
@@ -95,8 +95,8 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/ViewModels/BudgetViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/ChartViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/CustomersViewModel.cs`
-- `src/WileyWidget.WinForms/ViewModels/DashboardViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/DepartmentSummaryViewModel.cs`
+- `src/WileyWidget.WinForms/ViewModels/EnterpriseVitalSignsViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAccountsViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAdvancedScenariosTabViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IAnalyticsHubViewModel.cs`
@@ -107,8 +107,8 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/ViewModels/IBudgetViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IChartViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/ICustomersViewModel.cs`
-- `src/WileyWidget.WinForms/ViewModels/IDashboardViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IDepartmentSummaryViewModel.cs`
+- `src/WileyWidget.WinForms/ViewModels/IEnterpriseVitalSignsViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/IInsightFeedViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/ILazyLoadViewModel.cs`
 - `src/WileyWidget.WinForms/ViewModels/InsightFeedViewModel.cs`
@@ -128,6 +128,7 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Controls/Panels/BudgetPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs`
+- `src/WileyWidget.WinForms/Controls/Panels/EnterpriseVitalSignsPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/FormHostPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/InsightFeedPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Panels/PaymentEditPanel.cs`
@@ -145,7 +146,6 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.WinForms/Controls/Supporting/CsvMappingWizardPanel.cs`
 - `src/WileyWidget.WinForms/Controls/Supporting/PanelHeader.cs`
 - `src/WileyWidget.WinForms/Forms/RightDockPanelFactory.cs`
-- `src/WileyWidget.Models/Models/PanelItem.cs`
 
 ## Services
 
@@ -201,9 +201,9 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Manifest Stats
 
-- Total files indexed: **1722**
+- Total files indexed: **7745**
 - Files with embedded content: **400**
-- Total source size: **42,648 KB**
+- Total source size: **202,513 KB**
 - Manifest mode: **full-context**
 
 ---

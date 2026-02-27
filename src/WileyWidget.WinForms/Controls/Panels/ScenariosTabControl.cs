@@ -34,6 +34,7 @@ public partial class ScenariosTabControl : UserControl
     private Panel? _inputPanel;
     private SfDataGrid? _resultsGrid;
     private LoadingOverlay? _loadingOverlay;
+    private ToolTip? _toolTip;
 
     // Input controls
     private TextBoxExt? _rateIncreaseTextBox;
@@ -69,6 +70,11 @@ public partial class ScenariosTabControl : UserControl
     private void InitializeControls()
     {
         this.Dock = DockStyle.Fill;
+        this.AutoScaleMode = AutoScaleMode.Dpi;
+        this.AutoScroll = true;
+        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        this.Padding = new Padding(8);
+        _toolTip = new ToolTip();
 
         // Main layout - inputs on top, results below
         var mainSplit = new SplitContainerAdv
@@ -129,17 +135,35 @@ public partial class ScenariosTabControl : UserControl
 
         // Rate Increase
         var rateLabel = new Label { Text = "Rate Increase %:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _rateIncreaseTextBox = new TextBoxExt { Dock = DockStyle.Fill };
+        _rateIncreaseTextBox = new TextBoxExt
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Rate increase percent",
+            AccessibleDescription = "Rate increase percentage input"
+        };
+        _toolTip?.SetToolTip(_rateIncreaseTextBox, "Enter the projected rate increase percentage.");
         _rateIncreaseTextBox.TextChanged += RateIncreaseTextBox_TextChanged;
 
         // Expense Increase
         var expenseLabel = new Label { Text = "Expense Increase %:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _expenseIncreaseTextBox = new TextBoxExt { Dock = DockStyle.Fill };
+        _expenseIncreaseTextBox = new TextBoxExt
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Expense increase percent",
+            AccessibleDescription = "Expense increase percentage input"
+        };
+        _toolTip?.SetToolTip(_expenseIncreaseTextBox, "Enter the projected expense increase percentage.");
         _expenseIncreaseTextBox.TextChanged += ExpenseIncreaseTextBox_TextChanged;
 
         // Revenue Target
         var revenueLabel = new Label { Text = "Revenue Target:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _revenueTargetTextBox = new TextBoxExt { Dock = DockStyle.Fill };
+        _revenueTargetTextBox = new TextBoxExt
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Revenue target",
+            AccessibleDescription = "Revenue target input"
+        };
+        _toolTip?.SetToolTip(_revenueTargetTextBox, "Enter the projected revenue target.");
         _revenueTargetTextBox.TextChanged += RevenueTargetTextBox_TextChanged;
 
         // Buttons
@@ -159,6 +183,9 @@ public partial class ScenariosTabControl : UserControl
             ThemeName = themeName,
             Margin = new Padding(4, 0, 4, 0)
         };
+        _runScenarioButton.AccessibleName = "Run scenario";
+        _runScenarioButton.AccessibleDescription = "Executes the scenario with current inputs";
+        _toolTip?.SetToolTip(_runScenarioButton, "Run the scenario with current parameters.");
         _runScenarioButton.Click += RunScenarioButton_Click;
 
         _saveScenarioButton = new SfButton
@@ -169,6 +196,9 @@ public partial class ScenariosTabControl : UserControl
             ThemeName = themeName,
             Margin = new Padding(4, 0, 4, 0)
         };
+        _saveScenarioButton.AccessibleName = "Save scenario";
+        _saveScenarioButton.AccessibleDescription = "Saves the current scenario configuration";
+        _toolTip?.SetToolTip(_saveScenarioButton, "Save this scenario configuration.");
         _saveScenarioButton.Click += SaveScenarioButton_Click;
 
         buttonsPanel.Controls.Add(_runScenarioButton);
@@ -194,8 +224,11 @@ public partial class ScenariosTabControl : UserControl
             Dock = DockStyle.Fill,
             AllowEditing = false,
             AutoGenerateColumns = false,
-            ThemeName = themeName
+            ThemeName = themeName,
+            AccessibleName = "Scenario results grid",
+            AccessibleDescription = "Results of the scenario calculation"
         }.PreventStringRelationalFilters(null, "Description");
+        _toolTip?.SetToolTip(_resultsGrid, "Scenario outcomes and variance results.");
 
         // Configure columns for scenario results
         var columns = new GridColumn[]
@@ -420,6 +453,7 @@ public partial class ScenariosTabControl : UserControl
             {
                 _viewModel.PropertyChanged -= _viewModelPropertyChangedHandler;
             }
+            _toolTip?.Dispose();
         }
 
         base.Dispose(disposing);

@@ -1,5 +1,4 @@
 using Syncfusion.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Utilities;
 
@@ -27,34 +26,63 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._btnExportForecast = new SfButton();
             this._contentPanel = new Panel();
             this._resultsPanel = new Panel();
+            var actionsRow = new TableLayoutPanel();
 
-            // ... keep only these lines ...
             this._topPanel.SuspendLayout();
             this._contentPanel.SuspendLayout();
             this.SuspendLayout();
 
-            // Simple clean layout
             this._topPanel.Dock = DockStyle.Top;
-            this._topPanel.Height = LayoutTokens.Dp(140);
-            this._topPanel.Padding = new Padding(LayoutTokens.PanelPadding);
+            this._topPanel.Height = LayoutTokens.Dp(128);
+            this._topPanel.Padding = new Padding(LayoutTokens.PanelPadding, LayoutTokens.PanelPadding, LayoutTokens.PanelPadding, 0);
 
-            this._scenarioInput.Dock = DockStyle.Top;
+            this._panelHeader.Dock = DockStyle.Top;
+            this._panelHeader.Title = "War Room";
+
+            actionsRow.Dock = DockStyle.Top;
+            actionsRow.Height = LayoutTokens.Dp(48);
+            actionsRow.ColumnCount = 3;
+            actionsRow.RowCount = 1;
+            actionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            actionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            actionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            actionsRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            this._scenarioInput.Dock = DockStyle.Fill;
             this._scenarioInput.Height = LayoutTokens.Dp(LayoutTokens.StandardControlHeight);
-            this._scenarioInput.Margin = new Padding(LayoutTokens.ContentMargin);
+            this._scenarioInput.Margin = new Padding(0, LayoutTokens.ContentMargin, LayoutTokens.ContentMargin, LayoutTokens.ContentMargin);
 
-            this._btnRunScenario.Dock = DockStyle.Right;
-            this._btnExportForecast.Dock = DockStyle.Right;
+            this._btnRunScenario.Text = "Run Scenario";
+            this._btnRunScenario.AutoSize = true;
+            this._btnRunScenario.Margin = new Padding(0, LayoutTokens.ContentMargin, LayoutTokens.ContentMargin, LayoutTokens.ContentMargin);
 
-            this._topPanel.Controls.AddRange(new Control[] { _panelHeader, _scenarioInput, _btnRunScenario, _btnExportForecast });
-            this.Controls.Add(_topPanel);
-            this.Controls.Add(_contentPanel);
+            this._btnExportForecast.Text = "Export Forecast";
+            this._btnExportForecast.AutoSize = true;
+            this._btnExportForecast.Margin = new Padding(0, LayoutTokens.ContentMargin, 0, LayoutTokens.ContentMargin);
+
+            actionsRow.Controls.Add(this._scenarioInput, 0, 0);
+            actionsRow.Controls.Add(this._btnRunScenario, 1, 0);
+            actionsRow.Controls.Add(this._btnExportForecast, 2, 0);
+
+            this._topPanel.Controls.Add(actionsRow);
+            this._topPanel.Controls.Add(this._panelHeader);
+
+            this._contentPanel.Dock = DockStyle.Fill;
+            this._contentPanel.Padding = new Padding(LayoutTokens.PanelPadding);
+
+            this._resultsPanel.Dock = DockStyle.Fill;
+            this._contentPanel.Controls.Add(this._resultsPanel);
+
+            this.Controls.Add(this._contentPanel);
+            this.Controls.Add(this._topPanel);
 
             this.Name = "WarRoomPanel";
-            this.Size = new System.Drawing.Size(1000, 700);
-            this.MinimumSize = new System.Drawing.Size(600, 420);
+            this.Size = new System.Drawing.Size(1100, 760);
+            this.MinimumSize = new System.Drawing.Size(900, 650);
 
+            this._topPanel.ResumeLayout(false);
+            this._contentPanel.ResumeLayout(false);
             this.ResumeLayout(false);
-            this.PerformLayout();
         }
     }
 }

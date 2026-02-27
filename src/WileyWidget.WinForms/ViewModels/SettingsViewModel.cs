@@ -137,6 +137,9 @@ namespace WileyWidget.WinForms.ViewModels
         private string xaiApiKey = string.Empty;
 
         [ObservableProperty]
+        private string syncfusionLicenseKey = string.Empty;
+
+        [ObservableProperty]
         private string xaiModel = "grok-4.1";
 
         [ObservableProperty]
@@ -245,6 +248,13 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 _settingsService.Current.XaiApiKey = string.IsNullOrWhiteSpace(value) ? null : value;
             }
+            MarkDirty();
+        }
+
+        partial void OnSyncfusionLicenseKeyChanged(string value)
+        {
+            // Never log raw license keys - log length only
+            _logger.LogInformation("Syncfusion license key updated (length: {Length})", value?.Length ?? 0);
             MarkDirty();
         }
 

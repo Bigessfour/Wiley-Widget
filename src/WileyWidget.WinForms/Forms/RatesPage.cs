@@ -234,6 +234,7 @@ namespace WileyWidget.WinForms.Forms
             this.Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
             this.Text = "Rates";
             this.Size = new Size(1300, 700);
+            this.MinimumSize = new Size(1024, 720);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Normal;
         }
