@@ -642,9 +642,11 @@ namespace WileyWidget.WinForms.Configuration
 
             // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
             // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered
-            // Singleton lifetime ensures this registration points to the same instance as IAIService/GrokAgentService
-            services.AddSingleton<WileyWidget.Abstractions.IAsyncInitializable>(sp =>
-                DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp));
+            // Expose a transient proxy so IAsyncInitializable is never singleton while still delegating
+            // initialization to the singleton GrokAgentService instance.
+            services.AddTransient<WileyWidget.Abstractions.IAsyncInitializable>(sp =>
+                new GrokAsyncInitializableProxy(
+                    DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp)));
 
             // Proactive Insights Background Service (Hosted Service - runs continuously)
             // Analyzes enterprise data using Grok and publishes insights to observable collection
@@ -747,8 +749,12 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ReportsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.SettingsPanel>();
+            // Use ActivatorUtilities.CreateInstance for panels with [ActivatorUtilitiesConstructor]
+            // so the DI-preferred constructor is always selected unambiguously.
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ReportsPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.ReportsPanel>(sp));
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.SettingsPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.SettingsPanel>(sp));
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.BudgetOverviewPanel>();
             // FormHostPanel is used to host standalone Forms (e.g., RatesPage) inside docking panels.
             // Ensure it's registered so DI validation recognizes it and tests can resolve its dependencies.
@@ -756,15 +762,22 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AuditLogPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.ActivityLogPanel>(sp));
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.CustomersPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.AccountEditPanel>(sp));
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AccountsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.PaymentsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.PaymentEditPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.PaymentEditPanel>(sp));
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.UtilityBillPanel>(sp));
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>(sp));
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel>();
-            services.AddScoped<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>(
+                sp => DI.ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Controls.Panels.WarRoomPanel>(sp));
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.InsightFeedPanel>();
@@ -841,6 +854,15 @@ namespace WileyWidget.WinForms.Configuration
             // Syncfusion.Blazor.SmartComponents — the package exists but the components/
             // APIs are not yet released.
             services.AddSyncfusionBlazor();
+        }
+    }
+
+    internal sealed class GrokAsyncInitializableProxy(WileyWidget.WinForms.Services.AI.GrokAgentService grokAgentService)
+        : WileyWidget.Abstractions.IAsyncInitializable
+    {
+        public Task InitializeAsync(CancellationToken cancellationToken)
+        {
+            return grokAgentService.InitializeAsync(cancellationToken);
         }
     }
 

@@ -529,7 +529,7 @@ public class SyncfusionControlFactory
             Height = 32,
             Font = new Font("Segoe UI", 12f, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleCenter,
-            ForeColor = currentRatio >= 100 ? Color.Green : Color.Red,
+            ForeColor = currentRatio >= 100 ? ThemeColors.Success : ThemeColors.Error,
         };
 
         var gauge = CreateCircularGauge(currentRatio, enterpriseName);

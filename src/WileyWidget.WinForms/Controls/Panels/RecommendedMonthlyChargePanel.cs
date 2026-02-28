@@ -817,13 +817,22 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
                 {
                     _overallStatusLabel.Text = $"Status: {ViewModel.OverallStatus}";
                     // Use semantic status colors (approved exception to SfSkinManager)
-                    _overallStatusLabel.ForeColor = ViewModel.OverallStatusColor switch
+                    if (string.Equals(ViewModel.OverallStatusColor, "Red", StringComparison.OrdinalIgnoreCase))
                     {
-                        "Red" => System.Drawing.Color.Red,
-                        "Orange" => System.Drawing.Color.Orange,
-                        "Green" => System.Drawing.Color.Green,
-                        _ => System.Drawing.Color.Gray
-                    };
+                        _overallStatusLabel.ForeColor = ThemeColors.Error;
+                    }
+                    else if (string.Equals(ViewModel.OverallStatusColor, "Orange", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _overallStatusLabel.ForeColor = ThemeColors.Warning;
+                    }
+                    else if (string.Equals(ViewModel.OverallStatusColor, "Green", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _overallStatusLabel.ForeColor = ThemeColors.Success;
+                    }
+                    else
+                    {
+                        _overallStatusLabel.ForeColor = ThemeColors.Warning;
+                    }
                 }
                 break;
 
@@ -1064,10 +1073,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         catch { /* Best-effort only */ }
     }
 
-    protected override void OnLoad(EventArgs e)
+    protected override void OnPanelLoaded(EventArgs e)
     {
-        base.OnLoad(e);
-
         if (ViewModel != null && !DesignMode)
         {
             // Queue async loading on the UI thread

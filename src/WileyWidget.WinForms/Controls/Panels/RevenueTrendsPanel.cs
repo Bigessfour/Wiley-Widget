@@ -646,7 +646,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             {
                 _lblGrowthRateValue.Text = ViewModel.GrowthRate.ToString("F1", CultureInfo.CurrentCulture) + "%";
                 // CHANGE 23: Semantic status color (green/red) - allowed by project rules for status indicators
-                _lblGrowthRateValue.ForeColor = ViewModel.GrowthRate >= 0 ? Color.Green : Color.Red;
+                _lblGrowthRateValue.ForeColor = ViewModel.GrowthRate >= 0 ? ThemeColors.Success : ThemeColors.Error;
             }
 
             if (_lblLastUpdated != null)

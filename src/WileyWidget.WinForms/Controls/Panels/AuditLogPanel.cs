@@ -23,6 +23,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.UI.Helpers;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -649,7 +650,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
                 case nameof(_vm.ErrorMessage):
                     if (!string.IsNullOrEmpty(_vm.ErrorMessage))
-                        MessageBox.Show(_vm.ErrorMessage, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        SfDialogHelper.ShowErrorDialog(this, "Error", _vm.ErrorMessage, logger: Logger);
                     break;
             }
         }

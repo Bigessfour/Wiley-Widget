@@ -1430,10 +1430,19 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// <summary>
     /// Applies theme to all controls.
     /// </summary>
-    private void ApplyTheme(string theme)
+    public override void ApplyTheme(string theme)
     {
-        // Theme application now handled by SfSkinManager cascade
-        // UpdateButtonIcons removed - icon management via deprecated IThemeIconService is not authorized
+        try
+        {
+            base.ApplyTheme(theme);
+
+            // Theme application now handled by SfSkinManager cascade
+            // UpdateButtonIcons removed - icon management via deprecated IThemeIconService is not authorized
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "BudgetPanel theme refresh failed");
+        }
     }
 
     // UpdateButtonIcons method removed - icon management via deprecated IThemeIconService is not authorized
@@ -1481,6 +1490,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider so this panel can bind safely.
+    /// CRITICAL: Wrapped in layout suspension to prevent multi-pass rendering during initialization.
     /// </summary>
     protected override void OnViewModelResolved(BudgetViewModel? viewModel)
     {
@@ -1496,14 +1506,25 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             Logger.LogInformation("BudgetPanel.OnViewModelResolved — building UI");
 
-            InitializeControls();
-            BindViewModel();
-            _ = LoadAsync();
-
-            Logger.LogInformation("BudgetPanel fully initialized and ready — glory achieved");
+            // CRITICAL FIX: Suspend layout during all initialization to prevent thrashing
+            SuspendLayout();
+            try
+            {
+                InitializeControls();
+                BindViewModel();
+                _ = LoadAsync();
+                Logger.LogInformation("BudgetPanel fully initialized and ready — glory achieved");
+            }
+            finally
+            {
+                ResumeLayout(performLayout: false);
+                // Single final layout pass instead of multiple passes
+                PerformLayout();
+            }
         }
         catch (Exception ex)
         {
+            ResumeLayout(performLayout: false);
             Logger.LogError(ex, "BudgetPanel.OnViewModelResolved failed");
             MessageBox.Show($"BudgetPanel failed to initialize: {ex.Message}", "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -2554,10 +2575,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         }
     }
 
-    protected override void OnLoad(EventArgs e)
+    protected override void OnPanelLoaded(EventArgs e)
     {
-        base.OnLoad(e);
-
         if (ViewModel == null) return;
 
         try

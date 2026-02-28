@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -69,7 +70,7 @@ namespace WileyWidget.WinForms.Forms
                 HAlign = HorzFlowAlign.Left,
                 BorderStyle = BorderStyle.None,
                 AutoSize = false,
-                ForeColor = Color.Green, // semantic: success/ready state — allowed exception
+                ForeColor = ThemeColors.Success,
                 AccessibleName = "Status label",
                 AccessibleDescription = "High-level application status"
             };
@@ -229,13 +230,22 @@ namespace WileyWidget.WinForms.Forms
                         _ => "Info"
                     };
 
-                    labelPanel.ForeColor = level switch
+                    if (level == StatusLevel.Success)
                     {
-                        StatusLevel.Success => Color.Green,
-                        StatusLevel.Error => Color.Red,
-                        StatusLevel.Warning => Color.Orange,
-                        _ => Color.FromKnownColor(KnownColor.ControlText)
-                    };
+                        labelPanel.ForeColor = ThemeColors.Success;
+                    }
+                    else if (level == StatusLevel.Error)
+                    {
+                        labelPanel.ForeColor = ThemeColors.Error;
+                    }
+                    else if (level == StatusLevel.Warning)
+                    {
+                        labelPanel.ForeColor = ThemeColors.Warning;
+                    }
+                    else
+                    {
+                        labelPanel.ResetForeColor();
+                    }
 
                     labelPanel.Refresh();
                 }
@@ -243,7 +253,7 @@ namespace WileyWidget.WinForms.Forms
                 if (textPanel != null)
                 {
                     textPanel.Text = statusText;
-                    textPanel.ForeColor = Color.FromKnownColor(KnownColor.ControlText);
+                    textPanel.ResetForeColor();
                     textPanel.Refresh();
                 }
             }

@@ -334,7 +334,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.Controls.Add(new Label
             {
                 Text = $"Error: {message}",
-                ForeColor = Color.Red,
+                ForeColor = ThemeColors.Error,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter
             });

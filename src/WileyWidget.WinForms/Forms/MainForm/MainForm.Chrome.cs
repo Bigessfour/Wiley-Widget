@@ -8,10 +8,13 @@ using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
+using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 
 using WileyWidget.WinForms.Services;
@@ -1260,6 +1263,8 @@ public partial class MainForm
                         SfSkinManager.SetVisualStyle(_statusBar, newTheme);
                     }
 
+                    RefreshThemeSensitiveControls(newTheme);
+
                     // Update the theme toggle button text to reflect the new active theme
                     try
                     {
@@ -1283,6 +1288,100 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "OnThemeServiceChanged: outer guard failed");
+        }
+    }
+
+    private void RefreshThemeSensitiveControls(string themeName)
+    {
+        ApplyThemeToControlTree(this, themeName);
+
+        foreach (var mdiChild in MdiChildren)
+        {
+            if (mdiChild is { IsDisposed: false })
+            {
+                SfSkinManager.SetVisualStyle(mdiChild, themeName);
+                ApplyThemeToControlTree(mdiChild, themeName);
+            }
+        }
+
+        foreach (var ownedForm in OwnedForms)
+        {
+            if (ownedForm is { IsDisposed: false })
+            {
+                SfSkinManager.SetVisualStyle(ownedForm, themeName);
+                ApplyThemeToControlTree(ownedForm, themeName);
+                TryForceLayoutOnScopedPanelChildren(ownedForm);
+            }
+        }
+
+        RefreshDockingThemeState(themeName);
+
+        _ribbon?.Invalidate(true);
+        _ribbon?.Update();
+
+        TryForceLayoutOnScopedPanelChildren(this);
+
+        Invalidate(true);
+        Update();
+    }
+
+    private void RefreshDockingThemeState(string themeName)
+    {
+        try
+        {
+            if (_dockingManager?.HostControl is not Control hostControl || hostControl.IsDisposed)
+            {
+                return;
+            }
+
+            SfSkinManager.SetVisualStyle(hostControl, themeName);
+            PerformLayoutRecursive(hostControl);
+            TryForceLayoutOnScopedPanelChildren(hostControl);
+            hostControl.Invalidate(true);
+            hostControl.Update();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "RefreshDockingThemeState failed for {Theme}", themeName);
+        }
+    }
+
+    private static void ApplyThemeToControlTree(Control root, string themeName)
+    {
+        if (root.IsDisposed)
+        {
+            return;
+        }
+
+        if (root is IThemable themable)
+        {
+            themable.ApplyTheme(themeName);
+        }
+
+        if (root is SfDataGrid dataGrid)
+        {
+            dataGrid.Invalidate(true);
+            dataGrid.Update();
+        }
+        else if (root is ChartControl chartControl)
+        {
+            chartControl.Invalidate(true);
+            chartControl.Update();
+        }
+        else if (root is RibbonControlAdv ribbonControl)
+        {
+            ribbonControl.Invalidate(true);
+            ribbonControl.Update();
+        }
+        else if (root is UserControl or Panel)
+        {
+            root.Invalidate(true);
+            root.Update();
+        }
+
+        foreach (Control child in root.Controls)
+        {
+            ApplyThemeToControlTree(child, themeName);
         }
     }
 

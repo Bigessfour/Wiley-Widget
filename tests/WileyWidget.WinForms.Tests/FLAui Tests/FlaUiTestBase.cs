@@ -109,12 +109,17 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
             // The shared app instance (SharedApp) lives for the entire xUnit
             // [Collection("FlaUI Tests")] collection — one app for all serialised tests.
             // Cleanup happens in the ProcessExit handler above once per test-runner run.
             // Tests that launch their own private instances must clean them up in
             // their own try/finally blocks (see AccountsPanelFlaUiTests, etc.).
-            GC.SuppressFinalize(this);
         }
 
         protected static void TryWaitForInputIdle(FlaUIApp app, TimeSpan timeout)

@@ -682,7 +682,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Just update semantic color for variance (red = over, green = under)
                 if (_lblVariance != null)
                 {
-                    _lblVariance.ForeColor = ViewModel.TotalVariance >= 0 ? Color.Red : Color.Green;  // Semantic: red for over, green for under
+                    _lblVariance.ForeColor = ViewModel.TotalVariance >= 0 ? ThemeColors.Error : ThemeColors.Success;
                 }
 
                 // Update last-updated timestamp
@@ -1050,9 +1050,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
-        protected override void OnLoad(EventArgs e)
+        protected override void OnPanelLoaded(EventArgs e)
         {
-            base.OnLoad(e);
             try
             {
                 if (!DesignMode)

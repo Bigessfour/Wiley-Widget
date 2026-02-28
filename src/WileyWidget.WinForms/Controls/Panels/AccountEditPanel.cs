@@ -137,7 +137,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// For new account creation, use the DI constructor.
         /// For editing, create via DI and call SetExistingAccount() to configure.
         /// </summary>
-        public AccountEditPanel(AccountsViewModel vm, SyncfusionControlFactory factory)
+        internal AccountEditPanel(AccountsViewModel vm, SyncfusionControlFactory factory)
             : base(vm, ResolveLogger())
         {
             _factory = factory ?? throw new ArgumentNullException(nameof(factory));
@@ -153,14 +153,13 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-        public AccountEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<AccountsViewModel>> logger, DpiAwareImageService imageService)
-            : base(scopeFactory, logger)
+        public AccountEditPanel(AccountsViewModel vm, SyncfusionControlFactory factory, DpiAwareImageService imageService)
+            : base(vm, ResolveLogger())
         {
-            _factory = ControlFactory;
+            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
             _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
 
-            // Set AutoScaleMode for proper DPI scaling
-            this.AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleMode = AutoScaleMode.Dpi;
 
             _existingAccount = null;
             _isNew = true;

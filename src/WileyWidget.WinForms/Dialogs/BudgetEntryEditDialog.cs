@@ -77,7 +77,7 @@ public partial class BudgetEntryEditDialog : SfForm
         tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
 
         // Account Information Section (visual grouping)
-        var acctLabel = new Label { Text = "Account Information", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), ForeColor = Color.FromArgb(0, 120, 215) };
+        var acctLabel = new Label { Text = "Account Information", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold) };
         tableLayout.Controls.Add(acctLabel, 0, 0);
 
         // Account Number
@@ -89,12 +89,12 @@ public partial class BudgetEntryEditDialog : SfForm
         AddTooltip(txtDescription, "Human-readable account name for displays and reports");
 
         // Account Type (auto-filled from Chart of Accounts — never editable here)
-        var txtAccountType = new TextBox { Dock = DockStyle.Fill, ReadOnly = true, BackColor = Color.FromArgb(240, 240, 240) };
+        var txtAccountType = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
         AddControlRow(tableLayout, "Account Type:", txtAccountType, 3);
         AddTooltip(txtAccountType, "Automatically pulled from your official Chart of Accounts (Revenue or Expenditure)");
 
         // Classification Section
-        var classLabel = new Label { Text = "Budget Classification", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), ForeColor = Color.FromArgb(0, 120, 215), Margin = new Padding(0, 10, 0, 0) };
+        var classLabel = new Label { Text = "Budget Classification", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), Margin = new Padding(0, 10, 0, 0) };
         tableLayout.Controls.Add(classLabel, 0, 4);
 
         // Department
@@ -131,7 +131,7 @@ public partial class BudgetEntryEditDialog : SfForm
         AddTooltip(cmbFundType, "Categorizes this entry by fund type");
 
         // Amounts Section
-        var amtLabel = new Label { Text = "Budget Amounts", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), ForeColor = Color.FromArgb(0, 120, 215), Margin = new Padding(0, 10, 0, 0) };
+        var amtLabel = new Label { Text = "Budget Amounts", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), Margin = new Padding(0, 10, 0, 0) };
         tableLayout.Controls.Add(amtLabel, 0, 8);
 
         // Budgeted Amount

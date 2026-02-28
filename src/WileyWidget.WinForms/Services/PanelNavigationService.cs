@@ -54,6 +54,7 @@ namespace WileyWidget.WinForms.Services
         private readonly Dictionary<string, Form> _hosts = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, Control> _cachedPanels = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<Control> _initializedAsyncPanels = new();
+        private readonly HashSet<Control> _firstAttachCompletedPanels = new();
         private string? _activePanelName;
         private readonly bool _useMDI;
         private Syncfusion.Windows.Forms.Tools.TabbedMDIManager? _tabbedMdi;
@@ -258,52 +259,74 @@ namespace WileyWidget.WinForms.Services
 
             EnsureTrackedHost(panelName, host);
 
-            // Configure and show
-            if (_useMDI)
-            {
-                PrepareHostForMdi(host, panelName);
+            var suspendedControls = SuspendLayouts(_owner, host, hostedPanel);
+            var panelAttached = false;
 
-                if (!ReferenceEquals(host.MdiParent, _owner))
+            try
+            {
+                if (hostedPanel != null)
                 {
-                    host.MdiParent = _owner;
+                    panelAttached = EnsurePanelAttached(host, hostedPanel);
                 }
 
-                if (!host.Visible)
+                // Configure and show
+                if (_useMDI)
                 {
-                    host.Show();
+                    PrepareHostForMdi(host, panelName);
+
+                    if (!ReferenceEquals(host.MdiParent, _owner))
+                    {
+                        host.MdiParent = _owner;
+                    }
+
+                    if (!host.Visible)
+                    {
+                        host.Show();
+                    }
+
+                    if (host.WindowState != FormWindowState.Maximized)
+                    {
+                        host.WindowState = FormWindowState.Maximized;
+                    }
+                }
+                else
+                {
+                    EnsureHostViewport(host, hostedPanel, panelName, preferredStyle);
+
+                    host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
+                    host.StartPosition = host.StartPosition == FormStartPosition.Manual ? FormStartPosition.Manual : FormStartPosition.CenterParent;
+                    host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
+                    host.ShowInTaskbar = false;
+                    host.Owner = _owner;
+                    host.TopMost = true;
+                    host.WindowState = FormWindowState.Normal;
+                    if (!host.Visible)
+                    {
+                        host.Show();
+                    }
                 }
 
-                if (host.WindowState != FormWindowState.Maximized)
+                host.BringToFront();
+                host.Activate();
+
+                EnsureControlVisibleAndLaidOut(host);
+                if (hostedPanel != null)
                 {
-                    host.WindowState = FormWindowState.Maximized;
+                    EnsureControlVisibleAndLaidOut(hostedPanel);
                 }
+
+                if (panelAttached)
+                {
+                    QueuePostShowLayoutPass(host, hostedPanel);
+                }
+
+                _activePanelName = panelName;
+                PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
             }
-            else
+            finally
             {
-                EnsureHostViewport(host, hostedPanel, panelName, preferredStyle);
-
-                host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
-                host.StartPosition = host.StartPosition == FormStartPosition.Manual ? FormStartPosition.Manual : FormStartPosition.CenterParent;
-                host.Location = host.StartPosition == FormStartPosition.Manual ? host.Location : CascadeLocation();
-                host.ShowInTaskbar = false;
-                host.Owner = _owner;
-                host.TopMost = true;
-                host.WindowState = FormWindowState.Normal;
-                host.Show();
+                ResumeLayouts(suspendedControls, performLayout: true);
             }
-
-            host.BringToFront();
-            host.Activate();
-
-            EnsureControlVisibleAndLaidOut(host);
-            if (hostedPanel != null)
-            {
-                EnsureControlVisibleAndLaidOut(hostedPanel);
-            }
-            QueuePostShowLayoutPass(host, hostedPanel);
-
-            _activePanelName = panelName;
-            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
         }
 
         /// <summary>
@@ -389,7 +412,6 @@ namespace WileyWidget.WinForms.Services
         {
             if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
             {
-                EnsurePanelAttached(existing, panel);
                 return existing;
             }
 
@@ -410,15 +432,19 @@ namespace WileyWidget.WinForms.Services
                 Padding = Padding.Empty
             };
 
-            EnsurePanelAttached(host, panel);
-
             EnsureTrackedHost(panelName, host);
             return host;
         }
 
-        private void EnsurePanelAttached(Form host, UserControl? panel)
+        private bool EnsurePanelAttached(Form host, UserControl? panel)
         {
-            if (panel == null) return;
+            if (panel == null)
+            {
+                return false;
+            }
+
+            var attached = false;
+            var applyVisibilityGuard = !_firstAttachCompletedPanels.Contains(panel);
 
             if (panel.Parent != null && !ReferenceEquals(panel.Parent, host))
             {
@@ -427,6 +453,13 @@ namespace WileyWidget.WinForms.Services
 
             if (!host.Controls.Contains(panel))
             {
+                attached = true;
+
+                if (applyVisibilityGuard)
+                {
+                    panel.Visible = false;
+                }
+
                 panel.Dock = DockStyle.Fill;
                 panel.Margin = Padding.Empty;
                 ApplyMinimumTopInset(panel);
@@ -452,12 +485,10 @@ namespace WileyWidget.WinForms.Services
                     _ = panel.Handle;
                 }
 
-                // Trigger Load event explicitly if handle already exists
-                host.PerformLayout();
-                panel.PerformLayout();
-
                 TryInitializeAsyncPanel(panel, host.Text);
             }
+
+            _firstAttachCompletedPanels.Add(panel);
 
             panel.Visible = true;
             panel.Dock = DockStyle.Fill;
@@ -465,6 +496,8 @@ namespace WileyWidget.WinForms.Services
             ResetAutoScrollOffsets(panel);
             EnsureControlVisibleAndLaidOut(panel);
             EnsureControlVisibleAndLaidOut(host);
+
+            return attached;
         }
 
         private static void ApplyMinimumTopInset(Control control)
@@ -572,7 +605,7 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
-        private static void EnsureControlVisibleAndLaidOut(Control control)
+        private static void EnsureControlVisibleAndLaidOut(Control control, bool includeChildren = false)
         {
             if (control == null || control.IsDisposed)
             {
@@ -605,14 +638,53 @@ namespace WileyWidget.WinForms.Services
             }
 
             control.Visible = true;
-            control.BringToFront();
+
+            // BlazorWebView uses a custom BlazorWebViewControlCollection that throws
+            // NotSupportedException from SetChildIndex (called internally by BringToFront).
+            // Detect this by checking the type name to avoid a hard assembly reference.
+            var parentIsBlazorWebView = control.Parent?.GetType().Name == "BlazorWebView";
+            if (!parentIsBlazorWebView)
+            {
+                try
+                {
+                    control.BringToFront();
+                }
+                catch (NotSupportedException)
+                {
+                    // Swallow: parent control collection does not support reordering (e.g. BlazorWebView).
+                }
+            }
+
             control.PerformLayout();
-            control.Invalidate(true);
-            control.Update();
+            control.Invalidate();
+
+            if (control.IsHandleCreated)
+            {
+                try
+                {
+                    control.Update();
+                }
+                catch
+                {
+                    // Best effort only; avoid throwing during transient handle recreation.
+                }
+            }
+
+            if (!includeChildren)
+            {
+                return;
+            }
 
             foreach (Control child in control.Controls)
             {
-                EnsureControlVisibleAndLaidOut(child);
+                // Do not recurse into BlazorWebView — its internal Controls collection
+                // is managed exclusively by the Blazor host and throws on most mutations.
+                if (child.GetType().Name == "BlazorWebView")
+                {
+                    continue;
+                }
+
+                EnsureControlVisibleAndLaidOut(child, includeChildren: false);
             }
         }
 
@@ -634,7 +706,7 @@ namespace WileyWidget.WinForms.Services
 
                     EnsureControlVisibleAndLaidOut(host);
 
-                    if (hostedPanel != null && !hostedPanel.IsDisposed)
+                    if (hostedPanel != null && !hostedPanel.IsDisposed && ReferenceEquals(hostedPanel.Parent, host))
                     {
                         hostedPanel.Dock = DockStyle.Fill;
                         ApplyMinimumTopInset(hostedPanel);
@@ -793,10 +865,6 @@ namespace WileyWidget.WinForms.Services
         {
             if (_hosts.TryGetValue(panelName, out var existing) && !existing.IsDisposed)
             {
-                if (panel != null)
-                {
-                    EnsurePanelAttached(existing, panel);
-                }
                 return existing;
             }
 
@@ -835,11 +903,6 @@ namespace WileyWidget.WinForms.Services
                 // form's native window is created as WS_CHILD in one shot — never re-created.
                 MdiParent = _owner,
             };
-
-            if (panel != null)
-            {
-                EnsurePanelAttached(mdiChild, panel);
-            }
 
             EnsureTrackedHost(panelName, mdiChild);
 
@@ -1003,10 +1066,48 @@ namespace WileyWidget.WinForms.Services
             }
 
             _initializedAsyncPanels.RemoveWhere(control => control == null || control.IsDisposed || (host != null && host.Controls.Contains(control)));
+            _firstAttachCompletedPanels.RemoveWhere(control => control == null || control.IsDisposed || (host != null && host.Controls.Contains(control)));
 
             if (string.Equals(_activePanelName, panelName, StringComparison.OrdinalIgnoreCase))
             {
                 _activePanelName = null;
+            }
+        }
+
+        private static List<Control> SuspendLayouts(params Control?[] controls)
+        {
+            var suspended = new List<Control>();
+
+            foreach (var control in controls)
+            {
+                if (control == null || control.IsDisposed)
+                {
+                    continue;
+                }
+
+                if (suspended.Contains(control))
+                {
+                    continue;
+                }
+
+                control.SuspendLayout();
+                suspended.Add(control);
+            }
+
+            return suspended;
+        }
+
+        private static void ResumeLayouts(List<Control> controls, bool performLayout)
+        {
+            for (var index = controls.Count - 1; index >= 0; index--)
+            {
+                var control = controls[index];
+                if (control.IsDisposed)
+                {
+                    continue;
+                }
+
+                control.ResumeLayout(performLayout);
             }
         }
     }

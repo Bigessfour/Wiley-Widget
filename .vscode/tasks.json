@@ -1519,6 +1519,36 @@
 			"type": "shell",
 			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter FullyQualifiedName~JarvisChat --logger \"trx;LogFileName=jarvis.trx\" -v minimal",
 			"isBackground": false
+		},
+		{
+			"label": "temp: verify winforms tests rebuilt",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"TestResults"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: verify winforms tests rebuilt",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"TestResults"
+			],
+			"isBackground": false,
+			"group": "test"
 		}
 	]
 }

@@ -442,8 +442,9 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
                 TotalEvents = 0;
                 PeakEvents = 0;
                 LastChartUpdated = DateTime.Now;
-                ErrorMessage = "No audit entries found; sample data disabled.";
                 StatusText = "No audit data loaded";
+
+                _logger.LogInformation("No audit entries found for chart filters; skipping sample data.");
 
                 return;
             }

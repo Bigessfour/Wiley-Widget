@@ -30,6 +30,25 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory =
             new Mock<IHttpClientFactory>();
 
+        private static string? ResolveEnvironmentVariableForTest(string key, EnvironmentVariableTarget target)
+        {
+            if (target == EnvironmentVariableTarget.Machine)
+            {
+                return null;
+            }
+
+            return Environment.GetEnvironmentVariable(key, target);
+        }
+
+        private GrokApiKeyProvider CreateProvider(IConfiguration config, IHttpClientFactory? httpClientFactory = null)
+        {
+            return new GrokApiKeyProvider(
+                config,
+                _mockLogger.Object,
+                httpClientFactory ?? _mockHttpClientFactory.Object,
+                ResolveEnvironmentVariableForTest);
+        }
+
         /// <summary>
         /// Test: User Secrets have highest priority - should take precedence over env vars.
         /// </summary>
@@ -47,7 +66,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 .Build();
 
             // Act
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Assert
             Assert.NotNull(provider.ApiKey);
@@ -79,7 +98,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                     .Build();
 
                 // Act
-                var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+                var provider = CreateProvider(config);
 
                 // Assert
                 Assert.NotNull(provider.ApiKey);
@@ -124,7 +143,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                     .Build();
 
                 // Act
-                var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+                var provider = CreateProvider(config);
 
                 // Assert - key should be present (may be from env var or user secrets)
                 Assert.NotNull(provider.ApiKey);
@@ -166,7 +185,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 .Build();
 
             // Act
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Assert - User Secrets (added last) should win
             Assert.NotNull(provider.ApiKey);
@@ -189,7 +208,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act
             var maskedKey = provider.MaskedApiKey;
@@ -218,7 +237,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act
             var source = provider.GetConfigurationSource();
@@ -264,7 +283,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, mockHttpClientFactory.Object);
+            var provider = CreateProvider(config, mockHttpClientFactory.Object);
 
             // Act
             var (success, message) = await provider.ValidateAsync();
@@ -291,7 +310,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 .Build();
 
             // Act
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Assert
             // When loaded from in-memory config (not user secrets), flag should reflect that
@@ -315,7 +334,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 .Build();
 
             // Act & Assert - should not throw (API key may be null or from user secrets)
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
             // Don't assert null - user secrets may provide a key in dev environment
         }
 
@@ -350,7 +369,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act
             var (success, message) = await provider.ValidateAsync();
@@ -388,7 +407,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act & Assert
             var (success, message) = await provider.ValidateAsync();
@@ -430,7 +449,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act
             var (success, message) = await provider.ValidateAsync();
@@ -458,7 +477,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                     .AddEnvironmentVariables()
                     .Build();
 
-                var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+                var provider = CreateProvider(config);
 
                 // Act
                 var source = provider.GetConfigurationSource();
@@ -496,7 +515,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act
             var masked = provider.MaskedApiKey;
@@ -549,7 +568,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 })
                 .Build();
 
-            var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+            var provider = CreateProvider(config);
 
             // Act
             var (success, message) = await provider.ValidateAsync();
@@ -581,7 +600,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                     .AddEnvironmentVariables()
                     .Build();
 
-                var provider = new GrokApiKeyProvider(config, _mockLogger.Object, _mockHttpClientFactory.Object);
+                var provider = CreateProvider(config);
 
                 // Act & Assert - Should use double underscore (Microsoft convention)
                 Assert.NotNull(provider.ApiKey);

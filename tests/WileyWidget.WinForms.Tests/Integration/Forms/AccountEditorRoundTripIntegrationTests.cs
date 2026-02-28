@@ -13,6 +13,7 @@ using Syncfusion.WinForms.Input;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
@@ -94,11 +95,12 @@ public sealed class AccountEditorRoundTripIntegrationTests(IntegrationTestFixtur
 
     private static AccountEditPanel CreateEditorPanel(IServiceProvider serviceProvider)
     {
-        var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
-        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<ScopedPanelBase<AccountsViewModel>>>(serviceProvider);
+        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(serviceProvider);
+        var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<SyncfusionControlFactory>>(serviceProvider);
+        var factory = new SyncfusionControlFactory(logger);
         var imageService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DpiAwareImageService>(serviceProvider);
 
-        return new AccountEditPanel(scopeFactory, logger, imageService);
+        return new AccountEditPanel(viewModel, factory, imageService);
     }
 
     private static async Task SeedRequiredLookupDataAsync(IServiceProvider provider)

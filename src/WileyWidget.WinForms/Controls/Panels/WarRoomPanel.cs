@@ -39,19 +39,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         private TableLayoutPanel? _content;
         private LoadingOverlay? _loader;
 
-        /// <summary>
-        /// Canonical constructor with direct dependencies.
-        /// </summary>
-        public WarRoomPanel(WarRoomViewModel vm, SyncfusionControlFactory factory)
-            : base(vm, ResolveLogger())
-        {
-            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            AutoScaleMode = AutoScaleMode.Dpi;
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
-            SafeSuspendAndLayout(InitializeControls);
-        }
-
         private static ILogger ResolveLogger()
         {
             return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<WarRoomPanel>>(Program.Services)
@@ -231,10 +218,10 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// Constructor that accepts required dependencies from DI container.
         /// </summary>
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-        public WarRoomPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<WarRoomViewModel>> logger)
-            : base(scopeFactory, logger)
+        public WarRoomPanel(WarRoomViewModel viewModel, SyncfusionControlFactory controlFactory)
+            : base(viewModel)
         {
-            _factory = ControlFactory;
+            _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             SafeSuspendAndLayout(InitializeControls);
         }
 

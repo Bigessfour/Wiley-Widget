@@ -67,29 +67,11 @@ namespace WileyWidget.WinForms.Controls.Panels
         private ToolTip? _toolTip;
         private bool _gridInitialized = false;
 
-        /// <summary>
-        /// Initializes a new instance with required DI dependencies.
-        /// </summary>
-        public ActivityLogPanel(ActivityLogViewModel vm, SyncfusionControlFactory factory)
-            : base(vm, ResolveLogger())
-        {
-            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-
-            AutoScaleMode = AutoScaleMode.Dpi;
-            Padding = new Padding(12);
-
-            SafeSuspendAndLayout(CreateControls);
-            ApplyTheme();
-            InitializeAutoRefresh();
-        }
-
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-        public ActivityLogPanel(
-            IServiceScopeFactory scopeFactory,
-            ILogger<ScopedPanelBase<ActivityLogViewModel>> logger)
-            : base(scopeFactory, logger)
+        public ActivityLogPanel(ActivityLogViewModel viewModel, SyncfusionControlFactory controlFactory)
+            : base(viewModel)
         {
-            _factory = ControlFactory;
+            _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             // Set AutoScaleMode for proper DPI scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -264,10 +246,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// Defers gridSplit creation to OnLoad to avoid InvalidOperationException
         /// from setting SplitterDistance before the control has a valid handle and dimensions.
         /// </summary>
-        protected override void OnLoad(EventArgs e)
+        protected override void OnPanelLoaded(EventArgs e)
         {
-            base.OnLoad(e);
-
             // Skip if already initialized (idempotent)
             if (_gridInitialized || _mainTable == null)
                 return;

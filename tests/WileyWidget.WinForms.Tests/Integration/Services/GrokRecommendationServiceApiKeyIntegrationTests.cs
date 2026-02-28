@@ -218,7 +218,10 @@ namespace WileyWidget.WinForms.Tests.Integration.Services.AI
             var apiKeyProvider = new GrokApiKeyProvider(
                 config,
                 new Mock<ILogger<GrokApiKeyProvider>>().Object,
-                new Mock<IHttpClientFactory>().Object);
+                new Mock<IHttpClientFactory>().Object,
+                (key, target) => target == EnvironmentVariableTarget.Machine
+                    ? null
+                    : Environment.GetEnvironmentVariable(key, target));
 
             // Act
             var service1 = new GrokRecommendationService(

@@ -257,7 +257,7 @@
   // ============================================================================
   // Python Configuration
   // ============================================================================
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.defaultInterpreterPath": ".venv",
   "python.formatting.provider": "none",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,

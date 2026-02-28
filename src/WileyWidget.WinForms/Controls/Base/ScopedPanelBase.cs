@@ -9,17 +9,20 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Factories;
 using System.Diagnostics;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls.Base
 {
     /// <summary>
     /// Non-generic base for type-erased runtime access (e.g., QuickAccess toolbar reflection).
     /// </summary>
-    public abstract class ScopedPanelBase : UserControl
+    public abstract class ScopedPanelBase : UserControl, IThemable
     {
         // ── Canonical layout constants (Sacred Panel Skeleton §3) ──────────────────────────
         // Const int dimensions allow compile-time use; Size fields provide a convenient composite.
@@ -110,6 +113,42 @@ namespace WileyWidget.WinForms.Controls.Base
 
             PerformLayout();
             Invalidate(true);
+
+            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            ApplyTheme(activeTheme);
+        }
+
+        /// <inheritdoc/>
+        public virtual void ApplyTheme(string themeName)
+        {
+            if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+            {
+                return;
+            }
+
+            void ApplyCore()
+            {
+                try
+                {
+                    ThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName);
+                    SfSkinManager.SetVisualStyle(this, themeName);
+                    Invalidate(true);
+                    Update();
+                }
+                catch
+                {
+                    // Best-effort: theme reapply should never crash panel rendering.
+                }
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action)ApplyCore);
+            }
+            else
+            {
+                ApplyCore();
+            }
         }
 
         protected virtual int GetMinimumTopInsetLogical() => RecommendedTopInsetLogical;
@@ -265,6 +304,9 @@ namespace WileyWidget.WinForms.Controls.Base
         private CancellationTokenSource? _operationCts;
         private System.Windows.Forms.Timer? _finalLayoutTimer;
         private bool _shownFired;
+        private Form? _hostFormForClosing;
+        private IThemeService? _themeService;
+        private EventHandler<string>? _themeChangedHandler;
 
         protected ScopedPanelBase(IServiceScopeFactory scopeFactory, ILogger logger)
         {
@@ -279,8 +321,7 @@ namespace WileyWidget.WinForms.Controls.Base
             _logger?.LogDebug("[{Panel}] Initialized — ViewModel: {VmType}",
                 GetType().Name, ViewModel?.GetType().Name ?? $"{typeof(TViewModel).Name} (null)");
 
-            // Handle form close button
-            Load += ScopedPanelBase_Load;
+            AttachThemeService(_scope.ServiceProvider);
         }
 
         /// <summary>
@@ -302,7 +343,18 @@ namespace WileyWidget.WinForms.Controls.Base
             _logger.LogDebug("[{Panel}] Initialized (direct-injection) — ViewModel: {VmType}",
                 GetType().Name, ViewModel.GetType().Name);
 
-            Load += ScopedPanelBase_Load;
+            AttachThemeService(WileyWidget.WinForms.Program.ServicesOrNull);
+        }
+
+        protected sealed override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            AttachHostFormClosingHandler();
+            OnPanelLoaded(e);
+        }
+
+        protected virtual void OnPanelLoaded(EventArgs e)
+        {
         }
 
         protected virtual void OnViewModelResolved(TViewModel? vm) { }
@@ -311,6 +363,45 @@ namespace WileyWidget.WinForms.Controls.Base
             if (vm is TViewModel typed) OnViewModelResolved(typed);
         }
         protected virtual void OnThemeChanged(string themeName) { }
+
+        private void AttachThemeService(IServiceProvider? provider)
+        {
+            try
+            {
+                _themeService = provider?.GetService(typeof(IThemeService)) as IThemeService
+                    ?? WileyWidget.WinForms.Program.ServicesOrNull?.GetService(typeof(IThemeService)) as IThemeService;
+
+                if (_themeService == null)
+                {
+                    return;
+                }
+
+                _themeChangedHandler ??= HandleThemeServiceChanged;
+                _themeService.ThemeChanged -= _themeChangedHandler;
+                _themeService.ThemeChanged += _themeChangedHandler;
+
+                ApplyTheme(_themeService.CurrentTheme);
+                OnThemeChanged(_themeService.CurrentTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "[{Panel}] Theme service subscription failed", GetType().Name);
+            }
+        }
+
+        private void HandleThemeServiceChanged(object? sender, string themeName)
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            InvokeOnUiThread(() =>
+            {
+                ApplyTheme(themeName);
+                OnThemeChanged(themeName);
+            });
+        }
 
         /// <summary>
         /// Cancels any in-flight operation and starts a new one, returning its cancellation token.
@@ -373,12 +464,23 @@ namespace WileyWidget.WinForms.Controls.Base
             }
         }
 
-        private void ScopedPanelBase_Load(object? sender, EventArgs e)
+        private void AttachHostFormClosingHandler()
         {
             var hostForm = FindForm();
-            if (hostForm != null)
+            if (ReferenceEquals(_hostFormForClosing, hostForm))
             {
-                hostForm.FormClosing += HostForm_FormClosing;
+                return;
+            }
+
+            if (_hostFormForClosing != null)
+            {
+                _hostFormForClosing.FormClosing -= HostForm_FormClosing;
+            }
+
+            _hostFormForClosing = hostForm;
+            if (_hostFormForClosing != null)
+            {
+                _hostFormForClosing.FormClosing += HostForm_FormClosing;
             }
         }
 
@@ -586,6 +688,18 @@ namespace WileyWidget.WinForms.Controls.Base
                 if (disposing)
                 {
                     _logger?.LogDebug("[{Panel}] Disposing", GetType().Name);
+
+                    if (_themeService != null && _themeChangedHandler != null)
+                    {
+                        _themeService.ThemeChanged -= _themeChangedHandler;
+                    }
+
+                    if (_hostFormForClosing != null)
+                    {
+                        _hostFormForClosing.FormClosing -= HostForm_FormClosing;
+                        _hostFormForClosing = null;
+                    }
+
                     _operationCts?.Cancel();
                     _operationCts?.Dispose();
                     _finalLayoutTimer?.Stop();

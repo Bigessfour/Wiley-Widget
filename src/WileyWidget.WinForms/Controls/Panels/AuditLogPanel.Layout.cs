@@ -31,7 +31,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Row 1: Header + toolbar
-            _header ??= new PanelHeader { Dock = DockStyle.Fill, Name = "AuditPanelHeader" };
+            _header ??= new PanelHeader { Dock = DockStyle.Top, Name = "AuditPanelHeader" };
 
             // Toolbar container on the right side
             var toolbar = new FlowLayoutPanel

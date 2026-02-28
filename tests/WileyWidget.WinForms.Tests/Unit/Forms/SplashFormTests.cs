@@ -16,6 +16,40 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 {
     public class SplashFormTests
     {
+        private static Thread? TryGetUiThread(SplashForm splash)
+        {
+            var fi = typeof(SplashForm).GetField("_uiThread", BindingFlags.Instance | BindingFlags.NonPublic);
+            return fi?.GetValue(splash) as Thread;
+        }
+
+        private static bool WaitForControls(SplashForm splash, out Label? label, out Control? progressControl)
+        {
+            label = null;
+            progressControl = null;
+
+            var msgField = typeof(SplashForm).GetField("_messageLabel", BindingFlags.Instance | BindingFlags.NonPublic);
+            var progressField = typeof(SplashForm).GetField("_progressBar", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (msgField == null || progressField == null)
+            {
+                return false;
+            }
+
+            Label? resolvedLabel = null;
+            Control? resolvedProgressControl = null;
+
+            var ready = SpinWait.SpinUntil(() =>
+            {
+                resolvedLabel = msgField.GetValue(splash) as Label;
+                resolvedProgressControl = progressField.GetValue(splash) as Control;
+                return resolvedLabel != null && resolvedProgressControl != null;
+            }, TimeSpan.FromSeconds(2));
+
+            label = resolvedLabel;
+            progressControl = resolvedProgressControl;
+
+            return ready;
+        }
         [StaFact]
         public void Constructor_InHeadlessMode_DoesNotStartUiThread()
         {
@@ -55,25 +89,25 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             try
             {
                 // Retrieve private controls
-                var msgField = typeof(SplashForm).GetField("_messageLabel", BindingFlags.Instance | BindingFlags.NonPublic);
-                var progressField = typeof(SplashForm).GetField("_progressBar", BindingFlags.Instance | BindingFlags.NonPublic);
-                msgField.Should().NotBeNull();
-                progressField.Should().NotBeNull();
-
-                var label = msgField!.GetValue(splash) as Label;
-                if (label is null)
+                var uiThread = TryGetUiThread(splash);
+                if (uiThread == null)
                 {
-                    throw new InvalidOperationException("Splash message label not found.");
+                    // Headless mode: no UI thread or controls to assert against.
+                    return;
                 }
 
-                var progressControl = progressField!.GetValue(splash) as Control;
-                if (progressControl is null)
+                if (!WaitForControls(splash, out var label, out var progressControl))
                 {
-                    throw new InvalidOperationException("Splash progress control not found.");
+                    throw new InvalidOperationException("Splash controls not initialized in time.");
+                }
+
+                if (label == null || progressControl == null)
+                {
+                    throw new InvalidOperationException("Splash controls resolved as null.");
                 }
 
                 // Ensure we're on a different thread than the controls (InvokeRequired should be true)
-                bool invokeRequired = label!.InvokeRequired;
+                bool invokeRequired = label.InvokeRequired;
                 invokeRequired.Should().BeTrue();
 
                 // Act: report a message and progress
@@ -153,10 +187,22 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             try
             {
-                var msgField = typeof(SplashForm).GetField("_messageLabel", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                var progressField = typeof(SplashForm).GetField("_progressBar", BindingFlags.Instance | BindingFlags.NonPublic)!;
-                var label = (Label)msgField.GetValue(splash)!;
-                var progress = progressField.GetValue(splash) as Control;
+                var uiThread = TryGetUiThread(splash);
+                if (uiThread == null)
+                {
+                    // Headless mode: no UI thread or controls to assert against.
+                    return;
+                }
+
+                if (!WaitForControls(splash, out var label, out var progress))
+                {
+                    throw new InvalidOperationException("Splash controls not initialized in time.");
+                }
+
+                if (label == null || progress == null)
+                {
+                    throw new InvalidOperationException("Splash controls resolved as null.");
+                }
 
                 const int parallelUpdates = 200;
                 var tasks = new Task[parallelUpdates];

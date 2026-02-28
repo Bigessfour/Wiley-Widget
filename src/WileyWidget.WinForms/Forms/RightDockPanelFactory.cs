@@ -12,8 +12,10 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -68,12 +70,10 @@ public static class RightDockPanelFactory
             };
 
             // Create Activity Log panel
-            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
-            var activityLogLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<ActivityLogPanel>>(serviceProvider)
-                ?? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger>(serviceProvider) as ILogger<ActivityLogPanel>)
-                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<ActivityLogPanel>.Instance;
+            var activityLogViewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ActivityLogViewModel>(serviceProvider);
+            var controlFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(serviceProvider);
             logger?.LogDebug("Creating ActivityLogPanel...");
-            var activityLogPanel = new ActivityLogPanel(scopeFactory, activityLogLogger)
+            var activityLogPanel = new ActivityLogPanel(activityLogViewModel, controlFactory)
             {
                 Dock = DockStyle.Fill,
                 Name = "ActivityLogPanel"

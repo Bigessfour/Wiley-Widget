@@ -201,9 +201,29 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// </summary>
         public virtual async Task LoadAsync(CancellationToken ct)
         {
+            ct.ThrowIfCancellationRequested();
+
+            if (_hostedForm is ICompletablePanel completablePanel)
+            {
+                await completablePanel.LoadAsync(ct).ConfigureAwait(true);
+                return;
+            }
+
             if (_hostedForm is IAsyncInitializable asyncInit)
             {
                 await asyncInit.InitializeAsync(ct).ConfigureAwait(true);
+                return;
+            }
+
+            if (_hostedForm == null)
+            {
+                return;
+            }
+
+            var loadMethod = _hostedForm.GetType().GetMethod(nameof(LoadAsync), new[] { typeof(CancellationToken) });
+            if (loadMethod?.Invoke(_hostedForm, new object[] { ct }) is Task loadTask)
+            {
+                await loadTask.ConfigureAwait(true);
             }
         }
 
@@ -242,7 +262,41 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// Validates the panel asynchronously.
         /// Returns true as hosted forms typically handle their own validation.
         /// </summary>
-        public virtual Task<bool> ValidateAsync(CancellationToken ct) => Task.FromResult(true);
+        public virtual async Task<bool> ValidateAsync(CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (_hostedForm == null)
+            {
+                return true;
+            }
+
+            if (_hostedForm is ICompletablePanel completablePanel)
+            {
+                var validation = await completablePanel.ValidateAsync(ct).ConfigureAwait(true);
+                if (!validation.IsValid)
+                {
+                    completablePanel.FocusFirstError();
+                }
+
+                return validation.IsValid;
+            }
+
+            var validateMethod = _hostedForm.GetType().GetMethod(nameof(ValidateAsync), new[] { typeof(CancellationToken) });
+            var validationTask = validateMethod?.Invoke(_hostedForm, new object[] { ct });
+            if (validationTask is Task<bool> boolValidationTask)
+            {
+                return await boolValidationTask.ConfigureAwait(true);
+            }
+
+            if (validationTask is Task<ValidationResult> richValidationTask)
+            {
+                var richValidation = await richValidationTask.ConfigureAwait(true);
+                return richValidation.IsValid;
+            }
+
+            return true;
+        }
 
         /// <summary>
         /// Initializes the panel asynchronously.

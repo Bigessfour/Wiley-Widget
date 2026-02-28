@@ -105,15 +105,12 @@ public class WarRoomPanelIntegrationTests : IntegrationTestBase
     [Trait("Panel", "WarRoom")]
     public async Task WarRoomPanel_LoadAsync_CompletesWithoutException()
     {
-        var services = new ServiceCollection();
-        services.AddScoped<WarRoomViewModel>(_ => CreateVm());
-        var provider = services.BuildServiceProvider();
-        var scopeFactory = SPSE.GetRequiredService<IServiceScopeFactory>(provider);
-        var logger = Microsoft.Extensions.Logging.Abstractions
-            .NullLogger<ScopedPanelBase<WarRoomViewModel>>.Instance;
+        var viewModel = CreateVm();
+        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<WileyWidget.WinForms.Factories.SyncfusionControlFactory>.Instance;
+        var factory = new WileyWidget.WinForms.Factories.SyncfusionControlFactory(logger);
 
         using var form = new Form();
-        using var panel = new WarRoomPanel(scopeFactory, logger);
+        using var panel = new WarRoomPanel(viewModel, factory);
         form.Controls.Add(panel);
         form.CreateControl();
         form.Show();

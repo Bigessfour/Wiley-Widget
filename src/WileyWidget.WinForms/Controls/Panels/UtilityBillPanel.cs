@@ -99,19 +99,11 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Constructor
 
-    public UtilityBillPanel(UtilityBillViewModel vm, SyncfusionControlFactory factory)
-        : base(vm, ResolveLogger())
-    {
-        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-    }
-
     [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-    public UtilityBillPanel(
-        IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<UtilityBillViewModel>> logger)
-        : base(scopeFactory, logger)
+    public UtilityBillPanel(UtilityBillViewModel viewModel, SyncfusionControlFactory controlFactory)
+        : base(viewModel)
     {
-        _factory = ControlFactory;
+        _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
     }
 
     private static ILogger ResolveLogger()
@@ -1319,10 +1311,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     #region Theme Integration
 
-    private void ApplyTheme(string theme)
+    public override void ApplyTheme(string theme)
     {
         try
         {
+            base.ApplyTheme(theme);
+
             // Theme is automatically applied by SfSkinManager cascade from parent
             // Button icons removed per SfSkinManager enforcement rules
             // ThemeManager subscription removed per project rules (SfSkinManager cascade only)
@@ -1341,10 +1335,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     #region Lifecycle
     // Deprecated IThemeIconService removed - SfSkinManager handles theme cascade
 
-    protected override void OnLoad(EventArgs e)
+    protected override void OnPanelLoaded(EventArgs e)
     {
-        base.OnLoad(e);
-
         try
         {
             if (ViewModel != null)

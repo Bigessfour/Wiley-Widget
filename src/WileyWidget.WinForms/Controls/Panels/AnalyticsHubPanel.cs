@@ -106,7 +106,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         SuspendLayout();
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-        _panelHeader = new PanelHeader { Title = "Analytics Hub", Dock = DockStyle.Fill };
+        _panelHeader = new PanelHeader { Title = "Analytics Hub", Dock = DockStyle.Top };
         _refreshClicked = async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
         _panelHeader.RefreshClicked += _refreshClicked;
         _closeClicked = (_, _) => ClosePanel();
@@ -549,9 +549,8 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     // -------------------------------------------------------------------------
 
     /// <inheritdoc/>
-    protected override void OnLoad(EventArgs e)
+    protected override void OnPanelLoaded(EventArgs e)
     {
-        base.OnLoad(e);
         if (!IsLoaded && !DesignMode)
             _ = LoadAsync(CancellationToken.None);
     }

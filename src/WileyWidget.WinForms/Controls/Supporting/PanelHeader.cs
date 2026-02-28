@@ -230,6 +230,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         /// All <see cref="Syncfusion.WinForms.Controls.SfButton"/> and
         /// <see cref="ProgressBarAdv"/> instances are created through the factory so that
         /// mandatory theming and property enforcement is guaranteed.
+        /// CRITICAL: Layout is suspended during construction to prevent thrashing when header is added dynamically.
         /// </summary>
         public PanelHeader(SyncfusionControlFactory factory)
         {
@@ -237,15 +238,19 @@ namespace WileyWidget.WinForms.Controls.Supporting
             Margin = Padding.Empty;
             Padding = Padding.Empty;
 
+            SuspendLayout();
             try
             {
                 var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
                 SfSkinManager.SetVisualStyle(this, theme);
+                InitializeComponent();
+                UpdatePinButtonAppearance();
             }
-            catch { /* Theme application is best-effort */ }
-
-            InitializeComponent();
-            UpdatePinButtonAppearance();
+            finally
+            {
+                ResumeLayout(performLayout: false);
+                PerformLayout();
+            }
         }
 
         /// <summary>
@@ -260,6 +265,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         /// - "close" : X or close icon
         ///
         /// If any icon fails to load, buttons gracefully fall back to text labels.
+        /// CRITICAL: Layout is suspended during construction to prevent thrashing when header is added dynamically.
         /// </summary>
         public PanelHeader(DpiAwareImageService? imageService)
         {
@@ -267,17 +273,19 @@ namespace WileyWidget.WinForms.Controls.Supporting
             Margin = Padding.Empty;
             Padding = Padding.Empty;
 
-            // Apply Syncfusion theme to header
+            SuspendLayout();
             try
             {
                 var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
                 SfSkinManager.SetVisualStyle(this, theme);
+                InitializeComponent();
+                UpdatePinButtonAppearance();
             }
-            catch { /* Theme application is best-effort */ }
-
-            InitializeComponent();
-            UpdatePinButtonAppearance();
-            // Theme cascade from SetVisualStyle applies to all child controls
+            finally
+            {
+                ResumeLayout(performLayout: false);
+                PerformLayout();
+            }
         }
 
         protected override void Dispose(bool disposing)

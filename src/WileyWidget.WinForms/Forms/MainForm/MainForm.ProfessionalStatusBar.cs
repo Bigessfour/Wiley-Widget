@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Themes;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -96,7 +98,7 @@ public partial class MainForm
             Text = "● Connected",
             Width = 100,
             BorderStyle = BorderStyle.Fixed3D,
-            ForeColor = Color.Green // semantic: connected/success state — allowed exception
+            ForeColor = AppThemeColors.Success
         };
 
         _connectionPanel.Click += OnConnectionPanelClick;
@@ -189,11 +191,11 @@ public partial class MainForm
             // so SfSkinManager theme cascade governs the text color (Req 1 compliance).
             if (memoryMB > 1000) // Over 1 GB
             {
-                _memoryPanel.ForeColor = Color.Red;
+                _memoryPanel.ForeColor = AppThemeColors.Error;
             }
             else if (memoryMB > 500) // Over 500 MB
             {
-                _memoryPanel.ForeColor = Color.Orange;
+                _memoryPanel.ForeColor = AppThemeColors.Warning;
             }
             else
             {
@@ -252,14 +254,14 @@ public partial class MainForm
             if (connected)
             {
                 _connectionPanel.Text = message ?? "● Connected";
-                _connectionPanel.ForeColor = Color.Green;
+                _connectionPanel.ForeColor = AppThemeColors.Success;
                 _statusBarToolTip?.SetToolTip(_connectionPanel,
                     $"Database: Connected\n{message ?? "Connection active"}");
             }
             else
             {
                 _connectionPanel.Text = message ?? "● Disconnected";
-                _connectionPanel.ForeColor = Color.Red;
+                _connectionPanel.ForeColor = AppThemeColors.Error;
                 _statusBarToolTip?.SetToolTip(_connectionPanel,
                     $"Database: Disconnected\n{message ?? "No connection"}");
             }

@@ -763,7 +763,9 @@ public partial class MainForm
 
     protected override void OnShown(EventArgs e)
     {
+        PrepareStartupFadeIn();
         base.OnShown(e);
+        BeginStartupFadeInIfNeeded();
 
         var onShownStopwatch = System.Diagnostics.Stopwatch.StartNew();
         var redrawSuspended = TrySuspendRedraw("ONSHOWN");
@@ -838,7 +840,7 @@ public partial class MainForm
                     // Optional victory lap — flash the status bar
                     _statusProgressService?.Complete("Startup", "Welcome to Wiley Widget — Municipal Finance, Supercharged!");
                 }
-                catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+                catch (Exception ex) when (ex is Win32Exception)
                 {
                     _logger?.LogDebug(ex, "Deferred panel load hit handle race — retrying after delay");
                     // Small synchronous retry; Thread.Sleep is acceptable here because this
@@ -846,10 +848,20 @@ public partial class MainForm
                     // limited to the rare handle-race path only.
                     System.Threading.Thread.Sleep(100);
                     if (!IsDisposed)
-                        _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
-                            panelName: "Enterprise Vital Signs",
-                            preferredStyle: DockingStyle.Fill,
-                            allowFloating: false);
+                    {
+                        try
+                        {
+                            _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+                                panelName: "Enterprise Vital Signs",
+                                preferredStyle: DockingStyle.Fill,
+                                allowFloating: false);
+                        }
+                        catch (Exception retryEx)
+                        {
+                            _logger?.LogWarning(retryEx, "Deferred primary panel retry failed after handle-race delay");
+                            throw;
+                        }
+                    }
                 }
                 catch (Exception primaryEx)
                 {
@@ -989,5 +1001,109 @@ public partial class MainForm
         }
 
         return true;
+    }
+
+    private bool ShouldRunStartupFadeIn()
+    {
+        return !_uiConfig.IsUiTestHarness && !IsUiTestEnvironment();
+    }
+
+    private void PrepareStartupFadeIn()
+    {
+        if (_startupFadePrepared || !ShouldRunStartupFadeIn())
+        {
+            return;
+        }
+
+        try
+        {
+            Opacity = 0d;
+            _startupFadePrepared = true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Startup fade preparation failed; continuing without transition");
+            _startupFadePrepared = false;
+            try
+            {
+                Opacity = 1d;
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private void BeginStartupFadeInIfNeeded()
+    {
+        if (!_startupFadePrepared || IsDisposed || Disposing)
+        {
+            return;
+        }
+
+        if (_startupFadeTimer != null)
+        {
+            return;
+        }
+
+        try
+        {
+            _startupFadeTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 16
+            };
+
+            _startupFadeTimer.Tick += HandleStartupFadeTick;
+            _startupFadeTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Startup fade timer failed; completing transition immediately");
+            CompleteStartupFadeIn();
+        }
+    }
+
+    private void HandleStartupFadeTick(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (IsDisposed || Disposing)
+            {
+                CompleteStartupFadeIn();
+                return;
+            }
+
+            Opacity = Math.Min(1d, Opacity + 0.1d);
+            if (Opacity >= 1d)
+            {
+                CompleteStartupFadeIn();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Startup fade tick failed; completing transition immediately");
+            CompleteStartupFadeIn();
+        }
+    }
+
+    private void CompleteStartupFadeIn()
+    {
+        try
+        {
+            Opacity = 1d;
+        }
+        catch
+        {
+        }
+
+        if (_startupFadeTimer != null)
+        {
+            _startupFadeTimer.Stop();
+            _startupFadeTimer.Tick -= HandleStartupFadeTick;
+            _startupFadeTimer.Dispose();
+            _startupFadeTimer = null;
+        }
+
+        _startupFadePrepared = false;
     }
 }

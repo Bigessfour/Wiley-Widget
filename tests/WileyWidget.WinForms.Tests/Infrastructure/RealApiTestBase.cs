@@ -53,25 +53,29 @@ public abstract class RealApiTestBase : IDisposable
     /// <summary>
     /// Skip test if real API is not available (no API key configured).
     /// </summary>
-    protected void SkipIfRealApiNotAvailable()
+    protected bool SkipIfRealApiNotAvailable()
     {
         if (!IsRealApiAvailable)
         {
             Output.WriteLine("SKIP: Real xAI API key not configured. Set XAI__ApiKey environment variable or user secret.");
-            Assert.Fail("SKIPPED: Real xAI API key not configured");
+            return true;
         }
+
+        return false;
     }
 
     /// <summary>
     /// Skip test if token budget has been exceeded.
     /// </summary>
-    protected void SkipIfBudgetExceeded()
+    protected bool SkipIfBudgetExceeded()
     {
         if (_totalTokensUsed >= MaxTokenBudget)
         {
             Output.WriteLine($"SKIP: Token budget exceeded: {_totalTokensUsed}/{MaxTokenBudget} tokens used");
-            Assert.Fail($"SKIPPED: Token budget exceeded: {_totalTokensUsed}/{MaxTokenBudget} tokens used");
+            return true;
         }
+
+        return false;
     }
 
     /// <summary>

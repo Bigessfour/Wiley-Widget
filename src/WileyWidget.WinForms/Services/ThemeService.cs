@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Themes;
 
@@ -81,6 +82,17 @@ public sealed class ThemeService : IThemeService
 
         // Ensure theme assembly is loaded
         ThemeColors.EnsureThemeAssemblyLoadedForTheme(_currentTheme, _logger);
+
+        // Keep the global Syncfusion theme in sync so controls/forms created after this
+        // switch pick up the correct active theme automatically.
+        try
+        {
+            SfSkinManager.ApplicationVisualTheme = _currentTheme;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update SfSkinManager.ApplicationVisualTheme to {Theme}", _currentTheme);
+        }
 
         // Notify subscribers
         try

@@ -18,16 +18,13 @@ namespace WileyWidget.WinForms.Tests.Unit
         [WinFormsFact]
         public void CollectionChange_Should_RenderChartsAndShowResults()
         {
-            // Arrange - use a minimal DI container so the panel can resolve its ViewModel via DI
-            var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<ScopedPanelBase<WarRoomViewModel>>.Instance;
-            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
-            // Register a simple factory for the ViewModel so DI creates it without pulling in heavy dependencies
-            services.AddScoped<WarRoomViewModel>(sp => new WarRoomViewModel());
-            var provider = services.BuildServiceProvider();
-            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(provider);
+            // Arrange - create ViewModel and Factory directly
+            var viewModel = new WarRoomViewModel();
+            var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<WileyWidget.WinForms.Factories.SyncfusionControlFactory>.Instance;
+            var factory = new WileyWidget.WinForms.Factories.SyncfusionControlFactory(logger);
 
             using var form = new Form();
-            using var panel = new WileyWidget.WinForms.Controls.Panels.WarRoomPanel(scopeFactory, logger);
+            using var panel = new WileyWidget.WinForms.Controls.Panels.WarRoomPanel(viewModel, factory);
 
             // Simulate adding panel to a visible form so control handles are created
             form.Controls.Add(panel);
@@ -40,9 +37,8 @@ namespace WileyWidget.WinForms.Tests.Unit
             panel.PerformLayout();
             Application.DoEvents();
 
-            // Let the panel resolve its ViewModel from DI
-            var panelVm = (WarRoomViewModel?)panel.GetType().GetProperty("ViewModel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(panel);
-            panelVm.Should().NotBeNull("ViewModel should be resolved via DI by the panel");
+            // Use the ViewModel we passed to the panel
+            var panelVm = viewModel;
 
             // Act - add projection so collection changed handlers fire
             panelVm!.Projections.Add(new WileyWidget.WinForms.ViewModels.ScenarioProjection

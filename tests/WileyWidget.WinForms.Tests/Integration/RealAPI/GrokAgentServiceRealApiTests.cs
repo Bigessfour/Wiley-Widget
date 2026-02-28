@@ -43,8 +43,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task ValidateApiKey_WithRealKey_ReturnsTrue()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         // Arrange
         var services = new ServiceCollection();
@@ -81,8 +80,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task GetSimpleResponse_WithSimplePrompt_ReturnsValidResponse()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         Output.WriteLine("🚀 Testing real xAI API with simple prompt...");
 
@@ -105,8 +103,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task RunAgentAsync_WithFunctionCalling_ExecutesPlugins()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         Output.WriteLine("🔧 Testing real API with function calling (TimePlugin)...");
 
@@ -128,8 +125,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task StreamResponseAsync_WithRealAPI_StreamsChunks()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         Output.WriteLine("📡 Testing real API streaming...");
 
@@ -161,8 +157,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task GetSimpleResponse_WithLargePrompt_HandlesTokenLimit()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         Output.WriteLine("📏 Testing real API with large prompt (near token limit)...");
 
@@ -189,8 +184,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task ModelDiscovery_FetchesAvailableModels_ExcludesDeprecated()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         Output.WriteLine("🔍 Testing model discovery with real API...");
 
@@ -229,8 +223,7 @@ public class GrokAgentServiceRealApiTests : RealApiTestBase
     public async Task GetSimpleResponse_RealAPI_CompletesWithin10Seconds()
     {
         // Skip if no real API key configured
-        SkipIfRealApiNotAvailable();
-        SkipIfBudgetExceeded();
+        if (SkipIfRealApiNotAvailable() || SkipIfBudgetExceeded()) return;
 
         Output.WriteLine("⏱️ Testing real API response time...");
 

@@ -16,6 +16,7 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly IConfiguration _configuration;
         private readonly ILogger<GrokApiKeyProvider>? _logger;
         private readonly IHttpClientFactory? _httpClientFactory;
+        private readonly Func<string, EnvironmentVariableTarget, string?> _environmentVariableGetter;
 
         private string? _apiKey;
         private bool _isValidated = false;
@@ -30,11 +31,13 @@ namespace WileyWidget.WinForms.Services.AI
         public GrokApiKeyProvider(
             IConfiguration configuration,
             ILogger<GrokApiKeyProvider>? logger = null,
-            IHttpClientFactory? httpClientFactory = null)
+            IHttpClientFactory? httpClientFactory = null,
+            Func<string, EnvironmentVariableTarget, string?>? environmentVariableGetter = null)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _environmentVariableGetter = environmentVariableGetter ?? Environment.GetEnvironmentVariable;
 
             // Initialize API key from configuration hierarchy
             InitializeApiKey();
@@ -56,7 +59,7 @@ namespace WileyWidget.WinForms.Services.AI
             _logger?.LogInformation("[Grok] Initializing API key from configuration hierarchy...");
 
             // 0. Canonical source: machine-scoped environment variables
-            var machineHierarchicalEnvKey = Environment.GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.Machine);
+            var machineHierarchicalEnvKey = GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.Machine);
             if (!string.IsNullOrWhiteSpace(machineHierarchicalEnvKey))
             {
                 _apiKey = machineHierarchicalEnvKey.Trim().Trim('"');
@@ -69,7 +72,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            var machineLegacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Machine);
+            var machineLegacyEnvKey = GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Machine);
             if (!string.IsNullOrWhiteSpace(machineLegacyEnvKey))
             {
                 _apiKey = machineLegacyEnvKey.Trim().Trim('"');
@@ -111,7 +114,7 @@ namespace WileyWidget.WinForms.Services.AI
             // 2. Try environment variables with proper hierarchical naming (XAI__ApiKey)
             // According to Microsoft docs, __ (double underscore) maps to : (colon) in configuration
             // Compatibility scopes: Process > User
-            var hierarchicalEnvKey = Environment.GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.Process);
+            var hierarchicalEnvKey = GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.Process);
             if (!string.IsNullOrWhiteSpace(hierarchicalEnvKey))
             {
                 _apiKey = hierarchicalEnvKey.Trim().Trim('"');
@@ -125,7 +128,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            hierarchicalEnvKey = Environment.GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.User);
+            hierarchicalEnvKey = GetEnvironmentVariable("XAI__ApiKey", EnvironmentVariableTarget.User);
             if (!string.IsNullOrWhiteSpace(hierarchicalEnvKey))
             {
                 _apiKey = hierarchicalEnvKey.Trim().Trim('"');
@@ -139,7 +142,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            var processLegacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Process);
+            var processLegacyEnvKey = GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Process);
             if (!string.IsNullOrWhiteSpace(processLegacyEnvKey))
             {
                 _apiKey = processLegacyEnvKey.Trim().Trim('"');
@@ -153,7 +156,7 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            var userLegacyEnvKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.User);
+            var userLegacyEnvKey = GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.User);
             if (!string.IsNullOrWhiteSpace(userLegacyEnvKey))
             {
                 _apiKey = userLegacyEnvKey.Trim().Trim('"');
@@ -380,6 +383,18 @@ namespace WileyWidget.WinForms.Services.AI
                 return "****";
 
             return $"{key.Substring(0, 4)}...{key.Substring(key.Length - 4)}";
+        }
+
+        private string? GetEnvironmentVariable(string key, EnvironmentVariableTarget target)
+        {
+            try
+            {
+                return _environmentVariableGetter(key, target);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

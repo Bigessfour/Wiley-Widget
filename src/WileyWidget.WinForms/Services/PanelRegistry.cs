@@ -44,6 +44,7 @@ namespace WileyWidget.WinForms.Services
             // ── Analytics & Reports tab ─────────────────────────────────────────
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel),          "Analytics Hub",             "Analytics",  DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel),     "Department Summary",        "Operations", DockingStyle.Right),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.InsightFeedPanel),           "Insight Feed",              "Analytics",  DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel),     "Proactive AI Insights",     "Operations", DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ReportsPanel),               "Reports",                   "Reporting",  DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel),         "Revenue Trends",            "Analytics",  DockingStyle.Right),
@@ -52,6 +53,7 @@ namespace WileyWidget.WinForms.Services
             // ── Financials tab ──────────────────────────────────────────────────
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.BudgetPanel),       "Budget Management & Analysis", "Financials",  DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel),     "Municipal Accounts",           "Financials",  DockingStyle.Left),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.PaymentEditPanel),  "Payment Editor",               "Payments",    DockingStyle.Right, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.PaymentsPanel),     "Payments",                     "Payments",    DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel),     "Rates",                        "Financials",  DockingStyle.Right),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel),   "QuickBooks",                   "Integration", DockingStyle.Right, false),

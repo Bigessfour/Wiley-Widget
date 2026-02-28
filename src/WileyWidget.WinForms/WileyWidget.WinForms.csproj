@@ -91,6 +91,7 @@
 
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
     <!-- Syncfusion WinForms UI controls -->
+    <!-- Versions are centrally pinned to 32.2.3 in Directory.Packages.props -->
     <PackageReference Include="Syncfusion.Core.WinForms" />
     <PackageReference Include="Syncfusion.Licensing" />
     <PackageReference Include="Syncfusion.Shared.Base" />

@@ -107,27 +107,18 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     /// Initializes a new instance of the <see cref="ReportsPanel"/> class with direct dependencies.
     /// </summary>
     /// <param name="vm">The ViewModel instance.</param>
-    /// <param name="factory">The Syncfusion control factory.</param>
-    internal ReportsPanel(ReportsViewModel vm, SyncfusionControlFactory factory)
-        : base(vm, ResolveLogger())
-    {
-        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        AutoScaleMode = AutoScaleMode.Dpi;
-        SafeSuspendAndLayout(InitializeControls);
-    }
-
     /// <summary>
     /// Initializes a new instance of the <see cref="ReportsPanel"/> class.
     /// </summary>
-    /// <param name="scopeFactory">The service scope factory for creating scopes.</param>
-    /// <param name="logger">Logger instance for diagnostic logging.</param>
+    /// <param name="viewModel">The ViewModel instance.</param>
+    /// <param name="controlFactory">The Syncfusion control factory.</param>
     [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-    public ReportsPanel(
-        IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<ReportsViewModel>> logger)
-        : base(scopeFactory, logger)
+    public ReportsPanel(ReportsViewModel viewModel, SyncfusionControlFactory controlFactory)
+        : base(viewModel)
     {
-        _factory = ControlFactory;
+        _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
+        AutoScaleMode = AutoScaleMode.Dpi;
+        SafeSuspendAndLayout(InitializeControls);
     }
 
     private static ILogger ResolveLogger()

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.Runtime.Serialization;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
@@ -106,6 +107,10 @@ public partial class MainForm
 
             // Restore status bar state
             RestoreStatusBarState(serializer);
+
+            // Re-fire the active theme after layout restore so docking hosts and nested Syncfusion
+            // controls repaint with the current visual style.
+            ReapplyCurrentThemeAfterLayoutRestore();
 
             _logger?.LogInformation("Workspace layout loaded successfully");
             ApplyStatus($"Layout loaded: {layoutName ?? "default"}");
@@ -454,6 +459,50 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Error auto-loading layout on shown");
+        }
+    }
+
+    private void ReapplyCurrentThemeAfterLayoutRestore()
+    {
+        try
+        {
+            var activeTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme;
+            if (string.IsNullOrWhiteSpace(activeTheme))
+            {
+                return;
+            }
+
+            // Immediate pass after deserialization/load (equivalent to post-LoadDockState refresh)
+            OnThemeServiceChanged(this, activeTheme);
+
+            // Deferred pass after pending docking/layout messages complete.
+            // This ensures newly restored hosts and nested Syncfusion controls repaint with
+            // the active theme once docking finishes final bounds calculations.
+            if (!IsDisposed && IsHandleCreated)
+            {
+                BeginInvoke((MethodInvoker)(() =>
+                {
+                    try
+                    {
+                        if (IsDisposed || Disposing)
+                        {
+                            return;
+                        }
+
+                        OnThemeServiceChanged(this, activeTheme);
+                    }
+                    catch (Exception deferredEx)
+                    {
+                        _logger?.LogDebug(deferredEx, "Deferred theme reapply after layout restore failed");
+                    }
+                }));
+            }
+
+            _logger?.LogDebug("Reapplied theme after layout restore (immediate + deferred): {Theme}", activeTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to reapply theme after layout restore");
         }
     }
 }

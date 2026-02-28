@@ -2071,7 +2071,7 @@ Single-user application scaffold (NET 9) using Syncfusion controls (pinned v30.2
 - Syncfusion license loading supports env var, file, or inline (sample left commented)
 - Logging: Serilog rolling files + basic enrichers; no structured sink beyond file yet
 - Nullable refs intentionally disabled for early simplicity
-- Next likely enhancements: richer UI automation, live theme switching via `SfSkinManager`, packaging/signing
+- Next likely enhancements: richer UI automation and expanded release automation
 
 ## Setup Scripts
 
@@ -2244,6 +2244,8 @@ pwsh ./scripts/setup-database.ps1
 # Setup Syncfusion license
 pwsh ./scripts/setup-license.ps1
 ```
+
+For MSI/ClickOnce packaging and signing workflow, see [Packaging & Signing Guide](docs/PACKAGING_SIGNING.md).
 
 ### Code Standards
 

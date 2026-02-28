@@ -967,7 +967,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
             // Alternate row coloring for readability
             // Note: AlternatingRowStyle may not be available in current Syncfusion version
-            // grid.Style.AlternatingRowStyle.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+
 
             // Selection styling
             // Note: SelectedRowStyle may not be available in current Syncfusion version
@@ -1474,10 +1474,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// <summary>
     /// Handles panel load event.
     /// </summary>
-    protected override void OnLoad(EventArgs e)
+    protected override void OnPanelLoaded(EventArgs e)
     {
-        base.OnLoad(e);
-
         if (!DesignMode)
         {
             WireupToolbarEventHandlers();

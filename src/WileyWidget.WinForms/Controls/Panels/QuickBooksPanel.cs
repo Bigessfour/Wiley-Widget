@@ -287,24 +287,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #endregion
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="QuickBooksPanel"/> class.
-    /// </summary>
-    public QuickBooksPanel(QuickBooksViewModel vm, SyncfusionControlFactory factory)
-        : base(vm, ResolveLogger())
-    {
-        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        ThemeColors.EnsureThemeAssemblyLoaded(Logger);
-        SafeSuspendAndLayout(InitializeComponent);
-    }
-
     [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-    public QuickBooksPanel(
-        IServiceScopeFactory scopeFactory,
-        ILogger<ScopedPanelBase<QuickBooksViewModel>> logger)
-        : base(scopeFactory, logger)
+    public QuickBooksPanel(QuickBooksViewModel viewModel, SyncfusionControlFactory controlFactory)
+        : base(viewModel)
     {
-        _factory = ControlFactory;
+        _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
         SafeSuspendAndLayout(InitializeComponent);
     }
@@ -458,10 +445,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// <summary>
     /// Loads the panel and initializes the ViewModel.
     /// </summary>
-    protected override void OnLoad(EventArgs e)
+    protected override void OnPanelLoaded(EventArgs e)
     {
-        base.OnLoad(e);
-
         if (ViewModel != null && !DesignMode)
         {
             // Queue async initialization on the UI thread
@@ -1945,7 +1930,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 if (_statusLabel != null && !_statusLabel.IsDisposed)
                 {
                     _statusLabel.Text = message ?? string.Empty;
-                    _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
+                    _statusLabel.ForeColor = isError ? ThemeColors.Error : Color.Empty;
                     try { _statusLabel.Invalidate(); } catch { }
                 }
             }
@@ -2240,7 +2225,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Use semantic status colors only for connection indicator (exception to theme rule)
         if (_connectionStatusLabel != null)
         {
-            _connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red;
+            _connectionStatusLabel.ForeColor = isConnected ? ThemeColors.Success : ThemeColors.Error;
         }
 
         if (_connectButton != null)

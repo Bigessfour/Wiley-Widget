@@ -615,6 +615,74 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private void ConfigureStatusProgressBinding()
+        {
+            if (_statusProgressService == null)
+            {
+                return;
+            }
+
+            _statusProgressChangedHandler ??= (_, update) => ApplyStatusProgress(update);
+            _statusProgressService.ProgressChanged -= _statusProgressChangedHandler;
+            _statusProgressService.ProgressChanged += _statusProgressChangedHandler;
+        }
+
+        private void ApplyStatusProgress(StatusProgressUpdate update)
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            void Apply()
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(update.Message))
+                    {
+                        ApplyStatus(update.Message);
+                    }
+
+                    if (_statePanel != null && !_statePanel.IsDisposed)
+                    {
+                        _statePanel.Text = update.IsActive
+                            ? update.IsIndeterminate
+                                ? "Working..."
+                                : $"{Math.Round(update.Percent ?? 0d):0}%"
+                            : "Ready";
+                    }
+
+                    if (_progressBar != null && !_progressBar.IsDisposed)
+                    {
+                        var value = (int)Math.Max(0d, Math.Min(100d, update.Percent ?? (update.IsActive ? 0d : 100d)));
+                        _progressBar.Minimum = 0;
+                        _progressBar.Maximum = 100;
+                        _progressBar.ProgressStyle = update.IsIndeterminate
+                            ? ProgressBarStyles.WaitingGradient
+                            : _progressBar.ProgressStyle;
+                        _progressBar.Visible = update.IsActive;
+                        _progressBar.Value = value;
+                    }
+
+                    _statusBar?.Invalidate();
+                    _statusBar?.Update();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "ApplyStatusProgress failed");
+                }
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke((System.Action)Apply);
+            }
+            else
+            {
+                Apply();
+            }
+        }
+
         /// <summary>Shows an error dialog and updates status text.</summary>
         private void ShowErrorDialog(string title, string message)
         {

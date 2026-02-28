@@ -137,6 +137,16 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
         }
 
+        private sealed class ProbeThemableControl : UserControl, WileyWidget.WinForms.Controls.Base.IThemable
+        {
+            public string? AppliedTheme { get; private set; }
+
+            public void ApplyTheme(string themeName)
+            {
+                AppliedTheme = themeName;
+            }
+        }
+
         [StaFact]
         public void ConstructorAndOnLoad_SetsFormTitleAndWindowState()
         {
@@ -465,6 +475,58 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 throw new Xunit.Sdk.XunitException($"Unexpected theme control name '{activeThemeControl.Name}'");
             }
 
+            form.Dispose();
+        }
+
+        [StaFact]
+        public void OnThemeServiceChanged_ReplaysThemeToOwnedForms_AndThemableChildren()
+        {
+            TestThemeHelper.EnsureOffice2019Colorful();
+
+            var provider = BuildProvider();
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+
+            var themeMock = new Mock<IThemeService>();
+            themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
+
+            var form = new TestMainForm(
+                provider,
+                configuration,
+                logger,
+                ReportViewerLaunchOptions.Disabled,
+                themeMock.Object,
+                Mock.Of<IWindowStateService>(),
+                Mock.Of<IFileImportService>(),
+                new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
+
+            SfSkinManager.SetVisualStyle(form, "Office2019Colorful");
+
+            var _ = form.Handle;
+            form.CallOnLoad();
+            form.Show();
+            Application.DoEvents();
+
+            using var ownedForm = new Form
+            {
+                Owner = form,
+                ShowInTaskbar = false,
+                StartPosition = FormStartPosition.Manual,
+                Location = new System.Drawing.Point(-2000, -2000)
+            };
+
+            var probe = new ProbeThemableControl { Dock = DockStyle.Fill };
+            ownedForm.Controls.Add(probe);
+            ownedForm.Show();
+            Application.DoEvents();
+
+            var onThemeServiceChanged = typeof(MainForm).GetMethod("OnThemeServiceChanged", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            onThemeServiceChanged.Invoke(form, new object?[] { form, "Office2019Dark" });
+            Application.DoEvents();
+
+            probe.AppliedTheme.Should().Be("Office2019Dark", "owned floating forms should replay runtime theme changes to their themable children");
+
+            ownedForm.Close();
             form.Dispose();
         }
 

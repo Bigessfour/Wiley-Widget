@@ -9,6 +9,7 @@ using System.Linq;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Dialogs
 {
@@ -109,7 +110,7 @@ namespace WileyWidget.WinForms.Dialogs
                 AutoSize = false,
                 Dock = DockStyle.Fill,
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                ForeColor = Color.Red,  // Semantic error color
+                ForeColor = AppThemeColors.Error,
                 Padding = new Padding(0, 5, 0, 10),
                 TextAlign = ContentAlignment.MiddleLeft
             };

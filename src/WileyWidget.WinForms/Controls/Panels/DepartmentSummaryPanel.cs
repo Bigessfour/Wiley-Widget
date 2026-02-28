@@ -232,7 +232,6 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Height = 24,
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
-                BackColor = Color.Transparent,
                 AccessibleName = $"{title} label"
             };
             cardPanel.Controls.Add(lblTitle);
@@ -463,19 +462,19 @@ namespace WileyWidget.WinForms.Controls.Panels
                 {
                     _lblVarianceValue.Text = ViewModel.Variance.ToString("C0", CultureInfo.CurrentCulture);
                     // Semantic status color: green for under budget, red for over budget
-                    _lblVarianceValue.ForeColor = ViewModel.Variance >= 0 ? Color.Green : Color.Red;
+                    _lblVarianceValue.ForeColor = ViewModel.Variance >= 0 ? ThemeColors.Success : ThemeColors.Error;
                 }
 
                 if (_lblOverBudgetCountValue != null)
                 {
                     _lblOverBudgetCountValue.Text = ViewModel.DepartmentsOverBudget.ToString(CultureInfo.CurrentCulture);
-                    _lblOverBudgetCountValue.ForeColor = Color.Red; // Semantic status
+                    _lblOverBudgetCountValue.ForeColor = ThemeColors.Error;
                 }
 
                 if (_lblUnderBudgetCountValue != null)
                 {
                     _lblUnderBudgetCountValue.Text = ViewModel.DepartmentsUnderBudget.ToString(CultureInfo.CurrentCulture);
-                    _lblUnderBudgetCountValue.ForeColor = Color.Green; // Semantic status
+                    _lblUnderBudgetCountValue.ForeColor = ThemeColors.Success;
                 }
             }
             catch (Exception ex)

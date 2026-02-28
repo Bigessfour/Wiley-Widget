@@ -120,13 +120,13 @@ namespace WileyWidget.WinForms.Helpers
                 if (isFallback)
                 {
                     // POLISH: Visual distinction for fallback data
-                    label.ForeColor = Color.Gray;  // Gray text to indicate fallback/deprecated data
+                    label.ForeColor = ThemeColors.Warning;
                     label.Font = new Font(label.Font.FontFamily, label.Font.Size, FontStyle.Italic);  // Italics to indicate fallback
                 }
                 else
                 {
                     // Restore normal styling
-                    label.ForeColor = SystemColors.ControlText;
+                    label.ResetForeColor();
                     label.Font = new Font(label.Font.FontFamily, label.Font.Size, FontStyle.Regular);
                 }
             }

@@ -159,65 +159,65 @@ namespace WileyWidget.WinForms.Controls.Panels
         #endregion
 
         /// <summary>
-        /// Canonical constructor with direct dependencies.
+        /// Constructor that accepts required dependencies from DI container.
         /// </summary>
-        public SettingsPanel(SettingsViewModel vm, SyncfusionControlFactory factory)
-            : base(vm, ResolveLogger())
+        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
+        public SettingsPanel(SettingsViewModel viewModel, SyncfusionControlFactory controlFactory)
+            : base(viewModel)
         {
-            _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-            AutoScaleMode = AutoScaleMode.Dpi;
+            _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
+            // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Size = new Size(1100, 760);
             MinimumSize = new Size(1024, 720);
             SafeSuspendAndLayout(InitializeComponent);
         }
 
         /// <summary>
-        /// Constructor that accepts required dependencies from DI container.
-        /// </summary>
-        [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
-        public SettingsPanel(
-            IServiceScopeFactory scopeFactory,
-            Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> logger)
-            : base(scopeFactory, logger)
-        {
-            _factory = ControlFactory;
-            // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
-        }
-
-        /// <summary>
         /// Parameterless constructor for designer support ONLY.
         /// </summary>
-        [Obsolete("Use DI constructor with IServiceScopeFactory and ILogger", error: false)]
-        public SettingsPanel() : this(ResolveServiceScopeFactory(), ResolveLogger())
+        [Obsolete("Use DI constructor with SettingsViewModel and SyncfusionControlFactory", error: false)]
+        internal SettingsPanel() : this(ResolveViewModel(), ResolveFactory())
         {
         }
 
-        private static IServiceScopeFactory ResolveServiceScopeFactory()
+        private static SettingsViewModel ResolveViewModel()
         {
             if (Program.Services == null)
             {
-                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve IServiceScopeFactory");
+                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve SettingsViewModel");
                 throw new InvalidOperationException("SettingsPanel requires DI services to be initialized. Ensure Program.Services is set before creating SettingsPanel.");
             }
             try
             {
-                var factory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(Program.Services);
-                Serilog.Log.Debug("SettingsPanel: IServiceScopeFactory resolved from DI container");
-                return factory;
+                var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(Program.Services);
+                Serilog.Log.Debug("SettingsPanel: SettingsViewModel resolved from DI container");
+                return viewModel;
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve IServiceScopeFactory from DI");
+                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve SettingsViewModel from DI");
                 throw;
             }
         }
 
-        private static Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<SettingsViewModel>> ResolveLogger()
+        private static SyncfusionControlFactory ResolveFactory()
         {
-            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<SettingsPanel>>(Program.Services)
-                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsPanel>.Instance;
+            if (Program.Services == null)
+            {
+                Serilog.Log.Error("SettingsPanel: Program.Services is null - cannot resolve SyncfusionControlFactory");
+                throw new InvalidOperationException("SettingsPanel requires DI services to be initialized. Ensure Program.Services is set before creating SettingsPanel.");
+            }
+            try
+            {
+                var factory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(Program.Services);
+                Serilog.Log.Debug("SettingsPanel: SyncfusionControlFactory resolved from DI container");
+                return factory;
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "SettingsPanel: Failed to resolve SyncfusionControlFactory from DI");
+                throw;
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -1491,7 +1491,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     if (_statusLabel != null && !_statusLabel.IsDisposed)
                     {
                         _statusLabel.Text = message ?? string.Empty;
-                        _statusLabel.ForeColor = isError ? Color.Red : SystemColors.ControlText;
+                        _statusLabel.ForeColor = isError ? ThemeColors.Error : Color.Empty;
                         try { _statusLabel.Invalidate(); } catch { }
                     }
                 }

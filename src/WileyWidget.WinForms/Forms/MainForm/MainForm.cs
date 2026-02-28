@@ -60,12 +60,15 @@ namespace WileyWidget.WinForms.Forms
         private IWindowStateService _windowStateService;
         private IFileImportService _fileImportService;
         private IStatusProgressService? _statusProgressService;
+        private EventHandler<StatusProgressUpdate>? _statusProgressChangedHandler;
         private SyncfusionControlFactory? _controlFactory;
         private DockingManager? _dockingManager;
         private bool _syncfusionDockingInitialized;
         private bool _dashboardAutoShown;
         private bool _reportViewerLaunched;
         private IServiceScope? _mainViewModelScope;
+        private System.Windows.Forms.Timer? _startupFadeTimer;
+        private bool _startupFadePrepared;
 
         // UI State
         private UIConfiguration _uiConfig = null!;
@@ -269,6 +272,12 @@ namespace WileyWidget.WinForms.Forms
                 // Unsubscribe from ThemeService to prevent memory leaks (Req 1 — SfSkinManager authority)
                 if (_themeService != null)
                     _themeService.ThemeChanged -= OnThemeServiceChanged;
+
+                if (_statusProgressService != null && _statusProgressChangedHandler != null)
+                {
+                    _statusProgressService.ProgressChanged -= _statusProgressChangedHandler;
+                    _statusProgressChangedHandler = null;
+                }
 
                 // === FIX: Prevent Dispose race with CreateHandle (Syncfusion v32.2.3 stability) ===
                 // If handle creation is in progress, don't dispose yet; let base.Dispose() handle it safely
@@ -871,6 +880,7 @@ namespace WileyWidget.WinForms.Forms
         {
             // Fields are already assigned by Chrome.cs directly; this method serves
             // as a single validation / hook point if additional logic is needed.
+            ConfigureStatusProgressBinding();
             _logger?.LogDebug("SetStatusBarPanels called — all panels assigned");
         }
 

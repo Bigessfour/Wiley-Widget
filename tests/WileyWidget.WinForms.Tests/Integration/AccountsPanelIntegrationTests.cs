@@ -100,6 +100,14 @@ public class AccountsPanelIntegrationTests : BasePanelIntegrationTest<AccountsPa
         {
             return false;
         }
+        catch (System.Windows.Automation.ElementNotAvailableException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static bool TryFocusWindow(Window window)
@@ -110,6 +118,10 @@ public class AccountsPanelIntegrationTests : BasePanelIntegrationTest<AccountsPa
             return true;
         }
         catch (System.Runtime.InteropServices.COMException)
+        {
+            return false;
+        }
+        catch (System.Windows.Automation.ElementNotAvailableException)
         {
             return false;
         }
