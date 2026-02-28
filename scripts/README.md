@@ -1,185 +1,151 @@
-# Wiley Widget Development Scripts (Python-First)
+# Wiley Widget Development Scripts (PowerShell Local)
 
-This directory contains **Python-based development scripts** that provide a complete, cross-platform development environment management system. The Python approach follows industry best practices for maintainability, testing, and cross-platform compatibility.
+This directory contains **PowerShell-based development scripts** for local desktop development. All scripts are designed for Windows environments with .NET/SQL Express, no cloud dependencies.
 
-## 🐍 Python Script Ecosystem
+## 🪟 PowerShell Script Ecosystem
 
 ### Core Development Workflow
 
-The Python scripts handle the complete development lifecycle:
+The PowerShell scripts handle local development tasks:
 
-#### `dev-start.py` - Main Orchestrator
+#### `build.ps1` - Build Script
 
-**Purpose**: Complete development environment startup and management
+**Purpose**: Compile and package the application
 
-- **Process Cleanup**: Removes orphaned .NET processes
-- **Conflict Detection**: Checks for running WileyWidget instances
-- **Build Hygiene**: Cleans artifacts with `dotnet clean`
-- **Performance**: Local optimizations (e.g., EF queries, Syncfusion rendering)
-- **Development Launch**: Starts `dotnet watch` with proper monitoring
+- **Clean Build**: `dotnet clean` then `dotnet build`
+- **Release Mode**: Supports debug/release configurations
+- **Self-Contained**: Packages as single EXE for distribution
 
-#### `load-env.py` - Environment Management
+#### `test.ps1` - Test Runner
 
-**Purpose**: Secure environment variable loading and validation
+**Purpose**: Execute unit and integration tests
 
-- **.env Loading**: Loads configuration from encrypted .env file
-- **Local Validation**: Tests SQL Express and file paths
-- **Status Reporting**: Shows current environment state
-- **Security**: Masks sensitive data in logs
+- **xUnit Execution**: Runs all test projects
+- **Coverage**: Optional coverage reporting
+- **Filter Support**: Run specific test categories
 
-#### `cleanup-dotnet.py` - Process Management
+#### `setup-database.ps1` - Database Setup
 
-**Purpose**: Safe cleanup of development processes
+**Purpose**: Initialize local SQL Express database
 
-- **Orphan Detection**: Finds hanging .NET processes
-- **Build Cleanup**: Removes temporary files
-- **Interactive Mode**: Confirms before killing processes
-- **Force Mode**: Automated cleanup for CI/CD
+- **DB Creation**: Creates WileyWidget database
+- **Migrations**: Applies EF Core migrations
+- **Seed Data**: Populates initial data
 
-#### `setup-local.ps1` - Local Environment Setup
+#### `quickbooks/setup-oauth.ps1` - QuickBooks OAuth Setup
 
-**Purpose**: Local DB, license, and env setup
+**Purpose**: Configure desktop OAuth2 for QuickBooks sync
 
-- **Env Setup**: Configures .NET/SQL paths
-- **Subscription Management**: Configures target subscription
-- **Connection Testing**: Validates SQL Express and file access
-- **MCP Integration**: Sets up Model Context Protocol servers
+- **Browser Auth**: Launches OAuth flow in default browser
+- **Token Storage**: Saves encrypted tokens to %APPDATA%
+- **DPAPI Encryption**: Uses Windows Data Protection API
 
-#### `setup-python.py` - Python Environment
+#### `cleanup.ps1` - Process Cleanup
 
-**Purpose**: Ensures proper Python environment for development
+**Purpose**: Clean up development artifacts
 
-- **Dependency Check**: Validates required Python packages
-- **Virtual Environment**: Sets up isolated development environment
-- **Path Configuration**: Configures Python paths and executables
+- **Orphan Processes**: Kills hanging .NET processes
+- **Temp Files**: Removes build artifacts
+- **Logs**: Clears old log files
 
-## 📊 Evaluation Against Best Practices
+## 📊 PowerShell Best Practices
 
-### ✅ Industry Standards Compliance
+### ✅ Windows Standards Compliance
 
-- **Cross-Platform**: Works on Windows, Linux, macOS
-- **Maintainable**: Clean code with proper error handling
-- **Testable**: Modular design supports unit testing
-- **Documented**: Comprehensive inline documentation
-- **Version Controlled**: Text-based, diff-friendly scripts
+- **Native Windows**: Uses PowerShell 7+ idioms and cmdlets
+- **Maintainable**: Functions with param blocks and validation
+- **Error Handling**: Try/catch with proper error actions
+- **Documented**: Comment-based help and examples
+- **PSScriptAnalyzer**: Passes linting rules
 
-### ✅ Local Setup Alignment
+### ✅ Local Desktop Alignment
 
-- **Python Usage**: Local scripting (pathlib, subprocess for .NET)
-- **Security Best Practices**: Environment variables, Key Vault integration
-- **Resource Management**: Proper cleanup and monitoring
-- **Performance Optimization**: Caching and connection pooling
-- **Monitoring**: Structured logging and status reporting
+- **PowerShell Usage**: Local automation (dotnet, sqlcmd, browser launch)
+- **Security**: DPAPI for secrets, no cloud exposure
+- **Resource Management**: Process cleanup and file management
+- **Performance**: Efficient .NET CLI calls
+- **Monitoring**: Write-Host for status, structured logging
 
-### ✅ Migration Benefits
+### ✅ Desktop Focus Benefits
 
-**Before**: Scattered PowerShell scripts with platform limitations
-**After**: Unified Python ecosystem with enterprise-grade features
+**Approach**: PowerShell-first for Windows desktop development
+- No cross-platform needs (desktop-only app)
+- Direct .NET/SQL integration
+- Simple, maintainable scripts
+- VS Code tasks integration
 
-## 🧹 Legacy Script Cleanup
+## 🧹 Script Organization
 
-### Archived Scripts (in `deprecated-backup/`)
+### Active Scripts
 
-The following PowerShell scripts have been replaced by Python equivalents:
+- `build.ps1` - Build and package
+- `test.ps1` - Run tests
+- `setup-database.ps1` - DB initialization
+- `quickbooks/setup-oauth.ps1` - OAuth setup
+- `cleanup.ps1` - Maintenance
 
-- `dev-start.ps1` → `dev-start.py`
-- `load-env.ps1` → `load-env.py`
-- `cleanup-dotnet.ps1` → `cleanup-dotnet.py`
-- `setup-local.ps1` → Local scripts
-- `setup-license.ps1` → Integrated into application startup
-- `test-database-connection.ps1` → Integrated into `load-env.py`
+### VS Code Integration
 
-### Migration Notes
+Scripts integrate with VS Code tasks (see .vscode/tasks.json):
 
-- All functionality preserved and enhanced
-- Python versions include additional validation and error handling
-- Cross-platform compatibility added
-- Performance optimizations integrated
-- Comprehensive logging and monitoring added
+- `WileyWidget: Build` → `build.ps1`
+- `test` → `test.ps1`
+- Custom tasks for DB setup and cleanup
 
-## 🧪 Testing Framework
+## 🧪 Testing Scripts
 
-The Python scripts are designed with **testability first** - all business logic is in importable functions that can be unit tested.
+Scripts include basic validation but rely on xUnit for app testing.
 
-### Test Structure
+### Validation Examples
 
-```
-tests/
-├── test_cleanup_dotnet.py    # Tests for cleanup-dotnet.py
-├── test_load_env.py         # Tests for load-env.py
-└── test_dev_start.py        # Tests for dev-start.py
+```powershell
+# build.ps1 validation
+if (-not (Test-Path "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj")) {
+    throw "Project file not found"
+}
 ```
 
-### Running Tests
+### Running Scripts
 
-```bash
-# Install test dependencies
-pip install -r requirements-test.txt
+```powershell
+# Build release
+.\scripts\build.ps1 -Configuration Release
 
-# Run all tests
-pytest
+# Run tests
+.\scripts\test.ps1 -Filter "QuickBooks*"
 
-# Run specific test file
-pytest tests/test_cleanup_dotnet.py
-
-# Run with coverage
-pytest --cov=scripts --cov-report=html
-
-# Run parallel tests
-pytest -n auto
+# Setup DB
+.\scripts\setup-database.ps1
 ```
 
-### Test Examples
+## 📈 PowerShell Benefits
 
-```python
-# Example test for get_dotnet_processes()
-@patch('subprocess.run')
-def test_get_dotnet_processes_success(self, mock_run):
-    mock_result = MagicMock()
-    mock_result.stdout = '"dotnet.exe","1234","Console","1","10,000 K"'
-    mock_run.return_value = mock_result
-
-    processes = get_dotnet_processes()
-    assert len(processes) == 1
-    assert processes[0] == ('dotnet.exe', '1234')
-```
-
-### Testing Benefits
-
-- **Confidence**: Verify script behavior before deployment
-- **Regression Prevention**: Catch breaking changes
-- **Documentation**: Tests serve as usage examples
-- **CI/CD Integration**: Automated testing in pipelines
-
-## 📈 Improvements Over Legacy Approach
-
-| Aspect           | Legacy (PowerShell) | Current (Python)       |
-| ---------------- | ------------------- | ---------------------- |
-| Platform Support | Windows-only        | Cross-platform         |
-| Maintainability  | Limited             | High (rich ecosystem)  |
-| Testing          | Difficult           | pytest framework       |
-| Error Handling   | Basic               | Comprehensive          |
-| Documentation    | Inline comments     | Structured docs        |
-| Performance      | CLI-dependent       | Optimized with caching |
-| Security         | Variable            | Enhanced validation    |
-| Monitoring       | Basic output        | Structured logging     |
+| Aspect           | PowerShell Scripts  | Benefits              |
+| ---------------- | ------------------- | --------------------- |
+| Platform Support | Windows-native      | Optimized for desktop |
+| Maintainability  | PSScriptAnalyzer    | Linting and standards |
+| Testing          | Pester framework    | PowerShell testing    |
+| Error Handling   | Try/catch           | Structured exceptions |
+| Documentation    | Comment-based help  | Get-Help integration  |
+| Performance      | Direct .NET calls   | No overhead           |
+| Security         | DPAPI integration   | Windows security      |
+| Monitoring       | Write-Host/Verbose  | Console output        |
 
 ## 🔧 Development Guidelines
 
-- **Python First**: All new scripts should be Python-based
-- **Validation Exception**: Panel compliance audits are maintained in `scripts/validation/Validate-PanelDoneChecklist.ps1`
-- **Modular Design**: Separate concerns into focused scripts
+- **PowerShell First**: All scripts use PowerShell 7+ idioms
+- **Modular Design**: Functions with param validation
 - **Error Handling**: Use try/catch with proper exit codes
-- **Logging**: Use structured logging for all operations
-- **Testing**: Include unit tests for critical functions
+- **Logging**: Write-Verbose for debug, Write-Host for status
+- **Testing**: Manual validation; app tests via xUnit
 - **Documentation**: Update this README for any new scripts
 
 ## 📚 Related Documentation
 
 - [.NET CLI Docs](https://learn.microsoft.com/dotnet/core/tools/)
-- [Python Best Practices](https://python-guide.org/)
 - [PowerShell Docs](https://learn.microsoft.com/powershell/)
 - [Syncfusion Licensing](https://help.syncfusion.com/windowsforms/licensing/)
+- [QuickBooks OAuth](https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization)
 
 # Show current status
 

@@ -35,11 +35,11 @@ this.Controls.Add(grid);
 ```
 
 **Factory Sets:**
-✅ ThemeName (v32.2.3)  
-✅ SfSkinManager applied  
-✅ String filter protection  
-✅ AllowEditing/Filtering/Sorting  
-✅ SelectionMode, FilterRowPosition  
+✅ ThemeName (v32.2.3)
+✅ SfSkinManager applied
+✅ String filter protection
+✅ AllowEditing/Filtering/Sorting
+✅ SelectionMode, FilterRowPosition
 ✅ EditorSelectionBehavior, AddNewRowPosition
 
 ## 🔘 SfButton
@@ -55,8 +55,8 @@ this.Controls.Add(saveButton);
 ```
 
 **Factory Sets:**
-✅ ThemeName  
-✅ Default size (120x32)  
+✅ ThemeName
+✅ Default size (120x32)
 ✅ Flat style, Segoe UI font
 
 ## 📈 RadialGauge
@@ -72,9 +72,9 @@ this.Controls.Add(gauge);
 ```
 
 **Factory Sets:**
-✅ Theme applied  
-✅ Min/Max/Value  
-✅ FrameType, GaugeArcColor  
+✅ Theme applied
+✅ Min/Max/Value
+✅ FrameType, GaugeArcColor
 ✅ Scale/ticks
 
 ## 📊 ChartControl
@@ -94,9 +94,9 @@ this.Controls.Add(chart);
 ```
 
 **Factory Sets:**
-✅ Theme applied  
-✅ Axes configured  
-✅ Legend visible  
+✅ Theme applied
+✅ Axes configured
+✅ Legend visible
 ✅ Title, docked fill
 
 ## 🎨 SfComboBox
@@ -114,9 +114,9 @@ this.Controls.Add(comboBox);
 ```
 
 **Factory Sets:**
-✅ ThemeName  
-✅ DropDownStyle  
-✅ Size (200x28), AllowFilter  
+✅ ThemeName
+✅ DropDownStyle
+✅ Size (200x28), AllowFilter
 ✅ AutoCompleteMode
 
 ## 📑 TabControlAdv
@@ -133,8 +133,8 @@ this.Controls.Add(tabControl);
 ```
 
 **Factory Sets:**
-✅ ThemeName  
-✅ TabStyle (Metro), Alignment (Top)  
+✅ ThemeName
+✅ TabStyle (Metro), Alignment (Top)
 ✅ ItemSize
 
 ## 🎀 RibbonControlAdv
@@ -151,8 +151,8 @@ this.Controls.Add(ribbon);
 ```
 
 **Factory Sets:**
-✅ ThemeName  
-✅ Docked top, MenuButtonText  
+✅ ThemeName
+✅ Docked top, MenuButtonText
 ✅ RibbonStyle (Office2016), OfficeColorScheme
 
 ## 🪟 DockingManager
@@ -167,8 +167,8 @@ var dockingManager = _controlFactory.CreateDockingManager(this, dm =>
 ```
 
 **Factory Sets:**
-✅ ThemeName  
-✅ HostControl, DockBehavior  
+✅ ThemeName
+✅ HostControl, DockBehavior
 ✅ EnableDocumentMode, AnimateAutoHiddenWindow
 
 ## 🛠️ Custom Controls
