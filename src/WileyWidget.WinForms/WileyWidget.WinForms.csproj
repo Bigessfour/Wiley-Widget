@@ -11,6 +11,7 @@
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600;MSB3277</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- CI pipeline smoke test marker - 2026-02-28 v32.2.3-Syncfusion-Ready -->
     <!-- Disable default SDK Content auto-includes to avoid NETSDK1022 duplicates with Razor SDK -->
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <!-- .NET 10 Runtime Performance Optimizations -->
