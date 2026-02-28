@@ -8,8 +8,9 @@ on:
 jobs:
   publish:
     runs-on: windows-2022
+    # trunk-ignore(checkov/CKV2_GHA_1): contents:write is scoped per-resource, not write-all
     permissions:
-      contents: write # For creating releases
+      contents: write # Required for softprops/action-gh-release to create the release
 
     steps:
       - uses: actions/checkout@v4
