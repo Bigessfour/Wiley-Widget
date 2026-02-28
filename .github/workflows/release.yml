@@ -8,9 +8,6 @@ on:
 jobs:
   publish:
     runs-on: windows-2022
-    # trunk-ignore(checkov/CKV2_GHA_1): contents:write is scoped per-resource, not write-all
-    permissions:
-      contents: write # Required for softprops/action-gh-release to create the release
 
     steps:
       - uses: actions/checkout@v4
@@ -46,19 +43,96 @@ jobs:
           Copy-Item "./publish/WileyWidget.WinForms.exe" "./publish/WileyWidget-$version.exe"
           echo "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
 
-      - name: Post-publish BackColor gate
+      - name: Verify artifact size (sanity check)
+        shell: pwsh
+        run: |
+          $exe = "./publish/WileyWidget-$env:GITHUB_REF_NAME.exe"
+          $sizeMB = (Get-Item $exe).Length / 1MB
+          Write-Host "Artifact size: $([math]::Round($sizeMB, 1)) MB"
+          if ($sizeMB -lt 30) {
+            Write-Error "EXE is suspiciously small ($([math]::Round($sizeMB,1)) MB) — expected ≥30 MB for a Syncfusion self-contained build. Publish may have failed silently."
+            exit 1
+          }
+          Write-Host "Artifact size check passed."
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-exe
+          path: ./publish/WileyWidget-${{ github.ref_name }}.exe
+          retention-days: 1
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Publish Validation — runs in parallel with publish to gate the final release
+  # Checks: Syncfusion version pin, factory enforcement, no unauthorized colors
+  # ─────────────────────────────────────────────────────────────────────────────
+  validate-release:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syncfusion version pin gate (must be 32.2.3)
+        shell: pwsh
+        run: |
+          $expected = "32.2.3"
+          $violations = Select-String -Path "Directory.Packages.props" `
+            -Pattern 'Include="Syncfusion\.' |
+            Where-Object { $_.Line -notmatch $expected -and $_.Line -notmatch '<!--' }
+          if ($violations) {
+            Write-Error "Syncfusion version drift detected — all packages must be $expected :`n$($violations | Format-List | Out-String)"
+            exit 1
+          }
+          Write-Host "Syncfusion version pin gate passed — all packages at $expected."
+
+      - name: SyncfusionControlFactory enforcement gate
+        shell: pwsh
+        run: |
+          # Detect direct instantiation of Syncfusion controls bypassing SyncfusionControlFactory.
+          # Pattern: `new Sf` or `new RibbonControlAdv` / `new DockingManager` etc. outside the factory itself.
+          $factoryFile = "src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs"
+          $sfPatterns = @('new SfDataGrid\b','new SfTreeGrid\b','new SfListView\b',
+                          'new RibbonControlAdv\b','new DockingManager\b','new SfSkinManager\b')
+          $pattern = $sfPatterns -join '|'
+          $hits = Get-ChildItem -Path src -Recurse -Filter "*.cs" |
+            Where-Object { $_.FullName -notmatch [regex]::Escape($factoryFile) } |
+            Select-String -Pattern $pattern
+          if ($hits) {
+            Write-Error "Direct Syncfusion control instantiation detected (bypasses SyncfusionControlFactory):`n$($hits | Format-List | Out-String)"
+            exit 1
+          }
+          Write-Host "SyncfusionControlFactory enforcement gate passed."
+
+      - name: SfSkinManager authority gate (no unauthorized BackColor/ForeColor)
         shell: pwsh
         run: |
           $hits = Get-ChildItem -Path src -Recurse -Filter "*.cs" |
-            Select-String -Pattern '\.BackColor\s*=' |
-            Where-Object { $_.Line -notmatch 'SfSkinManager|ThemeColors\.ApplyTheme|# allowed' }
+            Select-String -Pattern '\.(BackColor|ForeColor)\s*=' |
+            Where-Object {
+              $_.Line -notmatch 'SfSkinManager|ThemeColors\.ApplyTheme|Color\.Red|Color\.Green|Color\.Orange|# allowed'
+            }
           if ($hits) {
-            Write-Error "BackColor violation(s) detected in source — fix before releasing:`n$($hits | Format-List | Out-String)"
+            Write-Error "SfSkinManager authority violation(s) — unauthorized BackColor/ForeColor assignments:`n$($hits | Format-List | Out-String)"
             exit 1
           }
-          Write-Host "BackColor gate passed — no unauthorized color assignments found."
+          Write-Host "SfSkinManager authority gate passed."
 
-      - name: Create Release
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Create Release — only runs when BOTH publish and validate-release pass
+  # ─────────────────────────────────────────────────────────────────────────────
+  create-release:
+    runs-on: windows-2022
+    needs: [publish, validate-release]
+    # trunk-ignore(checkov/CKV2_GHA_1): contents:write is scoped per-resource, not write-all
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-exe
+          path: ./publish
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: ./publish/WileyWidget-${{ github.ref_name }}.exe
