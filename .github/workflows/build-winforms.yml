@@ -188,7 +188,6 @@ jobs:
           exit 0
 
       - name: Run WinForms startup test (capture log)
-        continue-on-error: true
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
@@ -289,7 +288,7 @@ jobs:
 
       - name: Build MCP server project
         id: mcp-build
-        continue-on-error: true  # project may not exist yet; skip stress run gracefully
+        continue-on-error: true # project may not exist yet; skip stress run gracefully
         run: dotnet build tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Run strict ribbon stress script
