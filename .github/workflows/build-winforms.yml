@@ -96,6 +96,9 @@ jobs:
       - name: Restore solution
         run: dotnet restore WileyWidget.sln --verbosity minimal
 
+      - name: Restore WinForms test project
+        run: dotnet restore tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --verbosity minimal
+
       - name: Build solution (capture log)
         shell: pwsh
         run: |
@@ -179,7 +182,10 @@ jobs:
             --no-build `
             --list-tests `
             --filter "FullyQualifiedName~MainFormStartupIntegrationTests" `
+            --blame-hang-timeout 60s `
             -v minimal *>&1 | Tee-Object -FilePath test-discovery.log
+          # Exit 0 even when no tests match the filter (discovery is informational)
+          exit 0
 
       - name: Run WinForms startup test (capture log)
         continue-on-error: true
@@ -192,9 +198,11 @@ jobs:
             --filter "FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions" `
             --logger "console;verbosity=detailed" `
             --logger "trx;LogFileName=startup-test.trx" `
-            --results-directory ${{ github.workspace }}\TestResults *>&1 | Tee-Object -FilePath test.log
+            --results-directory ${{ github.workspace }}\TestResults `
+            --blame-hang-timeout 3m *>&1 | Tee-Object -FilePath test.log
           Set-Content -Path test-exitcode.txt -Value $LASTEXITCODE
         env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
           WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD: ${{ matrix.config.dashboardAutoLoad }}
           WILEYWIDGET_TEST_DISABLE_DOCKING: ${{ matrix.config.disableDocking }}
           WILEYWIDGET_TEST_DISABLE_RIBBON: ${{ matrix.config.disableRibbon }}
