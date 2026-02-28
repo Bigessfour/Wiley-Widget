@@ -232,8 +232,8 @@ The API key is not set correctly or is still the placeholder value.
 
 ✅ **DO:**
 
-- Use user-secrets for local development
-- Use Azure Key Vault or similar for production
+- Use DPAPI-encrypted secrets for local development
+- Use DPAPI for production (desktop app)
 - Use environment variables in CI/CD pipelines
 - Add `secrets.json` to `.gitignore` (already configured)
 

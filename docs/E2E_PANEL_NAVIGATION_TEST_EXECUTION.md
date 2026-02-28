@@ -234,7 +234,7 @@ The test script exercises these real-world scenarios:
 - [ ] Add UI automation with pywinauto to verify actual panel visibility
 - [ ] Mock DI container to test panel instantiation
 - [ ] Add regression test for ribbon group changes
-- [ ] Implement CI/CD integration (GitHub Actions/Azure Pipelines)
+- [ ] Implement CI/CD integration (GitHub Actions)
 
 ### Documentation
 
