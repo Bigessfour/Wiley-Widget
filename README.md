@@ -10,7 +10,7 @@
 [![Tests](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
 [![Security](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/security-scan.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
 
-**Version:** v0.1.0 (stable desktop)
+**Version:** v0.1.1 (stable desktop)
 **Last Updated:** February 28, 2026
 **Framework:** .NET 10.0 (self-contained Win-x64 EXE)
 **UI:** Syncfusion WinForms v32.2.3 (SfDataGrid, DockingManager, SfSkinManager themes)
