@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
-          token: ${{ secrets.PAT_FOR_AUTO_FIX }}
+          token: ${{ secrets.PAT_FOR_AUTO_FIX || github.token }}
           fetch-depth: 0
 
       - name: Setup Python

@@ -102,6 +102,12 @@ jobs:
           dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { Write-Error "Build failed; see build.log" }
 
+      - name: Build WinForms test project
+        shell: pwsh
+        run: |
+          dotnet build tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build-tests.log
+          if ($LASTEXITCODE -ne 0) { Write-Error "Test project build failed; see build-tests.log" }
+
       - name: Syncfusion 32.2.3 Architecture Compliance
         shell: pwsh
         run: |
@@ -238,6 +244,7 @@ jobs:
           name: ci-diagnostics-${{ matrix.config.name }}
           path: |
             build.log
+            build-tests.log
             test.log
             test-discovery.log
             test-exitcode.txt

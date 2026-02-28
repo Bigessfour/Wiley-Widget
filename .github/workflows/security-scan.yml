@@ -1,1 +1,46 @@
-name: Security Scan\n\non:\n  push:\n    branches: [ main ]\n  pull_request:\n    branches: [ main ]\n\npermissions:\n  contents: read\n\njobs:\n  security:\n    runs-on: ubuntu-latest\n    steps:\n    - name: Checkout code\n      uses: actions/checkout@v4\n\n    - name: Dependency Review\n      uses: actions/dependency-review-action@v4\n      with:\n        fail-on-severity: high\n\n    - name: CodeQL Analysis\n      uses: github/codeql-action/analyze@v3\n      with:\n        languages: csharp\n        queries: security-and-quality
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  security:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+          queries: security-and-quality
+
+      - name: Restore solution
+        run: dotnet restore WileyWidget.sln
+
+      - name: Build solution
+        run: dotnet build WileyWidget.sln --no-restore --configuration Release
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
