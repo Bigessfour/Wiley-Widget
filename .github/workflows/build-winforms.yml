@@ -102,6 +102,69 @@ jobs:
           dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { Write-Error "Build failed; see build.log" }
 
+      - name: Syncfusion 32.2.3 Architecture Compliance
+        shell: pwsh
+        run: |
+          # Baselines represent known existing violations at time of check introduction (2026-02-28).
+          # Build FAILS if violation count EXCEEDS the baseline (regression detected).
+          # Build PASSES (with warnings) if violations stay at or below baseline.
+          # Reduce baselines as violations are fixed.
+          $factoryBaseline = 10
+          $themeBaseline   = 20
+          $failed = $false
+
+          # 1 — Version pin: every Syncfusion package entry must be exactly 32.2.3 (hard fail)
+          $drift = Select-String -Path 'Directory.Packages.props' -Pattern 'Include="Syncfusion\.' |
+                   Where-Object { $_.Line -notmatch 'Version="32\.2\.3"' }
+          if ($drift) {
+            Write-Error "❌ Syncfusion version drift detected (expected 32.2.3 — update baseline or revert package change):"
+            $drift | ForEach-Object { Write-Host "  LINE $($_.LineNumber): $($_.Line.Trim())" }
+            $failed = $true
+          } else {
+            Write-Host "✅ Version pin: all Syncfusion packages = 32.2.3"
+          }
+
+          # 2 — Factory enforcement: no direct Syncfusion control instantiation outside factory/designer files
+          $controlPattern = 'new\s+(SfDataGrid|SfListView|SfTreeGrid|SfButton|SfComboBox|SfGroupView|SfDateTimeEdit|SfNumericTextBox|SfDatePicker|SfTimePicker|SfCalendar|SfMaskedEdit|SfBadge)\s*[({]'
+          $directNew = git grep -n -E $controlPattern -- 'src/WileyWidget.WinForms' 2>$null |
+                       Where-Object { $_ -notmatch 'SyncfusionControlFactory\.cs|ControlFactory\.cs|\.Designer\.cs' }
+          $factoryCount = ($directNew | Measure-Object).Count
+          if ($factoryCount -gt $factoryBaseline) {
+            Write-Error "❌ Factory violations INCREASED from baseline $factoryBaseline → $factoryCount. New direct instantiations must use SyncfusionControlFactory:"
+            $directNew | ForEach-Object { Write-Host "  $_" }
+            $failed = $true
+          } elseif ($factoryCount -gt 0) {
+            Write-Warning "⚠️  Factory enforcement: $factoryCount existing violation(s) (baseline=$factoryBaseline, no regression). Fix these to reduce the baseline."
+            $directNew | ForEach-Object { Write-Host "  $_" }
+          } else {
+            Write-Host "✅ Factory enforcement: no direct Syncfusion control instantiation detected"
+          }
+
+          # 3 — Theme authority: no manual BackColor/ForeColor (semantic Color.Red/Green/Orange excepted)
+          $colorHits = git grep -n -E '\.(BackColor|ForeColor)\s*=' -- 'src/WileyWidget.WinForms' 2>$null |
+                       Where-Object { $_ -notmatch 'Color\.(Red|Green|Orange|Transparent)' } |
+                       Where-Object { $_ -notmatch '//\s*OK:' }
+          $themeCount = ($colorHits | Measure-Object).Count
+          if ($themeCount -gt $themeBaseline) {
+            Write-Error "❌ Theme violations INCREASED from baseline $themeBaseline → $themeCount. New manual color assignments bypass SfSkinManager:"
+            $colorHits | ForEach-Object { Write-Host "  $_" }
+            $failed = $true
+          } elseif ($themeCount -gt 0) {
+            Write-Warning "⚠️  Theme authority: $themeCount existing violation(s) (baseline=$themeBaseline, no regression). Fix these to reduce the baseline."
+            $colorHits | ForEach-Object { Write-Host "  $_" }
+          } else {
+            Write-Host "✅ Theme authority: no unauthorized BackColor/ForeColor assignments"
+          }
+
+          Write-Host ""
+          Write-Host "── Syncfusion Compliance Summary ──────────────────"
+          Write-Host "  Version pin:        $(if (-not $drift) { '✅ PASS' } else { '❌ FAIL' })"
+          Write-Host "  Factory violations: $factoryCount / $factoryBaseline baseline $(if ($factoryCount -gt $factoryBaseline) { '❌ REGRESSION' } elseif ($factoryCount -gt 0) { '⚠️  existing debt' } else { '✅ CLEAN' })"
+          Write-Host "  Theme violations:   $themeCount / $themeBaseline baseline $(if ($themeCount -gt $themeBaseline) { '❌ REGRESSION' } elseif ($themeCount -gt 0) { '⚠️  existing debt' } else { '✅ CLEAN' })"
+          Write-Host "────────────────────────────────────────────────────"
+
+          if ($failed) { exit 1 }
+
       - name: Discover WinForms startup test
         shell: pwsh
         run: |
