@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    permissions:
+      contents: write  # For creating releases
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Publish self-contained EXE
+      run: dotnet publish src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
+        --configuration Release
+        --runtime win-x64
+        --self-contained true
+        -p:PublishSingleFile=true
+        -p:PublishTrimmed=true
+        -p:IncludeNativeLibrariesForSelfExtract=true
+        --output ./publish
+        --no-build
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./publish/WileyWidget.WinForms.exe
+        generate_release_notes: true
+        draft: false
+        prerelease: false

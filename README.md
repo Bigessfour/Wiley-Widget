@@ -1,489 +1,139 @@
 # Wiley Widget — Municipal Finance Desktop
 
-## Current production UI: WinForms + .NET 9
+## Wiley Widget — Municipal Finance Desktop App
 
-[![.NET Version](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
-[![WinForms](https://img.shields.io/badge/UI-Windows%20Forms-blue.svg)](https://docs.microsoft.com/dotnet/desktop/winforms/)
+[![.NET](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
+[![WinForms](https://img.shields.io/badge/UI-WinForms-blue.svg)](https://learn.microsoft.com/dotnet/desktop/winforms/)
+[![Syncfusion](https://img.shields.io/badge/Syncfusion-32.2.3-orange.svg)](https://www.syncfusion.com/products/communitylicense)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Build Status](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml)
+[![Build](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
+[![Tests](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
+[![Security](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/security-scan.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
 
-**Version:** 1.1.0-winforms
-**Last Updated:** January 9, 2026
-**Framework:** .NET 10.0
-**UI Framework:** Windows Forms + Syncfusion WinForms Controls v32.1.19
-**Architecture:** N-Tier Layered + MVVM
+**Version:** v0.1.0 (stable desktop)
+**Last Updated:** February 28, 2026
+**Framework:** .NET 10.0 (self-contained Win-x64 EXE)
+**UI:** Syncfusion WinForms v32.2.3 (SfDataGrid, DockingManager, SfSkinManager themes)
+**Architecture:** Layered (Presentation/Business/Data) with event-driven MVVM
 
-Fast, stable, zero markup compilation issues. Uses Syncfusion WinForms controls for grids, charts, and data management.
+Self-contained Windows desktop app for municipal budget analysis, QuickBooks sync, and financial reporting. No cloud dependencies—runs locally with SQL Express.
 
-### Syncfusion WinForms v32.1.19
+### Syncfusion Essentials
+- **SfDataGrid**: Data binding/grids
+- **DockingManager**: Panel docking
+- **SfSkinManager**: Theme enforcement (Office2019Colorful default; cascades to owned forms)
+- **RibbonControlAdv**: Navigation (toggleable)
 
-- **ChartControl**: Classic WinForms charting via `Syncfusion.Chart.Windows`
-- **SfDataGrid**: Advanced data binding and reporting capabilities
-- **DockingManager**: Professional docking panel management
-- **SfSkinManager**: Single-source theming system (Office2019Colorful default)
-- **Ribbon**: Modern toolbar and menu system with full MVVM support
-
-See: [Syncfusion WinForms Documentation](https://help.syncfusion.com/windowsforms/overview) and [v32.1.19 Release Notes](https://www.nuget.org/packages/Syncfusion.Chart.Windows/32.1.19)
-
----
-
-## 📑 Table of Contents
-
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [QuickBooks Sandbox Integration](#quickbooks-sandbox-integration)
-- [Configuration & Secrets](#configuration--secrets)
-- [Configuration & Secrets](#configuration--secret-management)
-- [Architecture](#%EF%B8%8F-architecture)
-- [Core Features](#core-features)
-- [Technology Stack](#technology-stack)
-- [Development](#development)
-- [Testing](#testing)
-- [QuickBooks Integration](#quickbooks-integration)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
+[Docs](https://help.syncfusion.com/windowsforms/overview) | [License](https://www.syncfusion.com/products/communitylicense)
 
 ---
 
-## Overview
-
-WileyWidget is a modern Windows desktop application for municipal budget management and financial analysis. Built with **Windows Forms + .NET 10** and **Syncfusion WinForms v32.1.19**, it features a **clean N-tier layered architecture** with pure MVVM separation, Entity Framework Core integration, and local SQL Server Express data storage.
-
-### Key Capabilities
-
-- **Pure Layered Architecture**: Presentation → Business → Data → Domain layers with clear separation of concerns
-- **N-Tier Design**: Models, Data, Business, and UI layers for enterprise-grade maintainability
-- **Syncfusion Integration**: DockingManager panels, SfDataGrid data binding, SfSkinManager theming
-- **MVVM Pattern**: Complete Windows Forms MVVM implementation with command binding and property change notification
-- **Entity Framework Core**: Latest EF Core with SQL Server Express for local data storage
-- **Dialog Management**: Service-based dialog system for modal interactions
-- **Region-Based Navigation**: View composition and dynamic navigation with plugin architecture
-- **Secure Secrets**: DPAPI-encrypted credential storage for API keys and licenses
-- **AI Integration**: Microsoft.Extensions.AI with optional xAI Grok integration
-- **QuickBooks Online**: OAuth2 integration for financial data synchronization
-- **Comprehensive Testing**: Unit, integration, and UI tests with >70% coverage
-- **CI/CD Pipeline**: Automated build, test, and release workflows with Trunk integration
-
-### Project Status (v1.1.0)
-
-**Current Phase:** Stable Release (v0.2.0)
-**Architecture:** ✅ Standardized on pure patterns
-**Code Quality:** ✅ 88 legacy files removed, 71% script reduction
-**Documentation:** ✅ Active technical docs, legacy docs removed
-**Build Status:** ✅ Automated CI/CD with Trunk quality gates
-**Testing:** ✅ Comprehensive test suite with >70% coverage
-
-**Active Scripts:** 24 essential automation scripts (down from 84)
-**Active Docs:** 51 technical documentation files (focused and relevant)
-**Theme Files:** 1 single source of truth (`WileyTheme-Syncfusion.xaml`)
-
----
-
-## 📁 Project Structure
-
-WileyWidget follows a clean, layered architecture with organized file structure for maintainability and scalability.
-
-### Solution Organization
-
-```text
-WileyWidget/
-├── src/                          # Application entry point & startup
-│   ├── App.xaml.cs              # application bootstrap
-│   ├── Program.cs               # Entry point
-│   ├── Configuration/           # App configuration & options
-│   ├── Diagnostics/             # Diagnostics & monitoring
-│   ├── Startup/                 # Startup logic & modules
-│   └── Services/                # Core application services
-│
-├── WileyWidget.UI/              # User Interface Layer (Organized)
-│   ├── Views/
-│   │   ├── Main/               # Main feature views (14 views)
-│   │   │   ├── AIAssistView.xaml
-│   │   │   ├── AnalyticsView.xaml
-│   │   │   ├── BudgetView.xaml
-│   │   │   ├── DashboardView.xaml
-│   │   │   ├── EnterpriseView.xaml
-│   │   │   ├── ExcelImportView.xaml
-│   │   │   ├── MunicipalAccountView.xaml
-│   │   │   ├── ProgressView.xaml
-│   │   │   ├── QuickBooksView.xaml
-│   │   │   ├── ReportsView.xaml
-│   │   │   ├── SettingsView.xaml
-│   │   │   ├── UtilityCustomerView.xaml
-│   │   │   ├── BudgetAnalysisView.xaml
-│   │   │   └── DepartmentView.xaml
-│   │   ├── Panels/             # Panel views (8 views)
-│   │   │   ├── AIAssistPanelView.xaml
-│   │   │   ├── BudgetPanelView.xaml
-│   │   │   ├── DashboardPanelView.xaml
-│   │   │   ├── EnterprisePanelView.xaml
-│   │   │   ├── MunicipalAccountPanelView.xaml
-│   │   │   ├── SettingsPanelView.xaml
-│   │   │   ├── ToolsPanelView.xaml
-│   │   │   └── UtilityCustomerPanelView.xaml
-│   │   ├── Dialogs/            # Dialog views (8 views)
-│   │   │   ├── ActivateXaiDialog.xaml
-│   │   │   ├── ConfirmationDialogView.xaml
-│   │   │   ├── CustomerEditDialogView.xaml
-│   │   │   ├── EnterpriseDialogView.xaml
-│   │   │   ├── ErrorDialogView.xaml
-│   │   │   ├── NotificationDialogView.xaml
-│   │   │   ├── SettingsDialogView.xaml
-│   │   │   └── WarningDialogView.xaml
-│   │   └── Windows/            # Window views (3 views)
-│   │       ├── AboutWindow.xaml
-│   │       ├── Shell.xaml
-│   │       └── SplashScreenWindow.xaml
-│   ├── ViewModels/
-│   │   ├── Main/               # Main ViewModels (20 files)
-│   │   │   ├── AIAssistViewModel.cs (+ .Dialog.cs, .Dialogs.cs)
-│   │   │   ├── AnalyticsViewModel.cs
-│   │   │   ├── BudgetViewModel.cs (+ .Hierarchical.cs)
-│   │   │   ├── DashboardViewModel.cs
-│   │   │   ├── EnterpriseViewModel.cs
-│   │   │   ├── ExcelImportViewModel.cs
-│   │   │   ├── MainViewModel.cs
-│   │   │   ├── MunicipalAccountViewModel.cs
-│   │   │   ├── ProgressViewModel.cs
-│   │   │   ├── QuickBooksViewModel.cs
-│   │   │   ├── ReportsViewModel.cs
-│   │   │   ├── SettingsViewModel.cs
-│   │   │   ├── ToolsViewModel.cs
-│   │   │   ├── UtilityCustomerViewModel.cs
-│   │   │   ├── AIResponseViewModel.cs
-│   │   │   ├── BudgetAnalysisViewModel.cs
-│   │   │   └── DepartmentViewModel.cs
-│   │   ├── Panels/             # Panel ViewModels (8 files)
-│   │   │   ├── AIAssistPanelViewModel.cs
-│   │   │   ├── BudgetPanelViewModel.cs
-│   │   │   ├── DashboardPanelViewModel.cs
-│   │   │   ├── EnterprisePanelViewModel.cs
-│   │   │   ├── MunicipalAccountPanelViewModel.cs
-│   │   │   ├── SettingsPanelViewModel.cs
-│   │   │   ├── ToolsPanelViewModel.cs
-│   │   │   └── UtilityCustomerPanelViewModel.cs
-│   │   ├── Dialogs/            # Dialog ViewModels (7 files)
-│   │   │   ├── ConfirmationDialogViewModel.cs
-│   │   │   ├── CustomerEditDialogViewModel.cs
-│   │   │   ├── EnterpriseDialogViewModel.cs
-│   │   │   ├── ErrorDialogViewModel.cs
-│   │   │   ├── NotificationDialogViewModel.cs
-│   │   │   ├── SettingsDialogViewModel.cs
-│   │   │   └── WarningDialogViewModel.cs
-│   │   ├── Windows/            # Window ViewModels (2 files)
-│   │   │   ├── AboutViewModel.cs
-│   │   │   └── SplashScreenWindowViewModel.cs
-│   │   ├── Base/               # Base ViewModel classes
-│   │   ├── Messages/           # event messages
-│   │   └── Shell/              # Shell-related ViewModels
-│   ├── Controls/               # Custom controls
-│   ├── Converters/             # Value converters
-│   ├── Behaviors/              # Attached behaviors
-│   ├── Regions/                # region adapters
-│   └── Resources/              # XAML resources & themes
-│
-├── WileyWidget.Models/         # Domain Models
-│   ├── Budget.cs
-│   ├── Enterprise.cs
-│   ├── MunicipalAccount.cs
-│   ├── UtilityCustomer.cs
-│   └── ...
-│
-├── WileyWidget.Data/           # Data Access Layer
-│   ├── AppDbContext.cs
-│   ├── Repositories/
-│   └── Migrations/
-│
-├── WileyWidget.Business/       # Business Logic Layer
-│   ├── Interfaces/
-│   └── Services/
-│
-├── WileyWidget.Services/       # Application Services
-│   ├── AI/                     # AI integration services
-│   ├── Excel/                  # Excel import/export
-│   ├── Export/                 # Data export services
-│   └── Threading/              # Threading utilities
-│
-├── WileyWidget.Tests/          # Unit & Integration Tests
-├── WileyWidget.UI.Tests/       # UI Tests (Appium)
-├── scripts/                    # Automation scripts (24 files)
-├── docs/                       # Documentation (51 files)
-└── .github/workflows/          # CI/CD pipelines
-```
-
-### Namespace Organization
-
-All Views and ViewModels follow consistent namespace patterns:
-
-**Views:**
-
-- `WileyWidget.Views.Main` - Main feature views
-- `WileyWidget.Views.Panels` - Panel/sidebar views
-- `WileyWidget.Views.Dialogs` - Modal dialog views
-- `WileyWidget.Views.Windows` - Window/shell views
-
-**ViewModels:**
-
-- `WileyWidget.ViewModels.Main` - Main feature ViewModels
-- `WileyWidget.ViewModels.Panels` - Panel ViewModels
-- `WileyWidget.ViewModels.Dialogs` - Dialog ViewModels
-- `WileyWidget.ViewModels.Windows` - Window ViewModels
-- `WileyWidget.ViewModels.Base` - Base classes
-- `WileyWidget.ViewModels.Messages` - Event messages
-
-### Benefits of This Structure
-
-✅ **Logical Grouping**: Related files are together
-✅ **Easy Navigation**: Find files quickly by feature
-✅ **Scalability**: Easy to add new views/viewmodels
-✅ **Maintainability**: Clear separation of concerns
-✅ **Discoverability**: New developers understand structure immediately
-✅ **Best Practices**: Follows community standards
-
-**Note:** For detailed reorganization history, see [`docs/FILE_ORGANIZATION_SUMMARY.md`](docs/FILE_ORGANIZATION_SUMMARY.md)
-
----
-
-**Active Scripts:** 24 essential automation scripts (down from 84)
-**Active Docs:** 51 technical documentation files (focused and relevant)
-**Theme Files:** 1 single source of truth (`WileyTheme-Syncfusion.xaml`)
-
----
-
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
+- Windows 10/11 (64-bit)
+- .NET 10 SDK
+- SQL Server Express (local DB)
+- Syncfusion license key (free community)
 
-- **Windows 10/11** (64-bit)
-- **.NET 10.0 SDK** (10.0.0 or later)
-- **SQL Server Express** (local database)
-- **Syncfusion Community License** (free for individual developers)
+### Setup
+1. Clone: `git clone https://github.com/Bigessfour/Wiley-Widget.git && cd Wiley-Widget`
+2. DB: `pwsh scripts/setup-database.ps1`
+3. License: Set `$env:SYNCFUSION_LICENSE_KEY = "your-key"` or run `pwsh scripts/setup-license.ps1`
+4. Build/Run: `dotnet build` then `dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj`
 
-### Installation & Setup
+EXE: Self-contained via `dotnet publish --self-contained win-x64 -c Release` (single file, includes Syncfusion).
 
-1. **Clone the Repository**
-
-   ```bash
-   git clone https://github.com/Bigessfour/Wiley-Widget.git
-   cd Wiley-Widget
-   ```
-
-2. **Setup Database**
-
-   ```powershell
-   # Run database initialization script
-   pwsh ./scripts/setup-database.ps1
-   ```
-
-3. **Setup Syncfusion License** (recommended)
-
-   ```powershell
-   # Set environment variable for Syncfusion license key
-   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_LICENSE_KEY','YOUR_LICENSE_KEY','User')
-   # Alternative: Run setup script
-   pwsh ./scripts/setup-license.ps1
-   ```
-
-4. **Build and Run**
-
-   ```powershell
-   # Restore dependencies and build
-   dotnet build WileyWidget.sln
-
-   # Run the application
-   dotnet run --project src/WileyWidget/WileyWidget.csproj
-   ```
-
-### First Launch
-
-The application will:
-
-- Initialize the local SQL Server Express database (WileyWidget)
-- Load default Office2019Colorful theme via SfSkinManager
-- Display the main dashboard with budget management interface
+### First Run
+- Initializes local DB (WileyWidget).
+- Applies theme via SfSkinManager.
+- Loads dashboard for budget/QuickBooks sync.
 
 ---
 
-## 🔌 QuickBooks Sandbox Integration
+## 📁 Structure (WinForms Focus)
 
-WileyWidget integrates with **QuickBooks Online (QBO)** via OAuth 2.0 for secure financial data synchronization. The application supports both **sandbox** (development) and **production** environments.
-
-### 🎯 Current Connection Status
-
-**Environment:** Sandbox
-**Company:** Town of Wiley Sandbox
-**Realm ID:** 9341455168020461
-**Client ID:** ABWlf3T7raiKwVV8ILahdlGP7E5pblC6pH1i6lXZQoU6wloEOm
-**OAuth Redirect URI:** [Intuit OAuth Playground](https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl)
-**Last Connected:** November 8, 2025
-**Token Status:** ✅ Active (auto-refreshes)
-
-### 🚀 Quick Setup (Automated)
-
-Run the automated OAuth setup script to establish QuickBooks connection:
-
-```powershell
-# Set credentials (get from Intuit Developer Portal)
-$env:QBO_CLIENT_ID = "your-client-id"
-$env:QBO_CLIENT_SECRET = "your-client-secret"
-$env:QBO_REALM_ID = "your-realm-id"  # Optional, captured automatically
-$env:QBO_ENVIRONMENT = "sandbox"      # or "production"
-
-# Run setup script
-.\scripts\quickbooks\setup-oauth.ps1
+```
+WileyWidget/
+├── src/WileyWidget.WinForms/    # Main app (Forms/MVVM)
+│   ├── Forms/                   # Windows Forms (MainForm, dialogs)
+│   │   ├── MainForm.cs          # Shell with DockingManager/Ribbon
+│   │   ├── Chrome/              # Ribbon/status/theme handling
+│   │   └── Dialogs/             # Modal forms (e.g., SettingsDialog)
+│   ├── ViewModels/              # MVVM (e.g., BudgetViewModel.cs)
+│   ├── Services/                # Core (ThemeService, QuickBooksService)
+│   ├── Factories/               # SyncfusionControlFactory
+│   └── Themes/                  # SfSkinManager orchestration
+├── src/WileyWidget.Core/        # Shared (Models, Data, Business)
+│   ├── Models/                  # Domain (Budget, Enterprise)
+│   ├── Data/                    # EF Core (AppDbContext, repos)
+│   └── Business/                # Logic (services/interfaces)
+├── tests/                       # xUnit (Unit/Integration/UI)
+├── scripts/                     # Local automation (build, DB setup)
+├── docs/                        # Guides (Syncfusion, QuickBooks desktop)
+└── .github/workflows/           # CI (build/test/security/release)
 ```
 
-The script will:
+**Key Patterns**:
+- MVVM via CommunityToolkit.Mvvm (INotifyPropertyChanged, commands).
+- DI: Microsoft.Extensions (services in Program.cs).
+- Themes: Single SfSkinManager source; factory for controls.
 
-1. Build and display the authorization URL
-2. Copy the URL to your clipboard
-3. Wait for you to authorize in browser
-4. Exchange the authorization code for tokens
-5. Persist tokens to `%APPDATA%\WileyWidget\settings.json`
-6. Validate the connection by calling QBO API
+See `docs/ARCHITECTURE_PATTERNS.md` for details.
 
-### 🔑 OAuth Configuration
+---
 
-#### Intuit Developer Portal Setup
+## 🔌 QuickBooks Integration (Desktop)
 
-1. **Create App** at [Intuit Developer Dashboard](https://developer.intuit.com/app/developer/dashboard)
-2. **Keys & OAuth** section:
-   - Copy **Client ID** and **Client Secret**
-   - Add **Redirect URIs**:
-     - `https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl` (for OAuth Playground)
-     - `http://localhost:8080/` (for local HttpListener)
-3. **App Settings**:
-   - Set environment to **Sandbox** or **Production**
-   - Enable **QuickBooks Online** scope: `com.intuit.quickbooks.accounting`
+OAuth2 sync with QBO sandbox/production. Tokens stored locally (DPAPI-encrypted).
 
-#### Environment Variables
+### Setup
+1. Get keys from [Intuit Developer](https://developer.intuit.com).
+2. Set env: `$env:QBO_CLIENT_ID="id" $env:QBO_CLIENT_SECRET="secret"`
+3. Run: `pwsh scripts/quickbooks/setup-oauth.ps1` (browser auth, saves to %APPDATA%).
+4. Test: In app, connect via Settings > QuickBooks (syncs budgets/customers).
 
-The app reads these environment variables (set at User scope):
+**Local Only**: No webhooks/cloud; uses HttpClient for API calls. Tokens auto-refresh.
 
-```powershell
-# Required
-$env:QBO_CLIENT_ID = "your-client-id"
-$env:QBO_CLIENT_SECRET = "your-client-secret"
+**Tests**: `dotnet test --filter QuickBooksService` (mocks OAuth).
 
-# Optional (with defaults)
-$env:QBO_REALM_ID = "your-realm-id"  # Auto-captured during OAuth
-$env:QBO_REDIRECT_URI = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl"
-$env:QBO_ENVIRONMENT = "sandbox"  # or "production"
+Troubleshoot: See `docs/QUICKBOOKS_DEPLOYMENT_CHECKLIST.md` (desktop edition).
 
-# For testing (skip OAuth browser launch)
-$env:WW_SKIP_INTERACTIVE = "1"
-$env:WW_PRINT_AUTH_URL = "1"  # Print auth URL without launching browser
-```
+---
 
-#### Settings Storage
+## 🛠️ Development
 
-Tokens are persisted to: `%APPDATA%\WileyWidget\settings.json`
+### Build/Test
+- Tasks: `WileyWidget: Build` (Release), `test` (xUnit).
+- Trunk: `trunk check --ci` (formats/lints C#/YAML).
+- Coverage: Baseline 0.3%; expand via tests/WileyWidget.WinForms.Tests.
 
-```json
-{
-  "QboAccessToken": "eyJhbGciOiJkaXI...",
-  "QboRefreshToken": "RT1-9-H0-177136...",
-  "QboTokenExpiry": "2025-11-08T22:06:31Z",
-  "QuickBooksRealmId": "9341455168020461"
-}
-```
+### CI/CD
+- Triggers: Push/PR/tags.
+- Workflows: build-winforms (matrix: themes/docking), test-coverage, security-scan, release (EXE on tags).
+- Badges above link to [Actions](https://github.com/Bigessfour/Wiley-Widget/actions).
 
-### 🔄 Token Management
+### Features
+- **Budget Management**: SfDataGrid for analysis, local EF storage.
+- **AI Assist**: xAI Grok integration (optional; env key).
+- **Reporting**: FastReport for exports (Budgets/forecasts).
+- **Themes**: Enforced cascade (no manual colors); switch via Settings.
 
-**Access Token Lifetime:** 1 hour
-**Refresh Token Lifetime:** ~100 days
-**Auto-Refresh:** ✅ Tokens automatically refresh when expired
+---
 
-The `QuickBooksService` checks token expiry before each API call and automatically refreshes if needed:
+## 📚 Documentation
+- Core: `docs/SYNCFUSION_CONTROL_QUICK_REFERENCE.md`, `docs/UI_COMPONENTS.md`.
+- QuickBooks: `docs/QUICKBOOKS_DEPLOYMENT_CHECKLIST.md` (local sync).
+- Patterns: `docs/ARCHITECTURE_PATTERNS.md`.
+- Secrets: `docs/USER-SECRETS.md` (DPAPI for tokens).
 
-```csharp
-// Automatic token refresh
-await _quickBooksService.RefreshTokenIfNeededAsync();
+Legacy scrubbed (no Azure/Blazor/WPF).
 
-// Manual refresh
-await _quickBooksService.RefreshTokenAsync();
-```
+## 🤝 Contributing
+See CONTRIBUTING.md. PRs: Branch from main, Trunk check, tests pass.
 
-### 🧪 Testing with QuickBooks Sandbox
-
-#### Run Unit Tests
-
-```powershell
-# Skip OAuth prompts during tests
-$env:WW_SKIP_INTERACTIVE = "1"
-
-# Run QuickBooks service tests
-dotnet test --filter "FullyQualifiedName~QuickBooksService"
-```
-
-#### Test Coverage
-
-- ✅ `SyncBudgetsToAppAsync_ValidBudgets_SyncsSuccessfullyAndPublishesEvent`
-- ✅ `SyncBudgetsToAppAsync_EmptyList_ReturnsSuccessWithZeroSynced`
-- ✅ `SyncBudgetsToAppAsync_HttpFailure_ReturnsErrorAndLogs`
-- ✅ `SyncBudgetsToAppAsync_Cancellation_ReturnsErrorResult`
-
-### 🌐 Webhooks Configuration (Optional)
-
-For real-time notifications from QuickBooks, expose a local endpoint using Cloudflare Tunnel:
-
-```powershell
-# Start tunnel (auto-configured in QuickBooksService)
-cloudflared tunnel --url https://localhost:7207
-
-# Configure in Intuit Developer Portal
-# Webhooks Endpoint: https://<your-tunnel>.trycloudflare.com/qbo/webhooks
-```
-
-**Environment Variables:**
-
-```powershell
-$env:WEBHOOKS_PORT = "7207"  # HTTPS port for webhooks server
-$env:QBO_WEBHOOKS_VERIFIER = "your-verifier-token"  # From Intuit
-```
-
-### 📊 Available QBO Operations
-
-The `QuickBooksService` provides these operations:
-
-```csharp
-// Connection & Auth
-await TestConnectionAsync()
-await AuthorizeAsync()
-await RefreshTokenAsync()
-
-// Data Retrieval
-await GetCustomersAsync()
-await GetInvoicesAsync(enterprise?)
-await GetChartOfAccountsAsync()
-await GetJournalEntriesAsync(startDate, endDate)
-await GetBudgetsAsync()
-
-// Data Sync
-await SyncBudgetsToAppAsync(budgets, cancellationToken)
-```
-
-### 🔍 Troubleshooting
-
-#### "redirect_uri is invalid"
-
-**Cause:** The redirect URI in the token exchange doesn't match what's registered.
-
-**Fix:**
-
-1. Print the exact auth URL:
-
-   ```powershell
-   $env:WW_PRINT_AUTH_URL = "1"
-   $env:WW_SKIP_INTERACTIVE = "1"
-   # Run app or script that triggers AuthorizeAsync()
-   ```
-
-2. Extract the `redirect_uri` parameter from the printed URL
-3. Add that **exact** URI to Intuit Developer Portal → Keys & OAuth → Redirect URIs
-
-#### "Access token invalid"
+## 📄 License
+MIT. See LICENSE.
 
 **Cause:** Token expired or not yet acquired.
 
@@ -2665,4 +2315,3 @@ WileyWidget/                           # Solution root
 ```text
 # Test commit for manifest generation
 ```
-````

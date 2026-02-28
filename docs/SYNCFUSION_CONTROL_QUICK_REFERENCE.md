@@ -1,17 +1,17 @@
-# Syncfusion Control Quick Reference Guide
+# Syncfusion Control Quick Reference Guide (v32.2.3)
 
 **Fast lookup for creating Syncfusion controls with complete configuration.**
 
 ## 🎯 Factory Injection
 
 ```csharp
-// In your form/control constructor
+// In form constructor
 public MyForm(SyncfusionControlFactory controlFactory)
 {
     _controlFactory = controlFactory;
 }
 
-// In Program.cs or DI setup
+// DI setup (Program.cs)
 services.AddSingleton<SyncfusionControlFactory>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<SyncfusionControlFactory>>();
@@ -25,9 +25,6 @@ services.AddSingleton<SyncfusionControlFactory>(sp =>
 ```csharp
 var grid = _controlFactory.CreateSfDataGrid(g =>
 {
-    // Core properties already set: Theme, Dock, AllowEditing, AllowFiltering, etc.
-
-    // Customize for your use case:
     g.DataSource = myDataSource;
     g.AutoGenerateColumns = false;
     g.Columns.Add(new GridTextColumn { MappingName = "Name", HeaderText = "Customer Name" });
@@ -37,13 +34,13 @@ var grid = _controlFactory.CreateSfDataGrid(g =>
 this.Controls.Add(grid);
 ```
 
-**What the factory gives you:**
-✅ ThemeName  
-✅ Theme applied via SfSkinManager  
-✅ String filter protection (prevents crashes)  
-✅ AllowEditing, AllowFiltering, AllowSorting all set  
-✅ SelectionMode, NavigationMode, FilterRowPosition configured  
-✅ EditorSelectionBehavior, AddNewRowPosition set
+**Factory Sets:**
+✅ ThemeName (v32.2.3)  
+✅ SfSkinManager applied  
+✅ String filter protection  
+✅ AllowEditing/Filtering/Sorting  
+✅ SelectionMode, FilterRowPosition  
+✅ EditorSelectionBehavior, AddNewRowPosition
 
 ## 🔘 SfButton
 
@@ -57,12 +54,10 @@ var saveButton = _controlFactory.CreateSfButton("Save", btn =>
 this.Controls.Add(saveButton);
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ ThemeName  
-✅ Theme applied  
 ✅ Default size (120x32)  
-✅ Flat style  
-✅ Segoe UI font
+✅ Flat style, Segoe UI font
 
 ## 📈 RadialGauge
 
@@ -76,12 +71,11 @@ var gauge = _controlFactory.CreateRadialGauge(0, 100, 75, g =>
 this.Controls.Add(gauge);
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ Theme applied  
-✅ Min/Max/Value set  
-✅ FrameType configured  
-✅ GaugeArcColor set  
-✅ Default scale with ticks
+✅ Min/Max/Value  
+✅ FrameType, GaugeArcColor  
+✅ Scale/ticks
 
 ## 📊 ChartControl
 
@@ -89,11 +83,8 @@ this.Controls.Add(gauge);
 var chart = _controlFactory.CreateChartControl("Monthly Sales", c =>
 {
     var series = new ChartSeries("Sales");
-    series.Points.Add(1, 1000);
-    series.Points.Add(2, 1500);
-    series.Points.Add(3, 1200);
+    series.Points.Add(1, 1000); series.Points.Add(2, 1500); series.Points.Add(3, 1200);
     series.Type = ChartSeriesType.Column;
-
     c.Series.Add(series);
     c.PrimaryXAxis.Title = "Month";
     c.PrimaryYAxis.Title = "Revenue ($)";
@@ -102,12 +93,11 @@ var chart = _controlFactory.CreateChartControl("Monthly Sales", c =>
 this.Controls.Add(chart);
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ Theme applied  
-✅ PrimaryXAxis/PrimaryYAxis configured  
+✅ Axes configured  
 ✅ Legend visible  
-✅ Title set  
-✅ Docked to fill
+✅ Title, docked fill
 
 ## 🎨 SfComboBox
 
@@ -123,38 +113,29 @@ var comboBox = _controlFactory.CreateSfComboBox(cb =>
 this.Controls.Add(comboBox);
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ ThemeName  
-✅ Theme applied  
-✅ DropDownStyle set  
-✅ Default size (200x28)  
-✅ AllowFilter enabled  
-✅ AutoCompleteMode set
+✅ DropDownStyle  
+✅ Size (200x28), AllowFilter  
+✅ AutoCompleteMode
 
 ## 📑 TabControlAdv
 
 ```csharp
 var tabControl = _controlFactory.CreateTabControlAdv(tc =>
 {
-    var page1 = new TabPageAdv("Overview");
-    page1.Controls.Add(myOverviewPanel);
-
-    var page2 = new TabPageAdv("Details");
-    page2.Controls.Add(myDetailsPanel);
-
-    tc.TabPages.Add(page1);
-    tc.TabPages.Add(page2);
+    var page1 = new TabPageAdv("Overview"); page1.Controls.Add(myOverviewPanel);
+    var page2 = new TabPageAdv("Details"); page2.Controls.Add(myDetailsPanel);
+    tc.TabPages.AddRange(new[] { page1, page2 });
 });
 
 this.Controls.Add(tabControl);
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ ThemeName  
-✅ Theme applied  
-✅ TabStyle set (Metro)  
-✅ Alignment (Top)  
-✅ ItemSize configured
+✅ TabStyle (Metro), Alignment (Top)  
+✅ ItemSize
 
 ## 🎀 RibbonControlAdv
 
@@ -163,21 +144,16 @@ var ribbon = _controlFactory.CreateRibbonControlAdv("File", r =>
 {
     var homeTab = new ToolStripTabItem("Home");
     var editTab = new ToolStripTabItem("Edit");
-
-    r.RibbonItems.Add(homeTab);
-    r.RibbonItems.Add(editTab);
+    r.RibbonItems.AddRange(new[] { homeTab, editTab });
 });
 
 this.Controls.Add(ribbon);
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ ThemeName  
-✅ Theme applied  
-✅ Docked to top  
-✅ MenuButtonText set  
-✅ RibbonStyle (Office2016)  
-✅ OfficeColorScheme configured
+✅ Docked top, MenuButtonText  
+✅ RibbonStyle (Office2016), OfficeColorScheme
 
 ## 🪟 DockingManager
 
@@ -190,74 +166,50 @@ var dockingManager = _controlFactory.CreateDockingManager(this, dm =>
 });
 ```
 
-**What the factory gives you:**
+**Factory Sets:**
 ✅ ThemeName  
-✅ Theme applied  
-✅ HostControl set  
-✅ DockBehavior configured  
-✅ EnableDocumentMode set  
-✅ AnimateAutoHiddenWindow enabled
+✅ HostControl, DockBehavior  
+✅ EnableDocumentMode, AnimateAutoHiddenWindow
 
-## 🛠️ Advanced: Custom Control Configuration
+## 🛠️ Custom Controls
 
-If you need a control type not in the factory:
+For new types:
 
 ```csharp
-// 1. Consult Syncfusion MCP first
-// @syncfusion-winforms What are ALL mandatory properties for SfListView?
+// Query MCP: @syncfusion-winforms Mandatory properties for SfListView?
 
-// 2. Create with full property checklist
 var listView = new SfListView
 {
     ThemeName = _currentTheme,
     Dock = DockStyle.Fill,
     AutoFitMode = AutoFitMode.Height,
     ItemHeight = 40,
-    SelectionMode = Syncfusion.WinForms.ListView.Enums.SelectionMode.Single,
+    SelectionMode = SelectionMode.Single,
     AllowGroupExpandCollapse = true,
     ShowCheckBoxes = false
 };
 
-// 3. Apply theme
-listView.ApplySyncfusionTheme(_currentTheme, _logger);
+listView.ApplySyncfusionTheme(_currentTheme, _logger);  // Extension
 
-// 4. Add to factory for reuse (update SyncfusionControlFactory.cs)
+// Add to factory: Update SyncfusionControlFactory.cs
 ```
 
-## ⚠️ Common Mistakes
+## ⚠️ Mistakes to Avoid
 
-### ❌ Don't: Create controls inline without factory
+❌ Inline creation: `new SfDataGrid { Dock = DockStyle.Fill };` (missing props)
 
-```csharp
-var grid = new SfDataGrid { Dock = DockStyle.Fill }; // Missing 90% of properties!
-```
+✅ Factory: `_controlFactory.CreateSfDataGrid();`
 
-### ✅ Do: Use factory
+❌ Assume defaults: Missing theme/size
 
-```csharp
-var grid = _controlFactory.CreateSfDataGrid();
-```
-
-### ❌ Don't: Assume default values
-
-```csharp
-var button = new SfButton { Text = "Save" }; // Missing theme, size, style!
-```
-
-### ✅ Do: Let factory handle defaults
-
-```csharp
-var button = _controlFactory.CreateSfButton("Save");
-```
+✅ Factory handles: Theme, defaults, v32.2.3 compliance
 
 ## 📖 Reference
 
-- **Factory Implementation:** `src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs`
-- **Enforcement Rules:** `.vscode/rules/syncfusion-control-enforcement.md`
-- **Extensions:** `src/WileyWidget.WinForms/Extensions/SyncfusionThemingExtensions.cs`
-- **Syncfusion Docs:** Use `@syncfusion-winforms` MCP queries
-- **Local Samples:** `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19`
+- Factory: src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs
+- Rules: .vscode/rules/syncfusion-control-enforcement.md
+- Extensions: src/WileyWidget.WinForms/Extensions/SyncfusionThemingExtensions.cs
+- Docs: @syncfusion-winforms MCP
+- Samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.2.3
 
----
-
-**Quick Tip:** When in doubt, check the factory source code for the complete property list!
+**Tip:** Factory source has full prop lists!

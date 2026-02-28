@@ -295,6 +295,13 @@ nCrunchTemp_*
 *.bk
 *.backup
 
+# CI/CD and temp files
+**/*.trx
+TestResults/
+tmp/
+.venv/
+tools/Fix-ThemeAssignments.ps1
+
 # ==============================================================================
 # REORGANIZATION ADDITIONS - Added 2025-11-08
 # ==============================================================================

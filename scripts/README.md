@@ -15,7 +15,7 @@ The Python scripts handle the complete development lifecycle:
 - **Process Cleanup**: Removes orphaned .NET processes
 - **Conflict Detection**: Checks for running WileyWidget instances
 - **Build Hygiene**: Cleans artifacts with `dotnet clean`
-- **Performance Locking**: Applies Azure performance optimizations
+- **Performance**: Local optimizations (e.g., EF queries, Syncfusion rendering)
 - **Development Launch**: Starts `dotnet watch` with proper monitoring
 
 #### `load-env.py` - Environment Management
@@ -23,7 +23,7 @@ The Python scripts handle the complete development lifecycle:
 **Purpose**: Secure environment variable loading and validation
 
 - **.env Loading**: Loads configuration from encrypted .env file
-- **Azure Validation**: Tests Key Vault and database connections
+- **Local Validation**: Tests SQL Express and file paths
 - **Status Reporting**: Shows current environment state
 - **Security**: Masks sensitive data in logs
 
@@ -36,13 +36,13 @@ The Python scripts handle the complete development lifecycle:
 - **Interactive Mode**: Confirms before killing processes
 - **Force Mode**: Automated cleanup for CI/CD
 
-#### `azure-setup.py` - Azure Configuration
+#### `setup-local.ps1` - Local Environment Setup
 
-**Purpose**: Azure resource setup and connectivity
+**Purpose**: Local DB, license, and env setup
 
-- **CLI Configuration**: Sets up Azure CLI with proper defaults
+- **Env Setup**: Configures .NET/SQL paths
 - **Subscription Management**: Configures target subscription
-- **Connection Testing**: Validates Azure resource access
+- **Connection Testing**: Validates SQL Express and file access
 - **MCP Integration**: Sets up Model Context Protocol servers
 
 #### `setup-python.py` - Python Environment
@@ -63,9 +63,9 @@ The Python scripts handle the complete development lifecycle:
 - **Documented**: Comprehensive inline documentation
 - **Version Controlled**: Text-based, diff-friendly scripts
 
-### ✅ Azure Documentation Alignment
+### ✅ Local Setup Alignment
 
-- **Python SDK Usage**: Leverages Azure SDK for Python
+- **Python Usage**: Local scripting (pathlib, subprocess for .NET)
 - **Security Best Practices**: Environment variables, Key Vault integration
 - **Resource Management**: Proper cleanup and monitoring
 - **Performance Optimization**: Caching and connection pooling
@@ -85,7 +85,7 @@ The following PowerShell scripts have been replaced by Python equivalents:
 - `dev-start.ps1` → `dev-start.py`
 - `load-env.ps1` → `load-env.py`
 - `cleanup-dotnet.ps1` → `cleanup-dotnet.py`
-- `setup-azure.ps1` → `azure-setup.py`
+- `setup-local.ps1` → Local scripts
 - `setup-license.ps1` → Integrated into application startup
 - `test-database-connection.ps1` → Integrated into `load-env.py`
 
@@ -176,9 +176,9 @@ def test_get_dotnet_processes_success(self, mock_run):
 
 ## 📚 Related Documentation
 
-- [Azure Python SDK Documentation](https://learn.microsoft.com/en-us/azure/developer/python/)
+- [.NET CLI Docs](https://learn.microsoft.com/dotnet/core/tools/)
 - [Python Best Practices](https://python-guide.org/)
-- [Azure CLI Documentation](https://learn.microsoft.com/en-us/cli/azure/)
+- [PowerShell Docs](https://learn.microsoft.com/powershell/)
 - [Syncfusion Licensing](https://help.syncfusion.com/windowsforms/licensing/)
 
 # Show current status
