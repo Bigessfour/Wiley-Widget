@@ -15,9 +15,10 @@ namespace WileyWidget.Data
 
         public async Task SeedAsync(CancellationToken cancellationToken = default)
         {
-            // Database seeding is now handled in AppDbContext.OnModelCreating
-            // This method is kept for compatibility with existing code
-            await _context.Database.EnsureCreatedAsync();
+            // Database seeding is handled via EF Core HasData in AppDbContext.OnModelCreating.
+            // MigrateAsync applies pending migrations (and their embedded seed data) idempotently.
+            // EnsureCreatedAsync was previously used here but is incompatible with migrations.
+            await _context.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

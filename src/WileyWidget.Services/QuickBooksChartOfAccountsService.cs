@@ -23,9 +23,17 @@ public sealed class QuickBooksChartOfAccountsService : IQuickBooksChartOfAccount
     private List<QuickBooksAccountInfo>? _cachedAccounts;
     private readonly object _cacheLock = new object();
 
-    // Intuit QBO Query API endpoint - uses QL (Query Language)
-    private const string QueryEndpoint = "https://quickbooks.api.intuit.com/v2/company/{0}/query";
+    // Intuit QBO Query API endpoint - uses QL (Query Language). v3 is required; host differs by environment.
     private const string AccountQuery = "SELECT * FROM Account ORDER BY Name";
+
+    private string GetQueryEndpoint(string realmId)
+    {
+        var host = _authService.GetEnvironment() == "sandbox"
+            ? "sandbox-quickbooks.api.intuit.com"
+            : "quickbooks.api.intuit.com";
+        // minorversion=65 targets a stable, well-defined API surface
+        return $"https://{host}/v3/company/{realmId}/query?minorversion=65";
+    }
 
     public QuickBooksChartOfAccountsService(
         ILogger<QuickBooksChartOfAccountsService> logger,
@@ -62,14 +70,20 @@ public sealed class QuickBooksChartOfAccountsService : IQuickBooksChartOfAccount
                 return new List<QuickBooksAccountInfo>();
             }
 
-            // Build request
-            var endpoint = $"{string.Format(QueryEndpoint, realmId)}?query={Uri.EscapeDataString(AccountQuery)}";
+            // Build request - append query param using & since minorversion is already in the base endpoint
+            var endpoint = $"{GetQueryEndpoint(realmId)}&query={Uri.EscapeDataString(AccountQuery)}";
             using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
+            request.Headers.Accept.ParseAdd("application/json");
 
             // Execute request
             var response = await _httpClient.SendAsync(request, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError("QuickBooks Chart of Accounts request failed: {StatusCode} — {Body}", response.StatusCode, errorBody);
+                return new List<QuickBooksAccountInfo>();
+            }
 
             // Parse response
             var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);

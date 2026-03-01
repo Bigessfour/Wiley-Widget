@@ -44,6 +44,10 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     private string? _realmId;
     private string _environment = "sandbox";
 
+    // Pending CSRF state value generated in GenerateAuthorizationUrlAsync.
+    // Validated and cleared when the callback arrives.
+    private volatile string? _pendingState;
+
     // Token expiry buffer: 5 minutes to prevent mid-flight expiry
     private const int TokenExpiryBufferSeconds = 300;
     private const int TokenRefreshTimeoutSeconds = 15;
@@ -188,10 +192,12 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     private static string? GetEnvironmentVariableAnyScope(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
+
+        // Check User scope first so runtime overrides beat stale machine-scope values.
         try
         {
-            var machineValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
-            if (!string.IsNullOrWhiteSpace(machineValue)) return machineValue;
+            var userValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+            if (!string.IsNullOrWhiteSpace(userValue)) return userValue;
         }
         catch { /* ignore */ }
 
@@ -204,7 +210,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
         try
         {
-            return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+            return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
         }
         catch { return null; }
     }
@@ -254,10 +260,16 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                        ?? envRealmCandidate;
 
             // Redirect URI priority: User Secrets > Environment > IOptions from appsettings.json
+            var envRedirectCandidate = GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI")
+                                    ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REDIRECT_URI");
+            if (!string.IsNullOrWhiteSpace(envRedirectCandidate))
+            {
+                _logger.LogInformation("QBO_REDIRECT_URI found in environment (machine/process/user). Using env value: {RedirectUri}", envRedirectCandidate);
+            }
+
             _redirectUri = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
                         ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RedirectUri", _logger).ConfigureAwait(false)
-                        ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI")
-                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REDIRECT_URI")
+                        ?? envRedirectCandidate
                         ?? _oauthOptions?.RedirectUri
                         ?? throw new InvalidOperationException("RedirectUri not configured in user secrets, environment, or appsettings.json");
 
@@ -335,7 +347,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             };
         }
 
-        _logger.LogWarning("No valid access token available");
+        _logger.LogInformation("No valid access token available; QuickBooks features requiring auth remain disabled until connected");
         return null;
     }
 
@@ -378,30 +390,55 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             return Abstractions.TokenResult.Failure("Authorization code is null or empty");
         }
 
-        if (_oauthOptions == null || !_oauthOptions.IsValid)
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(_clientId) || string.IsNullOrWhiteSpace(_clientSecret))
         {
-            return Abstractions.TokenResult.Failure("QuickBooks OAuth configuration is not valid");
+            return Abstractions.TokenResult.Failure(
+                "QuickBooks credentials are missing. Ensure QBO-CLIENT-ID and QBO-CLIENT-SECRET are set in the secret vault or environment.");
         }
 
         try
         {
+            var effectiveRedirectUri = _redirectUri ?? _oauthOptions?.RedirectUri
+                ?? throw new InvalidOperationException("RedirectUri is not configured");
+
+            // Intuit requires credentials as HTTP Basic Auth, not in the POST body.
+            var basicCredentials = Convert.ToBase64String(
+                Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
+
             var requestContent = new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("grant_type", "authorization_code"),
                 new KeyValuePair<string, string>("code", authorizationCode),
-                new KeyValuePair<string, string>("client_id", _oauthOptions.ClientId!),
-                new KeyValuePair<string, string>("client_secret", _oauthOptions.ClientSecret!)
+                new KeyValuePair<string, string>("redirect_uri", effectiveRedirectUri)
             });
 
-            var request = new HttpRequestMessage(HttpMethod.Post, _oauthOptions.TokenEndpoint)
+            var request = new HttpRequestMessage(HttpMethod.Post, _oauthOptions?.TokenEndpoint ?? TokenEndpoint)
             {
                 Content = requestContent
             };
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basicCredentials);
+            request.Headers.Accept.ParseAdd("application/json");
+
+            _logger.LogDebug(
+                "Exchanging auth code — endpoint: {Endpoint}, redirect_uri: {RedirectUri}, ClientId: {ClientId}",
+                _oauthOptions?.TokenEndpoint ?? TokenEndpoint,
+                effectiveRedirectUri,
+                _clientId[..Math.Min(8, _clientId.Length)] + "...");
 
             var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "Token exchange failed ({Status}): {Body}",
+                    (int)response.StatusCode, json);
+                return Abstractions.TokenResult.Failure(
+                    $"Token exchange failed ({(int)response.StatusCode}): {json}");
+            }
             var tokenResponse = JsonSerializer.Deserialize<QuickBooksTokenResponse>(json);
 
             if (tokenResponse == null)
@@ -415,7 +452,31 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                 return Abstractions.TokenResult.Failure("Token response validation failed");
             }
 
-            _logger.LogInformation("Successfully exchanged authorization code for tokens");
+            // Persist the token immediately so all downstream callers (GetAccessTokenAsync,
+            // seeder, company info service, etc.) can read it without a separate save step.
+            if (_tokenStore != null)
+            {
+                await _tokenStore.SaveTokenAsync(token).ConfigureAwait(false);
+
+                // Sync realmId to store if we have one from the init phase
+                if (!string.IsNullOrEmpty(_realmId))
+                {
+                    _tokenStore.SetRealmId(_realmId);
+                }
+
+                _logger.LogInformation("Successfully exchanged authorization code for tokens — token persisted to store");
+            }
+            else
+            {
+                _logger.LogInformation("Successfully exchanged authorization code for tokens (no token store configured)");
+            }
+
+            // Mirror to settings so HasValidAccessToken() fallback works even if token store is bypassed.
+            _settings.Current.QboAccessToken = token.AccessToken;
+            _settings.Current.QboRefreshToken = token.RefreshToken;
+            _settings.Current.QboTokenExpiry = token.AccessTokenExpiresAtUtc;
+            _settings.Save();
+
             return Abstractions.TokenResult.Success(token);
         }
         catch (Exception ex)
@@ -426,27 +487,54 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     }
 
     /// <inheritdoc/>
-    public string GenerateAuthorizationUrl()
+    public async Task<string> GenerateAuthorizationUrlAsync(CancellationToken cancellationToken = default)
     {
-        if (_oauthOptions == null || !_oauthOptions.IsValid)
+        _logger.LogInformation("Generating QuickBooks OAuth authorization URL");
+
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (_oauthOptions == null)
         {
+            _logger.LogError("QuickBooks OAuth configuration is missing");
             throw new InvalidOperationException("QuickBooks OAuth configuration is not valid");
         }
 
+        var effectiveClientId = _clientId ?? _oauthOptions.ClientId
+            ?? throw new InvalidOperationException("QuickBooks ClientId is not configured");
+        var effectiveRedirectUri = _redirectUri ?? _oauthOptions.RedirectUri
+            ?? throw new InvalidOperationException("QuickBooks RedirectUri is not configured");
+
+        // Log masked client ID so we can confirm the real value (not placeholder) is being used.
+        var maskedClientId = effectiveClientId.Length > 8
+            ? $"{effectiveClientId[..8]}..."
+            : "(short)";
+        _logger.LogDebug(
+            "OAuth URL parameters — ClientId: {MaskedClientId}, RedirectUri: {RedirectUri}, Source: {Source}",
+            maskedClientId,
+            effectiveRedirectUri,
+            _clientId != null ? "vault/env-var" : "appsettings");
+
         var state = Guid.NewGuid().ToString("N");
+        // Store state so the callback handler can validate the round-trip (CSRF protection)
+        _pendingState = state;
         var scopes = string.Join(" ", _oauthOptions.Scopes);
+
+        _logger.LogDebug("OAuth scopes requested: {Scopes}", scopes);
 
         var queryParams = new System.Collections.Generic.List<string>
         {
-            $"client_id={Uri.EscapeDataString(_oauthOptions.ClientId!)}",
+            $"client_id={Uri.EscapeDataString(effectiveClientId)}",
             $"response_type=code",
             $"scope={Uri.EscapeDataString(scopes)}",
-            $"redirect_uri={Uri.EscapeDataString(_oauthOptions.RedirectUri!)}",
+            $"redirect_uri={Uri.EscapeDataString(effectiveRedirectUri)}",
             $"state={Uri.EscapeDataString(state)}"
         };
 
         var authUrl = $"{_oauthOptions.AuthorizationEndpoint}?{string.Join("&", queryParams)}";
-        _logger.LogDebug("Generated OAuth authorization URL with state: {State}", state);
+        _logger.LogInformation(
+            "OAuth authorization URL generated — state: {State}, endpoint: {Endpoint}",
+            state,
+            _oauthOptions.AuthorizationEndpoint);
 
         return authUrl;
     }
@@ -469,15 +557,34 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                 return;
             }
 
-            // Revoke via Intuit endpoint
-            var content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("token", token.RefreshToken ?? token.AccessToken!),
-                new KeyValuePair<string, string>("client_id", _oauthOptions.ClientId!),
-                new KeyValuePair<string, string>("client_secret", _oauthOptions.ClientSecret!)
-            });
+            // Revoke via Intuit endpoint.
+            // Auth: Basic <base64(clientId:clientSecret)>
+            // Body: application/json {"token": "<refresh_or_access_token>"}
+            // Per docs: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0#revoke-token-disconnect
+            await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-            var response = await _httpClient.PostAsync(new Uri(_oauthOptions.RevokeEndpoint), content, cancellationToken).ConfigureAwait(false);
+            var effectiveClientId = _clientId ?? _oauthOptions.ClientId
+                ?? throw new InvalidOperationException("QuickBooks ClientId not configured - cannot revoke token");
+            var effectiveClientSecret = _clientSecret ?? _oauthOptions.ClientSecret
+                ?? string.Empty;
+
+            var basicCredentials = Convert.ToBase64String(
+                Encoding.ASCII.GetBytes($"{effectiveClientId}:{effectiveClientSecret}"));
+
+            var tokenToRevoke = token.RefreshToken ?? token.AccessToken!;
+            var revokeBody = new StringContent(
+                JsonSerializer.Serialize(new { token = tokenToRevoke }),
+                Encoding.UTF8,
+                "application/json");
+
+            using var revokeRequest = new HttpRequestMessage(HttpMethod.Post, new Uri(_oauthOptions.RevokeEndpoint))
+            {
+                Content = revokeBody
+            };
+            revokeRequest.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basicCredentials);
+
+            var response = await _httpClient.SendAsync(revokeRequest, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             // Clear local token
@@ -549,7 +656,26 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                 "No refresh token available. Please re-authorize the application.");
         }
 
-        await RefreshTokenAsync(s.QboRefreshToken, cancellationToken);
+        var refreshResult = await RefreshTokenAsync(s.QboRefreshToken, cancellationToken).ConfigureAwait(false);
+        if (refreshResult.IsSuccess && refreshResult.Token != null)
+        {
+            // Persist to token store (primary path)
+            if (_tokenStore != null)
+                await _tokenStore.SaveTokenAsync(refreshResult.Token).ConfigureAwait(false);
+
+            // Persist to settings (fallback path used by HasValidAccessToken)
+            s.QboAccessToken = refreshResult.Token.AccessToken;
+            s.QboRefreshToken = refreshResult.Token.RefreshToken;
+            s.QboTokenExpiry = refreshResult.Token.AccessTokenExpiresAtUtc;
+            _settings.Save();
+
+            _logger.LogInformation("Proactive token refresh succeeded — token persisted");
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"Token refresh failed: {refreshResult.ErrorMessage ?? "unknown error"}. Please re-authorize the application.");
+        }
     }
 
     /// <summary>
@@ -570,8 +696,8 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
         };
         req.Content = new FormUrlEncodedContent(form);
 
-        using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
-        var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+        using var resp = await _httpClient.SendAsync(req, cancellationToken).ConfigureAwait(false);
+        var json = await resp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
         if (!resp.IsSuccessStatusCode)
         {
@@ -637,6 +763,34 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
     public string? GetRealmId() => _realmId;
     public string GetEnvironment() => _environment;
+
+    /// <summary>
+    /// Validates the CSRF state parameter returned in the OAuth callback against the last
+    /// generated state. Clears the pending state regardless of outcome to prevent replay.
+    /// Returns true when the state matches (or when no pending state is stored, which should
+    /// not happen in normal flow but is tolerated to avoid breaking out-of-order restarts).
+    /// </summary>
+    public bool ValidateAndClearState(string returnedState)
+    {
+        var pending = _pendingState;
+        _pendingState = null;
+
+        if (string.IsNullOrEmpty(pending))
+        {
+            _logger.LogWarning("CSRF state validation: no pending state found. Allowing callback through (service may have restarted).");
+            return true;
+        }
+
+        var matches = string.Equals(pending, returnedState, StringComparison.Ordinal);
+        if (!matches)
+        {
+            _logger.LogError(
+                "CSRF state mismatch: expected {Expected}, received {Received}. Possible CSRF attack.",
+                pending[..Math.Min(8, pending.Length)] + "...",
+                (returnedState ?? string.Empty)[..Math.Min(8, (returnedState ?? string.Empty).Length)] + "...");
+        }
+        return matches;
+    }
 
 }
 

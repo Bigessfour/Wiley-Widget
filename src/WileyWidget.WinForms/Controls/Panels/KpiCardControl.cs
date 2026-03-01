@@ -75,10 +75,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             _lblTitle = new Label
             {
                 Dock = DockStyle.Top,
-                Height = Dpi(20f),
+                Height = Dpi(22f),
                 Text = "Title",
-                TextAlign = ContentAlignment.MiddleCenter,
+                TextAlign = ContentAlignment.BottomLeft,
+                Font = new Font(Font.FontFamily, 7.75f, FontStyle.Regular),
                 AutoSize = false,
+                AutoEllipsis = true,
                 AccessibleRole = AccessibleRole.StaticText,
                 UseMnemonic = false
             };
@@ -88,6 +90,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Text = "0",
                 TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font(Font.FontFamily, 20f, FontStyle.Bold),
                 AutoSize = false,
                 AccessibleRole = AccessibleRole.StaticText,
                 AccessibleName = "KPI Value",
@@ -105,9 +108,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 UseMnemonic = false
             };
 
-            BorderStyle = BorderStyle.FixedSingle;
-            // Optimized padding for professional appearance on high DPI
-            Padding = new Padding(Dpi(8f));
+            BorderStyle = BorderStyle.None;
+            // Top padding is slightly larger to give the accent bar visual breathing room
+            Padding = new Padding(Dpi(8f), Dpi(10f), Dpi(8f), Dpi(6f));
             // Conservative minimum size to avoid layout collapse; allow parent to control height
             MinimumSize = new Size(Dpi(100f), Dpi(64f));
             // Accessibility improvements
@@ -123,6 +126,18 @@ namespace WileyWidget.WinForms.Controls.Panels
         }
 
         private static int Dpi(float logicalPixels) => (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(logicalPixels);
+
+        /// <inheritdoc />
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            // 3px accent bar at top — geometric structural decoration; adapts to the Windows accent color
+            using var accentPen = new Pen(SystemColors.Highlight, 3f);
+            e.Graphics.DrawLine(accentPen, 0, 1, Width, 1);
+            // Subtle 1px card border for visual separation without the heavy FixedSingle shadow
+            using var borderPen = new Pen(SystemColors.ControlLight, 1f);
+            e.Graphics.DrawRectangle(borderPen, 0, 0, Width - 1, Height - 1);
+        }
 
         private void ApplyThemeSafe()
         {

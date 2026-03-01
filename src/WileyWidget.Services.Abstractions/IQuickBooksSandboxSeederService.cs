@@ -75,6 +75,8 @@ public sealed class SandboxSeedingResult
 /// <summary>
 /// Account template for sandbox seeding.
 /// Defines the standard municipal finance account structure.
+/// Field names match Intuit QBO REST API v3 Account entity exactly.
+/// AccountType enum: https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account
 /// </summary>
 public sealed class QuickBooksAccountTemplate
 {
@@ -84,14 +86,18 @@ public sealed class QuickBooksAccountTemplate
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Account type (Asset, Liability, Equity, Income, Expense).
+    /// Intuit AccountType enum value (e.g., "Bank", "Other Current Asset", "Accounts Receivable",
+    /// "Accounts Payable", "Other Current Liability", "Equity", "Income", "Expense", "Fixed Asset").
+    /// Must match the AccountTypeEnum exactly as defined by Intuit QBO API.
     /// </summary>
-    public string Type { get; set; } = string.Empty;
+    public string AccountType { get; set; } = string.Empty;
 
     /// <summary>
-    /// Account subtype (e.g., "Cash", "Credit Card", "Accounts Receivable").
+    /// Intuit AccountSubType value (e.g., "Checking", "AccountsReceivable", "RetainedEarnings",
+    /// "OtherPrimaryIncome", "PayrollExpenses", etc.).
+    /// Must be a valid sub-type for the given AccountType.
     /// </summary>
-    public string SubType { get; set; } = string.Empty;
+    public string AccountSubType { get; set; } = string.Empty;
 
     /// <summary>
     /// Optional account number.

@@ -170,6 +170,10 @@ public partial class MainForm
                 : results.Select(result => result.DisplayText).ToList();
 
             _searchResultsList.DataSource = displayRows;
+            if (results.Count == 1)
+            {
+                _searchResultsList.SelectedIndex = 0;
+            }
             _logger?.LogDebug("Global search dialog rendered {Count} results for query: {Query}", results.Count, normalizedQuery);
         }
         catch (Exception ex)
@@ -346,18 +350,52 @@ public partial class MainForm
 
         try
         {
-            var selectedIndexProperty = _searchResultsList.GetType().GetProperty("SelectedIndex");
-            if (selectedIndexProperty?.GetValue(_searchResultsList) is int selectedIndex)
+            var selectedIndex = _searchResultsList.SelectedIndex;
+            if (selectedIndex >= 0 && selectedIndex < _searchDialogResults.Count)
             {
                 return selectedIndex;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback below.
+            _logger?.LogDebug(ex, "Unable to read selected index from global search results list");
         }
 
         return _searchDialogResults.Count == 1 ? 0 : -1;
+    }
+
+    private void UpdateGlobalSearchTheme(string themeName)
+    {
+        try
+        {
+            if (_searchDialog == null || _searchDialog.IsDisposed)
+            {
+                return;
+            }
+
+            SfSkinManager.SetVisualStyle(_searchDialog, themeName);
+
+            if (_globalSearchBox != null && !_globalSearchBox.IsDisposed)
+            {
+                _globalSearchBox.ThemeName = themeName;
+                SfSkinManager.SetVisualStyle(_globalSearchBox, themeName);
+            }
+
+            if (_searchResultsList != null && !_searchResultsList.IsDisposed)
+            {
+                _searchResultsList.ThemeName = themeName;
+                SfSkinManager.SetVisualStyle(_searchResultsList, themeName);
+            }
+
+            if (_globalSearchAutoComplete != null)
+            {
+                _globalSearchAutoComplete.ThemeName = themeName;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to refresh global search theme to {Theme}", themeName);
+        }
     }
 
     private System.Action? BuildSearchAction(GlobalSearchMatch match)

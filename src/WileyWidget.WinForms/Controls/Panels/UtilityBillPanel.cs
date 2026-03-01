@@ -339,7 +339,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50f),
-            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f)),
+            Padding = new Padding((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(AppLayoutConstants.ButtonPanelPaddingLogical)),
             BorderStyle = BorderStyle.None,
         };
 
@@ -407,7 +407,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             button.Size = size;
             button.TabIndex = tabIndex;
-            button.Margin = new Padding(0, 0, (int)DpiAware.LogicalToDeviceUnits(5f), 0);
+            button.Margin = new Padding(0, 0, (int)DpiAware.LogicalToDeviceUnits(AppLayoutConstants.ButtonSpacingLogical), 0);
         });
     }
 

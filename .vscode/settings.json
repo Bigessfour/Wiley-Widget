@@ -196,15 +196,22 @@
     "**/tests/**"
   ],
   "omnisharp.enableAsyncCompletion": true,
-  "omnisharp.analyzeOpenDocumentsOnly": true,
+  "omnisharp.analyzeOpenDocumentsOnly": false,
 
   "csharp.suppressDotnetRestoreNotification": true,
   "csharp.semanticHighlighting.enabled": true,
 
+  // Real-time IntelliSense — run Roslyn analyzers and compiler diagnostics on all
+  // open files (not just the active tab). This eliminates stale squiggles and
+  // Problems-panel entries when switching between files.
+  // Docs: https://learn.microsoft.com/visualstudio/code-quality/configure-live-code-analysis-scope-managed-code
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+
   "[csharp]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-dotnettools.csharp",
-    "editor.formatOnSaveMode": "modifications"
+    "editor.formatOnSaveMode": "file"
   },
 
   "[python]": {

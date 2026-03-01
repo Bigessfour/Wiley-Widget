@@ -1,6 +1,6 @@
 # WileyWidget — AI Briefing
 
-> Generated: 2026-02-28 08:14 | Branch: `main` | Commit: `00b344be5a`
+> Generated: 2026-02-28 21:57 | Branch: `feature/ci-next-element-1` | Commit: `ff357aa8c1`
 
 ## Project Purpose
 
@@ -201,9 +201,9 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Manifest Stats
 
-- Total files indexed: **7726**
+- Total files indexed: **7729**
 - Files with embedded content: **400**
-- Total source size: **188,339 KB**
+- Total source size: **188,478 KB**
 - Manifest mode: **full-context**
 
 ---

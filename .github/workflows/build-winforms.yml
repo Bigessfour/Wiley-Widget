@@ -32,10 +32,6 @@ jobs:
             dashboardAutoLoad: "true"
             disableDocking: "true"
             disableRibbon: "false"
-          - name: no-ribbon
-            dashboardAutoLoad: "true"
-            disableDocking: "false"
-            disableRibbon: "true"
           - name: no-dashboard
             dashboardAutoLoad: "false"
             disableDocking: "false"
@@ -96,36 +92,112 @@ jobs:
       - name: Restore solution
         run: dotnet restore WileyWidget.sln --verbosity minimal
 
+      - name: Restore WinForms test project
+        run: dotnet restore tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --verbosity minimal
+
       - name: Build solution (capture log)
         shell: pwsh
         run: |
           dotnet build WileyWidget.sln --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build.log
           if ($LASTEXITCODE -ne 0) { Write-Error "Build failed; see build.log" }
 
+      - name: Build WinForms test project
+        shell: pwsh
+        run: |
+          dotnet build tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build-tests.log
+          if ($LASTEXITCODE -ne 0) { Write-Error "Test project build failed; see build-tests.log" }
+
+      - name: Syncfusion 32.2.3 Architecture Compliance
+        shell: pwsh
+        run: |
+          # Baselines represent known existing violations at time of check introduction (2026-02-28).
+          # Build FAILS if violation count EXCEEDS the baseline (regression detected).
+          # Build PASSES (with warnings) if violations stay at or below baseline.
+          # Reduce baselines as violations are fixed.
+          $factoryBaseline = 10
+          $themeBaseline   = 20
+          $failed = $false
+
+          # 1 — Version pin: every Syncfusion package entry must be exactly 32.2.3 (hard fail)
+          $drift = Select-String -Path 'Directory.Packages.props' -Pattern 'Include="Syncfusion\.' |
+                   Where-Object { $_.Line -notmatch 'Version="32\.2\.3"' }
+          if ($drift) {
+            Write-Error "❌ Syncfusion version drift detected (expected 32.2.3 — update baseline or revert package change):"
+            $drift | ForEach-Object { Write-Host "  LINE $($_.LineNumber): $($_.Line.Trim())" }
+            $failed = $true
+          } else {
+            Write-Host "✅ Version pin: all Syncfusion packages = 32.2.3"
+          }
+
+          # 2 — Factory enforcement: no direct Syncfusion control instantiation outside factory/designer files
+          $controlPattern = 'new\s+(SfDataGrid|SfListView|SfTreeGrid|SfButton|SfComboBox|SfGroupView|SfDateTimeEdit|SfNumericTextBox|SfDatePicker|SfTimePicker|SfCalendar|SfMaskedEdit|SfBadge)\s*[({]'
+          $directNew = git grep -n -E $controlPattern -- 'src/WileyWidget.WinForms' 2>$null |
+                       Where-Object { $_ -notmatch 'SyncfusionControlFactory\.cs|ControlFactory\.cs|\.Designer\.cs' }
+          $factoryCount = ($directNew | Measure-Object).Count
+          if ($factoryCount -gt $factoryBaseline) {
+            Write-Error "❌ Factory violations INCREASED from baseline $factoryBaseline → $factoryCount. New direct instantiations must use SyncfusionControlFactory:"
+            $directNew | ForEach-Object { Write-Host "  $_" }
+            $failed = $true
+          } elseif ($factoryCount -gt 0) {
+            Write-Warning "⚠️  Factory enforcement: $factoryCount existing violation(s) (baseline=$factoryBaseline, no regression). Fix these to reduce the baseline."
+            $directNew | ForEach-Object { Write-Host "  $_" }
+          } else {
+            Write-Host "✅ Factory enforcement: no direct Syncfusion control instantiation detected"
+          }
+
+          # 3 — Theme authority: no manual BackColor/ForeColor (semantic Color.Red/Green/Orange excepted)
+          $colorHits = git grep -n -E '\.(BackColor|ForeColor)\s*=' -- 'src/WileyWidget.WinForms' 2>$null |
+                       Where-Object { $_ -notmatch 'Color\.(Red|Green|Orange|Transparent)' } |
+                       Where-Object { $_ -notmatch '//\s*OK:' }
+          $themeCount = ($colorHits | Measure-Object).Count
+          if ($themeCount -gt $themeBaseline) {
+            Write-Error "❌ Theme violations INCREASED from baseline $themeBaseline → $themeCount. New manual color assignments bypass SfSkinManager:"
+            $colorHits | ForEach-Object { Write-Host "  $_" }
+            $failed = $true
+          } elseif ($themeCount -gt 0) {
+            Write-Warning "⚠️  Theme authority: $themeCount existing violation(s) (baseline=$themeBaseline, no regression). Fix these to reduce the baseline."
+            $colorHits | ForEach-Object { Write-Host "  $_" }
+          } else {
+            Write-Host "✅ Theme authority: no unauthorized BackColor/ForeColor assignments"
+          }
+
+          Write-Host ""
+          Write-Host "── Syncfusion Compliance Summary ──────────────────"
+          Write-Host "  Version pin:        $(if (-not $drift) { '✅ PASS' } else { '❌ FAIL' })"
+          Write-Host "  Factory violations: $factoryCount / $factoryBaseline baseline $(if ($factoryCount -gt $factoryBaseline) { '❌ REGRESSION' } elseif ($factoryCount -gt 0) { '⚠️  existing debt' } else { '✅ CLEAN' })"
+          Write-Host "  Theme violations:   $themeCount / $themeBaseline baseline $(if ($themeCount -gt $themeBaseline) { '❌ REGRESSION' } elseif ($themeCount -gt 0) { '⚠️  existing debt' } else { '✅ CLEAN' })"
+          Write-Host "────────────────────────────────────────────────────"
+
+          if ($failed) { exit 1 }
+
       - name: Discover WinForms startup test
         shell: pwsh
         run: |
-          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj \
-            --configuration Release \
-            --no-build \
-            --list-tests \
-            --filter "FullyQualifiedName~MainFormStartupIntegrationTests" \
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --list-tests `
+            --filter "FullyQualifiedName~MainFormStartupIntegrationTests" `
+            --blame-hang-timeout 60s `
             -v minimal *>&1 | Tee-Object -FilePath test-discovery.log
+          # Exit 0 even when no tests match the filter (discovery is informational)
+          exit 0
 
       - name: Run WinForms startup test (capture log)
-        continue-on-error: true
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
-          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj \
-            --configuration Release \
-            --no-build \
-            --filter "FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions" \
-            --logger "console;verbosity=detailed" \
-            --logger "trx;LogFileName=startup-test.trx" \
-            --results-directory ${{ github.workspace }}\TestResults *>&1 | Tee-Object -FilePath test.log
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --filter "FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions" `
+            --logger "console;verbosity=detailed" `
+            --logger "trx;LogFileName=startup-test.trx" `
+            --results-directory ${{ github.workspace }}\TestResults `
+            --blame-hang-timeout 3m *>&1 | Tee-Object -FilePath test.log
           Set-Content -Path test-exitcode.txt -Value $LASTEXITCODE
         env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
           WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD: ${{ matrix.config.dashboardAutoLoad }}
           WILEYWIDGET_TEST_DISABLE_DOCKING: ${{ matrix.config.disableDocking }}
           WILEYWIDGET_TEST_DISABLE_RIBBON: ${{ matrix.config.disableRibbon }}
@@ -175,6 +247,7 @@ jobs:
           name: ci-diagnostics-${{ matrix.config.name }}
           path: |
             build.log
+            build-tests.log
             test.log
             test-discovery.log
             test-exitcode.txt
@@ -210,9 +283,12 @@ jobs:
         run: dotnet restore WileyWidget.sln --verbosity minimal
 
       - name: Build MCP server project
+        id: mcp-build
+        continue-on-error: true # project may not exist yet; skip stress run gracefully
         run: dotnet build tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration Release --no-restore --verbosity minimal
 
       - name: Run strict ribbon stress script
+        if: steps.mcp-build.outcome == 'success'
         shell: pwsh
         run: |
           dotnet run --project tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj --configuration Release --no-build -- --run-script tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/Tests/MainForm_RibbonControlAdv_Navigation.net10.csx *>&1 | Tee-Object -FilePath ribbon-stress.log

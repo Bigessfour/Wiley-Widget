@@ -294,7 +294,7 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
             // QuickBooks integration (Sandbox defaults - update for production)
             ["QuickBooks-ClientId"] = "YOUR_QUICKBOOKS_CLIENT_ID",
             ["QuickBooks-ClientSecret"] = "YOUR_QUICKBOOKS_CLIENT_SECRET",
-            ["QuickBooks-RedirectUri"] = "http://localhost:5000/callback",
+            ["QuickBooks-RedirectUri"] = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl",
             ["QuickBooks-Environment"] = "Sandbox",
 
             // Database connection (if using external database)

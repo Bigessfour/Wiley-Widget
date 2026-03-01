@@ -29,7 +29,24 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip && pip install requests
 
+      - name: Check Grok secrets configured
+        id: check-secrets
+        run: |
+          key_trimmed="${XAI_API_KEY//[[:space:]]/}"
+          url_trimmed="${XAI_API_URL//[[:space:]]/}"
+          if [ -z "$key_trimmed" ] || [ -z "$url_trimmed" ] || [[ ! "$url_trimmed" =~ ^https?:// ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "::notice::XAI_API_KEY or XAI_API_URL not configured — Grok PR review skipped."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          XAI_API_URL: ${{ secrets.XAI_API_URL }}
+
       - name: Run Grok PR review script
+        if: steps.check-secrets.outputs.skip == 'false'
+        continue-on-error: true
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           XAI_API_URL: ${{ secrets.XAI_API_URL }}

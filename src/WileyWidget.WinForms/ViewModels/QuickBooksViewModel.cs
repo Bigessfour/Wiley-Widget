@@ -439,6 +439,46 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     private bool CanConnect() => !IsConnected && !IsLoading;
     private bool CanDisconnect() => IsConnected && !IsLoading;
 
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task<string> RunDiagnosticsAsync(System.Threading.CancellationToken cancellationToken = default)
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        try
+        {
+            var d = await _quickBooksService.RunDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("QuickBooks Sandbox Diagnostics");
+            sb.AppendLine(new string('─', 40));
+            sb.AppendLine($"Environment  : {d.Environment}");
+            sb.AppendLine($"Redirect URI : {d.RedirectUri}");
+            sb.AppendLine();
+            sb.AppendLine("Credentials (presence only — values not shown)");
+            sb.AppendLine($"  Client ID     : {(d.HasClientId ? "✓ present" : "✗ MISSING")}");
+            sb.AppendLine($"  Client Secret : {(d.HasClientSecret ? "✓ present" : "✗ MISSING")}");
+            sb.AppendLine($"  Realm ID      : {(d.HasRealmId ? "✓ present" : "✗ MISSING — set after first successful auth")}");
+            sb.AppendLine();
+            sb.AppendLine("URL ACL (HTTP listener registration)");
+            sb.AppendLine($"  Registered : {(d.UrlAclRegistered ? "✓ YES" : "✗ NO — run: netsh http add urlacl url=" + d.UrlAclUrl + " user=%USERNAME%")}");
+            sb.AppendLine($"  URL        : {d.UrlAclUrl}");
+            sb.AppendLine();
+            sb.AppendLine("OAuth Token");
+            sb.AppendLine($"  Valid token : {(d.HasValidToken ? "✓ YES" : "✗ NO — click Connect to authorize")}");
+            sb.AppendLine($"  Expires at  : {d.TokenExpiry}");
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RunDiagnosticsAsync failed");
+            ErrorMessage = $"Diagnostics error: {ex.Message}";
+            return $"Diagnostics failed: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
     #endregion
 
     #region Data Synchronization

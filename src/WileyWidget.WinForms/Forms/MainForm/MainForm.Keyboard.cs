@@ -261,7 +261,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.J))
         {
-            return TryShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Bottom);
+            return TryShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Right, allowFloating: false);
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
@@ -270,11 +270,11 @@ public partial class MainForm
     /// <summary>
     /// Helper: Shows a panel safely, catching exceptions.
     /// </summary>
-    private bool TryShowPanel<TPanel>(string panelName, DockingStyle style) where TPanel : UserControl
+    private bool TryShowPanel<TPanel>(string panelName, DockingStyle style, bool allowFloating = true) where TPanel : UserControl
     {
         try
         {
-            _panelNavigator?.ShowPanel<TPanel>(panelName, style, true);
+            _panelNavigator?.ShowPanel<TPanel>(panelName, style, allowFloating);
             return true;
         }
         catch (Exception ex)
