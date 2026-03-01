@@ -75,10 +75,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             _lblTitle = new Label
             {
                 Dock = DockStyle.Top,
-                Height = Dpi(20f),
+                Height = Dpi(24f),
                 Text = "Title",
-                TextAlign = ContentAlignment.MiddleCenter,
+                TextAlign = ContentAlignment.MiddleLeft,
                 AutoSize = false,
+                AutoEllipsis = true,
                 AccessibleRole = AccessibleRole.StaticText,
                 UseMnemonic = false
             };

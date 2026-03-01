@@ -48,9 +48,9 @@ public sealed class QuickBooksOAuthOptions
 
     /// <summary>
     /// OAuth 2.0 revocation endpoint for token revocation.
-    /// Per Intuit docs: https://developer.intuit.com/v2/oauth
+    /// Per Intuit docs: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0#revoke-token-disconnect
     /// </summary>
-    public string RevokeEndpoint { get; set; } = "https://developer.intuit.com/v2/oauth";
+    public string RevokeEndpoint { get; set; } = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 
     /// <summary>
     /// Scopes requested during OAuth flow.

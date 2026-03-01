@@ -147,16 +147,17 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     /// <summary>
     /// Retrieve an environment variable from any reasonable scope.
-    /// Prefer machine-level variables first (canonical), then process-level,
-    /// then user-level for compatibility during migration.
+    /// Prefer user-level variables first (runtime overrides), then process-level,
+    /// then machine-level. Consistent with QuickBooksAuthService resolution order.
     /// </summary>
     private static string? GetEnvironmentVariableAnyScope(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
+        // User scope first so runtime overrides beat stale machine-scope values.
         try
         {
-            var machineValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
-            if (!string.IsNullOrWhiteSpace(machineValue)) return machineValue;
+            var userValue = Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+            if (!string.IsNullOrWhiteSpace(userValue)) return userValue;
         }
         catch { /* ignore */ }
 
@@ -169,7 +170,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
         try
         {
-            return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User);
+            return Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.Machine);
         }
         catch { return null; }
     }
@@ -319,6 +320,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         var validator = new OAuth2RequestValidator(accessToken);
         var ctx = new ServiceContext(realmId!, IntuitServicesType.QBO, validator);
         ctx.IppConfiguration.BaseUrl.Qbo = _authService.GetEnvironment() == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
+        // Disable Intuit's AdvancedLogging to prevent MissingMethodException caused by
+        // Serilog.Sinks.File v7 having an incompatible signature vs what IppDotNetSdkForQuickBooksApiV3 expects.
+        ctx.IppConfiguration.Logger.RequestLog.EnableRequestResponseLogging = false;
         return (ctx, new DataService(ctx));
     }
 
@@ -356,7 +360,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO connection test failed");
+            _logger.LogError(ex, "QBO connection test failed");
             return false;
         }
     }
@@ -469,6 +473,42 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
+    /// <inheritdoc />
+    public async System.Threading.Tasks.Task<QuickBooksDiagnosticsResult> RunDiagnosticsAsync(CancellationToken cancellationToken = default)
+    {
+        await EnsureInitializedAsync().ConfigureAwait(false);
+
+        var redirectUri = _redirectUri ?? "(not set)";
+        var urlAcl = await CheckUrlAclAsync(_redirectUri, cancellationToken).ConfigureAwait(false);
+
+        var tokenExpiry = "(no token)";
+        var hasValidToken = false;
+        try
+        {
+            if (_authService.HasValidAccessToken())
+            {
+                hasValidToken = true;
+                var tok = await _authService.GetCurrentTokenAsync(cancellationToken).ConfigureAwait(false);
+                tokenExpiry = tok?.AccessTokenExpiresAtUtc.ToString("yyyy-MM-dd HH:mm:ss UTC", System.Globalization.CultureInfo.InvariantCulture) ?? "(unknown)";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Diagnostics: could not read token state");
+        }
+
+        return new QuickBooksDiagnosticsResult(
+            Environment: _environment,
+            RedirectUri: redirectUri,
+            HasClientId: !string.IsNullOrEmpty(_clientId),
+            HasClientSecret: !string.IsNullOrEmpty(_clientSecret),
+            HasRealmId: !string.IsNullOrEmpty(_realmId),
+            UrlAclRegistered: urlAcl.IsReady,
+            UrlAclUrl: urlAcl.ListenerPrefix,
+            HasValidToken: hasValidToken,
+            TokenExpiry: tokenExpiry);
+    }
+
     public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -479,7 +519,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO customers fetch failed");
+            _logger.LogError(ex, "QBO customers fetch failed");
             throw;
         }
     }
@@ -494,7 +534,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO vendors fetch failed");
+            _logger.LogError(ex, "QBO vendors fetch failed");
             throw;
         }
     }
@@ -519,7 +559,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO invoices fetch failed");
+            _logger.LogError(ex, "QBO invoices fetch failed");
             throw;
         }
     }
@@ -569,7 +609,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO expenses query failed");
+            _logger.LogError(ex, "QBO expenses query failed");
             throw;
         }
     }
@@ -754,7 +794,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO journal entries fetch failed");
+            _logger.LogError(ex, "QBO journal entries fetch failed");
             throw;
         }
     }
@@ -961,7 +1001,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Serilog.Log.Error(ex, "QBO budget sync failed");
+            _logger.LogError(ex, "QBO budget sync failed");
             return new SyncResult
             {
                 Success = false,
@@ -1000,7 +1040,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "QBO budgets fetch failed");
+            _logger.LogError(ex, "QBO budgets fetch failed");
             throw;
         }
     }
@@ -1037,14 +1077,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 };
             }
 
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-
-            // Set base URL for QBO API calls based on environment
+            // Build absolute base URL; use per-request HttpRequestMessage to avoid
+            // mutating DefaultRequestHeaders (shared, not thread-safe) and to avoid
+            // clobbering BaseAddress on a reused HttpClient instance.
             var baseUrl = _environment == "sandbox"
-                ? "https://sandbox-quickbooks.api.intuit.com/"
-                : "https://quickbooks.api.intuit.com/";
-            client.BaseAddress = new Uri(baseUrl);
+                ? "https://sandbox-quickbooks.api.intuit.com"
+                : "https://quickbooks.api.intuit.com";
 
             int syncedCount = 0;
             bool hadFailures = false;
@@ -1058,12 +1096,14 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 if (lease.IsAcquired)
                 {
                     // QBO API: POST /v3/company/{realmId}/budget
-                    var endpoint = $"v3/company/{realmId}/budget";
+                    var endpointUrl = $"{baseUrl}/v3/company/{realmId}/budget?minorversion=65";
                     var json = System.Text.Json.JsonSerializer.Serialize(budget);
 
                     using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    var endpointUri = new Uri(endpoint, UriKind.Relative);
-                    var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
+                    using var req = new HttpRequestMessage(HttpMethod.Post, endpointUrl) { Content = content };
+                    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                    req.Headers.Accept.ParseAdd("application/json");
+                    var response = await client.SendAsync(req, cancellationToken).ConfigureAwait(false);
 
                     if (response.IsSuccessStatusCode)
                     {
@@ -1113,7 +1153,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Serilog.Log.Error(ex, "QBO budget sync failed");
+            _logger.LogError(ex, "QBO budget sync failed");
             return new SyncResult
             {
                 Success = false,
@@ -1226,14 +1266,12 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 };
             }
 
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-
-            // Set base URL for QBO API calls based on environment
+            // Build absolute base URL; use per-request HttpRequestMessage to avoid
+            // mutating DefaultRequestHeaders (shared, not thread-safe) and to avoid
+            // clobbering BaseAddress on a reused HttpClient instance.
             var baseUrl = _environment == "sandbox"
-                ? "https://sandbox-quickbooks.api.intuit.com/"
-                : "https://quickbooks.api.intuit.com/";
-            client.BaseAddress = new Uri(baseUrl);
+                ? "https://sandbox-quickbooks.api.intuit.com"
+                : "https://quickbooks.api.intuit.com";
 
             int syncedCount = 0;
             bool hadFailures = false;
@@ -1247,12 +1285,14 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 if (lease.IsAcquired)
                 {
                     // QBO API: POST /v3/company/{realmId}/vendor
-                    var endpoint = $"v3/company/{realmId}/vendor";
+                    var endpointUrl = $"{baseUrl}/v3/company/{realmId}/vendor?minorversion=65";
                     var json = System.Text.Json.JsonSerializer.Serialize(vendor);
 
                     using var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    var endpointUri = new Uri(endpoint, UriKind.Relative);
-                    var response = await client.PostAsync(endpointUri, content, cancellationToken).ConfigureAwait(false);
+                    using var req = new HttpRequestMessage(HttpMethod.Post, endpointUrl) { Content = content };
+                    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                    req.Headers.Accept.ParseAdd("application/json");
+                    var response = await client.SendAsync(req, cancellationToken).ConfigureAwait(false);
 
                     if (response.IsSuccessStatusCode)
                     {
@@ -1302,7 +1342,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         catch (Exception ex)
         {
             stopwatch.Stop();
-            Serilog.Log.Error(ex, "QBO vendor sync failed");
+            _logger.LogError(ex, "QBO vendor sync failed");
             return new SyncResult
             {
                 Success = false,
@@ -1567,7 +1607,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                     }
                 }
                 _settings.Save();
-                Serilog.Log.Information("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
+                _logger.LogInformation("QBO tokens acquired interactively (exp {Expiry}). Reminder: protect tokens at rest in production.", s.QboTokenExpiry);
                 await WriteCallbackResponseAsync(response, "Authorization complete. You may close this tab and return to Wiley Widget.").ConfigureAwait(false);
                 listener.Stop();
                 return true;

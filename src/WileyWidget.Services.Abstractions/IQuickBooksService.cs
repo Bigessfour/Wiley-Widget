@@ -62,7 +62,27 @@ namespace WileyWidget.Services.Abstractions
         System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Gathers sandbox connection diagnostics without exposing secret values.
+        /// Returns environment, redirect URI, credential presence, URL ACL status, and token state.
+        /// </summary>
+        System.Threading.Tasks.Task<QuickBooksDiagnosticsResult> RunDiagnosticsAsync(CancellationToken cancellationToken = default);
+
     }
+
+    /// <summary>
+    /// Sandbox/connection diagnostic snapshot — no secret values are included.
+    /// </summary>
+    public sealed record QuickBooksDiagnosticsResult(
+        string Environment,
+        string RedirectUri,
+        bool HasClientId,
+        bool HasClientSecret,
+        bool HasRealmId,
+        bool UrlAclRegistered,
+        string UrlAclUrl,
+        bool HasValidToken,
+        string TokenExpiry);
 
     /// <summary>
     /// Simple expense line returned from QuickBooks (abstraction level).

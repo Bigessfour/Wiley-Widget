@@ -62,7 +62,7 @@ jobs:
         env:
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           XAI_API_URL: ${{ secrets.XAI_API_URL }}
-          XAI_MODEL: ${{ vars.XAI_MODEL || 'grok-4-1-fast-reasoning' }}
+          XAI_MODEL: ${{ vars.XAI_MODEL || 'grok-3-fast' }}
           GITHUB_TOKEN: ${{ secrets.PAT_FOR_AUTO_FIX || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CI_RUN_ID: ${{ github.event.workflow_run.id }}

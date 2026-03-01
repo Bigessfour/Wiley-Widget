@@ -9,6 +9,7 @@ using Intuit.Ipp.DataService;
 using Intuit.Ipp.QueryFilter;
 using Intuit.Ipp.Security;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
@@ -20,11 +21,19 @@ namespace WileyWidget.Services
     {
         private readonly SettingsService _settings;
         private readonly ILogger<QuickBooksApiClient> _logger;
+        private readonly IQuickBooksAuthService _authService;
+        private readonly int _tokenExpiryBufferSeconds;
 
-        public QuickBooksApiClient(SettingsService settings, ILogger<QuickBooksApiClient> logger)
+        public QuickBooksApiClient(
+            SettingsService settings,
+            ILogger<QuickBooksApiClient> logger,
+            IQuickBooksAuthService authService,
+            IOptions<QuickBooksOAuthOptions>? oauthOptions = null)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _tokenExpiryBufferSeconds = oauthOptions?.Value.TokenExpiryBufferSeconds ?? 300;
         }
 
         private (ServiceContext Ctx, DataService Ds) GetDataService()
@@ -34,18 +43,23 @@ namespace WileyWidget.Services
             if (string.IsNullOrWhiteSpace(s.QuickBooksRealmId))
                 throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
 
-            // Using OAuth2RequestValidator from Intuit.Ipp.Security (OAuth2 SDK)
+            // Use IQuickBooksAuthService as the single source of truth for environment
+            // so SDK context and REST calls always target the same host.
+            var environment = _authService.GetEnvironment();
             var validator = new OAuth2RequestValidator(s.QboAccessToken);
             var ctx = new ServiceContext(s.QuickBooksRealmId, IntuitServicesType.QBO, validator);
-            ctx.IppConfiguration.BaseUrl.Qbo = s.QuickBooksEnvironment == "sandbox" ? "https://sandbox-quickbooks.api.intuit.com/" : "https://quickbooks.api.intuit.com/";
+            ctx.IppConfiguration.BaseUrl.Qbo = environment == "sandbox"
+                ? "https://sandbox-quickbooks.api.intuit.com/"
+                : "https://quickbooks.api.intuit.com/";
             return (ctx, new DataService(ctx));
         }
 
-        private static bool HasValidAccessToken(WileyWidget.Models.AppSettings s)
+        private bool HasValidAccessToken(WileyWidget.Models.AppSettings s)
         {
             if (string.IsNullOrWhiteSpace(s.QboAccessToken)) return false;
             if (s.QboTokenExpiry == default) return false;
-            return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(60);
+            // Use configured expiry buffer (default 300s = 5 minutes) to prevent mid-flight expiry
+            return s.QboTokenExpiry > DateTime.UtcNow.AddSeconds(_tokenExpiryBufferSeconds);
         }
 
         public async Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default)
@@ -54,7 +68,9 @@ namespace WileyWidget.Services
             {
                 await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
-                return p.Ds.FindAll(new Customer(), 1, 100).ToList();
+                var customers = p.Ds.FindAll(new Customer(), 1, 100).ToList();
+                _logger.LogInformation("Fetched {Count} customers from QuickBooks", customers.Count);
+                return customers;
             }
             catch (Exception ex)
             {
@@ -69,7 +85,9 @@ namespace WileyWidget.Services
             {
                 await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
-                return p.Ds.FindAll(new Invoice(), 1, 100).ToList();
+                var invoices = p.Ds.FindAll(new Invoice(), 1, 100).ToList();
+                _logger.LogInformation("Fetched {Count} invoices from QuickBooks", invoices.Count);
+                return invoices;
             }
             catch (Exception ex)
             {
@@ -144,7 +162,9 @@ namespace WileyWidget.Services
 
                 var query = $"SELECT * FROM JournalEntry WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
                 var qs = new QueryService<JournalEntry>(p.Ctx);
-                return qs.ExecuteIdsQuery(query).ToList();
+                var entries = qs.ExecuteIdsQuery(query).ToList();
+                _logger.LogInformation("Fetched {Count} journal entries from QuickBooks ({Start:yyyy-MM-dd} to {End:yyyy-MM-dd})", entries.Count, startDate, endDate);
+                return entries;
             }
             catch (Exception ex)
             {
@@ -189,6 +209,7 @@ namespace WileyWidget.Services
                 await System.Threading.Tasks.Task.CompletedTask;
                 var p = GetDataService();
                 var customers = p.Ds.FindAll(new Customer(), 1, 1).ToList();
+                _logger.LogInformation("QuickBooks connection test successful");
                 return true;
             }
             catch (Exception ex)

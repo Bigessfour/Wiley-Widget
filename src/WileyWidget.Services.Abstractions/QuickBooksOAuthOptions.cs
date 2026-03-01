@@ -23,10 +23,10 @@ public sealed class QuickBooksOAuthOptions
 
     /// <summary>
     /// OAuth redirect URI for the callback handler.
-    /// Typically http://localhost:5000/callback for development.
-    /// Must match the registered URI at developer.intuit.com.
+    /// Typically http://localhost:5000/callback/ for development.
+    /// Must match the registered URI at developer.intuit.com (including trailing slash).
     /// </summary>
-    public string? RedirectUri { get; set; } = "http://localhost:5000/callback";
+    public string? RedirectUri { get; set; } = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
 
     /// <summary>
     /// QuickBooks Company ID (Realm ID).
@@ -54,9 +54,9 @@ public sealed class QuickBooksOAuthOptions
 
     /// <summary>
     /// OAuth 2.0 revocation endpoint for token revocation.
-    /// Per Intuit docs: https://developer.intuit.com/v2/oauth
+    /// Per Intuit docs: https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/oauth-2.0#revoke-token-disconnect
     /// </summary>
-    public string RevokeEndpoint { get; set; } = "https://developer.intuit.com/v2/oauth";
+    public string RevokeEndpoint { get; set; } = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 
     /// <summary>
     /// Scopes requested during OAuth flow.

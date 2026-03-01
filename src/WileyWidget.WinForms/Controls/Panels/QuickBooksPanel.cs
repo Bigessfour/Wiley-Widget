@@ -29,6 +29,7 @@ using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
+using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
@@ -87,6 +88,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private SfButton? _connectButton;
     private SfButton? _disconnectButton;
     private SfButton? _testConnectionButton;
+    private SfButton? _diagnosticsButton;
 
     // Operations Panel Controls (Dock-based layout)
     private SfButton? _syncDataButton;
@@ -114,6 +116,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private EventHandler? _connectButtonClickHandler;
     private EventHandler? _disconnectButtonClickHandler;
     private EventHandler? _testConnectionButtonClickHandler;
+    private EventHandler? _diagnosticsButtonClickHandler;
     private EventHandler? _syncDataButtonClickHandler;
     private EventHandler? _importAccountsButtonClickHandler;
     private EventHandler? _refreshHistoryButtonClickHandler;
@@ -289,11 +292,16 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
     public QuickBooksPanel(QuickBooksViewModel viewModel, SyncfusionControlFactory controlFactory)
-        : base(viewModel)
+        : base(viewModel, ResolveLogger())
     {
+        // IMPORTANT: base ctor calls OnViewModelResolved before this body runs.
+        // _factory and split containers are not yet available at that point.
+        // OnViewModelResolved is therefore a no-op; BuildPanelUI() is called here
+        // after _factory and InitializeComponent have both completed.
         _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
         SafeSuspendAndLayout(InitializeComponent);
+        BuildPanelUI();
     }
 
     private static ILogger ResolveLogger()
@@ -379,12 +387,29 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// Called after the ViewModel has been resolved. Initializes UI and bindings.
     /// Sets initial splitter distances to ensure proper panel layout and prevent button blocking.
     /// </summary>
-    protected override void OnViewModelResolved(object? viewModel)
+    protected override void OnViewModelResolved(QuickBooksViewModel? viewModel)
     {
         base.OnViewModelResolved(viewModel);
-        if (viewModel is not QuickBooksViewModel)
+        // UI building is deferred to BuildPanelUI(), called from the constructor body
+        // after _factory and InitializeComponent have completed.
+    }
+
+    /// <summary>
+    /// Creates all child controls and bindings. Called from the constructor body
+    /// once _factory (injected) and split containers (from InitializeComponent) are ready.
+    /// </summary>
+    private void BuildPanelUI()
+    {
+        if (ViewModel is null) return;
+
+        // Attach PanelHeader event handlers — the control is created by InitializeComponent
+        // but InitializeControls() (dead code) was the only prior attachment site.
+        if (_panelHeader != null)
         {
-            return;
+            _panelHeaderRefreshClickedHandler = async (s, e) => await RefreshAsync();
+            _panelHeaderCloseClickedHandler = (s, e) => ClosePanel();
+            _panelHeader.RefreshClicked += _panelHeaderRefreshClickedHandler;
+            _panelHeader.CloseClicked += _panelHeaderCloseClickedHandler;
         }
 
         CreateConnectionPanel();
@@ -517,7 +542,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             }
             else
             {
-                Logger.LogDebug("QuickBooksPanel: Deferring size clamp - container still too small ({W}x{H}), waiting for docking to finish sizing", Width, Height);
+                Logger?.LogDebug("QuickBooksPanel: Deferring size clamp - container still too small ({W}x{H}), waiting for docking to finish sizing", Width, Height);
             }
 
             // Refresh all split containers to ensure they respect minimum sizes.
@@ -558,7 +583,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 }
                 catch (Exception gridEx)
                 {
-                    Logger.LogWarning(gridEx, "Failed to refresh SfDataGrid layout on resize");
+                    Logger?.LogWarning(gridEx, "Failed to refresh SfDataGrid layout on resize");
                 }
             }
 
@@ -573,7 +598,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 }
                 catch (Exception panelEx)
                 {
-                    Logger.LogWarning(panelEx, "Failed to perform layout on main panel");
+                    Logger?.LogWarning(panelEx, "Failed to perform layout on main panel");
                 }
             }
 
@@ -590,7 +615,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             if (_splitContainerBottom != null) ClampSplitterSafely(_splitContainerBottom!);
 
             // Log resize in Debug mode only to reduce log spam
-            Logger.LogDebug("QuickBooksPanel resized to {Width}x{Height}, nesting depth: {Depth}", Width, Height, _layoutNestingDepth);
+            Logger?.LogDebug("QuickBooksPanel resized to {Width}x{Height}, nesting depth: {Depth}", Width, Height, _layoutNestingDepth);
         }
         finally
         {
@@ -609,7 +634,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void EnforceMinimumContentHeight()
     {
-        if (_mainPanel == null || !IsHandleCreated) return;
+        // _mainPanel is not used in the Designer-path layout; guard only on handle readiness.
+        if (!IsHandleCreated) return;
 
         // Calculate absolute minimum needed for visual integrity (Summary + History Buffer)
         // Includes Connection/Operations height as well if they were visible
@@ -1269,7 +1295,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _totalRecordsLabel = new KpiCardControl
         {
-            Title = "Records Synced",
+            Title = "Records",
             Value = "0",
             Dock = DockStyle.Fill,
             MinimumSize = new Size(DpiHeight(100f), cardHeight),
@@ -1280,7 +1306,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _accountsImportedLabel = new KpiCardControl
         {
-            Title = "Accounts Imported",
+            Title = "Accounts",
             Value = "0",
             Dock = DockStyle.Fill,
             MinimumSize = new Size(DpiHeight(100f), cardHeight),
@@ -1572,6 +1598,25 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _testConnectionButton.Click += _testConnectionButtonClickHandler;
         buttonPanel.Controls.Add(_testConnectionButton);
 
+        _diagnosticsButton = Factory.CreateSfButton("Show Diagnostics", button =>
+        {
+            button.Size = new Size(DpiHeight(130f), DpiHeight(36f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "QuickBooks Diagnostics";
+            button.AccessibleDescription = "Displays sandbox connection diagnostics without exposing secret values";
+            button.TabIndex = 4;
+            button.TabStop = true;
+        });
+        _sharedTooltip?.SetToolTip(_diagnosticsButton, "Shows sandbox environment, credential presence, URL ACL, and token status");
+        _diagnosticsButtonClickHandler = async (s, e) =>
+        {
+            if (ViewModel is null) return;
+            var report = await ViewModel.RunDiagnosticsAsync();
+            MessageBox.Show(report, "QuickBooks Sandbox Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        };
+        _diagnosticsButton.Click += _diagnosticsButtonClickHandler;
+        buttonPanel.Controls.Add(_diagnosticsButton);
+
         tableLayout.Controls.Add(buttonPanel, 0, 3);
         _connectionPanel.Controls.Add(tableLayout);
     }
@@ -1593,7 +1638,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
         else
         {
+            // Dispose the designer-created ProgressBarAdv before the field is reassigned below.
+            var oldProgressBar = _syncProgressBar;
+            _syncProgressBar = null;
             _operationsPanel.Controls.Clear();
+            try { oldProgressBar?.Dispose(); } catch { }
         }
 
         _operationsPanel.Padding = new Padding(12, 8, 12, 8);
@@ -1641,9 +1690,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Margin = new Padding(0, 10, 0, 0)  // Added top margin for button spacing
         };
 
-        _syncDataButton = Factory.CreateSfButton("🔄 Sync Data", button =>
+        _syncDataButton = Factory.CreateSfButton("Sync Data", button =>
         {
-            button.Size = new Size(DpiHeight(120f), DpiHeight(36f));
+            button.Size = new Size(DpiHeight(110f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Sync Data with QuickBooks";
             button.AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online";
@@ -1661,9 +1710,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _syncDataButton.Click += _syncDataButtonClickHandler;
         buttonPanel.Controls.Add(_syncDataButton);
 
-        _importAccountsButton = Factory.CreateSfButton("📥 Import Chart of Accounts", button =>
+        _importAccountsButton = Factory.CreateSfButton("Import Accounts", button =>
         {
-            button.Size = new Size(DpiHeight(170f), DpiHeight(36f));
+            button.Size = new Size(DpiHeight(130f), DpiHeight(36f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Import Chart of Accounts";
             button.AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online";
@@ -1708,7 +1757,14 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
         else
         {
+            // Dispose designer-created grid and filter before the fields are reassigned below.
+            var oldGrid = _syncHistoryGrid;
+            var oldFilter = _filterTextBox;
+            _syncHistoryGrid = null;
+            _filterTextBox = null;
             _historyPanel.Controls.Clear();
+            try { oldGrid?.SafeDispose(); } catch { }
+            try { oldFilter?.Dispose(); } catch { }
         }
 
         _historyPanel.BorderStyle = BorderStyle.FixedSingle;
@@ -1774,7 +1830,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         toolbarPanel.Controls.Add(_filterTextBox);
 
         // History toolbar buttons with professional sizing
-        _refreshHistoryButton = Factory.CreateSfButton("🔄 Refresh", button =>
+        _refreshHistoryButton = Factory.CreateSfButton("Refresh", button =>
         {
             button.Size = new Size(DpiHeight(95f), DpiHeight(32f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1788,7 +1844,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _refreshHistoryButton.Click += _refreshHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_refreshHistoryButton);
 
-        _clearHistoryButton = Factory.CreateSfButton("🗑 Clear", button =>
+        _clearHistoryButton = Factory.CreateSfButton("Clear", button =>
         {
             button.Size = new Size(DpiHeight(75f), DpiHeight(32f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -1811,7 +1867,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _clearHistoryButton.Click += _clearHistoryButtonClickHandler;
         toolbarPanel.Controls.Add(_clearHistoryButton);
 
-        _exportHistoryButton = Factory.CreateSfButton("📤 Export CSV", button =>
+        _exportHistoryButton = Factory.CreateSfButton("Export CSV", button =>
         {
             button.Size = new Size(DpiHeight(105f), DpiHeight(32f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -2409,93 +2465,224 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     /// <summary>
-    /// Initiates the QuickBooks OAuth 2.0 authorization flow.
-    /// Starts the callback handler, generates the authorization URL, and opens the browser.
+    /// Initiates the QuickBooks OAuth 2.0 authorization code flow (out-of-band / paste-URL variant).
+    /// Follows the Intuit OAuth 2.0 spec: generates authorization URL → opens browser → user
+    /// authorizes → user copies redirect URL → app extracts code+realmId+state → exchanges code
+    /// for tokens via Basic-Auth POST to the token endpoint.
+    ///
+    /// Per Intuit docs:
+    /// - state must be validated to prevent CSRF (RFC 6749 §10.12)
+    /// - realmId from the redirect URL identifies the connected QBO company
+    /// - Authorization codes are single-use and expire quickly; exchange immediately
+    /// - Token endpoint requires Authorization: Basic base64(clientId:clientSecret)
     /// </summary>
     private async Task InitiateQuickBooksOAuthFlowAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            Logger.LogInformation("Starting QuickBooks OAuth flow");
+            Logger.LogInformation("Starting QuickBooks OAuth 2.0 authorization flow");
 
-            // Resolve services from the scoped service provider
             var serviceProvider = ResolveServiceProvider()
                 ?? throw new InvalidOperationException("Service provider not available");
 
-            // Start the OAuth callback handler (listens on port 5000)
-            var callbackHandler = serviceProvider.GetService(typeof(QuickBooksOAuthCallbackHandler)) as QuickBooksOAuthCallbackHandler
-                ?? throw new InvalidOperationException("QuickBooksOAuthCallbackHandler is not registered in DI");
-
-            await callbackHandler.StartListeningAsync(cancellationToken);
-            Logger.LogInformation("OAuth callback handler started and listening for authorization code");
-
-            // Get the auth service to generate the authorization URL
             var authService = serviceProvider.GetService(typeof(IQuickBooksAuthService)) as IQuickBooksAuthService
                 ?? throw new InvalidOperationException("IQuickBooksAuthService is not registered in DI");
 
-            var authUrl = authService.GenerateAuthorizationUrl();
-            Logger.LogInformation("Generated OAuth authorization URL");
+            // Step 1: Generate authorization URL (state is embedded in the URL)
+            var authUrl = await authService.GenerateAuthorizationUrlAsync(cancellationToken).ConfigureAwait(false);
+            var generatedState = ExtractOAuthQueryParam(authUrl, "state");
+            Logger.LogInformation("OAuth authorization URL generated (state: {State})", generatedState ?? "(none)");
 
-            // Open the browser to the authorization URL
+            // Step 2: Open browser to the authorization page
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = authUrl,
                 UseShellExecute = true
             });
+            Logger.LogInformation("Browser opened to QuickBooks authorization URL");
 
-            Logger.LogInformation("Opened browser to QuickBooks authorization URL");
+            // Step 3: Out-of-band paste dialog — user copies redirect URL from browser after authorizing
+            string pastedUrl;
+            using (var pasteForm = new Form
+            {
+                Text = "QuickBooks Authorization — Paste Redirect URL",
+                Width = 680,
+                Height = 270,
+                StartPosition = FormStartPosition.CenterParent,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                FormBorderStyle = FormBorderStyle.FixedDialog
+            })
+            {
+                var lbl = new Label
+                {
+                    Text = "1. Log in with your QuickBooks Online Sandbox account in the browser that just opened.\r\n" +
+                           "2. Click \"Connect\" or \"Authorize\" when prompted.\r\n" +
+                           "3. After authorizing, the browser navigates to a redirect page.\r\n" +
+                           "4. Copy the FULL URL from the browser address bar (it will contain ?code=...).\r\n" +
+                           "5. Paste the complete URL below and click OK.",
+                    Left = 12,
+                    Top = 12,
+                    Width = 644,
+                    Height = 92,
+                    AutoSize = false
+                };
+                var txt = new TextBox
+                {
+                    Left = 12,
+                    Top = 110,
+                    Width = 644,
+                    Height = 26,
+                    PlaceholderText = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl?code=…&state=…&realmId=…"
+                };
+                var btnOk = new Button { Text = "OK", Left = 484, Top = 150, Width = 80, DialogResult = DialogResult.OK };
+                var btnCancel = new Button { Text = "Cancel", Left = 576, Top = 150, Width = 80, DialogResult = DialogResult.Cancel };
+                pasteForm.Controls.AddRange(new Control[] { lbl, txt, btnOk, btnCancel });
+                pasteForm.AcceptButton = btnOk;
+                pasteForm.CancelButton = btnCancel;
 
-            // Give user instructions
+                if (pasteForm.ShowDialog() != DialogResult.OK)
+                {
+                    Logger.LogInformation("User cancelled the OAuth paste dialog — flow aborted");
+                    return; // Silent cancel; no failure dialog shown
+                }
+
+                pastedUrl = txt.Text.Trim();
+            }
+
+            // Step 4: Parse code, realmId, state from the pasted redirect URL
+            if (string.IsNullOrWhiteSpace(pastedUrl))
+            {
+                Logger.LogWarning("User submitted an empty URL");
+                MessageBox.Show(
+                    "No URL was entered.\n\nAfter authorizing in the browser, copy the full URL from the address bar and paste it here.",
+                    "Missing URL",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            Logger.LogDebug("Parsing pasted redirect URL (length: {Length})", pastedUrl.Length);
+
+            var authCode = ExtractOAuthQueryParam(pastedUrl, "code");
+            var returnedRealmId = ExtractOAuthQueryParam(pastedUrl, "realmId");
+            var returnedState = ExtractOAuthQueryParam(pastedUrl, "state");
+
+            Logger.LogDebug(
+                "Parsed redirect params — code: {HasCode}, realmId: {RealmId}, state: {HasState}",
+                authCode != null ? $"present ({authCode.Length} chars)" : "MISSING",
+                returnedRealmId ?? "(not present)",
+                returnedState ?? "(not present)");
+
+            // Step 5: CSRF — validate state matches what we sent (per Intuit and RFC 6749 §10.12)
+            if (!string.IsNullOrWhiteSpace(generatedState) && !string.IsNullOrWhiteSpace(returnedState))
+            {
+                if (!string.Equals(generatedState, returnedState, StringComparison.Ordinal))
+                {
+                    Logger.LogError(
+                        "OAuth state mismatch (CSRF check failed). Expected: {Expected}, Got: {Got}",
+                        generatedState, returnedState);
+                    MessageBox.Show(
+                        "Security validation failed: the response state did not match the request state.\n\n" +
+                        "This may indicate a tampered response. Please try again.",
+                        "Security Error",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                    return;
+                }
+                Logger.LogDebug("OAuth state validated successfully");
+            }
+            else if (!string.IsNullOrWhiteSpace(generatedState) && string.IsNullOrWhiteSpace(returnedState))
+            {
+                Logger.LogWarning("State was sent in authorization request but not returned in redirect URL");
+            }
+
+            // Step 6: Require the authorization code
+            if (string.IsNullOrWhiteSpace(authCode))
+            {
+                Logger.LogWarning("No 'code' parameter found in pasted URL: {UrlPrefix}",
+                    pastedUrl.Length > 80 ? pastedUrl[..80] + "…" : pastedUrl);
+                MessageBox.Show(
+                    "Could not find the authorization code in the URL you pasted.\n\n" +
+                    "The URL must contain a '?code=...' parameter.\n\n" +
+                    "Make sure you:\n" +
+                    "\u2022 Authorized the app (clicked Connect/Allow) in the browser\n" +
+                    "\u2022 Copied the URL AFTER being redirected (address bar should show the redirect URL)\n" +
+                    "\u2022 Copied the COMPLETE URL including the query string",
+                    "Authorization Code Not Found",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Step 7: Exchange authorization code for tokens
+            // Per Intuit: code is single-use and expires quickly — exchange immediately
+            Logger.LogInformation(
+                "Exchanging authorization code for tokens (realmId from redirect: {RealmId})",
+                returnedRealmId ?? "not in URL — using configured value");
+
+            var exchangeResult = await authService.ExchangeCodeForTokenAsync(authCode, cancellationToken).ConfigureAwait(false);
+
+            if (!exchangeResult.IsSuccess)
+            {
+                Logger.LogWarning("Token exchange failed: {Error}", exchangeResult.ErrorMessage);
+                MessageBox.Show(
+                    $"Token exchange failed:\n{exchangeResult.ErrorMessage}\n\n" +
+                    "Authorization codes expire quickly and are single-use.\n" +
+                    "Please try again — authorize in the browser and paste the new URL immediately.",
+                    "Authorization Failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            Logger.LogInformation("OAuth token exchange successful — tokens stored. RealmId: {RealmId}", returnedRealmId ?? "(from config)");
+
+            // If the redirect URL carried a realmId that differs from the configured value,
+            // push it into the token store so downstream services use the correct company.
+            if (!string.IsNullOrWhiteSpace(returnedRealmId))
+            {
+                var tokenStore = serviceProvider.GetService(typeof(QuickBooksTokenStore)) as QuickBooksTokenStore;
+                tokenStore?.SetRealmId(returnedRealmId);
+            }
+
+            // Step 8: Post-authorization — fetch company info and accounts
             MessageBox.Show(
-                "A browser window will open for QuickBooks authorization.\n\n" +
-                "1. Log in with your QuickBooks Online account\n" +
-                "2. Review and authorize the app\n" +
-                "3. The browser will close automatically after authorization\n\n" +
-                "If the browser doesn't open, please visit:\n" + authUrl,
-                "QuickBooks Authorization",
+                "Authorization successful!\n\nFetching company information and accounts...",
+                "Connected to QuickBooks",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
 
-            // Wait a bit for OAuth callback to complete (5 seconds)
-            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-
-            // Check if OAuth succeeded by verifying token is available
-            var token = await authService.GetAccessTokenAsync(cancellationToken);
-            if (token != null)
+            var companyService = serviceProvider.GetService(typeof(IQuickBooksCompanyInfoService)) as IQuickBooksCompanyInfoService;
+            if (companyService != null)
             {
-                Logger.LogInformation("OAuth authentication successful");
-                MessageBox.Show(
-                    "Authorization successful! Now fetching company information and accounts...",
-                    "Success",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
-                // Fetch company info
-                var companyService = serviceProvider.GetService(typeof(IQuickBooksCompanyInfoService)) as IQuickBooksCompanyInfoService;
-                if (companyService != null)
+                try
                 {
-                    var companyInfo = await companyService.GetCompanyInfoAsync(cancellationToken);
+                    var companyInfo = await companyService.GetCompanyInfoAsync(cancellationToken).ConfigureAwait(false);
                     if (companyInfo != null)
-                    {
                         Logger.LogInformation("Fetched company info: {CompanyName}", companyInfo.CompanyName);
-                    }
                 }
-
-                // Fetch Chart of Accounts
-                var accountService = serviceProvider.GetService(typeof(IQuickBooksChartOfAccountsService)) as IQuickBooksChartOfAccountsService;
-                if (accountService != null)
+                catch (Exception ex)
                 {
-                    var accounts = await accountService.FetchAccountsAsync(cancellationToken);
-                    Logger.LogInformation("Fetched {AccountCount} accounts", accounts.Count);
+                    Logger.LogWarning(ex, "Failed to fetch company info after token exchange");
+                }
+            }
 
-                    // If no accounts exist, seed the sandbox
+            var accountService = serviceProvider.GetService(typeof(IQuickBooksChartOfAccountsService)) as IQuickBooksChartOfAccountsService;
+            if (accountService != null)
+            {
+                try
+                {
+                    var accounts = await accountService.FetchAccountsAsync(cancellationToken).ConfigureAwait(false);
+                    Logger.LogInformation("Fetched {AccountCount} accounts from QuickBooks", accounts.Count);
+
                     if (accounts.Count == 0)
                     {
-                        Logger.LogInformation("No accounts found; seeding sandbox with municipal finance accounts...");
+                        Logger.LogInformation("No accounts found — seeding sandbox with municipal finance accounts");
                         var seederService = serviceProvider.GetService(typeof(IQuickBooksSandboxSeederService)) as IQuickBooksSandboxSeederService;
                         if (seederService != null)
                         {
-                            var seedResult = await seederService.SeedSandboxAsync(cancellationToken);
+                            var seedResult = await seederService.SeedSandboxAsync(cancellationToken).ConfigureAwait(false);
                             if (seedResult.IsSuccess)
                             {
                                 MessageBox.Show(
@@ -2518,12 +2705,10 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                         }
                     }
 
-                    // Update UI to display the accounts
                     if (_syncHistoryGrid != null && accounts.Count > 0)
                     {
                         try
                         {
-                            // Create display records from fetched accounts
                             var accountRecords = accounts.Select(account => new QuickBooksSyncHistoryRecord
                             {
                                 Timestamp = DateTime.UtcNow,
@@ -2534,10 +2719,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                                 Duration = TimeSpan.Zero
                             }).ToList();
 
-                            // Display accounts in sync history grid
                             _syncHistoryGrid.DataSource = accountRecords;
 
-                            // Update ViewModel metrics
                             if (ViewModel != null)
                             {
                                 ViewModel.AccountsImported = accounts.Count;
@@ -2550,37 +2733,47 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                         {
                             Logger.LogError(ex, "Failed to display accounts in grid");
                             MessageBox.Show(
-                                $"Error displaying accounts: {ex.Message}",
+                                $"Accounts were imported but could not be displayed:\n{ex.Message}",
                                 "Display Error",
                                 MessageBoxButtons.OK,
                                 MessageBoxIcon.Warning);
                         }
                     }
                 }
-
-                // Stop the callback handler once OAuth is complete
-                await callbackHandler.StopListeningAsync(cancellationToken);
-            }
-            else
-            {
-                Logger.LogWarning("OAuth authorization failed: no token received");
-                MessageBox.Show(
-                    "Authorization was not completed. Please try again.",
-                    "Authorization Failed",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to fetch/display accounts after token exchange");
+                }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to initiate OAuth flow");
+            Logger.LogError(ex, "Unhandled exception in OAuth flow");
             MessageBox.Show(
-                $"Failed to start authorization: {ex.Message}\n\n" +
-                "Please ensure port 5000 is available and try again.",
+                $"Failed to complete authorization: {ex.Message}",
                 "Authorization Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
+    }
+
+    /// <summary>
+    /// Extracts a named query-string parameter from a URL or query string fragment.
+    /// Returns null if the parameter is not present. Handles URL-encoded values.
+    /// </summary>
+    /// <param name="url">Full URL or query string (with or without leading '?').</param>
+    /// <param name="paramName">Case-insensitive parameter name to find.</param>
+    private static string? ExtractOAuthQueryParam(string url, string paramName)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var qs = url.Contains('?') ? url[(url.IndexOf('?') + 1)..] : url;
+        foreach (var part in qs.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && kv[0].Equals(paramName, StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(kv[1]);
+        }
+        return null;
     }
 
     #endregion
@@ -2595,7 +2788,27 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         if (InvokeRequired)
         {
-            await Task.Run(() => Invoke(() => ShowConnectionPromptAsync(cancellationToken).Wait(cancellationToken)), cancellationToken);
+            // Use BeginInvoke + TaskCompletionSource to marshal to the UI thread without blocking it.
+            // Calling .Wait() inside Invoke() would deadlock: Invoke blocks until the UI thread
+            // finishes, but the async continuation also needs the UI thread to complete.
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            BeginInvoke(new Func<Task>(async () =>
+            {
+                try
+                {
+                    await ShowConnectionPromptAsync(cancellationToken).ConfigureAwait(false);
+                    tcs.SetResult(true);
+                }
+                catch (OperationCanceledException)
+                {
+                    tcs.SetCanceled(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }));
+            await tcs.Task.ConfigureAwait(false);
             return;
         }
 
@@ -3330,6 +3543,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 _disconnectButton.Click -= _disconnectButtonClickHandler;
             if (_testConnectionButton != null && _testConnectionButtonClickHandler != null)
                 _testConnectionButton.Click -= _testConnectionButtonClickHandler;
+            if (_diagnosticsButton != null && _diagnosticsButtonClickHandler != null)
+                _diagnosticsButton.Click -= _diagnosticsButtonClickHandler;
             if (_syncDataButton != null && _syncDataButtonClickHandler != null)
                 _syncDataButton.Click -= _syncDataButtonClickHandler;
             if (_importAccountsButton != null && _importAccountsButtonClickHandler != null)

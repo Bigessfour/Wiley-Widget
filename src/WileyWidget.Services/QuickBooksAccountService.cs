@@ -12,7 +12,7 @@ using WileyWidget.Services.Abstractions;
 namespace WileyWidget.Services;
 
 /// <summary>
-/// Implementation of IQuickBooksAccountService using QuickBooks REST API v2.
+/// Implementation of IQuickBooksAccountService using QuickBooks REST API v3.
 /// Handles account retrieval, caching, and balance calculations.
 /// </summary>
 public sealed class QuickBooksAccountService : IQuickBooksAccountService
@@ -82,12 +82,18 @@ public sealed class QuickBooksAccountService : IQuickBooksAccountService
             // Build Chart of Accounts query
             var query = "SELECT * FROM Account";
             var encodedQuery = Uri.EscapeDataString(query);
-            var url = $"https://quickbooks.api.intuit.com/v2/company/{realmId}/query?query={encodedQuery}";
+            var host = _authService.GetEnvironment() == "sandbox"
+                ? "sandbox-quickbooks.api.intuit.com"
+                : "quickbooks.api.intuit.com";
+            // minorversion=65 targets a stable, well-defined API surface
+            var url = $"https://{host}/v3/company/{realmId}/query?query={encodedQuery}&minorversion=65";
 
-            // Set authorization header
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenData.AccessToken);
+            // Use per-request HttpRequestMessage to avoid mutating DefaultRequestHeaders (not thread-safe)
+            using var accountRequest = new HttpRequestMessage(HttpMethod.Get, url);
+            accountRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenData.AccessToken);
+            accountRequest.Headers.Accept.ParseAdd("application/json");
 
-            var response = await _httpClient.GetAsync(new Uri(url), cancellationToken);
+            var response = await _httpClient.SendAsync(accountRequest, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("Failed to retrieve accounts: {StatusCode} - {Content}",
