@@ -1,4 +1,4 @@
-name: Grok CI Auto-Healer (Cloud Agent)
+name: Grok CI Auto-Healer (Cloud Agent) - Guarded Edition for WileyWidget WinForms
 
 on:
   workflow_run:
@@ -42,6 +42,15 @@ jobs:
 
       - name: Install dependencies
         run: python -m pip install --upgrade pip requests
+
+      - name: Enforce WinForms-only guardrails
+        id: guardrails
+        run: |
+          echo "GUARDRAILS_ACTIVE=true" >> $GITHUB_ENV
+          echo "ALLOWED_PATHS=.github/workflows/ src/WileyWidget.WinForms/ tests/WileyWidget.WinForms.Tests/" >> $GITHUB_ENV
+          echo "MAX_CHANGED_LINES=80" >> $GITHUB_ENV
+          echo "MAX_FILES_CHANGED=12" >> $GITHUB_ENV
+        shell: bash
 
       - name: Check XAI secrets configured
         id: check-xai
@@ -120,6 +129,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_FOR_AUTO_FIX || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          GUARDRAILS_ACTIVE: "true"
+          ALLOWED_PATHS: ${{ env.ALLOWED_PATHS }}
+          MAX_CHANGED_LINES: ${{ env.MAX_CHANGED_LINES }}
+          MAX_FILES_CHANGED: ${{ env.MAX_FILES_CHANGED }}
         run: |
           python .github/scripts/grok-ci-healer.py
 
@@ -134,15 +147,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_FOR_AUTO_FIX || github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          GUARDRAILS_ACTIVE: "true"
+          ALLOWED_PATHS: ${{ env.ALLOWED_PATHS }}
+          MAX_CHANGED_LINES: ${{ env.MAX_CHANGED_LINES }}
+          MAX_FILES_CHANGED: ${{ env.MAX_FILES_CHANGED }}
         run: |
           python .github/scripts/grok-ci-healer.py
 
-      - name: Auto-commit & push fixes
+      - name: Create Draft PR with fixes
         if: >-
           steps.check-xai.outputs.skip == 'false' &&
           steps.xai-preflight.outcome == 'success' &&
           (steps.grok-primary.outcome == 'success' || steps.grok-fallback.outcome == 'success')
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "fix(ci): auto-healed by Grok Cloud Agent"
-          branch: ${{ github.event.workflow_run.head_branch }}
+          token: ${{ secrets.PAT_FOR_AUTO_FIX || github.token }}
+          commit-message: "fix(ci): auto-healed by Grok Cloud Agent"
+          title: "fix(ci): Grok auto-heal for build failure #${{ github.event.workflow_run.id }}"
+          body: |
+            Auto-generated fix by Grok Cloud Agent.
+            Changes limited to WinForms/tests/workflows only (guardrails enforced).
+            Review and merge manually to prevent divergence.
+          base: ${{ github.event.workflow_run.head_branch }}
+          branch: auto-heal/${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.id }}
+          delete-branch: true
+          draft: true
