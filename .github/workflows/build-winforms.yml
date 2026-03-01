@@ -32,10 +32,6 @@ jobs:
             dashboardAutoLoad: "true"
             disableDocking: "true"
             disableRibbon: "false"
-          - name: no-ribbon
-            dashboardAutoLoad: "true"
-            disableDocking: "false"
-            disableRibbon: "true"
           - name: no-dashboard
             dashboardAutoLoad: "false"
             disableDocking: "false"

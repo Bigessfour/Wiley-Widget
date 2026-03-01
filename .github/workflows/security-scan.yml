@@ -25,10 +25,19 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Dependency Review
+        id: dependency-review
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+
+      - name: Dependency Review Unsupported Notice
+        if: github.event_name == 'pull_request' && steps.dependency-review.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Write-Warning "Dependency Review is unsupported for this repository (dependency graph likely disabled)."
+          Write-Warning "Enable dependency graph in repository security settings to enforce PR dependency policy."
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3

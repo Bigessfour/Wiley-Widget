@@ -32,7 +32,9 @@ jobs:
       - name: Check Grok secrets configured
         id: check-secrets
         run: |
-          if [ -z "$XAI_API_KEY" ] || [ -z "$XAI_API_URL" ]; then
+          key_trimmed="${XAI_API_KEY//[[:space:]]/}"
+          url_trimmed="${XAI_API_URL//[[:space:]]/}"
+          if [ -z "$key_trimmed" ] || [ -z "$url_trimmed" ] || [[ ! "$url_trimmed" =~ ^https?:// ]]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "::notice::XAI_API_KEY or XAI_API_URL not configured — Grok PR review skipped."
           else
