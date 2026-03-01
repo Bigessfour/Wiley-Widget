@@ -23,6 +23,9 @@ namespace WileyWidget.Services
         private readonly ILogger<QuickBooksApiClient> _logger;
         private readonly IQuickBooksAuthService _authService;
         private readonly int _tokenExpiryBufferSeconds;
+        private static readonly Serilog.ILogger IntuitAdvancedRequestLogger = new Serilog.LoggerConfiguration()
+            .MinimumLevel.Fatal()
+            .CreateLogger();
 
         public QuickBooksApiClient(
             SettingsService settings,
@@ -51,7 +54,26 @@ namespace WileyWidget.Services
             ctx.IppConfiguration.BaseUrl.Qbo = environment == "sandbox"
                 ? "https://sandbox-quickbooks.api.intuit.com/"
                 : "https://quickbooks.api.intuit.com/";
+            ConfigureIntuitLogging(ctx);
             return (ctx, new DataService(ctx));
+        }
+
+        private static void ConfigureIntuitLogging(ServiceContext context)
+        {
+            var requestLog = context.IppConfiguration.Logger.RequestLog;
+            requestLog.EnableRequestResponseLogging = false;
+
+            var requestAdvancedLog = context.IppConfiguration.AdvancedLogger?.RequestAdvancedLog;
+            if (requestAdvancedLog == null)
+            {
+                return;
+            }
+
+            requestAdvancedLog.EnableSerilogRequestResponseLoggingForDebug = false;
+            requestAdvancedLog.EnableSerilogRequestResponseLoggingForTrace = false;
+            requestAdvancedLog.EnableSerilogRequestResponseLoggingForConsole = false;
+            requestAdvancedLog.EnableSerilogRequestResponseLoggingForFile = false;
+            requestAdvancedLog.CustomLogger = IntuitAdvancedRequestLogger;
         }
 
         private bool HasValidAccessToken(WileyWidget.Models.AppSettings s)

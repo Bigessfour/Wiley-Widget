@@ -64,6 +64,8 @@ namespace WileyWidget.WinForms.Forms
         private SyncfusionControlFactory? _controlFactory;
         private DockingManager? _dockingManager;
         private bool _syncfusionDockingInitialized;
+        private ContainerControl? _contentHostPanel;   // Dedicated DockingManager host — fills area below ribbon, above status bar
+        private bool _mdiLayoutSyncHooksAttached;
         private bool _dashboardAutoShown;
         private bool _reportViewerLaunched;
         private IServiceScope? _mainViewModelScope;
@@ -98,6 +100,14 @@ namespace WileyWidget.WinForms.Forms
         private readonly List<string> _mruList = new List<string>();
 
         public MainViewModel? MainViewModel { get; private set; }
+
+        /// <summary>
+        /// Dedicated sub-container used as <see cref="Syncfusion.Windows.Forms.Tools.DockingManager.HostControl"/>.
+        /// Positioned below ribbon and above status bar so docked panels never clip under the ribbon chrome.
+        /// Typed as <see cref="ContainerControl"/> to satisfy the DockingManager.HostControl property type
+        /// (verified against Syncfusion.Tools.Windows.dll v32.2.3 via reflection).
+        /// </summary>
+        public ContainerControl? ContentHostPanel => _contentHostPanel;
 
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -648,7 +658,7 @@ namespace WileyWidget.WinForms.Forms
         /// </summary>
         private void InitializeSyncfusionDocking()
         {
-            if (_syncfusionDockingInitialized && _dockingManager != null)
+            if (_syncfusionDockingInitialized)
             {
                 return;
             }
@@ -656,61 +666,19 @@ namespace WileyWidget.WinForms.Forms
             // Always initialize the TabbedMDI manager for MDI document layout.
             InitializeMDIManager();
 
-            // Create DockingManager (real or stub) via factory (MANDATORY per Syncfusion Control Creation Rule).
-            // Use stub in UI-test runtime to avoid Syncfusion non-client paint issues and hanging.
-            if (_controlFactory != null && IsHandleCreated)
-            {
-                try
-                {
-                    var themeName = _themeService?.CurrentTheme
-                        ?? SfSkinManager.ApplicationVisualTheme
-                        ?? Themes.ThemeColors.DefaultTheme;
-
-                    if (IsEffectivelyUiTestRuntime())
-                    {
-                        var stubLogger = (ILogger<TestDockingManagerStub>)_serviceProvider.GetService(typeof(ILogger<TestDockingManagerStub>))!;
-                        _dockingManager = new TestDockingManagerStub(stubLogger, true);
-                        _logger.LogInformation("TEST MODE: DockingManager replaced with stub");
-                    }
-                    else
-                    {
-                        _dockingManager = _controlFactory.CreateDockingManager(this, this, dm =>
-                        {
-                            // PersistState = false: avoid automatic file-based state persistence
-                            //   (we use AppStateSerializer in LayoutPersistence instead).
-                            dm.PersistState = false;
-                            dm.ShowCaption = false;
-                            dm.DockToFill = false;  // Do not auto-fill form; panels are managed by PanelNavigationService
-                            dm.CloseEnabled = true;
-                            dm.AnimateAutoHiddenWindow = false;
-                            // Register with component container for proper lifecycle / disposal.
-                            components?.Add(dm);
-                        });
-
-                        // Ensure form-level SfSkinManager theme cascades to DockingManager.
-                        // DockingManager inherits theming from the host form — no separate ThemeName property.
-                        SfSkinManager.SetVisualStyle(this, themeName);
-
-                        _logger?.LogDebug("DockingManager created via SyncfusionControlFactory; theme={Theme}", themeName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "InitializeSyncfusionDocking: DockingManager creation failed; docking will be limited");
-                    _dockingManager = null;
-                }
-            }
-            else
-            {
-                _logger?.LogDebug(
-                    "InitializeSyncfusionDocking: DockingManager skipped (factory={HasFactory}, handle={HasHandle}, test={IsTest})",
-                    _controlFactory != null,
-                    IsHandleCreated,
-                    IsEffectivelyUiTestRuntime());
-            }
+            // Single-path architecture: TabbedMDI is authoritative. Keep DockingManager disabled
+            // to avoid mixed runtime pathways and custom host recalc divergence.
+            _dockingManager = null;
 
             _syncfusionDockingInitialized = true;
-            _logger?.LogDebug("InitializeSyncfusionDocking completed; dockingManager={HasDm}", _dockingManager != null);
+
+            EnsureRibbonHitTestPriority();
+            _contentHostPanel?.SendToBack();
+            PerformLayout();
+            _contentHostPanel?.PerformLayout();
+            ConstrainMdiClientToContentHost();
+
+            _logger?.LogDebug("InitializeSyncfusionDocking completed in MDI-only mode");
         }
 
         /// <summary>
@@ -722,14 +690,7 @@ namespace WileyWidget.WinForms.Forms
             InitializeSyncfusionDocking();
             InitializeMDIManager();
 
-            // Wire DockingManager layout-completion events so every ScopedPanelBase child
-            // repaints/relays itself after a dock or undock operation (standards Req 3).
-            if (_dockingManager != null)
-            {
-                _dockingManager.DockStateChanged -= DockingManager_DockStateChanged;
-                _dockingManager.DockStateChanged += DockingManager_DockStateChanged;
-                _logger?.LogDebug("DockingManager DockStateChanged event wired");
-            }
+            // Single-path architecture: no DockingManager runtime event path.
         }
 
         /// <summary>
@@ -808,6 +769,115 @@ namespace WileyWidget.WinForms.Forms
                 PerformLayoutRecursive(child);
         }
 
+        private void TryRecalcDockingHostLayout(string origin)
+        {
+            if (_dockingManager == null)
+            {
+                return;
+            }
+
+            if (IsDisposed || Disposing || !IsHandleCreated)
+            {
+                return;
+            }
+
+            if (_contentHostPanel != null)
+            {
+                if (_contentHostPanel.IsDisposed || _contentHostPanel.Disposing || !_contentHostPanel.IsHandleCreated)
+                {
+                    _logger?.LogDebug("{Origin}: skipped DockingManager recalc because content host is not ready", origin);
+                    return;
+                }
+            }
+
+            try
+            {
+                _dockingManager.RecalcHostFormLayout();
+            }
+            catch (NullReferenceException ex)
+            {
+                _logger?.LogDebug(ex, "{Origin}: suppressed transient DockingManager RecalcHostFormLayout null-reference", origin);
+            }
+            catch (ObjectDisposedException ex)
+            {
+                _logger?.LogDebug(ex, "{Origin}: skipped DockingManager recalc due to disposal", origin);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger?.LogDebug(ex, "{Origin}: skipped DockingManager recalc due to invalid state", origin);
+            }
+        }
+
+        private MdiClient? GetMdiClientControl()
+        {
+            foreach (Control child in Controls)
+            {
+                if (child is MdiClient mdiClient)
+                {
+                    return mdiClient;
+                }
+            }
+
+            return null;
+        }
+
+        private void ConstrainMdiClientToContentHost()
+        {
+            if (!IsMdiContainer || _contentHostPanel == null || _contentHostPanel.IsDisposed)
+            {
+                return;
+            }
+
+            var mdiClient = GetMdiClientControl();
+            if (mdiClient == null || mdiClient.IsDisposed)
+            {
+                return;
+            }
+
+            var hostDisplay = _contentHostPanel.DisplayRectangle;
+            var hostDisplayTopLeft = this.PointToClient(_contentHostPanel.PointToScreen(hostDisplay.Location));
+            var topInset = GetMdiChromeTopInsetPixels();
+            var targetBounds = new Rectangle(
+                hostDisplayTopLeft.X,
+                hostDisplayTopLeft.Y + topInset,
+                hostDisplay.Width,
+                Math.Max(0, hostDisplay.Height - topInset));
+
+            if (targetBounds.Width <= 0 || targetBounds.Height <= 0)
+            {
+                return;
+            }
+
+            if (mdiClient.Dock != DockStyle.None)
+            {
+                mdiClient.Dock = DockStyle.None;
+            }
+
+            if (mdiClient.Bounds != targetBounds)
+            {
+                mdiClient.Bounds = targetBounds;
+            }
+
+            mdiClient.BringToFront();
+        }
+
+        private int GetMdiChromeTopInsetPixels()
+        {
+            var scale = DeviceDpi > 0 ? DeviceDpi / 96f : 1f;
+            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? Themes.ThemeColors.DefaultTheme;
+            var logicalInset = activeTheme.StartsWith("Office2019", StringComparison.OrdinalIgnoreCase) ? 3f : 2f;
+            var dpiInset = (int)Math.Ceiling(logicalInset * scale);
+
+            if (_ribbon == null || _ribbon.IsDisposed || !_ribbon.Visible || _contentHostPanel == null || _contentHostPanel.IsDisposed)
+            {
+                return Math.Clamp(dpiInset, 1, 8);
+            }
+
+            var overlap = Math.Max(0, _ribbon.Bottom - _contentHostPanel.Top);
+            var seamInset = overlap + 1;
+            return Math.Clamp(Math.Max(dpiInset, seamInset), 1, 8);
+        }
+
         /// <summary>Configures ribbon/status bar chrome around the tabbed docking surface.</summary>
         private void ConfigureDockingManagerChromeLayout()
         {
@@ -825,7 +895,11 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 EnsureChromeZOrder();
+                ConstrainMdiClientToContentHost();
                 PerformLayout();
+                _contentHostPanel?.PerformLayout();
+                // RecalcHostFormLayout() recalculates the DockingManager layout against the (sub-)host bounds.
+                TryRecalcDockingHostLayout(nameof(ConfigureDockingManagerChromeLayout));
                 Invalidate(true);
             }
             catch (Exception ex)

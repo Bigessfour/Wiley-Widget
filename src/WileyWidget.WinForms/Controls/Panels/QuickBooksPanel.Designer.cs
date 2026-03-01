@@ -61,7 +61,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._splitContainerMain.Name = "splitContainerMain";
             this._splitContainerMain.Orientation = System.Windows.Forms.Orientation.Horizontal;
             this._splitContainerMain.SplitterWidth = 6;
-            this._splitContainerMain.BorderStyle = BorderStyle.FixedSingle;
+            this._splitContainerMain.BorderStyle = BorderStyle.None;
             this._splitContainerMain.Dock = DockStyle.Fill;
 
             // Top split (connection | operations)
@@ -69,6 +69,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._splitContainerTop.Orientation = System.Windows.Forms.Orientation.Vertical;
             this._splitContainerTop.SplitterWidth = 6;
             this._splitContainerTop.Dock = DockStyle.Fill;
+            this._splitContainerTop.IsSplitterFixed = true; // Connection/Ops are always 50/50 — drag Main and Bottom splitters to resize content areas
 
             // Bottom split (summary / history)
             this._splitContainerBottom.Name = "splitContainerBottom";
@@ -81,22 +82,22 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._connectionPanel.Name = "connectionPanel";
             this._connectionPanel.Dock = DockStyle.Fill;
             this._connectionPanel.Padding = new Padding(12, 8, 12, 8);
-            this._connectionPanel.BorderStyle = BorderStyle.FixedSingle;
+            this._connectionPanel.BorderStyle = BorderStyle.None;
 
             this._operationsPanel.Name = "operationsPanel";
             this._operationsPanel.Dock = DockStyle.Fill;
             this._operationsPanel.Padding = new Padding(12, 8, 12, 8);
-            this._operationsPanel.BorderStyle = BorderStyle.FixedSingle;
+            this._operationsPanel.BorderStyle = BorderStyle.None;
 
             this._summaryPanel.Name = "summaryPanel";
             this._summaryPanel.Dock = DockStyle.Fill;
             this._summaryPanel.Padding = new Padding(12, 8, 12, 8);
-            this._summaryPanel.BorderStyle = BorderStyle.FixedSingle;
+            this._summaryPanel.BorderStyle = BorderStyle.None;
 
             this._historyPanel.Name = "historyPanel";
             this._historyPanel.Dock = DockStyle.Fill;
             this._historyPanel.Padding = new Padding(12, 8, 12, 8);
-            this._historyPanel.BorderStyle = BorderStyle.FixedSingle;
+            this._historyPanel.BorderStyle = BorderStyle.None;
 
             // Progress bar (operations)
             ((ISupportInitialize)this._syncProgressBar).BeginInit();

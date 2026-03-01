@@ -264,7 +264,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Dock = DockStyle.Top,
             Height = 60,
-            Padding = new Padding(10),
+            Padding = new Padding(AppLayoutConstants.PanelPadding),
             BorderStyle = BorderStyle.None,
         };
         SfSkinManager.SetVisualStyle(_buttonPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
@@ -281,7 +281,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "&Refresh Data",
             AutoSize = true,
-            Margin = new Padding(5),
+            Margin = new Padding(AppLayoutConstants.ButtonSpacing),
             TabIndex = 1,
             AccessibleName = "Refresh Data",
             AccessibleDescription = "Refresh department expense data from QuickBooks"
@@ -296,7 +296,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "Query &AI",
             AutoSize = true,
-            Margin = new Padding(5),
+            Margin = new Padding(AppLayoutConstants.ButtonSpacing),
             TabIndex = 2,
             AccessibleName = "Query AI",
             AccessibleDescription = "Get AI-driven rate recommendations from Grok"
@@ -311,7 +311,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Text = "&Save Changes",
             AutoSize = true,
-            Margin = new Padding(5),
+            Margin = new Padding(AppLayoutConstants.ButtonSpacing),
             TabIndex = 3,
             AccessibleName = "Save Changes",
             AccessibleDescription = "Save current charge modifications to database"
@@ -332,7 +332,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Dock = DockStyle.Top,
             Height = 180,
-            Padding = new Padding(15),
+            Padding = new Padding(AppLayoutConstants.SummaryPanelPadding),
             BorderStyle = BorderStyle.None,
         };
         SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);

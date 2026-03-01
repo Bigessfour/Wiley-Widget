@@ -347,7 +347,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             };
         }
 
-        _logger.LogWarning("No valid access token available");
+        _logger.LogInformation("No valid access token available; QuickBooks features requiring auth remain disabled until connected");
         return null;
     }
 

@@ -51,7 +51,6 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>
         /// Non-generic panel show for runtime-type-based navigation (e.g. layout restore, global search).
-        /// Uses reflection to invoke the generic ShowPanel&lt;TPanel&gt; overload.
         /// </summary>
         public bool ShowPanel(Type panelType, string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
         {
@@ -73,21 +72,15 @@ namespace WileyWidget.WinForms.Forms
                     }
                 }
 
-                // Locate the generic ShowPanel<TPanel>(string, DockingStyle, bool) method by signature
-                var method = typeof(IPanelNavigationService)
-                    .GetMethod(nameof(IPanelNavigationService.ShowPanel),
-                        new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
-
-                if (method == null)
+                if (_panelNavigator == null)
                 {
-                    _logger?.LogWarning("[NAV] ShowPanel(Type) could not find generic method on IPanelNavigationService");
+                    _logger?.LogWarning("[NAV] ShowPanel(Type) failed because panel navigator is unavailable");
                     return false;
                 }
 
-                method.MakeGenericMethod(panelType)
-                      .Invoke(_panelNavigator, new object[] { panelName, style, allowFloating });
+                _panelNavigator.ShowPanel(panelType, panelName, style, allowFloating);
 
-                var activePanelName = _panelNavigator?.GetActivePanelName();
+                var activePanelName = _panelNavigator.GetActivePanelName();
                 if (string.IsNullOrWhiteSpace(activePanelName))
                 {
                     _logger?.LogDebug("[NAV] ShowPanel(Type) completed but active panel is null for {PanelType}", panelType.Name);

@@ -47,6 +47,7 @@ public partial class MainForm
             cancellationToken.ThrowIfCancellationRequested();
 
             await InitializeDockingAsync(cancellationToken).ConfigureAwait(true);
+            EnsureRibbonHitTestPriority();
 
             // Chrome initialization is now done in OnLoad, not here
 
@@ -75,13 +76,10 @@ public partial class MainForm
                 _logger?.LogWarning("[DIAGNOSTIC] _themeService is null in InitializeAsync");
             }
 
-            // CRITICAL: DockingManager is initialized in OnShown Phase 1.
-            // Verify it exists before proceeding with panel operations.
-            if (_dockingManager == null)
+            // Single-path architecture: TabbedMDI is the runtime navigation surface.
+            if (!_syncfusionDockingInitialized)
             {
-                _logger?.LogWarning("[CRITICAL] DockingManager is null in InitializeAsync - docking was not initialized successfully in OnShown");
-                _asyncLogger?.Warning("[CRITICAL] DockingManager is null in InitializeAsync");
-                return;
+                _logger?.LogWarning("[WARN] TabbedMDI layout was not initialized before InitializeAsync");
             }
 
             if (_uiConfig.UseSyncfusionDocking)
@@ -148,7 +146,7 @@ public partial class MainForm
 
     private async Task InitializeDockingAsync(CancellationToken cancellationToken)
     {
-        if (_syncfusionDockingInitialized || _uiConfig?.UseSyncfusionDocking != true)
+        if (_uiConfig?.UseSyncfusionDocking != true)
         {
             return;
         }
@@ -159,22 +157,26 @@ public partial class MainForm
         {
             await this.InvokeAsync(() =>
             {
-                if (_syncfusionDockingInitialized) return;
+                if (!_syncfusionDockingInitialized)
+                {
+                    _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
+                    InitializeSyncfusionDocking();
+                    _syncfusionDockingInitialized = true;
+                }
 
-                _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
-                InitializeSyncfusionDocking();
                 ConfigureDockingManagerChromeLayout();
-                _syncfusionDockingInitialized = true;
             }).ConfigureAwait(true);
         }
         else
         {
-            if (_syncfusionDockingInitialized) return;
+            if (!_syncfusionDockingInitialized)
+            {
+                _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
+                InitializeSyncfusionDocking();
+                _syncfusionDockingInitialized = true;
+            }
 
-            _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
-            InitializeSyncfusionDocking();
             ConfigureDockingManagerChromeLayout();
-            _syncfusionDockingInitialized = true;
         }
     }
 
@@ -783,6 +785,8 @@ public partial class MainForm
             var dockingStopwatch = System.Diagnostics.Stopwatch.StartNew();
             // ── 1. Make sure the docking/tab system is ready (do this BEFORE navigation service)
             InitializeDockingOrTabbedLayout();
+            ConfigureDockingManagerChromeLayout();
+            EnsureRibbonHitTestPriority();
             dockingStopwatch.Stop();
             _logger?.LogDebug("OnShown Phase 1 (Docking setup) in {ElapsedMs}ms", dockingStopwatch.ElapsedMilliseconds);
 
@@ -907,7 +911,7 @@ public partial class MainForm
                     _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
                         panelName: "JARVIS Chat",
                         preferredStyle: DockingStyle.Right,
-                        allowFloating: true);
+                        allowFloating: false);
 
                     _logger?.LogDebug("OnShown deferred phase: JARVIS Chat opened");
                 }
