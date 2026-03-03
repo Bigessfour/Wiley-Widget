@@ -22,8 +22,10 @@ namespace WileyWidget.WinForms.Services
 {
     public interface IStartupOrchestrator
     {
+        void Initialize();
         Task InitializeAsync();
         Task ValidateServicesAsync(IServiceProvider serviceProvider);
+        void RunApplication(IServiceProvider serviceProvider);
         Task RunApplicationAsync(IServiceProvider serviceProvider);
     }
 
@@ -50,7 +52,7 @@ namespace WileyWidget.WinForms.Services
             _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         }
 
-        public async Task InitializeAsync()
+        public void Initialize()
         {
             var cts = new CancellationTokenSource();
             cts.CancelAfter(_startupOptions.TotalPhaseBudgetMs);
@@ -81,6 +83,12 @@ namespace WileyWidget.WinForms.Services
             {
                 cts.Dispose();
             }
+        }
+
+        public Task InitializeAsync()
+        {
+            Initialize();
+            return Task.CompletedTask;
         }
 
         private void Phase1_PreUI()
@@ -121,7 +129,8 @@ namespace WileyWidget.WinForms.Services
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Pre-UI theme application failed for {ThemeName}. Falling back to Default.", themeName);
-                        SfSkinManager.ApplicationVisualTheme = "Default";
+                        AppThemeColors.EnsureThemeAssemblyLoadedForTheme(AppThemeColors.DefaultTheme, _logger);
+                        SfSkinManager.ApplicationVisualTheme = AppThemeColors.DefaultTheme;
                     }
                 }
                 else
@@ -138,6 +147,12 @@ namespace WileyWidget.WinForms.Services
 
         public async Task ValidateServicesAsync(IServiceProvider serviceProvider)
         {
+#if !DEBUG
+            // Full 87-service DI scan is expensive and targets developer feedback only.
+            // Skip entirely in Release builds; run only on Debug or CI.
+            _logger.LogDebug("Skipping full DI validation in Release build.");
+            return;
+#endif
             if (!_startupOptions.EnableDiValidation)
             {
                 _logger.LogInformation("Startup DI validation is disabled via StartupOptions.");
@@ -271,7 +286,7 @@ namespace WileyWidget.WinForms.Services
             _logger.LogWarning("DI validation summary: {Summary}", result.GetSummary());
         }
 
-        public async Task RunApplicationAsync(IServiceProvider serviceProvider)
+        public void RunApplication(IServiceProvider serviceProvider)
         {
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator.RunApplicationAsync ENTRY");
             _logger.LogInformation("Starting WinForms application main loop...");
@@ -282,32 +297,28 @@ namespace WileyWidget.WinForms.Services
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Resolving MainForm from DI...");
             var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: MainForm resolved successfully");
+            _logger.LogInformation("[STARTUP-DIAG] MainForm resolved (HashCode={HashCode}, IsHandleCreated={IsHandleCreated}, ThreadId={ThreadId})",
+                mainForm.GetHashCode(),
+                mainForm.IsHandleCreated,
+                Thread.CurrentThread.ManagedThreadId);
 
             // Store reference to MainFormInstance for programmatic access
             Program.MainFormInstance = mainForm;
 
-            mainForm.Shown += (_, __) => Program.CompleteSplash("Ready");
+            mainForm.Shown += (_, __) =>
+            {
+                _logger.LogDebug("[STARTUP-DIAG] MainForm.Shown fired - completing splash");
+                Program.CompleteSplash("Ready");
+            };
 
-            // If MainForm implements IAsyncInitializable, initialize it after it's shown
-            if (mainForm is IAsyncInitializable asyncInit)
+            // MainForm owns deferred async initialization in OnShown.
+            // Kick off DI validation after the window is shown, but do not invoke
+            // MainForm.InitializeAsync() here to avoid duplicate startup paths.
+            mainForm.Shown += (_, __) =>
             {
-                mainForm.Shown += async (_, __) =>
-                {
-                    try
-                    {
-                        await asyncInit.InitializeAsync();
-                        _ = ValidateServicesAsync(serviceProvider);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to initialize main form asynchronously");
-                    }
-                };
-            }
-            else
-            {
-                mainForm.Shown += (_, __) => _ = ValidateServicesAsync(serviceProvider);
-            }
+                _logger.LogInformation("[STARTUP-DIAG] MainForm.Shown fired - kicking off ValidateServicesAsync");
+                _ = Task.Run(() => ValidateServicesAsync(serviceProvider));
+            };
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Calling Application.Run(mainForm) - entering message loop");
             _logger.LogInformation("Entering WinForms message loop with Application.Run()");
@@ -315,8 +326,12 @@ namespace WileyWidget.WinForms.Services
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Application.Run() returned - message loop exited");
             _logger.LogInformation("Application.Run() returned - application exiting");
+        }
 
-            await Task.CompletedTask;
+        public Task RunApplicationAsync(IServiceProvider serviceProvider)
+        {
+            RunApplication(serviceProvider);
+            return Task.CompletedTask;
         }
 
         private Task RunOnStaThread(Action action)
@@ -363,16 +378,19 @@ namespace WileyWidget.WinForms.Services
                 {
                     // Async load data (e.g., DB health check, RefreshDashboardAsync)
                     var dataLoadTasks = new List<Task>();
+                    using var scope = _scopeFactory.CreateScope();
 
-                    // DB health check - placeholder
-                    dataLoadTasks.Add(Task.Run(() =>
+                    var healthCheckService = scope.ServiceProvider.GetService(typeof(WileyWidget.Services.HealthCheckService)) as WileyWidget.Services.HealthCheckService;
+                    if (healthCheckService != null)
                     {
-                        // Simulate DB health check
-                        _logger.LogInformation("Performing DB health check");
-                        // Actual DB health check code here
-                    }, cts.Token));
+                        dataLoadTasks.Add(RunStartupHealthCheckAsync(healthCheckService, cts.Token));
+                    }
+                    else
+                    {
+                        _logger.LogInformation("HealthCheckService not registered; skipping startup health check task.");
+                    }
 
-                    await Task.WhenAll(dataLoadTasks);
+                    await Task.WhenAll(dataLoadTasks).ConfigureAwait(false);
 
                     mainForm.Refresh();
 
@@ -396,6 +414,12 @@ namespace WileyWidget.WinForms.Services
                 stopwatch.Stop();
                 WileyWidget.WinForms.Diagnostics.StartupInstrumentation.RecordPhaseTime("Phase 6 - Load and Activate Layout", stopwatch.ElapsedMilliseconds);
             }
+        }
+
+        private async Task RunStartupHealthCheckAsync(WileyWidget.Services.HealthCheckService healthCheckService, CancellationToken cancellationToken)
+        {
+            var report = await healthCheckService.CheckHealthAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Startup health check completed with status {Status}", report.OverallStatus);
         }
 
         private void HandleInitializationTimeout()
