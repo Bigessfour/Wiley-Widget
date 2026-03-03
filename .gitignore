@@ -108,6 +108,7 @@ signing/*.p12
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+!.vscode/agents/
 
 # OS generated files
 Thumbs.db
@@ -317,6 +318,7 @@ tools/Fix-ThemeAssignments.ps1
 !.vscode/launch.json
 !.vscode/*.code-snippets
 !.vscode/settings.json
+!.vscode/agents/
 .vscode/settings.json.user
 
 # Python development artifacts
