@@ -451,7 +451,6 @@ namespace WileyWidget.WinForms.Configuration
             // ✅ CRITICAL FIX: GrokAgentService is Singleton to prevent duplicate initialization
             // Previous Scoped lifetime caused multiple instances across different scopes,
             // resulting in duplicate plugin discovery (10 plugins × 2 scopes = performance waste)
-            services.AddSingleton<IAIService, GrokAgentService>();
             services.AddScoped<JarvisGrokBridgeHandler>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
@@ -554,9 +553,9 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             // Panel Navigation Service
-            // NOTE: NOT registered in DI because it requires both MainForm and DockingManager,
-            // which are UI components not created until the form is shown.
-            // MainForm creates this directly in OnShown() after docking manager is initialized.
+            // NOTE: NOT registered in DI because it requires MainForm,
+            // which is a UI component not created until the form is shown.
+            // MainForm creates this directly in OnShown().
             // See: MainForm.OnShown() - line 378
 
             // UI Configuration (Singleton)
@@ -643,6 +642,11 @@ namespace WileyWidget.WinForms.Configuration
                     memoryCache: memoryCache);
             });
 
+            // Map interface to the same concrete singleton instance to avoid duplicate
+            // GrokAgentService construction when resolving by interface vs concrete type.
+            services.AddSingleton<IAIService>(sp =>
+                DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp));
+
             // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
             // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered
             // Expose a transient proxy so IAsyncInitializable is never singleton while still delegating
@@ -687,10 +691,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<AdvancedSearchService>();
 
             // FloatingPanelManager and similar UI-scoped helpers depend
-            // on runtime UI objects (MainForm, Syncfusion DockingManager). Registering them at
+            // on runtime UI objects (MainForm). Registering them at
             // the root DI container causes ValidateOnBuild to attempt resolution of framework
             // UI types and fail during host build. Instantiate these classes at runtime after
-            // the MainForm and DockingManager are created (for example, in MainForm.OnShown
+            // the MainForm is created (for example, in MainForm.OnShown
             // or PanelNavigationService). Do NOT register them here to avoid build-time DI validation.
 
             // =====================================================================

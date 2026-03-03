@@ -97,28 +97,6 @@ public static class SyncfusionThemingExtensions
     }
 
     /// <summary>
-    /// Safely sets docking caption settings with null-conditional chaining (C# 14).
-    /// Demonstrates the new null-conditional assignment operator (?=) for safe delegation.
-    /// </summary>
-    public static void ConfigureDockingCaption(
-        this DockingManager? dockingManager,
-        UserControl panel,
-        string caption,
-        bool allowFloating = true,
-        ILogger? logger = null)
-    {
-        // C# 14: Null-conditional operator (?.=) for safe method invocation
-        // Falls back gracefully if dockingManager is null
-        dockingManager?.SetDockLabel(panel, caption);
-        dockingManager?.SetAllowFloating(panel, allowFloating);
-        dockingManager?.SetCloseButtonVisibility(panel, true);
-        dockingManager?.SetAutoHideButtonVisibility(panel, true);
-        dockingManager?.SetMenuButtonVisibility(panel, true);
-
-        logger?.LogDebug("Configured docking caption for panel: {Caption}", caption);
-    }
-
-    /// <summary>
     /// Safe theme validation extension (C# 14).
     /// Returns whether a control has a valid theme applied (no manual colors).
     /// </summary>
@@ -136,36 +114,6 @@ public static class SyncfusionThemingExtensions
         catch
         {
             return false;
-        }
-    }
-
-    /// <summary>
-    /// Extension method to safely get docking label for a control.
-    /// C# 14: Demonstrates null-conditional chaining for safe API access.
-    /// </summary>
-    public static string? GetDockingLabel(this Control? control, DockingManager? dockingManager)
-    {
-        if (control is null || dockingManager is null || control.IsDisposed)
-            return null;
-
-        try
-        {
-            // Safely attempt to retrieve docking label via reflection
-            // DockingManager doesn't expose a public getter for labels
-            var field = typeof(DockingManager).GetField("_dockLabels",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (field?.GetValue(dockingManager) is System.Collections.IDictionary labels)
-            {
-                return labels[control] as string;
-            }
-
-            return null;
-        }
-        catch
-        {
-            // Best-effort: if retrieval fails, return null
-            return null;
         }
     }
 
@@ -214,71 +162,4 @@ public static class SyncfusionThemingExtensions
         public bool IsReady => IsVisible && HasValidSize;
     }
 
-    /// <summary>
-    /// Extension method for batch theme application to multiple controls (C# 14).
-    /// Useful for applying theme to all Syncfusion controls in a panel hierarchy.
-    /// </summary>
-    public static void ApplyThemeRecursive(this Control rootControl, string themeName, ILogger? logger = null)
-    {
-        if (rootControl is null || string.IsNullOrWhiteSpace(themeName))
-        {
-            logger?.LogWarning("ApplyThemeRecursive: Invalid parameters - rootControl={Root}, themeName='{Theme}'", rootControl?.GetType().Name ?? "null", themeName);
-            return;
-        }
-
-        logger?.LogDebug("ApplyThemeRecursive: Starting theme application for {ControlType} with theme '{Theme}'", rootControl.GetType().Name, themeName);
-
-        try
-        {
-            // Apply to root
-            rootControl.ApplySyncfusionTheme(themeName, logger);
-
-            // Recursively apply to all children using C# 14 features
-            var queue = new Queue<Control>();
-            queue.Enqueue(rootControl);
-            int syncfusionControlsProcessed = 0;
-
-            while (queue.Count > 0)
-            {
-                var current = queue.Dequeue();
-
-                // C# 14: Using foreach with pattern matching
-                foreach (Control child in current.Controls)
-                {
-                    if (child is not null && !child.IsDisposed)
-                    {
-                        // Apply theme to Syncfusion controls specifically
-                        if (IsSyncfusionControl(child))
-                        {
-                            child.ApplySyncfusionTheme(themeName, logger);
-                            syncfusionControlsProcessed++;
-                        }
-
-                        queue.Enqueue(child);
-                    }
-                }
-            }
-
-            logger?.LogDebug("Applied theme '{Theme}' recursively to {Count} Syncfusion controls", themeName, syncfusionControlsProcessed);
-        }
-        catch (ObjectDisposedException odEx)
-        {
-            logger?.LogWarning(odEx, "Control was disposed during theme application for theme '{Theme}'", themeName);
-        }
-        catch (InvalidOperationException ioEx)
-        {
-            logger?.LogWarning(ioEx, "Invalid operation during recursive theme application for theme '{Theme}' - control state may have changed", themeName);
-        }
-        catch (ArgumentException argEx)
-        {
-            logger?.LogError(argEx, "Invalid argument during theme application - theme '{Theme}' may not be valid", themeName);
-        }
-    }
-
-    /// <summary>
-    /// Helper to detect if a control is a Syncfusion type.
-    /// C# 14: Simplified type checking with pattern matching.
-    /// </summary>
-    private static bool IsSyncfusionControl(Control control) =>
-        control.GetType().Namespace?.StartsWith("Syncfusion") ?? false;
 }

@@ -78,6 +78,16 @@ namespace WileyWidget.WinForms.Controls.Base
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new SizeF(96F, 96F);
 
+            if (this.AccessibleRole == AccessibleRole.Default)
+            {
+                this.AccessibleRole = AccessibleRole.Pane;
+            }
+
+            if (string.IsNullOrWhiteSpace(this.AccessibleName))
+            {
+                this.AccessibleName = GetType().Name;
+            }
+
             SuspendLayout();
             _initialLayoutSuspended = true;
         }
@@ -248,7 +258,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
         /// <summary>
         /// Public entry point for external callers (e.g.
-        /// <c>MainForm.DockingManager_DockStateChanged</c>) to trigger a post-dock layout
+        /// main form docking/layout callbacks) to trigger a post-dock layout
         /// refresh on this panel (Standards Req 3).
         /// Derived generic panels override this to call the richer <c>ForceFullLayout()</c>.
         /// </summary>
@@ -523,9 +533,9 @@ namespace WileyWidget.WinForms.Controls.Base
 
         /// <summary>
         /// Public bridge that allows external callers — such as
-        /// <c>MainForm.DockingManager_DockStateChanged</c> — to invoke
-        /// <see cref="ForceFullLayout"/> after the Syncfusion DockingManager
-        /// completes a dock or undock pass (Standards Req 3).
+        /// main form docking/layout callbacks — to invoke
+        /// <see cref="ForceFullLayout"/> after docking/resize operations
+        /// complete (Standards Req 3).
         /// </summary>
         /// <inheritdoc/>
         public override void TriggerForceFullLayout() => ForceFullLayout();
@@ -604,9 +614,9 @@ namespace WileyWidget.WinForms.Controls.Base
         protected void SetHasUnsavedChanges(bool value) => HasUnsavedChanges = value;
 
         /// <summary>
-        /// Called the first time this panel becomes visible inside the DockingManager.
+        /// Called the first time this panel becomes visible inside the docking host.
         /// Starts a one-shot 180ms timer that fires <see cref="ForceFullLayout"/> after
-        /// DockingManager finishes its resize pass.  Override in derived panels to add
+        /// the host finishes its resize pass.  Override in derived panels to add
         /// panel-specific splitter configuration inside a <c>BeginInvoke</c> callback
         /// — always call <c>base.OnShown(e)</c> first to start the timer.
         /// </summary>
@@ -651,7 +661,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
         private void QueueDeferredLayoutPass(EventArgs e)
         {
-            // Queue a deferred layout pass so DockingManager has already finished resizing
+            // Queue a deferred layout pass so the docking host has already finished resizing
             // this UserControl before we force children to lay out at the correct dimensions.
             if (!Visible || IsDisposed || !IsHandleCreated || Width <= 0 || Height <= 0)
             {
