@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.Controls;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Diagnostics;
@@ -99,39 +100,54 @@ namespace WileyWidget.WinForms.Services
 
             ExecuteOnUiThread(() =>
             {
-                Control? panel = null;
-                if (_cachedPanels.TryGetValue(panelName, out var existingPanel) && !existingPanel.IsDisposed)
+                try
                 {
-                    if (existingPanel.GetType() == panelType)
+                    if (TryRouteJarvisToRightDock(panelType, panelName, preferredStyle, null))
                     {
-                        panel = existingPanel;
+                        return;
                     }
-                    else
-                    {
-                        _logger.LogWarning("[PANEL_NAV] Replacing cached panel '{PanelName}' type {ExistingType} with {RequestedType}",
-                            panelName,
-                            existingPanel.GetType().Name,
-                            panelType.Name);
 
-                        existingPanel.Dispose();
+                    Control? panel = null;
+                    if (_cachedPanels.TryGetValue(panelName, out var existingPanel) && !existingPanel.IsDisposed)
+                    {
+                        if (existingPanel.GetType() == panelType)
+                        {
+                            panel = existingPanel;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[PANEL_NAV] Replacing cached panel '{PanelName}' type {ExistingType} with {RequestedType}",
+                                panelName,
+                                existingPanel.GetType().Name,
+                                panelType.Name);
+
+                            DisposeControlSafely(existingPanel, panelName);
+                        }
                     }
+
+                    if (panel == null)
+                    {
+                        var createdPanel = ActivatorUtilities.CreateInstance(_serviceProvider, panelType);
+                        if (createdPanel is not UserControl typedPanel)
+                        {
+                            throw new InvalidOperationException($"Resolved panel type '{panelType.FullName}' is not a UserControl.");
+                        }
+
+                        panel = typedPanel;
+                        _cachedPanels[panelName] = panel;
+                        CachePanelAliases(panelName, panel);
+                    }
+
+                    ConfigureSpecialHostPanels(panel, panelName);
+                    ShowInTabbedMdi(panel, panelName, preferredStyle);
                 }
-
-                if (panel == null)
+                catch (Exception ex)
                 {
-                    var createdPanel = ActivatorUtilities.CreateInstance(_serviceProvider, panelType);
-                    if (createdPanel is not UserControl typedPanel)
-                    {
-                        throw new InvalidOperationException($"Resolved panel type '{panelType.FullName}' is not a UserControl.");
-                    }
-
-                    panel = typedPanel;
-                    _cachedPanels[panelName] = panel;
-                    CachePanelAliases(panelName, panel);
+                    _logger.LogError(ex,
+                        "[PANEL_NAV] ShowPanel(Type) failed for '{PanelName}' ({PanelType}).",
+                        panelName, panelType.Name);
+                    NotifyNavigationError(panelName, ex);
                 }
-
-                ConfigureSpecialHostPanels(panel, panelName);
-                ShowInTabbedMdi(panel, panelName, preferredStyle);
             });
         }
 
@@ -142,21 +158,42 @@ namespace WileyWidget.WinForms.Services
 
             ExecuteOnUiThread(() =>
             {
-                if (!_cachedPanels.TryGetValue(panelName, out var panel) || panel.IsDisposed)
+                try
                 {
-                    panel = ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
-                    _cachedPanels[panelName] = panel;
-                    CachePanelAliases(panelName, panel);
+                    if (TryRouteJarvisToRightDock(typeof(TPanel), panelName, preferredStyle, parameters))
+                    {
+                        return;
+                    }
+
+                    if (!_cachedPanels.TryGetValue(panelName, out var panel) || panel.IsDisposed)
+                    {
+                        panel = ActivatorUtilities.CreateInstance<TPanel>(_serviceProvider);
+                        _cachedPanels[panelName] = panel;
+                        CachePanelAliases(panelName, panel);
+                    }
+
+                    ConfigureSpecialHostPanels(panel, panelName);
+
+                    if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
+                    {
+                        parameterizedPanel.InitializeWithParameters(parameters);
+                    }
+
+                    // Apply theme to ensure Syncfusion cascade (best practice: SetVisualStyle post-creation)
+                    var themeService = _serviceProvider.GetService(typeof(IThemeService)) as IThemeService;
+                    var themeName = themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                    SfSkinManager.SetVisualStyle(panel, themeName);
+                    _logger?.LogDebug("[PANEL_NAV] Applied theme '{ThemeName}' to panel '{PanelName}'", themeName, panelName);
+
+                    ShowInTabbedMdi(panel, panelName, preferredStyle);
                 }
-
-                ConfigureSpecialHostPanels(panel, panelName);
-
-                if (parameters is not null && panel is IParameterizedPanel parameterizedPanel)
+                catch (Exception ex)
                 {
-                    parameterizedPanel.InitializeWithParameters(parameters);
+                    _logger.LogError(ex,
+                        "[PANEL_NAV] ShowPanel<{PanelType}> failed for '{PanelName}'.",
+                        typeof(TPanel).Name, panelName);
+                    NotifyNavigationError(panelName, ex);
                 }
-
-                ShowInTabbedMdi(panel, panelName, preferredStyle);
             });
         }
 
@@ -203,6 +240,11 @@ namespace WileyWidget.WinForms.Services
 
             ExecuteOnUiThread(() =>
             {
+                if (TryRouteJarvisToRightDock(panel.GetType(), panelName, preferredStyle, null))
+                {
+                    return;
+                }
+
                 _cachedPanels[panelName] = panel;
                 CachePanelAliases(panelName, panel);
                 ShowInTabbedMdi(panel, panelName, preferredStyle);
@@ -248,14 +290,86 @@ namespace WileyWidget.WinForms.Services
         {
             foreach (var host in _hosts.Values)
             {
-                try { host.Dispose(); } catch { }
+                DisposeControlSafely(host, host.Name);
             }
             foreach (var panel in _cachedPanels.Values)
             {
-                try { panel.Dispose(); } catch { }
+                DisposeControlSafely(panel, panel.Name);
             }
             _hosts.Clear();
             _cachedPanels.Clear();
+        }
+
+        private void DisposeControlSafely(Control? control, string contextName)
+        {
+            if (control == null || control.IsDisposed || control.Disposing)
+            {
+                return;
+            }
+
+            try
+            {
+                if (control.IsHandleCreated && control.InvokeRequired)
+                {
+                    control.Invoke(new Action(() =>
+                    {
+                        if (!control.IsDisposed && !control.Disposing)
+                        {
+                            control.Dispose();
+                        }
+                    }));
+                    return;
+                }
+
+                if (!control.IsDisposed && !control.Disposing)
+                {
+                    control.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "[PANEL_NAV] Safe dispose failed for '{ContextName}'", contextName);
+            }
+        }
+
+        private bool TryRouteJarvisToRightDock(Type panelType, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle, object? parameters)
+        {
+            if (panelType != typeof(JARVISChatUserControl))
+            {
+                return false;
+            }
+
+            if (_owner is not MainForm mainForm)
+            {
+                return false;
+            }
+
+            if (TryResolveHost(panelName, out var resolvedKey, out var existingHost)
+                && existingHost != null
+                && !existingHost.IsDisposed)
+            {
+                try
+                {
+                    existingHost.Close();
+                    CleanupClosedHost(resolvedKey, existingHost);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "[PANEL_NAV] Failed to close legacy MDI JARVIS host '{PanelName}' before right-dock routing", panelName);
+                }
+            }
+
+            var shownInRightDock = mainForm.ShowJarvisInRightDock(parameters);
+            if (!shownInRightDock)
+            {
+                _logger.LogDebug("[PANEL_NAV] Right-dock routing unavailable for JARVIS panel '{PanelName}'. Falling back to TabbedMDI", panelName);
+                return false;
+            }
+
+            _activePanelName = panelName;
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelType));
+            _logger.LogDebug("[PANEL_NAV] Routed JARVIS panel '{PanelName}' to right dock (preferredStyle={PreferredStyle})", panelName, preferredStyle);
+            return true;
         }
 
         private void ShowInTabbedMdi(Control panelOrForm, string panelName, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
@@ -276,6 +390,8 @@ namespace WileyWidget.WinForms.Services
                 host.ShowInTaskbar = false;
                 host.ShowIcon = false;
                 host.Owner = null;
+                // TabbedMDIManager requires MinimumSize=(0,0) before MdiParent is assigned
+                host.MinimumSize = Size.Empty;
                 if (!ReferenceEquals(host.MdiParent, _owner))
                 {
                     host.MdiParent = _owner;
@@ -311,44 +427,28 @@ namespace WileyWidget.WinForms.Services
                     host.Show();
                 }
 
-                if (ShouldMaximizeMdiHost(preferredStyle))
-                {
-                    if (host.WindowState != FormWindowState.Maximized)
-                    {
-                        host.WindowState = FormWindowState.Maximized;
-                    }
-                }
-                else if (host.WindowState == FormWindowState.Maximized)
-                {
-                    host.WindowState = FormWindowState.Normal;
-                }
-
-                host.BringToFront();
-                host.Activate();
-
-                EnsureControlVisibleAndLaidOut(host);
-                if (hostedPanel != null)
-                {
-                    EnsureControlVisibleAndLaidOut(hostedPanel);
-                }
-
-                if (panelAttached)
-                {
-                    QueuePostShowLayoutPass(host, hostedPanel);
-                }
+                QueueHostActivationPass(host, preferredStyle);
+                QueuePostShowLayoutPass(host, hostedPanel);
 
                 _activePanelName = panelName;
                 PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelOrForm.GetType()));
             }
             finally
             {
-                ResumeLayouts(suspendedControls, performLayout: true);
+                ResumeLayouts(suspendedControls, performLayout: false);
             }
         }
 
         private static bool ShouldMaximizeMdiHost(Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
-            => preferredStyle is Syncfusion.Windows.Forms.Tools.DockingStyle.Fill
-                or Syncfusion.Windows.Forms.Tools.DockingStyle.Tabbed;
+        {
+            // With TabbedMDIManager every panel is presented as a maximized tab that fills the
+            // MDI client area.  Leaving non-Fill panels as FormWindowState.Normal causes them to
+            // appear as tiny floating windows hidden behind an already-maximised MDI child (e.g.
+            // the startup EnterpriseVitalSigns panel) — the user clicks a ribbon button and sees
+            // nothing.  Always maximise so every navigation action produces a visible result.
+            _ = preferredStyle; // style still passed in for future use (e.g. floating fallback)
+            return true;
+        }
 
         /// <summary>
         /// Validates and corrects MDI child form properties after creation.
@@ -482,13 +582,6 @@ namespace WileyWidget.WinForms.Services
                 host.Controls.Add(panel);
                 panel.Bounds = host.ClientRectangle;
 
-                // Force handle creation to trigger OnHandleCreated and ViewModel resolution
-                if (!panel.IsHandleCreated)
-                {
-                    _ = panel.Handle;
-                }
-
-                TryInitializeAsyncPanel(panel, host.Text);
             }
 
             _firstAttachCompletedPanels.Add(panel);
@@ -497,8 +590,6 @@ namespace WileyWidget.WinForms.Services
             panel.Dock = DockStyle.Fill;
             panel.BringToFront();
             ResetAutoScrollOffsets(panel);
-            EnsureControlVisibleAndLaidOut(panel);
-            EnsureControlVisibleAndLaidOut(host);
 
             return attached;
         }
@@ -691,7 +782,45 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
-        private static void QueuePostShowLayoutPass(Form host, UserControl? hostedPanel)
+        private void QueueHostActivationPass(Form host, Syncfusion.Windows.Forms.Tools.DockingStyle preferredStyle)
+        {
+            if (host == null || host.IsDisposed || !host.IsHandleCreated)
+            {
+                return;
+            }
+
+            try
+            {
+                host.BeginInvoke(new Action(() =>
+                {
+                    if (host.IsDisposed)
+                    {
+                        return;
+                    }
+
+                    if (ShouldMaximizeMdiHost(preferredStyle))
+                    {
+                        if (host.WindowState != FormWindowState.Maximized)
+                        {
+                            host.WindowState = FormWindowState.Maximized;
+                        }
+                    }
+                    else if (host.WindowState == FormWindowState.Maximized)
+                    {
+                        host.WindowState = FormWindowState.Normal;
+                    }
+
+                    host.BringToFront();
+                    host.Activate();
+                }));
+            }
+            catch
+            {
+                // best-effort deferred activation pass
+            }
+        }
+
+        private void QueuePostShowLayoutPass(Form host, UserControl? hostedPanel)
         {
             if (host == null || host.IsDisposed || !host.IsHandleCreated)
             {
@@ -714,6 +843,13 @@ namespace WileyWidget.WinForms.Services
                         hostedPanel.Dock = DockStyle.Fill;
                         ApplyMinimumTopInset(hostedPanel);
                         ResetAutoScrollOffsets(hostedPanel);
+
+                        if (!hostedPanel.IsHandleCreated)
+                        {
+                            _ = hostedPanel.Handle;
+                        }
+
+                        TryInitializeAsyncPanel(hostedPanel, host.Text);
                         EnsureControlVisibleAndLaidOut(hostedPanel);
                     }
                 }));
@@ -815,6 +951,24 @@ namespace WileyWidget.WinForms.Services
             }
 
             action();
+        }
+
+        /// <summary>
+        /// Pushes a navigation failure to the status bar so the user sees a message instead of
+        /// nothing when a ribbon button click fails to open a panel (e.g. due to a missing DI
+        /// registration or a transient creation error).
+        /// </summary>
+        private void NotifyNavigationError(string panelName, Exception ex)
+        {
+            try
+            {
+                var statusService = _serviceProvider.GetService(typeof(IStatusProgressService)) as IStatusProgressService;
+                statusService?.Complete("Navigation", $"Could not open '{panelName}': {ex.Message}");
+            }
+            catch
+            {
+                // Status bar notification is best-effort; never crash the navigation path.
+            }
         }
 
         private static string NormalizePanelKey(string? value)
