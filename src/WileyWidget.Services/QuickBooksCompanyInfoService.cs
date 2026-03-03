@@ -78,12 +78,18 @@ public sealed class QuickBooksCompanyInfoService : IQuickBooksCompanyInfoService
             // Build CompanyInfo query
             var query = "SELECT * FROM CompanyInfo";
             var encodedQuery = Uri.EscapeDataString(query);
-            var url = $"https://quickbooks.api.intuit.com/v2/company/{realmId}/query?query={encodedQuery}";
+            var host = _authService.GetEnvironment() == "sandbox"
+                ? "sandbox-quickbooks.api.intuit.com"
+                : "quickbooks.api.intuit.com";
+            var url = $"https://{host}/v3/company/{realmId}/query?query={encodedQuery}&minorversion=65";
 
-            // Set authorization header
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenData.AccessToken);
+            // Use HttpRequestMessage to avoid mutating DefaultRequestHeaders (not thread-safe)
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenData.AccessToken);
+            request.Headers.Accept.ParseAdd("application/json");
 
-            var response = await _httpClient.GetAsync(new Uri(url), cancellationToken);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("Failed to retrieve company info: {StatusCode} - {Content}",

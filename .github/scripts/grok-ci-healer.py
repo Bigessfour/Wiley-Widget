@@ -22,6 +22,13 @@ from urllib import request as urlrequest
 
 MAX_LOG_CHARS = 180_000
 MAX_DOC_CHARS = 16_000
+DEFAULT_MAX_CHANGED_LINES = 80
+DEFAULT_MAX_FILES_CHANGED = 12
+DEFAULT_ALLOWED_PATHS = (
+    ".github/workflows/",
+    "src/WileyWidget.WinForms/",
+    "tests/WileyWidget.WinForms.Tests/",
+)
 
 
 def require_env(name: str) -> str:
@@ -206,6 +213,94 @@ def run_git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def get_changed_files() -> list[str]:
+    files: set[str] = set()
+    for args in (("diff", "--name-only"), ("diff", "--name-only", "--cached")):
+        result = run_git(*args)
+        if result.returncode != 0:
+            continue
+        for line in result.stdout.splitlines():
+            path = line.strip()
+            if path:
+                files.add(path)
+    return sorted(files)
+
+
+def parse_shortstat_total(shortstat_output: str) -> int:
+    total = 0
+    for value in re.findall(r"(\d+)\s+(?:insertions?|deletions?)", shortstat_output):
+        total += int(value)
+    return total
+
+
+def get_total_changed_lines() -> int:
+    total = 0
+    for args in (("diff", "--shortstat"), ("diff", "--shortstat", "--cached")):
+        result = run_git(*args)
+        if result.returncode == 0 and result.stdout.strip():
+            total += parse_shortstat_total(result.stdout)
+    return total
+
+
+def enforce_guardrails() -> bool:
+    guardrails_active = os.environ.get("GUARDRAILS_ACTIVE", "").strip().lower()
+    if guardrails_active != "true":
+        return True
+
+    allowed_paths_raw = os.environ.get("ALLOWED_PATHS", "").strip()
+    allowed_paths = tuple(
+        path.strip() for path in allowed_paths_raw.split() if path.strip()
+    )
+    if not allowed_paths:
+        allowed_paths = DEFAULT_ALLOWED_PATHS
+
+    try:
+        max_lines = int(
+            os.environ.get("MAX_CHANGED_LINES", str(DEFAULT_MAX_CHANGED_LINES))
+        )
+    except ValueError:
+        max_lines = DEFAULT_MAX_CHANGED_LINES
+
+    try:
+        max_files = int(
+            os.environ.get("MAX_FILES_CHANGED", str(DEFAULT_MAX_FILES_CHANGED))
+        )
+    except ValueError:
+        max_files = DEFAULT_MAX_FILES_CHANGED
+
+    changed_files = get_changed_files()
+    if len(changed_files) > max_files:
+        print(
+            f"Guardrail violation: changed files ({len(changed_files)}) exceed max ({max_files}).",
+            file=sys.stderr,
+        )
+        return False
+
+    disallowed_files = [
+        path
+        for path in changed_files
+        if not any(path.startswith(prefix) for prefix in allowed_paths)
+    ]
+    if disallowed_files:
+        print("Guardrail violation: disallowed file path(s) changed:", file=sys.stderr)
+        for path in disallowed_files:
+            print(f"  {path}", file=sys.stderr)
+        return False
+
+    total_lines = get_total_changed_lines()
+    if total_lines > max_lines:
+        print(
+            f"Guardrail violation: changed lines ({total_lines}) exceed max ({max_lines}).",
+            file=sys.stderr,
+        )
+        return False
+
+    print(
+        f"Guardrails passed: files={len(changed_files)}/{max_files}, lines={total_lines}/{max_lines}."
+    )
+    return True
+
+
 def apply_unified_diff(diff_text: str) -> bool:
     patch_path = Path(".git") / "grok-ci-healer.patch"
     patch_path.write_text(diff_text, encoding="utf-8")
@@ -334,7 +429,10 @@ def main() -> int:
         print("Patch applied cleanly but produced no changes. Nothing to commit.")
         return 0
 
-    changed_files = run_git("diff", "--name-only").stdout.strip()
+    if not enforce_guardrails():
+        return 7
+
+    changed_files = "\n".join(get_changed_files())
     if changed_files:
         print("Changed files:")
         print(changed_files)

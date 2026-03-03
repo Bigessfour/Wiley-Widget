@@ -239,6 +239,10 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
                 realmId = string.Empty; // Realm ID is optional for initial token, can be fetched from company info
             }
 
+            // --- CSRF state validation ---
+            // The state parameter must match what was generated in GenerateAuthorizationUrlAsync.
+            var returnedState = queryParams.TryGetValue("state", out var stateVal) ? stateVal : string.Empty;
+
             _logger.LogInformation("Exchanging authorization code for tokens (realmId: {RealmId})", realmId);
 
             // Get auth service and exchange code for tokens
@@ -246,6 +250,21 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
             {
                 var authService = DI.ServiceProviderServiceExtensions.GetRequiredService<IQuickBooksAuthService>(scope.ServiceProvider);
                 var tokenStore = DI.ServiceProviderServiceExtensions.GetService<QuickBooksTokenStore>(scope.ServiceProvider);
+
+                // Validate CSRF state via the concrete implementation (singleton, same instance)
+                if (DI.ServiceProviderServiceExtensions.GetService<QuickBooksAuthService>(scope.ServiceProvider) is { } concreteAuth)
+                {
+                    if (!concreteAuth.ValidateAndClearState(returnedState))
+                    {
+                        _logger.LogError("OAuth callback rejected: CSRF state validation failed (state: {State})", returnedState);
+                        await SendErrorResponseAsync(response, "invalid_state", "CSRF state parameter mismatch. Please restart the authorization flow.", cancellationToken);
+                        return;
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Could not resolve QuickBooksAuthService for CSRF state validation; skipping state check.");
+                }
 
                 var result = await authService.ExchangeCodeForTokenAsync(authorizationCode, cancellationToken)
                     .ConfigureAwait(false);

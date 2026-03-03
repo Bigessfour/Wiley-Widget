@@ -178,10 +178,29 @@ public sealed class QuickBooksTokenStore : IDisposable
                 }
             }
 
-            // Deserialize JSON
-            var token = JsonSerializer.Deserialize<QuickBooksOAuthToken>(content);
+            // Deserialize JSON — try the new wrapper model first, fall back to bare token for
+            // backward compatibility with older persisted files that predate the realmId addition.
+            QuickBooksOAuthToken? token = null;
+            using var doc = System.Text.Json.JsonDocument.Parse(content);
+            if (doc.RootElement.TryGetProperty("Token", out _))
+            {
+                // New format: TokenStorageModel wrapper
+                var model = JsonSerializer.Deserialize<TokenStorageModel>(content);
+                token = model?.Token;
+                if (!string.IsNullOrEmpty(model?.RealmId))
+                {
+                    _cachedRealmId = model.RealmId;
+                    _logger.LogInformation("Restored realmId {RealmId} from disk cache", model.RealmId);
+                }
+            }
+            else
+            {
+                // Legacy format: bare QuickBooksOAuthToken
+                token = JsonSerializer.Deserialize<QuickBooksOAuthToken>(content);
+                _logger.LogDebug("Loaded legacy token format from disk (no realmId)");
+            }
 
-            if (token?.IsValid == true && !token.IsExpired)
+            if (token?.IsValid == true && !token.IsExpiredOrSoonToExpire(_options.TokenExpiryBufferSeconds))
             {
                 _logger.LogDebug("Loaded valid OAuth token from {Path}", path);
                 return token;
@@ -226,8 +245,9 @@ public sealed class QuickBooksTokenStore : IDisposable
                 Directory.CreateDirectory(directory);
             }
 
-            // Serialize token to JSON
-            var json = JsonSerializer.Serialize(token, new JsonSerializerOptions { WriteIndented = true });
+            // Wrap token + realmId in a single envelope so both survive restarts.
+            var model = new TokenStorageModel { Token = token, RealmId = _cachedRealmId };
+            var json = JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true });
 
             // Encrypt before writing to disk (if secret vault available)
             var content = json;
@@ -256,7 +276,7 @@ public sealed class QuickBooksTokenStore : IDisposable
                     // Encrypt using Windows DPAPI
                     var encryptedBytes = ProtectedData.Protect(jsonBytes, entropy, DataProtectionScope.CurrentUser);
                     content = Convert.ToBase64String(encryptedBytes);
-                    _logger.LogInformation("OAuth token encrypted using DPAPI before disk persistence");
+                    _logger.LogInformation("OAuth token+realmId encrypted using DPAPI before disk persistence");
                 }
                 catch (Exception ex)
                 {
@@ -279,5 +299,14 @@ public sealed class QuickBooksTokenStore : IDisposable
     public void Dispose()
     {
         _cachedToken = null;
+    }
+
+    /// <summary>
+    /// Envelope written to disk so the token AND realmId both survive application restarts.
+    /// </summary>
+    private sealed class TokenStorageModel
+    {
+        public QuickBooksOAuthToken? Token { get; set; }
+        public string? RealmId { get; set; }
     }
 }

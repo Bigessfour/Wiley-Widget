@@ -148,6 +148,48 @@ public partial class MainForm
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
 
+            // === CONTENT HOST PANEL (Syncfusion Ribbon + DockingManager clipping fix) ===
+            // DockingManager.HostControl is typed as ContainerControl (v32.2.3, verified via reflection).
+            // UserControl extends ContainerControl and is the correct host type.
+            // Setting HostControl to this sub-panel (instead of the form) means docked panels fill only
+            // the area BELOW the ribbon and ABOVE the status bar — eliminating the top-clipping issue.
+            // SfSkinManager theme cascades from the form to this control automatically.
+            if (_contentHostPanel == null)
+            {
+                var contentHostTheme = SfSkinManager.ApplicationVisualTheme ?? Themes.ThemeColors.DefaultTheme;
+                _contentHostPanel = new UserControl
+                {
+                    Name = "ContentHostPanel",
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(AppLayoutConstants.ContentHostPadding),
+                    TabStop = false,
+                };
+                SfSkinManager.SetVisualStyle(_contentHostPanel, contentHostTheme);
+                this.Controls.Add(_contentHostPanel);
+                _logger?.LogDebug("ContentHostPanel created (UserControl/ContainerControl), theme={Theme}", contentHostTheme);
+            }
+
+            if (_ribbon != null && !_ribbon.IsDisposed && this.Controls.Contains(_ribbon))
+            {
+                this.Controls.SetChildIndex(_ribbon, 0);
+                _ribbon.BringToFront();
+            }
+
+            if (!_contentHostPanel!.IsDisposed && this.Controls.Contains(_contentHostPanel))
+            {
+                var contentHostIndex = (_ribbon != null && !_ribbon.IsDisposed && this.Controls.Contains(_ribbon)) ? 1 : 0;
+                this.Controls.SetChildIndex(_contentHostPanel, contentHostIndex);
+                _contentHostPanel.SendToBack();
+            }
+
+            if (_ribbon != null
+                && !_ribbon.IsDisposed && !_contentHostPanel!.IsDisposed
+                && this.Controls.Contains(_ribbon) && this.Controls.Contains(_contentHostPanel))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ZOrder] Ribbon index: {this.Controls.GetChildIndex(_ribbon)}");
+                System.Diagnostics.Debug.WriteLine($"[ZOrder] ContentHost index: {this.Controls.GetChildIndex(_contentHostPanel)}");
+            }
+
             // Tabbed MDI layout is already constrained beneath the ribbon; no extra docking host initialization needed.
 
             // ── PERF FIX: Make Ribbon and Navigation Strip mutually exclusive (saves ~40ms in test mode)
@@ -507,12 +549,16 @@ public partial class MainForm
 
             // Add ribbon to form if not already present.
             // In explicit UI test harness runtime, keep ribbon detached to avoid Syncfusion non-client paint crashes.
-            if (!skipRibbonVisualAttach && !_ribbon.IsDisposed && !this.Controls.Contains(_ribbon))
+            if (!skipRibbonVisualAttach && !_ribbon.IsDisposed)
             {
-                this.Controls.Add(_ribbon);
+                if (!this.Controls.Contains(_ribbon))
+                {
+                    this.Controls.Add(_ribbon);
+                }
+
                 _ribbon.Dock = DockStyleEx.Top;
-                _ribbon.SendToBack(); // Ensure it is below any future fill-docked controls
-                _ribbon.BringToFront(); // But visually on top of content
+                this.Controls.SetChildIndex(_ribbon, 0);
+                _ribbon.BringToFront();
 
                 if (!isUiTestRuntime)
                 {
@@ -577,6 +623,7 @@ public partial class MainForm
         {
             _ribbon?.PerformLayout();
             EnsureChromeZOrder();
+            ConstrainMdiClientToContentHost();
         }
         catch (Exception ex)
         {
@@ -759,7 +806,7 @@ public partial class MainForm
 
             var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "AI Chat" };
             try { SetAutomationId(aiChatBtn, aiChatBtn.Name, _logger); } catch { }
-            aiChatBtn.Click += (s, e) => this.ShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Right, allowFloating: true);
+            aiChatBtn.Click += (s, e) => this.ShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Right, allowFloating: false);
 
             var proactiveInsightsBtn = new ToolStripButton("Proactive Insights") { Name = "Nav_ProactiveInsights", AccessibleName = "Proactive Insights" };
             try { SetAutomationId(proactiveInsightsBtn, proactiveInsightsBtn.Name, _logger); } catch { }
@@ -1123,6 +1170,8 @@ public partial class MainForm
             // Best-effort: update local theme toggle immediately so callers observing synchronously see the change
             try
             {
+                SfSkinManager.ApplicationVisualTheme = nextTheme;
+
                 var buttonText = GetThemeButtonText(nextTheme);
                 ToolStripButton? immediateToggle = null;
                 try { if (_ribbon != null) immediateToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton; } catch { }
@@ -1134,6 +1183,9 @@ public partial class MainForm
                 {
                     immediateToggle.Text = buttonText;
                 }
+
+                SyncThemeComboSelection(nextTheme, _logger);
+                UpdateThemeComboTextAcrossUi(nextTheme);
             }
             catch { }
 
@@ -1246,6 +1298,7 @@ public partial class MainForm
                 try
                 {
                     AppThemeColors.EnsureThemeAssemblyLoadedForTheme(newTheme);
+                    SfSkinManager.ApplicationVisualTheme = newTheme;
 
                     // Cascade to all child Syncfusion controls (DockingManager, StatusBarAdv, etc.)
                     SfSkinManager.SetVisualStyle(this, newTheme);
@@ -1263,6 +1316,16 @@ public partial class MainForm
                         SfSkinManager.SetVisualStyle(_statusBar, newTheme);
                     }
 
+                    // Explicit theme refresh on the content host so the DockingManager sub-host
+                    // repaints correctly after a runtime theme switch (cascade alone may miss it).
+                    if (_contentHostPanel != null && !_contentHostPanel.IsDisposed)
+                    {
+                        SfSkinManager.SetVisualStyle(_contentHostPanel, newTheme);
+                    }
+
+                    ApplyThemeToBackStage(newTheme);
+                    ApplyThemeToBackStageAndQAT(newTheme);
+                    UpdateGlobalSearchTheme(newTheme);
                     RefreshThemeSensitiveControls(newTheme);
 
                     // Update the theme toggle button text to reflect the new active theme
@@ -1274,6 +1337,9 @@ public partial class MainForm
                             if (FindToolStripItem(_ribbon, "ThemeToggle") is ToolStripButton toggle)
                                 toggle.Text = newText;
                         }
+
+                        SyncThemeComboSelection(newTheme, _logger);
+                        UpdateThemeComboTextAcrossUi(newTheme);
                     }
                     catch { /* theme button text is cosmetic; do not fail hard */ }
 
@@ -1323,6 +1389,184 @@ public partial class MainForm
 
         Invalidate(true);
         Update();
+    }
+
+    private void ApplyThemeToBackStage(string themeName)
+    {
+        try
+        {
+            var backStage = _ribbon?.BackStageView?.BackStage;
+            if (backStage == null || backStage.IsDisposed)
+            {
+                return;
+            }
+
+            SfSkinManager.SetVisualStyle(backStage, themeName);
+            ApplyThemeToControlTree(backStage, themeName);
+            backStage.Invalidate(true);
+            backStage.Update();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "MainForm: Failed to apply BackStage theme for {Theme}", themeName);
+        }
+    }
+
+    private void ApplyThemeToBackStageAndQAT(string themeName)
+    {
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        try
+        {
+            if (_ribbon?.BackStageView != null)
+            {
+                SfSkinManager.SetVisualStyle(_ribbon.BackStageView, themeName);
+
+                var backStage = _ribbon.BackStageView.BackStage;
+                if (backStage != null)
+                {
+                    SfSkinManager.SetVisualStyle(backStage, themeName);
+                    ApplyThemeToControlCollection(backStage.Controls, themeName);
+                }
+            }
+
+            if (_ribbon?.Header?.QuickItems != null)
+            {
+                foreach (var item in _ribbon.Header.QuickItems)
+                {
+                    if (item is Control control && !control.IsDisposed)
+                    {
+                        SfSkinManager.SetVisualStyle(control, themeName);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to apply theme to BackStage/QAT for {Theme}", themeName);
+        }
+    }
+
+    private static void ApplyThemeToControlCollection(Control.ControlCollection controls, string themeName)
+    {
+        foreach (Control control in controls)
+        {
+            if (control.IsDisposed)
+            {
+                continue;
+            }
+
+            SfSkinManager.SetVisualStyle(control, themeName);
+            if (control.HasChildren)
+            {
+                ApplyThemeToControlCollection(control.Controls, themeName);
+            }
+        }
+    }
+
+    private void UpdateThemeComboTextAcrossUi(string themeName)
+    {
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        try
+        {
+            var resolvedTheme = AppThemeColors.ValidateTheme(themeName, _logger);
+            _suppressThemeComboSelectionChanged = true;
+
+            static void UpdateThemeComboItems(ToolStripItemCollection items, string value)
+            {
+                var selectedIndex = Array.FindIndex(ThemeComboItems,
+                    option => string.Equals(option.ThemeName, value, StringComparison.OrdinalIgnoreCase));
+
+                foreach (ToolStripItem item in items)
+                {
+                    if (string.Equals(item.Name, "ThemeCombo", StringComparison.OrdinalIgnoreCase))
+                    {
+                        item.Text = value;
+
+                        if (item is ToolStripComboBoxEx comboEx)
+                        {
+                            comboEx.Text = value;
+                            if (!comboEx.ComboBox.IsDisposed)
+                            {
+                                if (selectedIndex >= 0 && comboEx.ComboBox.SelectedIndex != selectedIndex)
+                                {
+                                    comboEx.ComboBox.SelectedIndex = selectedIndex;
+                                }
+
+                                comboEx.ComboBox.Text = value;
+                            }
+                        }
+
+                        if (item is ToolStripComboBox combo)
+                        {
+                            combo.Text = value;
+                            if (!combo.ComboBox.IsDisposed)
+                            {
+                                if (selectedIndex >= 0 && combo.ComboBox.SelectedIndex != selectedIndex)
+                                {
+                                    combo.ComboBox.SelectedIndex = selectedIndex;
+                                }
+
+                                combo.ComboBox.Text = value;
+                            }
+                        }
+                    }
+
+                    if (item is ToolStripPanelItem panelItem)
+                    {
+                        UpdateThemeComboItems(panelItem.Items, value);
+                    }
+                    else if (item is ToolStripDropDownItem dropDown)
+                    {
+                        UpdateThemeComboItems(dropDown.DropDownItems, value);
+                    }
+                }
+            }
+
+            if (_ribbon != null)
+            {
+                foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
+                {
+                    if (tab.Panel == null)
+                    {
+                        continue;
+                    }
+
+                    foreach (var strip in tab.Panel.Controls.OfType<ToolStripEx>())
+                    {
+                        UpdateThemeComboItems(strip.Items, resolvedTheme);
+                    }
+                }
+            }
+
+            foreach (Control control in Controls)
+            {
+                if (control is ToolStrip strip)
+                {
+                    UpdateThemeComboItems(strip.Items, resolvedTheme);
+                }
+
+                foreach (var nestedStrip in control.Controls.OfType<ToolStrip>())
+                {
+                    UpdateThemeComboItems(nestedStrip.Items, resolvedTheme);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to update ThemeCombo text across UI");
+        }
+        finally
+        {
+            _suppressThemeComboSelectionChanged = false;
+        }
     }
 
     private void RefreshDockingThemeState(string themeName)

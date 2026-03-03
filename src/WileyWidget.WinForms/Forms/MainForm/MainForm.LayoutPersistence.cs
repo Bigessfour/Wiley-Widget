@@ -176,19 +176,16 @@ public partial class MainForm
     /// </summary>
     private void SaveRibbonState(AppStateSerializer serializer)
     {
-        if (_ribbon == null) return;
+        if (_ribbon == null || serializer == null) return;
 
         try
         {
-            serializer.SerializeObject("Ribbon.SelectedTab", _ribbon.SelectedTab?.Name ?? string.Empty);
-            serializer.SerializeObject("Ribbon.QuickPanelVisible", _ribbon.QuickPanelVisible);
-
-            _logger?.LogDebug("Saved ribbon state: SelectedTab={Tab}",
-                _ribbon.SelectedTab?.Name);
+            _ribbon.SaveState(serializer);
+            _logger?.LogDebug("Ribbon full state saved via SaveState()");
         }
         catch (Exception ex)
         {
-            _logger?.LogDebug(ex, "Error saving ribbon state");
+            _logger?.LogError(ex, "Failed to save Ribbon state");
         }
     }
 
@@ -197,38 +194,16 @@ public partial class MainForm
     /// </summary>
     private void RestoreRibbonState(AppStateSerializer serializer)
     {
-        if (_ribbon == null) return;
+        if (_ribbon == null || serializer == null) return;
 
         try
         {
-            var selectedTabNameObj = serializer.DeserializeObject("Ribbon.SelectedTab", string.Empty);
-            var qatVisibleObj = serializer.DeserializeObject("Ribbon.QuickPanelVisible", true);
-
-            var selectedTabName = (string)(selectedTabNameObj ?? string.Empty);
-            var qatVisible = (bool)(qatVisibleObj ?? true);
-
-            // Restore selected tab
-            if (!string.IsNullOrEmpty(selectedTabName))
-            {
-                foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
-                {
-                    if (string.Equals(tab.Name, selectedTabName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _ribbon.SelectedTab = tab;
-                        break;
-                    }
-                }
-            }
-
-            // Restore QAT visibility
-            _ribbon.QuickPanelVisible = qatVisible;
-
-            _logger?.LogDebug("Restored ribbon state: SelectedTab={Tab}",
-                selectedTabName);
+            _ribbon.LoadState(serializer);
+            _logger?.LogDebug("Ribbon full state restored via LoadState()");
         }
         catch (Exception ex)
         {
-            _logger?.LogDebug(ex, "Error restoring ribbon state");
+            _logger?.LogError(ex, "Failed to restore Ribbon state");
         }
     }
 

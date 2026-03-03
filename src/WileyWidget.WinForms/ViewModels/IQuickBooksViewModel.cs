@@ -17,5 +17,8 @@ namespace WileyWidget.WinForms.ViewModels
         string ConnectionStatus { get; set; }
         string? ErrorMessage { get; set; }
         string StatusText { get; set; }
+
+        /// <summary>Runs sandbox connection diagnostics and returns a formatted report string.</summary>
+        System.Threading.Tasks.Task<string> RunDiagnosticsAsync(System.Threading.CancellationToken cancellationToken = default);
     }
 }

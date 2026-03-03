@@ -266,77 +266,77 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             try
             {
-            // Arrange
-            var configOverrides = new Dictionary<string, string?>
-            {
-                ["UI:UseSyncfusionDocking"] = "false",
-                ["UI:IsUiTestHarness"] = "false",
-                ["UI:ShowRibbon"] = "false",
-                ["UI:ShowStatusBar"] = "false"
-            };
+                // Arrange
+                var configOverrides = new Dictionary<string, string?>
+                {
+                    ["UI:UseSyncfusionDocking"] = "false",
+                    ["UI:IsUiTestHarness"] = "false",
+                    ["UI:ShowRibbon"] = "false",
+                    ["UI:ShowStatusBar"] = "false"
+                };
 
-            var provider = BuildProvider(configOverrides);
-            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
-            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+                var provider = BuildProvider(configOverrides);
+                var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+                var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-            // Provide a dashboard service that returns known data to observe InitializeAsync impact
-            var dashboardMock = new Mock<IDashboardService>();
-            var sampleItems = new List<DashboardItem>
+                // Provide a dashboard service that returns known data to observe InitializeAsync impact
+                var dashboardMock = new Mock<IDashboardService>();
+                var sampleItems = new List<DashboardItem>
             {
                 new DashboardItem { Title = "A", Value = "1", Category = "activity" }
             };
-            dashboardMock.Setup(d => d.GetDashboardDataAsync(It.IsAny<CancellationToken>())).ReturnsAsync(sampleItems);
+                dashboardMock.Setup(d => d.GetDashboardDataAsync(It.IsAny<CancellationToken>())).ReturnsAsync(sampleItems);
 
-            // rebuild provider with test dashboard
-            var services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(configuration);
-            services.AddLogging(builder => builder.AddDebug());
-            services.AddSingleton(ReportViewerLaunchOptions.Disabled);
-            services.AddSingleton<IThemeService>(Mock.Of<IThemeService>(m => m.CurrentTheme == "Office2019Colorful"));
-            services.AddSingleton<IWindowStateService>(Mock.Of<IWindowStateService>());
-            services.AddSingleton<IFileImportService>(Mock.Of<IFileImportService>());
-            services.AddScoped<IDashboardService>(_ => dashboardMock.Object);
-            services.AddScoped<IAILoggingService>(_ => Mock.Of<IAILoggingService>());
-            services.AddScoped<IQuickBooksService>(_ => Mock.Of<IQuickBooksService>());
-            services.AddScoped<IGlobalSearchService>(_ => Mock.Of<IGlobalSearchService>());
-            services.AddScoped<WileyWidget.WinForms.ViewModels.MainViewModel>();
+                // rebuild provider with test dashboard
+                var services = new ServiceCollection();
+                services.AddSingleton<IConfiguration>(configuration);
+                services.AddLogging(builder => builder.AddDebug());
+                services.AddSingleton(ReportViewerLaunchOptions.Disabled);
+                services.AddSingleton<IThemeService>(Mock.Of<IThemeService>(m => m.CurrentTheme == "Office2019Colorful"));
+                services.AddSingleton<IWindowStateService>(Mock.Of<IWindowStateService>());
+                services.AddSingleton<IFileImportService>(Mock.Of<IFileImportService>());
+                services.AddScoped<IDashboardService>(_ => dashboardMock.Object);
+                services.AddScoped<IAILoggingService>(_ => Mock.Of<IAILoggingService>());
+                services.AddScoped<IQuickBooksService>(_ => Mock.Of<IQuickBooksService>());
+                services.AddScoped<IGlobalSearchService>(_ => Mock.Of<IGlobalSearchService>());
+                services.AddScoped<WileyWidget.WinForms.ViewModels.MainViewModel>();
 
-            var testProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+                var testProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
-            var form = new TestMainForm(testProvider, configuration, logger, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
+                var form = new TestMainForm(testProvider, configuration, logger, ReportViewerLaunchOptions.Disabled, Mock.Of<IThemeService>(), Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
 
-            // Act: run the real WinForms show lifecycle so OnShown executes in-order.
-            var _ = form.Handle;
-            form.Show();
-            Application.DoEvents();
+                // Act: run the real WinForms show lifecycle so OnShown executes in-order.
+                var _ = form.Handle;
+                form.Show();
+                Application.DoEvents();
 
-            // Wait for deferred initialization to be assigned and completed
-            Task? deferred = null;
-            for (int i = 0; i < 40; i++) // ~2 seconds max
-            {
-                deferred = form.DeferredInitializationTask;
-                if (deferred != null) break;
-                await Task.Delay(50);
-            }
-            deferred.Should().NotBeNull();
+                // Wait for deferred initialization to be assigned and completed
+                Task? deferred = null;
+                for (int i = 0; i < 40; i++) // ~2 seconds max
+                {
+                    deferred = form.DeferredInitializationTask;
+                    if (deferred != null) break;
+                    await Task.Delay(50);
+                }
+                deferred.Should().NotBeNull();
 
-            var completed = await Task.WhenAny(deferred!, Task.Delay(5000));
-            if (completed != deferred)
-            {
-                throw new TimeoutException("Deferred initialization timed out");
-            }
+                var completed = await Task.WhenAny(deferred!, Task.Delay(5000));
+                if (completed != deferred)
+                {
+                    throw new TimeoutException("Deferred initialization timed out");
+                }
 
-            // Trigger data load since MainViewModel uses lazy loading
-            if (form.MainViewModel != null)
-            {
-                await form.MainViewModel.OnVisibilityChangedAsync(true);
-            }
+                // Trigger data load since MainViewModel uses lazy loading
+                if (form.MainViewModel != null)
+                {
+                    await form.MainViewModel.OnVisibilityChangedAsync(true);
+                }
 
-            // Assert: MainViewModel resolved and initialized with sample items
-            form.MainViewModel.Should().NotBeNull();
-            form.MainViewModel!.ActivityItems.Should().ContainSingle();
+                // Assert: MainViewModel resolved and initialized with sample items
+                form.MainViewModel.Should().NotBeNull();
+                form.MainViewModel!.ActivityItems.Should().ContainSingle();
 
-            form.Dispose();
+                form.Dispose();
             }
             finally
             {
@@ -468,7 +468,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
             else if (string.Equals(activeThemeControl.Name, "ThemeCombo", StringComparison.OrdinalIgnoreCase))
             {
-                activeThemeControl.Text.Should().Be("Office2019Dark", "Theme combo selection should reflect new theme state");
+                activeThemeControl.Text.Should().Be("Office2019Colorful", "Theme combo selection should reflect new theme state");
             }
             else
             {

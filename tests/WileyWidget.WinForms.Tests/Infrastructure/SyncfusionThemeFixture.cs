@@ -1,6 +1,5 @@
 using System;
-using System.Threading;
-using System.Windows.Forms;
+using Syncfusion.WinForms.Controls;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Infrastructure;
@@ -16,93 +15,37 @@ public class SyncfusionThemeCollection : ICollectionFixture<SyncfusionThemeFixtu
 
 public sealed class SyncfusionThemeFixture : IDisposable
 {
-    private readonly Thread _initThread;
-
     public SyncfusionThemeFixture()
     {
-        // Initialize theme system on STA thread to avoid race conditions
-        _initThread = new Thread(() =>
+        // Initialize Syncfusion theme globals on the current thread (safe — no Win32 handles created here).
+        // We intentionally do NOT create WinForms controls in a warmup thread without a message pump:
+        // RibbonControlAdv / DockingManager call SendMessage internally during CreateControl /
+        // PerformLayout / Refresh, which blocks permanently on a thread with no pump and hangs the
+        // test host, causing the xunit runner to time out and exit with no TRX output.
+        try
         {
-            try
+
+            // Load theme assembly and set the global theme — these are registry/static writes
+            // that do NOT create window handles and are safe without a message pump.
+            Syncfusion.Windows.Forms.SkinManager.LoadAssembly(
+                typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);
+            SfSkinManager.LoadAssembly(
+                typeof(Syncfusion.WinForms.Themes.Office2019Theme).Assembly);
+
+            if (string.IsNullOrWhiteSpace(SfSkinManager.ApplicationVisualTheme))
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-
-                // Set global theme before creating any controls
-                Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-
-                // Create a dummy DockingManager to force theme initialization
-                var dummyDocking = new Syncfusion.Windows.Forms.Tools.DockingManager();
-                dummyDocking.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                dummyDocking.Dispose();
-
-                // Create a dummy SfDataGrid to force DataGrid theme initialization
-                var dummyGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid();
-                dummyGrid.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                dummyGrid.Dispose();
-
-                // Create a dummy SfListView to force ListView theme initialization
-                var dummyListView = new Syncfusion.WinForms.ListView.SfListView();
-                dummyListView.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                dummyListView.Dispose();
-
-                // Create a minimal ribbon/control tree without showing the window to avoid NC-paint paths.
-                using var warmupForm = new Form
-                {
-                    ShowInTaskbar = false,
-                    WindowState = FormWindowState.Minimized,
-                    StartPosition = FormStartPosition.Manual,
-                    Left = -32000,
-                    Top = -32000,
-                    Width = 300,
-                    Height = 200
-                };
-
-                using var warmupRibbon = new Syncfusion.Windows.Forms.Tools.RibbonControlAdv
-                {
-                    Name = "WarmupRibbon",
-                    Dock = Syncfusion.Windows.Forms.Tools.DockStyleEx.Top,
-                    ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme
-                };
-
-                var warmupTab = new Syncfusion.Windows.Forms.Tools.ToolStripTabItem { Text = "Warmup" };
-                var warmupStrip = new Syncfusion.Windows.Forms.Tools.ToolStripEx { Text = "WarmupStrip" };
-                warmupStrip.Items.Add(new ToolStripButton("Warmup"));
-
-                warmupRibbon.Header.AddMainItem(warmupTab);
-                warmupTab.Panel?.Controls.Add(warmupStrip);
-                warmupForm.Controls.Add(warmupRibbon);
-
-                warmupForm.CreateControl();
-                warmupRibbon.CreateControl();
-                warmupRibbon.PerformLayout();
-                warmupRibbon.Refresh();
+                SfSkinManager.ApplicationVisualTheme = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             }
-            catch (Exception ex)
-            {
-                // Log but don't fail - theme init is best-effort
-                Console.WriteLine($"Theme fixture initialization warning: {ex.Message}");
-            }
-        });
-
-        _initThread.SetApartmentState(ApartmentState.STA);
-        _initThread.Start();
-        _initThread.Join(TimeSpan.FromSeconds(10)); // Wait up to 10s for init
+        }
+        catch (Exception ex)
+        {
+            // Best-effort — theme globals are nice-to-have; individual tests set their own theme.
+            Console.WriteLine($"[SyncfusionThemeFixture] Theme init warning: {ex.Message}");
+        }
     }
 
     public void Dispose()
     {
-        try
-        {
-            if (_initThread.IsAlive)
-            {
-                _initThread.Join(TimeSpan.FromSeconds(2));
-            }
-        }
-        catch
-        {
-            // Ignore dispose errors
-        }
         GC.SuppressFinalize(this);
     }
 }

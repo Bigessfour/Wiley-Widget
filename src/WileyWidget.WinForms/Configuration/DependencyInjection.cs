@@ -370,8 +370,11 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<ErrorReportingService>();
             services.AddSingleton<ITelemetryService, SigNozTelemetryService>();
 
-            // Telemetry startup service for DB health checks
+            // Telemetry startup service for DB migration + health checks
             services.AddHostedService<TelemetryStartupService>();
+
+            // Application metrics service - records migration/seeding/startup telemetry
+            services.AddSingleton<WileyWidget.Services.ApplicationMetricsService>();
 
             // Application event bus for cross-scope in-process notifications
             // Registered in core via AddWileyWidgetCoreServices(configuration)

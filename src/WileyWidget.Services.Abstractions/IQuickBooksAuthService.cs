@@ -36,9 +36,11 @@ public interface IQuickBooksAuthService
 
     /// <summary>
     /// Generates the OAuth authorization URL that the user should visit to grant access.
+    /// Ensures credentials are loaded from the vault/environment before building the URL.
     /// </summary>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>The full authorization URL with query parameters.</returns>
-    string GenerateAuthorizationUrl();
+    Task<string> GenerateAuthorizationUrlAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Revokes the current token and clears local cached token.
@@ -59,4 +61,9 @@ public interface IQuickBooksAuthService
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>True if a valid token exists, false otherwise.</returns>
     Task<bool> HasValidTokenAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the current OAuth environment identifier ("sandbox" or "production").
+    /// </summary>
+    string GetEnvironment();
 }

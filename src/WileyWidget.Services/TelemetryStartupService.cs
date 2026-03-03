@@ -1,3 +1,5 @@
+using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
@@ -27,13 +29,33 @@ public sealed class TelemetryStartupService : IHostedService
         {
             Log.Information("Telemetry startup service initializing...");
 
-            // Perform database health check
             using var scope = _serviceProvider.CreateScope();
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<AppDbContext>>();
             using var context = factory.CreateDbContext();
+            var metrics = scope.ServiceProvider.GetService<WileyWidget.Services.ApplicationMetricsService>();
 
-            // Simple DB connectivity check
-            await context.Database.CanConnectAsync(cancellationToken);
+            // Apply any pending EF Core migrations; this also applies HasData seed rows.
+            var migrationSw = Stopwatch.StartNew();
+            var migrationSuccess = false;
+            try
+            {
+                await context.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+                migrationSuccess = true;
+                Log.Information("Database migrations applied successfully");
+            }
+            catch (Exception migEx)
+            {
+                Log.Warning(migEx, "Database migration step encountered an issue - database may already be current");
+            }
+            finally
+            {
+                migrationSw.Stop();
+                metrics?.RecordMigration(migrationSw.Elapsed.TotalMilliseconds, migrationSuccess);
+                metrics?.RecordSeeding(migrationSuccess);
+            }
+
+            // Confirm connectivity after migration
+            await context.Database.CanConnectAsync(cancellationToken).ConfigureAwait(false);
             Log.Information("Database connectivity validated during telemetry startup");
         }
         catch (OperationCanceledException)

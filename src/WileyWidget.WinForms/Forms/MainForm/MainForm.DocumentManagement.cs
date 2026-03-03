@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -21,8 +20,6 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public partial class MainForm
 {
-    private readonly Dictionary<string, Form> _openDocuments = new(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>
     /// Initialize TabbedMDIManager for professional tabbed document interface.
     /// Replaces floating forms with Office-style tabs.
@@ -55,6 +52,9 @@ public partial class MainForm
             {
                 AttachedTo = this
             };
+            _tabbedMdi.DropDownButtonVisible = true;
+            _tabbedMdi.NeedUpdateHostedForm = false;
+            _tabbedMdi.ImageSize = new Size(16, 16);
 
             // Configure appearance
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
@@ -71,8 +71,18 @@ public partial class MainForm
             _tabbedMdi.TabControlAdded += OnTabControlAdded;
             _tabbedMdi.TabControlRemoved += OnTabControlRemoved;
 
+            EnsureMdiLayoutSyncHooks();
+
             // Apply theme
             SfSkinManager.SetVisualStyle(_tabbedMdi, currentTheme);
+
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                if (!IsDisposed)
+                {
+                    ConstrainMdiClientToContentHost();
+                }
+            }));
 
             _logger?.LogInformation("TabbedMDI Manager initialized successfully with theme {Theme}", currentTheme);
         }
@@ -83,58 +93,51 @@ public partial class MainForm
         }
     }
 
-    /// <summary>
-    /// Opens a panel in a new MDI child tab.
-    /// </summary>
-    private Form CreateMDIDocument(UserControl panel, string documentName)
+    private void EnsureMdiLayoutSyncHooks()
     {
-        // Check if document already open
-        if (_openDocuments.TryGetValue(documentName, out var existing) && !existing.IsDisposed)
+        if (_mdiLayoutSyncHooksAttached)
         {
-            existing.Activate();
-            return existing;
+            return;
         }
 
-        var mdiChild = new Form
+        _mdiLayoutSyncHooksAttached = true;
+
+        MdiChildActivate += (_, _) =>
         {
-            MdiParent = this,
-            Text = documentName,
-            FormBorderStyle = FormBorderStyle.Sizable,
-            ShowIcon = false,
-            WindowState = FormWindowState.Maximized,
-            AutoScaleMode = AutoScaleMode.Dpi,
-            MinimumSize = Size.Empty
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                ConstrainMdiClientToContentHost();
+            }));
         };
 
-        // Add panel to MDI child
-        panel.Dock = DockStyle.Fill;
-        mdiChild.Controls.Add(panel);
-
-        // Apply theme to MDI child
-        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(mdiChild, currentTheme);
-
-        // Track open document
-        _openDocuments[documentName] = mdiChild;
-
-        // Clean up when closed
-        mdiChild.FormClosed += (s, e) =>
+        if (_contentHostPanel != null)
         {
-            _openDocuments.Remove(documentName);
-            _logger?.LogDebug("MDI document closed: {DocumentName}", documentName);
-        };
+            _contentHostPanel.Layout += (_, _) =>
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    ConstrainMdiClientToContentHost();
+                }
+            };
 
-        // Force handle creation to trigger panel initialization
-        if (!panel.IsHandleCreated)
-        {
-            _ = panel.Handle;
+            _contentHostPanel.SizeChanged += (_, _) =>
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    ConstrainMdiClientToContentHost();
+                }
+            };
         }
-
-        mdiChild.Show();
-        mdiChild.Activate();
-
-        _logger?.LogInformation("Opened MDI document: {DocumentName}", documentName);
-        return mdiChild;
     }
 
     /// <summary>
@@ -151,6 +154,16 @@ public partial class MainForm
             // Apply theme to new tab
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             e.TabControl.ThemeName = currentTheme;
+
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                ConstrainMdiClientToContentHost();
+            }));
         }
         catch (Exception ex)
         {
@@ -168,6 +181,14 @@ public partial class MainForm
             // Get tab name from associated MDI child form or fallback to TabControl properties
             var tabName = GetTabName(e.TabControl);
             _logger?.LogDebug("Tab removed: {TabText}", tabName);
+
+            BeginInvoke((MethodInvoker)(() =>
+            {
+                if (!IsDisposed && !Disposing)
+                {
+                    ConstrainMdiClientToContentHost();
+                }
+            }));
         }
         catch (Exception ex)
         {

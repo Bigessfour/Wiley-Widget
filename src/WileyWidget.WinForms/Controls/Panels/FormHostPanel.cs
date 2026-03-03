@@ -36,6 +36,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             Size = new Size(560, 420);
             MinimumSize = new Size(420, 360);
             Dock = DockStyle.Fill;
+            AccessibleRole = AccessibleRole.Pane;
+            AccessibleName = "Form host panel";
+            AccessibleDescription = "Hosts child forms within docked panel layouts";
 
             // Enable double buffering to reduce flicker during resize/repaint
             DoubleBuffered = true;

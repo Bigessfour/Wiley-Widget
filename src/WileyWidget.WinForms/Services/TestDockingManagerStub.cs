@@ -29,6 +29,9 @@ namespace WileyWidget.WinForms.Services
         public new void BeginInit() { }
         public new void EndInit() { }
 
+        // Override RecalcHostFormLayout to prevent NRE in test mode
+        public new void RecalcHostFormLayout() { }
+
         public override string ToString() => "TestDockingManagerStub (TEST MODE - no-op)";
 
         // Expose for any remaining code that checks .IsDisposed or similar

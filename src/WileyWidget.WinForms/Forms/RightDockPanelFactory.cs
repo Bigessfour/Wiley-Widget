@@ -4,16 +4,10 @@ using System.Drawing;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
-using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
-using WileyWidget.Business.Interfaces;
-using WileyWidget.WinForms.Controls;
-using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Factories;
-using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 
@@ -21,20 +15,19 @@ namespace WileyWidget.WinForms.Forms;
 
 /// <summary>
 /// Factory for creating and managing the right-docked panel container.
-/// Hosts Activity Log while JARVIS is managed via DockingManager panel navigation.
+/// Hosts Activity Log and JARVIS Chat as persistent, always-available tabs.
 /// Enforces SfSkinManager theme cascade on all docked panels.
 /// </summary>
 public static class RightDockPanelFactory
 {
 
     /// <summary>
-    /// Create the right-docked panel container with Activity Log tab.
-    /// JARVIS Chat is shown through panel navigation inside DockingManager.
+    /// Creates the right-docked panel container with persistent Syncfusion tabs.
     /// </summary>
     /// <param name="mainForm">Parent MainForm instance</param>
     /// <param name="serviceProvider">Service provider for dependency resolution</param>
     /// <param name="logger">Logger instance</param>
-    /// <returns>Tuple of (rightDockPanel, activityLogPanel)</returns>
+    /// <returns>Tuple of right panel container, tab host, and hosted panels.</returns>
     /// <remarks>
     /// The right panel is 350px wide with 320px minimum to accommodate Activity Log.
     /// Panel is created with scoped lifecycles; DI registration NOT needed.
@@ -42,7 +35,9 @@ public static class RightDockPanelFactory
     /// </remarks>
     public static (
         Panel rightDockPanel,
-        ActivityLogPanel activityLogPanel
+        TabControlAdv rightDockTabs,
+        ActivityLogPanel activityLogPanel,
+        JARVISChatUserControl jarvisChatPanel
     ) CreateRightDockPanel(
         MainForm mainForm,
         IServiceProvider serviceProvider,
@@ -52,7 +47,7 @@ public static class RightDockPanelFactory
         if (serviceProvider == null) throw new ArgumentNullException(nameof(serviceProvider));
 
         var sw = Stopwatch.StartNew();
-        logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel with Activity Log");
+        logger?.LogInformation("RightDockPanelFactory: Creating right-docked panel with Activity Log + JARVIS Chat");
 
         ThemeColors.EnsureThemeAssemblyLoaded(logger);
         var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
@@ -63,11 +58,21 @@ public static class RightDockPanelFactory
             var rightDockPanel = new Panel
             {
                 Dock = DockStyle.Right,
-                Width = 350,
-                MinimumSize = new Size(320, 0),
+                Width = 420,
+                MinimumSize = new Size(360, 0),
                 BorderStyle = BorderStyle.None,
                 Name = "RightDockPanel"
             };
+
+            var rightDockTabs = new TabControlAdv
+            {
+                Dock = DockStyle.Fill,
+                Name = "RightDockTabs",
+                ThemeName = themeName,
+                ThemesEnabled = true,
+                BorderStyle = BorderStyle.None
+            };
+            SfSkinManager.SetVisualStyle(rightDockTabs, themeName);
 
             // Create Activity Log panel
             var activityLogViewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ActivityLogViewModel>(serviceProvider);
@@ -80,24 +85,45 @@ public static class RightDockPanelFactory
             };
             logger?.LogDebug("ActivityLogPanel created successfully");
 
-            rightDockPanel.Controls.Add(activityLogPanel);
+            var jarvisChatPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<JARVISChatUserControl>(serviceProvider);
+            jarvisChatPanel.Dock = DockStyle.Fill;
+            jarvisChatPanel.Name = "JARVISDockPanel";
+
+            var activityTab = new TabPageAdv
+            {
+                Name = "RightDockTab_ActivityLog",
+                Text = "Activity Log"
+            };
+            activityTab.Controls.Add(activityLogPanel);
+
+            var jarvisTab = new TabPageAdv
+            {
+                Name = "RightDockTab_JARVIS",
+                Text = "JARVIS Chat"
+            };
+            jarvisTab.Controls.Add(jarvisChatPanel);
+
+            rightDockTabs.TabPages.Add(activityTab);
+            rightDockTabs.TabPages.Add(jarvisTab);
+            rightDockTabs.SelectedTab = activityTab;
+
+            rightDockPanel.Controls.Add(rightDockTabs);
+            SfSkinManager.SetVisualStyle(rightDockPanel, themeName);
 
             sw.Stop();
             logger?.LogDebug(
-                "RightDockPanelFactory: Activity Log panel initialized - Theme: {ThemeName}, Size: {Width}x{Height}",
-                themeName, 350, 0);
+                "RightDockPanelFactory: Right dock tabs initialized - Theme: {ThemeName}, Width={Width}",
+                themeName, rightDockPanel.Width);
             logger?.LogInformation(
-                "RightDockPanelFactory: Right panel created successfully in {ElapsedMs}ms (Activity Log inline, no tabs)",
+                "RightDockPanelFactory: Right panel created successfully in {ElapsedMs}ms (persistent Activity Log + JARVIS tabs)",
                 sw.ElapsedMilliseconds);
 
-            return (rightDockPanel, activityLogPanel);
+            return (rightDockPanel, rightDockTabs, activityLogPanel, jarvisChatPanel);
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Failed to create right dock panel with TabControl (Activity Log + JARVIS Chat)");
+            logger?.LogError(ex, "Failed to create right dock panel with persistent tabs (Activity Log + JARVIS Chat)");
             throw;
         }
     }
-
-
 }

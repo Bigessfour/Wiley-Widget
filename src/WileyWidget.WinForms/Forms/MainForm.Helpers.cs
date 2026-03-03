@@ -675,7 +675,7 @@ namespace WileyWidget.WinForms.Forms
 
             if (InvokeRequired)
             {
-                BeginInvoke((System.Action)Apply);
+                BeginInvoke((global::System.Action)Apply);
             }
             else
             {

@@ -52,14 +52,19 @@ public class SyncfusionControlFactory
             AllowFiltering = true,
             AllowSorting = true,
             AllowResizingColumns = true,
+            AllowResizingHiddenColumns = true,
             AllowDraggingColumns = true,
             AllowGrouping = false,
             SelectionMode = GridSelectionMode.Single,
             AutoGenerateColumns = true,
+            AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells,
             EditorSelectionBehavior = EditorSelectionBehavior.SelectAll,
             AddNewRowPosition = RowPosition.Bottom,
+            FilterRowPosition = RowPosition.Top,
             NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Cell,
             EnableDataVirtualization = true,
+            RowHeight = 24,
+            ShowGroupDropArea = false,
             ShowRowHeader = false,
             ShowToolTip = true,
         };
@@ -82,9 +87,11 @@ public class SyncfusionControlFactory
 
         var button = new SfButton
         {
+            AccessibleName = "Button",
             Text = text,
             Size = new Size(120, 32),
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            TextImageRelation = TextImageRelation.ImageBeforeText,
         };
 
         button.ApplySyncfusionTheme(_currentTheme, _logger);
@@ -178,6 +185,7 @@ public class SyncfusionControlFactory
             TitleAlignment = TextAlignment.Left,
             RibbonStyle = RibbonStyle.Office2016,
             OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
+            ThemeName = _currentTheme,
         };
         ribbon.Dock = DockStyleEx.Top;
 
@@ -197,7 +205,10 @@ public class SyncfusionControlFactory
         var listView = new SfListView
         {
             Dock = DockStyle.Fill,
+            SelectionMode = SelectionMode.One,
+            HotTracking = true,
             ItemHeight = 28,
+            ThemeName = _currentTheme,
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         };
 
@@ -220,10 +231,11 @@ public class SyncfusionControlFactory
             AutoSortList = true,
             AutoSerialize = false,
             AutoAddItem = false,
-            AdjustHeightToItemCount = true,
+            AdjustHeightToItemCount = false,
             ShowCloseButton = false,
             ShowGripper = false,
             MaxNumberofSuggestion = 12,
+            ShowColumnHeader = true,
             BorderType = AutoCompleteBorderTypes.Sizable,
             ThemeName = _currentTheme,
         };
@@ -244,6 +256,7 @@ public class SyncfusionControlFactory
         {
             Dock = DockStyle.Fill,
             Name = "PdfViewerControl",
+            CursorMode = PdfViewerCursorMode.SelectTool,
         };
 
         pdfViewer.ApplySyncfusionTheme(_currentTheme, _logger);
@@ -283,8 +296,9 @@ public class SyncfusionControlFactory
         var comboBox = new SfComboBox
         {
             DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-            Width = 150,
+            Width = 200,
             Height = 28,
+            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
             MaxDropDownItems = 10,
             AllowDropDownResize = false,
         };
@@ -325,6 +339,8 @@ public class SyncfusionControlFactory
         {
             Size = new Size(80, 24),
             FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Numeric,
+            MinValue = 0D,
+            Value = 0D,
         };
 
         numericTextBox.ApplySyncfusionTheme(_currentTheme, _logger);
@@ -385,6 +401,9 @@ public class SyncfusionControlFactory
         {
             Size = new Size(200, 16),
             ProgressStyle = ProgressBarStyles.Metro,
+            Minimum = 0,
+            Maximum = 100,
+            Value = 0,
         };
 
         progressBar.ApplySyncfusionTheme(_currentTheme, _logger);
@@ -400,15 +419,31 @@ public class SyncfusionControlFactory
     {
         _logger.LogDebug("Creating DockingManager for {FormType}", hostForm.GetType().Name);
 
-        var dockingManager = new DockingManager
+        var hostContainer = hostControl as ContainerControl ?? hostForm;
+
+        DockingManager dockingManager;
+        try
         {
-            HostForm = hostForm,
-            HostControl = hostControl as ContainerControl ?? hostForm,
-            ShowCaption = false,
-            DockToFill = false,
-            CloseEnabled = true,
-            PersistState = false,
-        };
+            // Prefer constructor-time host binding so DockingManager computes layout from the
+            // intended host container immediately (avoids defaulting to form-level client bounds).
+            dockingManager = Activator.CreateInstance(typeof(DockingManager), hostContainer) as DockingManager
+                ?? new DockingManager();
+        }
+        catch
+        {
+            dockingManager = new DockingManager();
+        }
+
+        dockingManager.HostForm = hostForm;
+        dockingManager.HostControl = hostContainer;
+        dockingManager.ThemeName = _currentTheme;
+        dockingManager.EnableDocumentMode = false;
+        dockingManager.ShowCaption = false;
+        dockingManager.DockToFill = false;
+        dockingManager.CloseEnabled = true;
+        dockingManager.AnimateAutoHiddenWindow = true;
+        dockingManager.ReduceFlickeringInRtl = false;
+        dockingManager.PersistState = false;
 
         configure?.Invoke(dockingManager);
         return dockingManager;
@@ -474,8 +509,15 @@ public class SyncfusionControlFactory
             Value = (float)currentRatio,
             MinimumValue = 0,
             MaximumValue = 150,
+            MajorDifference = 10F,
+            MinorDifference = 2F,
             ShowTicks = true,
             ShowScaleLabel = true,
+            NeedleStyle = NeedleStyle.Pointer,
+            ReadOnly = true,
+            VisualStyle = ThemeStyle.Silver,
+            GaugeLableColor = Color.Black,
+            ThemeName = _currentTheme,
             GaugeLabel = $"{currentRatio:F1}%",
         };
 

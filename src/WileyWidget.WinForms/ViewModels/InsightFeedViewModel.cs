@@ -261,7 +261,7 @@ namespace WileyWidget.WinForms.ViewModels
                 insightContext.AppendLine();
                 insightContext.AppendLine("What additional analysis or recommendations do you have about this insight?");
 
-                // Open the floating JARVIS panel and pass the prompt via IParameterizedPanel.
+                // Open the persistent docked JARVIS panel and pass the prompt via IParameterizedPanel.
                 if (_panelNavigator == null)
                 {
                     _logger.LogWarning("Panel navigation service is not available; cannot open JARVIS Chat");
@@ -273,10 +273,11 @@ namespace WileyWidget.WinForms.ViewModels
 
                 _panelNavigator.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
                     "JARVIS Chat",
-                    Syncfusion.Windows.Forms.Tools.DockingStyle.Bottom,
-                    allowFloating: true);
+                    prompt,
+                    Syncfusion.Windows.Forms.Tools.DockingStyle.Right,
+                    allowFloating: false);
 
-                _logger.LogInformation("Opened floating JARVIS Chat panel with insight context ({ContextLength} chars)", prompt.Length);
+                _logger.LogInformation("Opened docked JARVIS Chat panel with insight context ({ContextLength} chars)", prompt.Length);
             }
             catch (Exception ex)
             {

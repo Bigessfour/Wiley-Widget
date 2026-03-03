@@ -11,11 +11,13 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
@@ -29,152 +31,129 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public partial class MainForm
 {
+    private int _initializeAsyncInvocationCount;
+    private int _initializeAsyncStarted;
+    private int _startupUiPhasesQueued;
+    private int _startupUiPhasesIndex;
+    private CancellationTokenSource? _onShownStartupCts;
+    private System.Windows.Forms.Timer? _startupUiPhasesTimer;
+
     /// <summary>
     /// Implements IAsyncInitializable.InitializeAsync.
     /// Called after MainForm is shown to perform heavy/async initialization work.
     /// Optimized for docking layout restoration and ViewModel initialization.
     /// </summary>
-    public async Task InitializeAsync(CancellationToken cancellationToken)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        // timelineService was previously used for startup diagnostics; removed to reduce unused locals
+        var invocationId = Interlocked.Increment(ref _initializeAsyncInvocationCount);
+        var isFirstInitializationCall = Interlocked.CompareExchange(ref _initializeAsyncStarted, 1, 0) == 0;
+        var initStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        _logger?.LogInformation(
+            "[STARTUP-DIAG] MainForm.InitializeAsync call #{InvocationId} requested (FirstCall={FirstCall}, InvokeRequired={InvokeRequired}, ThreadId={ThreadId}, IsDisposed={IsDisposed}, IsHandleCreated={IsHandleCreated})",
+            invocationId,
+            isFirstInitializationCall,
+            InvokeRequired,
+            Thread.CurrentThread.ManagedThreadId,
+            IsDisposed,
+            IsHandleCreated);
 
-        _asyncLogger?.Information("MainForm.InitializeAsync started - thread: {ThreadId}", Thread.CurrentThread.ManagedThreadId);
+        if (!isFirstInitializationCall)
+        {
+            _logger?.LogWarning("[STARTUP-DIAG] MainForm.InitializeAsync call #{InvocationId} skipped - duplicate initialization request", invocationId);
+            initStopwatch.Stop();
+            return;
+        }
 
-        // [PERF] Theme and panel initialization from OnShown - deferred after docking is ready
+        // === CRITICAL: Always marshal back to UI thread for ANY Syncfusion/WinForms work ===
         try
         {
-            // Check for cancellation early
-            cancellationToken.ThrowIfCancellationRequested();
+            if (this.InvokeRequired)
+            {
+                _logger?.LogDebug("[STARTUP-DIAG] MainForm.InitializeAsync call #{InvocationId} marshalling to UI thread", invocationId);
+                await this.InvokeAsyncNonBlockingTask(ct => InitializeAsyncCore(ct, invocationId)).ConfigureAwait(true);
+                return;
+            }
 
-            await InitializeDockingAsync(cancellationToken).ConfigureAwait(true);
+            await InitializeAsyncCore(cancellationToken, invocationId).ConfigureAwait(true);
+        }
+        finally
+        {
+            initStopwatch.Stop();
+            _logger?.LogInformation("[STARTUP-DIAG] MainForm.InitializeAsync call #{InvocationId} finished in {ElapsedMs}ms", invocationId, initStopwatch.ElapsedMilliseconds);
+        }
+    }
 
-            // Chrome initialization is now done in OnLoad, not here
+    private async Task InitializeAsyncCore(CancellationToken ct, int invocationId)
+    {
+        _asyncLogger?.Information("MainForm.InitializeAsync call #{InvocationId} started - thread: {ThreadId}", invocationId, Thread.CurrentThread.ManagedThreadId);
 
-            // [PERF] Allow structures time to develop before applying theme
-            await Task.Delay(25, cancellationToken).ConfigureAwait(false);
+        this.SuspendLayout();
 
-            // Apply theme to UI controls after chrome is initialized
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Chrome initialization is done in OnLoad.
+
+            // Apply theme — SfSkinManager is sole authority, no per-control ThemeName assignments needed here.
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(_themeService.CurrentTheme);
-
-                // Explicitly set ThemeName on key Syncfusion controls for robustness
-                try
-                {
-                    var currentTheme = _themeService.CurrentTheme;
-                    if (_ribbon != null) _ribbon.ThemeName = currentTheme;
-                    if (_navigationStrip != null) _navigationStrip.ThemeName = currentTheme;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to set explicit ThemeName on Syncfusion controls");
-                }
             }
             else
             {
                 _logger?.LogWarning("[DIAGNOSTIC] _themeService is null in InitializeAsync");
             }
 
-            // CRITICAL: DockingManager is initialized in OnShown Phase 1.
-            // Verify it exists before proceeding with panel operations.
-            if (_dockingManager == null)
+            // Notify ViewModels of initial visibility for lazy loading
+            var rootControlCount = this.Controls.Count;
+            _logger?.LogInformation("Triggering initial visibility notifications for all controls (call #{InvocationId}, rootControls={RootControlCount})", invocationId, rootControlCount);
+            foreach (var control in this.Controls.Cast<Control>())
             {
-                _logger?.LogWarning("[CRITICAL] DockingManager is null in InitializeAsync - docking was not initialized successfully in OnShown");
-                _asyncLogger?.Warning("[CRITICAL] DockingManager is null in InitializeAsync");
-                return;
+                ct.ThrowIfCancellationRequested();
+                _ = NotifyPanelVisibilityChangedAsync(control);
             }
 
-            if (_uiConfig.UseSyncfusionDocking)
-            {
-                // Docking layout loading moved to OnShown for better timing
-            }
+            // === FIXED: Line 67 equivalent - layout on UI thread ===
+            this.PerformLayout();                    // now guaranteed on UI thread
 
-            // Phase 1: Deprecated Dashboard auto-show removed.
-
-            // Phase 2: Notify ViewModels of initial visibility for lazy loading
-            _logger?.LogInformation("Triggering initial visibility notifications for all controls");
-            foreach (Control control in this.Controls)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await NotifyPanelVisibilityChangedAsync(control);
-            }
-
-            // ============================================================================
-            // NAVIGATION HARDENING: Enable ribbon buttons once docking system is confirmed ready
-            // This prevents clicks on navigation buttons before the docking system has initialized
-            // ============================================================================
+            // Enable navigation strip buttons now that the docking system is confirmed ready.
             try
             {
-                Console.WriteLine("[NAVIGATION] Starting to enable navigation buttons");
                 if (_navigationStrip != null && IsHandleCreated && !IsDisposed)
                 {
-                    this.InvokeIfRequired(() =>
+                    int enabledCount = 0;
+                    foreach (ToolStripItem item in _navigationStrip.Items)
                     {
-                        int enabledCount = 0;
-                        foreach (ToolStripItem item in _navigationStrip.Items)
+                        if (item is ToolStripButton button && !button.Enabled)
                         {
-                            if (item is ToolStripButton button && !button.Enabled)
-                            {
-                                Console.WriteLine($"[NAVIGATION] Enabling navigation button: {button.Text ?? button.Name}");
-                                button.Enabled = true;
-                                enabledCount++;
-                            }
+                            button.Enabled = true;
+                            enabledCount++;
                         }
-                        Console.WriteLine($"[NAVIGATION] Enabled {enabledCount} navigation buttons");
-                        _logger?.LogDebug("[NAVIGATION] Enabled {Count} navigation buttons", enabledCount);
-                    });
+                    }
+                    _logger?.LogDebug("[NAVIGATION] Enabled {Count} navigation buttons", enabledCount);
                 }
-                Console.WriteLine("[NAVIGATION] Finished enabling navigation buttons");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NAVIGATION] Error enabling navigation buttons: {ex.Message}");
                 _logger?.LogWarning(ex, "[NAVIGATION] Unexpected error enabling navigation buttons (non-critical)");
             }
 
-            _asyncLogger?.Information("MainForm.InitializeAsync completed successfully");
+            _asyncLogger?.Information("MainForm.InitializeAsync call #{InvocationId} completed successfully", invocationId);
         }
         catch (OperationCanceledException)
         {
-            _logger?.LogInformation("InitializeAsync canceled");
-            _asyncLogger?.Information("InitializeAsync canceled");
+            _logger?.LogInformation("InitializeAsync call #{InvocationId} canceled", invocationId);
+            _asyncLogger?.Information("InitializeAsync call #{InvocationId} canceled", invocationId);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error during InitializeAsync deferred initialization");
-            _asyncLogger?.Error(ex, "InitializeAsync failed");
+            _logger?.LogError(ex, "Error during InitializeAsync deferred initialization (call #{InvocationId})", invocationId);
+            _asyncLogger?.Error(ex, "InitializeAsync call #{InvocationId} failed", invocationId);
         }
-    }
-
-    private async Task InitializeDockingAsync(CancellationToken cancellationToken)
-    {
-        if (_syncfusionDockingInitialized || _uiConfig?.UseSyncfusionDocking != true)
+        finally
         {
-            return;
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (this.InvokeRequired)
-        {
-            await this.InvokeAsync(() =>
-            {
-                if (_syncfusionDockingInitialized) return;
-
-                _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
-                InitializeSyncfusionDocking();
-                ConfigureDockingManagerChromeLayout();
-                _syncfusionDockingInitialized = true;
-            }).ConfigureAwait(true);
-        }
-        else
-        {
-            if (_syncfusionDockingInitialized) return;
-
-            _logger?.LogInformation("InitializeDockingAsync: Initializing docking before chrome");
-            InitializeSyncfusionDocking();
-            ConfigureDockingManagerChromeLayout();
-            _syncfusionDockingInitialized = true;
+            this.ResumeLayout(true);
         }
     }
 
@@ -184,16 +163,11 @@ public partial class MainForm
     /// </summary>
     private async Task RunDeferredInitializationAsync(CancellationToken cancellationToken)
     {
-        // [PERF] Allow UI structures additional time to fully develop before starting background tasks
-        await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-
         // [PERF] Background startup health check
         _ = Task.Run(async () =>
         {
             try
             {
-                // Additional small delay for health check to allow full structure completion
-                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_serviceProvider == null) return;
 
@@ -221,8 +195,6 @@ public partial class MainForm
         {
             try
             {
-                // Additional small delay for data seeding
-                await Task.Delay(25, cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_serviceProvider == null) return;
                 await WileyWidget.WinForms.Services.UiTestDataSeeder.SeedIfEnabledAsync(_serviceProvider).ConfigureAwait(false);
@@ -244,27 +216,12 @@ public partial class MainForm
 
         try
         {
-            // [PERF] Phase 0: Pre-initialization status
-            try
-            {
-                _logger?.LogInformation("OnShown: Starting deferred background initialization");
-                _asyncLogger?.Information("→ About to call ApplyStatus...");
-                ApplyStatus("Initializing...");
-                _asyncLogger?.Information("→ ApplyStatus completed");
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-            catch (Exception prephaseEx)
-            {
-                _asyncLogger?.Error(prephaseEx, "★ CRITICAL: Exception before Phase 1 code!");
-                _logger?.LogError(prephaseEx, "★ CRITICAL: Exception before Phase 1 code!");
-                throw;
-            }
+            _logger?.LogInformation("OnShown: Starting deferred background initialization");
+            ApplyStatus("Initializing...");
+            cancellationToken.ThrowIfCancellationRequested();
 
-            _logger?.LogInformation("→ Phase 1: Docking already initialized at start of OnShown");
-            _asyncLogger?.Information("→ Phase 1: Docking verification complete");
-
-            // [PERF] Phase 2: MainViewModel initialization and dashboard data load
-            _asyncLogger?.Information("MainForm OnShown: Phase 3 - Initializing MainViewModel and dashboard data");
+            // MainViewModel initialization and dashboard data load
+            _asyncLogger?.Information("MainForm OnShown: Initializing MainViewModel and dashboard data");
             _logger?.LogInformation("Initializing MainViewModel");
             ApplyStatus("Loading dashboard data...");
             cancellationToken.ThrowIfCancellationRequested();
@@ -298,11 +255,13 @@ public partial class MainForm
                     await MainViewModel.InitializeAsync(cancellationToken).ConfigureAwait(false);
                     if (this.InvokeRequired)
                     {
-                        await this.InvokeAsync(() =>
-                        {
-                            _logger?.LogInformation("MainViewModel initialized successfully");
-                            _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
-                        });
+                        await this.InvokeAsyncNonBlockingTask(
+                            _ =>
+                            {
+                                _logger?.LogInformation("MainViewModel initialized successfully");
+                                _asyncLogger?.Information("MainForm OnShown: MainViewModel.InitializeAsync completed successfully");
+                                return Task.CompletedTask;
+                            }).ConfigureAwait(true);
                     }
                     else
                     {
@@ -422,7 +381,7 @@ public partial class MainForm
 
         if (!IsHandleCreated)
         {
-            throw new InvalidOperationException("Form handle not created - cannot initialize DockingManager");
+            throw new InvalidOperationException("Form handle not created - cannot initialize layout");
         }
 
         var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -767,6 +726,242 @@ public partial class MainForm
         base.OnShown(e);
         BeginStartupFadeInIfNeeded();
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var redrawSuspended = TrySuspendRedraw("ONSHOWN");
+        SuspendLayout();
+
+        try
+        {
+            _logger?.LogInformation("🌟 MainForm.OnShown - keeping UI thread light for immediate responsiveness");
+            StartUiResponsivenessProbe();
+
+            if (_serviceProvider == null)
+            {
+                throw new InvalidOperationException("Service provider unavailable.");
+            }
+
+            ApplyStatus("Ready — loading workspace...");
+            Update();
+
+            var startupTimer = new System.Windows.Forms.Timer { Interval = 35 };
+            startupTimer.Tick += (_, _) =>
+            {
+                startupTimer.Stop();
+                startupTimer.Dispose();
+
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                QueueDeferredStartupUiPhases();
+            };
+            startupTimer.Start();
+
+            _logger?.LogInformation("✅ OnShown completed in {ElapsedMs}ms — form is now fully responsive", sw.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "OnShown critical failure");
+            try
+            {
+                UIHelper.ShowMessageOnUI(this, "Startup error — check logs.", "Wiley Widget", MessageBoxButtons.OK, MessageBoxIcon.Warning, _logger);
+            }
+            catch (Exception uiEx)
+            {
+                _logger?.LogDebug(uiEx, "Failed to display OnShown startup error dialog");
+            }
+        }
+        finally
+        {
+            ResumeLayout(performLayout: true);
+            ResumeRedraw(redrawSuspended, "ONSHOWN");
+        }
+    }
+
+    private void QueueDeferredStartupUiPhases()
+    {
+        if (Interlocked.Exchange(ref _startupUiPhasesQueued, 1) == 1)
+        {
+            return;
+        }
+
+        _startupUiPhasesIndex = 0;
+        _startupUiPhasesTimer?.Stop();
+        _startupUiPhasesTimer?.Dispose();
+
+        _startupUiPhasesTimer = new System.Windows.Forms.Timer { Interval = 35 };
+        _startupUiPhasesTimer.Tick += HandleDeferredStartupUiPhase;
+        _startupUiPhasesTimer.Start();
+    }
+
+    private void HandleDeferredStartupUiPhase(object? sender, EventArgs e)
+    {
+        if (IsDisposed || Disposing)
+        {
+            CompleteDeferredStartupUiPhases();
+            return;
+        }
+
+        try
+        {
+            switch (_startupUiPhasesIndex)
+            {
+                case 0:
+                    InitializeChrome();
+                    QueueDeferredChromeInitialization();
+                    InitializeStartupNavigation();
+                    LoadMruList();
+                    ApplyStatus("Ready — loading dashboard...");
+                    break;
+
+                case 1:
+                    if (ShouldAutoLoadPrimaryPanelOnStartup())
+                    {
+                        LoadPrimaryDashboardPanel();
+                    }
+                    else
+                    {
+                        _logger?.LogDebug("Startup primary panel preload skipped (set WILEYWIDGET_PRELOAD_PRIMARY_PANEL=true to enable)");
+                    }
+                    break;
+
+                case 2:
+                    if (ShouldAutoOpenJarvisOnStartup())
+                    {
+                        TryOpenJarvisStartupPanel();
+                    }
+
+                    _ = InitializeAsync(CancellationToken.None);
+                    ApplyStatus("Ready");
+                    CompleteDeferredStartupUiPhases();
+                    return;
+
+                default:
+                    CompleteDeferredStartupUiPhases();
+                    return;
+            }
+
+            _startupUiPhasesIndex++;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Deferred startup phase {Phase} failed", _startupUiPhasesIndex);
+            CompleteDeferredStartupUiPhases();
+            UIHelper.ShowMessageOnUI(this, "Dashboard load had an issue — check logs.", "Startup Note", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger);
+        }
+    }
+
+    private void CompleteDeferredStartupUiPhases()
+    {
+        if (_startupUiPhasesTimer != null)
+        {
+            _startupUiPhasesTimer.Tick -= HandleDeferredStartupUiPhase;
+            _startupUiPhasesTimer.Stop();
+            _startupUiPhasesTimer.Dispose();
+            _startupUiPhasesTimer = null;
+        }
+
+        Interlocked.Exchange(ref _startupUiPhasesQueued, 0);
+    }
+
+    private void InitializeStartupNavigation()
+    {
+        if (_panelNavigationService != null)
+        {
+            return;
+        }
+
+        InitializeLayoutComponents();
+
+        if (_serviceProvider == null)
+        {
+            throw new InvalidOperationException("Service provider unavailable.");
+        }
+
+        var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetService<Microsoft.Extensions.Logging.ILogger<PanelNavigationService>>(_serviceProvider);
+
+        _panelNavigationService = new PanelNavigationService(
+            owner: this,
+            serviceProvider: _serviceProvider,
+            logger: navLogger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PanelNavigationService>.Instance);
+
+        if (_tabbedMdi != null)
+        {
+            _panelNavigationService.SetTabbedManager(_tabbedMdi);
+            _logger?.LogDebug("TabbedMDIManager wired");
+        }
+
+        _panelNavigator = _panelNavigationService;
+    }
+
+    private void LoadPrimaryDashboardPanel()
+    {
+        if (IsDisposed || Disposing || _panelNavigationService == null)
+        {
+            return;
+        }
+
+        var panelSw = System.Diagnostics.Stopwatch.StartNew();
+        _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+            panelName: "Enterprise Vital Signs",
+            preferredStyle: DockingStyle.Fill,
+            allowFloating: false);
+        _logger?.LogDebug("Enterprise Vital Signs loaded in {ElapsedMs}ms", panelSw.ElapsedMilliseconds);
+    }
+
+    private void TryOpenJarvisStartupPanel()
+    {
+        if (IsDisposed || Disposing)
+        {
+            return;
+        }
+
+        if (!ShouldAutoOpenJarvisOnStartup() || !EnsureRightDockPanelInitialized())
+        {
+            return;
+        }
+
+        var jarvisTab = FindRightDockTab("RightDockTab_JARVIS");
+        if (jarvisTab != null && _rightDockTabs != null)
+        {
+            _rightDockTabs.SelectedTab = jarvisTab;
+        }
+
+        if (_rightDockPanel != null)
+        {
+            _rightDockPanel.Visible = true;
+            _rightDockPanel.BringToFront();
+        }
+    }
+
+    private bool ShouldAutoLoadPrimaryPanelOnStartup()
+    {
+        if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
+        {
+            return true;
+        }
+
+        var preloadPrimaryPanel = Environment.GetEnvironmentVariable("WILEYWIDGET_PRELOAD_PRIMARY_PANEL");
+        return string.Equals(preloadPrimaryPanel, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(preloadPrimaryPanel, "1", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void QueueOnShownStartupWorkflow(CancellationToken cancellationToken)
+    {
+        try
+        {
+            BeginInvoke((MethodInvoker)(() => _ = RunOnShownStartupWorkflowAsync(cancellationToken)));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to queue OnShown startup workflow");
+        }
+    }
+
+    private async Task RunOnShownStartupWorkflowAsync(CancellationToken cancellationToken)
+    {
         var onShownStopwatch = System.Diagnostics.Stopwatch.StartNew();
         var redrawSuspended = TrySuspendRedraw("ONSHOWN");
         SuspendLayout();
@@ -775,6 +970,8 @@ public partial class MainForm
         {
             _logger?.LogInformation("🌟 MainForm.OnShown - Wiley Widget launching default dashboard...");
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (_serviceProvider == null)
             {
                 throw new InvalidOperationException("Service provider is not initialized.");
@@ -782,9 +979,12 @@ public partial class MainForm
 
             var dockingStopwatch = System.Diagnostics.Stopwatch.StartNew();
             // ── 1. Make sure the docking/tab system is ready (do this BEFORE navigation service)
-            InitializeDockingOrTabbedLayout();
+            InitializeLayoutComponents();
             dockingStopwatch.Stop();
             _logger?.LogDebug("OnShown Phase 1 (Docking setup) in {ElapsedMs}ms", dockingStopwatch.ElapsedMilliseconds);
+
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
 
             // ── 2. Create the navigation service (this was the missing piece!)
             var navServiceStopwatch = System.Diagnostics.Stopwatch.StartNew();
@@ -811,6 +1011,16 @@ public partial class MainForm
             navServiceStopwatch.Stop();
             _logger?.LogDebug("OnShown Phase 2 (Navigation service setup) in {ElapsedMs}ms", navServiceStopwatch.ElapsedMilliseconds);
 
+            await Task.Yield();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // NOTE: DI registration validation is handled by WinFormsDiValidator (runs on a
+            // background thread — see startup log "OK JARVISChatUserControl registered successfully").
+            // Do NOT probe panel registrations here by calling ActivatorUtilities.CreateInstance:
+            // complex ScopedPanelBase controls (e.g. JARVISChatUserControl) create a DI scope in
+            // their constructor and the probe dispose cascades into live scoped services, which
+            // disposes the real panel that is already mounted in the right-dock tab.
+
             // ── 3. PERF OPTIMIZATION: Defer ALL panel creation to reduce OnShown blocking time (~150ms gain)
             // Show form immediately, load panels asynchronously
             _logger?.LogDebug("OnShown Phase 3: Deferring panel creation for faster perceived startup");
@@ -820,79 +1030,18 @@ public partial class MainForm
             // The previous double-BeginInvoke (async void inside async void) caused FlaUI tests
             // to time out because the outer lambda exited before the inner lambda even queued on
             // the UI thread, leaving panels invisible to UI Automation for 30-90 s per test.
-            BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    if (_panelNavigationService == null || IsDisposed || Disposing)
-                    {
-                        return;
-                    }
-
-                    var primaryPanelStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                    _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
-                        panelName: "Enterprise Vital Signs",
-                        preferredStyle: DockingStyle.Fill,
-                        allowFloating: false);   // no floating the hero panel
-                    primaryPanelStopwatch.Stop();
-                    _logger?.LogDebug("Deferred Phase 3a (Enterprise Vital Signs) in {ElapsedMs}ms", primaryPanelStopwatch.ElapsedMilliseconds);
-
-                    // Optional victory lap — flash the status bar
-                    _statusProgressService?.Complete("Startup", "Welcome to Wiley Widget — Municipal Finance, Supercharged!");
-                }
-                catch (Exception ex) when (ex is Win32Exception)
-                {
-                    _logger?.LogDebug(ex, "Deferred panel load hit handle race — retrying after delay");
-                    // Small synchronous retry; Thread.Sleep is acceptable here because this
-                    // BeginInvoke already runs after OnShown (form is visible) and the sleep is
-                    // limited to the rare handle-race path only.
-                    System.Threading.Thread.Sleep(100);
-                    if (!IsDisposed)
-                    {
-                        try
-                        {
-                            _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
-                                panelName: "Enterprise Vital Signs",
-                                preferredStyle: DockingStyle.Fill,
-                                allowFloating: false);
-                        }
-                        catch (Exception retryEx)
-                        {
-                            _logger?.LogWarning(retryEx, "Deferred primary panel retry failed after handle-race delay");
-                            throw;
-                        }
-                    }
-                }
-                catch (Exception primaryEx)
-                {
-                    _logger?.LogError(primaryEx, "Failed to load primary panel in deferred phase");
-                    UIHelper.ShowMessageOnUI(
-                        this,
-                        "Whoops! The dashboard had a little hiccup starting up.\n\n" +
-                        "Check the log file for details.\n\n" +
-                        "We'll get this fixed faster than Brick can say 'Stay classy, Wiley!'",
-                        "Wiley Widget Startup Issue",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning,
-                        _logger);
-
-                    // Still try to show something useful
-                    try
-                    {
-                        _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.SettingsPanel>("Settings", DockingStyle.Fill);
-                    }
-                    catch (Exception fallbackPanelEx)
-                    {
-                        _logger?.LogWarning(fallbackPanelEx, "Failed to load fallback Settings panel after primary startup panel failure");
-                    }
-                }
-            }));
+            QueueDeferredPrimaryPanelLoad(cancellationToken);
 
             // Defer secondary panel even further to reduce startup thrash
             BeginInvoke((MethodInvoker)(() =>
             {
                 try
                 {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
                     if (_panelNavigationService == null || IsDisposed || Disposing)
                     {
                         return;
@@ -904,12 +1053,25 @@ public partial class MainForm
                         return;
                     }
 
-                    _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>(
-                        panelName: "JARVIS Chat",
-                        preferredStyle: DockingStyle.Right,
-                        allowFloating: true);
+                    if (!EnsureRightDockPanelInitialized())
+                    {
+                        _logger?.LogWarning("OnShown deferred phase: right dock panel unavailable; JARVIS auto-show skipped");
+                        return;
+                    }
 
-                    _logger?.LogDebug("OnShown deferred phase: JARVIS Chat opened");
+                    var jarvisTab = FindRightDockTab("RightDockTab_JARVIS");
+                    if (jarvisTab != null && _rightDockTabs != null && !ReferenceEquals(_rightDockTabs.SelectedTab, jarvisTab))
+                    {
+                        _rightDockTabs.SelectedTab = jarvisTab;
+                    }
+
+                    if (_rightDockPanel != null)
+                    {
+                        _rightDockPanel.Visible = true;
+                        _rightDockPanel.BringToFront();
+                    }
+
+                    _logger?.LogDebug("OnShown deferred phase: JARVIS Chat auto-show confirmed via right dock tab selection");
                 }
                 catch (Exception deferredEx)
                 {
@@ -924,16 +1086,34 @@ public partial class MainForm
             // error-continuation on the UI scheduler so failures are still logged.
             BeginInvoke((MethodInvoker)(() =>
             {
-                _ = InitializeAsync(CancellationToken.None).ContinueWith(
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                _logger?.LogInformation("[STARTUP-DIAG] Invoking MainForm.InitializeAsync from OnShown deferred invoke (ThreadId={ThreadId})", Thread.CurrentThread.ManagedThreadId);
+                var initializeTask = InitializeAsync(cancellationToken);
+
+                _ = initializeTask.ContinueWith(
                     t => _logger?.LogError(
                         t.Exception?.InnerException ?? t.Exception,
                         "InitializeAsync failed during OnShown deferred invoke"),
                     CancellationToken.None,
                     TaskContinuationOptions.OnlyOnFaulted,
                     TaskScheduler.FromCurrentSynchronizationContext());
+
+                _ = initializeTask.ContinueWith(
+                    _ => _logger?.LogInformation("[STARTUP-DIAG] MainForm.InitializeAsync completed from OnShown deferred invoke"),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnRanToCompletion,
+                    TaskScheduler.FromCurrentSynchronizationContext());
             }));
 
             _logger?.LogInformation("✅ SUCCESS — OnShown completed, panels loading asynchronously for faster startup");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("OnShown startup workflow canceled");
         }
         catch (Exception ex)
         {
@@ -962,6 +1142,110 @@ public partial class MainForm
         }
     }
 
+    private void QueueDeferredPrimaryPanelLoad(CancellationToken cancellationToken)
+    {
+        try
+        {
+            BeginInvoke((MethodInvoker)(() => _ = RunDeferredPrimaryPanelLoadAsync(cancellationToken)));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to queue deferred primary panel load");
+        }
+    }
+
+    private async Task RunDeferredPrimaryPanelLoadAsync(CancellationToken cancellationToken)
+    {
+        var primaryPanelStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        _logger?.LogDebug("Deferred Phase 3a (Enterprise Vital Signs) scheduled");
+
+        try
+        {
+            if (cancellationToken.IsCancellationRequested || IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            await Task.Yield();
+
+            _logger?.LogDebug("Deferred Phase 3a (Enterprise Vital Signs) executing on UI thread");
+
+            if (cancellationToken.IsCancellationRequested || _panelNavigationService == null || IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            _panelNavigationService.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+                panelName: "Enterprise Vital Signs",
+                preferredStyle: DockingStyle.Fill,
+                allowFloating: false);
+
+            primaryPanelStopwatch.Stop();
+            _logger?.LogDebug("Deferred Phase 3a (Enterprise Vital Signs) in {ElapsedMs}ms", primaryPanelStopwatch.ElapsedMilliseconds);
+
+            _statusProgressService?.Complete("Startup", "Welcome to Wiley Widget — Municipal Finance, Supercharged!");
+        }
+        catch (Exception ex) when (ex is Win32Exception)
+        {
+            _logger?.LogDebug(ex, "Deferred panel load hit handle race — retrying after delay");
+
+            await Task.Delay(100, cancellationToken).ConfigureAwait(true);
+
+            if (cancellationToken.IsCancellationRequested || IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            try
+            {
+                _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>(
+                    panelName: "Enterprise Vital Signs",
+                    preferredStyle: DockingStyle.Fill,
+                    allowFloating: false);
+            }
+            catch (Exception retryEx)
+            {
+                _logger?.LogWarning(retryEx, "Deferred primary panel retry failed after handle-race delay");
+                throw;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogDebug("Deferred Phase 3a canceled");
+        }
+        catch (Exception primaryEx)
+        {
+            _logger?.LogError(primaryEx, "Failed to load primary panel in deferred phase");
+            UIHelper.ShowMessageOnUI(
+                this,
+                "Whoops! The dashboard had a little hiccup starting up.\n\n" +
+                "Check the log file for details.\n\n" +
+                "We'll get this fixed faster than Brick can say 'Stay classy, Wiley!'",
+                "Wiley Widget Startup Issue",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning,
+                _logger);
+
+            try
+            {
+                _panelNavigationService?.ShowPanel<WileyWidget.WinForms.Controls.Panels.SettingsPanel>("Settings", DockingStyle.Fill);
+            }
+            catch (Exception fallbackPanelEx)
+            {
+                _logger?.LogWarning(fallbackPanelEx, "Failed to load fallback Settings panel after primary startup panel failure");
+            }
+        }
+    }
+
+    private void CancelOnShownStartupWorkflow()
+    {
+        CompleteDeferredStartupUiPhases();
+
+        _onShownStartupCts?.Cancel();
+        _onShownStartupCts?.Dispose();
+        _onShownStartupCts = null;
+    }
+
     private bool ShouldAutoOpenJarvisOnStartup()
     {
         if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
@@ -982,6 +1266,16 @@ public partial class MainForm
         if (string.Equals(disableAutoOpen, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(disableAutoOpen, "1", StringComparison.OrdinalIgnoreCase))
         {
+            return false;
+        }
+
+        var forceAutoOpen = Environment.GetEnvironmentVariable("WILEYWIDGET_AUTO_OPEN_JARVIS");
+        var shouldForceAutoOpen = string.Equals(forceAutoOpen, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(forceAutoOpen, "1", StringComparison.OrdinalIgnoreCase);
+
+        if (!shouldForceAutoOpen)
+        {
+            _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: defaulting to disabled for responsive startup (set WILEYWIDGET_AUTO_OPEN_JARVIS=true to enable)");
             return false;
         }
 
@@ -1017,20 +1311,13 @@ public partial class MainForm
 
         try
         {
-            Opacity = 0d;
+            Opacity = 1.0d; // Fixed: Full opacity from startup to ensure immediate visibility of panels and chrome
             _startupFadePrepared = true;
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Startup fade preparation failed; continuing without transition");
-            _startupFadePrepared = false;
-            try
-            {
-                Opacity = 1d;
-            }
-            catch
-            {
-            }
+            _startupFadePrepared = true;
         }
     }
 
@@ -1105,5 +1392,60 @@ public partial class MainForm
         }
 
         _startupFadePrepared = false;
+    }
+
+    // NEW: Safe initialization (called automatically in real app, manually in tests)
+    private void InitializeLayoutComponents()
+    {
+        var preloadRightDock = Environment.GetEnvironmentVariable("WILEYWIDGET_PRELOAD_RIGHT_DOCK");
+        var shouldPreloadRightDock = string.Equals(preloadRightDock, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(preloadRightDock, "1", StringComparison.OrdinalIgnoreCase);
+
+        // Microsoft UI-thread guidance recommends keeping startup callbacks short and deferring
+        // non-essential work. The right dock (Activity Log + JARVIS composition) is expensive,
+        // so we lazy-load it on first explicit use unless prewarm is explicitly requested.
+        if (shouldPreloadRightDock && _serviceProvider != null)
+        {
+            try
+            {
+                var initialized = EnsureRightDockPanelInitialized();
+                if (initialized)
+                {
+                    _logger?.LogDebug("InitializeLayoutComponents: preloaded real right dock panel via factory (WILEYWIDGET_PRELOAD_RIGHT_DOCK enabled)");
+                }
+                else
+                {
+                    _logger?.LogWarning("InitializeLayoutComponents: right dock prewarm requested but initialization returned false — using temporary panel");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "InitializeLayoutComponents: right dock prewarm failed — using temporary panel");
+                _rightDockPanel = null;
+                _rightDockTabs = null;
+                _rightDockJarvisPanel = null;
+            }
+        }
+
+        // Temporary right-dock panel: used when DI is absent (tests) OR when the factory threw above.
+        // The catch block resets _rightDockPanel to null so this condition catches both cases.
+        if (_rightDockPanel == null || _rightDockPanel.IsDisposed)
+        {
+            var jarvisPanel = new Panel
+            {
+                Name = "JarvisPanel",
+                Tag = "Jarvis",
+                Width = 500,
+                Dock = DockStyle.Right,
+                MinimumSize = new Size(350, 0),
+                MaximumSize = new Size(0, 0),   // 0,0 = no maximum constraint
+            };
+            _rightDockPanel = jarvisPanel;
+            var host = (_contentHostPanel as Control) ?? (Control)this;
+            host.Controls.Add(jarvisPanel);
+            _logger?.LogDebug("InitializeLayoutComponents: temporary right dock panel added to {Host} (factory unavailable or failed)", host.Name);
+        }
+
+        InitializeMDIManager();
     }
 }

@@ -135,6 +135,45 @@ namespace WileyWidget.WinForms.Forms;
 public partial class MainForm
 {
     private delegate void RibbonCommand();
+    private bool _suppressThemeComboSelectionChanged;
+
+    private static readonly ThemeComboItem[] ThemeComboItems =
+    {
+        new("Office2019Colorful", "Office2019Colorful"),
+        new("Office2019Dark", "Office2019Dark"),
+        new("Office2019White", "Office2019White"),
+        new("Office2019Black", "Office2019Black"),
+        new("Office2019DarkGray", "Office2019DarkGray"),
+        new("Office2016Colorful", "Office2016Colorful"),
+        new("Office2016White", "Office2016White"),
+        new("Office2016Black", "Office2016Black"),
+        new("Office2016DarkGray", "Office2016DarkGray"),
+        new("HighContrastBlack", "HighContrastBlack"),
+        new("HighContrastWhite", "HighContrastWhite")
+    };
+
+    private void EnsureRibbonHitTestPriority()
+    {
+        if (_ribbon == null || _ribbon.IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            _ribbon.Enabled = true;
+            _ribbon.BringToFront();
+
+            if (_ribbon.CanFocus)
+            {
+                _ribbon.Focus();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "EnsureRibbonHitTestPriority: failed to enforce ribbon hit-test priority");
+        }
+    }
 
     /// <summary>
     /// Segoe MDL2 Assets icon glyph mappings for common ribbon buttons.
@@ -288,34 +327,19 @@ public partial class MainForm
         {
             try
             {
-                if (logger != null)
-                {
-                    LogRibbonNav(logger, entry.DisplayName, entry.PanelType.Name, entry.DefaultDock.ToString(), null);
-                }
+                logger?.LogInformation("Navigating to panel: {PanelName} ({PanelType})", entry.DisplayName, entry.PanelType.Name);
 
                 form.EnsurePanelNavigatorInitialized();
 
-                // ONE LINE TO RULE THEM ALL
                 var shown = form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
-                if (!shown && typeof(UserControl).IsAssignableFrom(entry.PanelType))
+                if (!shown)
                 {
-                    logger?.LogWarning("[RIBBON_NAV] Primary ShowPanel(Type) failed for {Panel}; attempting generic fallback", entry.DisplayName);
-
-                    var genericShowPanel = typeof(MainForm).GetMethod(
-                        nameof(MainForm.ShowPanel),
-                        new[] { typeof(string), typeof(DockingStyle), typeof(bool) });
-
-                    if (genericShowPanel != null)
-                    {
-                        genericShowPanel
-                            .MakeGenericMethod(entry.PanelType)
-                            .Invoke(form, new object[] { entry.DisplayName, entry.DefaultDock, true });
-                    }
+                    logger?.LogWarning("ShowPanel returned false for {Panel}", entry.DisplayName);
                 }
             }
             catch (Exception ex)
             {
-                logger?.LogError(ex, "[RIBBON_NAV] Failed to navigate to {Panel}", entry.DisplayName);
+                logger?.LogError(ex, "Failed to navigate to panel {PanelName}", entry.DisplayName);
             }
         };
     }
@@ -1475,38 +1499,64 @@ public partial class MainForm
         var themeCombo = new ToolStripComboBoxEx
         {
             Name = "ThemeCombo",
-            Text = "Theme",
+            AccessibleName = "Theme Selector",
             AutoSize = false,
-            Width = (int)DpiAware.LogicalToDeviceUnits(150f)
+            Width = (int)DpiAware.LogicalToDeviceUnits(170f),
+            DropDownStyle = ComboBoxStyle.DropDownList
         };
 
-        themeCombo.Items.AddRange(new object[]
-        {
-            "Office2019Colorful",
-            "Office2019Dark",
-            "Office2019White",
-            "Office2019Black",
-            "Office2019DarkGray",
-            "Office2016Colorful",
-            "Office2016White",
-            "Office2016Black",
-            "Office2016DarkGray"
-        });
+        themeCombo.ComboBox.DisplayMember = nameof(ThemeComboItem.DisplayName);
+        themeCombo.ComboBox.ValueMember = nameof(ThemeComboItem.ThemeName);
+        themeCombo.ComboBox.DataSource = ThemeComboItems.ToList();
 
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
-        var index = themeCombo.Items.Cast<object>()
-            .Select((item, i) => new { item, i })
-            .Where(x => string.Equals(x.item?.ToString(), currentTheme, StringComparison.OrdinalIgnoreCase))
-            .Select(x => x.i)
-            .DefaultIfEmpty(0)
-            .First();
-        themeCombo.SelectedIndex = index;
+        form.SyncThemeComboSelection(currentTheme, logger);
 
-        themeCombo.SelectedIndexChanged += (_, _) =>
+        void ApplySelectedThemeFromCombo()
         {
-            var selectedTheme = themeCombo.Text;
+            if (form._suppressThemeComboSelectionChanged)
+            {
+                return;
+            }
+
+            string? selectedTheme = null;
+
+            if (themeCombo.ComboBox.SelectedValue is string selectedValue && !string.IsNullOrWhiteSpace(selectedValue))
+            {
+                selectedTheme = selectedValue;
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedTheme) &&
+                themeCombo.ComboBox.SelectedIndex >= 0 &&
+                themeCombo.ComboBox.SelectedIndex < ThemeComboItems.Length)
+            {
+                selectedTheme = ThemeComboItems[themeCombo.ComboBox.SelectedIndex].ThemeName;
+            }
+
             if (string.IsNullOrWhiteSpace(selectedTheme))
             {
+                selectedTheme = themeCombo.ComboBox.Text;
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedTheme))
+            {
+                selectedTheme = themeCombo.Text;
+            }
+
+            if (string.IsNullOrWhiteSpace(selectedTheme))
+            {
+                return;
+            }
+
+            selectedTheme = AppThemeColors.ValidateTheme(selectedTheme, logger);
+
+            var activeTheme = SfSkinManager.ApplicationVisualTheme
+                ?? form._themeService?.CurrentTheme
+                ?? AppThemeColors.DefaultTheme;
+
+            if (string.Equals(selectedTheme, activeTheme, StringComparison.OrdinalIgnoreCase))
+            {
+                form.SyncThemeComboSelection(activeTheme, logger);
                 return;
             }
 
@@ -1525,12 +1575,16 @@ public partial class MainForm
                         form.Refresh();
                     }
                 }
+
+                form.SyncThemeComboSelection(selectedTheme, logger);
             }
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Failed to apply theme {Theme}", selectedTheme);
             }
-        };
+        }
+
+        themeCombo.SelectedIndexChanged += (_, _) => ApplySelectedThemeFromCombo();
 
         try { SetAutomationId(themeCombo, themeCombo.Name, logger); } catch (Exception ex) { logger?.LogDebug(ex, "Failed to set AutomationId for theme combo {Name}", themeCombo.Name); }
 
@@ -1541,6 +1595,89 @@ public partial class MainForm
 
         return strip;
     }
+
+    private void SyncThemeComboSelection(string themeName, ILogger? logger = null)
+    {
+        if (string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        try
+        {
+            var resolvedTheme = AppThemeColors.ValidateTheme(themeName, logger ?? _logger);
+            var themeItem = (_ribbon != null ? FindToolStripItem(_ribbon, "ThemeCombo") : null)
+                ?? FindToolStripItem(this, "ThemeCombo");
+
+            if (themeItem == null)
+            {
+                return;
+            }
+
+            _suppressThemeComboSelectionChanged = true;
+
+            // Always keep the ToolStripItem text in sync because tests and some call-sites
+            // inspect ThemeCombo.Text directly.
+            themeItem.Text = resolvedTheme;
+
+            if (themeItem is ToolStripComboBoxEx themeComboEx)
+            {
+                if (themeComboEx.ComboBox.IsDisposed)
+                {
+                    return;
+                }
+
+                if (themeComboEx.ComboBox.DataSource != null)
+                {
+                    var fallbackIndex = Array.FindIndex(ThemeComboItems,
+                        option => string.Equals(option.ThemeName, resolvedTheme, StringComparison.OrdinalIgnoreCase));
+                    var selectedIndex = fallbackIndex >= 0 ? fallbackIndex : 0;
+                    var selectedItem = fallbackIndex >= 0 ? ThemeComboItems[fallbackIndex] : ThemeComboItems[selectedIndex];
+
+                    if (themeComboEx.ComboBox.SelectedIndex != selectedIndex)
+                    {
+                        themeComboEx.ComboBox.SelectedIndex = selectedIndex;
+                    }
+
+                    // Keep hosted ComboBox text and ToolStrip item text in sync.
+                    themeComboEx.ComboBox.Text = selectedItem.DisplayName;
+                    themeComboEx.Text = selectedItem.DisplayName;
+                }
+                else
+                {
+                    themeComboEx.ComboBox.Text = resolvedTheme;
+                    themeComboEx.Text = resolvedTheme;
+                }
+            }
+            else if (themeItem is ToolStripComboBox themeCombo)
+            {
+                if (themeCombo.ComboBox.IsDisposed)
+                {
+                    return;
+                }
+
+                var fallbackIndex = Array.FindIndex(ThemeComboItems,
+                    option => string.Equals(option.ThemeName, resolvedTheme, StringComparison.OrdinalIgnoreCase));
+                if (fallbackIndex >= 0)
+                {
+                    themeCombo.ComboBox.SelectedIndex = fallbackIndex;
+                }
+
+                themeCombo.ComboBox.Text = resolvedTheme;
+                themeCombo.Text = resolvedTheme;
+            }
+        }
+        catch (Exception ex)
+        {
+            (logger ?? _logger)?.LogDebug(ex, "Failed to synchronize ribbon theme combo selection");
+        }
+        finally
+        {
+            _suppressThemeComboSelectionChanged = false;
+        }
+    }
+
+    private sealed record ThemeComboItem(string ThemeName, string DisplayName);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Financials tab — group creators
@@ -2001,7 +2138,7 @@ public partial class MainForm
                 form.BringToFront();
                 form.Activate();
 
-                // Ensure PanelNavigator is initialized (required for floating panel navigation)
+                // Ensure PanelNavigator is initialized (required for consolidated TabbedMDI navigation)
                 form.EnsurePanelNavigatorInitialized();
 
                 if (form._panelNavigator == null)
@@ -2012,7 +2149,7 @@ public partial class MainForm
 
                 logger?.LogDebug("[SAFENAV] Executing navigation action for '{Target}'", navigationTarget);
 
-                // Execute the navigation command (opens floating panel via PanelNavigationService)
+                // Execute the navigation command (opens/activates tabbed MDI panel via PanelNavigationService)
                 navigateAction();
 
                 logger?.LogInformation("[SAFENAV] Navigation completed for '{Target}'", navigationTarget);
