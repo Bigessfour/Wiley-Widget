@@ -10,7 +10,6 @@ using FastReport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Utilities;
-using DockingManager = Syncfusion.Windows.Forms.Tools.DockingManager;
 using GridTextColumn = Syncfusion.WinForms.DataGrid.GridTextColumn;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
 using SfComboBox = Syncfusion.WinForms.ListView.SfComboBox;
@@ -273,7 +272,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         Padding = Padding.Empty;
         // Apply theme for cascade to all child controls
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
-        // DockingManager will handle docking; do not set Dock here.
+        // Dock style is set by PanelNavigationService (TabbedMDIManager host); do not set Dock here.
 
         // Panel header
         _panelHeader = new PanelHeader
@@ -640,7 +639,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         // Note: FastReport preview control (ReportViewer) is only available in FastReport.NET (commercial)
         // FastReport Open Source doesn't include the UI viewer component
-        // Therefore, we use a placeholder Panel that can display report content via custom rendering
+        // Therefore, this preview host panel displays report status and export-related content
         // when the commercial version is available, simply uncomment the ReportViewer code below:
         // _previewControl = new FastReport.ReportViewer
         // {
@@ -650,7 +649,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // };
         // _reportViewerContainer.Controls.Add(_previewControl);
 
-        // For now, the container remains as a placeholder panel that shows
+        // For now, the container continues to show
         // status messages about the report and available exports
 
         viewerPanel.Controls.Add(_reportViewerContainer);
