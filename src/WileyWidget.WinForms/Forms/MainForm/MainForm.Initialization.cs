@@ -742,7 +742,21 @@ public partial class MainForm
 
             ApplyStatus("Ready — loading workspace...");
             Update();
-            QueueDeferredStartupUiPhases();
+
+            var startupTimer = new System.Windows.Forms.Timer { Interval = 35 };
+            startupTimer.Tick += (_, _) =>
+            {
+                startupTimer.Stop();
+                startupTimer.Dispose();
+
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                QueueDeferredStartupUiPhases();
+            };
+            startupTimer.Start();
 
             _logger?.LogInformation("✅ OnShown completed in {ElapsedMs}ms — form is now fully responsive", sw.ElapsedMilliseconds);
         }
