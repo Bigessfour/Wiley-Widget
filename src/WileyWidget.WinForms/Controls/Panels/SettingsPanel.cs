@@ -127,6 +127,9 @@ namespace WileyWidget.WinForms.Controls.Panels
         private BindingSource? _bindingSource;
         private WileyWidget.WinForms.Controls.Supporting.ErrorProviderBinding? _errorBinding;
 
+        private new SyncfusionControlFactory ControlFactory =>
+            _factory ?? throw new InvalidOperationException("SettingsPanel SyncfusionControlFactory is not initialized.");
+
         // Tooltips
         private ToolTip? _tooltip;
         private ToolTip? _aiToolTip;
@@ -156,6 +159,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private EventHandler? _btnBrowseExportPathClickHandler;
         private EventHandler? _btnSaveClickHandler;
         private EventHandler? _btnCloseClickHandler;
+        private bool _isPanelInitialized;
         #endregion
 
         /// <summary>
@@ -167,9 +171,10 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
+            Size = ScaleLogicalToDevice(new Size(1100, 760));
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
             SafeSuspendAndLayout(InitializeComponent);
+            InitializeResolvedViewModelState();
         }
 
         /// <summary>
@@ -223,7 +228,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            MinimumSize = new Size(1024, 720);
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
             PerformLayout();
         }
 
@@ -240,11 +245,27 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             DataContext = viewModel;
-            _settingsSecretsPersistenceService = ServiceProvider.GetService(typeof(SettingsSecretsPersistenceService)) as SettingsSecretsPersistenceService;
+            var provider = GetServiceProvider();
+            _settingsSecretsPersistenceService = provider?.GetService(typeof(SettingsSecretsPersistenceService)) as SettingsSecretsPersistenceService;
 
+            if (_factory == null)
+            {
+                return;
+            }
+
+            InitializeResolvedViewModelState();
+        }
+
+        private void InitializeResolvedViewModelState()
+        {
+            if (_isPanelInitialized || ViewModel == null)
+            {
+                return;
+            }
+
+            _isPanelInitialized = true;
             SafeSuspendAndLayout(() =>
             {
-                InitializeComponent();
                 SetupBindings();
                 SetupEventHandlers();
                 ApplyCurrentTheme();
@@ -381,7 +402,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             AutoScaleMode = AutoScaleMode.Dpi;
             Padding = Padding.Empty;
-            MinimumSize = new Size(1024, 720);
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
 
             // Apply theme for cascade to all child controls
             SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
@@ -464,7 +485,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _themeCombo = ControlFactory.CreateSfComboBox(combo =>
             {
                 combo.Name = "themeCombo";
-                combo.Size = new Size(220, 24);
+                combo.Size = ScaleLogicalToDevice(new Size(220, 24));
                 combo.AllowDropDownResize = false;
                 combo.MaxDropDownItems = 5;
             });
@@ -488,7 +509,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _fontCombo = ControlFactory.CreateSfComboBox(combo =>
             {
                 combo.Name = "fontCombo";
-                combo.Size = new Size(220, 24);
+                combo.Size = ScaleLogicalToDevice(new Size(220, 24));
                 combo.AllowDropDownResize = false;
                 combo.MaxDropDownItems = 10;
             });
@@ -601,7 +622,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _cmbXaiModel = ControlFactory.CreateSfComboBox(combo =>
             {
                 combo.Name = "cmbXaiModel";
-                combo.Size = new Size(220, 24);
+                combo.Size = ScaleLogicalToDevice(new Size(220, 24));
             });
             aiTable.Controls.Add(_cmbXaiModel, 1, 2);
             try
@@ -1294,7 +1315,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 try
                 {
-                    ThemeColors.ApplyTheme(parentForm, Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+                    var currentTheme = ThemeColors.ValidateTheme(
+                        Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme,
+                        Logger);
+                    ThemeColors.EnsureThemeAssemblyLoadedForTheme(currentTheme, Logger);
+                    Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(parentForm, currentTheme);
                 }
                 catch { }
             }
@@ -1328,7 +1353,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
-        private void BtnClose_Click(object? sender, EventArgs e)
+        private async void BtnClose_Click(object? sender, EventArgs e)
         {
             try
             {
@@ -1346,7 +1371,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                     if (result == DialogResult.Yes)
                     {
-                        var validationResult = ValidateAsync(CancellationToken.None).GetAwaiter().GetResult();
+                        var validationResult = await ValidateAsync(CancellationToken.None).ConfigureAwait(true);
                         if (!validationResult.IsValid)
                         {
                             FocusFirstError();
@@ -1491,7 +1516,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     if (_statusLabel != null && !_statusLabel.IsDisposed)
                     {
                         _statusLabel.Text = message ?? string.Empty;
-                        _statusLabel.ForeColor = isError ? ThemeColors.Error : Color.Empty;
+                        _statusLabel.ForeColor = isError ? Color.Red : Color.Empty;
                         try { _statusLabel.Invalidate(); } catch { }
                     }
                 }

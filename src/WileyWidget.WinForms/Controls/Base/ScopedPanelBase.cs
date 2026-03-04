@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -16,6 +17,8 @@ using System.Diagnostics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
+using WileyWidget.WinForms.Controls.Supporting;
 
 namespace WileyWidget.WinForms.Controls.Base
 {
@@ -64,9 +67,14 @@ namespace WileyWidget.WinForms.Controls.Base
             new(RecommendedEmbeddedPanelMinimumLogicalWidth, RecommendedEmbeddedPanelMinimumLogicalHeight);
 
         private bool _initialLayoutSuspended;
+        private bool _applyingProfessionalLayout;
+        private const string ProfessionalContentHostName = "ScopedPanelContentHost";
 
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
         public virtual object? UntypedViewModel => null;
+
+        /// <summary>Content host panel for consistent layout. Created by ApplyProfessionalPanelLayout.</summary>
+        protected Panel? ContentHost { get; private set; }
 
         protected ScopedPanelBase()
         {
@@ -104,6 +112,160 @@ namespace WileyWidget.WinForms.Controls.Base
             }
         }
 
+        /// <summary>
+        /// Applies professional panel layout: header, padding, content host, and theme.
+        /// Called automatically from OnHandleCreated. Can be called manually for dynamic updates.
+        /// </summary>
+        protected virtual void ApplyProfessionalPanelLayout()
+        {
+            this.SuspendLayout();
+            try
+            {
+                // Apply consistent padding using LayoutTokens
+                this.Padding = new Padding(LayoutTokens.PanelPadding);
+                this.Margin = Padding.Empty;
+                this.AutoScroll = true;
+                this.Dock = DockStyle.Fill;
+                this.BackColor = Color.Transparent;
+
+                // Create or normalize header
+                var header = Controls.OfType<PanelHeader>().FirstOrDefault();
+                if (header == null)
+                {
+                    var factory = GetControlFactory();
+                    header = factory?.CreatePanelHeader(h =>
+                    {
+                        h.Title = this.Text ?? this.Name;
+                        h.ShowRefreshButton = false;
+                        h.ShowHelpButton = false;
+                        h.ShowPinButton = false;
+                        h.ShowCloseButton = true;
+                    }) ?? new PanelHeader
+                    {
+                        Title = this.Text ?? this.Name,
+                        ShowRefreshButton = false,
+                        ShowHelpButton = false,
+                        ShowPinButton = false,
+                        ShowCloseButton = true,
+                    };
+
+                    header.CloseClicked += (s, e) =>
+                    {
+                        var navigationService = GetNavigationService();
+                        navigationService?.HidePanel(this.GetType().Name);
+                    };
+
+                    this.Controls.Add(header);
+                }
+
+                header.Height = LayoutTokens.HeaderHeight;
+                header.Dock = DockStyle.Top;
+                if (string.IsNullOrWhiteSpace(header.Title))
+                {
+                    header.Title = this.Text ?? this.Name;
+                }
+
+                // Create or normalize content host for consistent layout
+                var contentHost = ContentHost;
+                if (contentHost == null || contentHost.IsDisposed || !Controls.Contains(contentHost))
+                {
+                    contentHost = Controls
+                        .OfType<Panel>()
+                        .FirstOrDefault(panel => string.Equals(panel.Name, ProfessionalContentHostName, StringComparison.Ordinal));
+                }
+
+                if (contentHost == null || contentHost.IsDisposed)
+                {
+                    contentHost = new Panel();
+                }
+
+                contentHost.Name = ProfessionalContentHostName;
+                contentHost.Dock = DockStyle.Fill;
+                contentHost.Padding = new Padding(8);
+                contentHost.Margin = Padding.Empty;
+                contentHost.BackColor = Color.Transparent;
+
+                if (!this.Controls.Contains(contentHost))
+                {
+                    this.Controls.Add(contentHost);
+                }
+
+                ContentHost = contentHost;
+
+                // Move existing controls into contentHost (migration aid)
+                var controlsToMove = Controls.Cast<Control>()
+                    .Where(c => c != header && c != contentHost)
+                    .ToList();
+
+                foreach (var ctrl in controlsToMove)
+                {
+                    Controls.Remove(ctrl);
+                    contentHost.Controls.Add(ctrl);
+                }
+
+                header.BringToFront();
+            }
+            finally
+            {
+                this.ResumeLayout(true);
+                this.PerformLayout();
+            }
+        }
+
+        /// <summary>Attempts to resolve SyncfusionControlFactory from DI container.</summary>
+        protected virtual SyncfusionControlFactory? GetControlFactory()
+        {
+            try
+            {
+                var provider = GetServiceProvider();
+                if (provider == null)
+                {
+                    return null;
+                }
+
+                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(provider);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Attempts to resolve IPanelNavigationService from DI container.</summary>
+        protected virtual IPanelNavigationService? GetNavigationService()
+        {
+            try
+            {
+                var provider = GetServiceProvider();
+                if (provider == null)
+                {
+                    return null;
+                }
+
+                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(provider);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Attempts to get IServiceProvider from the current context.</summary>
+        protected virtual IServiceProvider? GetServiceProvider()
+        {
+            // Try to get from parent form if it's MainForm
+            var mainForm = FindForm() as MainForm;
+            if (mainForm != null)
+            {
+                return mainForm.ServiceProvider;
+            }
+
+            // Fallback: try to get from application context
+            var mainFormFromApp = Application.OpenForms.Cast<Form>()
+                .FirstOrDefault(f => f is MainForm) as MainForm;
+            return mainFormFromApp?.ServiceProvider;
+        }
+
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
@@ -118,14 +280,45 @@ namespace WileyWidget.WinForms.Controls.Base
                 MinimumSize = GetRecommendedMinimumSize();
             }
 
-            EnsureMinimumTopInset();
+            // Apply theme first
+            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            ApplyTheme(activeTheme);
+
+            EnforceProfessionalLayoutContract();
             ResetAutoScrollOffsets(this);
 
             PerformLayout();
             Invalidate(true);
+        }
 
-            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-            ApplyTheme(activeTheme);
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+            EnforceProfessionalLayoutContract();
+        }
+
+        private void EnforceProfessionalLayoutContract()
+        {
+            if (IsDisposed || Disposing || _applyingProfessionalLayout)
+            {
+                return;
+            }
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+            {
+                return;
+            }
+
+            try
+            {
+                _applyingProfessionalLayout = true;
+                ApplyProfessionalPanelLayout();
+                EnsureMinimumTopInset();
+            }
+            finally
+            {
+                _applyingProfessionalLayout = false;
+            }
         }
 
         /// <inheritdoc/>
@@ -302,14 +495,45 @@ namespace WileyWidget.WinForms.Controls.Base
         protected bool HasUnsavedChanges { get; private set; }
 
         /// <summary>Provides access to the DI service provider from the panel's scope.</summary>
-        protected IServiceProvider ServiceProvider => _scope!.ServiceProvider;
+        protected IServiceProvider ServiceProvider => _scope?.ServiceProvider
+            ?? WileyWidget.WinForms.Program.ServicesOrNull
+            ?? throw new InvalidOperationException($"No service provider is available for {GetType().Name}.");
 
         /// <summary>Factory for creating Syncfusion controls with mandatory properties pre-set.</summary>
         protected SyncfusionControlFactory ControlFactory =>
-            ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(_scope!.ServiceProvider);
+            ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(ServiceProvider);
 
         /// <summary>Accumulated validation errors — cleared and repopulated by ValidateAsync overrides.</summary>
         protected List<ValidationItem> ValidationErrors { get; } = new();
+
+        /// <inheritdoc/>
+        protected override SyncfusionControlFactory? GetControlFactory()
+        {
+            try
+            {
+                var provider = GetServiceProvider();
+                return provider == null
+                    ? null
+                    : ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(provider);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <inheritdoc/>
+        protected override IPanelNavigationService? GetNavigationService()
+        {
+            var provider = GetServiceProvider();
+            return provider == null
+                ? null
+                : ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(provider);
+        }
+
+        /// <inheritdoc/>
+        protected override IServiceProvider? GetServiceProvider() =>
+            _scope?.ServiceProvider ?? WileyWidget.WinForms.Program.ServicesOrNull;
 
         private CancellationTokenSource? _operationCts;
         private System.Windows.Forms.Timer? _finalLayoutTimer;

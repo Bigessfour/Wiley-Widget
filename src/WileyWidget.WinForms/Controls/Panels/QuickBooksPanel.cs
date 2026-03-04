@@ -343,9 +343,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     /// <summary>
-    /// Called when the panel's visibility changes (e.g., Syncfusion makes the docked panel visible).
+    /// Called when the panel's visibility changes.
     /// Queues a final layout pass so splitters and content are sized correctly
-    /// after DockingManager finishes expanding the panel from its initial tiny size.
+    /// after the panel is shown.
     /// </summary>
     protected override void OnVisibleChanged(EventArgs e)
     {
@@ -437,13 +437,57 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (_splitContainerMain == null || _splitContainerTop == null || _splitContainerBottom == null)
             return;
 
+        // Syncfusion SplitContainerAdv samples use a 13px splitter width baseline.
+        // Keep at or above that baseline (DPI-scaled) to avoid ArgumentOutOfRangeException.
+        var minSplitterWidth = DpiHeight(13f);
+
         _splitContainerMain.BorderStyle = BorderStyle.FixedSingle;
         _splitContainerTop.BorderStyle = BorderStyle.FixedSingle;
         _splitContainerBottom.BorderStyle = BorderStyle.FixedSingle;
 
-        _splitContainerMain.SplitterWidth = Math.Max(_splitContainerMain.SplitterWidth, DpiHeight(8f));
-        _splitContainerTop.SplitterWidth = Math.Max(_splitContainerTop.SplitterWidth, DpiHeight(6f));
-        _splitContainerBottom.SplitterWidth = Math.Max(_splitContainerBottom.SplitterWidth, DpiHeight(8f));
+        TrySetSplitterWidth(_splitContainerMain, Math.Max(_splitContainerMain.SplitterWidth, minSplitterWidth));
+        TrySetSplitterWidth(_splitContainerTop, Math.Max(_splitContainerTop.SplitterWidth, minSplitterWidth));
+        TrySetSplitterWidth(_splitContainerBottom, Math.Max(_splitContainerBottom.SplitterWidth, minSplitterWidth));
+    }
+
+    private void TrySetSplitterWidth(SplitContainerAdv splitter, int preferredWidth)
+    {
+        var width = Math.Clamp(preferredWidth, 1, 30);
+        if (TryAssignSplitterWidth(splitter, width))
+        {
+            return;
+        }
+
+        for (var fallbackWidth = width + 1; fallbackWidth <= 30; fallbackWidth++)
+        {
+            if (TryAssignSplitterWidth(splitter, fallbackWidth))
+            {
+                Logger.LogDebug(
+                    "QuickBooksPanel: SplitterWidth fallback applied ({Preferred} -> {Fallback}) for {SplitterName}",
+                    width,
+                    fallbackWidth,
+                    splitter.Name);
+                return;
+            }
+        }
+
+        Logger.LogWarning(
+            "QuickBooksPanel: Unable to set SplitterWidth for {SplitterName}; keeping existing value {Existing}",
+            splitter.Name,
+            splitter.SplitterWidth);
+    }
+
+    private static bool TryAssignSplitterWidth(SplitContainerAdv splitter, int width)
+    {
+        try
+        {
+            splitter.SplitterWidth = width;
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -542,9 +586,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
             base.OnResize(e);
 
-            // Only do heavy min-size clamping once Syncfusion has finished expanding the panel.
-            // DockingManager/TabbedMDIManager first creates controls at a tiny default size, then
-            // grows them to the real docked size.  Running ClampMinSizesIfNeeded during that tiny
+            // Only do heavy min-size clamping once the panel has finished expanding.
+            // Panels first create controls at a tiny default size, then
+            // grow them to the real size.  Running ClampMinSizesIfNeeded during that tiny
             // phase forces splitters to their absolute minimums and leaves controls crushed.
             if (Width > 500 && Height > 400)
             {
@@ -1030,7 +1074,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         SuspendLayout();
 
         Name = "QuickBooksPanel";
-        Size = new Size(1400, 900);
+        Size = ScaleLogicalToDevice(new Size(1400, 900));
         MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1024f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720f));
         Padding = Padding.Empty;
         Dock = DockStyle.Fill;
@@ -1087,7 +1131,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = System.Windows.Forms.Orientation.Vertical;
             splitter.IsSplitterFixed = true;  // Locked: top strip is a fixed two-column layout, not user-draggable
-            splitter.SplitterWidth = 1;        // 1px — near-invisible divider, removes the grab-bar visual noise
+            splitter.SplitterWidth = DpiHeight(13f);
             splitter.BorderStyle = BorderStyle.None;
         });
         _splitContainerTop.Panel1.Controls.Add(_connectionPanel!);
@@ -1099,7 +1143,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
             splitter.IsSplitterFixed = false;
-            splitter.SplitterWidth = 5;
+            splitter.SplitterWidth = DpiHeight(13f);
             splitter.BorderStyle = BorderStyle.None;
         });
         _splitContainerBottom.Panel1.Controls.Add(_summaryPanel!);
@@ -1111,7 +1155,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
             splitter.IsSplitterFixed = false;
-            splitter.SplitterWidth = 6;
+            splitter.SplitterWidth = DpiHeight(13f);
             splitter.BorderStyle = BorderStyle.None;
         });
         _splitContainerMain.Panel1.Controls.Add(_splitContainerTop);
@@ -2050,7 +2094,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 if (_statusLabel != null && !_statusLabel.IsDisposed)
                 {
                     _statusLabel.Text = message ?? string.Empty;
-                    _statusLabel.ForeColor = isError ? ThemeColors.Error : Color.Empty;
+                    _statusLabel.ForeColor = isError ? Color.Red : Color.Empty;
                     try { _statusLabel.Invalidate(); } catch { }
                 }
             }
@@ -2348,7 +2392,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Use semantic status colors only for connection indicator (exception to theme rule)
         if (_connectionStatusLabel != null)
         {
-            _connectionStatusLabel.ForeColor = isConnected ? ThemeColors.Success : ThemeColors.Error;
+            _connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red;
         }
 
         // Update right-side status bar badge
@@ -3175,164 +3219,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to set splitter increment");
-        }
-    }
-
-    /// <summary>
-    /// Applies Office2016Colorful style to all splitters for modern appearance.
-    /// Synchronizes with SfSkinManager theme when available.
-    /// Per Syncfusion documentation: Style property controls visual appearance.
-    /// </summary>
-    public void ApplySplitterStyleToAllContainers()
-    {
-        try
-        {
-            if (_splitContainerMain != null)
-            {
-                _splitContainerMain.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
-            }
-            if (_splitContainerTop != null)
-            {
-                _splitContainerTop.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
-            }
-            if (_splitContainerBottom != null)
-            {
-                _splitContainerBottom.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
-            }
-
-            Logger.LogDebug("Office2016Colorful style applied to all splitters");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to apply splitter style");
-        }
-    }
-
-    /// <summary>
-    /// Customizes the splitter grip and arrow appearance with hover colors.
-    /// Enhances visual feedback when mouse hovers over splitter.
-    /// Per Syncfusion documentation: HotGripDark, HotGripLight, HotExpandFill, HotExpandLine.
-    /// </summary>
-    /// <param name="splitter">The SplitContainerAdv control to customize</param>
-    public void CustomizeSplitterGripAppearance(SplitContainerAdv? splitter)
-    {
-        if (splitter == null) return;
-
-        try
-        {
-            // Office2019Colorful palette
-            const int blueAccent = 0x007ACC;      // RGB(0, 122, 204)
-            const int lightBlue = 0xE8F4F8;       // Light background
-
-            // Normal grip colors (subtle)
-            splitter.GripDark = new BrushInfo(Color.FromArgb(117, 117, 117));
-            splitter.GripLight = new BrushInfo(Color.FromArgb(200, 200, 200));
-
-            // Expand arrow colors (normal)
-            splitter.ExpandFill = new BrushInfo(Color.FromArgb(blueAccent));
-            splitter.ExpandLine = Color.White;
-
-            // Hover colors (more pronounced)
-            splitter.HotGripDark = new BrushInfo(Color.FromArgb(blueAccent));
-            splitter.HotGripLight = new BrushInfo(Color.FromArgb(lightBlue));
-            splitter.HotExpandFill = new BrushInfo(Color.FromArgb(0, 122, 204)); // Blue highlight
-            splitter.HotExpandLine = Color.White;
-
-            Logger.LogDebug("Splitter grip appearance customized with Office2019 colors");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to customize splitter grip appearance");
-        }
-    }
-
-    /// <summary>
-    /// Applies professional 3D border styling to all splitters.
-    /// Provides visual depth and separation between panels.
-    /// Per Syncfusion documentation: BorderStyle can be FixedSingle or Fixed3D.
-    /// </summary>
-    public void ApplyBorderStyleToAllSplitters()
-    {
-        try
-        {
-            if (_splitContainerMain != null)
-            {
-                _splitContainerMain.BorderStyle = BorderStyle.Fixed3D;
-            }
-            if (_splitContainerTop != null)
-            {
-                _splitContainerTop.BorderStyle = BorderStyle.Fixed3D;
-            }
-            if (_splitContainerBottom != null)
-            {
-                _splitContainerBottom.BorderStyle = BorderStyle.Fixed3D;
-            }
-
-            Logger.LogDebug("Fixed3D border style applied to all splitters");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to apply border style to splitters");
-        }
-    }
-
-    /// <summary>
-    /// Enables proportional resizing on a splitter.
-    /// When user resizes, both panels maintain their proportion relative to container.
-    /// Useful for balanced layouts that scale gracefully.
-    /// </summary>
-    /// <param name="splitter">The SplitContainerAdv control</param>
-    /// <param name="proportionForPanel1">Target proportion for Panel1 (0.0-1.0, typically 0.5 for 50/50)</param>
-    public void EnableProportionalResizing(SplitContainerAdv? splitter, float proportionForPanel1 = 0.5f)
-    {
-        if (splitter == null || !splitter.IsHandleCreated) return;
-
-        try
-        {
-            // Calculate desired distance based on proportion
-            int containerSize = splitter.Orientation == Orientation.Horizontal
-                ? splitter.Height
-                : splitter.Width;
-
-            int desiredDistance = (int)(containerSize * proportionForPanel1);
-
-            // Clamp to valid range
-            desiredDistance = Math.Max(splitter.Panel1MinSize,
-                Math.Min(desiredDistance, containerSize - splitter.Panel2MinSize - splitter.SplitterWidth));
-
-            splitter.SplitterDistance = desiredDistance;
-            Logger.LogDebug("Proportional resizing enabled: Panel1={Proportion:P0}", proportionForPanel1);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to enable proportional resizing");
-        }
-    }
-
-    /// <summary>
-    /// Resets a splitter to its default configuration.
-    /// Useful for resetting layout after user customization or theme change.
-    /// </summary>
-    /// <param name="splitter">The SplitContainerAdv control to reset</param>
-    public void ResetSplitterToDefaults(SplitContainerAdv? splitter)
-    {
-        if (splitter == null) return;
-
-        try
-        {
-            // Reset to Syncfusion defaults
-            splitter.Panel1MinSize = 25;  // Syncfusion default
-            splitter.Panel2MinSize = 25;  // Syncfusion default
-            splitter.FixedPanel = Syncfusion.Windows.Forms.Tools.Enums.FixedPanel.None;  // Both panels resizable
-            splitter.IsSplitterFixed = false;  // Allow splitter movement
-            splitter.Panel1Collapsed = false;  // Both panels visible
-            splitter.Panel2Collapsed = false;
-
-            Logger.LogDebug("Splitter reset to defaults");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to reset splitter to defaults");
         }
     }
 
