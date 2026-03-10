@@ -8,6 +8,7 @@ using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -16,7 +17,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// Provides a consistent title bar with actions: Refresh, Pin, Help, and Close.
     ///
     /// Features:
-    /// - Fixed height (52px) with consistent padding and button spacing
+    /// - Tokenized fixed height with consistent padding and button spacing
     /// - Four action buttons with full keyboard shortcut support (Alt+R, Alt+P, Alt+H, Alt+C, Esc)
     /// - Loading indicator (ProgressBarAdv) during async operations
     /// - Theme-aware styling via SfSkinManager cascade
@@ -32,9 +33,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// </summary>
     public partial class PanelHeader : UserControl
     {
-        private const int HEADER_HEIGHT = 52;
+        private static readonly int HeaderHeight = LayoutTokens.HeaderHeight;
         private const int BUTTON_MARGIN_H = 6;
-        private const int BUTTON_MARGIN_V = 6;
+        private const int BUTTON_MARGIN_V = 0;
 
         private Label? _titleLabel;
         private SfButton? _btnRefresh;
@@ -396,21 +397,29 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
         private void InitializeComponent()
         {
-            Height = HEADER_HEIGHT;
-            MinimumSize = new Size(0, HEADER_HEIGHT); // Prevent collapse
+            Height = HeaderHeight;
+            MinimumSize = new Size(0, HeaderHeight); // Prevent collapse
             AutoSize = false; // Explicit false - we control the height
-            Padding = new Padding(8);
+            Padding = new Padding(8, 4, 8, 4);
             Dock = DockStyle.Top;
 
             // Compute button sizing based on header height and padding
-            var innerHeight = HEADER_HEIGHT - Padding.Vertical;
+            var innerHeight = HeaderHeight - Padding.Vertical;
             var buttonHeight = Math.Max(20, innerHeight - (BUTTON_MARGIN_V * 2));
             var buttonWidth = 80; // reasonable width for text buttons
 
             _toolTip = new ToolTip();
 
             // Title label (use inherited theme font for consistency)
-            _titleLabel = new Label
+            _titleLabel = _factory?.CreateLabel(label =>
+            {
+                label.Name = "headerLabel";
+                label.AutoSize = false;
+                label.Dock = DockStyle.Fill;
+                label.TextAlign = ContentAlignment.MiddleLeft;
+                label.Margin = new Padding(0);
+                label.AccessibleName = "Header title";
+            }) ?? new Label
             {
                 Name = "headerLabel",
                 AutoSize = false,

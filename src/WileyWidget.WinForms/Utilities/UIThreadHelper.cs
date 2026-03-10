@@ -598,10 +598,27 @@ public static class UIThreadHelper
     {
         if (control == null) return false;
         if (control.IsHandleCreated) return true;
+        if (timeoutMs <= 0) return control.IsHandleCreated;
 
-        // Use the async version and block wait - simplified for synchronous callers
-        // though synchronous blocking is discouraged.
-        return WaitForHandleAsync(control, timeoutMs).GetAwaiter().GetResult();
+        var deadline = Environment.TickCount64 + timeoutMs;
+
+        if (!control.InvokeRequired)
+        {
+            while (!control.IsHandleCreated && Environment.TickCount64 < deadline)
+            {
+                Application.DoEvents();
+                System.Threading.Thread.Yield();
+            }
+
+            return control.IsHandleCreated;
+        }
+
+        while (!control.IsHandleCreated && Environment.TickCount64 < deadline)
+        {
+            System.Threading.Thread.Yield();
+        }
+
+        return control.IsHandleCreated;
     }
 
 }

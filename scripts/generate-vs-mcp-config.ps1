@@ -56,9 +56,6 @@ try {
 
 Write-Host "✅ Parsed configuration with $($configObj.servers.PSObject.Properties.Count) MCP servers" -ForegroundColor Green
 
-# Convert ${workspaceFolder} to absolute path (escaped for JSON)
-$escapedPath = $workspaceRoot -replace '\\', '\\\\'
-
 Write-Host "🔄 Transforming configuration..." -ForegroundColor Cyan
 Write-Host "   Replacing: `${workspaceFolder}" -ForegroundColor Gray
 Write-Host "   With:      $workspaceRoot" -ForegroundColor Gray
@@ -75,8 +72,18 @@ foreach ($serverName in $configObj.servers.PSObject.Properties.Name) {
     # Replace ${workspaceFolder} in args array
     if ($server.args) {
         $server.args = @($server.args | ForEach-Object {
-            $_ -replace '\$\{workspaceFolder\}', $workspaceRoot
-        })
+                $_ -replace '\$\{workspaceFolder\}', $workspaceRoot
+            })
+    }
+
+    # Replace ${workspaceFolder} in env values so the generated Visual Studio config
+    # uses the same canonical workspace root as VS Code and PowerShell bootstrap.
+    if ($server.env) {
+        foreach ($envProp in $server.env.PSObject.Properties) {
+            if ($envProp.Value -is [string]) {
+                $server.env.$($envProp.Name) = $envProp.Value -replace '\$\{workspaceFolder\}', $workspaceRoot
+            }
+        }
     }
 
     Write-Host "   ✓ Processed: $serverName" -ForegroundColor Gray
@@ -120,7 +127,7 @@ Write-Host ""
 # Validate generated file
 if (Test-Path $vsConfigPath) {
     try {
-        $testParse = Get-Content $vsConfigPath -Raw | ConvertFrom-Json
+        $null = Get-Content $vsConfigPath -Raw | ConvertFrom-Json
         Write-Host "✅ Validation: Generated file is valid JSON" -ForegroundColor Green
     } catch {
         Write-Warning "Validation: Generated file may have JSON syntax errors: $_"

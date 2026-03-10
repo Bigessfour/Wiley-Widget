@@ -1,6 +1,6 @@
 # WileyWidget — AI Briefing
 
-> Generated: 2026-02-28 21:57 | Branch: `feature/ci-next-element-1` | Commit: `ff357aa8c1`
+> Generated: 2026-03-09 09:42 | Branch: `chore/remove-dead-docking-manager` | Commit: `9dfe5d85c0`
 
 ## Project Purpose
 
@@ -73,13 +73,13 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 | Component    | Count |
 | ------------ | ----- |
-| Views        | 20    |
+| Views        | 22    |
 | Viewmodels   | 48    |
 | Panels       | 35    |
-| Services     | 119   |
+| Services     | 121   |
 | Controls     | 14    |
-| Repositories | 31    |
-| Factories    | 6     |
+| Repositories | 33    |
+| Factories    | 5     |
 
 ## ViewModels
 
@@ -201,9 +201,9 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Manifest Stats
 
-- Total files indexed: **7729**
+- Total files indexed: **8165**
 - Files with embedded content: **400**
-- Total source size: **188,478 KB**
+- Total source size: **415,718 KB**
 - Manifest mode: **full-context**
 
 ---

@@ -11,13 +11,13 @@ public sealed class QuickBooksOAuthOptions
 {
     /// <summary>
     /// Intuit app Client ID (registered at developer.intuit.com).
-    /// Load from user secrets or environment variable QUICKBOOKS_CLIENT_ID.
+    /// Load from user secrets or environment variable QBO_CLIENT_ID.
     /// </summary>
     public string? ClientId { get; set; }
 
     /// <summary>
     /// Intuit app Client Secret (registered at developer.intuit.com).
-    /// Load from user secrets or environment variable QUICKBOOKS_CLIENT_SECRET.
+    /// Load from user secrets or environment variable QBO_CLIENT_SECRET.
     /// </summary>
     public string? ClientSecret { get; set; }
 
@@ -26,11 +26,11 @@ public sealed class QuickBooksOAuthOptions
     /// Typically http://localhost:5000/callback/ for development.
     /// Must match the registered URI at developer.intuit.com (including trailing slash).
     /// </summary>
-    public string? RedirectUri { get; set; } = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl";
+    public string? RedirectUri { get; set; } = "http://localhost:5000/callback/";
 
     /// <summary>
     /// QuickBooks Company ID (Realm ID).
-    /// Loaded from user secrets or environment variable QUICKBOOKS_REALM_ID.
+    /// Loaded from user secrets or environment variable QBO_REALM_ID.
     /// </summary>
     public string? RealmId { get; set; }
 

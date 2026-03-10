@@ -804,6 +804,24 @@ public sealed class PanelRegistryIntegrationTests(IntegrationTestFixture fixture
                 because: $"{type.Name} is a primary workflow panel listed in the architecture brief and must remain in the registry");
         }
     }
+
+    /// <summary>
+    /// Payments must stay in the town-release surface as the manual fallback workflow when
+    /// QuickBooks sandbox access is unavailable.
+    /// </summary>
+    [Fact]
+    public void PanelRegistry_TownReleaseSurface_ContainsPaymentsWorkflow()
+    {
+        var releasePanels = PanelRegistry.GetTownReleasePanels().ToList();
+
+        releasePanels.Should().Contain(entry =>
+                entry.PanelType == typeof(PaymentsPanel)
+                && string.Equals(entry.DisplayName, "Payments", StringComparison.Ordinal),
+            because: "the payments register must remain reachable from town-release navigation");
+
+        releasePanels.Should().NotContain(entry => entry.PanelType == typeof(PaymentEditPanel),
+            because: "payment entry should stay dialog-backed from the Payments register instead of being exposed as a standalone navigation panel");
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -77,7 +77,7 @@ public class XAIService : IAIService, IDisposable
 
         _enabled = bool.Parse(configuration["XAI:Enabled"] ?? "false");
         _endpoint = NormalizeResponsesEndpoint(configuration["XAI:Endpoint"]);
-        _model = configuration["XAI:Model"] ?? "grok-4.1";
+        _model = configuration["XAI:Model"] ?? "grok-4-1-fast-reasoning";
         _temperature = double.Parse(configuration["XAI:Temperature"] ?? "0.3", CultureInfo.InvariantCulture);
         _maxTokens = int.Parse(configuration["XAI:MaxTokens"] ?? "800", CultureInfo.InvariantCulture);
 
@@ -190,7 +190,80 @@ public class XAIService : IAIService, IDisposable
             candidate = candidate.Substring(0, candidate.Length - "/chat/completions".Length);
         }
 
+        if (Uri.TryCreate(candidate, UriKind.Absolute, out var parsed) &&
+            parsed.Host.Equals("api.x.ai", StringComparison.OrdinalIgnoreCase) &&
+            (parsed.AbsolutePath == "/" || string.IsNullOrEmpty(parsed.AbsolutePath)))
+        {
+            candidate = parsed.GetLeftPart(UriPartial.Authority) + "/v1";
+        }
+
         return $"{candidate}/responses";
+    }
+
+    private bool GetBoolSetting(string key, bool defaultValue)
+    {
+        var raw = _configuration[key];
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return defaultValue;
+        }
+
+        return bool.TryParse(raw, out var parsed) ? parsed : defaultValue;
+    }
+
+    private List<object> GetBuiltInTools()
+    {
+        var tools = new List<object>();
+
+        bool toolsEnabled = _configuration.GetValue<bool>("XAI:Tools:Enabled", true);
+        if (!toolsEnabled)
+        {
+            return tools;
+        }
+
+        // Read from config or hard-code sensible defaults
+        bool enableWeb = _configuration.GetValue<bool>("XAI:Tools:WebSearch:Enabled", true);
+        bool enableX = _configuration.GetValue<bool>("XAI:Tools:XSearch:Enabled", false);
+        bool enableCode = _configuration.GetValue<bool>("XAI:Tools:CodeExecution:Enabled", true);
+        bool enableCollections = _configuration.GetValue<bool>("XAI:Tools:CollectionsSearch:Enabled", false);
+
+        if (enableWeb) tools.Add(new { type = "web_search" });
+        if (enableX) tools.Add(new { type = "x_search" });
+        if (enableCode) tools.Add(new { type = "code_execution" });
+        if (enableCollections) tools.Add(new { type = "collections_search" });
+
+        return tools;
+    }
+
+    private static string[] GetToolTypeNames(IList<object> tools)
+    {
+        if (tools.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var toolNames = new List<string>(tools.Count);
+        foreach (var tool in tools)
+        {
+            // Since we're using anonymous objects, we need to use reflection or dynamic
+            var toolType = tool.GetType().GetProperty("type")?.GetValue(tool) as string;
+            if (!string.IsNullOrWhiteSpace(toolType))
+            {
+                toolNames.Add(toolType);
+            }
+        }
+
+        return toolNames.ToArray();
+    }
+
+    private static string TruncateForLog(string input, int maxLength = 512)
+    {
+        if (string.IsNullOrEmpty(input) || input.Length <= maxLength)
+        {
+            return input;
+        }
+
+        return input.Substring(0, maxLength) + "...";
     }
 
     /// <summary>
@@ -251,9 +324,9 @@ public class XAIService : IAIService, IDisposable
                 ?? "You are a helpful AI assistant for a municipal utility management application called Wiley Widget.";
             var finalSystemPrompt = $"{baseSystemPrompt} System Context: {systemContext}. Context: {context}";
 
-            var request = new
+            var request = new Dictionary<string, object>
             {
-                input = new[]
+                ["input"] = new[]
                 {
                     new
                     {
@@ -266,12 +339,19 @@ public class XAIService : IAIService, IDisposable
                         content = question
                     }
                 },
-                model = _model,
-                stream = false,
-                temperature = _temperature,
-                max_tokens = _maxTokens,
-                store = true
+                ["model"] = _model,
+                ["stream"] = false,
+                ["temperature"] = _temperature,
+                ["max_tokens"] = _maxTokens,
+                ["store"] = true
             };
+
+            var tools = GetBuiltInTools();
+            if (tools.Count > 0)
+            {
+                request["tools"] = tools;
+                request["tool_choice"] = "auto";
+            }
 
             // Execute HTTP request with resilient HttpClient
             var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken);
@@ -839,17 +919,32 @@ public class XAIService : IAIService, IDisposable
     /// </summary>
     private class XAIStreamChunk
     {
-        public Choice[] choices { get; set; }
+        public Choice[]? choices { get; set; }
 
         public class Choice
         {
-            public Delta delta { get; set; }
-            public string finish_reason { get; set; }
+            public Delta? delta { get; set; }
+            public string? finish_reason { get; set; }
         }
 
         public class Delta
         {
-            public string content { get; set; }
+            public string? content { get; set; }
+            public ToolCall[]? tool_calls { get; set; }
+        }
+
+        public class ToolCall
+        {
+            public int? index { get; set; }
+            public string? id { get; set; }
+            public string? type { get; set; }
+            public ToolFunction? function { get; set; }
+        }
+
+        public class ToolFunction
+        {
+            public string? name { get; set; }
+            public string? arguments { get; set; }
         }
     }
 
@@ -923,18 +1018,34 @@ public class XAIService : IAIService, IDisposable
         {
             _logger.LogInformation("Sending prompt to xAI service, length: {Length}", prompt.Length);
 
-            var request = new
+            var tools = GetBuiltInTools();
+            var toolTypes = GetToolTypeNames(tools);
+            _logger.LogInformation(
+                "xAI SendPromptAsync request: Endpoint={Endpoint}, Model={Model}, ToolCount={ToolCount}, ToolChoice={ToolChoice}, ToolTypes=[{ToolTypes}]",
+                _endpoint,
+                _model,
+                tools.Count,
+                tools.Count > 0 ? "auto" : "none",
+                string.Join(", ", toolTypes));
+
+            var request = new Dictionary<string, object?>
             {
-                input = new[]
+                ["input"] = new[]
                 {
                     new { role = "user", content = prompt }
                 },
-                model = _model,
-                stream = false,
-                temperature = _temperature,
-                max_tokens = _maxTokens,
-                store = true
+                ["model"] = _model,
+                ["stream"] = false,
+                ["temperature"] = _temperature,
+                ["max_tokens"] = _maxTokens,
+                ["store"] = true
             };
+
+            if (tools.Count > 0)
+            {
+                request["tools"] = tools;
+                request["tool_choice"] = "auto";
+            }
 
             var response = await _httpClient.PostAsJsonAsync(_endpoint, request, cancellationToken: cancellationToken);
 
@@ -980,14 +1091,30 @@ public class XAIService : IAIService, IDisposable
         }
         messages.Add(new { role = "user", content = prompt });
 
-        var requestBody = new
+        var tools = GetBuiltInTools();
+        var toolTypes = GetToolTypeNames(tools);
+        _logger.LogInformation(
+            "xAI StreamResponseAsync request: Endpoint={Endpoint}, Model={Model}, ToolCount={ToolCount}, ToolChoice={ToolChoice}, ToolTypes=[{ToolTypes}]",
+            _endpoint,
+            _model,
+            tools.Count,
+            tools.Count > 0 ? "auto" : "none",
+            string.Join(", ", toolTypes));
+
+        var requestBody = new Dictionary<string, object?>
         {
-            messages = messages.ToArray(),
-            model = _model,
-            stream = true,
-            temperature = _temperature,
-            max_tokens = _maxTokens
+            ["input"] = messages.ToArray(),
+            ["model"] = _model,
+            ["stream"] = true,
+            ["temperature"] = _temperature,
+            ["max_tokens"] = _maxTokens
         };
+
+        if (tools.Count > 0)
+        {
+            requestBody["tools"] = tools;
+            requestBody["tool_choice"] = "auto";
+        }
 
         requestMessage.Content = JsonContent.Create(requestBody);
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
@@ -1020,7 +1147,30 @@ public class XAIService : IAIService, IDisposable
                 }
                 catch { /* Skip malformed chunks */ }
 
-                var content = chunk?.choices?.FirstOrDefault()?.delta?.content;
+                var delta = chunk?.choices?.FirstOrDefault()?.delta;
+                if (delta?.tool_calls != null && delta.tool_calls.Length > 0)
+                {
+                    foreach (var toolCall in delta.tool_calls)
+                    {
+                        var toolName = toolCall?.function?.name ?? "unknown";
+                        _logger.LogInformation(
+                            "xAI stream tool call detected: Name={ToolName}, Id={ToolCallId}, Index={ToolCallIndex}, Type={ToolCallType}",
+                            toolName,
+                            toolCall?.id,
+                            toolCall?.index,
+                            toolCall?.type);
+
+                        if (!string.IsNullOrWhiteSpace(toolCall?.function?.arguments))
+                        {
+                            _logger.LogDebug(
+                                "xAI stream tool call args: Name={ToolName}, Args={ToolArguments}",
+                                toolName,
+                                TruncateForLog(toolCall.function.arguments));
+                        }
+                    }
+                }
+
+                var content = delta?.content;
                 if (!string.IsNullOrEmpty(content))
                 {
                     yield return content;

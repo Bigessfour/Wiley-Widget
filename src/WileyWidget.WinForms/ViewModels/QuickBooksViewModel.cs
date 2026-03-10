@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -24,8 +25,10 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     private readonly ILogger<QuickBooksViewModel> _logger;
     private readonly IQuickBooksService _quickBooksService;
     private readonly WileyWidget.Business.Interfaces.IQuickBooksBudgetSyncService? _quickBooksBudgetSyncService;
+    private readonly SemaphoreSlim _initializeSemaphore = new(1, 1);
     private System.Threading.Timer? _connectionPollingTimer;
     private bool _disposed;
+    private bool _isInitialized;
     private CancellationTokenSource? _cancellationTokenSource;
 
     #region Observable Properties
@@ -186,15 +189,28 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed || _isInitialized)
+        {
+            return;
+        }
+
+        await _initializeSemaphore.WaitAsync(cancellationToken).ConfigureAwait(true);
+
         try
         {
+            if (_disposed || _isInitialized)
+            {
+                return;
+            }
+
             _logger.LogInformation("Initializing QuickBooksViewModel");
 
-            await CheckConnectionAsync(cancellationToken);
+            await CheckConnectionAsync(cancellationToken).ConfigureAwait(true);
             ResetSyncHistoryState();
 
             // Start connection polling (every 30 seconds)
             StartConnectionPolling();
+            _isInitialized = true;
 
             _logger.LogInformation("QuickBooksViewModel initialized successfully");
         }
@@ -203,6 +219,10 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
             _logger.LogError(ex, "Failed to initialize QuickBooksViewModel");
             ErrorMessage = $"Initialization failed: {ex.Message}";
             StatusText = "Initialization error";
+        }
+        finally
+        {
+            _initializeSemaphore.Release();
         }
     }
 
@@ -223,7 +243,12 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
 
             _logger.LogInformation("Checking QuickBooks connection status");
 
-            var status = await _quickBooksService.GetConnectionStatusAsync(cancellationToken);
+            var status = await _quickBooksService.GetConnectionStatusAsync(cancellationToken)
+                ?? new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Connection status unavailable"
+                };
 
             IsConnected = status.IsConnected;
             CompanyName = status.CompanyName;
@@ -299,8 +324,11 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
             }
             else
             {
-                StatusText = "Connection failed. Check credentials.";
-                ErrorMessage = "Failed to connect to QuickBooks. Please verify your API credentials.";
+                var failureMessage = await BuildConnectionFailureMessageAsync(cancellationToken);
+                StatusText = failureMessage;
+                ErrorMessage = failureMessage;
+                ConnectionStatus = "Connection failed";
+                ConnectionStatusMessage = failureMessage;
 
                 AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
                 {
@@ -309,10 +337,10 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
                     Status = "Failed",
                     RecordsProcessed = 0,
                     Duration = TimeSpan.Zero,
-                    Message = "Connection failed"
+                    Message = failureMessage
                 });
 
-                _logger.LogWarning("QuickBooks connection failed");
+                _logger.LogWarning("QuickBooks connection failed: {FailureMessage}", failureMessage);
             }
         }
         catch (Exception ex)
@@ -410,8 +438,9 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
             }
             else
             {
-                StatusText = "Connection test failed";
-                ErrorMessage = "Connection test failed. Check your credentials.";
+                var failureMessage = await BuildConnectionFailureMessageAsync(cancellationToken);
+                StatusText = failureMessage;
+                ErrorMessage = failureMessage;
                 AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
                 {
                     Timestamp = DateTime.Now,
@@ -419,9 +448,9 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
                     Status = "Failed",
                     RecordsProcessed = 0,
                     Duration = TimeSpan.Zero,
-                    Message = "Connection test failed"
+                    Message = failureMessage
                 });
-                _logger.LogWarning("QuickBooks connection test failed");
+                _logger.LogWarning("QuickBooks connection test failed: {FailureMessage}", failureMessage);
             }
         }
         catch (Exception ex)
@@ -448,10 +477,12 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
         {
             var d = await _quickBooksService.RunDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("QuickBooks Sandbox Diagnostics");
+            sb.AppendLine("QuickBooks Diagnostics");
             sb.AppendLine(new string('─', 40));
             sb.AppendLine($"Environment  : {d.Environment}");
             sb.AppendLine($"Redirect URI : {d.RedirectUri}");
+            sb.AppendLine($"Redirect OK  : {(d.RedirectUriValid ? "✓ YES" : "✗ NO")}");
+            sb.AppendLine($"Redirect Note: {d.RedirectUriGuidance}");
             sb.AppendLine();
             sb.AppendLine("Credentials (presence only — values not shown)");
             sb.AppendLine($"  Client ID     : {(d.HasClientId ? "✓ present" : "✗ MISSING")}");
@@ -791,6 +822,25 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     }
 
     /// <summary>
+    /// Replaces the current sync history snapshot with the provided records.
+    /// Intended for UI-driven refreshes after OAuth/account fetch flows.
+    /// </summary>
+    public void ReplaceSyncHistorySnapshot(IEnumerable<QuickBooksSyncHistoryRecord> records)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+
+        SyncHistory.Clear();
+
+        foreach (var record in records.OrderByDescending(record => record.Timestamp))
+        {
+            SyncHistory.Add(record);
+        }
+
+        ApplyHistoryFilter();
+        UpdateSummaries();
+    }
+
+    /// <summary>
     /// Refreshes the sync history from the service.
     /// </summary>
     private async Task RefreshHistoryAsync(CancellationToken cancellationToken = default)
@@ -1045,6 +1095,89 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
         StatusText = "No QuickBooks history loaded yet";
     }
 
+    private async Task<string> BuildConnectionFailureMessageAsync(CancellationToken cancellationToken)
+    {
+        string? statusMessage = null;
+        QuickBooksDiagnosticsResult? diagnostics = null;
+
+        try
+        {
+            var status = await _quickBooksService.GetConnectionStatusAsync(cancellationToken)
+                ?? new ConnectionStatus
+                {
+                    IsConnected = false,
+                    StatusMessage = "Connection status unavailable"
+                };
+            statusMessage = status.StatusMessage;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Unable to retrieve QuickBooks connection status while building failure feedback");
+        }
+
+        try
+        {
+            diagnostics = await _quickBooksService.RunDiagnosticsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Unable to retrieve QuickBooks diagnostics while building failure feedback");
+        }
+
+        return BuildConnectionFailureMessage(statusMessage, diagnostics);
+    }
+
+    private static string BuildConnectionFailureMessage(string? statusMessage, QuickBooksDiagnosticsResult? diagnostics)
+    {
+        if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            var normalizedStatus = statusMessage.Trim();
+
+            if (normalizedStatus.StartsWith("Error:", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedStatus = normalizedStatus[6..].Trim();
+            }
+
+            if (normalizedStatus.Contains("invalid_grant", StringComparison.OrdinalIgnoreCase) ||
+                normalizedStatus.Contains("invalid or expired", StringComparison.OrdinalIgnoreCase) ||
+                normalizedStatus.Contains("tokens expired", StringComparison.OrdinalIgnoreCase) ||
+                normalizedStatus.Contains("re-authorize", StringComparison.OrdinalIgnoreCase))
+            {
+                return "QuickBooks authorization is no longer valid. Re-authorize from the QuickBooks panel, then retry.";
+            }
+
+            if (normalizedStatus.Contains("realm", StringComparison.OrdinalIgnoreCase))
+            {
+                return "QuickBooks company ID is missing or mismatched. Reconnect and make sure the authorized company matches the configured realm ID.";
+            }
+        }
+
+        if (diagnostics != null)
+        {
+            if (!diagnostics.HasClientId || !diagnostics.HasClientSecret)
+            {
+                return "QuickBooks credentials are missing. Configure the client ID and client secret, then retry.";
+            }
+
+            if (!diagnostics.HasRealmId)
+            {
+                return "QuickBooks company ID is missing. Complete authorization again so Wiley Widget can store the realm ID.";
+            }
+
+            if (!diagnostics.RedirectUriValid)
+            {
+                return $"QuickBooks redirect URI is not valid: {diagnostics.RedirectUriGuidance}";
+            }
+
+            if (!diagnostics.HasValidToken)
+            {
+                return "QuickBooks authorization is missing or expired. Re-authorize from the QuickBooks panel, then retry.";
+            }
+        }
+
+        return "QuickBooks rejected the connection. Verify sandbox vs production, realm ID, and app credentials.";
+    }
+
     #endregion
 
     #region Disposal
@@ -1068,6 +1201,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
         if (disposing)
         {
             StopConnectionPolling();
+            _initializeSemaphore.Dispose();
         }
 
         _disposed = true;

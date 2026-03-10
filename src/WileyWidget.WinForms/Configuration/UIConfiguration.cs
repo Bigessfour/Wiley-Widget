@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using Microsoft.Extensions.Configuration;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Configuration;
 
@@ -11,10 +12,7 @@ namespace WileyWidget.WinForms.Configuration;
 /// </summary>
 public sealed record UIConfiguration
 {
-    /// <summary>
-    /// Whether to use Syncfusion DockingManager. Defaults to true but can be overridden via config.
-    /// </summary>
-    public bool UseSyncfusionDocking { get; init; } = true;
+
 
     /// <summary>
     /// Test harness mode - disables MessageBox, dialogs, and heavyweight UI for automated testing.
@@ -24,7 +22,7 @@ public sealed record UIConfiguration
     /// <summary>
     /// Default theme to apply on startup.
     /// </summary>
-    public string DefaultTheme { get; init; } = "Office2019Colorful";
+    public string DefaultTheme { get; init; } = ThemeColors.DefaultTheme;
 
     /// <summary>
     /// Whether to show the Ribbon control (disabled in test harness mode by default).
@@ -75,7 +73,7 @@ public sealed record UIConfiguration
     public int DefaultFiscalYear { get; init; } = DateTime.UtcNow.Year;
 
     /// <summary>
-    /// When true, wraps DockingManager initialization in BeginUpdate/EndUpdate (or Suspend/ResumeLayout) to minimize flicker.
+    /// When true, wraps panel initialization in SuspendLayout/ResumeLayout to minimize flicker.
     /// </summary>
     public bool EnableDockingLockDuringLoad { get; init; } = true;
 
@@ -111,19 +109,7 @@ public sealed record UIConfiguration
             return bool.TryParse(rawValue, out var parsedValue) ? parsedValue : defaultValue;
         }
 
-        static bool GetBooleanWithAliases(IConfiguration config, bool defaultValue, params string[] keys)
-        {
-            foreach (var key in keys)
-            {
-                var rawValue = config[key];
-                if (bool.TryParse(rawValue, out var parsedValue))
-                {
-                    return parsedValue;
-                }
-            }
 
-            return defaultValue;
-        }
 
         static int GetInteger(IConfiguration config, string key, int defaultValue)
         {
@@ -141,9 +127,8 @@ public sealed record UIConfiguration
 
         return new UIConfiguration
         {
-            UseSyncfusionDocking = GetBooleanWithAliases(configuration, true, "UI:UseSyncfusionDocking", "UI:UseDockingManager"),
             IsUiTestHarness = isTestHarness,
-            DefaultTheme = configuration.GetValue<string?>("UI:DefaultTheme") ?? "Office2019Colorful",
+            DefaultTheme = configuration.GetValue<string?>("UI:DefaultTheme") ?? ThemeColors.DefaultTheme,
             ShowRibbon = GetBoolean(configuration, "UI:ShowRibbon", !isTestHarness),
             ShowMenuBar = GetBoolean(configuration, "UI:ShowMenuBar", true),
             ShowStatusBar = GetBoolean(configuration, "UI:ShowStatusBar", true),
@@ -193,21 +178,8 @@ public sealed record UIConfiguration
             errors.Add("ThemeApplyMaxDepth must be >= 1");
         }
 
-        // Basic theme compatibility check - keep a whitelist of common Syncfusion themes (extend as needed)
-        var validThemes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "Office2019Colorful",
-            "Office2019Black",
-            "Office2019White",
-            "Office2019DarkGray",
-            "Office2016",
-            "FluentLight",
-            "FluentDark",
-            "ModernColorful",
-            "ModernDark",
-            "HighContrastBlack",
-            "HighContrastWhite"
-        };
+        // Syncfusion WinForms supported themes for this workspace.
+        var validThemes = new HashSet<string>(ThemeColors.GetSupportedThemes(), StringComparer.OrdinalIgnoreCase);
         if (!validThemes.Contains(DefaultTheme))
         {
             errors.Add($"DefaultTheme '{DefaultTheme}' is not a commonly supported theme. Examples: {string.Join(", ", validThemes)}");
@@ -221,6 +193,6 @@ public sealed record UIConfiguration
     /// </summary>
     public string GetArchitectureDescription()
     {
-        return $"Docking={UseSyncfusionDocking}, TestHarness={IsUiTestHarness}, Theme={DefaultTheme}, DockingLock={EnableDockingLockDuringLoad}";
+        return $"TestHarness={IsUiTestHarness}, Theme={DefaultTheme}, DockingLock={EnableDockingLockDuringLoad}";
     }
 }

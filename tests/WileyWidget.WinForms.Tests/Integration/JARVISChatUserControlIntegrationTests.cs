@@ -13,6 +13,7 @@ using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Automation;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Tests.Infrastructure;
@@ -99,9 +100,9 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
     }
 
     [StaFact]
-    public async Task JARVISChatUserControl_InitializeAsync_WithMockedAIService_SendsPrompt()
+    public async Task JARVISChatUserControl_InitializeAsync_WithMockedAIService_InHeadlessMode_DoesNotDispatchInitialPrompt()
     {
-        // Arrange - Mock IAIService for testing prompt handling
+        // Arrange - Headless mode skips Blazor startup, so the initial prompt should remain queued.
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
         TestThemeHelper.EnsureOffice2019Colorful();
 
@@ -109,11 +110,6 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
 
         var mockAIService = new Mock<IAIService>();
         var testPrompt = "What is the current budget status?";
-        var expectedResponse = "The budget is currently on track with 75% allocation.";
-
-        mockAIService
-            .Setup(s => s.SendPromptAsync(testPrompt, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AIResponseResult(expectedResponse, 200));
 
         var mockChatBridgeService = new Mock<IChatBridgeService>();
 
@@ -131,6 +127,7 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
         services.AddScoped<IThemeService>(_ => Mock.Of<IThemeService>());
         services.AddScoped<IWindowStateService>(_ => Mock.Of<IWindowStateService>());
         services.AddScoped<IFileImportService>(_ => Mock.Of<IFileImportService>());
+        services.AddScoped<SyncfusionControlFactory>();
         services.AddScoped<JARVISChatViewModel>();
         // NOTE: AddWindowsFormsBlazorWebView() is intentionally NOT called here.
         // This test runs in headless mode (WILEYWIDGET_UI_TESTS=true); JARVISChatUserControl.InitializeAsync
@@ -153,12 +150,12 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
             // Act
             await control.InitializeAsync(cts.Token);
 
-            // Assert - AI service should be callable
-            var response = await mockAIService.Object.SendPromptAsync(testPrompt, cts.Token);
-            response.Content.Should().Be(expectedResponse);
-            response.HttpStatusCode.Should().Be(200);
-
-            mockAIService.Verify(s => s.SendPromptAsync(testPrompt, It.IsAny<CancellationToken>()), Times.Once);
+            // Assert - Headless mode completes initialization without dispatching the queued prompt.
+            control.AutomationStatusBox.Should().NotBeNull();
+            control.InitialPrompt.Should().Be(testPrompt);
+            mockChatBridgeService.Verify(
+                s => s.RequestExternalPromptAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
         finally
         {
@@ -205,13 +202,14 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
     }
 
     [StaFact]
-    public async Task JARVISChatUserControl_HandlesCancellationToken_Gracefully()
+    public async Task JARVISChatUserControl_InitializeAsync_WhenCanceled_ThrowsTaskCanceledException()
     {
         // Arrange
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
         TestThemeHelper.EnsureOffice2019Colorful();
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
         using var provider = IntegrationTestServices.BuildProvider();
 
         var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
@@ -221,11 +219,16 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
 
         var control = new JARVISChatUserControl(scopeFactory, provider, logger);
 
-        // Act & Assert - Should not throw, even with cancellation
-        await FluentActions.Awaiting(() => control.InitializeAsync(cts.Token))
-            .Should().NotThrowAsync();
-
-        control.Dispose();
+        try
+        {
+            // Act & Assert - InitializeAsync honors the provided cancellation token.
+            await FluentActions.Awaiting(() => control.InitializeAsync(cts.Token))
+                .Should().ThrowAsync<TaskCanceledException>();
+        }
+        finally
+        {
+            control.Dispose();
+        }
     }
 
     [StaFact]
@@ -259,13 +262,13 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
     }
 
     // Helper method to find controls by type
-        private static TControl? FindControl<TControl>(System.Windows.Forms.Control root)
-            where TControl : System.Windows.Forms.Control
+    private static TControl? FindControl<TControl>(System.Windows.Forms.Control root)
+        where TControl : System.Windows.Forms.Control
+    {
+        if (root is TControl match)
         {
-            if (root is TControl match)
-            {
-                return match;
-            }
+            return match;
+        }
 
         foreach (System.Windows.Forms.Control child in root.Controls)
         {
@@ -280,21 +283,21 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
     }
 
     // Helper method to find controls by name
-        private static System.Windows.Forms.TextBox? FindTextBox(System.Windows.Forms.Control root, string controlName)
+    private static System.Windows.Forms.TextBox? FindTextBox(System.Windows.Forms.Control root, string controlName)
+    {
+        if (root is System.Windows.Forms.TextBox textBox && root.Name == controlName)
         {
-            if (root is System.Windows.Forms.TextBox textBox && root.Name == controlName)
-            {
-                return textBox;
-            }
+            return textBox;
+        }
 
         foreach (System.Windows.Forms.Control child in root.Controls)
         {
-                var found = FindTextBox(child, controlName);
-                if (found != null)
-                {
-                    return found;
-                }
+            var found = FindTextBox(child, controlName);
+            if (found != null)
+            {
+                return found;
             }
+        }
 
         return null;
     }

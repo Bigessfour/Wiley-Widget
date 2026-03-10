@@ -112,8 +112,9 @@ namespace WileyWidget.Services
         /// 1. FastReport Open Source lacks native Excel export
         /// 2. Syncfusion provides advanced Excel features (formulas, conditional formatting, pivot tables)
         /// 3. FastReport templates can still be used for preview/print via Report object
-        /// 
-        /// Use FastReport Report object with PreviewControl for interactive preview, then call this method for export.
+        ///
+        /// Use the prepared FastReport report for standalone preview or the panel's preview/export workflow,
+        /// then call this method for branded Excel export.
         /// </remarks>
         public static async Task<string> ExportBudgetForecastHybridAsync(
             this Export.IExcelExportService excelService,

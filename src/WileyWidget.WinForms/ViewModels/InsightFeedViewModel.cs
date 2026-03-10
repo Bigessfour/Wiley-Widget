@@ -1,5 +1,4 @@
 #nullable enable
-
 using System.Threading;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;

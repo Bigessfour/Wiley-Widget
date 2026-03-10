@@ -28,19 +28,19 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.components = new Container();
 
             // Instantiate controls (assign into fields declared in the other partial file)
-            this._panelHeader = new PanelHeader();
-            this._splitContainerMain = new Syncfusion.Windows.Forms.Tools.SplitContainerAdv();
-            this._splitContainerTop = new Syncfusion.Windows.Forms.Tools.SplitContainerAdv();
-            this._splitContainerBottom = new Syncfusion.Windows.Forms.Tools.SplitContainerAdv();
+            this._panelHeader = new PanelHeader(Factory);
+            this._splitContainerMain = Factory.CreateSplitContainerAdv();
+            this._splitContainerTop = Factory.CreateSplitContainerAdv();
+            this._splitContainerBottom = Factory.CreateSplitContainerAdv();
 
             this._connectionPanel = new Panel();
             this._operationsPanel = new Panel();
             this._summaryPanel = new Panel();
             this._historyPanel = new Panel();
 
-            this._syncProgressBar = new Syncfusion.Windows.Forms.Tools.ProgressBarAdv();
-            this._syncHistoryGrid = new Syncfusion.WinForms.DataGrid.SfDataGrid();
-            this._filterTextBox = new Syncfusion.Windows.Forms.Tools.TextBoxExt();
+            this._syncProgressBar = Factory.CreateProgressBarAdv();
+            this._syncHistoryGrid = Factory.CreateSfDataGrid();
+            this._filterTextBox = Factory.CreateTextBoxExt();
 
             this._loadingOverlay = new LoadingOverlay();
             this._noDataOverlay = new NoDataOverlay();
@@ -53,7 +53,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._panelHeader.AccessibleDescription = "QuickBooks Integration Panel Header";
             this._panelHeader.AccessibleName = "QuickBooks Header";
             this._panelHeader.Dock = DockStyle.Top;
-            this._panelHeader.Height = 52;
+            this._panelHeader.Height = WileyWidget.WinForms.Utilities.LayoutTokens.GetScaled(WileyWidget.WinForms.Utilities.LayoutTokens.HeaderHeightLarge);
             this._panelHeader.Name = "panelHeader";
             this._panelHeader.Title = "QuickBooks Integration";
 

@@ -12,8 +12,8 @@ namespace WileyWidget.WinForms.Forms
 {
     /// <summary>
     /// Factory for creating and configuring the application status bar.
-    /// Uses programmatic grid layout with precise column alignment.
-    /// Columns: StatusLabel (110px) | StatusText (210px) | State (80px) | Progress (120px) | Clock (100px)
+    /// Uses programmatic layout with a single primary message panel plus progress and clock.
+    /// The richer professional panels are appended by MainForm after creation.
     ///
     /// POLISH ENHANCEMENTS:
     /// - Unified status label with color-coding (Green=Ready, Red=Error, Yellow=Warning).
@@ -23,9 +23,9 @@ namespace WileyWidget.WinForms.Forms
     public static class StatusBarFactory
     {
         /// <summary>
-        /// Create and configure StatusBarAdv with 5-panel grid layout and polish enhancements.
+        /// Create and configure StatusBarAdv with the core professional status panels.
         /// </summary>
-        public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null, bool useSyncfusionDocking = true)
+        public static StatusBarAdv CreateStatusBar(MainForm form, ILogger? logger = null, bool useSyncfusionDocking = false)
         {
             // 1. Validation - Intake form and logger
             if (form == null) throw new ArgumentNullException(nameof(form));
@@ -45,66 +45,38 @@ namespace WileyWidget.WinForms.Forms
             statusBar.BorderStyle = BorderStyle.None; // Theme manager handles separator
 
             // 4. Features - SizingGrip configuration
-            // CRITICAL: Disable SizingGrip when using Syncfusion docking to prevent layout conflicts
-            statusBar.SizingGrip = !useSyncfusionDocking;
-            if (!useSyncfusionDocking)
+            // Keep the grip disabled in the Syncfusion shell. The main window already exposes normal
+            // form resizing, and enabling the StatusBarAdv grip can recurse through non-client message
+            // handling on RibbonForm/TabbedMDI startup.
+            statusBar.SizingGrip = false;
+            if (useSyncfusionDocking)
             {
-                logger?.LogDebug("StatusBar SizingGrip enabled (traditional WinForms mode)");
+                logger?.LogDebug("StatusBar SizingGrip disabled (Syncfusion docking prevents conflicts)");
             }
             else
             {
-                logger?.LogDebug("StatusBar SizingGrip disabled (Syncfusion docking prevents conflicts)");
+                logger?.LogDebug("StatusBar SizingGrip disabled for the main Syncfusion shell");
             }
 
             var panels = new List<StatusBarAdvPanel>();
 
-            // 5. Status label (short state descriptor) – keeps legacy references happy
+            // Primary status message panel — this replaces the old mini status strip.
             // ✅ Semantic status color exception (see SfSkinManager rule): Ready=Green, Error=Red, Warning=Yellow.
-            // The caller (Chrome.cs) applies SfSkinManager.SetVisualStyle to the parent StatusBarAdv;
-            // this ForeColor represents a deliberate success-state indicator, not a theme override.
-            var statusLabelPanel = new StatusBarAdvPanel
+            var primaryStatusPanel = new StatusBarAdvPanel
             {
-                Name = "StatusLabel",
+                Name = "PrimaryStatusPanel",
                 Text = "Ready",
-                Width = 110,
+                Width = 360,
                 HAlign = HorzFlowAlign.Left,
                 BorderStyle = BorderStyle.None,
                 AutoSize = false,
                 ForeColor = ThemeColors.Success,
-                AccessibleName = "Status label",
-                AccessibleDescription = "High-level application status"
+                AccessibleName = "Primary status",
+                AccessibleDescription = "Primary application status message"
             };
-            panels.Add(statusLabelPanel);
+            panels.Add(primaryStatusPanel);
 
-            // 6. Status text panel (detailed description/message)
-            var statusTextPanel = new StatusBarAdvPanel
-            {
-                Name = "StatusTextPanel",
-                Text = "System initialized",
-                Width = 210,
-                HAlign = HorzFlowAlign.Left,
-                BorderStyle = BorderStyle.None,
-                AutoSize = false,
-                AccessibleName = "Status details",
-                AccessibleDescription = "Detailed status message"
-            };
-            panels.Add(statusTextPanel);
-
-            // Column 3: StatePanel (80px, center-aligned, indicators)
-            var statePanel = new StatusBarAdvPanel
-            {
-                Name = "StatePanel",
-                Text = "Active",
-                Width = 80,
-                HAlign = HorzFlowAlign.Center,
-                BorderStyle = BorderStyle.None,
-                AutoSize = false,
-                AccessibleName = "Activity state",
-                AccessibleDescription = "Indicates whether the application is active or busy"
-            };
-            panels.Add(statePanel);
-
-            // Column 4: ProgressPanel (120px, center-aligned, contains ProgressBarAdv)
+            // ProgressPanel (120px, center-aligned, contains ProgressBarAdv)
             var progressPanel = new StatusBarAdvPanel
             {
                 Name = "ProgressPanel",
@@ -134,7 +106,7 @@ namespace WileyWidget.WinForms.Forms
             progressPanel.Controls.Add(progressBar);
             panels.Add(progressPanel);
 
-            // Column 5: ClockPanel (100px, right-aligned, time display with culture awareness)
+            // ClockPanel (100px, right-aligned, time display with culture awareness)
             var clockPanel = new StatusBarAdvPanel
             {
                 Name = "ClockPanel",
@@ -151,53 +123,10 @@ namespace WileyWidget.WinForms.Forms
             // 6. Add all panels to StatusBar in column order
             statusBar.Panels = panels.ToArray();
 
-            // 7. Initialize clock update timer (60 seconds, culture-aware)
-            InitializeClockTimer(clockPanel, logger);
-
             logger?.LogDebug(
-                "StatusBarAdv created with 5-column grid: Status(110px) | Details(210px) | State(80px) | Progress(120px) | Clock(100px)");
+                "StatusBarAdv created with primary status + progress + clock core panels");
 
             return statusBar;
-        }
-
-        /// <summary>
-        /// Initializes a timer to update the clock panel with culture-aware formatting.
-        /// Also subscribes to system timezone changes.
-        /// </summary>
-        private static void InitializeClockTimer(StatusBarAdvPanel clockPanel, ILogger? logger)
-        {
-            if (clockPanel == null)
-            {
-                logger?.LogWarning("ClockPanel is null; clock timer not initialized");
-                return;
-            }
-
-            try
-            {
-                var clockTimer = new System.Windows.Forms.Timer
-                {
-                    Interval = 1000  // Update every second for better responsiveness
-                };
-
-                clockTimer.Tick += (s, e) =>
-                {
-                    try
-                    {
-                        clockPanel.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.LogDebug(ex, "Error updating clock panel");
-                    }
-                };
-
-                clockTimer.Start();
-                logger?.LogDebug("Clock timer started (1-second interval, culture-aware formatting)");
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "Failed to initialize clock timer");
-            }
         }
 
         /// <summary>

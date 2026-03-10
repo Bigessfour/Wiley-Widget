@@ -33,6 +33,9 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly WileyWidget.Services.Abstractions.IAppEventBus? _eventBus;
         private readonly Action<WileyWidget.Services.Abstractions.BudgetActualsUpdatedEvent>? _budgetUpdatedHandler;
         private readonly SynchronizationContext? _uiSynchronizationContext;
+        private readonly object _searchFilterDebounceLock = new();
+        private CancellationTokenSource? _searchFilterDebounceCts;
+        private static readonly TimeSpan SearchFilterDebounceDelay = TimeSpan.FromMilliseconds(225);
 
         /// <summary>Gets or sets the collection of all budget entries.</summary>
         [ObservableProperty]
@@ -81,7 +84,7 @@ namespace WileyWidget.WinForms.ViewModels
 
         /// <summary>Gets or sets the available entities/fund names to choose from.</summary>
         [ObservableProperty]
-        private ObservableCollection<string> availableEntities = new();
+        private ObservableCollection<string> availableEntities = new(new[] { "All Entities" });
 
         /// <summary>Gets or sets the minimum variance threshold filter.</summary>
         [ObservableProperty]
@@ -227,20 +230,9 @@ namespace WileyWidget.WinForms.ViewModels
             CalculateVariancesCommand = new AsyncRelayCommand(CalculateVariancesAsync);
             RefreshAnalysisCommand = new AsyncRelayCommand(RefreshAnalysisAsync);
 
-            // Property change handlers for auto-filtering
-            PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(SearchText) ||
-                    e.PropertyName == nameof(SelectedDepartmentId) ||
-                    e.PropertyName == nameof(SelectedFundType) ||
-                    e.PropertyName == nameof(ShowOnlyOverBudget) ||
-                    e.PropertyName == nameof(ShowOnlyUnderBudget) ||
-                    e.PropertyName == nameof(VarianceThreshold) ||
-                    e.PropertyName == nameof(SelectedEntity))
-                {
-                    _ = ApplyFiltersAsync();
-                }
-            };
+            // Property change handlers for auto-filtering.
+            // Search text is debounced to keep typing smooth in the grid host panel.
+            PropertyChanged += (s, e) => QueueFilterRefresh(e.PropertyName);
 
             _logger.LogDebug("BudgetViewModel initialized");
 
@@ -297,6 +289,140 @@ namespace WileyWidget.WinForms.ViewModels
             }
         }
 
+        private void QueueFilterRefresh(string? propertyName)
+        {
+            if (propertyName == nameof(SearchText))
+            {
+                _ = ApplyFiltersDebouncedAsync();
+                return;
+            }
+
+            if (propertyName == nameof(SelectedDepartmentId)
+                || propertyName == nameof(SelectedFundType)
+                || propertyName == nameof(ShowOnlyOverBudget)
+                || propertyName == nameof(ShowOnlyUnderBudget)
+                || propertyName == nameof(VarianceThreshold)
+                || propertyName == nameof(SelectedEntity))
+            {
+                _ = ApplyFiltersAsync();
+            }
+        }
+
+        private async Task ApplyFiltersDebouncedAsync()
+        {
+            CancellationTokenSource? previousCts;
+            var currentCts = new CancellationTokenSource();
+
+            lock (_searchFilterDebounceLock)
+            {
+                previousCts = _searchFilterDebounceCts;
+                _searchFilterDebounceCts = currentCts;
+            }
+
+            previousCts?.Cancel();
+            previousCts?.Dispose();
+
+            try
+            {
+                await Task.Delay(SearchFilterDebounceDelay, currentCts.Token).ConfigureAwait(false);
+                await ApplyFiltersAsync(currentCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // New keystroke superseded this filter operation.
+            }
+            finally
+            {
+                lock (_searchFilterDebounceLock)
+                {
+                    if (ReferenceEquals(_searchFilterDebounceCts, currentCts))
+                    {
+                        _searchFilterDebounceCts = null;
+                    }
+                }
+
+                currentCts.Dispose();
+            }
+        }
+
+        private void ReplaceFilteredEntries(IReadOnlyList<BudgetEntry> filteredList)
+        {
+            if (FilteredBudgetEntries.Count == filteredList.Count)
+            {
+                var isSameSequence = true;
+                for (var i = 0; i < filteredList.Count; i++)
+                {
+                    if (!ReferenceEquals(FilteredBudgetEntries[i], filteredList[i]))
+                    {
+                        isSameSequence = false;
+                        break;
+                    }
+                }
+
+                if (isSameSequence)
+                {
+                    return;
+                }
+            }
+
+            FilteredBudgetEntries.Clear();
+            foreach (var entry in filteredList)
+            {
+                FilteredBudgetEntries.Add(entry);
+            }
+        }
+
+        private static void ReplaceEntries(ObservableCollection<BudgetEntry> target, IReadOnlyList<BudgetEntry> source)
+        {
+            target.Clear();
+            foreach (var entry in source)
+            {
+                target.Add(entry);
+            }
+        }
+
+        private static void ReplaceStringEntries(ObservableCollection<string> target, IReadOnlyList<string> source)
+        {
+            target.Clear();
+            foreach (var value in source)
+            {
+                target.Add(value);
+            }
+        }
+
+        private static List<string> BuildEntityOptions(IEnumerable<string?> rawNames)
+        {
+            var entities = rawNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(name => name!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            entities.Insert(0, "All Entities");
+            return entities;
+        }
+
+        private void NormalizeSelectedEntity()
+        {
+            if (string.IsNullOrWhiteSpace(SelectedEntity)
+                || string.Equals(SelectedEntity, "All Entities", StringComparison.OrdinalIgnoreCase))
+            {
+                SelectedEntity = null;
+                return;
+            }
+
+            var selected = SelectedEntity.Trim();
+            if (!AvailableEntities.Any(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase)))
+            {
+                SelectedEntity = null;
+            }
+            else
+            {
+                SelectedEntity = selected;
+            }
+        }
+
         /// <summary>
         /// Loads all budget entries for the selected fiscal year asynchronously.
         /// </summary>
@@ -315,31 +441,43 @@ namespace WileyWidget.WinForms.ViewModels
                 _logger.LogInformation("Loading budget entries for fiscal year {Year}", year);
 
                 var entries = (await _budgetRepository.GetByFiscalYearAsync(year, cancellationToken)).ToList();
-                BudgetEntries = new ObservableCollection<BudgetEntry>(entries);
-                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(entries);
+                RunOnUiThread(() =>
+                {
+                    ReplaceEntries(BudgetEntries, entries);
+                    ReplaceFilteredEntries(entries);
+                });
 
                 // Populate available entities/fund names and enterprise names for the entity selector
                 try
                 {
                     var entitySet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var n in entries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
-                        entitySet.Add(n);
+                    foreach (var n in entries.Select(be => be.Fund?.Name))
+                    {
+                        if (!string.IsNullOrWhiteSpace(n))
+                        {
+                            entitySet.Add(n.Trim());
+                        }
+                    }
 
                     var enterprises = await _enterpriseRepository.GetAllAsync();
-                    foreach (var en in enterprises.Select(e => e.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()))
-                        entitySet.Add(en);
+                    foreach (var en in enterprises.Select(e => e.Name))
+                    {
+                        if (!string.IsNullOrWhiteSpace(en))
+                        {
+                            entitySet.Add(en.Trim());
+                        }
+                    }
 
-                    var entityList = entitySet.OrderBy(n => n).ToList();
-                    entityList.Insert(0, "All Entities");
-                    AvailableEntities = new ObservableCollection<string>(entityList);
+                    var entityOptions = BuildEntityOptions(entitySet);
+                    RunOnUiThread(() => ReplaceStringEntries(AvailableEntities, entityOptions));
+                    NormalizeSelectedEntity();
                 }
                 catch (Exception exEnt)
                 {
                     _logger.LogWarning(exEnt, "Failed to populate AvailableEntities. Falling back to fund names.");
-                    var entityList = entries.Select(be => be.Fund?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n).ToList();
-                    if (!entityList.Contains("All Entities"))
-                        entityList.Insert(0, "All Entities");
-                    AvailableEntities = new ObservableCollection<string>(entityList);
+                    var fallbackOptions = BuildEntityOptions(entries.Select(be => be.Fund?.Name));
+                    RunOnUiThread(() => ReplaceStringEntries(AvailableEntities, fallbackOptions));
+                    NormalizeSelectedEntity();
                 }
 
                 await RefreshAnalysisAsync();
@@ -366,18 +504,22 @@ namespace WileyWidget.WinForms.ViewModels
             try
             {
                 _logger.LogWarning("ResetBudgetDataOnFailure called: loading empty budget state.");
+                RunOnUiThread(() =>
+                {
+                    BudgetEntries.Clear();
+                    FilteredBudgetEntries.Clear();
+                    ReplaceStringEntries(AvailableEntities, new[] { "All Entities" });
+                    SelectedEntity = null;
 
-                BudgetEntries = new ObservableCollection<BudgetEntry>();
-                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>();
+                    TotalBudgeted = 0m;
+                    TotalActual = 0m;
+                    TotalVariance = 0m;
+                    PercentUsed = 0;
+                    EntriesOverBudget = 0;
+                    EntriesUnderBudget = 0;
 
-                TotalBudgeted = 0m;
-                TotalActual = 0m;
-                TotalVariance = 0m;
-                PercentUsed = 0;
-                EntriesOverBudget = 0;
-                EntriesUnderBudget = 0;
-
-                StatusText = "No budget entries available yet.";
+                    StatusText = "No budget entries available yet.";
+                });
             }
             catch (Exception ex)
             {
@@ -398,12 +540,12 @@ namespace WileyWidget.WinForms.ViewModels
             try
             {
                 // Check if it already exists (defensive)
-                var exists = await _budgetRepository.ExistsAsync(entry.AccountNumber, entry.FiscalYear, cancellationToken);
+                var exists = await _budgetRepository.ExistsAsync(entry.AccountNumber, entry.FiscalYear, entry.FundId, cancellationToken);
                 if (exists)
                 {
                     // If dialog already asked, this should not happen — but safety net
-                    var dupMsg = $"Account {entry.AccountNumber} already exists for FY {entry.FiscalYear}. Use Edit instead.";
-                    _logger.LogWarning("AddEntryAsync duplicate prevented: Account={Account} FY={Year}", entry.AccountNumber, entry.FiscalYear);
+                    var dupMsg = $"Account {WileyWidget.Models.AccountNumber.FormatDisplay(entry.AccountNumber)} already exists for FY {entry.FiscalYear} in the selected entity. Use Edit instead.";
+                    _logger.LogWarning("AddEntryAsync duplicate prevented: Account={Account} FY={Year} FundId={FundId}", entry.AccountNumber, entry.FiscalYear, entry.FundId);
                     ErrorMessage = dupMsg;
                     StatusText = "Duplicate prevented";
                     return;
@@ -431,9 +573,9 @@ namespace WileyWidget.WinForms.ViewModels
         }
 
         // Optional helper — add to IBudgetRepository too if you want clean architecture
-        public async Task<bool> ExistsAsync(string accountNumber, int fiscalYear, CancellationToken ct = default)
+        public async Task<bool> ExistsAsync(string accountNumber, int fiscalYear, int? fundId, CancellationToken ct = default)
         {
-            return await _budgetRepository.ExistsAsync(accountNumber, fiscalYear, ct);
+            return await _budgetRepository.ExistsAsync(accountNumber, fiscalYear, fundId, ct);
         }
 
         /// <summary>
@@ -828,8 +970,10 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
-                await _reportExportService.ExportToPdfAsync(BudgetEntries.ToList(), filePath);
-                _logger.LogInformation("Exported {Count} budget entries to PDF {File}", BudgetEntries.Count, filePath);
+                var exportEntries = GetEntriesForExport();
+                var exportDocument = BuildBudgetExportDocument(exportEntries);
+                await _reportExportService.ExportToPdfAsync(exportDocument, filePath, cancellationToken);
+                _logger.LogInformation("Exported {Count} budget entries to PDF {File}", exportEntries.Count, filePath);
             }
             catch (Exception ex)
             {
@@ -853,8 +997,10 @@ namespace WileyWidget.WinForms.ViewModels
             IsLoading = true;
             try
             {
-                await _reportExportService.ExportToExcelAsync(BudgetEntries.ToList(), filePath);
-                _logger.LogInformation("Exported {Count} budget entries to Excel {File}", BudgetEntries.Count, filePath);
+                var exportEntries = GetEntriesForExport();
+                var exportDocument = BuildBudgetExportDocument(exportEntries);
+                await _reportExportService.ExportToExcelAsync(exportDocument, filePath, cancellationToken);
+                _logger.LogInformation("Exported {Count} budget entries to Excel {File}", exportEntries.Count, filePath);
             }
             catch (Exception ex)
             {
@@ -865,6 +1011,169 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        private IReadOnlyList<BudgetEntry> GetEntriesForExport()
+        {
+            return (FilteredBudgetEntries.Count > 0 ? FilteredBudgetEntries : BudgetEntries).ToList();
+        }
+
+        private ReportExportDocument BuildBudgetExportDocument(IReadOnlyList<BudgetEntry> entries)
+        {
+            var exportTimestamp = DateTime.Now;
+            var selectedScope = string.IsNullOrWhiteSpace(SelectedEntity) || string.Equals(SelectedEntity, "All Entities", StringComparison.OrdinalIgnoreCase)
+                ? "All entities"
+                : SelectedEntity.Trim();
+            var totalBudgeted = entries.Sum(entry => entry.BudgetedAmount);
+            var totalActual = entries.Sum(entry => entry.ActualAmount);
+            var totalVariance = entries.Sum(entry => entry.BudgetedAmount - entry.ActualAmount);
+            var percentUsed = totalBudgeted > 0m ? totalActual / totalBudgeted : 0m;
+
+            var metadata = new Dictionary<string, string>
+            {
+                ["Fiscal Year"] = SelectedFiscalYear.ToString(CultureInfo.InvariantCulture),
+                ["Scope"] = selectedScope,
+                ["Rows Exported"] = entries.Count.ToString(CultureInfo.InvariantCulture),
+                ["Generated From"] = "Budget Panel"
+            };
+
+            var sections = new List<ReportExportSection>
+            {
+                new(
+                    Title: "Executive Summary",
+                    Columns: ["Metric", "Value"],
+                    Rows:
+                    [
+                        new Dictionary<string, string>
+                        {
+                            ["Metric"] = "Budgeted",
+                            ["Value"] = FormatCurrency(totalBudgeted)
+                        },
+                        new Dictionary<string, string>
+                        {
+                            ["Metric"] = "Actual",
+                            ["Value"] = FormatCurrency(totalActual)
+                        },
+                        new Dictionary<string, string>
+                        {
+                            ["Metric"] = "Variance",
+                            ["Value"] = FormatCurrency(totalVariance)
+                        },
+                        new Dictionary<string, string>
+                        {
+                            ["Metric"] = "Percent Used",
+                            ["Value"] = FormatPercent(percentUsed)
+                        },
+                        new Dictionary<string, string>
+                        {
+                            ["Metric"] = "Entries",
+                            ["Value"] = entries.Count.ToString(CultureInfo.InvariantCulture)
+                        }
+                    ]),
+                new(
+                    Title: "Budget Entries",
+                    Columns: ["Account", "Description", "Entity", "Department", "Budgeted", "Actual", "Variance", "Used"],
+                    Rows: entries
+                        .OrderBy(entry => entry.AccountNumber, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(entry => entry.Description, StringComparer.OrdinalIgnoreCase)
+                        .Select(entry =>
+                        {
+                            var variance = entry.BudgetedAmount - entry.ActualAmount;
+                            var usedFraction = entry.BudgetedAmount > 0m ? entry.ActualAmount / entry.BudgetedAmount : 0m;
+
+                            return (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+                            {
+                                ["Account"] = entry.AccountNumber,
+                                ["Description"] = entry.Description,
+                                ["Entity"] = string.IsNullOrWhiteSpace(entry.EntityName) ? entry.FundTypeDescription : entry.EntityName,
+                                ["Department"] = string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.DepartmentId.ToString(CultureInfo.InvariantCulture) : entry.DepartmentName,
+                                ["Budgeted"] = FormatCurrency(entry.BudgetedAmount),
+                                ["Actual"] = FormatCurrency(entry.ActualAmount),
+                                ["Variance"] = FormatCurrency(variance),
+                                ["Used"] = FormatPercent(usedFraction)
+                            };
+                        })
+                        .ToList())
+            };
+
+            var topVarianceRows = entries
+                .OrderByDescending(entry => Math.Abs(entry.BudgetedAmount - entry.ActualAmount))
+                .Take(10)
+                .Select(entry =>
+                {
+                    var variance = entry.BudgetedAmount - entry.ActualAmount;
+                    return (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+                    {
+                        ["Account"] = entry.AccountNumber,
+                        ["Description"] = entry.Description,
+                        ["Variance"] = FormatCurrency(variance)
+                    };
+                })
+                .ToList();
+
+            if (topVarianceRows.Count > 0)
+            {
+                sections.Add(new ReportExportSection(
+                    Title: "Largest Variances",
+                    Columns: ["Account", "Description", "Variance"],
+                    Rows: topVarianceRows));
+            }
+
+            if (entries.Count == 0)
+            {
+                sections.Add(new ReportExportSection(
+                    Title: "Status",
+                    Columns: ["Field", "Value"],
+                    Rows:
+                    [
+                        new Dictionary<string, string>
+                        {
+                            ["Field"] = "Message",
+                            ["Value"] = "No budget rows are currently available for export."
+                        }
+                    ]));
+            }
+
+            return new ReportExportDocument(
+                Title: "Budget Detail Report",
+                Subtitle: $"Town of Wiley municipal budget export for FY{SelectedFiscalYear}",
+                GeneratedAt: exportTimestamp,
+                GeneratedBy: "Generated by Wiley Widget",
+                Branding: new ReportBrandingInfo(
+                    OrganizationName: "Town of Wiley",
+                    ApplicationName: "Wiley Widget",
+                    Attribution: "Generated by Wiley Widget",
+                    LogoPath: ResolveReportLogoPath()),
+                Sections: sections,
+                Metadata: metadata);
+        }
+
+        private static string? ResolveReportLogoPath()
+        {
+            var candidates = new[]
+            {
+                Environment.GetEnvironmentVariable("WILEYWIDGET_REPORT_LOGO_PATH"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-report-logo.png"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-report-logo.jpg"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-brand-hero.png"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-brand-hero.jpg"),
+                Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-report-logo.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-report-logo.jpg"),
+                Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-brand-hero.png"),
+                Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-brand-hero.jpg"),
+            };
+
+            return candidates.FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path));
+        }
+
+        private static string FormatCurrency(decimal value)
+        {
+            return value.ToString("C2", CultureInfo.GetCultureInfo("en-US"));
+        }
+
+        private static string FormatPercent(decimal value)
+        {
+            return value.ToString("P1", CultureInfo.GetCultureInfo("en-US"));
         }
 
         /// <summary>
@@ -960,10 +1269,10 @@ namespace WileyWidget.WinForms.ViewModels
 
             RunOnUiThread(() =>
             {
-                FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(filteredList);
+                ReplaceFilteredEntries(filteredList);
                 StatusText = $"{FilteredBudgetEntries.Count} of {BudgetEntries.Count} entries match filters";
             });
-            _logger.LogInformation("Applied filters: {Count} entries match criteria", FilteredBudgetEntries.Count);
+            _logger.LogDebug("Applied filters: {Count} entries match criteria", filteredList.Count);
 
             await RefreshAnalysisAsync();
         }
@@ -1013,7 +1322,7 @@ namespace WileyWidget.WinForms.ViewModels
             VarianceThreshold = null;
             ShowOnlyOverBudget = false;
             ShowOnlyUnderBudget = false;
-            FilteredBudgetEntries = new ObservableCollection<BudgetEntry>(BudgetEntries);
+            ReplaceFilteredEntries(BudgetEntries.ToList());
 
             StatusText = $"Filters cleared - showing all {BudgetEntries.Count} entries";
             _logger.LogInformation("Filters cleared");
@@ -1057,11 +1366,12 @@ namespace WileyWidget.WinForms.ViewModels
 
                 var netPosition = revActual - expActual;  // or (revBudget - expBudget) depending on your preference
 
-                var totalBudgeted = revBudget + expBudget;
-                var totalActual = revActual + expActual;
+                // KPI cards should always reflect the visible grid rows, even when account type metadata is missing.
+                var totalBudgeted = list.Sum(e => e.BudgetedAmount);
+                var totalActual = list.Sum(e => e.ActualAmount);
                 var totalVariance = totalBudgeted - totalActual;
                 var totalEncumbrance = list.Sum(e => e.EncumbranceAmount);
-                var percentUsed = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
+                var percentUsed = totalBudgeted > 0 ? (totalActual / totalBudgeted) : 0;
                 var entriesOver = list.Count(e => e.ActualAmount > e.BudgetedAmount); // still useful for expenditures
                 var entriesUnder = list.Count(e => e.ActualAmount <= e.BudgetedAmount);
 
@@ -1146,7 +1456,7 @@ namespace WileyWidget.WinForms.ViewModels
             if (entry == null) return;
 
             IsLoading = true;
-            StatusText = $"Copying entry {entry.AccountNumber} to next year...";
+            StatusText = $"Copying entry {WileyWidget.Models.AccountNumber.FormatDisplay(entry.AccountNumber)} to next year...";
             try
             {
                 _logger.LogInformation("Copying budget entry {AccountNumber} to FY {Year}", entry.AccountNumber, entry.FiscalYear + 1);
@@ -1183,7 +1493,7 @@ namespace WileyWidget.WinForms.ViewModels
                 NotifyCollectionRefresh();
                 await ApplyFiltersAsync(cancellationToken);
 
-                StatusText = $"Copied entry {entry.AccountNumber} to FY {newEntry.FiscalYear}";
+                StatusText = $"Copied entry {WileyWidget.Models.AccountNumber.FormatDisplay(entry.AccountNumber)} to FY {newEntry.FiscalYear}";
                 _logger.LogInformation("Copied budget entry {AccountNumber} to FY {Year}", entry.AccountNumber, newEntry.FiscalYear);
             }
             catch (Exception ex)
@@ -1267,6 +1577,13 @@ namespace WileyWidget.WinForms.ViewModels
             if (disposing)
             {
                 // Clean up managed resources if needed
+                lock (_searchFilterDebounceLock)
+                {
+                    _searchFilterDebounceCts?.Cancel();
+                    _searchFilterDebounceCts?.Dispose();
+                    _searchFilterDebounceCts = null;
+                }
+
                 if (_eventBus != null && _budgetUpdatedHandler != null)
                 {
                     try { _eventBus.Unsubscribe(_budgetUpdatedHandler); } catch { }

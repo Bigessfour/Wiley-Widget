@@ -32,10 +32,8 @@ jobs:
           --runtime win-x64
           --self-contained true
           -p:PublishSingleFile=true
-          -p:PublishTrimmed=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           --output ./publish
-          --no-build
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
 
@@ -125,7 +123,6 @@ jobs:
   create-release:
     runs-on: windows-2022
     needs: [publish, validate-release]
-    # trunk-ignore(checkov/CKV2_GHA_1): contents:write is scoped per-resource, not write-all
     permissions:
       contents: write
     steps:

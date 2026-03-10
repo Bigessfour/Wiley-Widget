@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
@@ -16,6 +17,7 @@ using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Factories;
 
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.ViewModels;
@@ -27,29 +29,25 @@ namespace WileyWidget.WinForms.Forms;
 
 public partial class MainForm
 {
-    private static readonly string[] ThemeCycle = new[]
-    {
-        "Office2019Colorful",
-        "Office2019Dark",
-        "Office2019Black",
-        "Office2019White",
-        "Office2019DarkGray"
-    };
+    private static readonly string[] ThemeCycle = AppThemeColors.GetSupportedThemes().ToArray();
     private MenuStrip? _menuStrip;
     private ToolStripMenuItem? _recentFilesMenu;
     private RibbonControlAdv? _ribbon;
     private ToolStripTabItem? _homeTab;
+    private ToolStripTabItem? _financialsTab;
+    private ToolStripTabItem? _analyticsTab;
+    private ToolStripTabItem? _utilitiesTab;
+    private ToolStripTabItem? _administrationTab;
     private ToolStripEx? _navigationStrip;
     private StatusBarAdv? _statusBar;
     private StatusBarAdvPanel? _statusLabel;
-    private StatusBarAdvPanel? _statusTextPanel;
-    private StatusBarAdvPanel? _statePanel;
     private StatusBarAdvPanel? _progressPanel;
     private Syncfusion.Windows.Forms.Tools.ProgressBarAdv? _progressBar;
     private StatusBarAdvPanel? _clockPanel;
     private System.Windows.Forms.Timer? _statusTimer;
     private ToolStripTextBox? _globalSearchTextBox;
     private bool _chromeInitialized;
+    private bool _deferredChromeInitializationQueued;
 
     /// <summary>
     /// Initialize UI chrome elements (Ribbon, Status Bar, Navigation).
@@ -84,8 +82,10 @@ public partial class MainForm
 
             // Set form properties
             Text = MainFormResources.FormTitle;
-            Size = new Size(1400, 900);
-            MinimumSize = new Size(1280, 800);
+            Size = new Size(
+                (int)DpiAware.LogicalToDeviceUnits(1400f),
+                (int)DpiAware.LogicalToDeviceUnits(900f));
+            MinimumSize = new Size((int)DpiAware.LogicalToDeviceUnits(1280f), (int)DpiAware.LogicalToDeviceUnits(800f));
             StartPosition = FormStartPosition.CenterScreen;
             Name = "MainForm";
             KeyPreview = true;
@@ -119,22 +119,7 @@ public partial class MainForm
 
             if (_uiConfig.ShowRibbon)
             {
-                var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                InitializeRibbon();
-                if (!IsEffectivelyUiTestRuntime())
-                {
-                    _ribbon?.Refresh();
-                }
-                ribbonPhaseStopwatch.Stop();
-                _logger?.LogInformation("Ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
-                if (_ribbon == null)
-                {
-                    _logger?.LogError("Ribbon initialization returned null");
-                }
-                else
-                {
-                    _logger?.LogInformation("Ribbon initialized");
-                }
+                _logger?.LogInformation("Ribbon initialization deferred until first paint completes");
             }
             else
             {
@@ -148,47 +133,22 @@ public partial class MainForm
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
 
-            // === CONTENT HOST PANEL (Syncfusion Ribbon + DockingManager clipping fix) ===
-            // DockingManager.HostControl is typed as ContainerControl (v32.2.3, verified via reflection).
-            // UserControl extends ContainerControl and is the correct host type.
-            // Setting HostControl to this sub-panel (instead of the form) means docked panels fill only
-            // the area BELOW the ribbon and ABOVE the status bar — eliminating the top-clipping issue.
-            // SfSkinManager theme cascades from the form to this control automatically.
-            if (_contentHostPanel == null)
-            {
-                var contentHostTheme = SfSkinManager.ApplicationVisualTheme ?? Themes.ThemeColors.DefaultTheme;
-                _contentHostPanel = new UserControl
-                {
-                    Name = "ContentHostPanel",
-                    Dock = DockStyle.Fill,
-                    Padding = new Padding(AppLayoutConstants.ContentHostPadding),
-                    TabStop = false,
-                };
-                SfSkinManager.SetVisualStyle(_contentHostPanel, contentHostTheme);
-                this.Controls.Add(_contentHostPanel);
-                _logger?.LogDebug("ContentHostPanel created (UserControl/ContainerControl), theme={Theme}", contentHostTheme);
-            }
-
             if (_ribbon != null && !_ribbon.IsDisposed && this.Controls.Contains(_ribbon))
             {
                 this.Controls.SetChildIndex(_ribbon, 0);
                 _ribbon.BringToFront();
             }
 
-            if (!_contentHostPanel!.IsDisposed && this.Controls.Contains(_contentHostPanel))
+            if (_panelHost != null && !_panelHost.IsDisposed && this.Controls.Contains(_panelHost))
             {
-                var contentHostIndex = (_ribbon != null && !_ribbon.IsDisposed && this.Controls.Contains(_ribbon)) ? 1 : 0;
-                this.Controls.SetChildIndex(_contentHostPanel, contentHostIndex);
-                _contentHostPanel.SendToBack();
+                this.Controls.SetChildIndex(_panelHost, 1);
+                _panelHost.SendToBack();
             }
 
-            if (_ribbon != null
-                && !_ribbon.IsDisposed && !_contentHostPanel!.IsDisposed
-                && this.Controls.Contains(_ribbon) && this.Controls.Contains(_contentHostPanel))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ZOrder] Ribbon index: {this.Controls.GetChildIndex(_ribbon)}");
-                System.Diagnostics.Debug.WriteLine($"[ZOrder] ContentHost index: {this.Controls.GetChildIndex(_contentHostPanel)}");
-            }
+            RefreshPanelHostLayout("InitializeChrome");
+            // Ensure tabbed MDI hosting is active for document panels.
+            InitializeMDIManager();
+            TraceLayoutSnapshot("InitializeChrome.AfterMdiInit");
 
             // Tabbed MDI layout is already constrained beneath the ribbon; no extra docking host initialization needed.
 
@@ -239,6 +199,64 @@ public partial class MainForm
         }
     }
 
+    private void QueueDeferredChromeInitialization()
+    {
+        if (!_uiConfig.ShowRibbon || IsDisposed || Disposing || _ribbon is { IsDisposed: false })
+        {
+            return;
+        }
+
+        if (_deferredChromeInitializationQueued)
+        {
+            return;
+        }
+
+        _deferredChromeInitializationQueued = true;
+
+        try
+        {
+            BeginInvoke((MethodInvoker)(() => _ = RunDeferredChromeInitializationAsync()));
+        }
+        catch (Exception ex)
+        {
+            _deferredChromeInitializationQueued = false;
+            _logger?.LogDebug(ex, "Failed to queue deferred chrome initialization");
+        }
+    }
+
+    private async Task RunDeferredChromeInitializationAsync()
+    {
+        try
+        {
+            await Task.Delay(35).ConfigureAwait(true);
+
+            if (IsDisposed || Disposing || _ribbon is { IsDisposed: false })
+            {
+                return;
+            }
+
+            using var uiProbeScope = BeginUiProbeOperationScope("DeferredRibbonInitialization");
+            var ribbonPhaseStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            InitializeRibbon();
+            if (!IsEffectivelyUiTestRuntime())
+            {
+                _ribbon?.Invalidate();
+                QueueRibbonLayoutSync("DeferredRibbonInitialization.Refresh");
+            }
+
+            ribbonPhaseStopwatch.Stop();
+            _logger?.LogInformation("Deferred ribbon init in {Ms}ms", ribbonPhaseStopwatch.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Deferred ribbon initialization failed");
+        }
+        finally
+        {
+            _deferredChromeInitializationQueued = false;
+        }
+    }
+
     /// <summary>
     /// Initialize Syncfusion RibbonControlAdv for primary navigation, global search, and session theme toggle.
     /// </summary>
@@ -270,7 +288,7 @@ public partial class MainForm
                 r.LayoutMode = RibbonLayoutMode.Normal;
                 r.AutoSize = false;
                 r.Size = new Size(ClientSize.Width, (int)DpiAware.LogicalToDeviceUnits(180f));
-                r.MinimumSize = new Size(0, (int)DpiAware.LogicalToDeviceUnits(120f));
+                r.MinimumSize = new Size(200, (int)DpiAware.LogicalToDeviceUnits(120f)); // Fixed: Non-zero minimum width to prevent invisibility
                 r.MenuButtonVisible = true;
                 r.MenuButtonText = "File";
 
@@ -346,16 +364,11 @@ public partial class MainForm
             SfSkinManager.SetVisualStyle(ribbon, currentThemeString);
 
             var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
-            CompleteToolStripTabItemAPI(homeTab, _logger);
 
             var financialsTab = new ToolStripTabItem { Text = "Financials", Name = "FinancialsTab" };
             var analyticsTab = new ToolStripTabItem { Text = "Analytics & Reports", Name = "AnalyticsTab" };
             var utilitiesTab = new ToolStripTabItem { Text = "Utilities", Name = "UtilitiesTab" };
             var administrationTab = new ToolStripTabItem { Text = "Administration", Name = "AdministrationTab" };
-            CompleteToolStripTabItemAPI(financialsTab, _logger);
-            CompleteToolStripTabItemAPI(analyticsTab, _logger);
-            CompleteToolStripTabItemAPI(utilitiesTab, _logger);
-            CompleteToolStripTabItemAPI(administrationTab, _logger);
 
             try
             {
@@ -373,25 +386,9 @@ public partial class MainForm
 
             // ── Home tab groups ──────────────────────────────────────────────
             var (dashboardStrip, _) = CreateCoreNavigationGroup(this, currentThemeString, _logger);
+            var dynamicPanelsGalleryStrip = CreateDynamicPanelsGalleryGroup(this, currentThemeString, _logger);
             var (layoutStrip, _, _, lockLayoutBtn) = CreateLayoutGroup(this, currentThemeString, _logger);
             var searchAndGridStrip = CreateSearchAndGridGroup(this, currentThemeString, _logger);
-
-            // ── Financials tab groups ────────────────────────────────────────
-            var (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
-            var paymentsStrip = CreatePaymentsGroup(this, currentThemeString, _logger);
-            var integrationStrip = CreateIntegrationGroup(this, currentThemeString, _logger);
-
-            // ── Analytics & Reports tab groups ───────────────────────────────
-            var analyticsStrip = CreateAnalyticsGroup(this, currentThemeString, _logger);
-            var reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
-            var operationsStrip = CreateOperationsGroup(this, currentThemeString, _logger);
-
-            // ── Utilities tab groups ─────────────────────────────────────────
-            var utilitiesStrip = CreateUtilitiesGroup(this, currentThemeString, _logger);
-
-            // ── Administration tab groups ────────────────────────────────────
-            var administrationStrip = CreateAdministrationGroup(this, currentThemeString, _logger);
-            var auditLogsStrip = CreateAuditLogsGroup(this, currentThemeString, _logger);
 
             ribbon.Header.AddMainItem(homeTab);
             ribbon.Header.AddMainItem(financialsTab);
@@ -421,25 +418,9 @@ public partial class MainForm
 
             // Home
             AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
+            AddToolStripToTabPanel(homeTab, dynamicPanelsGalleryStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, layoutStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, searchAndGridStrip, currentThemeString, _logger);
-
-            // Financials
-            AddToolStripToTabPanel(financialsTab, financialsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(financialsTab, paymentsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(financialsTab, integrationStrip, currentThemeString, _logger);
-
-            // Analytics & Reports
-            AddToolStripToTabPanel(analyticsTab, analyticsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(analyticsTab, reportingStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(analyticsTab, operationsStrip, currentThemeString, _logger);
-
-            // Utilities
-            AddToolStripToTabPanel(utilitiesTab, utilitiesStrip, currentThemeString, _logger);
-
-            // Administration
-            AddToolStripToTabPanel(administrationTab, administrationStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(administrationTab, auditLogsStrip, currentThemeString, _logger);
 
             // Launcher handlers must be attached after tabs/groups exist.
             AttachRibbonLauncherHandlers(this, ribbon, _logger);
@@ -455,35 +436,15 @@ public partial class MainForm
 
             try
             {
-                ApplyThemeRecursively(ribbon, currentThemeString, _logger);
+                SfSkinManager.SetVisualStyle(ribbon, currentThemeString);
             }
             catch (Exception ex)
             {
-                _logger?.LogDebug(ex, "InitializeRibbon: Theme recursion failed");
-            }
-
-            try
-            {
-                if (homeTab.Panel != null)
-                {
-                    if (!isUiTestRuntime)
-                    {
-                        homeTab.Panel.PerformLayout();
-                        homeTab.Panel.Invalidate();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "InitializeRibbon: Home tab panel refresh failed");
+                _logger?.LogDebug(ex, "InitializeRibbon: Theme application failed");
             }
 
             ((System.ComponentModel.ISupportInitialize)ribbon).EndInit();
             ribbon.ResumeLayout(false);
-            if (!isUiTestRuntime)
-            {
-                ribbon.PerformLayout();
-            }
 
             try
             {
@@ -492,11 +453,6 @@ public partial class MainForm
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "InitializeRibbon: Could not select Home tab");
-            }
-
-            if (!isUiTestRuntime)
-            {
-                ribbon.Invalidate();
             }
 
             if (ribbon.Header.MainItems.Count == 0)
@@ -508,6 +464,10 @@ public partial class MainForm
             // Assign ribbon fields before initializing QAT so QAT can reliably access RibbonControlAdv.
             _ribbon = ribbon;
             _homeTab = homeTab;
+            _financialsTab = financialsTab;
+            _analyticsTab = analyticsTab;
+            _utilitiesTab = utilitiesTab;
+            _administrationTab = administrationTab;
 
             try
             {
@@ -543,6 +503,7 @@ public partial class MainForm
 
             CacheGlobalSearchTextBox();
             EnsureRibbonAccessibility();
+            AnalyzeAndNormalizeRibbonTabHeights(ribbon, "initial-home-tab-population");
 
             // Allow FlaUI-driven automation to visually attach the ribbon so UIA can find navigation buttons.
             var skipRibbonVisualAttach = isUiTestRuntime && !IsFlaUiAutomationTest();
@@ -560,16 +521,20 @@ public partial class MainForm
                 this.Controls.SetChildIndex(_ribbon, 0);
                 _ribbon.BringToFront();
 
-                if (!isUiTestRuntime)
-                {
-                    _ribbon.PerformLayout();
-                    _ribbon.Refresh();
-                }
+                RefreshPanelHostLayout("InitializeRibbon.Attach", force: true);
+                TraceLayoutSnapshot("InitializeRibbon.AfterAttach");
             }
             else if (skipRibbonVisualAttach)
             {
                 _logger?.LogDebug("InitializeRibbon: Skipping ribbon visual attach in UI test harness runtime");
             }
+
+            if (!isUiTestRuntime)
+            {
+                QueueDeferredRibbonRefresh(ribbon, homeTab);
+            }
+
+            QueueDeferredRibbonTabPopulation(ribbon, financialsTab, analyticsTab, utilitiesTab, administrationTab, currentThemeString);
         }
         catch (Exception ex)
         {
@@ -586,33 +551,269 @@ public partial class MainForm
         }
     }
 
-    private void EnsureChromeZOrder()
+    private void QueueDeferredRibbonRefresh(RibbonControlAdv ribbon, ToolStripTabItem homeTab)
     {
+        if (IsDisposed || Disposing || ribbon.IsDisposed)
+        {
+            return;
+        }
+
         try
         {
-            if (_menuStrip != null && !_menuStrip.IsDisposed && _menuStrip.Visible)
+            BeginInvoke((MethodInvoker)(() =>
             {
-                _menuStrip.BringToFront();
-            }
+                if (IsDisposed || Disposing || ribbon.IsDisposed)
+                {
+                    return;
+                }
 
-            if (_ribbon != null && !_ribbon.IsDisposed && _ribbon.Visible)
-            {
-                _ribbon.BringToFront();
-            }
-
-            if (_navigationStrip != null && !_navigationStrip.IsDisposed && _navigationStrip.Visible)
-            {
-                _navigationStrip.BringToFront();
-            }
-
-            if (_statusBar != null && !_statusBar.IsDisposed && _statusBar.Visible)
-            {
-                _statusBar.BringToFront();
-            }
+                try
+                {
+                    ribbon.Invalidate();
+                    QueueRibbonLayoutSync("DeferredRibbonRefresh");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "Deferred ribbon layout pass failed");
+                }
+            }));
         }
         catch (Exception ex)
         {
-            _logger?.LogDebug(ex, "EnsureChromeZOrder: failed to enforce chrome z-order");
+            _logger?.LogDebug(ex, "QueueDeferredRibbonRefresh scheduling failed");
+        }
+    }
+
+    private void QueueDeferredRibbonTabPopulation(
+        RibbonControlAdv ribbon,
+        ToolStripTabItem financialsTab,
+        ToolStripTabItem analyticsTab,
+        ToolStripTabItem utilitiesTab,
+        ToolStripTabItem administrationTab,
+        string themeName)
+    {
+        if (IsDisposed || Disposing || ribbon.IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            BeginInvoke((MethodInvoker)(() => _ = PopulateDeferredRibbonTabsAsync(
+                ribbon,
+                financialsTab,
+                analyticsTab,
+                utilitiesTab,
+                administrationTab,
+                themeName)));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "QueueDeferredRibbonTabPopulation scheduling failed");
+        }
+    }
+
+    private async Task PopulateDeferredRibbonTabsAsync(
+        RibbonControlAdv ribbon,
+        ToolStripTabItem financialsTab,
+        ToolStripTabItem analyticsTab,
+        ToolStripTabItem utilitiesTab,
+        ToolStripTabItem administrationTab,
+        string themeName)
+    {
+        try
+        {
+            using var uiProbeScope = BeginUiProbeOperationScope("DeferredRibbonTabPopulation");
+            await Task.Yield();
+
+            if (IsDisposed || Disposing || ribbon.IsDisposed)
+            {
+                return;
+            }
+
+            EnsureRibbonTabPopulation(
+                financialsTab,
+                expectedStripCount: 3,
+                buildTabContent: () =>
+                {
+                    var (financialsStrip, _) = CreateFinancialsGroup(this, themeName, _logger);
+                    var paymentsStrip = CreatePaymentsGroup(this, themeName, _logger);
+                    var integrationStrip = CreateIntegrationGroup(this, themeName, _logger);
+                    AddToolStripToTabPanel(financialsTab, financialsStrip, themeName, _logger);
+                    AddToolStripToTabPanel(financialsTab, paymentsStrip, themeName, _logger);
+                    AddToolStripToTabPanel(financialsTab, integrationStrip, themeName, _logger);
+                },
+                reason: "deferred-population");
+
+            await Task.Delay(1).ConfigureAwait(true);
+
+            if (IsDisposed || Disposing || ribbon.IsDisposed)
+            {
+                return;
+            }
+
+            EnsureRibbonTabPopulation(
+                analyticsTab,
+                expectedStripCount: 3,
+                buildTabContent: () =>
+                {
+                    var analyticsStrip = CreateAnalyticsGroup(this, themeName, _logger);
+                    var reportingStrip = CreateReportingGroup(this, themeName, _logger);
+                    var operationsStrip = CreateOperationsGroup(this, themeName, _logger);
+                    AddToolStripToTabPanel(analyticsTab, analyticsStrip, themeName, _logger);
+                    AddToolStripToTabPanel(analyticsTab, reportingStrip, themeName, _logger);
+                    AddToolStripToTabPanel(analyticsTab, operationsStrip, themeName, _logger);
+                },
+                reason: "deferred-population");
+
+            await Task.Delay(1).ConfigureAwait(true);
+
+            if (IsDisposed || Disposing || ribbon.IsDisposed)
+            {
+                return;
+            }
+
+            EnsureRibbonTabPopulation(
+                utilitiesTab,
+                expectedStripCount: 1,
+                buildTabContent: () =>
+                {
+                    var utilitiesStrip = CreateUtilitiesGroup(this, themeName, _logger);
+                    AddToolStripToTabPanel(utilitiesTab, utilitiesStrip, themeName, _logger);
+                },
+                reason: "deferred-population");
+
+            EnsureRibbonTabPopulation(
+                administrationTab,
+                expectedStripCount: 2,
+                buildTabContent: () =>
+                {
+                    var administrationStrip = CreateAdministrationGroup(this, themeName, _logger);
+                    var auditLogsStrip = CreateAuditLogsGroup(this, themeName, _logger);
+                    AddToolStripToTabPanel(administrationTab, administrationStrip, themeName, _logger);
+                    AddToolStripToTabPanel(administrationTab, auditLogsStrip, themeName, _logger);
+                },
+                reason: "deferred-population");
+
+            foreach (var tab in new[] { financialsTab, analyticsTab, utilitiesTab, administrationTab })
+            {
+                if (tab.Panel != null)
+                {
+                    tab.Panel.AutoSize = true;
+                    tab.Panel.Padding = new Padding(6, 4, 6, 4);
+                }
+            }
+
+            AnalyzeAndNormalizeRibbonTabHeights(ribbon, "deferred-all-tab-population");
+
+            ribbon.Invalidate();
+            QueueRibbonLayoutSync("DeferredRibbonTabPopulation.Complete");
+            _logger?.LogInformation("Deferred ribbon tab population completed");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Deferred ribbon tab population failed");
+        }
+        finally
+        {
+            // no-op: this RibbonControlAdv version does not expose BeginUpdate/EndUpdate
+        }
+    }
+
+    private void EnsureRibbonTabPopulation(
+        ToolStripTabItem tab,
+        int expectedStripCount,
+        MethodInvoker buildTabContent,
+        string reason)
+    {
+        if (tab.Panel == null)
+        {
+            _logger?.LogDebug("Ribbon tab '{TabName}' has no panel during {Reason}", tab.Name, reason);
+            return;
+        }
+
+        var existingStrips = tab.Panel.Controls.OfType<ToolStripEx>().ToArray();
+        if (existingStrips.Length >= expectedStripCount)
+        {
+            return;
+        }
+
+        _logger?.LogInformation(
+            "Populating ribbon tab '{TabName}' toolstrips (reason={Reason}, existing={Existing}, expected={Expected})",
+            tab.Name,
+            reason,
+            existingStrips.Length,
+            expectedStripCount);
+
+        tab.Panel.SuspendLayout();
+        try
+        {
+            buildTabContent();
+            tab.Panel.AutoSize = true;
+            tab.Panel.Padding = new Padding(6, 4, 6, 4);
+        }
+        finally
+        {
+            tab.Panel.ResumeLayout(performLayout: false);
+        }
+    }
+
+    private void AnalyzeAndNormalizeRibbonTabHeights(RibbonControlAdv ribbon, string reason)
+    {
+        if (ribbon?.Header?.MainItems == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var minimumRibbonHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonMinimumHeightLogical);
+            var preferredRibbonHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonHeightStandardLogical);
+
+            ribbon.AutoSize = false;
+            if (ribbon.LayoutMode == RibbonLayoutMode.Normal)
+            {
+                ribbon.Height = Math.Max(ribbon.Height, preferredRibbonHeight);
+            }
+            else
+            {
+                ribbon.Height = Math.Max(ribbon.Height, minimumRibbonHeight);
+            }
+
+            var minimumRibbonWidth = Math.Max(200, ribbon.MinimumSize.Width);
+            ribbon.MinimumSize = new Size(minimumRibbonWidth, Math.Max(ribbon.MinimumSize.Height, minimumRibbonHeight));
+
+            var tabSummaries = new List<string>();
+            foreach (var tab in ribbon.Header.MainItems.OfType<ToolStripTabItem>())
+            {
+                if (tab.Panel == null)
+                {
+                    tabSummaries.Add($"{tab.Name}:panel=null");
+                    continue;
+                }
+
+                var strips = tab.Panel.Controls.OfType<ToolStripEx>().ToArray();
+                var visibleButtonCount = 0;
+
+                foreach (var strip in strips)
+                {
+                    EnsureToolStripItemsVisibleAndEnabled(strip, _logger);
+                    EnsureRibbonGroupBounds(strip, _logger);
+                    visibleButtonCount += strip.Items.OfType<ToolStripButton>().Count(button => button.Visible && button.Enabled);
+                }
+
+                tabSummaries.Add($"{tab.Name}:strips={strips.Length},visibleButtons={visibleButtonCount}");
+            }
+
+            _logger?.LogInformation(
+                "Ribbon UX height analysis ({Reason}) complete: Ribbon={RibbonHeight}px; {TabSummary}",
+                reason,
+                ribbon.Height,
+                string.Join(" | ", tabSummaries));
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Ribbon UX height analysis failed during {Reason}", reason);
         }
     }
 
@@ -621,13 +822,11 @@ public partial class MainForm
         base.OnResize(e);
         try
         {
-            _ribbon?.PerformLayout();
-            EnsureChromeZOrder();
-            ConstrainMdiClientToContentHost();
+            RefreshPanelHostLayout("OnResize");
         }
         catch (Exception ex)
         {
-            _logger?.LogDebug(ex, "OnResize: failed to reassert ribbon z-order");
+            _logger?.LogDebug(ex, "OnResize: layout update failed");
         }
 
         // DockingHostFactory handles host bounds automatically
@@ -658,7 +857,7 @@ public partial class MainForm
     {
         try
         {
-            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger, useSyncfusionDocking: _uiConfig.UseSyncfusionDocking);
+            var statusBar = StatusBarFactory.CreateStatusBar(this, _logger);
             statusBar.Name = "ProfessionalStatusBar";
             _statusBar = statusBar;
 
@@ -678,33 +877,32 @@ public partial class MainForm
                 statusBar.Panels?.Length ?? 0, statusBar.Controls.Count);
 
             var panels = statusBar.Panels;
-            if (panels == null || panels.Length < 5)
+            if (panels == null || panels.Length < 3)
             {
                 _logger?.LogWarning("StatusBarAdv.Panels was insufficient ({Count}); falling back to Controls collection", panels?.Length ?? 0);
                 panels = statusBar.Controls.OfType<Syncfusion.Windows.Forms.Tools.StatusBarAdvPanel>().ToArray();
             }
 
-            if (panels is { Length: >= 5 })
+            if (panels is { Length: >= 3 })
             {
-                _statusLabel = panels[0];
-                _statusTextPanel = panels[1];
-                _statePanel = panels[2];
-                _progressPanel = panels[3];
-                _clockPanel = panels[4];
+                _statusLabel = panels.FirstOrDefault(panel => string.Equals(panel.Name, "PrimaryStatusPanel", StringComparison.Ordinal))
+                    ?? panels.FirstOrDefault(panel => string.Equals(panel.Name, "StatusLabel", StringComparison.Ordinal));
+                _progressPanel = panels.FirstOrDefault(panel => string.Equals(panel.Name, "ProgressPanel", StringComparison.Ordinal));
+                _clockPanel = panels.FirstOrDefault(panel => string.Equals(panel.Name, "ClockPanel", StringComparison.Ordinal));
 
                 _progressBar = _progressPanel?.Controls.OfType<Syncfusion.Windows.Forms.Tools.ProgressBarAdv>().FirstOrDefault();
 
-                if (_progressBar != null && _statusLabel != null && _statusTextPanel != null && _statePanel != null && _progressPanel != null && _clockPanel != null)
+                if (_progressBar != null && _statusLabel != null && _progressPanel != null && _clockPanel != null)
                 {
                     SetStatusBarPanels(statusBar,
                         _statusLabel,
-                        _statusTextPanel,
-                        _statePanel,
                         _progressPanel,
                         _progressBar,
                         _clockPanel);
                 }
             }
+
+            InitializeProfessionalStatusBar();
 
             statusBar.TabStop = false;
             statusBar.TabIndex = 99;
@@ -867,10 +1065,10 @@ public partial class MainForm
     {
         try
         {
-            _statusTimer = new System.Windows.Forms.Timer { Interval = 60000 };
+            _statusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _statusTimer.Tick += (s, e) =>
             {
-                try { if (_clockPanel != null) _clockPanel.Text = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture); } catch { }
+                try { UpdateClockDisplay(); } catch { }
             };
             _statusTimer.Start();
         }
@@ -944,7 +1142,8 @@ public partial class MainForm
             // View > Customers
             var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
 
-            var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
+            var refreshMenuItem = new ToolStripMenuItem("&Refresh") { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
+            refreshMenuItem.Click += async (s, e) => await RefreshCurrentWorkspaceAsync().ConfigureAwait(true);
 
             viewMenu.DropDownItems.AddRange(new ToolStripItem[] { dashboardMenuItem, accountsMenuItem, budgetMenuItem, chartsMenuItem, quickBooksMenuItem, customersMenuItem, new ToolStripSeparator(), refreshMenuItem });
 
@@ -957,13 +1156,13 @@ public partial class MainForm
             var helpMenu = new ToolStripMenuItem("&Help") { Name = "Menu_Help", Image = CreateIconFromText("\uE897", 16) };
             var documentationMenuItem = new ToolStripMenuItem("&Documentation", null, (s, e) =>
             {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/WileyWidget/WileyWidget/wiki", UseShellExecute = true }); } catch { }
+                OpenDocumentation();
             })
             { Name = "Menu_Help_Documentation", ShortcutKeys = Keys.F1 };
 
             var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) =>
             {
-                MessageBox.Show($"{MainFormResources.FormTitle}\n\nVersion 1.0.0\nBuilt with .NET 9\n\n© {DateTime.Now.Year} Wiley Widget", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ShowAboutDialog();
             })
             { Name = "Menu_Help_About" };
 
@@ -1039,11 +1238,47 @@ public partial class MainForm
 
         if (InvokeRequired)
         {
-            BeginInvoke((System.Action)RefreshMruMenu);
+            BeginInvoke((MethodInvoker)RefreshMruMenu);
             return;
         }
 
         UpdateMruMenu(_recentFilesMenu);
+    }
+
+    private void OpenDocumentation()
+    {
+        var documentationUrl = _configuration?["Application:DocumentationUrl"]
+            ?? _configuration?["Documentation:Url"]
+            ?? MainFormResources.DocumentationUrl;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = documentationUrl,
+                UseShellExecute = true,
+            });
+            ApplyStatus("Documentation opened.");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to open documentation URL {DocumentationUrl}", documentationUrl);
+            ShowErrorDialog("Documentation", "Unable to open the documentation link.", ex);
+        }
+    }
+
+    private void ShowAboutDialog()
+    {
+        var versionText = string.IsNullOrWhiteSpace(Application.ProductVersion)
+            ? MainFormResources.ApplicationVersion
+            : Application.ProductVersion;
+        var frameworkText = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+
+        MessageBox.Show(
+            $"{MainFormResources.FormTitle}\n\nVersion {versionText}\n{frameworkText}\n\n© {DateTime.Now.Year} Wiley Widget",
+            "About",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
     }
 
     private async Task OpenRecentFileAsync(string filePath)
@@ -1145,13 +1380,12 @@ public partial class MainForm
 
 
     /// <summary>
-    /// Toggle the application theme between light and dark modes.
+    /// Toggle the application theme through the supported Syncfusion WinForms theme cycle.
     /// Broadcasts the change through ThemeService, which notifies all subscribers via OnThemeChanged event.
     /// The OnThemeChanged event (in MainForm.Docking.cs) applies theme to all controls and updates toggle button text.
     ///
-    /// POLISH ENHANCEMENTS:
-    /// - Emoji icon support with fallback to text-only for systems that don't render emojis correctly.
-    /// - Support for multiple Office2019 themes without selecting unsupported variants.
+    /// Supported cycle:
+    /// Office2019Colorful → Office2016Colorful → Office2016White → Office2016DarkGray → Office2016Black → HighContrastBlack.
     /// </summary>
     public void ToggleTheme()
     {
@@ -1167,11 +1401,10 @@ public partial class MainForm
 
             _logger?.LogInformation("Theme toggle initiated from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
 
-            // Best-effort: update local theme toggle immediately so callers observing synchronously see the change
+            // Best-effort: update local theme toggle immediately so callers observing synchronously see the change.
+            // The ThemeService remains the sole writer of the global Syncfusion theme state.
             try
             {
-                SfSkinManager.ApplicationVisualTheme = nextTheme;
-
                 var buttonText = GetThemeButtonText(nextTheme);
                 ToolStripButton? immediateToggle = null;
                 try { if (_ribbon != null) immediateToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton; } catch { }
@@ -1289,9 +1522,17 @@ public partial class MainForm
     /// </summary>
     private void OnThemeServiceChanged(object? sender, string newTheme)
     {
+        var themeSwitchStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         try
         {
             if (IsDisposed || Disposing || !IsHandleCreated) return;
+
+            _logger?.LogInformation(
+                "[THEME] Applying runtime theme change to MainForm: {Theme} (MdiChildren={MdiChildCount}, OwnedForms={OwnedFormCount})",
+                newTheme,
+                MdiChildren.Length,
+                OwnedForms.Length);
 
             this.InvokeIfRequired(() =>
             {
@@ -1300,13 +1541,14 @@ public partial class MainForm
                     AppThemeColors.EnsureThemeAssemblyLoadedForTheme(newTheme);
                     SfSkinManager.ApplicationVisualTheme = newTheme;
 
-                    // Cascade to all child Syncfusion controls (DockingManager, StatusBarAdv, etc.)
+                    // Cascade to all child Syncfusion controls (StatusBarAdv, right-dock panel, etc.)
                     SfSkinManager.SetVisualStyle(this, newTheme);
 
                     // Explicit ThemeName refresh on controls that persist their own ThemeName property
                     if (_ribbon != null && !_ribbon.IsDisposed)
                     {
                         _ribbon.ThemeName = newTheme;
+                        ApplyRibbonStyleForTheme(_ribbon, newTheme, _logger);
                         SfSkinManager.SetVisualStyle(_ribbon, newTheme);
                     }
 
@@ -1316,13 +1558,14 @@ public partial class MainForm
                         SfSkinManager.SetVisualStyle(_statusBar, newTheme);
                     }
 
-                    // Explicit theme refresh on the content host so the DockingManager sub-host
+                    // Explicit theme refresh on the content host so the sub-host
                     // repaints correctly after a runtime theme switch (cascade alone may miss it).
-                    if (_contentHostPanel != null && !_contentHostPanel.IsDisposed)
+                    if (_panelHost != null && !_panelHost.IsDisposed)
                     {
-                        SfSkinManager.SetVisualStyle(_contentHostPanel, newTheme);
+                        _panelHost.Invalidate(true);
                     }
 
+                    RefreshThemeDrivenChromeSurfaces(newTheme);
                     ApplyThemeToBackStage(newTheme);
                     ApplyThemeToBackStageAndQAT(newTheme);
                     UpdateGlobalSearchTheme(newTheme);
@@ -1343,7 +1586,12 @@ public partial class MainForm
                     }
                     catch { /* theme button text is cosmetic; do not fail hard */ }
 
-                    _logger?.LogDebug("OnThemeServiceChanged: theme cascaded to all MainForm controls → {Theme}", newTheme);
+                    RefreshPanelHostLayout("OnThemeServiceChanged", force: true);
+
+                    _logger?.LogInformation(
+                        "[THEME] Runtime theme applied successfully: {Theme} in {ElapsedMs}ms",
+                        newTheme,
+                        themeSwitchStopwatch.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {
@@ -1355,11 +1603,40 @@ public partial class MainForm
         {
             _logger?.LogDebug(ex, "OnThemeServiceChanged: outer guard failed");
         }
+        finally
+        {
+            themeSwitchStopwatch.Stop();
+        }
     }
 
     private void RefreshThemeSensitiveControls(string themeName)
     {
-        ApplyThemeToControlTree(this, themeName);
+        if (_panelHost != null && !_panelHost.IsDisposed)
+        {
+            ApplyThemeToControlTree(_panelHost, themeName);
+        }
+
+        foreach (Control control in Controls)
+        {
+            if (control.IsDisposed
+                || ReferenceEquals(control, _panelHost)
+                || ReferenceEquals(control, _ribbon)
+                || ReferenceEquals(control, _statusBar)
+                || ReferenceEquals(control, _navigationStrip)
+                || ReferenceEquals(control, _menuStrip))
+            {
+                continue;
+            }
+
+            if (control is ToolStrip or MdiClient)
+            {
+                SfSkinManager.SetVisualStyle(control, themeName);
+                control.Invalidate(true);
+                continue;
+            }
+
+            ApplyThemeToControlTree(control, themeName);
+        }
 
         foreach (var mdiChild in MdiChildren)
         {
@@ -1389,6 +1666,48 @@ public partial class MainForm
 
         Invalidate(true);
         Update();
+    }
+
+    private void RefreshThemeDrivenChromeSurfaces(string themeName)
+    {
+        var resolvedRibbonTheme = ResolveRibbonThemeName(themeName, _logger);
+
+        if (_navigationStrip != null && !_navigationStrip.IsDisposed)
+        {
+            _navigationStrip.ThemeName = resolvedRibbonTheme;
+            SfSkinManager.SetVisualStyle(_navigationStrip, resolvedRibbonTheme);
+            _navigationStrip.Invalidate(true);
+            _navigationStrip.Update();
+        }
+
+        if (_ribbon != null && !_ribbon.IsDisposed)
+        {
+            ApplyRibbonStripThemes(_ribbon, resolvedRibbonTheme);
+        }
+
+        if (_tabbedMdi != null)
+        {
+            _tabbedMdi.ThemeName = themeName;
+            _tabbedMdi.TabStyle = ResolveTabStyle(themeName);
+            SfSkinManager.SetVisualStyle(_tabbedMdi, themeName);
+        }
+    }
+
+    private static void ApplyRibbonStripThemes(RibbonControlAdv ribbon, string themeName)
+    {
+        foreach (ToolStripTabItem tab in ribbon.Header.MainItems)
+        {
+            if (tab?.Panel == null)
+            {
+                continue;
+            }
+
+            foreach (var strip in tab.Panel.Controls.OfType<ToolStripEx>())
+            {
+                strip.ThemeName = themeName;
+                SfSkinManager.SetVisualStyle(strip, themeName);
+            }
+        }
     }
 
     private void ApplyThemeToBackStage(string themeName)
@@ -1459,11 +1778,7 @@ public partial class MainForm
                 continue;
             }
 
-            SfSkinManager.SetVisualStyle(control, themeName);
-            if (control.HasChildren)
-            {
-                ApplyThemeToControlCollection(control.Controls, themeName);
-            }
+            SyncfusionControlFactory.ApplyThemeToAllControls(control, themeName);
         }
     }
 
@@ -1573,16 +1888,15 @@ public partial class MainForm
     {
         try
         {
-            if (_dockingManager?.HostControl is not Control hostControl || hostControl.IsDisposed)
+            if (_panelHost == null || _panelHost.IsDisposed)
             {
                 return;
             }
 
-            SfSkinManager.SetVisualStyle(hostControl, themeName);
-            PerformLayoutRecursive(hostControl);
-            TryForceLayoutOnScopedPanelChildren(hostControl);
-            hostControl.Invalidate(true);
-            hostControl.Update();
+            PerformLayoutRecursive(_panelHost);
+            TryForceLayoutOnScopedPanelChildren(_panelHost);
+            _panelHost.Invalidate(true);
+            _panelHost.Update();
         }
         catch (Exception ex)
         {
@@ -1597,9 +1911,30 @@ public partial class MainForm
             return;
         }
 
+        if (root is RibbonControlAdv ribbonControl)
+        {
+            ribbonControl.ThemeName = themeName;
+            SfSkinManager.SetVisualStyle(ribbonControl, themeName);
+            ribbonControl.Invalidate(true);
+            ribbonControl.Update();
+            return;
+        }
+
+        if (root is ToolStrip toolStrip)
+        {
+            SfSkinManager.SetVisualStyle(toolStrip, themeName);
+            toolStrip.Invalidate(true);
+            toolStrip.Update();
+            return;
+        }
+
         if (root is IThemable themable)
         {
             themable.ApplyTheme(themeName);
+        }
+        else
+        {
+            SyncfusionControlFactory.ApplyThemeToAllControls(root, themeName);
         }
 
         if (root is SfDataGrid dataGrid)
@@ -1612,26 +1947,15 @@ public partial class MainForm
             chartControl.Invalidate(true);
             chartControl.Update();
         }
-        else if (root is RibbonControlAdv ribbonControl)
-        {
-            ribbonControl.Invalidate(true);
-            ribbonControl.Update();
-        }
         else if (root is UserControl or Panel)
         {
             root.Invalidate(true);
             root.Update();
         }
-
-        foreach (Control child in root.Controls)
-        {
-            ApplyThemeToControlTree(child, themeName);
-        }
     }
 
     /// <summary>
-    /// POLISH: Gets the next theme in the cycle.
-    /// Cycles through supported Syncfusion Office2019 themes to avoid invalid selections.
+    /// Gets the next theme in the supported WinForms theme cycle.
     /// </summary>
     private static string GetNextTheme(string currentTheme)
     {
@@ -1645,8 +1969,7 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// POLISH: Gets the button text for a theme, with emoji and text fallback.
-    /// Tests for emoji rendering; falls back to text-only if emojis don't render properly.
+    /// Gets the button text for a theme, with emoji and text fallback.
     /// </summary>
     private static string GetThemeButtonText(string themeName)
     {
@@ -1654,16 +1977,18 @@ public partial class MainForm
 
         return themeName switch
         {
-            _ when string.Equals(themeName, "Office2019Dark", StringComparison.OrdinalIgnoreCase) =>
-                useEmoji ? "☀️ Light" : "Light Mode",
             _ when string.Equals(themeName, "Office2019Colorful", StringComparison.OrdinalIgnoreCase) =>
-                useEmoji ? "🌙 Dark" : "Dark Mode",
-            _ when string.Equals(themeName, "Office2019Black", StringComparison.OrdinalIgnoreCase) =>
-                useEmoji ? "⬜ White" : "White Mode",
-            _ when string.Equals(themeName, "Office2019White", StringComparison.OrdinalIgnoreCase) =>
-                useEmoji ? "🌗 Gray" : "Gray Mode",
-            _ when string.Equals(themeName, "Office2019DarkGray", StringComparison.OrdinalIgnoreCase) =>
-                useEmoji ? "🎨 Color" : "Colorful Mode",
+                useEmoji ? "🎨 Office 2016" : "Office 2016",
+            _ when string.Equals(themeName, "Office2016Colorful", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "⬜ Office 2016 White" : "Office 2016 White",
+            _ when string.Equals(themeName, "Office2016White", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "🌗 Office 2016 Dark Gray" : "Office 2016 Dark Gray",
+            _ when string.Equals(themeName, "Office2016DarkGray", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "⬛ Office 2016 Black" : "Office 2016 Black",
+            _ when string.Equals(themeName, "Office2016Black", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "🌓 High Contrast" : "High Contrast",
+            _ when string.Equals(themeName, "HighContrastBlack", StringComparison.OrdinalIgnoreCase) =>
+                useEmoji ? "🎨 Office 2019" : "Office 2019",
             _ => useEmoji ? "⚙️ Theme" : "Theme"
         };
     }

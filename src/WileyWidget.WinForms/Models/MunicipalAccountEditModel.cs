@@ -15,7 +15,7 @@ namespace WileyWidget.WinForms.Models
             if (account != null)
             {
                 Id = account.Id;
-                AccountNumber = account.AccountNumber?.Value ?? string.Empty;
+                AccountNumber = account.AccountNumber?.DisplayValue ?? string.Empty;
                 Name = account.Name;
                 Description = account.FundDescription;
                 Type = account.Type;
@@ -80,7 +80,7 @@ namespace WileyWidget.WinForms.Models
             return new MunicipalAccountEditModel
             {
                 Id = account.Id,
-                AccountNumber = account.AccountNumber?.Value ?? string.Empty,
+                AccountNumber = account.AccountNumber?.DisplayValue ?? string.Empty,
                 Name = account.Name,
                 Description = account.FundDescription,
                 Type = account.Type,
@@ -102,10 +102,12 @@ namespace WileyWidget.WinForms.Models
                 throw new InvalidOperationException("DepartmentId must be set to a valid value before converting to entity. Please select a department.");
             }
 
+            var normalizedAccountNumber = WileyWidget.Models.AccountNumber.FormatDisplay(this.AccountNumber);
+
             return new MunicipalAccount
             {
                 Id = this.Id,
-                AccountNumber = new AccountNumber { Value = this.AccountNumber },
+                AccountNumber = new WileyWidget.Models.AccountNumber(normalizedAccountNumber),
                 Name = this.Name,
                 FundDescription = Description ?? string.Empty,
                 Type = this.Type,

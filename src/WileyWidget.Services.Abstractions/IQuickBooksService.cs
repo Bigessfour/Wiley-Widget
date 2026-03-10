@@ -76,6 +76,8 @@ namespace WileyWidget.Services.Abstractions
     public sealed record QuickBooksDiagnosticsResult(
         string Environment,
         string RedirectUri,
+        bool RedirectUriValid,
+        string RedirectUriGuidance,
         bool HasClientId,
         bool HasClientSecret,
         bool HasRealmId,

@@ -3,6 +3,9 @@ using Syncfusion.Windows.Forms.Tools;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace WileyWidget.WinForms.Services;
 
@@ -29,9 +32,19 @@ namespace WileyWidget.WinForms.Services;
 /// </remarks>
 public sealed class DpiAwareImageService : IDisposable
 {
+    private sealed record LoadedIcon(
+        string IconName,
+        Image BaseImage,
+        Image? Dpi120Image,
+        Image? Dpi144Image,
+        Image? Dpi192Image);
+
     private readonly ILogger<DpiAwareImageService> _logger;
     private readonly ImageListAdv _imageList;
     private readonly Dictionary<string, int> _iconNameToIndex = new();
+    private readonly object _iconLoadGate = new();
+    private List<LoadedIcon>? _preloadedIcons;
+    private int _iconPreloadQueued;
     private bool _disposed;
 
     /// <summary>
@@ -55,171 +68,212 @@ public sealed class DpiAwareImageService : IDisposable
 
         // [PERF] Do not load icons eagerly in constructor.
         // This avoids blocking the UI thread during startup (~200ms saved).
-        // Icons will be loaded on-demand via GetImage/GetImageIndex.
+        // Queue background preload and materialize on-demand via GetImage/GetImageIndex.
+        QueueIconPreload();
+    }
+
+    private void QueueIconPreload()
+    {
+        if (Interlocked.CompareExchange(ref _iconPreloadQueued, 1, 0) == 1)
+        {
+            return;
+        }
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var loadedIcons = BuildIconSet();
+                lock (_iconLoadGate)
+                {
+                    _preloadedIcons ??= loadedIcons;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "DPI-aware image service background preload failed; will fallback to on-demand load");
+            }
+        });
     }
 
     private void EnsureIconsLoaded()
     {
         if (_iconNameToIndex.Count > 0) return;
 
-        lock (_iconNameToIndex)
+        lock (_iconLoadGate)
         {
             if (_iconNameToIndex.Count > 0) return;
-            LoadIconsInternal();
+
+            if (_preloadedIcons is { Count: > 0 } preloaded)
+            {
+                ApplyLoadedIcons(preloaded);
+                _preloadedIcons = null;
+                return;
+            }
+
+            // Avoid blocking the active WinForms UI thread while preload is still in-flight.
+            if (IsOnUiThread() && Volatile.Read(ref _iconPreloadQueued) == 1)
+            {
+                return;
+            }
+
+            var loadedIcons = BuildIconSet();
+            ApplyLoadedIcons(loadedIcons);
         }
     }
 
-    private void LoadIconsInternal()
+    private static bool IsOnUiThread()
     {
-        try
+        return System.Windows.Forms.Application.MessageLoop
+               && SynchronizationContext.Current is System.Windows.Forms.WindowsFormsSynchronizationContext;
+    }
+
+    private List<LoadedIcon> BuildIconSet()
+    {
+        // Icon definitions with resource name mappings
+        // Maps icon keys to embedded resource names (without "flat.png" suffix)
+        var iconResourceMappings = new Dictionary<string, string>
         {
-            _logger.LogInformation("DPI-aware image service: performing deferred icon loading with parallel optimization...");
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            // File operations
+            ["save"] = "save",
+            ["open"] = "open",
+            ["export"] = "export",
+            ["import"] = "import",
+            ["print"] = "print",
 
-            // Icon definitions with resource name mappings
-            // Maps icon keys to embedded resource names (without "flat.png" suffix)
-            var iconResourceMappings = new Dictionary<string, string>
+            // Navigation
+            ["home"] = "home",
+            ["back"] = "back",
+            ["forward"] = "forward",
+            ["refresh"] = "reset",  // Use resetflat.png for refresh
+            ["reset"] = "reset",    // QAT reset button
+            ["pin"] = "pin",        // Need to add pinflat.png
+            ["pin_filled"] = "pin_filled", // Need to add pin_filledflat.png
+            ["close"] = "close",    // Need to add closeflat.png
+            ["lock"] = "lock",      // QAT lock button
+            ["undo"] = "undo",      // QAT undo button
+            ["redo"] = "redo",      // QAT redo button
+
+            // Data operations
+            ["add"] = "add",
+            ["edit"] = "edit",
+            ["delete"] = "delete",
+            ["search"] = "search",
+            ["filter"] = "filter",
+
+            // Dashboard and analytics
+            ["dashboard"] = "dashboard",
+            ["chart"] = "chart",
+            ["charts"] = "charts",
+            ["gauge"] = "gauge",
+            ["kpi"] = "kpi",
+            ["analytics"] = "analytics",
+            ["insights"] = "insights",
+            ["deptsummary"] = "deptsummary",
+            ["insightfeed"] = "insightfeed",
+
+            // Accounts and financial
+            ["accounts"] = "accounts",
+            ["budget"] = "budget",
+            ["budgetoverview"] = "budgetoverview",
+            // 'rates' reuses recommendedcharge icon to avoid missing resource; add a dedicated rates icon later
+            ["rates"] = "recommendedcharge",
+            ["customers"] = "customers",
+            ["utilitybill"] = "utilitybill",
+            ["revenuetrends"] = "revenuetrends",
+            ["recommendedcharge"] = "recommendedcharge",
+
+            // Reports and audit
+            ["report"] = "report",
+            ["reports"] = "reports",
+            ["pdf"] = "pdf",
+            ["excel"] = "excel",
+            ["audit"] = "audit",
+            ["auditlog"] = "auditlog",
+            ["activitylog"] = "activitylog",
+
+            // Settings and preferences
+            ["settings"] = "settings",
+            ["config"] = "config",
+            ["theme"] = "theme",
+
+            // Status indicators
+            ["success"] = "success",
+            ["warning"] = "warning",
+            ["error"] = "error",
+            ["info"] = "info",
+
+            // External integrations
+            ["quickbooks"] = "quickbooks",
+            ["jarvis"] = "jarvis",
+            ["sync"] = "sync",
+            ["warroom"] = "warroom",
+
+            // Utilities
+            ["calculator"] = "calculator",
+            ["calendar"] = "calendar",
+            ["email"] = "email",
+            ["help"] = "help"  // Need to add helpflat.png
+        };
+
+        return iconResourceMappings
+            .AsParallel()
+            .AsOrdered()
+            .Select(kvp =>
             {
-                // File operations
-                ["save"] = "save",
-                ["open"] = "open",
-                ["export"] = "export",
-                ["import"] = "import",
-                ["print"] = "print",
+                var iconName = kvp.Key;
+                var resourceBaseName = kvp.Value;
 
-                // Navigation
-                ["home"] = "home",
-                ["back"] = "back",
-                ["forward"] = "forward",
-                ["refresh"] = "reset",  // Use resetflat.png for refresh
-                ["reset"] = "reset",    // QAT reset button
-                ["pin"] = "pin",        // Need to add pinflat.png
-                ["pin_filled"] = "pin_filled", // Need to add pin_filledflat.png
-                ["close"] = "close",    // Need to add closeflat.png
-                ["lock"] = "lock",      // QAT lock button
-                ["undo"] = "undo",      // QAT undo button
-                ["redo"] = "redo",      // QAT redo button
+                // Try to load from embedded resources first
+                Image? baseImage = LoadEmbeddedIcon(resourceBaseName, 16);
+                if (baseImage == null)
+                {
+                    // Fallback to SystemIcons for missing resources
+                    _logger.LogWarning("Embedded icon not found: {ResourceName}, using SystemIcon fallback for {IconName}", resourceBaseName, iconName);
+                    baseImage = GetSystemIconFallback(iconName, 16);
+                }
 
-                // Data operations
-                ["add"] = "add",
-                ["edit"] = "edit",
-                ["delete"] = "delete",
-                ["search"] = "search",
-                ["filter"] = "filter",
+                // Create DPI variants by loading larger embedded resources or scaling
+                Image? dpi120Image = LoadEmbeddedIcon(resourceBaseName, 20) ?? ScaleImage(baseImage, 20);
+                Image? dpi144Image = LoadEmbeddedIcon(resourceBaseName, 24) ?? ScaleImage(baseImage, 24);
+                Image? dpi192Image = LoadEmbeddedIcon(resourceBaseName, 32) ?? ScaleImage(baseImage, 32);
 
-                // Dashboard and analytics
-                ["dashboard"] = "dashboard",
-                ["chart"] = "chart",
-                ["charts"] = "charts",
-                ["gauge"] = "gauge",
-                ["kpi"] = "kpi",
-                ["analytics"] = "analytics",
-                ["insights"] = "insights",
-                ["deptsummary"] = "deptsummary",
-                ["insightfeed"] = "insightfeed",
+                return new LoadedIcon(iconName, baseImage, dpi120Image, dpi144Image, dpi192Image);
+            })
+            .ToList();
+    }
 
-                // Accounts and financial
-                ["accounts"] = "accounts",
-                ["budget"] = "budget",
-                ["budgetoverview"] = "budgetoverview",
-                // 'rates' reuses recommendedcharge icon to avoid missing resource; add a dedicated rates icon later
-                ["rates"] = "recommendedcharge",
-                ["customers"] = "customers",
-                ["utilitybill"] = "utilitybill",
-                ["revenuetrends"] = "revenuetrends",
-                ["recommendedcharge"] = "recommendedcharge",
+    private void ApplyLoadedIcons(IReadOnlyList<LoadedIcon> loadedIcons)
+    {
+        if (loadedIcons.Count == 0)
+        {
+            return;
+        }
 
-                // Reports and audit
-                ["report"] = "report",
-                ["reports"] = "reports",
-                ["pdf"] = "pdf",
-                ["excel"] = "excel",
-                ["audit"] = "audit",
-                ["auditlog"] = "auditlog",
-                ["activitylog"] = "activitylog",
+        _logger.LogInformation("DPI-aware image service: applying {Count} preloaded icons", loadedIcons.Count);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-                // Settings and preferences
-                ["settings"] = "settings",
-                ["config"] = "config",
-                ["theme"] = "theme",
+        int index = 0;
+        foreach (var loadedIcon in loadedIcons)
+        {
+            _imageList.Images.Add(loadedIcon.IconName, loadedIcon.BaseImage);
 
-                // Status indicators
-                ["success"] = "success",
-                ["warning"] = "warning",
-                ["error"] = "error",
-                ["info"] = "info",
-
-                // External integrations
-                ["quickbooks"] = "quickbooks",
-                ["jarvis"] = "jarvis",
-                ["sync"] = "sync",
-                ["warroom"] = "warroom",
-
-                // Utilities
-                ["calculator"] = "calculator",
-                ["calendar"] = "calendar",
-                ["email"] = "email",
-                ["help"] = "help"  // Need to add helpflat.png
+            var dpiAwareImage = new DPIAwareImage
+            {
+                Index = index,
+                DPI120Image = loadedIcon.Dpi120Image,
+                DPI144Image = loadedIcon.Dpi144Image,
+                DPI192Image = loadedIcon.Dpi192Image
             };
+            _imageList.DPIImages.Add(dpiAwareImage);
 
-            // [PERF] Load icons with parallel optimization for faster startup
-            // Process icons in parallel to reduce load time (~30-40% faster on multi-core systems)
-            var iconLoadTasks = iconResourceMappings.Select(kvp =>
-            {
-                var (iconName, resourceBaseName) = (kvp.Key, kvp.Value);
-
-                // Load images on thread pool to avoid blocking UI thread
-                return Task.Run(() =>
-                {
-                    // Try to load from embedded resources first
-                    Image? baseImage = LoadEmbeddedIcon(resourceBaseName, 16);
-                    if (baseImage == null)
-                    {
-                        // Fallback to SystemIcons for missing resources
-                        _logger.LogWarning("Embedded icon not found: {ResourceName}, using SystemIcon fallback for {IconName}", resourceBaseName, iconName);
-                        baseImage = GetSystemIconFallback(iconName, 16);
-                    }
-
-                    // Create DPI variants by loading larger embedded resources or scaling
-                    Image? dpi120Image = LoadEmbeddedIcon(resourceBaseName, 20) ?? ScaleImage(baseImage, 20);
-                    Image? dpi144Image = LoadEmbeddedIcon(resourceBaseName, 24) ?? ScaleImage(baseImage, 24);
-                    Image? dpi192Image = LoadEmbeddedIcon(resourceBaseName, 32) ?? ScaleImage(baseImage, 32);
-
-                    return (iconName, baseImage, dpi120Image, dpi144Image, dpi192Image);
-                });
-            }).ToArray();
-
-            // Wait for all icons to load in parallel (blocking wait is acceptable here since we're in a lock)
-            Task.WaitAll(iconLoadTasks);
-
-            // Add loaded icons to ImageList sequentially (ImageList is not thread-safe)
-            int index = 0;
-            foreach (var task in iconLoadTasks)
-            {
-                var (iconName, baseImage, dpi120Image, dpi144Image, dpi192Image) = task.Result;
-                _imageList.Images.Add(iconName, baseImage);
-
-                var dpiAwareImage = new DPIAwareImage
-                {
-                    Index = index,
-                    DPI120Image = dpi120Image,
-                    DPI144Image = dpi144Image,
-                    DPI192Image = dpi192Image
-                };
-                _imageList.DPIImages.Add(dpiAwareImage);
-
-                _iconNameToIndex[iconName] = index;
-                index++;
-            }
-
-            stopwatch.Stop();
-            _logger.LogInformation("DPI-aware image service: loaded {Count} icons with parallel optimization in {Ms}ms (100%, 125%, 150%, 200% DPI)",
-                iconResourceMappings.Count, stopwatch.ElapsedMilliseconds);
+            _iconNameToIndex[loadedIcon.IconName] = index;
+            index++;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load icons for DPI-aware image service");
-        }
+
+        stopwatch.Stop();
+        _logger.LogInformation("DPI-aware image service: loaded {Count} icons in {Ms}ms (100%, 125%, 150%, 200% DPI)",
+            loadedIcons.Count, stopwatch.ElapsedMilliseconds);
     }
 
     /// <summary>
@@ -383,6 +437,12 @@ public sealed class DpiAwareImageService : IDisposable
             return _imageList.Images[index];
         }
 
+        // During background preload, return a lightweight fallback instead of blocking UI callers.
+        if (Volatile.Read(ref _iconPreloadQueued) == 1)
+        {
+            return GetSystemIconFallback(iconName, 16);
+        }
+
         _logger.LogWarning("Icon not found: {IconName}", iconName);
         return null;
     }
@@ -416,6 +476,11 @@ public sealed class DpiAwareImageService : IDisposable
 
         if (!_iconNameToIndex.TryGetValue(iconName, out int index))
         {
+            if (Volatile.Read(ref _iconPreloadQueued) == 1)
+            {
+                return new Bitmap(GetSystemIconFallback(iconName, Math.Max(targetSize.Width, targetSize.Height)), targetSize);
+            }
+
             _logger.LogWarning("Icon not found for scaled retrieval: {IconName}", iconName);
             return null;
         }

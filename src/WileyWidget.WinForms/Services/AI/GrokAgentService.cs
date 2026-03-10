@@ -14,11 +14,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using WileyWidget.Abstractions;
+using WileyWidget.Services.Plugins;
+using WileyWidget.Services.Plugins.Data;
+using ServicesCodebaseInsightPlugin = WileyWidget.Services.Plugins.Development.CodebaseInsightPlugin;
+using WileyWidget.Services.Plugins.Finance;
+using WileyWidget.Services.Plugins.System;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Services.AI.XAI;
@@ -41,23 +47,17 @@ namespace WileyWidget.WinForms.Services.AI
                 "[XAI] API key validation failed: {Message}");
 
         // API Key Retrieval Logging
-        private static readonly Action<ILogger, string, int, bool, Exception?> LogApiKeyRetrievedFromSource =
-            LoggerMessage.Define<string, int, bool>(
+        private static readonly Action<ILogger, string, int, Exception?> LogApiKeyRetrievedFromSource =
+            LoggerMessage.Define<string, int>(
                 LogLevel.Information,
                 new EventId(1002, nameof(LogApiKeyRetrievedFromSource)),
-                "[XAI] API key retrieved from {Source} (length: {Length}, validated: {IsValidated})");
+                "[XAI] API key retrieved from {Source} (length: {Length}, validation: startup-deferred)");
 
         private static readonly Action<ILogger, string, Exception?> LogApiKeyRetrievalFailed =
             LoggerMessage.Define<string>(
                 LogLevel.Warning,
                 new EventId(1003, nameof(LogApiKeyRetrievalFailed)),
                 "[XAI] API key retrieval failed: {Message}");
-
-        private static readonly Action<ILogger, string, int, Exception?> LogApiKeyPreview =
-            LoggerMessage.Define<string, int>(
-                LogLevel.Debug,
-                new EventId(1004, nameof(LogApiKeyPreview)),
-                "[XAI] API key preview: {Preview} (length {Length})");
 
         private static readonly Action<ILogger, string, Exception?> LogApiKeyNotFound =
             LoggerMessage.Define<string>(
@@ -96,14 +96,23 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly IConfiguration _config;
         private readonly IHttpClientFactory? _httpClientFactory;
         private readonly IChatBridgeService? _chatBridge;
+        private readonly IAILoggingService? _aiLoggingService;
         private readonly IJARVISPersonalityService? _jarvisPersonality;
         private readonly IServiceProvider? _serviceProvider;
         private readonly IMemoryCache? _memoryCache;
         private readonly double? _defaultPresencePenalty;
         private readonly double? _defaultFrequencyPenalty;
+        private readonly SemaphoreSlim _initializationGate = new(1, 1);
+        private static int _grokAgentInstanceCounter;
+        private readonly int _instanceNumber;
+        private readonly string _instanceId;
+        private int _initializeAsyncCallCount;
         private bool _isInitialized = false;
         private bool _initializationFailed = false;
-        private bool _skConnectorDisabled = false;  // Track if SK connector registration was disabled
+        private string? _lastInitializationFailureReason;
+        private DateTimeOffset? _lastInitializationFailureUtc;
+        private static readonly TimeSpan InitializationRetryCooldown = TimeSpan.FromSeconds(15);
+        private bool _skConnectorDisabled = false;  // Runtime failover state: disable SK path for this instance after repeated provider-level incompatibilities.
         private readonly CancellationTokenSource _serviceCts = new();
         private bool _disposed = false;
         private readonly bool _ownsHttpClient;
@@ -111,6 +120,20 @@ namespace WileyWidget.WinForms.Services.AI
         private readonly bool TestMode;  // Test mode flag for bypassing heavy initialization
         private const string ChatHistoryCacheKeyPrefix = "grok_chat_history_";
         private const int ChatHistoryCacheDurationMinutes = 30;
+        private const string UserMemoryContextCacheKeyPrefix = "grok_user_memory_context_";
+        private const int UserMemoryContextCacheDurationMinutes = 10;
+
+        private static readonly Regex NameFactRegex = new(
+            @"\b(?:my name is|i am|i'm)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+        private static readonly Regex EmailFactRegex = new(
+            @"\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b",
+            RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+        private static readonly Regex DepartmentFactRegex = new(
+            @"\b(?:my department is|i work in|i'm in)\s+([A-Za-z][A-Za-z\s&\-/]{2,60})",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
         private const string ResponsesEndpointSuffix = "responses";
         private const string ChatCompletionSuffix = "/chat/completions"; // Legacy, deprecated
@@ -129,10 +152,110 @@ namespace WileyWidget.WinForms.Services.AI
         internal static Func<EnvironmentVariableTarget, string?>? EnvironmentVariableGetterOverride { get; set; }
         private const string DefaultArchitectPrompt = "You are a senior Syncfusion WinForms architect. Enforce SfSkinManager theming rules and repository conventions: prefer SfSkinManager.LoadAssembly and SfSkinManager.SetVisualStyle, avoid manual BackColor/ForeColor assignments except for semantic status colors (Color.Red/Color.Green/Color.Orange), favor MVVM patterns and ThemeColors.ApplyTheme(this) on forms. Provide concise, actionable guidance and C# examples that follow the project's coding standards.";
 
-        private const string JarvisSystemPrompt = "You are JARVIS, the dry-witted, hyper-competent AI for municipal utility finance. Speak with confidence and slight British sarcasm. Be proactive: suggest scenarios, flag risks, roast bad budgets when asked. End bold recommendations with 'MORE COWBELL!' Never bland corporate speak.";
+        private const string JarvisSystemPrompt = "You are JARVIS, a highly competent AI assistant for the Town of Wiley municipal utility management system (Wiley Widget). You specialize in municipal finance, budget analysis, regulatory compliance, enterprise performance, and data insights. Provide clear, professional, and actionable answers. When external information, calculations, or current events are needed, use the available tools without hesitation.";
+
+        private static readonly Type[] PreferredServicePluginTypes =
+        {
+            typeof(DataReportingPlugin),
+            typeof(QuickBooksPlugin),
+            typeof(ServicesCodebaseInsightPlugin),
+            typeof(TimePlugin),
+            typeof(AnomalyDetectionPlugin)
+        };
 
         // Track response IDs for later retrieval and conversation continuation (per X.ai new Responses API)
         private readonly Dictionary<string, string> _conversationResponseIds = new();
+
+        private void RecordInitializationFailure(string reason)
+        {
+            _initializationFailed = true;
+            _lastInitializationFailureUtc = DateTimeOffset.UtcNow;
+            _lastInitializationFailureReason = reason;
+        }
+
+        private bool ShouldSkipRetryDuringCooldown()
+        {
+            if (!_initializationFailed || !_lastInitializationFailureUtc.HasValue)
+            {
+                return false;
+            }
+
+            var elapsed = DateTimeOffset.UtcNow - _lastInitializationFailureUtc.Value;
+            return elapsed < InitializationRetryCooldown;
+        }
+
+        private void ClearInitializationFailure()
+        {
+            _initializationFailed = false;
+            _lastInitializationFailureUtc = null;
+            _lastInitializationFailureReason = null;
+        }
+
+        private void RegisterKernelPlugins()
+        {
+            if (_kernel == null)
+            {
+                return;
+            }
+
+            var winFormsAssembly = typeof(GrokAgentService).Assembly;
+
+            _logger?.LogInformation("[XAI] Registering preferred service plugins: {Plugins}",
+                string.Join(", ", PreferredServicePluginTypes.Select(type => type.FullName)));
+
+            KernelPluginRegistrar.ImportPluginsFromTypes(_kernel, PreferredServicePluginTypes, _logger, _serviceProvider);
+
+            _logger?.LogDebug("[XAI] Scanning WinForms assembly for plugins: {Assembly}", winFormsAssembly.FullName);
+
+            var winFormsPluginTypes = winFormsAssembly.GetTypes()
+                .Where(type => type.IsClass && !type.IsAbstract)
+                .Where(type => type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                    .Any(method => method.GetCustomAttributes(inherit: true).Any(attribute => attribute.GetType().Name == "KernelFunctionAttribute")))
+                .ToList();
+
+            _logger?.LogInformation("[XAI] Discovered {Count} WinForms plugin types in assembly", winFormsPluginTypes.Count);
+            foreach (var pluginType in winFormsPluginTypes)
+            {
+                _logger?.LogDebug("[XAI]    → WinForms plugin discovered: {PluginType}", pluginType.FullName);
+            }
+
+            var csharpEvalPlugin = winFormsPluginTypes.FirstOrDefault(type => type.Name == "CSharpEvaluationPlugin");
+            if (csharpEvalPlugin != null)
+            {
+                _logger?.LogInformation("[XAI] CSharpEvaluationPlugin discovered - JARVIS will have C# evaluation capabilities");
+                var functions = csharpEvalPlugin.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(method => method.GetCustomAttributes(inherit: true).Any(attribute => attribute.GetType().Name == "KernelFunctionAttribute"))
+                    .Select(method => method.Name)
+                    .ToList();
+                _logger?.LogDebug("[XAI]    → CSharpEvaluationPlugin functions: {Functions}", string.Join(", ", functions));
+            }
+            else
+            {
+                _logger?.LogWarning("[XAI] CSharpEvaluationPlugin NOT discovered - JARVIS C# eval capabilities unavailable");
+            }
+
+            KernelPluginRegistrar.ImportPluginsFromAssemblies(_kernel, new[] { winFormsAssembly }, _logger, _serviceProvider);
+
+            _logger?.LogInformation("[XAI] Plugin registration complete - {Count} plugins registered", _kernel.Plugins.Count);
+            foreach (var plugin in _kernel.Plugins)
+            {
+                _logger?.LogDebug("[XAI]    ✓ Plugin registered: {PluginName} ({FunctionCount} functions)",
+                    plugin.Name,
+                    plugin.Count());
+            }
+
+            if (_kernel.Plugins.Any(plugin => plugin.Name == "CSharpEvaluationPlugin"))
+            {
+                var plugin = _kernel.Plugins.First(p => p.Name == "CSharpEvaluationPlugin");
+                var functionNames = plugin.Select(function => function.Name).ToList();
+                _logger?.LogInformation("[XAI] CSharpEvaluationPlugin registered successfully - Functions: {Functions}",
+                    string.Join(", ", functionNames));
+            }
+            else
+            {
+                _logger?.LogError("[XAI] CSharpEvaluationPlugin failed to register - JARVIS cannot evaluate C# code");
+            }
+        }
 
         public GrokAgentService(
             IGrokApiKeyProvider apiKeyProvider,  // ✅ NEW: Inject centralized provider first
@@ -143,10 +266,14 @@ namespace WileyWidget.WinForms.Services.AI
             IChatBridgeService? chatBridge = null,
             IServiceProvider? serviceProvider = null,
             IJARVISPersonalityService? jarvisPersonality = null,
-            IMemoryCache? memoryCache = null)
+            IMemoryCache? memoryCache = null,
+            IAILoggingService? aiLoggingService = null)
         {
             if (config == null) throw new ArgumentNullException(nameof(config), "[XAI] Configuration is required for GrokAgentService");
             if (apiKeyProvider == null) throw new ArgumentNullException(nameof(apiKeyProvider), "[XAI] IGrokApiKeyProvider is required for GrokAgentService");
+
+            _instanceNumber = Interlocked.Increment(ref _grokAgentInstanceCounter);
+            _instanceId = $"grok-{_instanceNumber:D2}";
 
             _apiKeyProvider = apiKeyProvider;  // ✅ Store provider reference
             _logger = logger;
@@ -154,13 +281,10 @@ namespace WileyWidget.WinForms.Services.AI
             _httpClientFactory = httpClientFactory;
             _modelDiscoveryService = modelDiscoveryService;
             _chatBridge = chatBridge;
+            _aiLoggingService = aiLoggingService;
             _serviceProvider = serviceProvider;
             _jarvisPersonality = jarvisPersonality;
             _memoryCache = memoryCache;
-
-            // Initialize test mode flag
-            TestMode = IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS")) ||
-                       IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_TESTS"));
 
             static bool IsTruthy(string? value) =>
                 !string.IsNullOrWhiteSpace(value) &&
@@ -168,6 +292,12 @@ namespace WileyWidget.WinForms.Services.AI
                  string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(value, "on", StringComparison.OrdinalIgnoreCase));
+
+            // Only bypass full Grok initialization for UI automation and headless UI harnesses.
+            // Unit tests set WILEYWIDGET_TESTS=true globally, but they still need real kernel/plugin initialization.
+            TestMode = IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS")) ||
+                       IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION")) ||
+                       IsTruthy(Environment.GetEnvironmentVariable("WILEY_TESTMODE"));
 
             // Load xAI tools configuration
             _toolConfiguration = LoadToolConfiguration(config, logger);
@@ -177,17 +307,7 @@ namespace WileyWidget.WinForms.Services.AI
             var source = apiKeyProvider.GetConfigurationSource();
             if (_logger != null)
             {
-                LogApiKeyRetrievedFromSource(_logger, source, _apiKey?.Length ?? 0, apiKeyProvider.IsValidated, null);
-            }
-
-            // Log API key preview (masked) for diagnostics
-            if (!string.IsNullOrWhiteSpace(_apiKey))
-            {
-                var preview = _apiKey.Length > 8 ? _apiKey.Substring(0, 4) + "..." + _apiKey.Substring(_apiKey.Length - 4) : _apiKey;
-                if (_logger != null)
-                {
-                    LogApiKeyPreview(_logger, preview, _apiKey.Length, null);
-                }
+                LogApiKeyRetrievedFromSource(_logger, source, _apiKey?.Length ?? 0, null);
             }
 
             _model = config["Grok:Model"] ?? config["XAI:Model"] ?? "grok-4-1-fast-reasoning";
@@ -217,32 +337,7 @@ namespace WileyWidget.WinForms.Services.AI
                 endpointStr = "https://api.x.ai/v1";
             }
 
-            // Validate endpoint URI
-            if (!Uri.TryCreate(endpointStr, UriKind.Absolute, out var _))
-            {
-                throw new ArgumentException($"[XAI] Invalid endpoint URI configured: {endpointStr}", nameof(config));
-            }
-
-            var baseEndpointCandidate = endpointStr.TrimEnd('/');
-            if (baseEndpointCandidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
-            {
-                baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - "/responses".Length);
-            }
-            if (baseEndpointCandidate.EndsWith(ChatCompletionSuffix, StringComparison.OrdinalIgnoreCase))
-            {
-                baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - ChatCompletionSuffix.Length);
-            }
-
-            baseEndpointCandidate = baseEndpointCandidate.TrimEnd('/');
-            var normalizedBase = baseEndpointCandidate + '/';
-
-            // Final validation
-            if (!Uri.TryCreate(normalizedBase, UriKind.Absolute, out var validatedBase))
-            {
-                throw new ArgumentException($"[XAI] Failed to construct valid endpoint URI from: {endpointStr}", nameof(config));
-            }
-
-            _baseEndpoint = validatedBase;
+            _baseEndpoint = NormalizeInferenceBaseEndpoint(endpointStr);
             // Use new /responses endpoint instead of deprecated /chat/completions
             _endpoint = new Uri(_baseEndpoint, ResponsesEndpointSuffix); // /v1/responses
 
@@ -284,8 +379,12 @@ namespace WileyWidget.WinForms.Services.AI
                 _logger?.LogWarning("[XAI] No API key available - Authorization header not configured");
             }
 
-            _logger?.LogDebug("[XAI] GrokAgentService instantiated - heavy Semantic Kernel initialization deferred to InitializeAsync()");
-            _logger?.LogInformation("[XAI] GrokAgentService constructed - API key present: {HasKey}, Model: {Model}", !string.IsNullOrWhiteSpace(_apiKey), _model);
+            _logger?.LogDebug("[XAI] GrokAgentService {InstanceId} instantiated - heavy Semantic Kernel initialization deferred to InitializeAsync()", _instanceId);
+            _logger?.LogInformation("[XAI] GrokAgentService constructed - InstanceId={InstanceId}, HashCode={HashCode}, API key present: {HasKey}, Model: {Model}",
+                _instanceId,
+                GetHashCode(),
+                !string.IsNullOrWhiteSpace(_apiKey),
+                _model);
         }
 
         /// <summary>
@@ -294,33 +393,74 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
+            var callId = Interlocked.Increment(ref _initializeAsyncCallCount);
+            var initStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            _logger?.LogInformation("[XAI][INIT] {InstanceId} call #{CallId} entered (thread={ThreadId}, initialized={Initialized}, failed={Failed}, testMode={TestMode})",
+                _instanceId,
+                callId,
+                Thread.CurrentThread.ManagedThreadId,
+                _isInitialized,
+                _initializationFailed,
+                TestMode);
+
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _serviceCts.Token);
             var ct = linkedCts.Token;
 
             if (_isInitialized)
             {
-                _logger?.LogDebug("[XAI] GrokAgentService already initialized");
+                _logger?.LogDebug("[XAI][INIT] {InstanceId} call #{CallId} skipped - already initialized", _instanceId, callId);
+                initStopwatch.Stop();
                 return;
             }
 
             if (_initializationFailed)
             {
-                _logger?.LogWarning("[XAI] GrokAgentService initialization previously failed, skipping");
-                return;
+                if (ShouldSkipRetryDuringCooldown())
+                {
+                    _logger?.LogWarning("[XAI][INIT] {InstanceId} call #{CallId} skipped - initialization failed recently (cooldown active)", _instanceId, callId);
+                    initStopwatch.Stop();
+                    return;
+                }
+
+                _logger?.LogInformation("[XAI][INIT] {InstanceId} call #{CallId} retrying after prior failure: {Reason}", _instanceId, callId, _lastInitializationFailureReason ?? "unspecified");
             }
+
+            _logger?.LogDebug("[XAI][INIT] {InstanceId} call #{CallId} waiting for initialization gate", _instanceId, callId);
+            var gateWaitStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            await _initializationGate.WaitAsync(ct).ConfigureAwait(false);
+            gateWaitStopwatch.Stop();
+            _logger?.LogDebug("[XAI][INIT] {InstanceId} call #{CallId} acquired initialization gate after {WaitMs}ms", _instanceId, callId, gateWaitStopwatch.ElapsedMilliseconds);
 
             // === TEST MODE BYPASS (eliminates ~1.7s delay in FLAUI runs) ===
-            if (TestMode)
-            {
-                _logger?.LogInformation("🔬 GrokAgentService skipped - TEST MODE");
-                _isInitialized = true;
-                _kernel = Kernel.CreateBuilder().Build(); // minimal empty kernel
-                return;
-            }
-
             try
             {
-                _logger?.LogDebug("[XAI] Beginning async initialization of Grok service");
+                if (_isInitialized)
+                {
+                    _logger?.LogDebug("[XAI][INIT] {InstanceId} call #{CallId} skipped post-lock - already initialized", _instanceId, callId);
+                    return;
+                }
+
+                if (_initializationFailed)
+                {
+                    if (ShouldSkipRetryDuringCooldown())
+                    {
+                        _logger?.LogWarning("[XAI][INIT] {InstanceId} call #{CallId} skipped post-lock - initialization failed recently (cooldown active)", _instanceId, callId);
+                        return;
+                    }
+
+                    _logger?.LogInformation("[XAI][INIT] {InstanceId} call #{CallId} retrying post-lock after prior failure: {Reason}", _instanceId, callId, _lastInitializationFailureReason ?? "unspecified");
+                }
+
+                // === TEST MODE BYPASS (eliminates ~1.7s delay in FLAUI runs) ===
+                if (TestMode)
+                {
+                    _logger?.LogInformation("🔬 GrokAgentService skipped - TEST MODE");
+                    _isInitialized = true;
+                    _kernel = Kernel.CreateBuilder().Build(); // minimal empty kernel
+                    return;
+                }
+
+                _logger?.LogDebug("[XAI][INIT] {InstanceId} call #{CallId} beginning async initialization", _instanceId, callId);
 
                 // Validate injected dependencies
                 if (_baseEndpoint == null || _endpoint == null)
@@ -333,13 +473,22 @@ namespace WileyWidget.WinForms.Services.AI
                 // Add API key validation before Semantic Kernel setup (with timeout)
                 try
                 {
-                    using var validationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    validationCts.CancelAfter(TimeSpan.FromSeconds(10)); // 10-second timeout for validation
-
                     _logger?.LogDebug("[XAI] 🔑 Starting API key validation with 10s timeout");
                     var validationStart = System.Diagnostics.Stopwatch.StartNew();
 
-                    var (success, message) = await _apiKeyProvider.ValidateAsync().ConfigureAwait(false);
+                    // Enforce an actual startup timeout regardless of provider-internal timeout.
+                    var validationTask = _apiKeyProvider.ValidateAsync();
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(10), ct);
+                    var completedTask = await Task.WhenAny(validationTask, timeoutTask).ConfigureAwait(false);
+
+                    if (completedTask != validationTask)
+                    {
+                        _logger?.LogWarning("[XAI] ⏱️ API key validation exceeded 10s startup budget - skipping Grok initialization for this startup pass");
+                        RecordInitializationFailure("API key validation exceeded startup budget");
+                        return;
+                    }
+
+                    var (success, message) = await validationTask.ConfigureAwait(false);
 
                     validationStart.Stop();
                     _logger?.LogDebug("[XAI] 🔑 API key validation completed in {ElapsedMs}ms", validationStart.ElapsedMilliseconds);
@@ -347,7 +496,7 @@ namespace WileyWidget.WinForms.Services.AI
                     if (!success)
                     {
                         _logger?.LogWarning("[XAI] ❌ API key validation failed: {Message}", message);
-                        _initializationFailed = true;
+                        RecordInitializationFailure($"API key validation failed: {message}");
                         // Don't throw - allow service to operate in degraded mode
                         return;
                     }
@@ -356,25 +505,25 @@ namespace WileyWidget.WinForms.Services.AI
                 catch (HttpRequestException hex) when (hex.InnerException is System.IO.IOException ioex)
                 {
                     _logger?.LogWarning(hex, "[XAI] 🔌❌ Socket error during API key validation - likely debugger interference. Inner: {InnerMsg}. Service will operate in degraded mode.", ioex.Message);
-                    _initializationFailed = true;
+                    RecordInitializationFailure($"Socket error during API key validation: {ioex.Message}");
                     return;
                 }
                 catch (TaskCanceledException tcex) when (!ct.IsCancellationRequested)
                 {
                     _logger?.LogWarning(tcex, "[XAI] ⏱️ API key validation timed out (10s) - check network connectivity");
-                    _initializationFailed = true;
+                    RecordInitializationFailure("API key validation timed out");
                     return;
                 }
                 catch (OperationCanceledException)
                 {
                     _logger?.LogWarning("[XAI] 🛑 API key validation cancelled");
-                    _initializationFailed = true;
+                    RecordInitializationFailure("API key validation cancelled");
                     return;
                 }
                 catch (Exception ex)
                 {
                     _logger?.LogError(ex, "[XAI] ❌ Unexpected error during API key validation: {ExceptionType}", ex.GetType().Name);
-                    _initializationFailed = true;
+                    RecordInitializationFailure($"Unexpected API key validation error: {ex.GetType().Name}");
                     return;
                 }
 
@@ -412,34 +561,28 @@ namespace WileyWidget.WinForms.Services.AI
 
                     var builder = Kernel.CreateBuilder();
 
-                    var disableSkConnector = bool.TryParse(_config["XAI:DisableSemanticKernelConnector"] ?? _config["Grok:DisableSemanticKernelConnector"], out var tmpDisable) && tmpDisable;
-                    _skConnectorDisabled = disableSkConnector;  // Store for runtime checks
-                    _logger?.LogInformation("[XAI] SK connector disabled flag set to: {Disabled}", _skConnectorDisabled);
-
-                    if (disableSkConnector)
+                    var disableSkConnectorRequested = bool.TryParse(_config["XAI:DisableSemanticKernelConnector"] ?? _config["Grok:DisableSemanticKernelConnector"], out var tmpDisable) && tmpDisable;
+                    _skConnectorDisabled = false;
+                    if (disableSkConnectorRequested)
                     {
-                        _logger?.LogInformation("[XAI] Semantic Kernel connector registration DISABLED via config - using HTTP-only mode with /v1/responses endpoint (xAI-native format)");
+                        _logger?.LogWarning("[XAI] DisableSemanticKernelConnector=true was requested in configuration but is ignored. Semantic Kernel connector is enforced ON.");
                     }
-                    else if (!string.IsNullOrWhiteSpace(_apiKey))
+
+                    if (!string.IsNullOrWhiteSpace(_apiKey))
                     {
                         try
                         {
-                            // Use the OpenAI-compatible connector to target xAI's Grok endpoint
-                            // Note: Semantic Kernel's OpenAI connector still uses /chat/completions format
-                            // For the new Responses API format, use direct HTTP calls via GetSimpleResponse or GetStreamingResponseAsync
-                            // The direct HTTP methods (GetSimpleResponse, GetStreamingResponseAsync) use the new /v1/responses endpoint
-                            // Add serviceId for better service identification and multi-model support
+                            // Use the OpenAI-compatible connector with the base inference endpoint.
+                            // The connector appends /chat/completions itself.
+                            // Direct HTTP methods in this service use /v1/responses.
                             var serviceId = $"grok-{_model}";
-                            _logger?.LogInformation("[XAI] Configuring Grok chat completion: model={Model}, endpoint={Endpoint}, serviceId={ServiceId}, apiKeyLength={KeyLength}",
-                                _model, _endpoint, serviceId, _apiKey.Length);
+                            _logger?.LogInformation("[XAI] Configuring Grok chat completion: model={Model}, skEndpoint={SkEndpoint}, responsesEndpoint={ResponsesEndpoint}, serviceId={ServiceId}, apiKeyLength={KeyLength}",
+                                _model, _baseEndpoint, _endpoint, serviceId, _apiKey.Length);
 #pragma warning disable SKEXP0010
-                            // NOTE: This uses /chat/completions format for Semantic Kernel compatibility.
-                            // New /v1/responses endpoint is used for direct HTTP calls (GetSimpleResponse, GetStreamingResponseAsync, etc.)
-                            var legacyEndpoint = new Uri(_baseEndpoint!, "chat/completions");
                             builder.AddOpenAIChatCompletion(
                                 modelId: _model,
                                 apiKey: _apiKey,
-                                endpoint: legacyEndpoint,
+                                endpoint: _baseEndpoint,
                                 serviceId: serviceId);
 #pragma warning restore SKEXP0010
                             _logger?.LogInformation("[XAI] Semantic Kernel configured with Grok chat completion successfully (serviceId: {ServiceId})", serviceId);
@@ -458,73 +601,15 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         _kernel = builder.Build() ?? throw new InvalidOperationException("[XAI] Failed to build Semantic Kernel instance");
 
-                        _logger?.LogInformation("[XAI] ✅ Semantic Kernel built successfully - beginning plugin discovery");
+                        _logger?.LogInformation("[XAI] Semantic Kernel built successfully - beginning plugin registration");
 
-                        // Auto-register kernel plugins discovered in the executing assembly (types with [KernelFunction]).
-                        // Keeping this scoped avoids scanning unrelated testhost/runtime assemblies.
-                        // Pass IServiceProvider to enable DI-aware plugin instantiation (fixes MissingMethodException for plugins with constructor dependencies)
                         try
                         {
-                            var assemblyToScan = typeof(GrokAgentService).Assembly;
-                            _logger?.LogDebug("[XAI] Scanning assembly for plugins: {Assembly}", assemblyToScan.FullName);
-
-                            // Discover plugin types before registration
-                            var pluginTypes = assemblyToScan.GetTypes()
-                                .Where(t => t.IsClass && !t.IsAbstract)
-                                .Where(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                                    .Any(m => m.GetCustomAttributes(inherit: true).Any(a => a.GetType().Name == "KernelFunctionAttribute")))
-                                .ToList();
-
-                            _logger?.LogInformation("[XAI] 🔍 Discovered {Count} plugin types in assembly", pluginTypes.Count);
-                            foreach (var pluginType in pluginTypes)
-                            {
-                                _logger?.LogDebug("[XAI]    → Plugin type discovered: {PluginType}", pluginType.FullName);
-                            }
-
-                            // Check specifically for CSharpEvaluationPlugin
-                            var csharpEvalPlugin = pluginTypes.FirstOrDefault(t => t.Name == "CSharpEvaluationPlugin");
-                            if (csharpEvalPlugin != null)
-                            {
-                                _logger?.LogInformation("[XAI] 🎯 CSharpEvaluationPlugin discovered - JARVIS will have C# evaluation capabilities");
-                                var functions = csharpEvalPlugin.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                                    .Where(m => m.GetCustomAttributes(inherit: true).Any(a => a.GetType().Name == "KernelFunctionAttribute"))
-                                    .Select(m => m.Name)
-                                    .ToList();
-                                _logger?.LogDebug("[XAI]    → CSharpEvaluationPlugin functions: {Functions}", string.Join(", ", functions));
-                            }
-                            else
-                            {
-                                _logger?.LogWarning("[XAI] ⚠️ CSharpEvaluationPlugin NOT discovered - JARVIS C# eval capabilities unavailable");
-                            }
-
-                            // Perform actual registration
-                            KernelPluginRegistrar.ImportPluginsFromAssemblies(_kernel, new[] { assemblyToScan }, _logger, _serviceProvider);
-
-                            // Verify registration
-                            _logger?.LogInformation("[XAI] ✅ Plugin registration complete - {Count} plugins registered", _kernel.Plugins.Count);
-                            foreach (var plugin in _kernel.Plugins)
-                            {
-                                _logger?.LogDebug("[XAI]    ✓ Plugin registered: {PluginName} ({FunctionCount} functions)",
-                                    plugin.Name, plugin.Count());
-                            }
-
-                            // Explicitly verify CSharpEvaluationPlugin registration
-                            var csharpEvalRegistered = _kernel.Plugins.Any(p => p.Name == "CSharpEvaluationPlugin");
-                            if (csharpEvalRegistered)
-                            {
-                                var plugin = _kernel.Plugins.First(p => p.Name == "CSharpEvaluationPlugin");
-                                var functionNames = plugin.Select(f => f.Name).ToList();
-                                _logger?.LogInformation("[XAI] ✅ CSharpEvaluationPlugin SUCCESSFULLY REGISTERED - Functions: {Functions}",
-                                    string.Join(", ", functionNames));
-                            }
-                            else
-                            {
-                                _logger?.LogError("[XAI] ❌ CSharpEvaluationPlugin FAILED TO REGISTER - JARVIS cannot evaluate C# code");
-                            }
+                            RegisterKernelPlugins();
                         }
                         catch (Exception ex)
                         {
-                            _logger?.LogError(ex, "[XAI] ❌ Failed to auto-register kernel plugins from executing assembly");
+                            _logger?.LogError(ex, "[XAI] Failed to register Semantic Kernel plugins");
                         }
                     }
                     catch (TypeInitializationException tiex)
@@ -551,14 +636,15 @@ namespace WileyWidget.WinForms.Services.AI
                 }, kernelBuildCts.Token).ConfigureAwait(false);
 
                 _isInitialized = true;
+                ClearInitializationFailure();
                 if (_kernel != null)
                 {
-                    _logger?.LogInformation("[XAI] Grok service async initialization complete - Semantic Kernel + plugins ready");
-                    _logger?.LogInformation("[XAI] GrokAgentService kernel initialized successfully - Plugins registered: {Count}", _kernel.Plugins.Count);
+                    _logger?.LogInformation("[XAI] Grok service async initialization complete - Semantic Kernel + plugins ready (InstanceId={InstanceId}, CallId={CallId})", _instanceId, callId);
+                    _logger?.LogInformation("[XAI] GrokAgentService kernel initialized successfully - Plugins registered: {Count} (InstanceId={InstanceId}, CallId={CallId})", _kernel.Plugins.Count, _instanceId, callId);
                 }
                 else
                 {
-                    _logger?.LogWarning("[XAI] Grok service async initialization complete - Operating in HTTP-only mode (Semantic Kernel unavailable)");
+                    _logger?.LogWarning("[XAI] Grok service async initialization complete - Operating in HTTP-only mode (Semantic Kernel unavailable, InstanceId={InstanceId}, CallId={CallId})", _instanceId, callId);
                 }
 
                 // Optional: run a quick validation if configured (with timeout)
@@ -587,15 +673,27 @@ namespace WileyWidget.WinForms.Services.AI
             }
             catch (OperationCanceledException)
             {
-                _initializationFailed = true;
-                _logger?.LogWarning("[XAI] GrokAgentService initialization canceled");
+                RecordInitializationFailure("Initialization canceled");
+                _logger?.LogWarning("[XAI][INIT] {InstanceId} call #{CallId} canceled", _instanceId, callId);
                 throw;
             }
             catch (Exception ex)
             {
-                _initializationFailed = true;
-                _logger?.LogError(ex, "[XAI] GrokAgentService initialization failed critically: {Message}", ex.Message);
+                RecordInitializationFailure($"Initialization failed: {ex.GetType().Name}");
+                _logger?.LogError(ex, "[XAI][INIT] {InstanceId} call #{CallId} failed critically: {Message}", _instanceId, callId, ex.Message);
                 throw;
+            }
+            finally
+            {
+                _initializationGate.Release();
+                initStopwatch.Stop();
+                _logger?.LogInformation("[XAI][INIT] {InstanceId} call #{CallId} exited in {ElapsedMs}ms (Initialized={Initialized}, Failed={Failed}, KernelReady={KernelReady})",
+                    _instanceId,
+                    callId,
+                    initStopwatch.ElapsedMilliseconds,
+                    _isInitialized,
+                    _initializationFailed,
+                    _kernel != null);
             }
         }
 
@@ -711,7 +809,7 @@ namespace WileyWidget.WinForms.Services.AI
             sb.AppendLine($"   Initialized: {_isInitialized}");
             sb.AppendLine($"   Initialization Failed: {_initializationFailed}");
             sb.AppendLine($"   Kernel Instance: {(_kernel != null ? "Available" : "Null")}");
-            sb.AppendLine($"   SK Connector Disabled: {_skConnectorDisabled}");
+            sb.AppendLine($"   SK Connector Disabled: {_skConnectorDisabled} (runtime failover state)");
             sb.AppendLine();
 
             if (_kernel != null && _isInitialized)
@@ -840,7 +938,7 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     _logger?.LogWarning("Grok chat/completions API returned non-success status: {Status}", resp.StatusCode);
                     var body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                    return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
+                    return $"Grok API error {(int)resp.StatusCode} ({resp.StatusCode}): {FormatProviderError(body)}";
                 }
 
                 // Read streaming response chunks (SSE format: "data: {json}\n\n")
@@ -1029,28 +1127,26 @@ namespace WileyWidget.WinForms.Services.AI
                         _logger?.LogDebug("GetSimpleResponse: failed to parse error JSON for diagnostics");
                     }
 
-                    return $"Grok API returned HTTP {(int)resp.StatusCode} ({resp.StatusCode}): {body}";
+                    return $"Grok API returned HTTP {(int)resp.StatusCode} ({resp.StatusCode}): {FormatProviderError(body)}";
                 }
 
                 var respStr = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                 try
                 {
                     using var doc = JsonDocument.Parse(respStr);
-                    // New responses API format: output[0].content[0].text instead of choices[0].message.content
-                    var output = doc.RootElement.GetProperty("output");
-                    if (output.ValueKind == JsonValueKind.Array && output.GetArrayLength() > 0)
+                    LogToolExecution(userMessage, "ResponsesApi", ExtractToolCallNames(doc.RootElement));
+                    var text = TryExtractResponsesText(doc.RootElement);
+                    if (!string.IsNullOrWhiteSpace(text))
                     {
-                        var firstOutput = output[0];
-                        if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
-                        {
-                            var firstContent = contentArray[0];
-                            if (firstContent.TryGetProperty("text", out var textElem))
-                            {
-                                var text = textElem.GetString();
-                                return text ?? "No content";
-                            }
-                        }
+                        return text;
                     }
+
+                    if (TryExtractPendingToolCallSummary(doc.RootElement, out var pendingToolCallSummary))
+                    {
+                        _logger?.LogWarning("[XAI] /responses returned pending tool calls without final text: {Summary}", pendingToolCallSummary);
+                        return pendingToolCallSummary;
+                    }
+
                     // Fallback for unexpected structure
                     return $"Unexpected response structure: {respStr.Substring(0, Math.Min(500, respStr.Length))}";
                 }
@@ -1167,35 +1263,20 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 using var doc = JsonDocument.Parse(respBody);
-                // New responses API format: output[0].content[0].text instead of choices[0].message.content
-                var output = doc.RootElement.GetProperty("output");
-                if (output.ValueKind == JsonValueKind.Array && output.GetArrayLength() > 0)
+                var text = TryExtractResponsesText(doc.RootElement);
+                if (!string.IsNullOrWhiteSpace(text))
                 {
-                    var firstOutput = output[0];
-                    if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
+                    var lower = text.ToLowerInvariant();
+                    if (lower.Contains("hi", StringComparison.Ordinal) && lower.Contains("hello world", StringComparison.Ordinal))
                     {
-                        var firstContent = contentArray[0];
-                        if (firstContent.TryGetProperty("text", out var textElem))
-                        {
-                            var text = textElem.GetString();
-                            if (!string.IsNullOrWhiteSpace(text))
-                            {
-                                var lower = text.ToLowerInvariant();
-                                if (lower.Contains("hi", StringComparison.Ordinal) && lower.Contains("hello world", StringComparison.Ordinal))
-                                {
-                                    _isApiKeyValidated = true;
-                                    _lastApiKeyValidation = DateTime.UtcNow;
-                                    _logger?.LogInformation("ValidateApiKeyAsync succeeded with response preview: {Preview}", text.Substring(0, Math.Min(200, text.Length)));
-                                    return (true, text);
-                                }
-                                else
-                                {
-                                    _logger?.LogWarning("ValidateApiKeyAsync: Response did not match expected text: {Resp}", text);
-                                    return (false, text);
-                                }
-                            }
-                        }
+                        _isApiKeyValidated = true;
+                        _lastApiKeyValidation = DateTime.UtcNow;
+                        _logger?.LogInformation("ValidateApiKeyAsync succeeded with response preview: {Preview}", text.Substring(0, Math.Min(200, text.Length)));
+                        return (true, text);
                     }
+
+                    _logger?.LogWarning("ValidateApiKeyAsync: Response did not match expected text: {Resp}", text);
+                    return (false, text);
                 }
 
                 _logger?.LogWarning("ValidateApiKeyAsync: Response had no content: {Resp}", respBody);
@@ -1338,21 +1419,10 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 using var doc = JsonDocument.Parse(body);
-                // Extract text from output array
-                if (doc.RootElement.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
+                var text = TryExtractResponsesText(doc.RootElement);
+                if (!string.IsNullOrWhiteSpace(text))
                 {
-                    if (output.GetArrayLength() > 0)
-                    {
-                        var firstOutput = output[0];
-                        if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
-                        {
-                            var firstContent = contentArray[0];
-                            if (firstContent.TryGetProperty("text", out var textElem))
-                            {
-                                return textElem.GetString();
-                            }
-                        }
-                    }
+                    return text;
                 }
 
                 _logger?.LogWarning("[XAI] GetResponseByIdAsync: unexpected response structure");
@@ -1477,18 +1547,10 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 // Extract text from output array
-                var output = doc.RootElement.GetProperty("output");
-                if (output.ValueKind == JsonValueKind.Array && output.GetArrayLength() > 0)
+                var text = TryExtractResponsesText(doc.RootElement);
+                if (!string.IsNullOrWhiteSpace(text))
                 {
-                    var firstOutput = output[0];
-                    if (firstOutput.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array && contentArray.GetArrayLength() > 0)
-                    {
-                        var firstContent = contentArray[0];
-                        if (firstContent.TryGetProperty("text", out var textElem))
-                        {
-                            return textElem.GetString() ?? "No content";
-                        }
-                    }
+                    return text;
                 }
 
                 return $"Unexpected response structure: {respStr.Substring(0, Math.Min(500, respStr.Length))}";
@@ -1552,6 +1614,12 @@ namespace WileyWidget.WinForms.Services.AI
             try
             {
                 using var doc = JsonDocument.Parse(payload);
+                var responsesText = TryExtractResponsesText(doc.RootElement);
+                if (!string.IsNullOrWhiteSpace(responsesText))
+                {
+                    return responsesText;
+                }
+
                 if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array && choices.GetArrayLength() > 0)
                 {
                     var first = choices[0];
@@ -1599,6 +1667,8 @@ namespace WileyWidget.WinForms.Services.AI
                 if (_defaultFrequencyPenalty.HasValue) payload["frequency_penalty"] = _defaultFrequencyPenalty.Value;
             }
 
+            AddConfiguredToolsToPayload(payload, "chat/completions");
+
             return payload;
         }
 
@@ -1616,27 +1686,178 @@ namespace WileyWidget.WinForms.Services.AI
 
             if (temperature.HasValue) payload["temperature"] = temperature.Value;
 
-            // Only include presence/frequency penalties for non-reasoning models
-            if (!IsReasoningModel(model))
+            AddConfiguredToolsToPayload(payload, "responses");
+
+            return payload;
+        }
+
+        private void AddConfiguredToolsToPayload(Dictionary<string, object?> payload, string endpointName)
+        {
+            if (_toolConfiguration?.Enabled != true)
             {
-                if (_defaultPresencePenalty.HasValue) payload["presence_penalty"] = _defaultPresencePenalty.Value;
-                if (_defaultFrequencyPenalty.HasValue) payload["frequency_penalty"] = _defaultFrequencyPenalty.Value;
+                return;
             }
 
-            // Add xAI built-in tools if configured
-            if (_toolConfiguration?.Enabled == true)
+            var tools = string.Equals(endpointName, "responses", StringComparison.OrdinalIgnoreCase)
+                ? XAIBuiltInTools.CreateToolDefinitionsForResponses(_toolConfiguration)
+                : XAIBuiltInTools.CreateToolDefinitions(_toolConfiguration);
+
+            if (tools.Count == 0)
             {
-                var tools = XAIBuiltInTools.CreateToolDefinitions(_toolConfiguration);
-                if (tools.Count > 0)
+                return;
+            }
+
+            payload["tools"] = tools;
+            payload["tool_choice"] = "auto";
+
+            var toolNames = tools
+                .Select(static tool =>
                 {
-                    payload["tools"] = tools;
-                    _logger?.LogInformation("[XAI] Added {Count} built-in tools to request: {Tools}",
-                        tools.Count,
-                        string.Join(", ", tools.Select(t => ((Dictionary<string, object>)((Dictionary<string, object>)t)["function"])["name"])));
+                    if (tool is Dictionary<string, object> toolDict &&
+                        toolDict.TryGetValue("type", out var typeObj) &&
+                        typeObj is string typeName &&
+                        !string.Equals(typeName, "function", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return typeName;
+                    }
+
+                    if (tool is Dictionary<string, object> toolDict0 &&
+                        toolDict0.TryGetValue("name", out var flatNameObj))
+                    {
+                        return flatNameObj?.ToString();
+                    }
+
+                    if (tool is Dictionary<string, object> toolDict2 &&
+                        toolDict2.TryGetValue("function", out var functionObj) &&
+                        functionObj is Dictionary<string, object> functionDict &&
+                        functionDict.TryGetValue("name", out var nameObj))
+                    {
+                        return nameObj?.ToString();
+                    }
+
+                    return null;
+                })
+                .Where(static name => !string.IsNullOrWhiteSpace(name));
+
+            _logger?.LogInformation("[XAI] Added {Count} built-in tools to {Endpoint} request: {Tools}",
+                tools.Count,
+                endpointName,
+                string.Join(", ", toolNames));
+        }
+
+        private void LogToolExecution(string query, string source, IEnumerable<string?> toolNames)
+        {
+            var normalizedTools = toolNames
+                .Where(static name => !string.IsNullOrWhiteSpace(name))
+                .Select(static name => name!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (normalizedTools.Length == 0)
+            {
+                return;
+            }
+
+            _aiLoggingService?.LogToolExecution(query, source, normalizedTools);
+        }
+
+        private static IReadOnlyList<string> ExtractToolCallNames(JsonElement root)
+        {
+            var toolCallNames = new List<string>();
+
+            if (root.TryGetProperty("output", out var outputArray) && outputArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var outputItem in outputArray.EnumerateArray())
+                {
+                    if (!outputItem.TryGetProperty("type", out var typeElem) || typeElem.ValueKind != JsonValueKind.String)
+                    {
+                        continue;
+                    }
+
+                    var itemType = typeElem.GetString();
+                    if (string.IsNullOrWhiteSpace(itemType) ||
+                        !itemType.EndsWith("_call", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(itemType, "function_call", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var name = outputItem.TryGetProperty("name", out var nameElem) && nameElem.ValueKind == JsonValueKind.String
+                        ? nameElem.GetString()
+                        : itemType;
+
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        toolCallNames.Add(name!);
+                    }
                 }
             }
 
-            return payload;
+            return toolCallNames;
+        }
+
+        private static string? TryExtractResponsesText(JsonElement root)
+        {
+            if (root.TryGetProperty("output_text", out var outputText) &&
+                outputText.ValueKind == JsonValueKind.String)
+            {
+                var directText = outputText.GetString();
+                if (!string.IsNullOrWhiteSpace(directText))
+                {
+                    return directText;
+                }
+            }
+
+            if (!root.TryGetProperty("output", out var outputArray) || outputArray.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var responseBuilder = new StringBuilder();
+
+            foreach (var outputItem in outputArray.EnumerateArray())
+            {
+                if (outputItem.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var contentItem in contentArray.EnumerateArray())
+                    {
+                        if (contentItem.TryGetProperty("text", out var textElem) && textElem.ValueKind == JsonValueKind.String)
+                        {
+                            var text = textElem.GetString();
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                responseBuilder.Append(text);
+                            }
+                        }
+                    }
+                }
+
+                if (outputItem.TryGetProperty("text", out var itemText) && itemText.ValueKind == JsonValueKind.String)
+                {
+                    var text = itemText.GetString();
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        responseBuilder.Append(text);
+                    }
+                }
+            }
+
+            var combined = responseBuilder.ToString();
+            return string.IsNullOrWhiteSpace(combined) ? null : combined;
+        }
+
+        private static bool TryExtractPendingToolCallSummary(JsonElement root, out string summary)
+        {
+            var toolCallNames = ExtractToolCallNames(root);
+
+            if (toolCallNames.Count == 0)
+            {
+                summary = string.Empty;
+                return false;
+            }
+
+            summary = $"Pending tool call(s) returned without final assistant text: {string.Join(", ", toolCallNames.Distinct(StringComparer.OrdinalIgnoreCase))}";
+            return true;
         }
 
         /// <summary>
@@ -1688,6 +1909,12 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 _logger?.LogInformation("[XAI] RunAgentToChatBridgeAsync invoked - User request length: {Length}, ConversationId: {ConversationId}", userRequest.Length, conversationId ?? "N/A");
 
+                var (userId, userDisplayName) = ResolveCurrentUserContext();
+                var scopedConversationId = CreateUserScopedConversationId(conversationId, userId);
+                var baseSystemPrompt = _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt;
+                var userMemoryContext = await BuildUserMemoryContextPromptAsync(userId, ct).ConfigureAwait(false);
+                var systemPrompt = BuildUserAwareSystemPrompt(baseSystemPrompt, userDisplayName, userMemoryContext);
+
                 // Use Semantic Kernel's native streaming with FunctionChoiceBehavior.Auto() (Microsoft Docs recommended pattern)
                 var chatService = _kernel.GetRequiredService<IChatCompletionService>();
 
@@ -1707,9 +1934,9 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 // Load existing conversation history if provided
-                var systemPrompt = _jarvisPersonality?.GetSystemPrompt() ?? JarvisSystemPrompt;
-                var history = await LoadChatHistoryAsync(conversationId, systemPrompt).ConfigureAwait(false);
+                var history = await LoadChatHistoryAsync(scopedConversationId, systemPrompt, ct).ConfigureAwait(false);
                 history.AddUserMessage(userRequest);
+                await ExtractAndStoreUserFactsAsync(userId, scopedConversationId, userRequest, ct).ConfigureAwait(false);
 
                 _logger?.LogDebug("[XAI] Invoking streaming chat with ToolCallBehavior.AutoInvokeKernelFunctions - Plugins: {Count}", _kernel.Plugins.Count);
 
@@ -1734,6 +1961,7 @@ namespace WileyWidget.WinForms.Services.AI
                     if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
                     {
                         _logger?.LogInformation("[XAI] Function called: {FunctionCall}", functionCall);
+                        LogToolExecution(userRequest, "SemanticKernel", new[] { functionCall?.ToString() });
                     }
                 }
 
@@ -1747,9 +1975,9 @@ namespace WileyWidget.WinForms.Services.AI
 
                 // Add assistant response and persist history
                 history.AddAssistantMessage(fullMsg);
-                if (!string.IsNullOrEmpty(conversationId))
+                if (!string.IsNullOrEmpty(scopedConversationId))
                 {
-                    await SaveChatHistoryAsync(conversationId, history).ConfigureAwait(false);
+                    await SaveChatHistoryAsync(scopedConversationId, history, ct).ConfigureAwait(false);
                 }
 
                 // Notify that the full message is received
@@ -1817,9 +2045,16 @@ namespace WileyWidget.WinForms.Services.AI
                 return await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
             }
 
+            var effectiveSystemPrompt = systemPrompt;
+
             try
             {
                 _logger?.LogInformation("[XAI] RunAgentAsync invoked - User request length: {Length}, ConversationId: {ConversationId}", userRequest.Length, conversationId ?? "N/A");
+
+                var (userId, userDisplayName) = ResolveCurrentUserContext();
+                var scopedConversationId = CreateUserScopedConversationId(conversationId, userId);
+                var userMemoryContext = await BuildUserMemoryContextPromptAsync(userId, cancellationToken).ConfigureAwait(false);
+                effectiveSystemPrompt = BuildUserAwareSystemPrompt(systemPrompt, userDisplayName, userMemoryContext);
 
                 // Use Semantic Kernel's native streaming with FunctionChoiceBehavior.Auto() (Microsoft Docs recommended pattern)
                 var chatService = _kernel.GetRequiredService<IChatCompletionService>();
@@ -1840,8 +2075,9 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 // Load existing conversation history if provided
-                var history = await LoadChatHistoryAsync(conversationId, systemPrompt).ConfigureAwait(false);
+                var history = await LoadChatHistoryAsync(scopedConversationId, effectiveSystemPrompt, cancellationToken).ConfigureAwait(false);
                 history.AddUserMessage(userRequest);
+                await ExtractAndStoreUserFactsAsync(userId, scopedConversationId, userRequest, cancellationToken).ConfigureAwait(false);
 
                 _logger?.LogDebug("[XAI] Invoking streaming chat with ToolCallBehavior.AutoInvokeKernelFunctions - Plugins: {Count}", _kernel.Plugins.Count);
 
@@ -1863,6 +2099,7 @@ namespace WileyWidget.WinForms.Services.AI
                     if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
                     {
                         _logger?.LogInformation("[XAI] Function called: {FunctionCall}", functionCall);
+                        LogToolExecution(userRequest, "SemanticKernel", new[] { functionCall?.ToString() });
                     }
                 }
 
@@ -1871,14 +2108,14 @@ namespace WileyWidget.WinForms.Services.AI
                 if (string.IsNullOrWhiteSpace(result))
                 {
                     _logger?.LogWarning("[XAI] Empty response from streaming chat; attempting fallback");
-                    return await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
+                    return await GetSimpleResponse(userRequest, effectiveSystemPrompt).ConfigureAwait(false);
                 }
 
                 // Add assistant response and persist history
                 history.AddAssistantMessage(result);
-                if (!string.IsNullOrEmpty(conversationId))
+                if (!string.IsNullOrEmpty(scopedConversationId))
                 {
-                    await SaveChatHistoryAsync(conversationId, history).ConfigureAwait(false);
+                    await SaveChatHistoryAsync(scopedConversationId, history, cancellationToken).ConfigureAwait(false);
                 }
 
                 _logger?.LogInformation("[XAI] RunAgentAsync completed via Semantic Kernel streaming - Response length: {Length}", result.Length);
@@ -1894,7 +2131,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _logger?.LogWarning(ex, "[XAI] Semantic Kernel streaming failed; attempting fallback to simple HTTP chat");
                 try
                 {
-                    var fallback = await GetSimpleResponse(userRequest, systemPrompt).ConfigureAwait(false);
+                    var fallback = await GetSimpleResponse(userRequest, effectiveSystemPrompt).ConfigureAwait(false);
                     _logger?.LogInformation("[XAI] RunAgentAsync completed via fallback - Response length: {Length}", fallback?.Length ?? 0);
                     return fallback ?? $"Grok streaming failed: {ex.Message}";
                 }
@@ -1902,6 +2139,213 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     _logger?.LogError(fallbackEx, "[XAI] Both Semantic Kernel and fallback failed");
                     return $"Grok agent error: {ex.Message}";
+                }
+            }
+        }
+
+        private (string? UserId, string? DisplayName) ResolveCurrentUserContext()
+        {
+            try
+            {
+                using var scope = _serviceProvider?.CreateScope();
+                var userContext = scope != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IUserContext>(scope.ServiceProvider)
+                    : null;
+
+                return (userContext?.UserId, userContext?.DisplayName);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "[XAI] Failed to resolve IUserContext. Proceeding with anonymous user context.");
+                return (null, null);
+            }
+        }
+
+        private static string? CreateUserScopedConversationId(string? conversationId, string? userId)
+        {
+            if (string.IsNullOrWhiteSpace(conversationId))
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return conversationId;
+            }
+
+            return $"{userId}::{conversationId}";
+        }
+
+        private static string BuildUserAwareSystemPrompt(string basePrompt, string? userDisplayName, string? memoryContext)
+        {
+            if (string.IsNullOrWhiteSpace(userDisplayName) && string.IsNullOrWhiteSpace(memoryContext))
+            {
+                return basePrompt;
+            }
+
+            var builder = new StringBuilder(basePrompt);
+
+            if (!string.IsNullOrWhiteSpace(userDisplayName))
+            {
+                builder.AppendLine();
+                builder.AppendLine();
+                builder.Append("Authenticated user: ").Append(userDisplayName).Append('.');
+            }
+
+            if (!string.IsNullOrWhiteSpace(memoryContext))
+            {
+                builder.AppendLine();
+                builder.AppendLine();
+                builder.AppendLine("Known user facts:");
+                builder.Append(memoryContext);
+                builder.AppendLine();
+                builder.AppendLine("Use these facts as helpful context, but never claim certainty when confidence is low.");
+            }
+
+            return builder.ToString();
+        }
+
+        private async Task<string?> BuildUserMemoryContextPromptAsync(string? userId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return null;
+            }
+
+            var cacheKey = $"{UserMemoryContextCacheKeyPrefix}{userId}";
+            if (_memoryCache != null && _memoryCache.TryGetValue(cacheKey, out string? cachedPromptContext))
+            {
+                if (!string.IsNullOrWhiteSpace(cachedPromptContext))
+                {
+                    return cachedPromptContext;
+                }
+            }
+
+            using var scope = _serviceProvider?.CreateScope();
+            var memoryRepo = scope != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IUserMemoryRepository>(scope.ServiceProvider)
+                : null;
+
+            if (memoryRepo == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var facts = await memoryRepo.GetFactsForUserAsync(userId, take: 8, cancellationToken).ConfigureAwait(false);
+                if (facts.Count == 0)
+                {
+                    return null;
+                }
+
+                var contextBuilder = new StringBuilder();
+                foreach (var fact in facts)
+                {
+                    contextBuilder
+                        .Append("- ")
+                        .Append(fact.FactKey)
+                        .Append(": ")
+                        .Append(fact.FactValue)
+                        .Append(" (confidence ")
+                        .Append(fact.Confidence.ToString("0.00", CultureInfo.InvariantCulture))
+                        .AppendLine(")");
+                }
+
+                var result = contextBuilder.ToString().TrimEnd();
+                if (!string.IsNullOrWhiteSpace(result) && _memoryCache != null)
+                {
+                    _memoryCache.Set(cacheKey, result, TimeSpan.FromMinutes(UserMemoryContextCacheDurationMinutes));
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[XAI] Failed to build user memory context for {UserId}", userId);
+                return null;
+            }
+        }
+
+        private async Task ExtractAndStoreUserFactsAsync(string? userId, string? conversationId, string userMessage, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(userMessage))
+            {
+                return;
+            }
+
+            using var scope = _serviceProvider?.CreateScope();
+            var memoryRepo = scope != null
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IUserMemoryRepository>(scope.ServiceProvider)
+                : null;
+
+            if (memoryRepo == null)
+            {
+                return;
+            }
+
+            foreach (var fact in ExtractMemoryFactsFromMessage(userMessage))
+            {
+                try
+                {
+                    var entity = new UserMemoryFact
+                    {
+                        UserId = userId,
+                        FactKey = fact.Key,
+                        FactValue = fact.Value,
+                        Confidence = fact.Confidence,
+                        SourceConversationId = conversationId
+                    };
+
+                    await memoryRepo.UpsertFactAsync(entity, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "[XAI] Failed to upsert user memory fact {FactKey} for {UserId}", fact.Key, userId);
+                }
+            }
+
+            if (_memoryCache != null)
+            {
+                _memoryCache.Remove($"{UserMemoryContextCacheKeyPrefix}{userId}");
+            }
+        }
+
+        private static IEnumerable<(string Key, string Value, double Confidence)> ExtractMemoryFactsFromMessage(string userMessage)
+        {
+            var message = userMessage.Trim();
+            if (message.Length == 0)
+            {
+                yield break;
+            }
+
+            var nameMatch = NameFactRegex.Match(message);
+            if (nameMatch.Success)
+            {
+                var nameValue = nameMatch.Groups[1].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(nameValue))
+                {
+                    yield return ("PreferredName", nameValue, 0.85);
+                }
+            }
+
+            var emailMatch = EmailFactRegex.Match(message);
+            if (emailMatch.Success)
+            {
+                var emailValue = emailMatch.Groups[1].Value.Trim();
+                if (!string.IsNullOrWhiteSpace(emailValue))
+                {
+                    yield return ("Email", emailValue, 0.95);
+                }
+            }
+
+            var departmentMatch = DepartmentFactRegex.Match(message);
+            if (departmentMatch.Success)
+            {
+                var departmentValue = departmentMatch.Groups[1].Value.Trim().TrimEnd('.', '!', '?');
+                if (!string.IsNullOrWhiteSpace(departmentValue))
+                {
+                    yield return ("Department", departmentValue, 0.8);
                 }
             }
         }
@@ -1935,7 +2379,16 @@ namespace WileyWidget.WinForms.Services.AI
                 var repo = scope != null ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IConversationRepository>(scope.ServiceProvider) : null;
                 if (repo == null) return history;
 
-                var conversationObj = await repo.GetConversationAsync(conversationId).ConfigureAwait(false);
+                var conversationObj = await repo.GetConversationAsync(conversationId, cancellationToken).ConfigureAwait(false);
+                if (conversationObj is not ConversationHistory && conversationId.Contains("::", StringComparison.Ordinal))
+                {
+                    var legacyConversationId = conversationId.Split(new[] { "::" }, 2, StringSplitOptions.None).LastOrDefault();
+                    if (!string.IsNullOrWhiteSpace(legacyConversationId))
+                    {
+                        conversationObj = await repo.GetConversationAsync(legacyConversationId, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
                 if (conversationObj is ConversationHistory legacyHistory && !string.IsNullOrWhiteSpace(legacyHistory.MessagesJson))
                 {
                     var messages = JsonSerializer.Deserialize<List<PersistentChatMessage>>(legacyHistory.MessagesJson);
@@ -2005,7 +2458,7 @@ namespace WileyWidget.WinForms.Services.AI
                     Title = history.LastOrDefault(m => m.Role == AuthorRole.User)?.Content?.Substring(0, Math.Min(50, history.LastOrDefault(m => m.Role == AuthorRole.User)?.Content?.Length ?? 0)) ?? "Chat Session"
                 };
 
-                await repo.SaveConversationAsync(conversation).ConfigureAwait(false);
+                await repo.SaveConversationAsync(conversation, cancellationToken).ConfigureAwait(false);
                 _logger?.LogDebug("[XAI] Saved conversation {ConversationId} with {Count} messages", conversationId, messages.Count);
 
                 // Invalidate L1 cache after persistence
@@ -2084,6 +2537,8 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         _httpClient.Dispose();
                     }
+
+                    _initializationGate.Dispose();
                 }
                 _disposed = true;
             }
@@ -2144,10 +2599,20 @@ namespace WileyWidget.WinForms.Services.AI
 
         public async Task UpdateApiKeyAsync(string newApiKey, CancellationToken cancellationToken = default)
         {
-            // Note: This is a simple implementation; in a real scenario, you might need to update configuration
-            _apiKey = newApiKey;
-            // Reinitialize if needed
-            await InitializeAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(newApiKey))
+            {
+                throw new ArgumentException("A non-empty xAI API key is required.", nameof(newApiKey));
+            }
+
+            _apiKey = newApiKey.Trim().Trim('"', '\'');
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            _isApiKeyValidated = false;
+            _lastApiKeyValidation = null;
+
+            // If startup previously failed due to missing/invalid credentials, allow retry with the new key.
+            ClearInitializationFailure();
+
+            await Task.CompletedTask;
         }
 
         public async Task<AIResponseResult> SendPromptAsync(string prompt, CancellationToken cancellationToken = default)
@@ -2190,9 +2655,43 @@ namespace WileyWidget.WinForms.Services.AI
                 yield break;
             }
 
+            if (_initializationFailed)
+            {
+                try
+                {
+                    _logger?.LogInformation("[XAI] Stream request received while offline. Attempting background recovery init.");
+                    await InitializeAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "[XAI] Recovery init attempt failed during StreamResponseAsync");
+                }
+
+                if (_initializationFailed)
+                {
+                    var reasonSuffix = string.IsNullOrWhiteSpace(_lastInitializationFailureReason)
+                        ? string.Empty
+                        : $" ({_lastInitializationFailureReason})";
+                    yield return $"⚠️ Grok is currently offline. AI functions are unavailable right now{reasonSuffix}.";
+                    yield break;
+                }
+            }
+
             if (!_isInitialized)
             {
-                yield return "⚠️ Grok service still initializing... please retry in a moment";
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await InitializeAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "[XAI] Background initialization from StreamResponseAsync failed");
+                    }
+                });
+
+                yield return "⚠️ Grok is starting up. If it stays offline, AI functions will be unavailable.";
                 yield break;
             }
 
@@ -2201,25 +2700,39 @@ namespace WileyWidget.WinForms.Services.AI
             yield return response;
         }
 
+        private static string FormatProviderError(string body)
+        {
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                return "No response body.";
+            }
+
+            if (body.Contains("SAFETY_CHECK_TYPE_BIO", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Request was blocked by xAI safety policy (SAFETY_CHECK_TYPE_BIO). Rephrase the prompt or remove sensitive biographical content.";
+            }
+
+            return body;
+        }
+
         /// <summary>
         /// Internal helper: Gets streaming response with SK primary path and HTTP fallback.
         /// Returns complete response as string (avoids yield-in-try-catch C# limitation).
         /// </summary>
         private async Task<string> GetStreamResponseInternalAsync(string prompt, string? systemMessage, CancellationToken cancellationToken)
         {
-            // If SK connector was disabled or kernel is not available, use HTTP-only streaming
+            // If kernel is not available, use HTTP fallback.
             _logger?.LogDebug("[XAI] GetStreamResponseInternalAsync: _skConnectorDisabled={Disabled}, _kernel={KernelNull}", _skConnectorDisabled, _kernel == null);
 
-            if (_skConnectorDisabled || _kernel == null)
+            if (_skConnectorDisabled)
             {
-                if (_skConnectorDisabled)
-                {
-                    _logger?.LogInformation("[XAI] SK connector disabled via config - using direct HTTP streaming with /v1/responses endpoint");
-                }
-                else
-                {
-                    _logger?.LogWarning("[XAI] GetStreamResponseInternalAsync: kernel is null - using direct HTTP streaming");
-                }
+                _logger?.LogDebug("[XAI] SK connector is disabled for this service instance - using direct HTTP streaming fallback");
+                return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (_kernel == null)
+            {
+                _logger?.LogWarning("[XAI] GetStreamResponseInternalAsync: kernel is null - using direct HTTP streaming");
                 return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
             }
 
@@ -2239,6 +2752,12 @@ namespace WileyWidget.WinForms.Services.AI
                 }
                 catch (Exception ex)
                 {
+                    if (IsNotFoundFailure(ex))
+                    {
+                        DisableSemanticKernelConnector("non-streaming tool call returned 404", ex);
+                        return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+                    }
+
                     _logger?.LogWarning(ex, "[XAI] Non-streaming tool call failed; falling back to streaming");
                 }
             }
@@ -2279,11 +2798,98 @@ namespace WileyWidget.WinForms.Services.AI
                     return "❌ Connection retry failed - please try again";
                 }
             }
+            catch (Exception ex) when (IsNotFoundFailure(ex))
+            {
+                DisableSemanticKernelConnector("streaming returned 404", ex);
+                try
+                {
+                    return await TryGetStreamingResponseWithFallbackAsync(prompt, systemMessage, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception fallbackEx)
+                {
+                    _logger?.LogError(fallbackEx, "[XAI] HTTP fallback failed after SK 404");
+                    return "❌ Error: AI endpoint returned 404 and HTTP fallback also failed.";
+                }
+            }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "[XAI] GetStreamResponseInternalAsync failed: {Type}: {Message}", ex.GetType().Name, ex.Message);
                 return $"❌ Error: {ex.Message}";
             }
+        }
+
+        private void DisableSemanticKernelConnector(string reason, Exception? ex = null)
+        {
+            if (_skConnectorDisabled)
+            {
+                return;
+            }
+
+            _skConnectorDisabled = true;
+
+            if (ex == null)
+            {
+                _logger?.LogWarning("[XAI] Semantic Kernel connector disabled for this service instance ({Reason}). Subsequent requests will use direct HTTP /responses fallback.", reason);
+                return;
+            }
+
+            _logger?.LogWarning(ex, "[XAI] Semantic Kernel connector disabled for this service instance ({Reason}). Subsequent requests will use direct HTTP /responses fallback.", reason);
+        }
+
+        private static bool IsNotFoundFailure(Exception ex)
+        {
+            // SK/OpenAI client exceptions can be wrapped, so inspect the full chain.
+            for (var current = ex; current != null; current = current.InnerException)
+            {
+                var message = current.Message;
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    continue;
+                }
+
+                if (message.Contains("404", StringComparison.OrdinalIgnoreCase) ||
+                    message.Contains("Not Found", StringComparison.OrdinalIgnoreCase) ||
+                    message.Contains("Status: 404", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static Uri NormalizeInferenceBaseEndpoint(string endpoint)
+        {
+            var candidate = endpoint.Trim().TrimEnd('/');
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var parsed))
+            {
+                throw new ArgumentException($"[XAI] Invalid endpoint URI configured: {endpoint}", nameof(endpoint));
+            }
+
+            if (candidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = candidate.Substring(0, candidate.Length - "/responses".Length);
+            }
+
+            if (candidate.EndsWith(ChatCompletionSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                candidate = candidate.Substring(0, candidate.Length - ChatCompletionSuffix.Length);
+            }
+
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out parsed) &&
+                parsed.Host.Equals("api.x.ai", StringComparison.OrdinalIgnoreCase) &&
+                (parsed.AbsolutePath == "/" || string.IsNullOrEmpty(parsed.AbsolutePath)))
+            {
+                candidate = parsed.GetLeftPart(UriPartial.Authority) + "/v1";
+            }
+
+            candidate = candidate.TrimEnd('/') + '/';
+            if (!Uri.TryCreate(candidate, UriKind.Absolute, out var normalized))
+            {
+                throw new ArgumentException($"[XAI] Failed to construct valid endpoint URI from: {endpoint}", nameof(endpoint));
+            }
+
+            return normalized;
         }
 
         private static readonly string[] ToolHeavyKeywords =
@@ -2390,13 +2996,19 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         responseBuilder.Append(chunk.Content);
                     }
+
+                    if (chunk.Metadata?.TryGetValue("FunctionCall", out var functionCall) == true)
+                    {
+                        _logger?.LogInformation("[XAI] Function called: {FunctionCall}", functionCall);
+                        LogToolExecution(prompt, "SemanticKernel", new[] { functionCall?.ToString() });
+                    }
                 }
 
                 return responseBuilder.ToString();
             }
             catch (InvalidOperationException iex) when (iex.Message.Contains("not registered"))
             {
-                _logger?.LogWarning(iex, "[XAI] IChatCompletionService not registered in kernel (SK connector disabled) - falling back to HTTP");
+                _logger?.LogWarning(iex, "[XAI] IChatCompletionService not registered in kernel - falling back to HTTP");
                 throw; // Re-throw to be caught by caller for HTTP fallback
             }
         }
@@ -2406,6 +3018,12 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         private async Task<string> TryGetStreamingResponseWithFallbackAsync(string prompt, string? systemMessage, CancellationToken cancellationToken)
         {
+            if (_toolConfiguration?.Enabled == true)
+            {
+                _logger?.LogInformation("[XAI] Tools enabled in fallback path - using /v1/responses for reliable tool execution");
+                return await GetSimpleResponse(prompt, systemMessage, ct: cancellationToken).ConfigureAwait(false);
+            }
+
             var chunks = new List<string>();
             var result = await GetStreamingResponseAsync(
                 prompt,

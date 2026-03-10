@@ -32,11 +32,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             // Assert basic structure
             statusBar.Should().NotBeNull();
             var controls = statusBar!.Controls;
-            controls.Count.Should().BeGreaterThanOrEqualTo(5);
+            controls.Count.Should().BeGreaterThanOrEqualTo(3);
 
             // Panels by name
             var names = controls.Cast<StatusBarAdvPanel>().Select(p => p.Name).ToList();
-            names.Should().Contain(new[] { "StatusLabel", "StatusTextPanel", "StatePanel", "ProgressPanel", "ClockPanel" });
+            names.Should().Contain(new[] { "PrimaryStatusPanel", "ProgressPanel", "ClockPanel" });
 
             // Progress panel contains ProgressBarAdv named statusBarProgressBar
             var progressPanel = controls.Cast<StatusBarAdvPanel>().First(p => p.Name == "ProgressPanel");
@@ -73,6 +73,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             public string CurrentTheme => "Office2019Colorful";
             public bool IsDark => false;
             public void ApplyTheme(string themeName) => ThemeChanged?.Invoke(this, themeName);
+            public void ReapplyCurrentTheme() => ThemeChanged?.Invoke(this, CurrentTheme);
         }
 
         private sealed class TestWindowStateService : IWindowStateService

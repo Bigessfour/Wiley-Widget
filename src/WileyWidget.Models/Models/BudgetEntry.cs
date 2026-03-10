@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Models;
@@ -67,6 +69,11 @@ public class BudgetEntry : IAuditable
     // New: Transactions
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 
+    // Child allocation lines used by the BudgetPanel details grid.
+    // Not mapped yet so this UI enhancement can ship before a schema migration.
+    [NotMapped]
+    public ObservableCollection<BudgetAllocationLine> AllocationLines { get; set; } = new();
+
     // Auditing (simplified)
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
@@ -110,6 +117,47 @@ public class BudgetEntry : IAuditable
     public string AccountTypeName => MunicipalAccount?.Type.ToString() ?? "Unknown";
 
     [NotMapped]
+    public string FinancialClassification
+    {
+        get
+        {
+            if (TryGetAccountRoot(out var accountRoot))
+            {
+                if (accountRoot >= 400 && accountRoot <= 499)
+                {
+                    return "Income";
+                }
+
+                if (accountRoot >= 500)
+                {
+                    return IsAdministrativeGeneralExpense()
+                        ? "Administrative & General Expense"
+                        : "Operating Expense";
+                }
+            }
+
+            if (MunicipalAccount != null)
+            {
+                if (IsIncomeAccountType(MunicipalAccount.Type))
+                {
+                    return "Income";
+                }
+
+                if (IsExpenseAccountType(MunicipalAccount.Type))
+                {
+                    return IsAdministrativeGeneralExpense()
+                        ? "Administrative & General Expense"
+                        : "Operating Expense";
+                }
+            }
+
+            return IsAdministrativeGeneralExpense()
+                ? "Administrative & General Expense"
+                : "Operating Expense";
+        }
+    }
+
+    [NotMapped]
     public string DepartmentName => Department?.Name ?? string.Empty;
 
     [NotMapped]
@@ -134,6 +182,87 @@ public class BudgetEntry : IAuditable
 
     [NotMapped]
     public decimal WsdActualAmount => IsWsd() ? ActualAmount : 0m;
+
+    [NotMapped]
+    public decimal AllocationTotalFraction => AllocationLines.Count == 0
+        ? (FundId.HasValue ? 1m : 0m)
+        : Math.Round(AllocationLines.Sum(line => line.AllocationPercentage), 4);
+
+    [NotMapped]
+    public int AllocationSplitCount => AllocationLines.Count == 0 ? 1 : AllocationLines.Count;
+
+    [NotMapped]
+    public string AllocationSummary => $"{AllocationSplitCount} split{(AllocationSplitCount == 1 ? string.Empty : "s")}";
+
+    private bool IsAdministrativeGeneralExpense()
+    {
+        if (!string.IsNullOrWhiteSpace(Department?.Name)
+            && Department.Name.IndexOf("admin", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Department?.DepartmentCode)
+            && Department.DepartmentCode.IndexOf("admin", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return true;
+        }
+
+        return Description.IndexOf("administrative", StringComparison.OrdinalIgnoreCase) >= 0
+            || Description.IndexOf("admin", StringComparison.OrdinalIgnoreCase) >= 0
+            || Description.IndexOf("general", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool TryGetAccountRoot(out int accountRoot)
+    {
+        accountRoot = 0;
+
+        if (string.IsNullOrWhiteSpace(AccountNumber))
+        {
+            return false;
+        }
+
+        var rootSegment = AccountNumber.Split(new[] { '.', '-' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(rootSegment))
+        {
+            return false;
+        }
+
+        if (rootSegment.Length > 3)
+        {
+            rootSegment = rootSegment[..3];
+        }
+
+        return int.TryParse(rootSegment, out accountRoot);
+    }
+
+    private static bool IsIncomeAccountType(AccountType accountType)
+    {
+        return accountType == AccountType.Taxes
+            || accountType == AccountType.Fees
+            || accountType == AccountType.Grants
+            || accountType == AccountType.Interest
+            || accountType == AccountType.Sales
+            || accountType == AccountType.Revenue;
+    }
+
+    private static bool IsExpenseAccountType(AccountType accountType)
+    {
+        return accountType == AccountType.Salaries
+            || accountType == AccountType.Supplies
+            || accountType == AccountType.Services
+            || accountType == AccountType.Utilities
+            || accountType == AccountType.Maintenance
+            || accountType == AccountType.Insurance
+            || accountType == AccountType.Depreciation
+            || accountType == AccountType.Expense
+            || accountType == AccountType.PermitsAndAssessments
+            || accountType == AccountType.ProfessionalServices
+            || accountType == AccountType.ContractLabor
+            || accountType == AccountType.DuesAndSubscriptions
+            || accountType == AccountType.CapitalOutlay
+            || accountType == AccountType.Transfers;
+    }
 
     private bool IsWsd()
     {

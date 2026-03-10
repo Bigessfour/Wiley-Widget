@@ -8,11 +8,15 @@ using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using Syncfusion.WinForms.DataGrid.Events;
+using Syncfusion.WinForms.ListView;
 using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
+using TextBoxExt = Syncfusion.Windows.Forms.Tools.TextBoxExt;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Utilities;
@@ -27,6 +31,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 public partial class VariancesTabControl : UserControl
 {
     private readonly VariancesTabViewModel? _viewModel;
+    private readonly SyncfusionControlFactory _controlFactory;
     private readonly ILogger _logger;
 
     private SfDataGrid? _variancesGrid;
@@ -34,21 +39,22 @@ public partial class VariancesTabControl : UserControl
     private LoadingOverlay? _loadingOverlay;
     private ToolTip? _toolTip;
 
-    private TextBox? _searchTextBox;
-    private ComboBox? _departmentFilter;
+    private TextBoxExt? _searchTextBox;
+    private SfComboBox? _departmentFilter;
 
     private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
 
     public bool IsLoaded { get; private set; }
 
-    public VariancesTabControl(VariancesTabViewModel? viewModel, ILogger? logger = null)
+    public VariancesTabControl(VariancesTabViewModel? viewModel, SyncfusionControlFactory controlFactory, ILogger? logger = null)
     {
         _viewModel = viewModel;
+        _controlFactory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         _logger = logger ?? NullLogger.Instance;
 
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, theme);
         }
         catch { /* best-effort */ }
@@ -63,15 +69,14 @@ public partial class VariancesTabControl : UserControl
         this.AutoScaleMode = AutoScaleMode.Dpi;
         this.AutoScroll = true;
         this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
-        this.Padding = new Padding(8);
+        this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
         _toolTip = new ToolTip();
 
-        var mainSplit = new SplitContainer
+        var mainSplit = _controlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 60
-        };
+            splitter.Orientation = Orientation.Vertical;
+            splitter.SplitterDistance = 60;
+        });
 
         InitializeFilterPanel();
         mainSplit.Panel1.Controls.Add(_filterPanel);
@@ -92,7 +97,7 @@ public partial class VariancesTabControl : UserControl
 
     private void InitializeFilterPanel()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
 
         _filterPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
         SfSkinManager.SetVisualStyle(_filterPanel, themeName);
@@ -109,24 +114,26 @@ public partial class VariancesTabControl : UserControl
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));   // Dept combo
 
         var searchLabel = new Label { Text = "Search:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _searchTextBox = new TextBox
+        _searchTextBox = _controlFactory.CreateTextBoxExt(textBox =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Variance search",
-            AccessibleDescription = "Search variance records"
-        };
+            textBox.Dock = DockStyle.Fill;
+            textBox.AccessibleName = "Variance search";
+            textBox.AccessibleDescription = "Search variance records";
+        });
         _toolTip?.SetToolTip(_searchTextBox, "Search by department or account.");
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
 
         var deptLabel = new Label { Text = "Department:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _departmentFilter = new ComboBox
+        _departmentFilter = _controlFactory.CreateSfComboBox(combo =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Department filter",
-            AccessibleDescription = "Filter variance records by department"
-        };
+            combo.Dock = DockStyle.Fill;
+            combo.AccessibleName = "Department filter";
+            combo.AccessibleDescription = "Filter variance records by department";
+            combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+            combo.AllowNull = false;
+        });
         _toolTip?.SetToolTip(_departmentFilter, "Filter results by department.");
-        _departmentFilter.Items.AddRange(new[] { "All", "Sales", "Marketing", "Operations", "HR", "Finance" });
+        _departmentFilter.DataSource = new[] { "All", "Sales", "Marketing", "Operations", "HR", "Finance" };
         _departmentFilter.SelectedIndex = 0;
         _departmentFilter.SelectedIndexChanged += DepartmentFilter_SelectedIndexChanged;
 
@@ -140,19 +147,16 @@ public partial class VariancesTabControl : UserControl
 
     private void InitializeVariancesGrid()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-        _variancesGrid = new SfDataGrid
+        _variancesGrid = _controlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AllowEditing = false,
-            AllowGrouping = true,
-            AllowSorting = true,
-            AllowFiltering = true,
-            AutoGenerateColumns = false,
-            ThemeName = themeName,
-            AccessibleName = "Variances grid",
-            AccessibleDescription = "Tabular view of variance records"
-        }.PreventStringRelationalFilters(null, "Department", "Account");
+            grid.AllowEditing = false;
+            grid.AllowGrouping = true;
+            grid.AllowSorting = true;
+            grid.AllowFiltering = true;
+            grid.AutoGenerateColumns = false;
+            grid.AccessibleName = "Variances grid";
+            grid.AccessibleDescription = "Tabular view of variance records";
+        }).PreventStringRelationalFilters(null, "Department", "Account");
         _toolTip?.SetToolTip(_variancesGrid, "Variance records by department and account.");
 
         GridColumn[] columns =

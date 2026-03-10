@@ -645,7 +645,7 @@ namespace WileyWidget.WinForms.ViewModels
 
             public Task AddAsync(BudgetEntry entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task<BudgetEntry?> GetByIdAsync(int id, CancellationToken cancellationToken = default) => Task.FromResult<BudgetEntry?>(null);
-            public Task<bool> ExistsAsync(string accountNumber, int fiscalYear, CancellationToken cancellationToken = default) => Task.FromResult(false);
+            public Task<bool> ExistsAsync(string accountNumber, int fiscalYear, int? fundId, CancellationToken cancellationToken = default) => Task.FromResult(false);
             public Task UpdateAsync(BudgetEntry entity, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task DeleteAsync(int id, CancellationToken cancellationToken = default) => Task.CompletedTask;
             public Task<IEnumerable<BudgetEntry>> GetByFiscalYearAsync(int fiscalYear, CancellationToken cancellationToken = default) => Task.FromResult(Enumerable.Empty<BudgetEntry>());

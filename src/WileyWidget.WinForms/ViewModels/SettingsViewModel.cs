@@ -3,10 +3,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.ViewModels
 {
@@ -40,7 +43,17 @@ namespace WileyWidget.WinForms.ViewModels
             // Initialize theme from service if available
             if (_themeService != null)
             {
-                selectedTheme = _themeService.CurrentTheme;
+                selectedTheme = ThemeColors.ValidateTheme(_themeService.CurrentTheme, _logger);
+            }
+            else if (!string.IsNullOrWhiteSpace(_settingsService?.Current?.Theme))
+            {
+                selectedTheme = ThemeColors.ValidateTheme(_settingsService.Current.Theme, _logger);
+            }
+
+            // Ensure the currently active theme is always represented in the selector.
+            if (!AvailableThemes.Contains(selectedTheme, StringComparer.OrdinalIgnoreCase))
+            {
+                AvailableThemes.Insert(0, selectedTheme);
             }
 
             // Initialize XAI properties from current settings if available
@@ -55,7 +68,11 @@ namespace WileyWidget.WinForms.ViewModels
                 XaiMaxTokens = cur.XaiMaxTokens;
                 XaiTemperature = cur.XaiTemperature;
                 ApplicationFont = cur.ApplicationFont ?? "Segoe UI, 9pt";
+                defaultExportPath = NormalizeExportPath(cur.DefaultExportPath);
+                cur.DefaultExportPath = defaultExportPath;
             }
+
+            EnsureDefaultExportPath();
 
             _logger.LogInformation("SettingsViewModel initialized with default export path: {DefaultExportPath}", DefaultExportPath);
         }
@@ -63,34 +80,37 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>
         /// Available Syncfusion WinForms themes. User selection is applied globally via SfSkinManager.ApplicationVisualTheme.
         /// Each theme cascades to all controls in the application automatically.
-        /// Per Syncfusion documentation: Only Office2016Theme, Office2019Theme, and HighContrastTheme are supported.
-        /// FluentTheme and MaterialTheme are NOT available in Windows Forms (Web/Blazor only).
+        /// Supported in this workspace: Office 2016 (Black, White, DarkGray, Colorful), Office2019Colorful, and HighContrastBlack.
         /// </summary>
-        public IReadOnlyList<string> Themes { get; } = new List<string>
-        {
-            "Office2019Colorful",
-            "Office2019Dark",
-            "Office2019Black",
-            "Office2019White",
-            "Office2019DarkGray",
-            "Office2016Colorful",
-            "Office2016White",
-            "Office2016Black",
-            "Office2016DarkGray",
-            "HighContrastBlack",
-            "HighContrastWhite"
-        };
+        public ObservableCollection<string> AvailableThemes { get; } = new(ThemeColors.GetSupportedThemes());
+
+        public IReadOnlyList<string> Themes => AvailableThemes;
 
         [ObservableProperty]
         private string appTitle = "Wiley Widget Settings";
 
         [ObservableProperty]
-        private string selectedTheme = "Office2019Colorful";
+        private string selectedTheme = ThemeColors.DefaultTheme;
 
         partial void OnSelectedThemeChanged(string value)
         {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
             _logger.LogInformation("SelectedTheme changed to: {Theme}", value);
-            _themeService?.ApplyTheme(value);
+
+            if (_themeService != null)
+            {
+                _themeService.ApplyTheme(value);
+            }
+            else if (_settingsService != null)
+            {
+                _settingsService.Current.Theme = ThemeColors.ValidateTheme(value, _logger);
+                _settingsService.Save();
+            }
+
             MarkDirty();
         }
 
@@ -116,7 +136,7 @@ namespace WileyWidget.WinForms.ViewModels
         private string currencyFormat = "C2";
 
         [ObservableProperty]
-        private string defaultExportPath = string.Empty;
+        private string defaultExportPath = BuildDefaultExportPath();
 
         // XAI / AI settings
         private bool enableAi = true;
@@ -222,6 +242,10 @@ namespace WileyWidget.WinForms.ViewModels
         partial void OnDefaultExportPathChanged(string value)
         {
             _logger.LogInformation("DefaultExportPath changed to: {DefaultExportPath}", value);
+            if (_settingsService != null)
+            {
+                _settingsService.Current.DefaultExportPath = value;
+            }
             MarkDirty();
         }
 
@@ -328,6 +352,9 @@ namespace WileyWidget.WinForms.ViewModels
                 XaiMaxTokens = cur.XaiMaxTokens;
                 XaiTemperature = cur.XaiTemperature;
                 ApplicationFont = cur.ApplicationFont ?? "Segoe UI, 9pt";
+                DefaultExportPath = NormalizeExportPath(cur.DefaultExportPath);
+
+                EnsureDefaultExportPath();
 
                 HasUnsavedChanges = false;
             }
@@ -338,6 +365,8 @@ namespace WileyWidget.WinForms.ViewModels
         private void Save()
         {
             _logger.LogInformation("Saving settings");
+
+            EnsureDefaultExportPath();
 
             if (!ValidateSettings())
             {
@@ -376,6 +405,37 @@ namespace WileyWidget.WinForms.ViewModels
             MarkDirty();
         }
 
+        private static string BuildDefaultExportPath()
+        {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "WileyWidget",
+                "Exports");
+        }
+
+        private static string NormalizeExportPath(string? exportPath)
+        {
+            return string.IsNullOrWhiteSpace(exportPath)
+                ? BuildDefaultExportPath()
+                : exportPath.Trim();
+        }
+
+        private void EnsureDefaultExportPath()
+        {
+            var effectiveExportPath = NormalizeExportPath(DefaultExportPath);
+
+            if (!string.Equals(DefaultExportPath, effectiveExportPath, StringComparison.Ordinal))
+            {
+                DefaultExportPath = effectiveExportPath;
+                _logger.LogInformation("Default export path fallback applied: {DefaultExportPath}", DefaultExportPath);
+            }
+
+            if (_settingsService?.Current != null)
+            {
+                _settingsService.Current.DefaultExportPath = effectiveExportPath;
+            }
+        }
+
         /// <summary>
         /// Simple validation hook for the Settings panel.
         /// </summary>
@@ -383,6 +443,8 @@ namespace WileyWidget.WinForms.ViewModels
         {
             _logger.LogDebug("Validating settings");
             _validationMessages.Clear();
+
+            EnsureDefaultExportPath();
 
             if (string.IsNullOrWhiteSpace(AppTitle))
             {
@@ -400,12 +462,6 @@ namespace WileyWidget.WinForms.ViewModels
             {
                 _validationMessages.Add("Currency format cannot be empty.");
                 _logger.LogWarning("Validation failed: Currency format is empty");
-            }
-
-            if (string.IsNullOrWhiteSpace(DefaultExportPath))
-            {
-                _validationMessages.Add("Export path is required.");
-                _logger.LogWarning("Validation failed: Export path is empty");
             }
 
             // Validate XAI settings when AI is enabled

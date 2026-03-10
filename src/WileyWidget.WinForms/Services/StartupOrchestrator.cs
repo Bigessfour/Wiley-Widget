@@ -7,15 +7,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Syncfusion.Licensing;
-using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
+using System.Windows.Forms;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Initialization;
+using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.Services;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Services
@@ -123,14 +125,12 @@ namespace WileyWidget.WinForms.Services
                     try
                     {
                         AppThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName, _logger);
-                        SfSkinManager.ApplicationVisualTheme = themeName;
-                        _logger.LogInformation("Pre-UI theme applied: {ThemeName}", themeName);
+                        _logger.LogInformation("Pre-UI theme validated successfully: {ThemeName}", themeName);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Pre-UI theme application failed for {ThemeName}. Falling back to Default.", themeName);
+                        _logger.LogError(ex, "Pre-UI theme validation failed for {ThemeName}. Falling back to Default validation.", themeName);
                         AppThemeColors.EnsureThemeAssemblyLoadedForTheme(AppThemeColors.DefaultTheme, _logger);
-                        SfSkinManager.ApplicationVisualTheme = AppThemeColors.DefaultTheme;
                     }
                 }
                 else
@@ -147,15 +147,13 @@ namespace WileyWidget.WinForms.Services
 
         public async Task ValidateServicesAsync(IServiceProvider serviceProvider)
         {
-#if !DEBUG
-            // Full 87-service DI scan is expensive and targets developer feedback only.
-            // Skip entirely in Release builds; run only on Debug or CI.
-            _logger.LogDebug("Skipping full DI validation in Release build.");
-            return;
-#endif
-            if (!_startupOptions.EnableDiValidation)
+            if (!ShouldRunFullDiValidation())
             {
-                _logger.LogInformation("Startup DI validation is disabled via StartupOptions.");
+                _logger.LogInformation(
+                    "Skipping full DI validation for startup profile '{Profile}'. " +
+                    "Enable Startup:EnablePostShownServiceValidation, set Startup:Profile=Diagnostic, " +
+                    "or set WILEYWIDGET_ENABLE_DI_VALIDATION=true to force validation.",
+                    _startupOptions.Profile);
                 return;
             }
 
@@ -204,7 +202,13 @@ namespace WileyWidget.WinForms.Services
                     _logger.LogWarning(blazorCheckEx, "Error checking Blazor services during validation");
                 }
 
-                // [PERF] Initialize all IAsyncInitializable services in background to avoid UI blocking
+                if (!_startupOptions.EnablePostShownAsyncWarmup)
+                {
+                    _logger.LogInformation("Post-shown async warmup is disabled by StartupOptions; skipping background IAsyncInitializable warmup.");
+                    return;
+                }
+
+                // [PERF] Initialize non-UI IAsyncInitializable services in background to avoid UI blocking
                 _ = Task.Run(async () =>
                 {
                     try
@@ -219,11 +223,17 @@ namespace WileyWidget.WinForms.Services
                         // [FIX] Use IServiceScopeFactory consistently to ensure background threads have a stable scope
                         using (var scope = _scopeFactory.CreateScope())
                         {
-                            var asyncInitializables = scope.ServiceProvider.GetServices<WileyWidget.Abstractions.IAsyncInitializable>();
+                            var asyncInitializables = scope.ServiceProvider.GetServices<WileyWidget.Abstractions.IAsyncInitializable>().ToList();
+                            var initializablesList = asyncInitializables
+                                .Where(service => service != null && !IsUiAffinedInitializable(service))
+                                .ToList();
 
-                            // Materialize the list immediately to avoid late-binding issues
-                            var initializablesList = asyncInitializables.ToList();
-                            _logger.LogInformation("Discovered {Count} IAsyncInitializable services for background warmup", initializablesList.Count);
+                            var skippedCount = asyncInitializables.Count - initializablesList.Count;
+                            _logger.LogInformation(
+                                "Discovered {Total} IAsyncInitializable services for background warmup; warming {WarmCount}, skipping {SkippedCount} UI-affine services",
+                                asyncInitializables.Count,
+                                initializablesList.Count,
+                                skippedCount);
 
                             foreach (var service in initializablesList)
                             {
@@ -274,6 +284,65 @@ namespace WileyWidget.WinForms.Services
             }
         }
 
+        private static bool IsUiAffinedInitializable(IAsyncInitializable service)
+        {
+            return service is Control
+                || service is Form
+                || service is MainForm;
+        }
+
+        private bool ShouldRunFullDiValidation()
+        {
+            if (!_startupOptions.EnableDiValidation)
+            {
+                return false;
+            }
+
+            if (_startupOptions.IsDiagnosticProfile)
+            {
+                return true;
+            }
+
+            if (IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_ENABLE_DI_VALIDATION")))
+            {
+                return true;
+            }
+
+#if DEBUG
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        private bool ShouldRunPostShownServiceValidation()
+        {
+            if (_startupOptions.EnablePostShownServiceValidation)
+            {
+                return true;
+            }
+
+            if (_startupOptions.IsDiagnosticProfile)
+            {
+                return true;
+            }
+
+            return IsTruthy(Environment.GetEnvironmentVariable("WILEYWIDGET_ENABLE_POSTSHOWN_VALIDATION"));
+        }
+
+        private static bool IsTruthy(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "on", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void HandleDiValidationFailure(Exception exception, WileyWidget.Services.Abstractions.DiValidationResult? result = null)
         {
             if (result == null)
@@ -290,42 +359,116 @@ namespace WileyWidget.WinForms.Services
         {
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator.RunApplicationAsync ENTRY");
             _logger.LogInformation("Starting WinForms application main loop...");
+            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(serviceProvider);
 
             // Create a scope to resolve scoped services like MainForm
             var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(serviceProvider);
             using var scope = scopeFactory.CreateScope();
+            var authSession = EnsureAuthenticationBeforeMainForm(scope.ServiceProvider);
+
+            if (authSession != null)
+            {
+                _logger.LogInformation(
+                    "[STARTUP-DIAG] Authentication bootstrap complete. User={UserId}, Provider={Provider}, DevelopmentBypass={DevelopmentBypass}",
+                    authSession.UserId,
+                    authSession.Provider,
+                    authSession.IsDevelopmentBypass);
+            }
+
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Resolving MainForm from DI...");
-            var mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: MainForm resolved successfully");
-            _logger.LogInformation("[STARTUP-DIAG] MainForm resolved (HashCode={HashCode}, IsHandleCreated={IsHandleCreated}, ThreadId={ThreadId})",
-                mainForm.GetHashCode(),
-                mainForm.IsHandleCreated,
-                Thread.CurrentThread.ManagedThreadId);
-
-            // Store reference to MainFormInstance for programmatic access
-            Program.MainFormInstance = mainForm;
-
-            mainForm.Shown += (_, __) =>
+            MainForm mainForm;
+            using (timelineService?.BeginPhaseScope("MainForm Creation"))
             {
-                _logger.LogDebug("[STARTUP-DIAG] MainForm.Shown fired - completing splash");
-                Program.CompleteSplash("Ready");
-            };
+                mainForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainForm>(scope.ServiceProvider);
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: MainForm resolved successfully");
+                _logger.LogInformation("[STARTUP-DIAG] MainForm resolved (HashCode={HashCode}, IsHandleCreated={IsHandleCreated}, ThreadId={ThreadId})",
+                    mainForm.GetHashCode(),
+                    mainForm.IsHandleCreated,
+                    Thread.CurrentThread.ManagedThreadId);
 
-            // MainForm owns deferred async initialization in OnShown.
-            // Kick off DI validation after the window is shown, but do not invoke
-            // MainForm.InitializeAsync() here to avoid duplicate startup paths.
-            mainForm.Shown += (_, __) =>
-            {
-                _logger.LogInformation("[STARTUP-DIAG] MainForm.Shown fired - kicking off ValidateServicesAsync");
-                _ = Task.Run(() => ValidateServicesAsync(serviceProvider));
-            };
+                // Store reference to MainFormInstance for programmatic access
+                Program.MainFormInstance = mainForm;
+
+                mainForm.Shown += (_, __) =>
+                {
+                    _logger.LogDebug("[STARTUP-DIAG] MainForm.Shown fired - completing splash");
+                    Program.CompleteSplash("Ready");
+                };
+
+                // MainForm owns deferred async initialization in OnShown.
+                // Kick off DI validation after the window is shown, but do not invoke
+                // MainForm.InitializeAsync() here to avoid duplicate startup paths.
+                mainForm.Shown += (_, __) =>
+                {
+                    if (!ShouldRunPostShownServiceValidation())
+                    {
+                        _logger.LogInformation(
+                            "[STARTUP-DIAG] MainForm.Shown fired - post-shown service validation skipped for startup profile '{Profile}'",
+                            _startupOptions.Profile);
+                        return;
+                    }
+
+                    var validationDelayMs = Math.Max(0, _startupOptions.PostShownValidationDelayMs);
+                    _logger.LogInformation(
+                        "[STARTUP-DIAG] MainForm.Shown fired - scheduling ValidateServicesAsync after {DelayMs}ms",
+                        validationDelayMs);
+
+                    _ = Task.Run(async () =>
+                    {
+                        if (validationDelayMs > 0)
+                        {
+                            await Task.Delay(validationDelayMs).ConfigureAwait(false);
+                        }
+
+                        await ValidateServicesAsync(serviceProvider).ConfigureAwait(false);
+                    });
+                };
+            }
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Calling Application.Run(mainForm) - entering message loop");
             _logger.LogInformation("Entering WinForms message loop with Application.Run()");
-            System.Windows.Forms.Application.Run(mainForm);
+            timelineService?.RecordPhaseStart("UI Message Loop");
+            try
+            {
+                System.Windows.Forms.Application.Run(mainForm);
+            }
+            finally
+            {
+                timelineService?.RecordPhaseEnd("UI Message Loop");
+            }
 
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator: Application.Run() returned - message loop exited");
             _logger.LogInformation("Application.Run() returned - application exiting");
+        }
+
+        private AuthenticationSessionResult? EnsureAuthenticationBeforeMainForm(IServiceProvider serviceProvider)
+        {
+            var authenticationBootstrapper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IAuthenticationBootstrapper>(serviceProvider);
+            if (authenticationBootstrapper == null)
+            {
+                _logger.LogWarning("[STARTUP-DIAG] IAuthenticationBootstrapper not registered. Continuing without explicit authentication bootstrap.");
+                return null;
+            }
+
+            var authenticationOptions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<IOptions<AuthenticationOptions>>(serviceProvider)
+                ?.Value;
+
+            var useLocalMsalHostForm = authenticationOptions?.IsExternalIdMode == true;
+
+            _logger.LogInformation(
+                "[STARTUP-DIAG] Starting authentication bootstrap before MainForm creation. LocalMsalHostForm={UseLocalMsalHostForm}",
+                useLocalMsalHostForm);
+
+            if (useLocalMsalHostForm)
+            {
+                return MsalSignInHostForm.ShowForInitialSignIn(authenticationBootstrapper, _logger, authenticationOptions ?? new AuthenticationOptions());
+            }
+
+            return authenticationBootstrapper
+                .EnsureAuthenticatedAsync(ownerWindow: null, CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
         }
 
         public Task RunApplicationAsync(IServiceProvider serviceProvider)

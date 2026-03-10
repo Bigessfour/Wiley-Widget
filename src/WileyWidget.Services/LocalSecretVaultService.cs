@@ -238,10 +238,10 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
                 ["syncfusion-license-key"] = Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY") ?? "",
 
                 // QuickBooks
-                ["QuickBooks-ClientId"] = Environment.GetEnvironmentVariable("QUICKBOOKS_CLIENT_ID") ?? "",
-                ["QuickBooks-ClientSecret"] = Environment.GetEnvironmentVariable("QUICKBOOKS_CLIENT_SECRET") ?? "",
-                ["QuickBooks-RedirectUri"] = Environment.GetEnvironmentVariable("QUICKBOOKS_REDIRECT_URI") ?? "",
-                ["QuickBooks-Environment"] = Environment.GetEnvironmentVariable("QUICKBOOKS_ENVIRONMENT") ?? "Sandbox",
+                ["QBO-CLIENT-ID"] = Environment.GetEnvironmentVariable("QBO_CLIENT_ID") ?? "",
+                ["QBO-CLIENT-SECRET"] = Environment.GetEnvironmentVariable("QBO_CLIENT_SECRET") ?? "",
+                ["QBO-REDIRECT-URI"] = Environment.GetEnvironmentVariable("QBO_REDIRECT_URI") ?? "",
+                ["QBO-ENVIRONMENT"] = Environment.GetEnvironmentVariable("QBO_ENVIRONMENT") ?? "sandbox",
 
                 // XAI
                 ["XAI-ApiKey"] = Environment.GetEnvironmentVariable("XAI_API_KEY") ?? "",
@@ -292,10 +292,10 @@ public sealed class LocalSecretVaultService : ISecretVaultService, IDisposable
             ["XAI-BaseUrl"] = "https://api.x.ai",
 
             // QuickBooks integration (Sandbox defaults - update for production)
-            ["QuickBooks-ClientId"] = "YOUR_QUICKBOOKS_CLIENT_ID",
-            ["QuickBooks-ClientSecret"] = "YOUR_QUICKBOOKS_CLIENT_SECRET",
-            ["QuickBooks-RedirectUri"] = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl",
-            ["QuickBooks-Environment"] = "Sandbox",
+            ["QBO-CLIENT-ID"] = "YOUR_QBO_CLIENT_ID",
+            ["QBO-CLIENT-SECRET"] = "YOUR_QBO_CLIENT_SECRET",
+            ["QBO-REDIRECT-URI"] = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl",
+            ["QBO-ENVIRONMENT"] = "sandbox",
 
             // Database connection (if using external database)
             ["Database-ConnectionString"] = "",

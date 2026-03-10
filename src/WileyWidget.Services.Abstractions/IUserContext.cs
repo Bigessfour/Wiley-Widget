@@ -4,5 +4,7 @@ namespace WileyWidget.Services.Abstractions
     {
         string? UserId { get; }
         string? DisplayName { get; }
+
+        void SetCurrentUser(string? userId, string? userName);
     }
 }

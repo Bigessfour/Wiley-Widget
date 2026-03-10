@@ -22,6 +22,8 @@ namespace WileyWidget.Services
         private readonly ILogger<DashboardService> _logger;
         private readonly IBudgetRepository _budgetRepository;
         private readonly IMunicipalAccountRepository _accountRepository;
+         private readonly IEnterpriseRepository? _enterpriseRepository;
+        private readonly IChargeCalculatorService? _chargeCalculatorService;
         private readonly ICacheService? _cacheService;
         private readonly IConfiguration? _configuration;
         private DateTime _lastRefresh = DateTime.MinValue;
@@ -53,13 +55,17 @@ namespace WileyWidget.Services
             IBudgetRepository budgetRepository,
             IMunicipalAccountRepository accountRepository,
             ICacheService? cacheService = null,
-            IConfiguration? configuration = null)
+            IConfiguration? configuration = null,
+            IEnterpriseRepository? enterpriseRepository = null,
+            IChargeCalculatorService? chargeCalculatorService = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _budgetRepository = budgetRepository ?? throw new ArgumentNullException(nameof(budgetRepository));
             _accountRepository = accountRepository ?? throw new ArgumentNullException(nameof(accountRepository));
             _cacheService = cacheService;
             _configuration = configuration;
+            _enterpriseRepository = enterpriseRepository;
+            _chargeCalculatorService = chargeCalculatorService;
 
             // Initialize collections
             Metrics = new ObservableCollection<DashboardMetric>();
@@ -483,6 +489,10 @@ namespace WileyWidget.Services
             var raw = await _budgetRepository.GetTownOfWileyBudgetDataAsync(ct);
             if (!raw.Any()) return new List<EnterpriseSnapshot>();
 
+            var enterpriseRecords = _enterpriseRepository != null
+                ? (await _enterpriseRepository.GetAllAsync(ct)).ToList()
+                : new List<Enterprise>();
+
             var mapping = new Dictionary<string, string>
             {
                 { "Water", "Water" },
@@ -500,26 +510,136 @@ namespace WileyWidget.Services
                     (r.MappedDepartment?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false) ||
                     (r.FundOrDepartment?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false))).ToList();
 
-                var rev = rows.Where(r => r.Category == "Revenue").Sum(r => r.ActualYTD ?? 0);
-                var exp = rows.Where(r => r.Category == "Expense").Sum(r => r.ActualYTD ?? 0);
+                var priorYearRevenue = SumByCategory(rows, "Revenue", value => value.PriorYearActual);
+                var priorYearExpenses = SumByCategory(rows, "Expense", value => value.PriorYearActual);
+                var estimatedRevenue = SumByCategory(rows, "Revenue", value => value.EstimateCurrentYr);
+                var estimatedExpenses = SumByCategory(rows, "Expense", value => value.EstimateCurrentYr);
+                var actualRevenue = SumByCategory(rows, "Revenue", value => value.ActualYTD);
+                var actualExpenses = SumByCategory(rows, "Expense", value => value.ActualYTD);
+                var budgetRevenue = SumByCategory(rows, "Revenue", value => value.BudgetYear);
+                var budgetExpenses = SumByCategory(rows, "Expense", value => value.BudgetYear);
+
+                var rev = estimatedRevenue != 0 ? estimatedRevenue : actualRevenue;
+                var exp = estimatedExpenses != 0 ? estimatedExpenses : actualExpenses;
+                var enterpriseRecord = FindMatchingEnterprise(enterpriseRecords, enterprise);
 
                 var snap = new EnterpriseSnapshot
                 {
                     Name = enterprise,
+                    DisplayCategory = enterprise.Equals("Apartments", StringComparison.OrdinalIgnoreCase)
+                        ? "Operations / income support"
+                        : "Utility rate study",
                     Revenue = rev,
-                    Expenses = exp
+                    Expenses = exp,
+                    PriorYearRevenue = priorYearRevenue,
+                    PriorYearExpenses = priorYearExpenses,
+                    CurrentYearEstimatedRevenue = estimatedRevenue,
+                    CurrentYearEstimatedExpenses = estimatedExpenses,
+                    BudgetYearRevenue = budgetRevenue,
+                    BudgetYearExpenses = budgetExpenses
                 };
 
-                if (!snap.IsSelfSustaining && results.Any(r => r.IsSelfSustaining))
+                if (enterpriseRecord != null)
                 {
-                    var surplusPool = results.Where(r => r.NetPosition > 0).Sum(r => r.NetPosition);
-                    snap.CrossSubsidyNote = $"Funded by other enterprises (${surplusPool:N0} available)";
+                    snap.CurrentRate = enterpriseRecord.CurrentRate;
+                    snap.ReserveCoverageMonths = enterpriseRecord.MonthlyExpenses > 0
+                        ? Math.Round(enterpriseRecord.TotalBudget / enterpriseRecord.MonthlyExpenses, 2)
+                        : 0m;
+
+                    if (_chargeCalculatorService != null)
+                    {
+                        try
+                        {
+                            var recommendation = await _chargeCalculatorService.CalculateRecommendedChargeAsync(enterpriseRecord.Id, ct);
+                            snap.CurrentRate = recommendation.CurrentRate != 0 ? recommendation.CurrentRate : snap.CurrentRate;
+                            snap.RecommendedRate = recommendation.RecommendedRate;
+                            snap.DebtServiceRatio = recommendation.RateValidation.DebtServiceRatio;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "GetEnterpriseSnapshotsAsync: Unable to calculate rate recommendation for {Enterprise}", enterprise);
+                        }
+                    }
+                }
+
+                snap.InsightSummary = BuildEnterpriseInsightSummary(snap);
+
+                if (enterprise.Equals("Apartments", StringComparison.OrdinalIgnoreCase) && snap.IsSelfSustaining)
+                {
+                    snap.CrossSubsidyNote = "Apartment operating income is positive, but it should not be used to hide deficits in utility enterprises.";
                 }
 
                 results.Add(snap);
             }
 
+            var surplusPool = results.Where(r => r.NetPosition > 0).Sum(r => r.NetPosition);
+            foreach (var snapshot in results.Where(r => !r.IsSelfSustaining && surplusPool > 0))
+            {
+                snapshot.CrossSubsidyNote = $"At risk of being masked by positive enterprise margins (${surplusPool:N0} available elsewhere).";
+                snapshot.InsightSummary = BuildEnterpriseInsightSummary(snapshot);
+            }
+
             return results;
+        }
+
+        private static decimal SumByCategory(
+            IEnumerable<TownOfWileyBudget2026> rows,
+            string category,
+            Func<TownOfWileyBudget2026, decimal?> selector)
+        {
+            return rows
+                .Where(r => string.Equals(r.Category, category, StringComparison.OrdinalIgnoreCase))
+                .Sum(r => selector(r) ?? 0m);
+        }
+
+        private static Enterprise? FindMatchingEnterprise(IEnumerable<Enterprise> enterprises, string enterpriseName)
+        {
+            return enterprises.FirstOrDefault(enterprise =>
+                string.Equals(enterprise.Name, enterpriseName, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(enterprise.Type, enterpriseName, StringComparison.OrdinalIgnoreCase)
+                || (enterpriseName.Equals("Apartments", StringComparison.OrdinalIgnoreCase)
+                    && (string.Equals(enterprise.Name, "Housing", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(enterprise.Type, "Housing", StringComparison.OrdinalIgnoreCase))));
+        }
+
+        private static string BuildEnterpriseInsightSummary(EnterpriseSnapshot snapshot)
+        {
+            var insights = new List<string>();
+
+            if (snapshot.Name.Equals("Apartments", StringComparison.OrdinalIgnoreCase))
+            {
+                insights.Add(snapshot.IsSelfSustaining
+                    ? "Operating income is positive. Compare it separately so apartment performance does not mask utility losses."
+                    : "Operating income is negative. Review occupancy, maintenance burden, and direct operating margin.");
+            }
+            else
+            {
+                insights.Add(snapshot.IsSelfSustaining
+                    ? "Current estimated operations cover enterprise expenses."
+                    : "Current estimated operations do not recover enterprise expenses. Rate or cost action is needed.");
+            }
+
+            if (snapshot.ReserveCoverageMonths > 0)
+            {
+                insights.Add(snapshot.ReserveCoverageMonths >= snapshot.TargetReserveCoverageMonths
+                    ? $"Reserve coverage is {snapshot.ReserveCoverageMonths:F1} months, meeting the {snapshot.TargetReserveCoverageMonths:F0}-month target."
+                    : $"Reserve coverage is {snapshot.ReserveCoverageMonths:F1} months, below the {snapshot.TargetReserveCoverageMonths:F0}-month target.");
+            }
+
+            if (snapshot.RecommendedRate > 0)
+            {
+                insights.Add(snapshot.RequiredRateIncrease > 0
+                    ? $"Current rate {snapshot.CurrentRate:C2} trails the modeled rate need of {snapshot.RecommendedRate:C2}."
+                    : $"Current rate {snapshot.CurrentRate:C2} meets or exceeds the modeled rate need of {snapshot.RecommendedRate:C2}."
+                );
+            }
+
+            if (!string.Equals(snapshot.CrossSubsidyNote, "Self-funded", StringComparison.Ordinal))
+            {
+                insights.Add(snapshot.CrossSubsidyNote);
+            }
+
+            return string.Join(" ", insights);
         }
     }
 }

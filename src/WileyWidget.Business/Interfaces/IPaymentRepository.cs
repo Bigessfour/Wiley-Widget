@@ -81,4 +81,9 @@ public interface IPaymentRepository
     /// Gets total payment amount within date range
     /// </summary>
     Task<decimal> GetTotalAmountAsync(DateTime? startDate = null, DateTime? endDate = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reconciles payment account selections against budget lines and refreshes budget actuals.
+    /// </summary>
+    Task<PaymentBudgetReconciliationResult> ReconcileBudgetMappingsAsync(CancellationToken cancellationToken = default);
 }

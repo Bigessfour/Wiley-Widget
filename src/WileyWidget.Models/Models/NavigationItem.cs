@@ -58,5 +58,5 @@ public class NavigationItem
     /// </summary>
     public string DisplayText => string.IsNullOrEmpty(AccountNumber)
         ? Name
-        : $"{AccountNumber} - {Name}";
+        : $"{WileyWidget.Models.AccountNumber.FormatDisplay(AccountNumber)} - {Name}";
 }

@@ -270,11 +270,12 @@ namespace WileyWidget.Data
         public async Task<MunicipalAccount?> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            var variants = AccountNumber.GetEquivalentValues(accountNumber);
             return await context.MunicipalAccounts
                 .AsNoTracking()
                 .OrderByDescending(ma => ma.LastSyncDate)
                 .ThenByDescending(ma => ma.Id)
-                .FirstOrDefaultAsync(ma => ma.AccountNumber!.Value == accountNumber, cancellationToken);
+                .FirstOrDefaultAsync(ma => variants.Contains(ma.AccountNumber!.Value), cancellationToken);
         }
 
         public Task<IEnumerable<MunicipalAccount>> GetByDepartmentAsync(int departmentId, CancellationToken cancellationToken = default)
@@ -358,7 +359,8 @@ namespace WileyWidget.Data
         public async Task<bool> AccountNumberExistsAsync(string accountNumber, int? excludeId = null, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(CancellationToken.None);
-            var query = context.MunicipalAccounts.Where(ma => ma.AccountNumber!.Value == accountNumber);
+            var variants = AccountNumber.GetEquivalentValues(accountNumber);
+            var query = context.MunicipalAccounts.Where(ma => variants.Contains(ma.AccountNumber!.Value));
 
             if (excludeId.HasValue)
                 query = query.Where(ma => ma.Id != excludeId.Value);
@@ -383,12 +385,14 @@ namespace WileyWidget.Data
             }
 
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            NormalizeAccountNumber(account);
+            var variants = AccountNumber.GetEquivalentValues(account.AccountNumber?.Value);
 
             // Check for duplicate account number
             var existingAccount = await context.MunicipalAccounts
                 .OrderByDescending(a => a.LastSyncDate)
                 .ThenByDescending(a => a.Id)
-                .FirstOrDefaultAsync(a => a.AccountNumber != null && account.AccountNumber != null && a.AccountNumber.Value == account.AccountNumber.Value, cancellationToken);
+                .FirstOrDefaultAsync(a => a.AccountNumber != null && account.AccountNumber != null && variants.Contains(a.AccountNumber.Value), cancellationToken);
 
             if (existingAccount != null)
             {
@@ -411,6 +415,7 @@ namespace WileyWidget.Data
         public async Task<MunicipalAccount> UpdateAsync(MunicipalAccount account, CancellationToken cancellationToken = default)
         {
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+            NormalizeAccountNumber(account);
             context.MunicipalAccounts.Update(account);
             try
             {
@@ -422,6 +427,14 @@ namespace WileyWidget.Data
             }
 
             return account;
+        }
+
+        private static void NormalizeAccountNumber(MunicipalAccount account)
+        {
+            if (!string.IsNullOrWhiteSpace(account.AccountNumber?.Value))
+            {
+                account.AccountNumber.Value = AccountNumber.FormatDisplay(account.AccountNumber.Value);
+            }
         }
 
         public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)

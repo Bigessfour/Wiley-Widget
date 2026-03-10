@@ -47,14 +47,47 @@ namespace WileyWidget.WinForms.Tests.Unit.Services
             service.ThemeChanged += (_, theme) => raisedTheme = theme;
 
             // Act
-            service.ApplyTheme("Office2019Dark");
+            service.ApplyTheme("Office2016Black");
 
             // Assert
-            service.CurrentTheme.Should().Be("Office2019Dark");
-            SfSkinManager.ApplicationVisualTheme.Should().Be("Office2019Dark");
-            raisedTheme.Should().Be("Office2019Dark");
-            appSettings.Theme.Should().Be("Office2019Dark");
+            service.CurrentTheme.Should().Be("Office2016Black");
+            SfSkinManager.ApplicationVisualTheme.Should().Be("Office2016Black");
+            raisedTheme.Should().Be("Office2016Black");
+            appSettings.Theme.Should().Be("Office2016Black");
             settings.Verify(s => s.Save(), Times.Once);
+        }
+
+        [StaFact]
+        public void ReapplyCurrentTheme_ReplaysThemeWithoutPersistingSettingsAgain()
+        {
+            // Arrange
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["UI:Theme"] = "Office2019Colorful"
+                })
+                .Build();
+
+            var settings = new Mock<ISettingsService>();
+            var appSettings = new AppSettings { Theme = "Office2019Colorful" };
+            settings.SetupGet(s => s.Current).Returns(appSettings);
+
+            var service = new ThemeService(configuration, NullLogger<ThemeService>.Instance, settings.Object);
+
+            var raisedThemes = new List<string>();
+            service.ThemeChanged += (_, theme) => raisedThemes.Add(theme);
+
+            SfSkinManager.ApplicationVisualTheme = "Office2016Black";
+
+            // Act
+            service.ReapplyCurrentTheme();
+
+            // Assert
+            service.CurrentTheme.Should().Be("Office2019Colorful");
+            SfSkinManager.ApplicationVisualTheme.Should().Be("Office2019Colorful");
+            raisedThemes.Should().ContainSingle().Which.Should().Be("Office2019Colorful");
+            appSettings.Theme.Should().Be("Office2019Colorful");
+            settings.Verify(s => s.Save(), Times.Never);
         }
     }
 }

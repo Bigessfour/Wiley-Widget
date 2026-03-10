@@ -34,7 +34,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
+        var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         var jarvisControl = FindControl<JARVISChatUserControl>(rightDockPanel);
         jarvisControl.Should().NotBeNull();
@@ -58,7 +58,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
+        var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         // RightDockPanelFactory.SwitchRightPanelContent(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat, logger);
 
@@ -78,7 +78,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
+        var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         var jarvisControl = FindControl<JARVISChatUserControl>(rightDockPanel);
         jarvisControl.Should().NotBeNull();
@@ -97,7 +97,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
+        var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         var tabControl = rightDockPanel.Controls.OfType<TabControl>().First();
         tabControl.TabPages.Count.Should().Be(2);
@@ -115,7 +115,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
+        var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         // RightDockPanelFactory.SwitchRightPanelContent(rightDockPanel, RightDockPanelFactory.RightPanelMode.ActivityLog, logger);
 
@@ -134,7 +134,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
+        var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         var jarvisControl = FindControl<JARVISChatUserControl>(rightDockPanel);
         jarvisControl.Should().NotBeNull();

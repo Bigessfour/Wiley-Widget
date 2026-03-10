@@ -17,6 +17,7 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
 
@@ -68,7 +69,7 @@ public class AdvancedScenariosTabControl : UserControl
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScroll = true;
         MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
-        Padding = new Padding(8);
+        Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
         _toolTip = new ToolTip();
 
         var root = new TableLayoutPanel
@@ -102,7 +103,7 @@ public class AdvancedScenariosTabControl : UserControl
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 5,
-            Padding = new Padding(8)
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact)
         };
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -148,7 +149,7 @@ public class AdvancedScenariosTabControl : UserControl
         _runButton = _factory.CreateSfButton("Run Scenario", b =>
         {
             b.Width = 200;
-            b.Height = 42;
+            b.Height = LayoutTokens.GetScaled(LayoutTokens.PrimaryActionControlHeight);
         });
         _runButton.AccessibleName = "Run scenario";
         _runButton.AccessibleDescription = "Execute advanced scenario analysis";
@@ -158,7 +159,7 @@ public class AdvancedScenariosTabControl : UserControl
         _exportButton = _factory.CreateSfButton("Export", b =>
         {
             b.Width = 200;
-            b.Height = 32;
+            b.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
         });
         _exportButton.AccessibleName = "Export advanced scenario";
         _exportButton.AccessibleDescription = "Export advanced scenario output";
@@ -168,7 +169,7 @@ public class AdvancedScenariosTabControl : UserControl
         _resetButton = _factory.CreateSfButton("Reset to Base", b =>
         {
             b.Width = 200;
-            b.Height = 32;
+            b.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
         });
         _resetButton.AccessibleName = "Reset scenario";
         _resetButton.AccessibleDescription = "Reset advanced scenario inputs to baseline";
@@ -213,7 +214,7 @@ public class AdvancedScenariosTabControl : UserControl
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 2,
-            Padding = new Padding(4)
+            Padding = LayoutTokens.GetScaled(LayoutTokens.ToolbarPadding)
         };
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 60));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 40));
@@ -256,7 +257,7 @@ public class AdvancedScenariosTabControl : UserControl
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 2,
-            Padding = new Padding(8)
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact)
         };
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));

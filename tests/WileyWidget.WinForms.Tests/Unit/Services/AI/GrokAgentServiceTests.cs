@@ -5,10 +5,12 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Moq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.Services.Abstractions;
 
@@ -111,7 +113,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
             // Assert
             _mockApiKeyProvider.Verify(x => x.ApiKey, Times.AtLeastOnce);
             _mockApiKeyProvider.Verify(x => x.GetConfigurationSource(), Times.AtLeastOnce);
-            _mockApiKeyProvider.Verify(x => x.IsValidated, Times.AtLeastOnce);
+            _mockApiKeyProvider.Verify(x => x.ValidateAsync(), Times.Never);
         }
 
         /// <summary>
@@ -227,6 +229,64 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
             Assert.DoesNotContain("401", result);
             Assert.DoesNotContain("Unauthorized", result);
             Assert.Contains("Hello", result);
+        }
+
+        /// <summary>
+        /// Test: Verifies GetSimpleResponse can extract final assistant text when /responses output includes tool-call entries.
+        /// This guards against returning "Unexpected response structure" for mixed output arrays.
+        /// </summary>
+        [Fact]
+        public async Task GetSimpleResponse_WithToolCallAndFinalMessage_ExtractsFinalMessageText()
+        {
+            // Arrange
+            _httpClient = new HttpClient(new MockHttpMessageHandler(
+                    (req, ct) =>
+                    {
+                        const string responseJson = """
+                                        {
+                                            "id": "response-456",
+                                            "output": [
+                                                {
+                                                    "type": "code_interpreter_call",
+                                                    "name": "code_interpreter",
+                                                    "arguments": "{\"code\":\"print(17 * 42)\"}"
+                                                },
+                                                {
+                                                    "type": "message",
+                                                    "content": [
+                                                        {
+                                                            "type": "output_text",
+                                                            "text": "The result is 714."
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                        """;
+
+                        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                        {
+                            Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+                        });
+                    }));
+
+            _mockHttpClientFactory
+                    .Setup(x => x.CreateClient(It.IsAny<string>()))
+                    .Returns(_httpClient);
+
+            var service = new GrokAgentService(
+                    _mockApiKeyProvider.Object,
+                    _config,
+                    _mockLogger.Object,
+                    _mockHttpClientFactory.Object);
+
+            // Act
+            var result = await service.GetSimpleResponse("Run Python: print(17 * 42)");
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Contains("714", result);
+            Assert.DoesNotContain("Unexpected response structure", result, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -367,6 +427,132 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
             Assert.False(success);
             // Service returns "HTTP Unauthorized: {...error...}" for 401 responses
             Assert.Contains("Unauthorized", message);
+        }
+
+        /// <summary>
+        /// Test: Verifies runtime key rotation immediately updates the Authorization header.
+        /// This ensures key activation/rotation commands take effect without restarting the app.
+        /// </summary>
+        [Fact]
+        public async Task UpdateApiKeyAsync_UpdatesAuthorizationHeaderImmediately()
+        {
+            // Arrange
+            _httpClient = new HttpClient();
+            _mockHttpClientFactory
+                .Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(_httpClient);
+
+            var service = new GrokAgentService(
+                _mockApiKeyProvider.Object,
+                _config,
+                _mockLogger.Object,
+                _mockHttpClientFactory.Object);
+
+            const string newApiKey = "xai-new-key-abcdefghijklmnopqrstuv";
+
+            // Act
+            await service.UpdateApiKeyAsync(newApiKey);
+
+            // Assert
+            Assert.NotNull(_httpClient.DefaultRequestHeaders.Authorization);
+            Assert.Equal("Bearer", _httpClient.DefaultRequestHeaders.Authorization!.Scheme);
+            Assert.Equal(newApiKey, _httpClient.DefaultRequestHeaders.Authorization.Parameter);
+        }
+
+        [Fact]
+        public async Task InitializeAsync_RegistersServiceLayerPluginsInKernel()
+        {
+            // Arrange
+            _httpClient = new HttpClient();
+            _mockHttpClientFactory
+                .Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(_httpClient);
+
+            var mockQuickBooksService = new Mock<IQuickBooksService>();
+            var mockAnalyticsService = new Mock<IAnalyticsService>();
+
+            using var serviceProvider = new ServiceCollection()
+                .AddLogging()
+                .AddSingleton(mockQuickBooksService.Object)
+                .AddTransient<IAnalyticsService>(_ => mockAnalyticsService.Object)
+                .BuildServiceProvider();
+
+            var service = new GrokAgentService(
+                apiKeyProvider: _mockApiKeyProvider.Object,
+                config: _config,
+                logger: _mockLogger.Object,
+                httpClientFactory: _mockHttpClientFactory.Object,
+                serviceProvider: serviceProvider);
+
+            // Act
+            await service.InitializeAsync();
+
+            // Assert
+            Assert.NotNull(service.Kernel);
+
+            var pluginNames = service.Kernel!.Plugins.Select(plugin => plugin.Name).ToList();
+            Assert.Contains("QuickBooksPlugin", pluginNames);
+            Assert.Contains("DataReportingPlugin", pluginNames);
+            Assert.Contains("CodebaseInsightPlugin", pluginNames);
+            Assert.Contains("TimePlugin", pluginNames);
+            Assert.Contains("AnomalyDetectionPlugin", pluginNames);
+        }
+
+        [Fact]
+        public async Task GetSimpleResponse_WithResponsesToolCall_LogsToolExecution()
+        {
+            // Arrange
+            var aiLoggingService = new Mock<IAILoggingService>();
+            const string query = "How many budgets do we have?";
+
+            const string responseJson = """
+                        {
+                            "output": [
+                                {
+                                    "type": "web_search_call",
+                                    "name": "web_search"
+                                },
+                                {
+                                    "type": "message",
+                                    "content": [
+                                        {
+                                            "type": "output_text",
+                                            "text": "Budget count is not currently available."
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                        """;
+
+            _httpClient = new HttpClient(new MockHttpMessageHandler(
+                    (req, ct) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new StringContent(responseJson, Encoding.UTF8, "application/json")
+                    })));
+
+            _mockHttpClientFactory
+                    .Setup(x => x.CreateClient(It.IsAny<string>()))
+                    .Returns(_httpClient);
+
+            var service = new GrokAgentService(
+                    apiKeyProvider: _mockApiKeyProvider.Object,
+                    config: _config,
+                    logger: _mockLogger.Object,
+                    httpClientFactory: _mockHttpClientFactory.Object,
+                    aiLoggingService: aiLoggingService.Object);
+
+            // Act
+            var result = await service.GetSimpleResponse(query, "You are a helpful assistant.");
+
+            // Assert
+            Assert.Contains("Budget count is not currently available.", result, StringComparison.Ordinal);
+            aiLoggingService.Verify(
+                    log => log.LogToolExecution(
+                            query,
+                            "ResponsesApi",
+                            It.Is<IReadOnlyCollection<string>>(tools => tools.Contains("web_search"))),
+                    Times.Once);
         }
 
         /// <summary>

@@ -30,6 +30,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -52,7 +53,7 @@ namespace WileyWidget.WinForms.Controls.Panels
     /// <summary>
     /// Budget overview panel displaying budget vs actual analysis with
     /// fiscal year filtering, variance tracking, and CSV export capabilities.
-    /// Designed for embedding in DockingManager with DI-scoped lifecycle.
+    /// Designed for embedding in panels with DI-scoped lifecycle.
     /// </summary>
     [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
     public partial class BudgetOverviewPanel : ScopedPanelBase<BudgetOverviewViewModel>
@@ -95,6 +96,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         // Data binding sources
         private BindingSource? _fiscalYearBindingSource;
         private BindingSource? _summaryBindingSource;
+        private bool _uiInitialized;
+        private bool _viewModelBound;
 
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
@@ -109,8 +112,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Apply theme via SfSkinManager (single source of truth)
                 try { Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme); } catch { }
                 SetupUI();
+                _uiInitialized = true;
+                BindViewModel();
             });
-            // BindViewModel() moved to OnViewModelResolved to ensure ViewModel is resolved first
         }
 
         /// <summary>
@@ -119,10 +123,11 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnViewModelResolved(object? viewModel)
         {
             base.OnViewModelResolved(viewModel);
-            if (viewModel is not BudgetOverviewViewModel)
+            if (viewModel is not BudgetOverviewViewModel || !_uiInitialized)
             {
                 return;
             }
+
             BindViewModel();
         }
 
@@ -172,11 +177,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.SuspendLayout();
 
             Name = "BudgetOverviewPanel";
-            // Dock.Fill — let the DockingManager control size, but enforce a floor so
+            // Dock.Fill — let the parent control size, but enforce a floor so
             // the fixed chrome (header 52 + toolbar 48 + summary cards 80 + statusbar 24 = 204)
             // never collapses and leaves a blank panel.
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(1024, 720);
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
+            AutoScroll = true;
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
 
             this.ResumeLayout(false);
@@ -187,13 +193,19 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             // Retrieve current theme and initialize UI components
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-            _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
-            var tooltips = new ToolTip();
+            _errorProvider = ControlFactory.CreateErrorProvider(errorProvider =>
+            {
+                errorProvider.BlinkStyle = ErrorBlinkStyle.NeverBlink;
+            });
+            var tooltips = ControlFactory.CreateToolTip();
 
             // Initialize binding sources for MVVM data binding
-            _fiscalYearBindingSource = new BindingSource();
-            _summaryBindingSource = new BindingSource();
-            _panelHeader = new PanelHeader { Dock = DockStyle.Top };
+            _fiscalYearBindingSource = ControlFactory.CreateBindingSource();
+            _summaryBindingSource = ControlFactory.CreateBindingSource();
+            _panelHeader = ControlFactory.CreatePanelHeader(header =>
+            {
+                header.Dock = DockStyle.Top;
+            });
             _panelHeader.Title = BudgetOverviewPanelResources.PanelTitle;
             _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
@@ -205,8 +217,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _topPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 48,
-                Padding = new Padding(8, 4, 8, 4),
+                Height = LayoutTokens.GetScaled(56),
+                Padding = LayoutTokens.GetScaled(new Padding(12, 6, 12, 6)),
                 BorderStyle = BorderStyle.None,
             };
             SfSkinManager.SetVisualStyle(_topPanel, currentTheme);
@@ -214,16 +226,19 @@ namespace WileyWidget.WinForms.Controls.Panels
             var toolbar = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 6,
+                ColumnCount = 7,
                 RowCount = 1,
-                AutoSize = false
+                AutoSize = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Label
-            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // ComboBox
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(180))); // ComboBox
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10));  // Spacer
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Refresh button
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10));  // Spacer
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Export button
+            toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));  // Stretch
             toolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             // Fiscal year selector label
@@ -232,24 +247,25 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Text = BudgetOverviewPanelResources.FiscalYearLabel,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
-                Margin = new Padding(0, 0, 4, 0)
+                Margin = new Padding(0, 0, 6, 0),
+                AutoSize = true
             };
             toolbar.Controls.Add(lblFiscalYear, 0, 0);
 
-            _comboFiscalYear = new SfComboBox
+            _comboFiscalYear = ControlFactory.CreateSfComboBox(combo =>
             {
-                Dock = DockStyle.Fill,
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                AccessibleName = "Fiscal year selector",
-                AccessibleDescription = "Select the fiscal year to view budget data",
-                Margin = new Padding(0, 2, 0, 2),
-                DataSource = _fiscalYearBindingSource,
-                DisplayMember = null,  // Use default ToString for List<int> integers
-                ValueMember = null,    // Use value itself without explicit member mapping
-                ThemeName = currentTheme,
-                AllowNull = false      // Require selection
-            };
+                combo.Dock = DockStyle.Fill;
+                combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+                combo.AccessibleName = "Fiscal year selector";
+                combo.AccessibleDescription = "Select the fiscal year to view budget data";
+                combo.Margin = new Padding(0);
+                combo.DataSource = _fiscalYearBindingSource;
+                combo.DisplayMember = null;
+                combo.ValueMember = null;
+                combo.AllowNull = false;
+                combo.MinimumSize = LayoutTokens.GetScaled(new Size(180, LayoutTokens.StandardControlHeightLarge));
+            });
             tooltips.SetToolTip(_comboFiscalYear, "Select a fiscal year to view budget data for that period");
             _fiscalYearSelectedChangedHandler = ComboFiscalYear_SelectedIndexChanged;
             _comboFiscalYear.SelectedIndexChanged += _fiscalYearSelectedChangedHandler;
@@ -259,15 +275,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             toolbar.Controls.Add(new Label(), 2, 0);
 
             // Refresh button
-            _btnRefresh = new SfButton
+            _btnRefresh = ControlFactory.CreateSfButton(BudgetOverviewPanelResources.RefreshText, button =>
             {
-                Text = BudgetOverviewPanelResources.RefreshText,
-                Dock = DockStyle.Fill,
-                AccessibleName = "Refresh budget data",
-                AccessibleDescription = "Reload budget overview data",
-                Margin = new Padding(0, 2, 0, 2),
-                ThemeName = currentTheme
-            };
+                button.Dock = DockStyle.Fill;
+                button.AccessibleName = "Refresh budget data";
+                button.AccessibleDescription = "Reload budget overview data";
+                button.Margin = new Padding(0);
+                button.MinimumSize = LayoutTokens.GetScaled(new Size(120, LayoutTokens.StandardControlHeightLarge));
+            });
             tooltips.SetToolTip(_btnRefresh, "Reload the budget data from the database (Ctrl+R)");
             SetupRefreshButtonIcon();
             _refreshButtonClickHandler = OnRefreshButtonClick;
@@ -278,15 +293,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             toolbar.Controls.Add(new Label(), 4, 0);
 
             // Export CSV button
-            _btnExportCsv = new SfButton
+            _btnExportCsv = ControlFactory.CreateSfButton("&" + BudgetOverviewPanelResources.ExportCsvText, button =>
             {
-                Text = "&" + BudgetOverviewPanelResources.ExportCsvText,
-                Dock = DockStyle.Fill,
-                AccessibleName = "Export to CSV",
-                AccessibleDescription = "Export budget data to CSV file (Alt+E)",
-                Margin = new Padding(0, 2, 0, 2),
-                ThemeName = currentTheme
-            };
+                button.Dock = DockStyle.Fill;
+                button.AccessibleName = "Export to CSV";
+                button.AccessibleDescription = "Export budget data to CSV file (Alt+E)";
+                button.Margin = new Padding(0);
+                button.MinimumSize = LayoutTokens.GetScaled(new Size(140, LayoutTokens.StandardControlHeightLarge));
+            });
             tooltips.SetToolTip(_btnExportCsv, "Export all budget metrics to a CSV file for use in spreadsheets or reports");
             SetupExportButtonIcon();
             _exportButtonClickHandler = OnExportCsvClick;
@@ -300,12 +314,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             _summaryPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 80,  // Reduced to give more space to grid headers
-                Padding = new Padding(8),
+                Height = LayoutTokens.GetScaled(104),
+                Padding = LayoutTokens.GetScaled(new Padding(12, 8, 12, 8)),
                 BorderStyle = BorderStyle.None,
             };
             SfSkinManager.SetVisualStyle(_summaryPanel, currentTheme);
-            var summaryFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+            var summaryFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoScroll = false,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
 
             // Create summary tiles with data bindings
             _lblTotalBudget = CreateSummaryTile(summaryFlow, BudgetOverviewPanelResources.TotalBudgetLabel, "$0", Color.DodgerBlue);
@@ -337,46 +359,46 @@ namespace WileyWidget.WinForms.Controls.Panels
             Controls.Add(_summaryPanel);
 
             // Main content area - split between chart and grid
-            var mainSplit = new SplitContainerAdv
+            var mainSplit = ControlFactory.CreateSplitContainerAdv(split =>
             {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal
-            };
+                split.Dock = DockStyle.Fill;
+                split.Orientation = Orientation.Horizontal;
+            });
             // Allocate 250px for chart, rest to grid so headers are visible
             SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(mainSplit, 250, 200, 250);
 
             // Variance chart
-            _varianceChart = new ChartControl
+            _varianceChart = ControlFactory.CreateChartControl("Budget Variance", chart =>
             {
-                Dock = DockStyle.Fill,
-                AccessibleName = "Budget variance chart",
-                AccessibleDescription = "Displays budget vs actual variance by department"
-            };
+                chart.Dock = DockStyle.Fill;
+                chart.AccessibleName = "Budget variance chart";
+                chart.AccessibleDescription = "Displays budget vs actual variance by department";
+            });
             _varianceChartRegionEventWiring = new ChartControlRegionEventWiring(_varianceChart);
             ConfigureChart();
             mainSplit.Panel1.Controls.Add(_varianceChart);
 
             // Metrics grid with data binding
-            var gridBindingSource = new BindingSource();
-            _metricsGrid = new SfDataGrid
+            var gridBindingSource = ControlFactory.CreateBindingSource();
+            _metricsGrid = ControlFactory.CreateSfDataGrid(grid =>
             {
-                Dock = DockStyle.Fill,
-                AutoGenerateColumns = false,
-                AllowFiltering = true,
-                AllowSorting = true,
-                AllowGrouping = true,
-                ShowRowHeader = false,
-                SelectionMode = Syncfusion.WinForms.DataGrid.Enums.GridSelectionMode.Single,
-                AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill,
-                RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f),
-                HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f),
-                AllowResizingColumns = true,
-                AllowTriStateSorting = true,
-                AccessibleName = "Budget metrics grid",
-                AccessibleDescription = "Displays budget metrics by department",
-                ThemeName = currentTheme,
-                DataSource = gridBindingSource
-            };
+                grid.Dock = DockStyle.Fill;
+                grid.AutoGenerateColumns = false;
+                grid.AllowFiltering = true;
+                grid.AllowSorting = true;
+                grid.AllowGrouping = true;
+                grid.ShowRowHeader = false;
+                grid.SelectionMode = Syncfusion.WinForms.DataGrid.Enums.GridSelectionMode.Single;
+                grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill;
+                grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightTall);
+                grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightComfortable);
+                grid.AllowResizingColumns = true;
+                grid.AllowTriStateSorting = true;
+                grid.ShowGroupDropArea = false;
+                grid.AccessibleName = "Budget metrics grid";
+                grid.AccessibleDescription = "Displays budget metrics by department";
+                grid.DataSource = gridBindingSource;
+            });
             ConfigureGridColumns();
 
             mainSplit.Panel2.Controls.Add(_metricsGrid);
@@ -387,7 +409,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _lblLastUpdated = new Label
             {
                 Dock = DockStyle.Bottom,
-                Height = 24,
+                Height = LayoutTokens.GetScaled(28),
                 TextAlign = ContentAlignment.MiddleRight,
                 Text = "Last updated:",
                 Padding = new Padding(0, 0, 8, 0)
@@ -404,12 +426,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             Controls.Add(_loadingOverlay);
             _loadingOverlay.BringToFront();
 
-            _noDataOverlay = new NoDataOverlay
+            _noDataOverlay = ControlFactory.CreateNoDataOverlay(overlay =>
             {
-                Message = "No budget data available\r\nAdd budget entries and accounts to see analysis",
-                Dock = DockStyle.Fill,
-                Visible = false
-            };
+                overlay.Message = "No budget data available\r\nAdd budget entries and accounts to see analysis";
+                overlay.Dock = DockStyle.Fill;
+                overlay.Visible = false;
+            });
             Controls.Add(_noDataOverlay);
             _noDataOverlay.BringToFront();
 
@@ -422,9 +444,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             var tile = new Panel
             {
-                Width = 150,
-                Height = 80,
-                Margin = new Padding(4),
+                Width = LayoutTokens.GetScaled(176),
+                Height = LayoutTokens.GetScaled(84),
+                Margin = LayoutTokens.GetScaled(new Padding(0, 0, 10, 0)),
                 BorderStyle = BorderStyle.None,
                 AccessibleName = $"{title} summary card",
                 AccessibleDescription = $"Displays {title.ToLower(CultureInfo.CurrentCulture)} metric"
@@ -435,9 +457,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Text = title,
                 Dock = DockStyle.Top,
-                Height = 24,
-                TextAlign = ContentAlignment.MiddleCenter
-                // Font and ForeColor inherited from theme cascade
+                Height = LayoutTokens.GetScaled(28),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold)
             };
             tile.Controls.Add(lblTitle);
 
@@ -447,8 +469,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 AccessibleName = $"{title} value",
-                AccessibleDescription = $"Current {title.ToLower(CultureInfo.CurrentCulture)}: {value}"
-                // Font and ForeColor inherited from theme cascade
+                AccessibleDescription = $"Current {title.ToLower(CultureInfo.CurrentCulture)}: {value}",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold)
             };
             tile.Controls.Add(lblValue);
 
@@ -489,16 +511,16 @@ namespace WileyWidget.WinForms.Controls.Panels
             var deptCol = new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 150 };
             _metricsGrid.Columns.Add(deptCol);
 
-            var budgetCol = new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 120, Format = "C2" };
+            var budgetCol = new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 132, Format = "C2" };
             _metricsGrid.Columns.Add(budgetCol);
 
-            var actualCol = new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 120, Format = "C2" };
+            var actualCol = new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 132, Format = "C2" };
             _metricsGrid.Columns.Add(actualCol);
 
-            var varianceCol = new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 120, Format = "C2" };
+            var varianceCol = new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 132, Format = "C2" };
             _metricsGrid.Columns.Add(varianceCol);
 
-            var varPctCol = new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 100 };
+            var varPctCol = new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 112 };
             _metricsGrid.Columns.Add(varPctCol);
         }
 
@@ -543,8 +565,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void BindViewModel()
         {
-            // Guard: ensure ViewModel is resolved before binding
-            if (ViewModel == null)
+            if (_viewModelBound || ViewModel == null || !_uiInitialized)
             {
                 return;
             }
@@ -610,6 +631,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Initial UI update for overlays
             UpdateUI();
+            _viewModelBound = true;
         }
 
         private void BudgetMetrics_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -682,7 +704,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Just update semantic color for variance (red = over, green = under)
                 if (_lblVariance != null)
                 {
-                    _lblVariance.ForeColor = ViewModel.TotalVariance >= 0 ? ThemeColors.Error : ThemeColors.Success;
+                    _lblVariance.ForeColor = ViewModel.TotalVariance >= 0 ? Color.Red : Color.Green;
                 }
 
                 // Update last-updated timestamp
@@ -1056,7 +1078,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 if (!DesignMode)
                 {
-                    // Note: Data loading is now handled by ILazyLoadViewModel via DockingManager events
+                    // Note: Data loading is now handled by ILazyLoadViewModel via panel events
                 }
             }
             catch (Exception ex)

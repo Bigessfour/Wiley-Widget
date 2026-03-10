@@ -7,7 +7,6 @@ using System.Windows.Forms;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Themes;
 using Syncfusion.Windows.Forms.Tools;
-using Syncfusion.Drawing;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -44,6 +43,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private void InitializeComponent()
         {
             ThemeColors.EnsureThemeAssemblyLoaded();
+            var overlayPadding = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(12f);
+            var spinnerWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(180f);
+            var spinnerHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(18f);
+            var messageTopMargin = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(6f);
+            var messageMaxWidth = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(320f);
+
             // Configure gradient panel - let SFSkinManager handle background via theme cascade
             var currentTheme = ThemeColors.DefaultTheme;
             try
@@ -66,7 +71,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
             {
                 Dock = DockStyle.Fill,
                 RowCount = 3,
-                ColumnCount = 3
+                ColumnCount = 3,
+                GrowStyle = TableLayoutPanelGrowStyle.FixedSize,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
             };
             table.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -76,12 +84,17 @@ namespace WileyWidget.WinForms.Controls.Supporting
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
             // Center container
-            var container = new Panel
+            var container = new FlowLayoutPanel
             {
+                FlowDirection = FlowDirection.TopDown,
                 AutoSize = true,
-                Padding = new Padding(12),
-                BorderStyle = BorderStyle.None,
-                Dock = DockStyle.Fill
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Anchor = AnchorStyles.None,
+                WrapContents = false,
+                Padding = new Padding(overlayPadding),
+                Margin = Padding.Empty,
+                AccessibleName = "Loading Indicator Container",
+                AccessibleDescription = "Contains the loading spinner and loading status message",
             };
             try
             {
@@ -97,10 +110,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
             {
                 ProgressStyle = Syncfusion.Windows.Forms.Tools.ProgressBarStyles.WaitingGradient,
                 WaitingGradientWidth = 20,
-                Width = 180,
-                Height = 18,
-                Dock = DockStyle.Bottom,
+                Width = spinnerWidth,
+                Height = spinnerHeight,
                 Anchor = AnchorStyles.None,
+                Margin = Padding.Empty,
                 ThemeName = currentTheme
             };
             try
@@ -119,7 +132,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Text = WileyWidget.WinForms.Forms.MainFormResources.LoadingText,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Anchor = AnchorStyles.None,
-                Margin = new Padding(0, 6, 0, 0),
+                Margin = new Padding(0, messageTopMargin, 0, 0),
+                MaximumSize = new Size(messageMaxWidth, 0),
                 AccessibleName = "Loading Message",
                 AccessibleDescription = "Displays the current loading status message"
             };
@@ -127,21 +141,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
             _toolTip = new ToolTip();
             _toolTip.SetToolTip(_messageLabel, "Loading data, please wait");
 
-            var inner = new FlowLayoutPanel
-            {
-                FlowDirection = FlowDirection.TopDown,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Anchor = AnchorStyles.None,
-                AccessibleName = "Loading Indicator Container",
-                AccessibleDescription = "Contains the loading spinner and message"
-            };
-
-            // Add the spinner control and message
-            inner.Controls.Add(_spinnerHost);
-            inner.Controls.Add(_messageLabel);
-
-            container.Controls.Add(inner);
+            // Add the spinner control and message without wrapping so high-DPI layouts remain stable.
+            container.Controls.Add(_spinnerHost);
+            container.Controls.Add(_messageLabel);
 
             table.Controls.Add(container, 1, 1);
             Controls.Add(table);

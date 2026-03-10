@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms;
@@ -136,44 +137,23 @@ public partial class MainForm
 {
     private delegate void RibbonCommand();
     private bool _suppressThemeComboSelectionChanged;
+    private ToolStripGallery? _panelsGallery;
+    private bool _panelsGalleryLifecycleHooksAttached;
+    private bool _panelsGalleryNavigatorHookAttached;
 
     private static readonly ThemeComboItem[] ThemeComboItems =
-    {
-        new("Office2019Colorful", "Office2019Colorful"),
-        new("Office2019Dark", "Office2019Dark"),
-        new("Office2019White", "Office2019White"),
-        new("Office2019Black", "Office2019Black"),
-        new("Office2019DarkGray", "Office2019DarkGray"),
-        new("Office2016Colorful", "Office2016Colorful"),
-        new("Office2016White", "Office2016White"),
-        new("Office2016Black", "Office2016Black"),
-        new("Office2016DarkGray", "Office2016DarkGray"),
-        new("HighContrastBlack", "HighContrastBlack"),
-        new("HighContrastWhite", "HighContrastWhite")
-    };
+        AppThemeColors.GetSupportedThemes().Select(theme => new ThemeComboItem(theme, theme)).ToArray();
 
-    private void EnsureRibbonHitTestPriority()
-    {
-        if (_ribbon == null || _ribbon.IsDisposed)
-        {
-            return;
-        }
-
-        try
-        {
-            _ribbon.Enabled = true;
-            _ribbon.BringToFront();
-
-            if (_ribbon.CanFocus)
-            {
-                _ribbon.Focus();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "EnsureRibbonHitTestPriority: failed to enforce ribbon hit-test priority");
-        }
-    }
+    // Ribbon UX standards (logical units @ 96 DPI).
+    private const float RibbonHeightStandardLogical = 180f;
+    private const float RibbonMinimumHeightLogical = 132f;
+    private const float RibbonGroupMinimumHeightLogical = 132f;
+    private const float RibbonGroupMinimumWidthLogical = 128f;
+    private const float RibbonLargeButtonWidthLogical = 108f;
+    private const float RibbonLargeButtonHeightLogical = 96f;
+    private const float RibbonGalleryButtonWidthLogical = 100f;
+    private const float RibbonGalleryButtonHeightLogical = 88f;
+    private const float RibbonInteractiveItemMinimumHeightLogical = 32f;
 
     /// <summary>
     /// Segoe MDL2 Assets icon glyph mappings for common ribbon buttons.
@@ -194,6 +174,7 @@ public partial class MainForm
         ["Municipal Accounts"] = "\uE7EE",              // Contact list / Ledger
         ["Accounts"] = "\uE7EE",                        // Contact list
         ["Rates"] = "\uE8AB",                           // Chart bars
+        ["New Payment"] = "\uE8A5",                     // New document / new payment entry
         ["Payments"] = "\uE8C7",                        // Payment / Check register
         ["QuickBooks"] = "\uE8F1",                      // Cloud / Sync
 
@@ -329,8 +310,6 @@ public partial class MainForm
             {
                 logger?.LogInformation("Navigating to panel: {PanelName} ({PanelType})", entry.DisplayName, entry.PanelType.Name);
 
-                form.EnsurePanelNavigatorInitialized();
-
                 var shown = form.ShowPanel(entry.PanelType, entry.DisplayName, entry.DefaultDock);
                 if (!shown)
                 {
@@ -396,8 +375,11 @@ public partial class MainForm
                 style = RibbonStyle.Office2016;
             }
 
-            ribbon.RibbonStyle = style;
-            logger?.LogDebug("RibbonStyle set to {RibbonStyle} for theme: {Theme}", style, resolvedTheme);
+            if (ribbon.RibbonStyle != style)
+            {
+                ribbon.RibbonStyle = style;
+                logger?.LogDebug("RibbonStyle set to {RibbonStyle} for theme: {Theme}", style, resolvedTheme);
+            }
         }
         catch (Exception ex)
         {
@@ -778,12 +760,14 @@ public partial class MainForm
             Text = title,
             GripStyle = ToolStripGripStyle.Hidden,
             AutoSize = false,
-            Height = (int)DpiAware.LogicalToDeviceUnits(110f),
+            Height = (int)DpiAware.LogicalToDeviceUnits(RibbonGroupMinimumHeightLogical),
+            Width = (int)DpiAware.LogicalToDeviceUnits(RibbonGroupMinimumWidthLogical),
             LauncherStyle = LauncherStyle.Metro,
             ShowLauncher = true,
+            ShowCaption = true,
             ImageScalingSize = new Size(40, 40),
             ThemeName = ResolveRibbonThemeName(theme, logger),
-            CanOverflow = false,
+            CanOverflow = true,
             Dock = DockStyle.None,
             LayoutStyle = ToolStripLayoutStyle.StackWithOverflow,
             Padding = new Padding(6, 4, 6, 4),
@@ -932,6 +916,55 @@ public partial class MainForm
         ["War Room"] = "War\nRoom",
     };
 
+    private static readonly Dictionary<string, int> PanelGroupSortOrder = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Core Navigation"] = 0,
+        ["Financials"] = 1,
+        ["Payments"] = 2,
+        ["Integration"] = 3,
+        ["Analytics"] = 4,
+        ["Reporting"] = 5,
+        ["Operations"] = 6,
+        ["Utilities"] = 7,
+        ["Administration"] = 8,
+        ["AuditLogs"] = 9,
+    };
+
+    private static readonly Dictionary<string, string> PanelGroupDisplayLabels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Core Navigation"] = "Home",
+        ["Financials"] = "Financials",
+        ["Payments"] = "Payments",
+        ["Integration"] = "Integration",
+        ["Analytics"] = "Analytics",
+        ["Reporting"] = "Reporting",
+        ["Operations"] = "Operations",
+        ["Utilities"] = "Utilities",
+        ["Administration"] = "Administration",
+        ["AuditLogs"] = "Audit & Logs",
+    };
+
+    private static readonly Dictionary<string, string> PanelGroupIconGlyphs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Core Navigation"] = "\uE80F",
+        ["Financials"] = "\uE8F0",
+        ["Payments"] = "\uE8C7",
+        ["Integration"] = "\uE8F1",
+        ["Analytics"] = "\uEA24",
+        ["Reporting"] = "\uE8A1",
+        ["Operations"] = "\uE7EF",
+        ["Utilities"] = "\uE7BD",
+        ["Administration"] = "\uE713",
+        ["AuditLogs"] = "\uE81C",
+    };
+
+    private static IEnumerable<PanelRegistry.PanelEntry> GetRibbonPanelsByGroup(string groupName, bool includeHidden = false)
+    {
+        return PanelRegistry.GetAllRegisteredPanels(includeHidden)
+            .Where(panel => string.Equals(panel.DefaultGroup, groupName, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(panel => panel.DisplayName);
+    }
+
     private static string WrapRibbonText(string text, int maxCharsPerLine = 10)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
@@ -1002,7 +1035,7 @@ public partial class MainForm
             DisplayStyle = string.IsNullOrWhiteSpace(iconGlyph) ? ToolStripItemDisplayStyle.Text : ToolStripItemDisplayStyle.ImageAndText,
             TextImageRelation = TextImageRelation.ImageAboveText,
             Padding = new Padding(6, 4, 6, 4),
-            Size = new Size((int)DpiAware.LogicalToDeviceUnits(108f), (int)DpiAware.LogicalToDeviceUnits(96f)),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(RibbonLargeButtonWidthLogical), (int)DpiAware.LogicalToDeviceUnits(RibbonLargeButtonHeightLogical)),
             TextAlign = ContentAlignment.BottomCenter,
             ImageAlign = ContentAlignment.TopCenter,
             Margin = new Padding(3, 2, 3, 2),
@@ -1143,7 +1176,7 @@ public partial class MainForm
         {
             TextImageRelation = TextImageRelation.ImageAboveText,
             AutoSize = false,
-            Size = new Size((int)DpiAware.LogicalToDeviceUnits(100f), (int)DpiAware.LogicalToDeviceUnits(88f)),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(RibbonGalleryButtonWidthLogical), (int)DpiAware.LogicalToDeviceUnits(RibbonGalleryButtonHeightLogical)),
             DisplayStyle = ToolStripItemDisplayStyle.Text,
             Padding = new Padding(3, 1, 3, 1),
             Margin = new Padding(2, 1, 2, 1),
@@ -1186,10 +1219,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Core Navigation", "CoreNavigationGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Core Navigation", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Core Navigation").ToList();
 
         ToolStripButton? firstButton = null;
         bool isFirst = true;
@@ -1222,10 +1252,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Financials", "FinancialsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Financials", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Financials").ToList();
 
         ToolStripButton? firstButton = null;
         bool isFirst = true;
@@ -1258,10 +1285,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Reporting", "ReportingGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Reporting", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Reporting").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1292,7 +1316,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Tools", "ToolsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
+        var panels = PanelRegistry.GetTownReleasePanels()
             .Where(p => string.Equals(p.DefaultGroup, "Tools", StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.DisplayName)
             .ToList();
@@ -1390,7 +1414,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Views", "MorePanelsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
+        var panels = PanelRegistry.GetTownReleasePanels()
             .Where(p => string.Equals(p.DefaultGroup, "Views", StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.DisplayName)
             .ToList();
@@ -1410,6 +1434,335 @@ public partial class MainForm
         }
 
         return strip;
+    }
+
+    private static ToolStripEx CreateDynamicPanelsGalleryGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Panel Browser", "PanelsGalleryGroup", theme, logger);
+
+        var orderedPanels = PanelRegistry.GetAllRegisteredPanels(includeHidden: true)
+            .OrderBy(panel => ResolvePanelGroupSortOrder(panel.DefaultGroup))
+            .ThenBy(panel => panel.DisplayName)
+            .ToList();
+
+        var itemIconSize = (int)DpiAware.LogicalToDeviceUnits(16f);
+        var dropDownButton = new ToolStripDropDownButton
+        {
+            Name = "Panels_OpenPanelMenu",
+            Text = "Browse Panels",
+            AutoSize = false,
+            Size = new Size(
+                (int)DpiAware.LogicalToDeviceUnits(180f),
+                (int)DpiAware.LogicalToDeviceUnits(82f)),
+            DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
+            TextImageRelation = TextImageRelation.ImageAboveText,
+            ImageScaling = ToolStripItemImageScaling.None,
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+            Padding = new Padding(6, 4, 6, 4),
+            Margin = new Padding(3, 2, 3, 2),
+            AccessibleName = "Panel Browser Menu",
+            AccessibleDescription = "Browse every registered workspace panel by category.",
+            ToolTipText = "Browse every registered panel by category"
+        };
+
+        dropDownButton.Image = LoadRibbonIcon("Panel Browser", (int)DpiAware.LogicalToDeviceUnits(32f), "\uE8A9");
+        dropDownButton.DropDownOpening += (_, _) => ConfigurePanelBrowserDropDown(dropDownButton.DropDown, theme, logger);
+
+        try
+        {
+            SetAutomationId(dropDownButton, dropDownButton.Name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for panel menu button {Name}", dropDownButton.Name);
+        }
+
+        if (orderedPanels.Count == 0)
+        {
+            dropDownButton.DropDownItems.Add(new ToolStripMenuItem
+            {
+                Text = "No panels available",
+                ToolTipText = "No panels are currently registered for navigation.",
+                Enabled = false,
+            });
+        }
+        else
+        {
+            var groupedPanels = orderedPanels
+                .GroupBy(panel => panel.DefaultGroup ?? string.Empty)
+                .OrderBy(group => ResolvePanelGroupSortOrder(group.Key))
+                .ThenBy(group => ResolvePanelGroupDisplayLabel(group.Key))
+                .ToList();
+
+            foreach (var panelGroup in groupedPanels)
+            {
+                var groupLabel = ResolvePanelGroupDisplayLabel(panelGroup.Key);
+                var groupMenuItem = new ToolStripMenuItem
+                {
+                    Name = $"PanelsMenuGroup_{System.Text.RegularExpressions.Regex.Replace(groupLabel, @"[^\w]", string.Empty)}",
+                    Text = $"{groupLabel} ({panelGroup.Count()})",
+                    ToolTipText = $"Browse {groupLabel} panels",
+                    Image = LoadRibbonIcon(groupLabel, itemIconSize, ResolvePanelGroupIconGlyph(panelGroup.Key)),
+                    AccessibleName = $"{groupLabel} Panels",
+                    AccessibleDescription = $"Browse panels in the {groupLabel} category",
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+                };
+
+                groupMenuItem.DropDownOpening += (_, _) => ConfigurePanelBrowserDropDown(groupMenuItem.DropDown, theme, logger);
+
+                foreach (var panel in panelGroup)
+                {
+                    RibbonIconGlyphs.TryGetValue(panel.DisplayName, out var iconGlyph);
+                    var menuItem = new ToolStripMenuItem
+                    {
+                        Name = $"PanelsMenu_{panel.DisplayName.Replace(" ", string.Empty, StringComparison.Ordinal)}",
+                        Text = BuildPanelGalleryItemText(panel),
+                        ToolTipText = BuildPanelGalleryItemToolTip(panel),
+                        ShortcutKeyDisplayString = BuildPanelGalleryItemBadge(panel),
+                        Image = LoadRibbonIcon(panel.DisplayName, itemIconSize, iconGlyph),
+                        Tag = panel,
+                        AccessibleName = panel.DisplayName,
+                        AccessibleDescription = $"Open {panel.DisplayName}"
+                    };
+
+                    menuItem.Click += (_, _) =>
+                    {
+                        try
+                        {
+                            form.ApplyStatus($"Opening {panel.DisplayName}...");
+                            SafeNavigate(
+                                form,
+                                panel.DisplayName,
+                                CreatePanelNavigationCommand(form, panel, logger),
+                                logger);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger?.LogError(ex, "Dynamic panels menu navigation failed");
+                        }
+                    };
+
+                    groupMenuItem.DropDownItems.Add(menuItem);
+                }
+
+                dropDownButton.DropDownItems.Add(groupMenuItem);
+            }
+        }
+
+        form._panelsGallery = null;
+        strip.Items.Add(dropDownButton);
+        return strip;
+    }
+
+    private static void EnsurePanelsGalleryWiring(MainForm form, ILogger? logger)
+    {
+        if (form.IsDisposed || form.Disposing)
+        {
+            return;
+        }
+
+        if (!form._panelsGalleryLifecycleHooksAttached)
+        {
+            form._panelsGalleryLifecycleHooksAttached = true;
+
+            form.Shown += (_, _) =>
+            {
+                TryAttachPanelsGalleryNavigatorHook(form, logger);
+                if (form._panelsGallery != null)
+                {
+                    SyncPanelsGallerySelection(form, form._panelsGallery, logger);
+                }
+            };
+
+            form.Activated += (_, _) =>
+            {
+                TryAttachPanelsGalleryNavigatorHook(form, logger);
+                if (form._panelsGallery != null)
+                {
+                    SyncPanelsGallerySelection(form, form._panelsGallery, logger);
+                }
+            };
+
+            form.VisibleChanged += (_, _) =>
+            {
+                if (form._panelsGallery != null)
+                {
+                    SyncPanelsGallerySelection(form, form._panelsGallery, logger);
+                }
+            };
+        }
+
+        TryAttachPanelsGalleryNavigatorHook(form, logger);
+    }
+
+    private static void TryAttachPanelsGalleryNavigatorHook(MainForm form, ILogger? logger)
+    {
+        if (form._panelsGalleryNavigatorHookAttached)
+        {
+            return;
+        }
+
+        var panelNavigator = form.PanelNavigator;
+        if (panelNavigator == null)
+        {
+            return;
+        }
+
+        panelNavigator.PanelActivated += (_, _) =>
+        {
+            if (form.IsDisposed || form.Disposing || form._panelsGallery == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (form.InvokeRequired)
+                {
+                    form.BeginInvoke((MethodInvoker)(() =>
+                    {
+                        if (form._panelsGallery != null)
+                        {
+                            SyncPanelsGallerySelection(form, form._panelsGallery, logger);
+                        }
+                    }));
+                }
+                else
+                {
+                    SyncPanelsGallerySelection(form, form._panelsGallery, logger);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "Failed to synchronize panels gallery on panel activation event");
+            }
+        };
+
+        form._panelsGalleryNavigatorHookAttached = true;
+    }
+
+    private static int ResolvePanelGroupSortOrder(string? groupName)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            return int.MaxValue;
+        }
+
+        return PanelGroupSortOrder.TryGetValue(groupName, out var order)
+            ? order
+            : int.MaxValue;
+    }
+
+    private static string ResolvePanelGroupDisplayLabel(string? groupName)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            return "Other";
+        }
+
+        return PanelGroupDisplayLabels.TryGetValue(groupName, out var label)
+            ? label
+            : groupName;
+    }
+
+    private static string? ResolvePanelGroupIconGlyph(string? groupName)
+    {
+        if (string.IsNullOrWhiteSpace(groupName))
+        {
+            return null;
+        }
+
+        return PanelGroupIconGlyphs.TryGetValue(groupName, out var glyph)
+            ? glyph
+            : null;
+    }
+
+    private static string ResolveDockDisplayLabel(DockingStyle dockStyle)
+    {
+        return dockStyle switch
+        {
+            DockingStyle.Left => "Left Dock",
+            DockingStyle.Right => "Right Dock",
+            DockingStyle.Top => "Top Dock",
+            DockingStyle.Bottom => "Bottom Dock",
+            DockingStyle.Fill => "Workspace",
+            DockingStyle.Tabbed => "Tabbed",
+            _ => dockStyle.ToString(),
+        };
+    }
+
+    private static string BuildPanelGalleryItemBadge(PanelRegistry.PanelEntry panel)
+    {
+        return panel.ShowInRibbonPanelsMenu
+            ? ResolveDockDisplayLabel(panel.DefaultDock)
+            : "Workflow";
+    }
+
+    private static string BuildPanelGalleryItemText(PanelRegistry.PanelEntry panel)
+    {
+        return panel.ShowInRibbonPanelsMenu
+            ? panel.DisplayName
+            : $"{panel.DisplayName} (workflow)";
+    }
+
+    private static string BuildPanelGalleryItemToolTip(PanelRegistry.PanelEntry panel)
+    {
+        var groupLabel = ResolvePanelGroupDisplayLabel(panel.DefaultGroup);
+        var visibilityHint = panel.ShowInRibbonPanelsMenu
+            ? "Pinned to ribbon navigation."
+            : "Available from the panel browser only.";
+        return $"Open {panel.DisplayName} [{groupLabel}] - Default dock: {ResolveDockDisplayLabel(panel.DefaultDock)}. {visibilityHint}";
+    }
+
+    private static void ConfigurePanelBrowserDropDown(ToolStripDropDown? dropDown, string theme, ILogger? logger)
+    {
+        if (dropDown is not ToolStripDropDownMenu menu)
+        {
+            return;
+        }
+
+        try
+        {
+            menu.ShowCheckMargin = false;
+            menu.ShowImageMargin = true;
+            menu.AutoSize = true;
+            menu.Padding = new Padding(6, 4, 6, 4);
+            menu.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+            SfSkinManager.SetVisualStyle(menu, ResolveRibbonThemeName(theme, logger));
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to configure panel browser dropdown theme");
+        }
+
+        foreach (ToolStripItem item in menu.Items)
+        {
+            item.AutoSize = true;
+            item.Padding = new Padding(4, 6, 4, 6);
+
+            if (item is ToolStripMenuItem child && child.HasDropDownItems)
+            {
+                ConfigurePanelBrowserDropDown(child.DropDown, theme, logger);
+            }
+        }
+    }
+
+    private static void SyncPanelsGallerySelection(MainForm form, ToolStripGallery gallery, ILogger? logger)
+    {
+        if (form.IsDisposed || form.Disposing)
+        {
+            return;
+        }
+
+        const string baseCaption = "Open Panel";
+        var activePanelName = form.PanelNavigator?.GetActivePanelName();
+        if (string.IsNullOrWhiteSpace(activePanelName))
+        {
+            gallery.CaptionText = baseCaption;
+            return;
+        }
+
+        gallery.CaptionText = $"{baseCaption} - Active: {activePanelName}";
     }
 
     private static ToolStripEx CreateSearchAndGridGroup(MainForm form, string theme, ILogger? logger)
@@ -1450,7 +1803,7 @@ public partial class MainForm
             AccessibleRole = AccessibleRole.Text,
             AccessibleDescription = "Enter search query to find panels and content. Press Enter to search across all modules.",
             AutoSize = false,
-            Width = 180,
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(180f), (int)DpiAware.LogicalToDeviceUnits(RibbonInteractiveItemMinimumHeightLogical)),
             BorderStyle = BorderStyle.FixedSingle,
             ToolTipText = "Search panels (Enter to search)"
         };
@@ -1562,13 +1915,15 @@ public partial class MainForm
 
             try
             {
+                logger?.LogInformation("[THEME] Applying theme from ribbon selector: {Theme}", selectedTheme);
+
                 form._themeService?.ApplyTheme(selectedTheme);
                 if (form._themeService == null)
                 {
                     AppThemeColors.EnsureThemeAssemblyLoadedForTheme(selectedTheme, logger);
                     SfSkinManager.ApplicationVisualTheme = selectedTheme;
                     SfSkinManager.SetVisualStyle(form, selectedTheme);
-                    ApplyThemeRecursively(form, selectedTheme, logger);
+                    form.RefreshThemeSensitiveControls(selectedTheme);
                     form.PerformLayout();
                     if (!IsUiTestEnvironment())
                     {
@@ -1687,12 +2042,9 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Payments", "PaymentsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Payments", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Payments").ToList();
 
-        bool isFirst = true;
+        bool hasAddedPanelButton = false;
         foreach (var panel in panels)
         {
             var sanitizedName = System.Text.RegularExpressions.Regex.Replace(panel.DisplayName, @"[^\w]", "");
@@ -1705,22 +2057,64 @@ public partial class MainForm
                 navigationTarget: panel.DisplayName,
                 iconGlyph: iconGlyph,
                 tooltip: $"Open {panel.DisplayName} panel");
-            if (!isFirst) strip.Items.Add(new ToolStripSeparator());
-            isFirst = false;
+
+            if (hasAddedPanelButton)
+            {
+                strip.Items.Add(new ToolStripSeparator());
+            }
+
             strip.Items.Add(button);
+            hasAddedPanelButton = true;
         }
 
+        RibbonIconGlyphs.TryGetValue("New Payment", out var newPaymentGlyph);
+        var newPaymentButton = CreateLargeNavButton(
+            "Action_NewPayment",
+            "New Payment",
+            () => SafeExecute(() => OpenNewPaymentDialog(form, logger), "NewPayment", logger),
+            logger,
+            navigationTarget: "New Payment",
+            iconGlyph: newPaymentGlyph,
+            tooltip: "Open the payment editor dialog");
+
+        if (hasAddedPanelButton)
+        {
+            strip.Items.Add(new ToolStripSeparator());
+        }
+
+        strip.Items.Add(newPaymentButton);
+
         return strip;
+    }
+
+    private static void OpenNewPaymentDialog(MainForm form, ILogger? logger)
+    {
+        ArgumentNullException.ThrowIfNull(form);
+
+        var editPanel = ActivatorUtilities.CreateInstance<PaymentEditPanel>(form.ServiceProvider);
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+
+        using var dialog = new Form
+        {
+            Text = "New Payment",
+        };
+        PaymentEditPanel.ConfigureHostedDialog(dialog);
+
+        SfSkinManager.SetVisualStyle(dialog, themeName);
+        editPanel.Dock = DockStyle.Fill;
+        dialog.Controls.Add(editPanel);
+        dialog.Shown += async (_, _) => await editPanel.LoadDataAsync();
+
+        form.ApplyStatus("Opening New Payment...");
+        dialog.ShowDialog(form);
+        logger?.LogDebug("New payment dialog closed; saved={SavedPayments}", editPanel.HasSavedPayments);
     }
 
     private static ToolStripEx CreateIntegrationGroup(MainForm form, string theme, ILogger? logger)
     {
         var strip = CreateRibbonGroup("Integration", "IntegrationGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Integration", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Integration").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1759,10 +2153,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Analytics", "AnalyticsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Analytics", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Analytics").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1789,10 +2180,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Operations", "OperationsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Operations", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Operations").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1823,10 +2211,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Utilities", "UtilitiesGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Utilities", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Utilities").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1857,11 +2242,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Administration", "AdministrationGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "Administration", StringComparison.OrdinalIgnoreCase)
-                     && p.ShowInRibbonPanelsMenu)
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("Administration").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1896,10 +2277,7 @@ public partial class MainForm
     {
         var strip = CreateRibbonGroup("Audit & Logs", "AuditLogsGroup", theme, logger);
 
-        var panels = PanelRegistry.Panels
-            .Where(p => string.Equals(p.DefaultGroup, "AuditLogs", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.DisplayName)
-            .ToList();
+        var panels = GetRibbonPanelsByGroup("AuditLogs").ToList();
 
         bool isFirst = true;
         foreach (var panel in panels)
@@ -1983,6 +2361,13 @@ public partial class MainForm
             return;
         }
 
+        if (strip.Items.Count == 0)
+        {
+            logger?.LogDebug("AddToolStripToTabPanel skipped empty strip '{StripName}' on tab '{TabText}'",
+                strip.Name ?? "<unnamed>", tab.Text);
+            return;
+        }
+
         try
         {
             var resolvedTheme = ResolveRibbonThemeName(theme, logger);
@@ -1999,6 +2384,7 @@ public partial class MainForm
 
             // Ensure items are visible/enabled before adding
             EnsureToolStripItemsVisibleAndEnabled(strip, logger);
+            EnsureRibbonGroupBounds(strip, logger);
 
             // ONLY use Syncfusion's managed API — no manual Controls.Add!
             // Using tab.Panel.AddToolStrip() ensures proper parent-child hierarchy
@@ -2015,36 +2401,24 @@ public partial class MainForm
         }
     }
 
-    private static void ApplyThemeRecursively(Control root, string themeName, ILogger? logger)
+    private static void EnsureRibbonGroupBounds(ToolStripEx strip, ILogger? logger)
     {
-        if (root == null || root.IsDisposed || root.Disposing || string.IsNullOrWhiteSpace(themeName))
-        {
-            return;
-        }
-
-        if (IsRibbonPanelControl(root) || IsBackStageControl(root))
-        {
-            return;
-        }
-
         try
         {
-            SfSkinManager.SetVisualStyle(root, themeName);
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonGroupMinimumHeightLogical);
+            var minimumWidth = (int)DpiAware.LogicalToDeviceUnits(RibbonGroupMinimumWidthLogical);
+
+            strip.AutoSize = false;
+            strip.Height = Math.Max(strip.Height, minimumHeight);
+
+            var preferredWidth = strip.GetPreferredSize(Size.Empty).Width;
+            var widthPadding = (int)DpiAware.LogicalToDeviceUnits(8f);
+            var requiredWidth = Math.Max(minimumWidth, preferredWidth + widthPadding);
+            strip.Width = Math.Max(strip.Width, requiredWidth);
         }
         catch (Exception ex)
         {
-            logger?.LogDebug(ex, "Failed to apply theme recursively to {ControlName}", root.Name);
-        }
-
-        if (root is ToolStripEx strip)
-        {
-            strip.ThemeName = themeName;
-            EnsureToolStripItemsVisibleAndEnabled(strip, logger);
-        }
-
-        foreach (Control child in root.Controls)
-        {
-            ApplyThemeRecursively(child, themeName, logger);
+            logger?.LogDebug(ex, "Failed to normalize ribbon group bounds for strip {StripName}", strip.Name);
         }
     }
 
@@ -2072,6 +2446,7 @@ public partial class MainForm
         {
             item.Visible = true;
             item.Enabled = true;
+            EnsureRibbonItemBounds(item);
         }
         catch (Exception ex)
         {
@@ -2092,6 +2467,92 @@ public partial class MainForm
             {
                 EnsureToolStripItemVisibleAndEnabledRecursive(nested, logger);
             }
+        }
+    }
+
+    private static void EnsureRibbonItemBounds(ToolStripItem item)
+    {
+        if (item is ToolStripButton button)
+        {
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonInteractiveItemMinimumHeightLogical);
+            var isLargeButton = button.TextImageRelation == TextImageRelation.ImageAboveText;
+
+            if (isLargeButton)
+            {
+                button.AutoSize = false;
+                var minimumWidth = (int)DpiAware.LogicalToDeviceUnits(RibbonLargeButtonWidthLogical);
+                var minimumLargeHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonLargeButtonHeightLogical);
+                button.Size = new Size(Math.Max(button.Width, minimumWidth), Math.Max(button.Height, minimumLargeHeight));
+                return;
+            }
+
+            if (!button.AutoSize)
+            {
+                button.Height = Math.Max(button.Height, minimumHeight);
+            }
+
+            return;
+        }
+
+        if (item is ToolStripDropDownButton dropDownButton)
+        {
+            dropDownButton.AutoSize = false;
+            var minimumWidth = (int)DpiAware.LogicalToDeviceUnits(RibbonLargeButtonWidthLogical + 28f);
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonLargeButtonHeightLogical);
+            dropDownButton.Size = new Size(Math.Max(dropDownButton.Width, minimumWidth), Math.Max(dropDownButton.Height, minimumHeight));
+            return;
+        }
+
+        if (item is ToolStripTextBox textBox)
+        {
+            textBox.AutoSize = false;
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonInteractiveItemMinimumHeightLogical);
+            var minimumWidth = (int)DpiAware.LogicalToDeviceUnits(160f);
+            textBox.Size = new Size(Math.Max(textBox.Width, minimumWidth), Math.Max(textBox.Height, minimumHeight));
+            return;
+        }
+
+        if (item is ToolStripComboBox comboBox)
+        {
+            comboBox.AutoSize = false;
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(RibbonInteractiveItemMinimumHeightLogical);
+            var minimumWidth = (int)DpiAware.LogicalToDeviceUnits(120f);
+            comboBox.Size = new Size(Math.Max(comboBox.Width, minimumWidth), Math.Max(comboBox.Height, minimumHeight));
+            return;
+        }
+
+        if (item is ToolStripGallery gallery)
+        {
+            var minimumWidth = (int)DpiAware.LogicalToDeviceUnits(320f);
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(120f);
+            var minimumItemHeight = (int)DpiAware.LogicalToDeviceUnits(36f);
+            var minimumIconSize = (int)DpiAware.LogicalToDeviceUnits(20f);
+
+            gallery.AutoSize = false;
+            gallery.Size = new Size(Math.Max(gallery.Width, minimumWidth), Math.Max(gallery.Height, minimumHeight));
+            gallery.ItemSize = new Size(Math.Max(gallery.ItemSize.Width, minimumWidth - (int)DpiAware.LogicalToDeviceUnits(20f)), Math.Max(gallery.ItemSize.Height, minimumItemHeight));
+            gallery.ItemImageSize = new Size(Math.Max(gallery.ItemImageSize.Width, minimumIconSize), Math.Max(gallery.ItemImageSize.Height, minimumIconSize));
+
+            // Standard scroller exposes larger nav affordances than compact style.
+            if (gallery.ScrollerType == ToolStripGalleryScrollerType.Compact)
+            {
+                gallery.ScrollerType = ToolStripGalleryScrollerType.Standard;
+            }
+
+            return;
+        }
+
+        if (item is ToolStripSeparator separator)
+        {
+            separator.AutoSize = false;
+            var minimumHeight = (int)DpiAware.LogicalToDeviceUnits(82f);
+            separator.Size = new Size(Math.Max(separator.Width, 2), Math.Max(separator.Height, minimumHeight));
+            return;
+        }
+
+        if (item is ToolStripPanelItem panelItem)
+        {
+            panelItem.AutoSize = true;
         }
     }
 
@@ -2135,16 +2596,10 @@ public partial class MainForm
                     form.Visible = true;
                 }
 
-                form.BringToFront();
-                form.Activate();
-
-                // Ensure PanelNavigator is initialized (required for consolidated TabbedMDI navigation)
-                form.EnsurePanelNavigatorInitialized();
-
-                if (form._panelNavigator == null)
+                if (!ReferenceEquals(Form.ActiveForm, form))
                 {
-                    logger?.LogError("[SAFENAV] Navigation blocked - PanelNavigator is null for target '{Target}'", navigationTarget);
-                    return;
+                    form.BringToFront();
+                    form.Activate();
                 }
 
                 logger?.LogDebug("[SAFENAV] Executing navigation action for '{Target}'", navigationTarget);
@@ -2216,7 +2671,7 @@ public partial class MainForm
             return;
         }
 
-        ribbon.SizeChanged += (_, _) =>
+        void HandleRibbonLayoutUpdate(string reason)
         {
             if (form.IsDisposed || form.Disposing)
             {
@@ -2225,18 +2680,27 @@ public partial class MainForm
 
             try
             {
-                form.BeginInvoke((MethodInvoker)(() =>
-                {
-                    form.PerformLayout();
-                    homeTab.Panel?.PerformLayout();
-                    layoutContextTab?.Panel?.PerformLayout();
-                    form.Refresh();
-                }));
+                form.RefreshPanelHostLayout(reason, force: true);
             }
             catch (Exception ex)
             {
                 logger?.LogDebug(ex, "Ribbon layout refresh failed");
             }
+        }
+
+        ribbon.SizeChanged += (_, _) =>
+        {
+            HandleRibbonLayoutUpdate("Ribbon.SizeChanged");
+        };
+
+        ribbon.VisibleChanged += (_, _) =>
+        {
+            HandleRibbonLayoutUpdate("Ribbon.VisibleChanged");
+        };
+
+        ribbon.Layout += (_, _) =>
+        {
+            HandleRibbonLayoutUpdate("Ribbon.Layout");
         };
     }
 

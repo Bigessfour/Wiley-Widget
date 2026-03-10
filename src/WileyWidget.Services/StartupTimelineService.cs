@@ -453,6 +453,11 @@ public class StartupTimelineReport
 /// </summary>
 public class StartupTimelineService : IStartupTimelineService
 {
+    private static readonly HashSet<string> LongRunningPhases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "UI Message Loop"
+    };
+
     private static readonly Meter StartupMeter = new("WileyWidget.Startup", "1.0.0");
     private static readonly Histogram<double> PhaseDurationHistogram = StartupMeter.CreateHistogram<double>("startup.phase.duration", "ms", "Duration of startup phases in milliseconds");
     private static readonly Histogram<double> OperationDurationHistogram = StartupMeter.CreateHistogram<double>("startup.operation.duration", "ms", "Duration of startup operations in milliseconds");
@@ -509,6 +514,11 @@ public class StartupTimelineService : IStartupTimelineService
             Environment.GetEnvironmentVariable("WILEYWIDGET_TRACK_STARTUP_TIMELINE"),
             "true",
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLongRunningPhase(string phaseName)
+    {
+        return LongRunningPhases.Contains(phaseName);
     }
 
     public void RecordPhaseStart(string phaseName, int expectedOrder = 0, bool? isUiCritical = null)
@@ -602,7 +612,7 @@ public class StartupTimelineService : IStartupTimelineService
                 threadMarker, phaseName, duration);
 
             // Warn about long-running phases (perf counter threshold)
-            if (duration > 2000)
+            if (duration > 2000 && !IsLongRunningPhase(phaseName))
             {
                 SlowPhaseCounter.Add(1, new KeyValuePair<string, object?>("phase.name", phaseName));
                 _logger.LogWarning("[TIMELINE] ⚠ SLOW PHASE: '{PhaseName}' took {Duration}ms (>2000ms threshold) - performance counter 'startup.phase.slow' incremented",
@@ -611,7 +621,7 @@ public class StartupTimelineService : IStartupTimelineService
 
             // Warn about long-running phases on UI thread (>2500ms = potential freeze)
             // Chrome/Ribbon initialization (~1.7s) is synchronous and normal; only warn if significantly exceeds that
-            if (evt.ThreadId == _uiThreadId && duration > 2500)
+            if (evt.ThreadId == _uiThreadId && duration > 2500 && !IsLongRunningPhase(phaseName))
             {
                 _logger.LogWarning("[TIMELINE] ⚠ BLOCKING PHASE: '{PhaseName}' took {Duration}ms on UI thread (>2500ms threshold)",
                     phaseName, duration);

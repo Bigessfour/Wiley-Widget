@@ -5,6 +5,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -19,7 +20,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 3,
-                Padding = new Padding(8),
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
                 Margin = new Padding(0),
                 AutoSize = false
             };
@@ -58,7 +59,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                 button.AutoSize = true;
                 button.Name = "BtnUpdateChart";
             });
-            _chkAutoRefresh ??= new CheckBoxAdv { Text = "Auto-refresh", AutoSize = true, Name = "ChkAutoRefresh" };
+            _chkAutoRefresh ??= ControlFactory.CreateCheckBoxAdv("Auto-refresh", checkBox =>
+            {
+                checkBox.AutoSize = true;
+                checkBox.Name = "ChkAutoRefresh";
+            });
 
             toolbar.Controls.Add(_btnRefresh);
             toolbar.Controls.Add(_btnExportCsv);
@@ -80,7 +85,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 RowCount = 1,
                 AutoSize = true,
                 Margin = new Padding(0),
-                Padding = new Padding(4)
+                Padding = LayoutTokens.GetScaled(LayoutTokens.ToolbarPadding)
             };
             filters.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             filters.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -88,11 +93,31 @@ namespace WileyWidget.WinForms.Controls.Panels
             filters.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             filters.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            _dtpStartDate ??= new Syncfusion.WinForms.Input.SfDateTimeEdit { DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate, Name = "DtpStart" };
-            _dtpEndDate ??= new Syncfusion.WinForms.Input.SfDateTimeEdit { DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate, Name = "DtpEnd" };
-            _cmbActionType ??= new Syncfusion.WinForms.ListView.SfComboBox { DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, Name = "CmbActionType" };
-            _cmbUser ??= new Syncfusion.WinForms.ListView.SfComboBox { DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, Name = "CmbUser" };
-            _cmbChartGroupBy ??= new Syncfusion.WinForms.ListView.SfComboBox { DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList, Name = "CmbChartGroupBy" };
+            _dtpStartDate ??= ControlFactory.CreateSfDateTimeEdit(dateEdit =>
+            {
+                dateEdit.DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate;
+                dateEdit.Name = "DtpStart";
+            });
+            _dtpEndDate ??= ControlFactory.CreateSfDateTimeEdit(dateEdit =>
+            {
+                dateEdit.DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate;
+                dateEdit.Name = "DtpEnd";
+            });
+            _cmbActionType ??= ControlFactory.CreateSfComboBox(combo =>
+            {
+                combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                combo.Name = "CmbActionType";
+            });
+            _cmbUser ??= ControlFactory.CreateSfComboBox(combo =>
+            {
+                combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                combo.Name = "CmbUser";
+            });
+            _cmbChartGroupBy ??= ControlFactory.CreateSfComboBox(combo =>
+            {
+                combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                combo.Name = "CmbChartGroupBy";
+            });
 
             filters.Controls.Add(_dtpStartDate, 0, 0);
             filters.Controls.Add(_dtpEndDate, 1, 0);
@@ -103,7 +128,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             root.Controls.Add(filters, 0, 1);
 
             // Row 3: SplitContainer with grid and chart
-            _mainSplit ??= new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterWidth = 6 };
+            _mainSplit ??= new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterWidth = 13 };
 
             // Left: audit grid
             _auditGrid ??= ControlFactory.CreateSfDataGrid(grid =>

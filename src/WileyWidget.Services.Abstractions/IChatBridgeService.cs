@@ -1,5 +1,6 @@
 using System.Threading;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using WileyWidget.Models;
 
@@ -77,6 +78,13 @@ public interface IChatBridgeService
     /// </summary>
     /// <param name="prompt">The prompt to submit</param>
     Task RequestExternalPromptAsync(string prompt, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Requests that a prompt be submitted from an external source with file attachments.
+    /// </summary>
+    /// <param name="prompt">The prompt to submit.</param>
+    /// <param name="attachments">The attached file payloads to include with the prompt.</param>
+    Task RequestExternalPromptAsync(string prompt, IReadOnlyList<ChatPromptAttachment> attachments, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -85,6 +93,8 @@ public interface IChatBridgeService
 public class ChatExternalPromptEventArgs : EventArgs
 {
     public string Prompt { get; set; } = string.Empty;
+
+    public IReadOnlyList<ChatPromptAttachment> Attachments { get; set; } = Array.Empty<ChatPromptAttachment>();
 }
 
 /// <summary>
@@ -95,6 +105,8 @@ public class ChatPromptSubmittedEventArgs : EventArgs
     public string Prompt { get; set; } = string.Empty;
     public string? ConversationId { get; set; }
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
+
+    public IReadOnlyList<ChatPromptAttachment> Attachments { get; set; } = Array.Empty<ChatPromptAttachment>();
 }
 
 /// <summary>

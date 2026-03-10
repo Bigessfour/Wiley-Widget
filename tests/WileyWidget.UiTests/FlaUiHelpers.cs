@@ -185,8 +185,12 @@ namespace WileyWidget.UiTests
                 var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
                 var pid = Process.GetCurrentProcess().Id;
 
-                // Ensure TestResults directory exists relative to current working directory
-                var resultsDir = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
+                var resultsDir = Environment.GetEnvironmentVariable("WILEYWIDGET_TEST_ARTIFACTS_DIR");
+                if (string.IsNullOrWhiteSpace(resultsDir))
+                {
+                    resultsDir = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
+                }
+
                 try { Directory.CreateDirectory(resultsDir); } catch { }
 
                 if (string.IsNullOrWhiteSpace(filename))

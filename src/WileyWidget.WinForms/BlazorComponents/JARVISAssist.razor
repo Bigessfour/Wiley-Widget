@@ -1,495 +1,798 @@
 @namespace WileyWidget.WinForms.BlazorComponents
 @page "/"
-@using System.Text.Json
+@using System
+@using System.Collections.Generic
+@using System.IO
+@using System.Linq
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Syncfusion.Blazor.InteractiveChat
+@using WileyWidget.Models
 @using WileyWidget.Services.Abstractions
 @using WileyWidget.WinForms.Services.AI
-@using Microsoft.JSInterop
-@implements IAsyncDisposable
+@using WileyWidget.WinForms.Services
+@using SfChatMessage = Syncfusion.Blazor.InteractiveChat.ChatMessage
+@using SfUserModel = Syncfusion.Blazor.InteractiveChat.UserModel
+@implements IDisposable
 @inject IChatBridgeService ChatBridge
+@inject IThemeService ThemeService
 @inject ILogger<JARVISAssist> Logger
 @inject IJSRuntime JS
 
-<div class="jarvis-container">
-    <div class="chat-header">
-        <h1>JARVIS Assistant</h1>
-        <p class="subtitle">Ask me anything about your municipality</p>
-    </div>
+<div class="jarvis-chat-shell">
+    <SfChatUI @ref="_chatUi"
+              ID="jarvisChat"
+              User="_currentUser"
+              Messages="_messages"
+              TypingUsers="_typingUsers"
+              Height="100%"
+              Width="100%"
+              ShowHeader="false"
+              ShowTimeBreak="true"
+              ShowTimestamp="true"
+              AutoScrollToBottom="true"
+              MessageSend="HandleMessageSend"
+              UserTyping="HandleUserTyping">
+        <EmptyChatTemplate>
+            <div class="jarvis-empty">
+                <h3>Welcome to JARVIS</h3>
+                <p>Ask questions about budgets, payments, audits, and municipal operations.</p>
+            </div>
+        </EmptyChatTemplate>
+        <FooterTemplate>
+            <div class="jarvis-footer">
+                @if (_pendingAttachments.Count > 0)
+                {
+                    <div class="jarvis-attachment-strip">
+                        @foreach (var attachment in _pendingAttachments)
+                        {
+                            <div class="jarvis-attachment-chip" title="@attachment.FileName">
+                                <span class="jarvis-attachment-name">@attachment.FileName</span>
+                                <span class="jarvis-attachment-meta">@attachment.GetDisplaySize()</span>
+                                @if (attachment.IsTruncated)
+                                {
+                                    <span class="jarvis-attachment-meta">truncated</span>
+                                }
+                                <button type="button"
+                                        class="jarvis-attachment-remove"
+                                        aria-label="Remove @attachment.FileName"
+                                        @onclick="() => RemoveAttachment(attachment.FileName)">
+                                    x
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
 
-    <div class="chat-messages" @ref="messagesContainer">
-        @foreach (var message in _messages)
-        {
-            <div class="message @message.SenderClass">
-                <div class="message-content">
-                    @if (message.IsMarkdown)
-                    {
-                        <div class="markdown-content">@((MarkupString)message.HtmlContent)</div>
-                    }
-                    else
-                    {
-                        <p>@message.Content</p>
-                    }
+                @if (!string.IsNullOrWhiteSpace(_attachmentError))
+                {
+                    <div class="jarvis-attachment-error">@_attachmentError</div>
+                }
+
+                <div class="jarvis-compose-row">
+                    <label class="jarvis-attach-button" title="Attach a file for JARVIS to evaluate">
+                        <span class="jarvis-attach-icon" aria-hidden="true">&#128206;</span>
+                        <span>Attach</span>
+                        <InputFile class="jarvis-file-input"
+                                   OnChange="HandleAttachmentSelectedAsync"
+                                   multiple
+                                   accept="@AcceptedAttachmentTypes" />
+                    </label>
+
+                    <textarea @ref="_composerInput"
+                              class="jarvis-compose-input"
+                              rows="3"
+                              @bind="_draftText"
+                              @bind:event="oninput"
+                              @onkeydown="HandleComposerKeyDownAsync"
+                              placeholder="Ask JARVIS a question or attach a file for evaluation..."></textarea>
+
+                    <button type="button"
+                            class="jarvis-send-button"
+                            @onclick="SendDraftAsync"
+                            disabled="@IsSendDisabled">
+                        Send
+                    </button>
                 </div>
             </div>
-        }
-
-        @if (_isStreaming && !string.IsNullOrEmpty(_currentStreamingText))
-        {
-            <div class="message assistant">
-                <div class="message-content">
-                    <div class="markdown-content">@((MarkupString)_currentStreamingHtml)</div>
-                    <span class="typing-indicator">
-                        <span></span><span></span><span></span>
-                    </span>
-                </div>
-            </div>
-        }
-    </div>
-
-    <div class="chat-input-area">
-        <div class="input-group">
-            <input
-                type="text"
-                class="chat-input"
-                placeholder="Ask JARVIS a question..."
-                @bind="_userInput"
-                @onkeyup="HandleKeyUp"
-                disabled="@_isStreaming"
-                @ref="inputField"
-            />
-            <button
-                class="send-button"
-                @onclick="SendMessage"
-                disabled="@(_isStreaming || string.IsNullOrWhiteSpace(_userInput))"
-                title="Send message (Enter)"
-            >
-                ➤ Send
-            </button>
-        </div>
-    </div>
+        </FooterTemplate>
+    </SfChatUI>
 </div>
 
 @code {
-    private List<ChatMessage> _messages = new();
-    private string _userInput = string.Empty;
-    private bool _isStreaming = false;
-    private string _currentStreamingText = string.Empty;
-    private string _currentStreamingHtml = string.Empty;
-    private ElementReference messagesContainer;
-    private ElementReference inputField;
-
-    protected override async Task OnInitializedAsync()
+    private SfChatUI? _chatUi;
+    private ElementReference _composerInput;
+    private readonly List<SfChatMessage> _messages = new();
+    private readonly List<SfUserModel> _typingUsers = new();
+    private readonly SfUserModel _currentUser = new() { ID = "jarvis-current-user", User = "You" };
+    private readonly SfUserModel _assistantUser = new() { ID = "jarvis-assistant-user", User = "JARVIS" };
+    private static readonly string[] SupportedAttachmentExtensions =
     {
-        Logger?.LogInformation("[JARVIS-BLAZOR] JARVISAssist component initializing");
+        ".txt",
+        ".md",
+        ".log",
+        ".json",
+        ".xml",
+        ".csv",
+        ".yml",
+        ".yaml",
+        ".config",
+        ".cs",
+        ".csproj",
+        ".razor",
+        ".sql",
+        ".ps1"
+    };
+    private const int MaxAttachmentCount = 3;
+    private const long MaxAttachmentBytes = 256 * 1024;
+    private const int MaxAttachmentCharacters = 24_000;
+    private static readonly string AcceptedAttachmentTypes = string.Join(",", SupportedAttachmentExtensions);
+    private readonly List<ChatPromptAttachment> _pendingAttachments = new();
+    private string? _streamingMessageId;
+    private string _draftText = string.Empty;
+    private string? _attachmentError;
+    private bool _isDisposed;
+    private bool IsSendDisabled => string.IsNullOrWhiteSpace(_draftText) && _pendingAttachments.Count == 0;
 
-        // Subscribe to chat bridge events
+    protected override void OnInitialized()
+    {
+        Logger?.LogInformation("[JARVIS-BLAZOR] SfChatUI component initializing");
+
         ChatBridge.OnMessageReceived += HandleMessageReceived;
         ChatBridge.ResponseChunkReceived += HandleResponseChunk;
         ChatBridge.ResponseCompleted += HandleResponseCompleted;
-
-        await Task.CompletedTask;
+        ChatBridge.ExternalPromptRequested += HandleExternalPromptRequested;
+        ThemeService.ThemeChanged += HandleThemeChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            Logger?.LogInformation("[JARVIS-BLAZOR] Component first render, focusing input");
+            await ApplyThemeAsync(ThemeService.CurrentTheme, ThemeService.IsDark);
+
+            await Task.Delay(150);
+
             try
             {
-                await inputField.FocusAsync();
+                if (_chatUi != null)
+                {
+                    if (!await IsSyncfusionInteropReadyAsync())
+                    {
+                        Logger?.LogDebug("[JARVIS] Syncfusion interop not ready during first render focus attempt");
+                    }
+
+                    await FocusComposerAsync();
+                    Logger?.LogInformation("[JARVIS] Input focused successfully after safe delay");
+                }
+            }
+            catch (JSException ex)
+            {
+                Logger?.LogWarning(ex, "[JARVIS] Focus failed due to JS readiness race — non-critical, continuing");
             }
             catch (Exception ex)
             {
-                Logger?.LogWarning(ex, "[JARVIS-BLAZOR] Failed to focus input element");
+                Logger?.LogWarning(ex, "[JARVIS] Focus failed — non-critical, continuing");
             }
         }
 
-        // Scroll to bottom when messages update
-        if (_messages.Count > 0 || _isStreaming)
+        if (_messages.Count > 0 || !string.IsNullOrEmpty(_streamingMessageId))
         {
-            try
-            {
-                await ScrollToBottom();
-            }
-            catch (Exception ex)
-            {
-                Logger?.LogWarning(ex, "[JARVIS-BLAZOR] Failed to scroll to bottom");
-            }
+            await ScrollToBottomAsync();
         }
 
         await base.OnAfterRenderAsync(firstRender);
     }
 
-    private async Task ScrollToBottom()
+    private async Task HandleMessageSend(ChatMessageSendEventArgs args)
     {
-        try
-        {
-            await JS.InvokeVoidAsync("scrollToBottom", messagesContainer);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogDebug(ex, "[JARVIS-BLAZOR] Scroll to bottom failed");
-        }
+        args.Cancel = true;
+
+        await SubmitPromptAsync(args.Message?.Text, includePendingAttachments: false);
     }
 
-    private async Task SendMessage()
+    private void HandleExternalPromptRequested(object? sender, ChatExternalPromptEventArgs args)
     {
-        if (string.IsNullOrWhiteSpace(_userInput) || _isStreaming)
+        if (string.IsNullOrWhiteSpace(args.Prompt))
+        {
             return;
+        }
 
-        var userMessage = _userInput.Trim();
-        _userInput = string.Empty;
-
-        // Add user message to display
-        _messages.Add(new ChatMessage
+        _ = InvokeAsync(async () =>
         {
-            Content = userMessage,
-            Sender = "user",
-            SenderClass = "user",
-            IsMarkdown = false
+            AddUserMessage(JarvisAttachmentPromptFormatter.BuildDisplayPrompt(args.Prompt, args.Attachments), allowDuplicate: false);
+            SetTypingIndicator(isTyping: true);
+            StateHasChanged();
+            await ScrollToBottomAsync();
         });
+    }
+
+    private void HandleResponseChunk(object? sender, ChatResponseChunkEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Chunk))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            AppendAssistantChunk(args.Chunk);
+            SetTypingIndicator(isTyping: true);
+            StateHasChanged();
+            await ScrollToBottomAsync();
+        });
+    }
+
+    private void HandleResponseCompleted(object? sender, EventArgs args)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _streamingMessageId = null;
+            SetTypingIndicator(isTyping: false);
+            StateHasChanged();
+            await ScrollToBottomAsync();
+        });
+    }
+
+    private void HandleMessageReceived(object? sender, WileyWidget.Models.ChatMessage message)
+    {
+        if (string.IsNullOrWhiteSpace(message.Content))
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            if (message.IsUser)
+            {
+                AddUserMessage(message.Content, allowDuplicate: false, timestamp: message.Timestamp.ToLocalTime());
+            }
+            else
+            {
+                if (!TryResolveStreamingDuplicate(message.Content))
+                {
+                    AddAssistantMessage(message.Content, message.Timestamp.ToLocalTime());
+                }
+
+                _streamingMessageId = null;
+                SetTypingIndicator(isTyping: false);
+            }
+
+            StateHasChanged();
+            await ScrollToBottomAsync();
+        });
+    }
+
+    private void HandleThemeChanged(object? sender, string themeName)
+    {
+        _ = InvokeAsync(() => ApplyThemeAsync(themeName, ThemeService.IsDark));
+    }
+
+    private void HandleUserTyping(ChatUserTypingEventArgs args)
+    {
+        Logger?.LogDebug("[JARVIS-BLAZOR] UserTyping event IsTyping={IsTyping}", args.IsTyping);
+    }
+
+    private async Task HandleComposerKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (string.Equals(args.Key, "Enter", StringComparison.Ordinal)
+            && !args.ShiftKey
+            && !args.CtrlKey
+            && !args.AltKey
+            && !args.MetaKey)
+        {
+            await SendDraftAsync();
+        }
+    }
+
+    private async Task SendDraftAsync()
+    {
+        await SubmitPromptAsync(_draftText, includePendingAttachments: true);
+    }
+
+    private async Task SubmitPromptAsync(string? promptText, bool includePendingAttachments)
+    {
+        var attachments = includePendingAttachments
+            ? _pendingAttachments.ToArray()
+            : Array.Empty<ChatPromptAttachment>();
+
+        if (attachments.Length == 0 && string.IsNullOrWhiteSpace(promptText))
+        {
+            return;
+        }
+
+        var normalizedPrompt = JarvisAttachmentPromptFormatter.NormalizePrompt(promptText);
+
+        var displayPrompt = JarvisAttachmentPromptFormatter.BuildDisplayPrompt(normalizedPrompt, attachments);
+
+        AddUserMessage(displayPrompt, allowDuplicate: false);
+        SetTypingIndicator(isTyping: true);
+        _attachmentError = null;
+
+        if (includePendingAttachments)
+        {
+            _draftText = string.Empty;
+            _pendingAttachments.Clear();
+        }
 
         StateHasChanged();
-        await ScrollToBottom();
-
-        Logger?.LogInformation("[JARVIS-BLAZOR] Sending user message: {Length} chars", userMessage.Length);
-        _isStreaming = true;
+        await ScrollToBottomAsync();
 
         try
         {
-            await ChatBridge.RequestExternalPromptAsync(userMessage);
+            if (attachments.Length > 0)
+            {
+                await ChatBridge.RequestExternalPromptAsync(normalizedPrompt, attachments);
+            }
+            else
+            {
+                await ChatBridge.RequestExternalPromptAsync(normalizedPrompt);
+            }
+
+            await FocusComposerAsync();
         }
         catch (Exception ex)
         {
-            Logger?.LogError(ex, "[JARVIS-BLAZOR] Error sending prompt");
-            _messages.Add(new ChatMessage
+            Logger?.LogError(ex, "[JARVIS-BLAZOR] Failed to submit prompt via bridge");
+            SetTypingIndicator(isTyping: false);
+
+            if (includePendingAttachments)
             {
-                Content = $"Error: {ex.Message}",
-                Sender = "system",
-                SenderClass = "system",
-                IsMarkdown = false
-            });
-            _isStreaming = false;
-        }
-    }
+                _draftText = promptText?.Trim() ?? string.Empty;
+                _pendingAttachments.AddRange(attachments);
+            }
 
-    private void HandleKeyUp(KeyboardEventArgs args)
-    {
-        if (args.Key == "Enter" && !_isStreaming)
-        {
-            _ = SendMessage();
-        }
-    }
-
-    private void HandleMessageReceived(object? sender, dynamic msg)
-    {
-        _messages.Add(new ChatMessage
-        {
-            Content = msg.Content,
-            Sender = "assistant",
-            SenderClass = "assistant",
-            IsMarkdown = true,
-            HtmlContent = MarkdownToHtml(msg.Content)
-        });
-
-        _isStreaming = false;
-        _currentStreamingText = string.Empty;
-        _currentStreamingHtml = string.Empty;
-
-        Logger?.LogDebug("[JARVIS-BLAZOR] Full message received");
-        StateHasChanged();
-        _ = ScrollToBottom();
-    }
-
-    private void HandleResponseChunk(object? sender, dynamic args)
-    {
-        if (args?.Chunk != null)
-        {
-            _currentStreamingText += (string)args.Chunk;
-            _currentStreamingHtml = MarkdownToHtml(_currentStreamingText);
-
-            Logger?.LogDebug("[JARVIS-BLAZOR] Streaming chunk received, total: {Length} chars", _currentStreamingText.Length);
+            AddAssistantMessage($"Error: {ex.Message}");
+            await ScrollToBottomAsync();
             StateHasChanged();
-            _ = ScrollToBottom();
         }
     }
 
-    private void HandleResponseCompleted(object? sender, dynamic args)
+    private async Task HandleAttachmentSelectedAsync(InputFileChangeEventArgs args)
     {
-        if (!string.IsNullOrEmpty(_currentStreamingText))
+        var feedback = new List<string>();
+        var selectedFiles = args.GetMultipleFiles(args.FileCount);
+
+        foreach (var file in selectedFiles)
         {
-            _messages.Add(new ChatMessage
+            var existingIndex = _pendingAttachments.FindIndex(existing =>
+                string.Equals(existing.FileName, file.Name, StringComparison.OrdinalIgnoreCase));
+
+            if (existingIndex < 0 && _pendingAttachments.Count >= MaxAttachmentCount)
             {
-                Content = _currentStreamingText,
-                Sender = "assistant",
-                SenderClass = "assistant",
-                IsMarkdown = true,
-                HtmlContent = _currentStreamingHtml
-            });
+                feedback.Add($"Only {MaxAttachmentCount} attachments are allowed per message.");
+                break;
+            }
+
+            var (attachment, error) = await TryCreateAttachmentAsync(file);
+            if (attachment == null)
+            {
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    feedback.Add(error);
+                }
+
+                continue;
+            }
+
+            if (existingIndex >= 0)
+            {
+                _pendingAttachments[existingIndex] = attachment;
+            }
+            else
+            {
+                _pendingAttachments.Add(attachment);
+            }
         }
 
-        _isStreaming = false;
-        _currentStreamingText = string.Empty;
-        _currentStreamingHtml = string.Empty;
-
-        Logger?.LogInformation("[JARVIS-BLAZOR] Response stream completed");
+        _attachmentError = feedback.Count == 0 ? null : string.Join(" ", feedback.Distinct(StringComparer.Ordinal));
         StateHasChanged();
-        _ = ScrollToBottom();
+        await FocusComposerAsync();
     }
 
-    private string MarkdownToHtml(string markdown)
+    private async Task<(ChatPromptAttachment? Attachment, string? Error)> TryCreateAttachmentAsync(IBrowserFile file)
     {
-        if (string.IsNullOrEmpty(markdown))
-            return string.Empty;
+        var extension = Path.GetExtension(file.Name);
+        if (!SupportedAttachmentExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            return (null, $"{file.Name}: unsupported file type. Attach text-based files such as .txt, .log, .json, .xml, .cs, or .sql.");
+        }
 
-        // Simple markdown to HTML conversion for common patterns
-        var html = System.Net.WebUtility.HtmlEncode(markdown);
+        if (file.Size <= 0)
+        {
+            return (null, $"{file.Name}: file is empty.");
+        }
 
-        // Convert line breaks
-        html = html.Replace("\n", "<br/>");
+        if (file.Size > MaxAttachmentBytes)
+        {
+            return (null, $"{file.Name}: file is larger than {MaxAttachmentBytes / 1024} KB.");
+        }
 
-        // Convert **bold** to <strong>bold</strong>
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        try
+        {
+            await using var stream = file.OpenReadStream(MaxAttachmentBytes);
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            var isTruncated = false;
+            if (content.Length > MaxAttachmentCharacters)
+            {
+                isTruncated = true;
+                content = string.Concat(
+                    content[..MaxAttachmentCharacters],
+                    Environment.NewLine,
+                    Environment.NewLine,
+                    $"[Attachment truncated to the first {MaxAttachmentCharacters:N0} characters for chat submission.]");
+            }
 
-        // Convert *italic* to <em>italic</em>
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*(.+?)\*", "<em>$1</em>");
-
-        // Convert `code` to <code>code</code>
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"`(.+?)`", "<code>$1</code>");
-
-        return html;
+            return (new ChatPromptAttachment
+            {
+                FileName = file.Name,
+                ContentType = string.IsNullOrWhiteSpace(file.ContentType) ? "text/plain" : file.ContentType,
+                SizeBytes = file.Size,
+                Content = content,
+                IsTruncated = isTruncated
+            }, null);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "[JARVIS-BLAZOR] Failed to read attachment {FileName}", file.Name);
+            return (null, $"{file.Name}: could not be read for evaluation.");
+        }
     }
 
-    private class ChatMessage
+    private void RemoveAttachment(string fileName)
     {
-        public string Content { get; set; } = string.Empty;
-        public string Sender { get; set; } = string.Empty;
-        public string SenderClass { get; set; } = string.Empty;
-        public bool IsMarkdown { get; set; }
-        public string HtmlContent { get; set; } = string.Empty;
+        _pendingAttachments.RemoveAll(attachment =>
+            string.Equals(attachment.FileName, fileName, StringComparison.OrdinalIgnoreCase));
+
+        if (_pendingAttachments.Count == 0)
+        {
+            _attachmentError = null;
+        }
     }
 
-    async ValueTask IAsyncDisposable.DisposeAsync()
+    private void AppendAssistantChunk(string chunk)
     {
+        if (string.IsNullOrEmpty(_streamingMessageId))
+        {
+            var newMessage = CreateMessage(_assistantUser, chunk, DateTime.Now);
+            _messages.Add(newMessage);
+            _streamingMessageId = newMessage.ID;
+            return;
+        }
+
+        var currentMessage = _messages.FirstOrDefault(message =>
+            string.Equals(message.ID, _streamingMessageId, StringComparison.Ordinal));
+
+        if (currentMessage == null)
+        {
+            var fallbackMessage = CreateMessage(_assistantUser, chunk, DateTime.Now);
+            _messages.Add(fallbackMessage);
+            _streamingMessageId = fallbackMessage.ID;
+            return;
+        }
+
+        currentMessage.Text = string.Concat(currentMessage.Text ?? string.Empty, chunk);
+    }
+
+    private bool TryResolveStreamingDuplicate(string finalMessage)
+    {
+        if (string.IsNullOrEmpty(_streamingMessageId))
+        {
+            return false;
+        }
+
+        var currentMessage = _messages.FirstOrDefault(message =>
+            string.Equals(message.ID, _streamingMessageId, StringComparison.Ordinal));
+
+        if (currentMessage == null)
+        {
+            return false;
+        }
+
+        return string.Equals(
+            (currentMessage.Text ?? string.Empty).Trim(),
+            finalMessage.Trim(),
+            StringComparison.Ordinal);
+    }
+
+    private void AddUserMessage(string messageText, bool allowDuplicate, DateTime? timestamp = null)
+    {
+        if (string.IsNullOrWhiteSpace(messageText))
+        {
+            return;
+        }
+
+        if (!allowDuplicate)
+        {
+            var lastMessage = _messages.LastOrDefault();
+            if (lastMessage?.Author?.ID == _currentUser.ID &&
+                string.Equals((lastMessage.Text ?? string.Empty).Trim(), messageText.Trim(), StringComparison.Ordinal))
+            {
+                return;
+            }
+        }
+
+        _messages.Add(CreateMessage(_currentUser, messageText.Trim(), timestamp ?? DateTime.Now));
+    }
+
+    private void AddAssistantMessage(string messageText, DateTime? timestamp = null)
+    {
+        if (string.IsNullOrWhiteSpace(messageText))
+        {
+            return;
+        }
+
+        _messages.Add(CreateMessage(_assistantUser, messageText.Trim(), timestamp ?? DateTime.Now));
+    }
+
+    private static SfChatMessage CreateMessage(SfUserModel author, string text, DateTime timestamp)
+    {
+        return new SfChatMessage
+        {
+            // Syncfusion chat toolbar lookup uses querySelector("#<messageId>").
+            // IDs starting with digits are not valid CSS selectors unless escaped.
+            ID = CreateCssSafeMessageId(),
+            Author = author,
+            Text = text,
+            Timestamp = timestamp
+        };
+    }
+
+    private static string CreateCssSafeMessageId()
+    {
+        return $"msg-{Guid.NewGuid():N}";
+    }
+
+    private void SetTypingIndicator(bool isTyping)
+    {
+        _typingUsers.Clear();
+        if (isTyping)
+        {
+            _typingUsers.Add(_assistantUser);
+        }
+    }
+
+    private async Task ScrollToBottomAsync()
+    {
+        if (_chatUi == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _chatUi.ScrollToBottomAsync();
+        }
+        catch (JSException ex)
+        {
+            Logger?.LogDebug(ex, "[JARVIS-BLAZOR] ScrollToBottomAsync skipped due to transient JS interop readiness state");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "[JARVIS-BLAZOR] ScrollToBottomAsync failed");
+        }
+    }
+
+    private async Task<bool> IsSyncfusionInteropReadyAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("eval", "typeof window !== 'undefined' && !!window.ejs");
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogDebug(ex, "[JARVIS-BLAZOR] Unable to probe Syncfusion JS readiness");
+            return false;
+        }
+    }
+
+    private async Task ApplyThemeAsync(string themeName, bool isDark)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("jarvisTheme.applyTheme", themeName, isDark);
+            Logger?.LogDebug("[JARVIS-BLAZOR] Applied theme bridge: {Theme} (IsDark={IsDark})", themeName, isDark);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "[JARVIS-BLAZOR] Failed to apply theme bridge");
+        }
+    }
+
+    private async Task FocusComposerAsync()
+    {
+        try
+        {
+            await _composerInput.FocusAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogDebug(ex, "[JARVIS-BLAZOR] Composer focus skipped due to transient render state");
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
         ChatBridge.OnMessageReceived -= HandleMessageReceived;
         ChatBridge.ResponseChunkReceived -= HandleResponseChunk;
         ChatBridge.ResponseCompleted -= HandleResponseCompleted;
-        await ValueTask.CompletedTask;
+        ChatBridge.ExternalPromptRequested -= HandleExternalPromptRequested;
+        ThemeService.ThemeChanged -= HandleThemeChanged;
     }
 }
 
 <style>
-    .jarvis-container {
-        display: flex;
-        flex-direction: column;
+    .jarvis-chat-shell {
         width: 100%;
-        height: 100vh;
-        background-color: #0d1117;
-        color: #c9d1d9;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-        overflow: hidden;
+        height: 100%;
+        background: #17181c;
+        color: #f3f6fb;
     }
 
-    .chat-header {
-        padding: 16px 20px;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        border-bottom: 1px solid #30363d;
-        flex-shrink: 0;
-    }
-
-    .chat-header h1 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
-    }
-
-    .chat-header .subtitle {
-        margin: 4px 0 0 0;
-        font-size: 12px;
-        opacity: 0.9;
-    }
-
-    .chat-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
+    .jarvis-empty {
+        height: 100%;
         display: flex;
         flex-direction: column;
-        gap: 12px;
-    }
-
-    .message {
-        display: flex;
-        margin-bottom: 8px;
-        animation: slideIn 0.3s ease-out;
-    }
-
-    .message.user {
-        justify-content: flex-end;
-    }
-
-    .message.assistant {
-        justify-content: flex-start;
-    }
-
-    .message.system {
-        justify-content: center;
-    }
-
-    .message-content {
-        max-width: 70%;
-        padding: 12px 16px;
-        border-radius: 8px;
-        word-wrap: break-word;
-    }
-
-    .message.user .message-content {
-        background-color: #10b981;
-        color: white;
-    }
-
-    .message.assistant .message-content {
-        background-color: #21262d;
-        color: #c9d1d9;
-        border: 1px solid #30363d;
-    }
-
-    .message.system .message-content {
-        background-color: #d97706;
-        color: white;
-        max-width: 90%;
-    }
-
-    .markdown-content {
-        line-height: 1.5;
-        word-break: break-word;
-    }
-
-    .markdown-content code {
-        background-color: rgba(0, 0, 0, 0.3);
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-    }
-
-    .markdown-content strong {
-        font-weight: 600;
-    }
-
-    .markdown-content em {
-        font-style: italic;
-    }
-
-    .markdown-content br {
-        display: block;
-        content: '';
-        margin: 4px 0;
-    }
-
-    .typing-indicator {
-        display: inline-flex;
-        gap: 4px;
-        margin-left: 8px;
-    }
-
-    .typing-indicator span {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background-color: #58a6ff;
-        animation: typing 1.4s infinite;
-    }
-
-    .typing-indicator span:nth-child(2) {
-        animation-delay: 0.2s;
-    }
-
-    .typing-indicator span:nth-child(3) {
-        animation-delay: 0.4s;
-    }
-
-    @@keyframes typing {
-        0%, 60%, 100% {
-            opacity: 0.5;
-            transform: translateY(0);
-        }
-        30% {
-            opacity: 1;
-            transform: translateY(-8px);
-        }
-    }
-
-    @@keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .chat-input-area {
-        flex-shrink: 0;
-        padding: 16px 20px;
-        border-top: 1px solid #30363d;
-        background-color: #0d1117;
-    }
-
-    .input-group {
-        display: flex;
-        gap: 8px;
         align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 0.5rem;
+        background: inherit;
     }
 
-    .chat-input {
-        flex: 1;
-        padding: 10px 14px;
-        background-color: #21262d;
-        border: 1px solid #30363d;
-        border-radius: 6px;
-        color: #c9d1d9;
-        font-size: 14px;
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-        transition: border-color 0.2s;
+    [data-jarvis-mode="light"] .jarvis-chat-shell {
+        background: #f5f7fb;
+        color: #17202b;
     }
 
-    .chat-input:focus {
-        outline: none;
-        border-color: #58a6ff;
-        box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+    .jarvis-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-top: 1px solid rgba(128, 128, 128, 0.2);
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(6px);
     }
 
-    .chat-input:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
+    .jarvis-compose-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 0.75rem;
+        align-items: end;
     }
 
-    .send-button {
-        padding: 10px 20px;
-        background-color: #10b981;
-        border: 1px solid #059669;
-        border-radius: 6px;
-        color: white;
-        font-size: 14px;
-        font-weight: 500;
+    .jarvis-attach-button {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.7rem 0.85rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(128, 128, 128, 0.35);
         cursor: pointer;
-        transition: background-color 0.2s;
+        font-weight: 600;
+        user-select: none;
+        white-space: nowrap;
+        background: rgba(255, 255, 255, 0.9);
     }
 
-    .send-button:hover:not(:disabled) {
-        background-color: #059669;
+    .jarvis-attach-icon {
+        font-size: 1rem;
+        line-height: 1;
     }
 
-    .send-button:disabled {
+    .jarvis-file-input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .jarvis-compose-input {
+        width: 100%;
+        min-height: 3.75rem;
+        resize: vertical;
+        border-radius: 0.85rem;
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        padding: 0.75rem 0.9rem;
+        font: inherit;
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .jarvis-send-button {
+        min-width: 5.5rem;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        color: #ffffff;
+        background: linear-gradient(135deg, #0b5cab, #178b6b);
+    }
+
+    .jarvis-send-button:disabled {
+        cursor: default;
         opacity: 0.5;
-        cursor: not-allowed;
     }
 
-    .send-button:active:not(:disabled) {
-        background-color: #047857;
+    .jarvis-attachment-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .jarvis-attachment-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        max-width: 100%;
+        padding: 0.35rem 0.55rem;
+        border-radius: 999px;
+        background: rgba(11, 92, 171, 0.12);
+        color: #0b3d70;
+        font-size: 0.9rem;
+    }
+
+    .jarvis-attachment-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 18rem;
+    }
+
+    .jarvis-attachment-meta {
+        font-size: 0.78rem;
+        opacity: 0.72;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .jarvis-attachment-remove {
+        border: none;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+        font-weight: 700;
+        padding: 0;
+    }
+
+    .jarvis-attachment-error {
+        color: #a12a1a;
+        font-size: 0.9rem;
+    }
+
+    [data-jarvis-mode="dark"] .jarvis-footer {
+        background: rgba(23, 24, 28, 0.82);
+    }
+
+    [data-jarvis-mode="dark"] .jarvis-attach-button,
+    [data-jarvis-mode="dark"] .jarvis-compose-input {
+        background: rgba(32, 34, 40, 0.94);
+        color: #f3f6fb;
+        border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    [data-jarvis-mode="dark"] .jarvis-attachment-chip {
+        background: rgba(91, 169, 255, 0.18);
+        color: #d6e9ff;
+    }
+
+    @@media (max-width: 640px) {
+        .jarvis-compose-row {
+            grid-template-columns: 1fr;
+        }
+
+        .jarvis-send-button {
+            width: 100%;
+        }
     }
 </style>

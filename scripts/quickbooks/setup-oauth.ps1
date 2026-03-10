@@ -19,7 +19,7 @@
     QuickBooks client secret (optional, reads from QBO_CLIENT_SECRET env var if not provided)
 
 .PARAMETER RedirectUri
-    OAuth redirect URI (optional, defaults to OAuth Playground URL)
+    OAuth redirect URI (optional, defaults to the Wiley Widget sandbox localhost callback)
 
 .PARAMETER RealmId
     QuickBooks company/realm ID (optional, reads from QBO_REALM_ID env var if not provided)
@@ -48,7 +48,7 @@ param(
     [string]$ClientSecret,
 
     [Parameter(Mandatory = $false)]
-    [string]$RedirectUri = "https://developer.intuit.com/v2/OAuth2Playground/RedirectUrl",
+    [string]$RedirectUri = "http://localhost:5000/callback/",
 
     [Parameter(Mandatory = $false)]
     [string]$RealmId,

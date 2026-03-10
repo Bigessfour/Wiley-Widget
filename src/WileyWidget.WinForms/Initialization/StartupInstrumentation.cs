@@ -18,7 +18,7 @@ namespace WileyWidget.WinForms.Initialization
     /// <code>
     /// StartupInstrumentation.RecordPhase("DI Build", 25);
     /// StartupInstrumentation.RecordPhase("Theme Init", 50);
-    /// StartupInstrumentation.RecordPhase("DockingManager", 1000);
+    /// StartupInstrumentation.RecordPhase("MDI Layout", 100);
     /// var metrics = StartupInstrumentation.GetMetrics();
     /// StartupInstrumentation.LogMetrics(logger);
     /// </code>
@@ -32,7 +32,7 @@ namespace WileyWidget.WinForms.Initialization
         /// <summary>
         /// Records the elapsed time for a startup phase.
         /// </summary>
-        /// <param name="phaseName">Name of the startup phase (e.g., "DI Build", "DockingManager")</param>
+        /// <param name="phaseName">Name of the startup phase (e.g., "DI Build", "MDI Layout")</param>
         /// <param name="elapsedMilliseconds">Elapsed time in milliseconds</param>
         public static void RecordPhase(string phaseName, long elapsedMilliseconds)
         {
@@ -196,32 +196,6 @@ namespace WileyWidget.WinForms.Initialization
         }
 
         /// <summary>
-        /// Validates that DockingManager was created and initialized properly.
-        /// </summary>
-        public static bool ValidateDockingManagerCreation(
-            object? dockingManager,
-            object? panelNavigator,
-            ILogger? logger)
-        {
-            logger?.LogInformation("Validating DockingManager initialization");
-
-            if (dockingManager == null)
-            {
-                logger?.LogError("DockingManager creation failed - returned null from factory");
-                return false;
-            }
-
-            if (panelNavigator == null)
-            {
-                logger?.LogWarning("PanelNavigationService is null after DockingManager initialization");
-                return false;
-            }
-
-            logger?.LogInformation("DockingManager validation passed");
-            return true;
-        }
-
-        /// <summary>
         /// Safe creation of exception context for startup failures.
         /// Captures diagnostic information for debugging.
         /// </summary>
@@ -276,28 +250,6 @@ namespace WileyWidget.WinForms.Initialization
         public StartupErrorHandler(ILogger? logger = null)
         {
             _logger = logger;
-        }
-
-        /// <summary>
-        /// Handles DockingManager initialization failure with graceful degradation.
-        /// </summary>
-        public void HandleDockingManagerFailure(Exception exception)
-        {
-            _logger?.LogError(exception, "DockingManager initialization failed");
-
-            var context = InitializationValidation.CreateStartupFailureContext(
-                "DockingManager Initialization",
-                exception,
-                new Dictionary<string, object?>
-                {
-                    { "RecoveryAction", "Docking disabled - basic UI available" },
-                    { "UserImpact", "Panels not docked, only basic layout visible" }
-                });
-
-            _logger?.LogError("{Context}", context);
-
-            // Recovery: App continues with basic UI, docking disabled
-            // User can still access functionality via menu/ribbon
         }
 
         /// <summary>

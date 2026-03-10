@@ -2831,6 +2831,56 @@ namespace WileyWidget.Data.Migrations
                     b.ToTable("ConversationHistories", (string)null);
                 });
 
+            modelBuilder.Entity("WileyWidget.Services.Abstractions.UserMemoryFact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FactKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("FactValue")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<DateTime>("LastObservedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ObservationCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceConversationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastObservedAtUtc");
+
+                    b.HasIndex("UserId", "FactKey")
+                        .IsUnique();
+
+                    b.ToTable("UserMemoryFacts", (string)null);
+                });
+
             modelBuilder.Entity("WileyWidget.Models.BudgetEntry", b =>
                 {
                     b.HasOne("WileyWidget.Models.Department", "Department")

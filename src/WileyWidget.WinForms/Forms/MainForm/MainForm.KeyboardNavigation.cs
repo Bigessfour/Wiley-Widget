@@ -149,8 +149,10 @@ public partial class MainForm
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.None,
                 ShowInTaskbar = false,
-                Size = new Size(400, 300),
-                Opacity = 0.95
+                Size = new Size(
+                    (int)DpiAware.LogicalToDeviceUnits(400f),
+                    (int)DpiAware.LogicalToDeviceUnits(300f)),
+                Opacity = 1.0 // Fixed: Full opacity for keyboard navigation dialog to avoid partial transparency issues
             };
 
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;

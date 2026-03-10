@@ -3,6 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -88,6 +89,7 @@ public sealed class QuickBooksTokenStore : IDisposable
     public async Task ClearTokenAsync()
     {
         _cachedToken = null;
+        _cachedRealmId = null;
 
         if (_options.EnableTokenPersistence && !string.IsNullOrWhiteSpace(_options.TokenCachePath))
         {
@@ -120,10 +122,42 @@ public sealed class QuickBooksTokenStore : IDisposable
     /// Sets the realm ID for API requests.
     /// Called during OAuth flow when realm ID is extracted from callback.
     /// </summary>
-    public void SetRealmId(string realmId)
+    public async Task SetRealmIdAsync(string realmId, CancellationToken cancellationToken = default)
     {
-        _cachedRealmId = realmId;
-        _logger.LogInformation("RealmId cached: {RealmId}", realmId);
+        if (string.IsNullOrWhiteSpace(realmId))
+        {
+            _logger.LogWarning("Attempt to cache empty QuickBooks realmId ignored");
+            return;
+        }
+
+        var normalizedRealmId = realmId.Trim();
+        _cachedRealmId = normalizedRealmId;
+        _logger.LogInformation("RealmId cached: {RealmId}", normalizedRealmId);
+
+        if (!_options.EnableTokenPersistence || string.IsNullOrWhiteSpace(_options.TokenCachePath))
+        {
+            return;
+        }
+
+        QuickBooksOAuthToken? tokenToPersist = _cachedToken;
+        if (tokenToPersist is null)
+        {
+            tokenToPersist = await LoadFromDiskAsync().ConfigureAwait(false);
+            _cachedRealmId = normalizedRealmId;
+            if (tokenToPersist is not null)
+            {
+                _cachedToken = tokenToPersist;
+            }
+        }
+
+        if (tokenToPersist is null)
+        {
+            _logger.LogDebug("RealmId updated in memory only because no OAuth token is available to persist alongside it");
+            return;
+        }
+
+        await SaveToDiskAsync(tokenToPersist).ConfigureAwait(false);
+        _logger.LogInformation("Persisted realmId alongside cached OAuth token");
     }
 
     private async Task<QuickBooksOAuthToken?> LoadFromDiskAsync()

@@ -21,6 +21,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -114,8 +115,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             try
             {
                 // Provide breathing room and protect from collapsing
-                this.Padding = new Padding(8);
-                this.MinimumSize = new Size(1024, 720);
+                this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
+                this.MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
                 this.AccessibleName = "Insight Feed Panel";
                 this.AccessibleDescription = "Displays proactive insights and the data grid";
 
@@ -123,9 +124,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 _topPanel = new Panel
                 {
                     // Removed fixed Height to allow growth; MinimumSize ensures header won't collapse below 60px
-                    MinimumSize = new Size(0, 60), // ensures header won't collapse below 60px
+                    MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight)), // ensures header won't collapse below 60px
                     Dock = DockStyle.Top,
-                    Padding = new Padding(12, 8, 12, 8),
+                    Padding = LayoutTokens.GetScaled(LayoutTokens.SectionPanelPadding),
                     Name = "InsightFeedTopPanel",
                     AccessibleName = "Insight Feed Top Panel",
                     AccessibleDescription = "Header area for the insight feed",
@@ -141,7 +142,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     Text = "Loading insights...",
                     Dock = DockStyle.Right,
                     TextAlign = ContentAlignment.MiddleRight,
-                    Margin = new Padding(8),
+                    Margin = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
                     AutoSize = true,
                     MaximumSize = new Size(300, int.MaxValue),
                     AutoEllipsis = true,
@@ -197,26 +198,26 @@ namespace WileyWidget.WinForms.Controls.Panels
                 _panelHeader.PinToggled += _panelHeaderPinToggledHandler;
 
                 // Insights grid - configured for Office2019Colorful theme with full Syncfusion support
-                _insightsGrid = new SfDataGrid
+                _insightsGrid = ControlFactory.CreateSfDataGrid(grid =>
                 {
-                    Dock = DockStyle.Fill,
-                    AllowSelectionOnMouseDown = true,
-                    AllowDraggingColumns = false,
-                    AllowResizingColumns = true,
-                    AllowSorting = true,
-                    AllowGrouping = false,
-                    AllowFiltering = true,
-                    AllowEditing = false,
-                    ShowRowHeader = false,
-                    ShowGroupDropArea = false,
-                    RowHeight = 40,
-                    AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-                    SelectionMode = GridSelectionMode.Extended,
-                    Name = "InsightsDataGrid",
-                    AccessibleName = "Insights Data Grid",
-                    AccessibleDescription = "Displays proactive AI insights with priority levels and actions",
-                    AutoGenerateColumns = false
-                };
+                    grid.Dock = DockStyle.Fill;
+                    grid.AllowSelectionOnMouseDown = true;
+                    grid.AllowDraggingColumns = false;
+                    grid.AllowResizingColumns = true;
+                    grid.AllowSorting = true;
+                    grid.AllowGrouping = false;
+                    grid.AllowFiltering = true;
+                    grid.AllowEditing = false;
+                    grid.ShowRowHeader = false;
+                    grid.ShowGroupDropArea = false;
+                    grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightExtraTall);
+                    grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+                    grid.SelectionMode = GridSelectionMode.Extended;
+                    grid.Name = "InsightsDataGrid";
+                    grid.AccessibleName = "Insights Data Grid";
+                    grid.AccessibleDescription = "Displays proactive AI insights with priority levels and actions";
+                    grid.AutoGenerateColumns = false;
+                });
                 Controls.Add(_insightsGrid);
 
                 // Loading overlay (added last so it can overlay the grid when visible)

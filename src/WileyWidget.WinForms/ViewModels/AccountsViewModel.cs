@@ -245,6 +245,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
                 accountsList = accountsList
                     .Where(a =>
                         (a.AccountNumber?.Value?.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (a.AccountNumber?.DisplayValue.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ?? false) ||
                         (a.Name?.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ?? false) ||
                         (a.FundDescription?.Contains(searchLower, StringComparison.OrdinalIgnoreCase) ?? false))
                     .ToList();
@@ -269,7 +270,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
                 Accounts.Add(new MunicipalAccountDisplay
                 {
                     Id = account.Id,
-                    AccountNumber = account.AccountNumber?.Value ?? "N/A",
+                    AccountNumber = account.AccountNumber?.DisplayValue ?? "N/A",
                     AccountName = account.Name,
                     Description = account.FundDescription ?? string.Empty,
                     AccountType = account.Type.ToString(),
@@ -350,7 +351,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
                 newAccount.AccountNumber?.Value ?? string.Empty);
             if (existing != null)
             {
-                ErrorMessage = $"Account number '{newAccount.AccountNumber?.Value}' already exists";
+                ErrorMessage = $"Account number '{newAccount.AccountNumber?.DisplayValue ?? newAccount.AccountNumber?.Value}' already exists";
                 _logger.LogWarning("Attempted to create duplicate account: {AccountNumber}", newAccount.AccountNumber?.Value);
                 return;
             }
@@ -358,7 +359,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             await _municipalAccountRepository.AddAsync(newAccount);
             await LoadAccountsAsync();
 
-            StatusText = $"Account '{newAccount.AccountNumber?.Value}' created successfully";
+            StatusText = $"Account '{newAccount.AccountNumber?.DisplayValue ?? newAccount.AccountNumber?.Value}' created successfully";
             _logger.LogInformation("Account created: {AccountNumber}", newAccount.AccountNumber?.Value);
         }
         catch (Exception ex)
@@ -400,7 +401,7 @@ public partial class AccountsViewModel : ObservableRecipient, IDisposable, ILazy
             await _municipalAccountRepository.UpdateAsync(updatedAccount);
             await LoadAccountsAsync();
 
-            StatusText = $"Account '{updatedAccount.AccountNumber?.Value}' updated successfully";
+            StatusText = $"Account '{updatedAccount.AccountNumber?.DisplayValue ?? updatedAccount.AccountNumber?.Value}' updated successfully";
             _logger.LogInformation("Account updated: {AccountNumber}", updatedAccount.AccountNumber?.Value);
         }
         catch (Exception ex)

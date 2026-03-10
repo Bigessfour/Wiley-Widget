@@ -30,6 +30,15 @@ public interface IQuickBooksAuthService
     /// Called after OAuth user authorization flow.
     /// </summary>
     /// <param name="authorizationCode">The authorization code from the OAuth flow.</param>
+    /// <param name="redirectUriOverride">Optional redirect URI override for flows such as the Intuit OAuth Playground.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A result containing the token or error message.</returns>
+    Task<TokenResult> ExchangeCodeForTokenAsync(string authorizationCode, string? redirectUriOverride, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Exchanges an authorization code for an access token using the configured redirect URI.
+    /// </summary>
+    /// <param name="authorizationCode">The authorization code from the OAuth flow.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>A result containing the token or error message.</returns>
     Task<TokenResult> ExchangeCodeForTokenAsync(string authorizationCode, CancellationToken cancellationToken = default);
@@ -37,6 +46,14 @@ public interface IQuickBooksAuthService
     /// <summary>
     /// Generates the OAuth authorization URL that the user should visit to grant access.
     /// Ensures credentials are loaded from the vault/environment before building the URL.
+    /// </summary>
+    /// <param name="redirectUriOverride">Optional redirect URI override for flows such as the Intuit OAuth Playground.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>The full authorization URL with query parameters.</returns>
+    Task<string> GenerateAuthorizationUrlAsync(string? redirectUriOverride, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates the OAuth authorization URL using the configured redirect URI.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>
     /// <returns>The full authorization URL with query parameters.</returns>
@@ -66,4 +83,16 @@ public interface IQuickBooksAuthService
     /// Returns the current OAuth environment identifier ("sandbox" or "production").
     /// </summary>
     string GetEnvironment();
+
+    /// <summary>
+    /// Returns the active QuickBooks realm ID (company ID) for the current OAuth session.
+    /// </summary>
+    string? GetRealmId();
+
+    /// <summary>
+    /// Updates the active QuickBooks realm ID and persists it for downstream API calls.
+    /// </summary>
+    /// <param name="realmId">Realm ID returned by the OAuth callback.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    Task SetRealmIdAsync(string realmId, CancellationToken cancellationToken = default);
 }

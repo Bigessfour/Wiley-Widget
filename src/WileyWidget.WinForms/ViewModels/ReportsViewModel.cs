@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace WileyWidget.WinForms.ViewModels;
 /// <summary>
 /// ViewModel for the Reports form, managing FastReport Open Source report generation and export.
 /// Uses CommunityToolkit.Mvvm for MVVM pattern with source generators.
-/// Delegates report operations to IReportService.
+/// Delegates report viewing to IReportService and file export to IReportExportService.
 /// </summary>
 public partial class ReportsViewModel : ObservableObject, IDisposable
 {
@@ -109,7 +110,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     public object? ReportViewer { get; set; }
 
     /// <summary>
-    /// Reference to the PreviewControl (set by the Form).
+    /// Reserved for future preview host integrations.
     /// </summary>
     public object? PreviewControl { get; set; }
 
@@ -202,7 +203,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         _logger.LogInformation("ReportsViewModel initialized. Reports folder: {ReportsFolder}", ReportsFolder);
     }
 
-    private static string Normalize(string input)
+    private static string Normalize(string? input)
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
         var chars = input.Where(c => char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray();
@@ -222,6 +223,62 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Attempts to synchronize the selected report type from a display name, file name, or report path.
+    /// </summary>
+    public bool TrySelectReportType(string reportIdentifier)
+    {
+        if (!TryResolveReportDisplayName(reportIdentifier, out var resolvedReportType))
+        {
+            return false;
+        }
+
+        if (!string.Equals(SelectedReportType, resolvedReportType, StringComparison.Ordinal))
+        {
+            SelectedReportType = resolvedReportType;
+        }
+
+        return true;
+    }
+
+    private bool TryResolveReportDisplayName(string reportIdentifier, out string resolvedReportType)
+    {
+        resolvedReportType = string.Empty;
+
+        var trimmedIdentifier = reportIdentifier?.Trim() ?? string.Empty;
+        var normalizedIdentifier = Normalize(Path.GetFileNameWithoutExtension(trimmedIdentifier) ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(normalizedIdentifier))
+        {
+            return false;
+        }
+
+        foreach (var mapping in _displayNameToFile)
+        {
+            if (Normalize(mapping.Key) == normalizedIdentifier ||
+                Normalize(Path.GetFileNameWithoutExtension(mapping.Value) ?? string.Empty) == normalizedIdentifier)
+            {
+                resolvedReportType = mapping.Key;
+                return true;
+            }
+        }
+
+        var knownFriendlyName = AvailableReportTypes.FirstOrDefault(reportType => Normalize(reportType) == normalizedIdentifier);
+        if (!string.IsNullOrWhiteSpace(knownFriendlyName))
+        {
+            resolvedReportType = knownFriendlyName;
+            return true;
+        }
+
+        var knownTemplate = ReportTemplates.FirstOrDefault(templateName => Normalize(templateName) == normalizedIdentifier);
+        if (!string.IsNullOrWhiteSpace(knownTemplate))
+        {
+            resolvedReportType = SplitCamelCase(knownTemplate);
+            return true;
+        }
+
+        return false;
+    }
+
     [RelayCommand]
     public async Task SetZoomAsync(int percent, CancellationToken cancellationToken = default)
     {
@@ -234,10 +291,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         try
         {
             ZoomPercent = percent;
-            // ConfigureViewerAsync not available in FastReport.OpenSource
-            // Zoom configuration may need to be handled differently
             await Task.Yield(); // Ensure async execution for UI thread safety
-            StatusMessage = $"Zoom set to {percent}%";
+            StatusMessage = $"Zoom preference set to {percent}% for report preview workflows.";
         }
         catch (Exception ex)
         {
@@ -279,22 +334,20 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async Task FindAsync(CancellationToken cancellationToken = default)
     {
-        // NOTE: BoldReports WPF does not expose find/search API
-        // Search is available through the control's built-in toolbar
-        StatusMessage = "Search is available through the viewer toolbar";
+        StatusMessage = "Search is available in the opened preview window or exported preview file.";
         await Task.CompletedTask;
     }
 
     [RelayCommand]
     public async Task ToggleParametersPanelAsync(CancellationToken cancellationToken = default)
     {
-        // NOTE: BoldReports WPF parameters panel is controlled by the control itself
-        StatusMessage = "Parameters panel is controlled by the viewer";
+        ShowParametersPanel = !ShowParametersPanel;
+        StatusMessage = ShowParametersPanel ? "Parameters panel opened." : "Parameters panel hidden.";
         await Task.CompletedTask;
     }
 
     /// <summary>
-    /// Gets the RDL file path for the selected report type.
+    /// Gets the FRX file path for the selected report type.
     /// </summary>
     private string GetReportPath()
     {
@@ -357,6 +410,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         try
         {
             IsBusy = true;
+            IsLoading = true;
+            HasReportLoaded = false;
             ErrorMessage = null;
             StatusMessage = "Generating report...";
 
@@ -376,33 +431,36 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
             await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
 
+            await _reportService.SetReportParametersAsync(ReportViewer, new Dictionary<string, object>(Parameters), cancellationToken);
+
             // Honor cancellation again
             cancellationToken.ThrowIfCancellationRequested();
 
-            // NOTE: BoldReports WPF does not expose SetReportParametersAsync API
-            // Parameters are configured in the RDL file or through the control's UI
-            // await _reportService.SetReportParametersAsync(ReportViewer, new Dictionary<string, object>(Parameters), cancellationToken);
-
             StatusMessage = $"Report generated: {SelectedReportType}";
+            HasReportLoaded = true;
             _logger.LogInformation("Report generated successfully: {ReportType}", SelectedReportType);
         }
         catch (OperationCanceledException)
         {
             StatusMessage = "Report generation cancelled.";
+            HasReportLoaded = false;
             _logger.LogDebug("Report generation cancelled");
         }
         catch (FileNotFoundException ex)
         {
             ErrorMessage = $"Report template not found: {ex.FileName}";
+            HasReportLoaded = false;
             _logger.LogError(ex, "Report template not found");
         }
         catch (Exception ex)
         {
             ErrorMessage = $"Failed to generate report: {ex.Message}";
+            HasReportLoaded = false;
             _logger.LogError(ex, "Failed to generate report: {ReportType}", SelectedReportType);
         }
         finally
         {
+            IsLoading = false;
             IsBusy = false;
         }
     }
@@ -428,8 +486,12 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         try
         {
             IsBusy = true;
+            IsLoading = true;
+            HasReportLoaded = false;
             ErrorMessage = null;
             StatusMessage = "Loading report...";
+
+            TrySelectReportType(reportPath);
 
             _logger.LogInformation("Loading report from path: {ReportPath}", reportPath);
 
@@ -443,18 +505,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
             var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
             await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
 
-            // Show the prepared report in the preview control
-            if (ReportViewer is FastReport.Report report)
-            {
-                // PreviewControl not available in Open Source
-                // previewControl.Report = report;
-                _logger.LogDebug("Report loaded (preview not available in Open Source)");
-            }
-            else
-            {
-                _logger.LogWarning("ReportViewer is not of expected type. ReportViewer: {ReportViewerType}",
-                    ReportViewer?.GetType().Name);
-            }
+            await _reportService.SetReportParametersAsync(ReportViewer, new Dictionary<string, object>(Parameters), cancellationToken);
 
             // Honor cancellation again
             cancellationToken.ThrowIfCancellationRequested();
@@ -466,20 +517,24 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         catch (OperationCanceledException)
         {
             StatusMessage = "Report loading cancelled.";
+            HasReportLoaded = false;
             _logger.LogDebug("Report loading cancelled");
         }
         catch (FileNotFoundException ex)
         {
             ErrorMessage = $"Report file not found: {ex.FileName}";
+            HasReportLoaded = false;
             _logger.LogError(ex, "Report file not found: {FileName}", ex.FileName);
         }
         catch (Exception ex)
         {
             ErrorMessage = $"Failed to load report: {ex.Message}";
+            HasReportLoaded = false;
             _logger.LogError(ex, "Failed to load report from {ReportPath}: {Message}", reportPath, ex.Message);
         }
         finally
         {
+            IsLoading = false;
             IsBusy = false;
         }
     }
@@ -506,9 +561,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task ExportToPdfFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        if (ReportViewer == null)
+        if (_exportService == null)
         {
-            ErrorMessage = "Report viewer not initialized.";
+            ErrorMessage = "Report export service is not initialized.";
             return;
         }
 
@@ -526,8 +581,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-            var progress = new Progress<double>(p => StatusMessage = $"Exporting PDF... {p:P0}");
-            await _reportService.ExportToPdfAsync(ReportViewer, filePath, progress, cancellationToken);
+            var exportDocument = await BuildExportDocumentAsync(cancellationToken);
+            await _exportService.ExportToPdfAsync(exportDocument, filePath, cancellationToken);
 
             StatusMessage = $"Exported to: {filePath}";
             _logger.LogInformation("Report exported to PDF: {FilePath}", filePath);
@@ -585,9 +640,9 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     /// </summary>
     public async Task ExportToExcelFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
-        if (ReportViewer == null)
+        if (_exportService == null)
         {
-            ErrorMessage = "Report viewer not initialized.";
+            ErrorMessage = "Report export service is not initialized.";
             return;
         }
 
@@ -605,8 +660,8 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
-            var progress = new Progress<double>(p => StatusMessage = $"Exporting Excel... {p:P0}");
-            await _reportService.ExportToExcelAsync(ReportViewer, filePath, progress, cancellationToken);
+            var exportDocument = await BuildExportDocumentAsync(cancellationToken);
+            await _exportService.ExportToExcelAsync(exportDocument, filePath, cancellationToken);
 
             StatusMessage = $"Exported to: {filePath}";
             _logger.LogInformation("Report exported to Excel: {FilePath}", filePath);
@@ -653,6 +708,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         try
         {
             IsBusy = true;
+            IsLoading = true;
             StatusMessage = "Refreshing report...";
 
             await _reportService.RefreshReportAsync(ReportViewer);
@@ -667,6 +723,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            IsLoading = false;
             IsBusy = false;
         }
     }
@@ -696,6 +753,163 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
         Parameters["ReportTitle"] = SelectedReportType;
 
         return true;
+    }
+
+    private async Task<ReportExportDocument> BuildExportDocumentAsync(CancellationToken cancellationToken)
+    {
+        if (!ValidateParameters())
+        {
+            throw new InvalidOperationException(ErrorMessage ?? "Report parameters are invalid.");
+        }
+
+        var dataSources = await PrepareDataSourcesAsync(cancellationToken);
+        var sections = CreateExportSections(dataSources);
+
+        if (sections.Count == 0 && PreviewData.Count > 0)
+        {
+            sections.Add(new ReportExportSection(
+                Title: "Preview",
+                Columns: ["Name", "Value", "Category"],
+                Rows: PreviewData
+                    .Select(item => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>
+                    {
+                        ["Name"] = item.Name,
+                        ["Value"] = item.Value,
+                        ["Category"] = item.Category,
+                    })
+                    .ToList()));
+        }
+
+        if (sections.Count == 0)
+        {
+            sections.Add(new ReportExportSection(
+                Title: "Status",
+                Columns: ["Field", "Value"],
+                Rows:
+                [
+                    new Dictionary<string, string>
+                    {
+                        ["Field"] = "Message",
+                        ["Value"] = "No report rows were available for export.",
+                    },
+                ]));
+        }
+
+        var metadata = new Dictionary<string, string>
+        {
+            ["Period"] = $"{FromDate:yyyy-MM-dd} to {ToDate:yyyy-MM-dd}",
+            ["Template"] = Path.GetFileName(GetReportPath()),
+            ["Format Source"] = "Wiley Widget branded Syncfusion export",
+        };
+
+        return new ReportExportDocument(
+            Title: SelectedReportType,
+            Subtitle: "Town of Wiley Municipal Finance Report",
+            GeneratedAt: DateTime.Now,
+            GeneratedBy: "Generated by Wiley Widget and Grok",
+            Branding: new ReportBrandingInfo(
+                OrganizationName: "Town of Wiley",
+                ApplicationName: "Wiley Widget",
+                Attribution: "Generated by Wiley Widget and Grok",
+                LogoPath: ResolveReportLogoPath()),
+            Sections: sections,
+            Metadata: metadata);
+    }
+
+    private List<ReportExportSection> CreateExportSections(Dictionary<string, object> dataSources)
+    {
+        var sections = new List<ReportExportSection>();
+
+        foreach (var (sectionName, source) in dataSources)
+        {
+            switch (source)
+            {
+                case DataSet dataSet:
+                    foreach (DataTable table in dataSet.Tables)
+                    {
+                        sections.Add(CreateSectionFromTable(string.IsNullOrWhiteSpace(table.TableName) ? sectionName : table.TableName, table));
+                    }
+                    break;
+
+                case DataTable table:
+                    sections.Add(CreateSectionFromTable(sectionName, table));
+                    break;
+
+                case IEnumerable enumerable when source is not string:
+                    var items = enumerable.Cast<object>().ToList();
+                    if (items.Count > 0)
+                    {
+                        sections.Add(CreateSectionFromObjects(sectionName, items));
+                    }
+                    break;
+
+                default:
+                    if (source != null)
+                    {
+                        sections.Add(CreateSectionFromObjects(sectionName, [source]));
+                    }
+                    break;
+            }
+        }
+
+        return sections;
+    }
+
+    private static ReportExportSection CreateSectionFromTable(string sectionName, DataTable table)
+    {
+        var columns = table.Columns.Cast<DataColumn>().Select(column => column.ColumnName).ToList();
+        var rows = table.Rows.Cast<DataRow>()
+            .Select(row => (IReadOnlyDictionary<string, string>)columns.ToDictionary(
+                column => column,
+                column => FormatExportValue(row[column])))
+            .ToList();
+
+        return new ReportExportSection(sectionName, columns, rows);
+    }
+
+    private static ReportExportSection CreateSectionFromObjects(string sectionName, IReadOnlyList<object> items)
+    {
+        var properties = items[0].GetType().GetProperties()
+            .Where(property => property.CanRead)
+            .ToArray();
+
+        var columns = properties.Select(property => property.Name).ToList();
+        var rows = items
+            .Select(item => (IReadOnlyDictionary<string, string>)properties.ToDictionary(
+                property => property.Name,
+                property => FormatExportValue(property.GetValue(item))))
+            .ToList();
+
+        return new ReportExportSection(sectionName, columns, rows);
+    }
+
+    private static string FormatExportValue(object? value)
+    {
+        return value switch
+        {
+            null => string.Empty,
+            DateTime dateTime => dateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+            _ => value.ToString() ?? string.Empty,
+        };
+    }
+
+    private static string? ResolveReportLogoPath()
+    {
+        var candidates = new[]
+        {
+            Environment.GetEnvironmentVariable("WILEYWIDGET_REPORT_LOGO_PATH"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-report-logo.png"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-report-logo.jpg"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-brand-hero.png"),
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "Branding", "wiley-brand-hero.jpg"),
+            Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-report-logo.png"),
+            Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-report-logo.jpg"),
+            Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-brand-hero.png"),
+            Path.Combine(Directory.GetCurrentDirectory(), "src", "WileyWidget.WinForms", "Resources", "Branding", "wiley-brand-hero.jpg"),
+        };
+
+        return candidates.FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path));
     }
 
     /// <summary>

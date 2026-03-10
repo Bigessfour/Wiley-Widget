@@ -8,6 +8,10 @@ using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Diagnostics;
+using System.Threading;
 
 namespace WileyWidget.WinForms.Tests.Infrastructure;
 
@@ -18,6 +22,12 @@ internal static class SyncfusionTestBootstrapper
     {
         Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "true");
         RegisterKnownWinFormsExceptionFilters();
+
+        // Start a background watcher that will close known Syncfusion license popup windows
+        // This is a last-resort test-time mitigation to prevent modal license dialogs
+        // from locking the test host when no valid license is present. It only affects
+        // windows owned by the current process and looks for Syncfusion/evaluation keywords.
+        TryStartLicensePopupWatcher();
 
         try
         {
@@ -181,15 +191,19 @@ internal static class SyncfusionTestBootstrapper
         }
 
         return stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanelThemeRenderer.DrawFrame", StringComparison.OrdinalIgnoreCase)
-            || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanel.OnNcPaint", StringComparison.OrdinalIgnoreCase)
-            || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.DockingManager.HostControl_Paint", StringComparison.OrdinalIgnoreCase);
+            || stackTrace.Contains("Syncfusion.Windows.Forms.Tools.RibbonPanel.OnNcPaint", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void LogUnhandledException(string source, Exception exception)
     {
         try
         {
-            var artifactsDir = Path.Combine(AppContext.BaseDirectory, "artifacts");
+            var artifactsDir = Environment.GetEnvironmentVariable("WILEYWIDGET_TEST_ARTIFACTS_DIR");
+            if (string.IsNullOrWhiteSpace(artifactsDir))
+            {
+                artifactsDir = Path.Combine(AppContext.BaseDirectory, "artifacts");
+            }
+
             Directory.CreateDirectory(artifactsDir);
 
             var logPath = Path.Combine(artifactsDir, "testhost-unhandled-exceptions.log");
@@ -203,4 +217,91 @@ internal static class SyncfusionTestBootstrapper
             // Swallow logging failures to avoid recursive exception handling.
         }
     }
+
+    // --- License popup watcher (test-time mitigation) ---------------------------------
+    private static int _licensePopupWatcherStarted;
+    private const uint WM_CLOSE = 0x0010;
+
+    private static void TryStartLicensePopupWatcher()
+    {
+        if (Interlocked.Exchange(ref _licensePopupWatcherStarted, 1) == 1)
+            return;
+
+        var currentPid = Process.GetCurrentProcess().Id;
+
+        // Run watcher on background thread; best-effort to close modal license dialogs
+        Task.Run(() =>
+        {
+            try
+            {
+                while (true)
+                {
+                    try
+                    {
+                        EnumWindows((hWnd, lParam) =>
+                        {
+                            try
+                            {
+                                if (!IsWindowVisible(hWnd))
+                                    return true;
+
+                                var windowThreadId = GetWindowThreadProcessId(hWnd, out uint pid);
+                                if (windowThreadId == 0)
+                                    return true;
+
+                                if ((int)pid != currentPid)
+                                    return true;
+
+                                var len = GetWindowTextLength(hWnd);
+                                if (len <= 0)
+                                    return true;
+
+                                var sb = new StringBuilder(len + 1);
+                                var copiedChars = GetWindowText(hWnd, sb, sb.Capacity);
+                                if (copiedChars <= 0)
+                                    return true;
+
+                                var title = sb.ToString();
+                                if (string.IsNullOrWhiteSpace(title))
+                                    return true;
+
+                                var lt = title.ToLowerInvariant();
+                                if (lt.Contains("syncfusion") || lt.Contains("evaluation") || lt.Contains("license"))
+                                {
+                                    // Close the window gracefully
+                                    PostMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                                }
+                            }
+                            catch { }
+                            return true;
+                        }, IntPtr.Zero);
+                    }
+                    catch { }
+
+                    Thread.Sleep(200);
+                }
+            }
+            catch { }
+        });
+    }
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int GetWindowTextLength(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 }

@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Factories;
 
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Themes;
@@ -74,20 +75,11 @@ public static class SyncfusionThemingExtensions
 
         try
         {
-            AppThemeColors.EnsureThemeAssemblyLoaded(logger);
-            // SfSkinManager is the single source of truth for theming (Syncfusion API).
-            // Extension method encapsulates the safe pattern.
-            // Per Syncfusion documentation: SetVisualStyle automatically cascades to all child controls.
-            SfSkinManager.SetVisualStyle(control, themeName);
+            var validatedTheme = AppThemeColors.ValidateTheme(themeName, logger);
+            AppThemeColors.EnsureThemeAssemblyLoadedForTheme(validatedTheme, logger);
+            SyncfusionControlFactory.ApplyThemeToAllControls(control, validatedTheme, logger);
 
-            // Invalidate to force clean rendering
-            if (!control.IsDisposed)
-            {
-                control.Invalidate(true);
-                control.Update();
-            }
-
-            logger?.LogDebug("Applied theme '{Theme}' to {ControlType}", themeName, control.GetType().Name);
+            logger?.LogDebug("Applied theme '{Theme}' to {ControlType}", validatedTheme, control.GetType().Name);
         }
         catch (Exception ex)
         {

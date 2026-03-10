@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -56,7 +57,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         public string Subtitle
         {
             get => _lblSubtitle.Text;
-            set => _lblSubtitle.Text = value;
+            set
+            {
+                _lblSubtitle.Text = value;
+                var hasSubtitle = !string.IsNullOrWhiteSpace(value);
+                _lblSubtitle.Visible = hasSubtitle;
+                _lblSubtitle.Height = hasSubtitle ? Dpi(16f) : 0;
+                PerformLayout();
+            }
         }
 
         /// <summary>
@@ -75,9 +83,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             _lblTitle = new Label
             {
                 Dock = DockStyle.Top,
-                Height = Dpi(22f),
+                Height = Dpi(16f),
                 Text = "Title",
-                TextAlign = ContentAlignment.BottomLeft,
+                TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font(Font.FontFamily, 7.75f, FontStyle.Regular),
                 AutoSize = false,
                 AutoEllipsis = true,
@@ -90,8 +98,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Text = "0",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font(Font.FontFamily, 20f, FontStyle.Bold),
+                Font = new Font(Font.FontFamily, 14.5f, FontStyle.Bold),
                 AutoSize = false,
+                AutoEllipsis = true,
                 AccessibleRole = AccessibleRole.StaticText,
                 AccessibleName = "KPI Value",
                 UseMnemonic = false
@@ -100,19 +109,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             _lblSubtitle = new Label
             {
                 Dock = DockStyle.Bottom,
-                Height = Dpi(16f),
+                Height = 0,
                 Text = string.Empty,
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
                 AccessibleRole = AccessibleRole.StaticText,
-                UseMnemonic = false
+                UseMnemonic = false,
+                Visible = false
             };
 
             BorderStyle = BorderStyle.None;
             // Top padding is slightly larger to give the accent bar visual breathing room
-            Padding = new Padding(Dpi(8f), Dpi(10f), Dpi(8f), Dpi(6f));
+            Padding = new Padding(Dpi(4f), Dpi(4f), Dpi(4f), Dpi(3f));
             // Conservative minimum size to avoid layout collapse; allow parent to control height
-            MinimumSize = new Size(Dpi(100f), Dpi(64f));
+            MinimumSize = new Size(Dpi(72f), Dpi(52f));
             // Accessibility improvements
             AccessibleRole = AccessibleRole.Grouping;
             AccessibleName = "KPI Card";
@@ -144,7 +154,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             try
             {
                 // Apply current app theme; swallow failures to avoid breaking designers
-                SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+                SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
             }
             catch { }
         }

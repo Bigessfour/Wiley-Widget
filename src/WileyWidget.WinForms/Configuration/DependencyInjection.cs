@@ -271,6 +271,9 @@ namespace WileyWidget.WinForms.Configuration
             services.AddOptions<StartupOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("Startup").Bind(opts));
 
+            services.AddOptions<AuthenticationOptions>()
+                .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("Authentication").Bind(opts));
+
             services.AddOptions<WileyWidget.Models.AppOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.Bind(opts));
 
@@ -446,6 +449,7 @@ namespace WileyWidget.WinForms.Configuration
 
             // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
             services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
+            services.AddScoped<IAuthenticationBootstrapper, AuthenticationBootstrapper>();
 
             // AI Services (Singleton - heavy initialization, shared across application)
             // ✅ CRITICAL FIX: GrokAgentService is Singleton to prevent duplicate initialization
@@ -492,6 +496,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
             services.AddSingleton<IConversationRepository, EfConversationRepository>();
+            services.AddSingleton<IUserMemoryRepository, EfUserMemoryRepository>();
+            services.AddSingleton<IUserOnboardingProfileService, UserOnboardingProfileService>();
 
             // JARVIS Personality Service (Singleton - pure transformation service with no per-request state)
             // ✅ OPTIMIZATION: Changed from Scoped to Singleton - no request-specific data, only transforms AI responses
@@ -627,6 +633,7 @@ namespace WileyWidget.WinForms.Configuration
                 var httpClientFactory = DI.ServiceProviderServiceExtensions.GetRequiredService<IHttpClientFactory>(sp);
                 var modelDiscovery = DI.ServiceProviderServiceExtensions.GetService<IXaiModelDiscoveryService>(sp);
                 var chatBridge = DI.ServiceProviderServiceExtensions.GetService<IChatBridgeService>(sp);
+                var aiLoggingService = DI.ServiceProviderServiceExtensions.GetService<IAILoggingService>(sp);
                 var jarvisPersonality = DI.ServiceProviderServiceExtensions.GetService<IJARVISPersonalityService>(sp);
                 var memoryCache = DI.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp);
 
@@ -639,7 +646,8 @@ namespace WileyWidget.WinForms.Configuration
                     chatBridge: chatBridge,
                     serviceProvider: sp,
                     jarvisPersonality: jarvisPersonality,
-                    memoryCache: memoryCache);
+                        memoryCache: memoryCache,
+                        aiLoggingService: aiLoggingService);
             });
 
             // Map interface to the same concrete singleton instance to avoid duplicate

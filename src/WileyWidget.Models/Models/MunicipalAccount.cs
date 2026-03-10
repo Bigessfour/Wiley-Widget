@@ -17,6 +17,9 @@ namespace WileyWidget.Models;
 [Owned]
 public class AccountNumber
 {
+    private const int DisplayRootDigits = 3;
+    private const int DisplaySuffixDigits = 2;
+
     /// <summary>
     /// The account number value (e.g., "405.1", "410.2.1", "101-1000-000")
     /// </summary>
@@ -24,6 +27,12 @@ public class AccountNumber
     [MaxLength(20)]
     [RegularExpression(@"^\d+([.-]\d+)*$", ErrorMessage = "Account number must be numeric with optional separators (dots or hyphens)")]
     public string Value { get; set; }
+
+    /// <summary>
+    /// Gets the normalized display value for user-facing surfaces.
+    /// </summary>
+    [NotMapped]
+    public string DisplayValue => FormatDisplay(Value);
 
     /// <summary>
     /// The hierarchical level of this account number
@@ -57,7 +66,7 @@ public class AccountNumber
         if (!Regex.IsMatch(value, @"^\d+([.-]\d+)*$"))
             throw new ArgumentException("Invalid account number format. Must be numeric with optional separators (dots or hyphens) (e.g., 405, 405.1, 410.2.1, 101-1000-000)");
 
-        Value = value;
+        Value = FormatDisplay(value);
     }
 
     // Required for EF Core and test object initialization
@@ -67,6 +76,129 @@ public class AccountNumber
     }
 
     public override string ToString() => Value;
+
+    /// <summary>
+    /// Formats an account number into the standard municipal display layout.
+    /// </summary>
+    public static string FormatDisplay(string? accountNumber)
+    {
+        if (string.IsNullOrWhiteSpace(accountNumber))
+        {
+            return string.Empty;
+        }
+
+        var trimmed = accountNumber.Trim();
+
+        if (trimmed.Contains('-', StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        if (trimmed.Contains('.', StringComparison.Ordinal))
+        {
+            var segments = trimmed.Split('.', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 2 &&
+                IsDigitsOnly(segments[0]) &&
+                IsDigitsOnly(segments[1]) &&
+                segments[0].Length == DisplayRootDigits &&
+                segments[1].Length <= DisplaySuffixDigits)
+            {
+                return $"{segments[0]}.{segments[1].PadRight(DisplaySuffixDigits, '0')}";
+            }
+
+            return trimmed;
+        }
+
+        if (IsDigitsOnly(trimmed) && trimmed.Length >= DisplayRootDigits && trimmed.Length <= DisplayRootDigits + DisplaySuffixDigits)
+        {
+            var root = trimmed[..DisplayRootDigits];
+            var suffix = trimmed.Length == DisplayRootDigits
+                ? "00"
+                : trimmed[DisplayRootDigits..].PadRight(DisplaySuffixDigits, '0');
+
+            return $"{root}.{suffix}";
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
+    /// Returns equivalent raw and formatted values for lookups and duplicate detection.
+    /// </summary>
+    public static string[] GetEquivalentValues(string? accountNumber)
+    {
+        if (string.IsNullOrWhiteSpace(accountNumber))
+        {
+            return Array.Empty<string>();
+        }
+
+        var values = new List<string>();
+        AddIfMissing(values, accountNumber.Trim());
+
+        var formatted = FormatDisplay(accountNumber);
+        AddIfMissing(values, formatted);
+
+        if (TryGetNormalizedSegments(formatted, out var root, out var suffix))
+        {
+            var trimmedSuffix = suffix.TrimEnd('0');
+            AddIfMissing(values, $"{root}.{(trimmedSuffix.Length == 0 ? "0" : trimmedSuffix)}");
+            AddIfMissing(values, root);
+            AddIfMissing(values, root + (trimmedSuffix.Length == 0 ? "0" : trimmedSuffix));
+        }
+
+        return values.ToArray();
+    }
+
+    private static bool TryGetNormalizedSegments(string value, out string root, out string suffix)
+    {
+        root = string.Empty;
+        suffix = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(value) || value.Contains('-', StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var segments = value.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length != 2 ||
+            !IsDigitsOnly(segments[0]) ||
+            !IsDigitsOnly(segments[1]) ||
+            segments[0].Length != DisplayRootDigits ||
+            segments[1].Length != DisplaySuffixDigits)
+        {
+            return false;
+        }
+
+        root = segments[0];
+        suffix = segments[1];
+        return true;
+    }
+
+    private static void AddIfMissing(List<string> values, string candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return;
+        }
+
+        if (!values.Contains(candidate, StringComparer.OrdinalIgnoreCase))
+        {
+            values.Add(candidate);
+        }
+    }
+
+    private static bool IsDigitsOnly(string value)
+    {
+        foreach (var character in value)
+        {
+            if (!char.IsDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return value.Length > 0;
+    }
 
     public override bool Equals(object? obj) =>
         obj is AccountNumber other && Value == other.Value;
@@ -385,7 +517,7 @@ public partial class MunicipalAccount : INotifyPropertyChanged
     /// Display name combining account number and name
     /// </summary>
     [NotMapped]
-    public string DisplayName => $"{AccountNumber?.ToString() ?? ""} - {Name}";
+    public string DisplayName => $"{AccountNumber?.DisplayValue ?? string.Empty} - {Name}";
 
     // (TypeDescription and FundDescription are defined earlier in the class)
 

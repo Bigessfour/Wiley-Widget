@@ -69,6 +69,7 @@ The PowerShell scripts handle local development tasks:
 ### ✅ Desktop Focus Benefits
 
 **Approach**: PowerShell-first for Windows desktop development
+
 - No cross-platform needs (desktop-only app)
 - Direct .NET/SQL integration
 - Simple, maintainable scripts
@@ -83,6 +84,28 @@ The PowerShell scripts handle local development tasks:
 - `setup-database.ps1` - DB initialization
 - `quickbooks/setup-oauth.ps1` - OAuth setup
 - `cleanup.ps1` - Maintenance
+- `audit-layout-tokens.py` - Advisory layout-token scan for WinForms UI
+
+### Layout Token Audit (Python)
+
+Use this audit to find hard-coded padding/height/size literals that should be replaced with `LayoutTokens`.
+The audit also maps each finding to Microsoft Windows 11 design principles so remediation stays aligned with professional UX guidance.
+
+```powershell
+python scripts/audit-layout-tokens.py --root . --scope full-ui --fail-on none
+```
+
+High-value process loop:
+
+- Run the audit before each panel polish batch.
+- Prioritize `high` severity findings first.
+- Check `Design Principle Coverage` in output to keep fixes balanced across coherence, calmness, familiarity, and responsiveness.
+
+Optional reports:
+
+```powershell
+python scripts/audit-layout-tokens.py --root . --scope full-ui --json-out Reports/layout_tokens_audit.json --md-out Reports/layout_tokens_audit.md
+```
 
 ### VS Code Integration
 
@@ -120,16 +143,16 @@ if (-not (Test-Path "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj")) {
 
 ## 📈 PowerShell Benefits
 
-| Aspect           | PowerShell Scripts  | Benefits              |
-| ---------------- | ------------------- | --------------------- |
-| Platform Support | Windows-native      | Optimized for desktop |
-| Maintainability  | PSScriptAnalyzer    | Linting and standards |
-| Testing          | Pester framework    | PowerShell testing    |
-| Error Handling   | Try/catch           | Structured exceptions |
-| Documentation    | Comment-based help  | Get-Help integration  |
-| Performance      | Direct .NET calls   | No overhead           |
-| Security         | DPAPI integration   | Windows security      |
-| Monitoring       | Write-Host/Verbose  | Console output        |
+| Aspect           | PowerShell Scripts | Benefits              |
+| ---------------- | ------------------ | --------------------- |
+| Platform Support | Windows-native     | Optimized for desktop |
+| Maintainability  | PSScriptAnalyzer   | Linting and standards |
+| Testing          | Pester framework   | PowerShell testing    |
+| Error Handling   | Try/catch          | Structured exceptions |
+| Documentation    | Comment-based help | Get-Help integration  |
+| Performance      | Direct .NET calls  | No overhead           |
+| Security         | DPAPI integration  | Windows security      |
+| Monitoring       | Write-Host/Verbose | Console output        |
 
 ## 🔧 Development Guidelines
 
@@ -145,4 +168,3 @@ if (-not (Test-Path "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj")) {
 - [.NET CLI Docs](https://learn.microsoft.com/dotnet/core/tools/)
 - [PowerShell Docs](https://learn.microsoft.com/powershell/)
 - [Syncfusion Licensing](https://help.syncfusion.com/windowsforms/licensing/)
-

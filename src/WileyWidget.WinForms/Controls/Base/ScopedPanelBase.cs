@@ -68,6 +68,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
         private bool _initialLayoutSuspended;
         private bool _applyingProfessionalLayout;
+        protected bool _initialLoadStabilizationQueued;
         private const string ProfessionalContentHostName = "ScopedPanelContentHost";
 
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
@@ -121,19 +122,30 @@ namespace WileyWidget.WinForms.Controls.Base
             this.SuspendLayout();
             try
             {
+                var controlFactory = GetControlFactory();
+                var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+
                 // Apply consistent padding using LayoutTokens
-                this.Padding = new Padding(LayoutTokens.PanelPadding);
+                this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelOuterPadding);
                 this.Margin = Padding.Empty;
                 this.AutoScroll = true;
                 this.Dock = DockStyle.Fill;
-                this.BackColor = Color.Transparent;
+                SfSkinManager.SetVisualStyle(this, themeName);
 
                 // Create or normalize header
                 var header = Controls.OfType<PanelHeader>().FirstOrDefault();
                 if (header == null)
                 {
-                    var factory = GetControlFactory();
-                    header = factory?.CreatePanelHeader(h =>
+                    header = FindNestedPanelHeader(this);
+                    if (header != null)
+                    {
+                        PromoteNestedHeaderToShell(header);
+                    }
+                }
+
+                if (header == null)
+                {
+                    header = controlFactory?.CreatePanelHeader(h =>
                     {
                         h.Title = this.Text ?? this.Name;
                         h.ShowRefreshButton = false;
@@ -158,8 +170,9 @@ namespace WileyWidget.WinForms.Controls.Base
                     this.Controls.Add(header);
                 }
 
-                header.Height = LayoutTokens.HeaderHeight;
+                header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
                 header.Dock = DockStyle.Top;
+                SfSkinManager.SetVisualStyle(header, themeName);
                 if (string.IsNullOrWhiteSpace(header.Title))
                 {
                     header.Title = this.Text ?? this.Name;
@@ -176,14 +189,14 @@ namespace WileyWidget.WinForms.Controls.Base
 
                 if (contentHost == null || contentHost.IsDisposed)
                 {
-                    contentHost = new Panel();
+                    contentHost = controlFactory?.CreatePanel() ?? new Panel();
                 }
 
                 contentHost.Name = ProfessionalContentHostName;
                 contentHost.Dock = DockStyle.Fill;
-                contentHost.Padding = new Padding(8);
+                contentHost.Padding = LayoutTokens.GetScaled(LayoutTokens.ContentInnerPadding);
                 contentHost.Margin = Padding.Empty;
-                contentHost.BackColor = Color.Transparent;
+                SfSkinManager.SetVisualStyle(contentHost, themeName);
 
                 if (!this.Controls.Contains(contentHost))
                 {
@@ -210,6 +223,55 @@ namespace WileyWidget.WinForms.Controls.Base
                 this.ResumeLayout(true);
                 this.PerformLayout();
             }
+        }
+
+        private static PanelHeader? FindNestedPanelHeader(Control root)
+        {
+            foreach (Control child in root.Controls)
+            {
+                if (child is PanelHeader panelHeader)
+                {
+                    return panelHeader;
+                }
+
+                var nestedHeader = FindNestedPanelHeader(child);
+                if (nestedHeader != null)
+                {
+                    return nestedHeader;
+                }
+            }
+
+            return null;
+        }
+
+        private void PromoteNestedHeaderToShell(PanelHeader header)
+        {
+            var parent = header.Parent;
+            if (parent == null || parent == this)
+            {
+                return;
+            }
+
+            if (parent is TableLayoutPanel tableLayout)
+            {
+                var position = tableLayout.GetPositionFromControl(header);
+                tableLayout.Controls.Remove(header);
+
+                if (position.Row >= 0 && position.Row < tableLayout.RowStyles.Count)
+                {
+                    tableLayout.RowStyles[position.Row].SizeType = SizeType.Absolute;
+                    tableLayout.RowStyles[position.Row].Height = 0;
+                }
+            }
+            else
+            {
+                parent.Controls.Remove(header);
+            }
+
+            header.Dock = DockStyle.Top;
+            header.Margin = Padding.Empty;
+            Controls.Add(header);
+            header.BringToFront();
         }
 
         /// <summary>Attempts to resolve SyncfusionControlFactory from DI container.</summary>
@@ -283,6 +345,7 @@ namespace WileyWidget.WinForms.Controls.Base
             // Apply theme first
             var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             ApplyTheme(activeTheme);
+            SyncfusionControlFactory.ApplyThemeToAllControls(this, activeTheme);
 
             EnforceProfessionalLayoutContract();
             ResetAutoScrollOffsets(this);
@@ -334,7 +397,7 @@ namespace WileyWidget.WinForms.Controls.Base
                 try
                 {
                     ThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName);
-                    SfSkinManager.SetVisualStyle(this, themeName);
+                    SyncfusionControlFactory.ApplyThemeToAllControls(this, themeName);
                     Invalidate(true);
                     Update();
                 }
@@ -585,10 +648,60 @@ namespace WileyWidget.WinForms.Controls.Base
             base.OnLoad(e);
             AttachHostFormClosingHandler();
             OnPanelLoaded(e);
+            QueueInitialLoadAndLayoutStabilization();
         }
 
         protected virtual void OnPanelLoaded(EventArgs e)
         {
+        }
+
+        private void QueueInitialLoadAndLayoutStabilization()
+        {
+            if (_initialLoadStabilizationQueued || IsDisposed || Disposing || DesignMode || ViewModel == null)
+            {
+                return;
+            }
+
+            _initialLoadStabilizationQueued = true;
+
+            try
+            {
+                BeginInvoke((MethodInvoker)(() => _ = StabilizeInitialLoadAndLayoutAsync()));
+            }
+            catch (Exception ex)
+            {
+                _initialLoadStabilizationQueued = false;
+                _logger?.LogDebug(ex, "[{Panel}] Failed to queue initial load/layout stabilization", GetType().Name);
+            }
+        }
+
+        private async Task StabilizeInitialLoadAndLayoutAsync()
+        {
+            try
+            {
+                if (!IsLoaded && !IsBusy)
+                {
+                    await Task.Delay(50);
+                    await LoadAsync(CancellationToken.None);
+                }
+
+                await Task.Delay(150);
+
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                ApplyProfessionalPanelLayout();
+                ForceFullLayout();
+                PerformLayout();
+                Invalidate(true);
+                Update();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "[{Panel}] Initial load/layout stabilization failed", GetType().Name);
+            }
         }
 
         protected virtual void OnViewModelResolved(TViewModel? vm) { }

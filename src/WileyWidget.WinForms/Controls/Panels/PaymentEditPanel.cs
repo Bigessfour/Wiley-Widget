@@ -2,12 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
@@ -19,7 +20,10 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -30,6 +34,9 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// </summary>
 public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 {
+    private static readonly Size DefaultHostedDialogLogicalSize = new(800, 660);
+    private static readonly Size MinimumHostedDialogLogicalSize = new(720, 600);
+
     private Payment? _existingPayment;
     private bool _isNew;
 
@@ -50,6 +57,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     private SfButton _btnCancel = null!;
     private SfButton _btnDelete = null!;
     private PanelHeader _panelHeader = null!;
+    private Label _feedbackLabel = null!;
     private ToolTip _toolTip = null!;
 
     // Data
@@ -60,14 +68,17 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     private class AccountDisplayItem
     {
         public string Display { get; set; } = string.Empty;
-        public MunicipalAccount Account { get; set; } = null!;
+        public MunicipalAccount? Account { get; set; }
+        public int AccountId { get; set; }
     }
 
     // Helper class for vendor dropdown binding
     private class VendorDisplayItem
     {
         public string Display { get; set; } = string.Empty;
-        public Vendor Vendor { get; set; } = null!;
+        public Vendor? Vendor { get; set; }
+        public int? VendorId { get; set; }
+        public string PayeeName { get; set; } = string.Empty;
     }
 
     public PaymentEditPanel(IServiceScopeFactory scopeFactory, ILogger<ScopedPanelBase<PaymentsViewModel>> logger)
@@ -76,6 +87,28 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         _isNew = true;
         SafeSuspendAndLayout(InitializeComponent);
     }
+
+    /// <summary>
+    /// Applies the standard payment editor dialog shell sizing.
+    /// </summary>
+    public static void ConfigureHostedDialog(Form dialog)
+    {
+        ArgumentNullException.ThrowIfNull(dialog);
+
+        dialog.Size = LayoutTokens.GetScaled(DefaultHostedDialogLogicalSize);
+        dialog.MinimumSize = LayoutTokens.GetScaled(MinimumHostedDialogLogicalSize);
+        dialog.FormBorderStyle = FormBorderStyle.Sizable;
+        dialog.StartPosition = FormStartPosition.CenterParent;
+        dialog.MinimizeBox = false;
+        dialog.MaximizeBox = true;
+        dialog.AutoScaleMode = AutoScaleMode.Dpi;
+        dialog.ShowIcon = false;
+        dialog.ShowInTaskbar = false;
+    }
+
+    internal static Size GetHostedDialogSize() => LayoutTokens.GetScaled(DefaultHostedDialogLogicalSize);
+
+    internal static Size GetHostedDialogMinimumSize() => LayoutTokens.GetScaled(MinimumHostedDialogLogicalSize);
 
     /// <summary>
     /// Configures the panel for editing an existing payment
@@ -88,6 +121,17 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         if (_panelHeader != null)
         {
             _panelHeader.Title = "Edit Payment";
+        }
+
+        if (_btnSave != null)
+        {
+            _btnSave.Text = "&Save Payment";
+            _btnSave.AccessibleName = "Save Payment";
+        }
+
+        if (_feedbackLabel != null)
+        {
+            _feedbackLabel.Visible = false;
         }
     }
 
@@ -107,29 +151,38 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             var accountRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IMunicipalAccountRepository>(ServiceProvider);
             var vendorRepository = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IVendorRepository>(ServiceProvider);
 
-            // Load accounts for dropdown
+            // Load budget accounts for dropdown
             if (accountRepository != null)
             {
-                var allAccounts = await accountRepository.GetAllAsync(cancellationToken);
-                _accounts = allAccounts.Where(a => a.IsActive).OrderBy(a => a.AccountNumber?.Value).ToList();
+                var budgetAccounts = (await accountRepository.GetBudgetAccountsAsync(cancellationToken)).ToList();
+
+                if (budgetAccounts.Count == 0)
+                {
+                    Logger?.LogWarning("PaymentEditPanel: No budget accounts found; falling back to active municipal accounts for payment mapping");
+                    budgetAccounts = (await accountRepository.GetAllAsync(cancellationToken))
+                        .Where(a => a.IsActive)
+                        .ToList();
+                }
+
+                _accounts = budgetAccounts
+                    .OrderBy(a => a.AccountNumber?.Value)
+                    .ThenBy(a => a.Name)
+                    .ToList();
 
                 // Populate account dropdown with BindingList for better SfComboBox compatibility
                 var accountDisplayList = new BindingList<AccountDisplayItem>(
                     _accounts.Select(a => new AccountDisplayItem
                     {
-                        Display = $"{a.AccountNumber?.Value} - {a.Name}",
-                        Account = a
+                        Display = BuildAccountDisplay(a),
+                        Account = a,
+                        AccountId = a.Id
                     }).ToList()
                 );
 
-                // Clear any existing binding before rebinding
-                _cmbAccount.DataSource = null;
-                _cmbAccount.DataSource = accountDisplayList;
-                _cmbAccount.DisplayMember = "Display";
-                _cmbAccount.ValueMember = "Account";
+                EnsureExistingAccountSelectionIsVisible(accountDisplayList);
 
-                // Set "None" as default selection initially
-                _cmbAccount.SelectedIndex = -1;
+                BindAccountOptions(accountDisplayList);
+                ClearComboSelection(_cmbAccount);
             }
 
             // Load vendors for dropdown
@@ -142,16 +195,17 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 var vendorDisplayList = new BindingList<VendorDisplayItem>(
                     _vendors.Select(v => new VendorDisplayItem
                     {
-                        Display = v.Name,
-                        Vendor = v
+                        Display = BuildVendorDisplay(v.Name),
+                        Vendor = v,
+                        VendorId = v.Id,
+                        PayeeName = v.Name
                     }).ToList()
                 );
 
-                _cmbPayee.DataSource = null;
-                _cmbPayee.DataSource = vendorDisplayList;
-                _cmbPayee.DisplayMember = "Display";
-                _cmbPayee.ValueMember = "Vendor";
-                _cmbPayee.SelectedIndex = -1;
+                EnsureExistingVendorSelectionIsVisible(vendorDisplayList);
+
+                BindVendorOptions(vendorDisplayList);
+                ClearComboSelection(_cmbPayee);
             }
 
             // Load existing payment data if editing
@@ -162,53 +216,29 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 _dtpPaymentDate.Value = _existingPayment.PaymentDate;
 
                 // Select vendor in dropdown
-                if (!string.IsNullOrWhiteSpace(_existingPayment.Payee) && _cmbPayee.DataSource is BindingList<VendorDisplayItem> vendorItems)
-                {
-                    var vendorIndex = vendorItems.ToList().FindIndex(x => x.Vendor.Name == _existingPayment.Payee);
-                    if (vendorIndex >= 0)
-                    {
-                        _cmbPayee.SelectedIndex = vendorIndex;
-                    }
-                    else
-                    {
-                        _cmbPayee.SelectedIndex = -1;
-                    }
-                }
+                SelectVendorByIdentity(_existingPayment.VendorId, _existingPayment.Payee);
                 _numAmount.Value = (double)_existingPayment.Amount;
                 _txtDescription.Text = _existingPayment.Description;
                 _txtMemo.Text = _existingPayment.Memo ?? string.Empty;
-                _cmbStatus.SelectedItem = _existingPayment.Status;
+                _cmbStatus.SelectedItem = NormalizeEditableStatus(_existingPayment.Status);
                 // Checkbox state is set automatically via Status changed event
 
                 // Select the associated account if one exists
-                if (_existingPayment.MunicipalAccountId.HasValue)
-                {
-                    var account = _accounts.FirstOrDefault(a => a.Id == _existingPayment.MunicipalAccountId.Value);
-                    if (account != null && _cmbAccount.DataSource is BindingList<AccountDisplayItem> items)
-                    {
-                        var itemIndex = items.ToList().FindIndex(x => x.Account.Id == account.Id);
-                        if (itemIndex >= 0)
-                        {
-                            _cmbAccount.SelectedIndex = itemIndex;
-                        }
-                    }
-                }
-                else
-                {
-                    _cmbAccount.SelectedIndex = -1;
-                }
+                SelectAccountById(_existingPayment.MunicipalAccountId);
 
                 // Show delete button for existing payments
                 _btnDelete.Visible = true;
+                _feedbackLabel.Visible = false;
             }
             else
             {
                 // Set defaults for new payment
                 _dtpPaymentDate.Value = DateTime.Now;
                 _cmbStatus.SelectedItem = "Pending";
-                _cmbAccount.SelectedIndex = -1; // No account selected
+                ClearComboSelection(_cmbAccount);
                 // Checkbox state is set automatically via Status changed event
                 _btnDelete.Visible = false;
+                _feedbackLabel.Visible = false;
             }
 
             await Task.CompletedTask;
@@ -229,26 +259,40 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         SfSkinManager.SetVisualStyle(this, themeName);
 
         Name = "PaymentEditPanel";
-        Size = new System.Drawing.Size(760, 900);
-        MinimumSize = new System.Drawing.Size(680, 580);
+        Size = ScaleLogicalToDevice(DefaultHostedDialogLogicalSize);
+        MinimumSize = ScaleLogicalToDevice(MinimumHostedDialogLogicalSize);
+        Dock = DockStyle.Fill;
         Padding = new Padding(0);
-        AutoScaleMode = AutoScaleMode.Dpi;  // High-DPI display support
+        AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleDimensions = new SizeF(96F, 96F);
 
-        _toolTip = new ToolTip
+        _toolTip = ControlFactory.CreateToolTip(toolTip =>
         {
-            AutoPopDelay = 8000,
-            InitialDelay = 250,
-            ReshowDelay = 100,
-            ShowAlways = true
-        };
+            toolTip.AutoPopDelay = 8000;
+            toolTip.InitialDelay = 250;
+            toolTip.ReshowDelay = 100;
+            toolTip.ShowAlways = true;
+        });
 
-        // === MODERN FLUENT DESIGN LAYOUT ===
-        // Base spacing unit: 8px (multiples of 8 for consistency)
-        const int ROW_SPACING = 8;
-        const int SECTION_GAP = 20;
-        const int CONTROL_HEIGHT = 32;
-        const int MULTILINE_HEIGHT = 88;
-        const int LABEL_WIDTH = 140;
+        var bodyFont = new Font("Segoe UI", 10.5F, FontStyle.Regular);
+        var sectionHeaderFont = new Font("Segoe UI", 11F, FontStyle.Bold);
+        var actionFont = new Font("Segoe UI", 10.5F, FontStyle.Regular);
+        var primaryActionFont = new Font("Segoe UI", 10.5F, FontStyle.Bold);
+        var feedbackFont = new Font("Segoe UI", 9.75F, FontStyle.Regular);
+
+        var rowSpacing = LayoutTokens.GetScaled(6);
+        var firstSectionGap = 0;
+        var sectionGap = LayoutTokens.GetScaled(12);
+        var controlHeight = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
+        var multilineHeight = LayoutTokens.GetScaled(84);
+        var labelWidth = LayoutTokens.GetScaled(168);
+        var compactFieldWidth = LayoutTokens.GetScaled(236);
+        var wideFieldMinWidth = LayoutTokens.GetScaled(320);
+        var payeeButtonWidth = LayoutTokens.GetScaled(132);
+        var headerHeight = LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight);
+
+        var currencyFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
+        currencyFormat.CurrencyDecimalDigits = 2;
 
         // Main container with header
         var mainContainer = new TableLayoutPanel
@@ -256,37 +300,33 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             Dock = DockStyle.Fill,
             RowCount = 2,
             ColumnCount = 1,
-            Padding = new Padding(0)
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            AutoSize = false
         };
-        mainContainer.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); // Header
+        mainContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        mainContainer.RowStyles.Add(new RowStyle(SizeType.Absolute, headerHeight)); // Header
         mainContainer.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Form content
 
         // === HEADER ===
-        var headerPanel = new Panel
+        _panelHeader = ControlFactory.CreatePanelHeader(header =>
         {
-            Dock = DockStyle.Fill,
-            Padding = new Padding(16, 8, 16, 8)
-        };
-        // Apply theme to header panel instead of hard-coded background color
-        SfSkinManager.SetVisualStyle(headerPanel, themeName);
-
-        _panelHeader = new PanelHeader
-        {
-            Title = _isNew ? "New Payment" : "Edit Payment",
-            Dock = DockStyle.Fill,
-            ShowRefreshButton = false,
-            ShowPinButton = false,
-            ShowHelpButton = false,
-            ShowCloseButton = false
-        };
-        headerPanel.Controls.Add(_panelHeader);
-        mainContainer.Controls.Add(headerPanel, 0, 0);
+            header.Title = _isNew ? "New Payment" : "Edit Payment";
+            header.Dock = DockStyle.Fill;
+            header.Margin = Padding.Empty;
+            header.ShowRefreshButton = false;
+            header.ShowPinButton = false;
+            header.ShowHelpButton = false;
+            header.ShowCloseButton = false;
+        });
+        mainContainer.Controls.Add(_panelHeader, 0, 0);
 
         // === SCROLLABLE FORM CONTENT ===
         var formPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(20),
+            Padding = LayoutTokens.GetScaled(new Padding(16, 8, 16, 10)),
+            Margin = Padding.Empty,
             AutoScroll = true
         };
 
@@ -296,262 +336,327 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             ColumnCount = 2,
             RowCount = 0,
             Padding = new Padding(0),
+            Margin = new Padding(0),
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink
         };
 
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LABEL_WIDTH));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, labelWidth));
         mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         var row = 0;
 
         // === SECTION 1: CHECK INFORMATION (48px top gap) ===
-        AddSectionHeader(mainLayout, ref row, "Check Information", SECTION_GAP);
+        AddSectionHeader(mainLayout, ref row, "Check Information", firstSectionGap);
 
         // Check Number (width constraint: 180px)
         AddLabeledControl(mainLayout, ref row, "Check Number",
-            _txtCheckNumber = new TextBoxExt
+            _txtCheckNumber = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                MaxLength = 20,
-                ThemeName = themeName,
-                CharacterCasing = System.Windows.Forms.CharacterCasing.Upper,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = CONTROL_HEIGHT,
-                Anchor = AnchorStyles.Left,
-                Width = 160
-            }, ROW_SPACING);
+                textBox.MaxLength = 20;
+                textBox.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
+                textBox.Font = bodyFont;
+                textBox.Height = controlHeight;
+                textBox.Anchor = AnchorStyles.Left;
+                textBox.Width = compactFieldWidth;
+                textBox.MinimumSize = new Size(compactFieldWidth, controlHeight);
+                textBox.AccessibleName = "Check Number";
+            }), rowSpacing);
 
         // Payment Date (width constraint: 200px)
         AddLabeledControl(mainLayout, ref row, "Payment Date",
-            _dtpPaymentDate = new DateTimePickerAdv
+            _dtpPaymentDate = ControlFactory.CreateDateTimePickerAdv(datePicker =>
             {
-                ThemeName = themeName,
-                Format = System.Windows.Forms.DateTimePickerFormat.Short,
-                ShowCheckBox = false,
-                ShowUpDown = false,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = CONTROL_HEIGHT,
-                Anchor = AnchorStyles.Left,
-                Width = 165
-            }, ROW_SPACING);
+                datePicker.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+                datePicker.ShowCheckBox = false;
+                datePicker.ShowUpDown = false;
+                datePicker.Font = bodyFont;
+                datePicker.Height = controlHeight;
+                datePicker.Anchor = AnchorStyles.Left;
+                datePicker.Width = compactFieldWidth;
+                datePicker.MinimumSize = new Size(compactFieldWidth, controlHeight);
+                datePicker.AccessibleName = "Payment Date";
+            }), rowSpacing);
 
         // === SECTION 2: PAYEE & AMOUNT (48px gap) ===
-        AddSectionHeader(mainLayout, ref row, "Payee & Amount", SECTION_GAP);
+        AddSectionHeader(mainLayout, ref row, "Payee & Amount", sectionGap);
 
         // Payee with Add Vendor button
+        var payeeRowHeight = controlHeight + LayoutTokens.GetScaled(4);
         var payeeContainer = new TableLayoutPanel
         {
-            Anchor = AnchorStyles.Left,
+            Dock = DockStyle.Fill,
             RowCount = 1,
             ColumnCount = 2,
             Padding = new Padding(0),
             Margin = new Padding(0),
             AutoSize = false,
-            Height = CONTROL_HEIGHT,
-            Width = 360
+            Height = payeeRowHeight,
+            MinimumSize = new Size(0, payeeRowHeight)
         };
-        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 320));
-        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 32));
+        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        payeeContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, payeeButtonWidth));
 
         _cmbPayee = ControlFactory.CreateSfComboBox(combo =>
         {
             combo.Dock = DockStyle.Fill;
             combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown;
-            combo.ThemeName = themeName;
             combo.AllowNull = true;
             combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             combo.AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains;
             combo.AllowCaseSensitiveOnAutoComplete = false;
-            combo.Font = new System.Drawing.Font("Segoe UI", 11F);
-            combo.Height = CONTROL_HEIGHT;
-            combo.Margin = new Padding(0, 0, 8, 0); // 8px gap before button
+            combo.Font = bodyFont;
+            combo.Height = controlHeight;
+            combo.Margin = Padding.Empty;
+            combo.MinimumSize = new Size(wideFieldMinWidth, controlHeight);
+            combo.DropDownWidth = LayoutTokens.GetScaled(560);
+            combo.MaxDropDownItems = 12;
+            combo.Watermark = "Select or enter a payee";
+            combo.AccessibleName = "Payee";
         });
         payeeContainer.Controls.Add(_cmbPayee, 0, 0);
 
-        _btnAddVendor = new SfButton
+        _btnAddVendor = ControlFactory.CreateSfButton("New Vendor", button =>
         {
-            Text = "+",
-            ThemeName = themeName,
-            Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold),
-            Dock = DockStyle.Fill,
-            AccessibleName = "Add New Vendor",
-            Image = LoadIcon("Add32")
-        };
+            button.Font = actionFont;
+            button.Dock = DockStyle.Fill;
+            button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
+            button.AccessibleName = "Add New Vendor";
+            button.Image = LoadIcon("Add32");
+            button.TextImageRelation = TextImageRelation.ImageBeforeText;
+            button.MinimumSize = new Size(payeeButtonWidth, controlHeight);
+        });
         _btnAddVendor.Click += BtnAddVendor_Click;
         payeeContainer.Controls.Add(_btnAddVendor, 1, 0);
 
-        AddLabeledControl(mainLayout, ref row, "Payee", payeeContainer, ROW_SPACING);
+        AddLabeledControl(mainLayout, ref row, "Payee", payeeContainer, rowSpacing);
 
         // Amount (width constraint: 200px)
         AddLabeledControl(mainLayout, ref row, "Amount",
-            _numAmount = new SfNumericTextBox
+            _numAmount = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
-                FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency,
-                Value = 0,
-                MinValue = 0,
-                MaxValue = 9999999.99,
-                ThemeName = themeName,
-                AllowNull = false,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = CONTROL_HEIGHT,
-                Anchor = AnchorStyles.Left,
-                Width = 165,
-                TextAlign = HorizontalAlignment.Right
-            }, ROW_SPACING);
+                textBox.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
+                textBox.Value = 0;
+                textBox.MinValue = 0;
+                textBox.MaxValue = 9999999.99;
+                textBox.AllowNull = false;
+                textBox.Font = bodyFont;
+                textBox.Height = controlHeight;
+                textBox.Anchor = AnchorStyles.Left;
+                textBox.Width = compactFieldWidth;
+                textBox.MinimumSize = new Size(compactFieldWidth, controlHeight);
+                textBox.TextAlign = HorizontalAlignment.Right;
+                textBox.ReadOnly = false;
+                textBox.NumberFormatInfo = currencyFormat;
+                textBox.NumberFormatInfo.CurrencyDecimalDigits = 2;
+                textBox.TabStop = true;
+                textBox.AccessibleName = "Amount";
+            }), rowSpacing);
+        _numAmount.Enter += NumAmount_Enter;
 
-        // === SECTION 3: ACCOUNT & DESCRIPTION (48px gap) ===
-        AddSectionHeader(mainLayout, ref row, "Account & Description", SECTION_GAP);
+        // === SECTION 3: BUDGET ACCOUNT & DESCRIPTION (48px gap) ===
+        AddSectionHeader(mainLayout, ref row, "Budget Account & Description", sectionGap);
 
-        // Account (fills width)
-        AddLabeledControl(mainLayout, ref row, "Account",
+        // Budget account (fills width)
+        AddLabeledControl(mainLayout, ref row, "Budget Account",
             _cmbAccount = ControlFactory.CreateSfComboBox(combo =>
             {
-                combo.Anchor = AnchorStyles.Left;
+                combo.Dock = DockStyle.Fill;
                 combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDown;
-                combo.ThemeName = themeName;
                 combo.AllowNull = true;
                 combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
                 combo.AutoCompleteSuggestMode = AutoCompleteSuggestMode.Contains;
                 combo.AllowCaseSensitiveOnAutoComplete = false;
-                combo.Font = new System.Drawing.Font("Segoe UI", 11F);
-                combo.Height = CONTROL_HEIGHT;
-                combo.Width = 320;
-            }), ROW_SPACING);
+                combo.Font = bodyFont;
+                combo.Height = controlHeight;
+                combo.MinimumSize = new Size(wideFieldMinWidth, controlHeight);
+                combo.DropDownWidth = LayoutTokens.GetScaled(620);
+                combo.MaxDropDownItems = 14;
+                combo.Watermark = "Select a budget account";
+                combo.AccessibleName = "Budget Account";
+            }), rowSpacing);
 
         // Description (fixed 96px height, scrollable)
         AddLabeledControl(mainLayout, ref row, "Description",
-            _txtDescription = new TextBoxExt
+            _txtDescription = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Dock = DockStyle.Fill,
-                Multiline = true,
-                MaxLength = 500,
-                ThemeName = themeName,
-                ScrollBars = ScrollBars.Vertical,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = MULTILINE_HEIGHT,
-                Padding = new Padding(8) // Internal padding for comfort
-            }, ROW_SPACING);
+                textBox.Dock = DockStyle.Fill;
+                textBox.Multiline = true;
+                textBox.MaxLength = 500;
+                textBox.ScrollBars = ScrollBars.Vertical;
+                textBox.Font = bodyFont;
+                textBox.Height = multilineHeight;
+                textBox.MinimumSize = new Size(wideFieldMinWidth, multilineHeight);
+                textBox.Padding = LayoutTokens.GetScaled(LayoutTokens.InputTextPadding);
+                textBox.AccessibleName = "Description";
+            }), rowSpacing, alignTop: true);
 
         // Memo (fixed 96px height, scrollable)
         AddLabeledControl(mainLayout, ref row, "Memo",
-            _txtMemo = new TextBoxExt
+            _txtMemo = ControlFactory.CreateTextBoxExt(textBox =>
             {
-                Dock = DockStyle.Fill,
-                Multiline = true,
-                MaxLength = 1000,
-                ThemeName = themeName,
-                ScrollBars = ScrollBars.Vertical,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = MULTILINE_HEIGHT,
-                Padding = new Padding(8)
-            }, ROW_SPACING);
+                textBox.Dock = DockStyle.Fill;
+                textBox.Multiline = true;
+                textBox.MaxLength = 1000;
+                textBox.ScrollBars = ScrollBars.Vertical;
+                textBox.Font = bodyFont;
+                textBox.Height = multilineHeight;
+                textBox.MinimumSize = new Size(wideFieldMinWidth, multilineHeight);
+                textBox.Padding = LayoutTokens.GetScaled(LayoutTokens.InputTextPadding);
+                textBox.AccessibleName = "Memo";
+            }), rowSpacing, alignTop: true);
 
         // === SECTION 4: STATUS (48px gap) ===
-        AddSectionHeader(mainLayout, ref row, "Status", SECTION_GAP);
+        AddSectionHeader(mainLayout, ref row, "Status", sectionGap);
 
         // Status dropdown (width constraint: 200px)
         AddLabeledControl(mainLayout, ref row, "Payment Status",
-            _cmbStatus = new SfComboBox
+            _cmbStatus = ControlFactory.CreateSfComboBox(combo =>
             {
-                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
-                DataSource = new[] { "Pending", "Cleared", "Void", "Cancelled" },
-                ThemeName = themeName,
-                AllowNull = false,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = CONTROL_HEIGHT,
-                Anchor = AnchorStyles.Left,
-                Width = 320
-            }, ROW_SPACING);
+                combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                combo.DataSource = new[] { "Pending", "Cleared", "Void", "Cancelled" };
+                combo.AllowNull = false;
+                combo.Font = bodyFont;
+                combo.Height = controlHeight;
+                combo.Dock = DockStyle.Fill;
+                combo.MinimumSize = new Size(wideFieldMinWidth, controlHeight);
+                combo.DropDownWidth = LayoutTokens.GetScaled(240);
+                combo.AccessibleName = "Payment Status";
+            }), rowSpacing);
 
         // Cleared checkbox
         AddLabeledControl(mainLayout, ref row, string.Empty,
-            _chkCleared = new CheckBoxAdv
+            _chkCleared = ControlFactory.CreateCheckBoxAdv("Check has cleared the bank", checkBox =>
             {
-                Text = "Check has cleared the bank",
-                ThemeName = themeName,
-                CheckState = CheckState.Unchecked,
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                Height = CONTROL_HEIGHT,
-                AutoSize = true
-            }, ROW_SPACING);
+                checkBox.CheckState = CheckState.Unchecked;
+                checkBox.Font = bodyFont;
+                checkBox.Height = controlHeight;
+                checkBox.AutoSize = true;
+            }), rowSpacing);
 
         // Wire up event handlers for checkbox/status synchronization
         _chkCleared.CheckedChanged += ChkCleared_CheckedChanged;
         _cmbStatus.SelectedIndexChanged += CmbStatus_SelectedIndexChanged;
 
         // === ACTION BUTTONS (48px top gap, right-aligned) ===
-        var buttonPanel = new FlowLayoutPanel
+        _feedbackLabel = new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0),
+            MaximumSize = new Size(LayoutTokens.GetScaled(760), 0),
+            Padding = new Padding(0),
+            Visible = false,
+            Font = feedbackFont,
+            AccessibleName = "Payment feedback"
+        };
+
+        var footerLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, SECTION_GAP, 0, 0),
+            RowCount = 2,
+            ColumnCount = 2,
+            Padding = new Padding(0, sectionGap, 0, 0),
+            Margin = new Padding(0),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink
+        };
+        footerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        footerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        footerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        footerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        footerLayout.Controls.Add(_feedbackLabel, 0, 0);
+        footerLayout.SetColumnSpan(_feedbackLabel, 2);
+
+        var destructiveButtonPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            Padding = new Padding(0),
+            Margin = new Padding(0),
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             WrapContents = false
         };
 
-        _btnSave = new SfButton
+        var actionButtonPanel = new FlowLayoutPanel
         {
-            Text = "&Save Changes",
-            Width = 120,
-            Height = 40,
-            ThemeName = themeName,
-            Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold),
-            Margin = new Padding(8, 0, 0, 0),
-            Image = LoadIcon("Save32"),
-            AccessibleName = "Save Changes"
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            Padding = new Padding(0),
+            Margin = new Padding(0),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = false,
+            Anchor = AnchorStyles.Right
         };
+
+        _btnSave = ControlFactory.CreateSfButton("&Create Payment", button =>
+        {
+            button.Width = LayoutTokens.GetScaled(156);
+            button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
+            button.Font = primaryActionFont;
+            button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
+            button.Image = LoadIcon("Save32");
+            button.AccessibleName = "Create Payment";
+        });
         _btnSave.Click += BtnSave_Click;
         _toolTip.SetToolTip(_btnSave, "Save this payment (Ctrl+S). New entries stay open for additional payments.");
 
-        _btnCancel = new SfButton
+        _btnCancel = ControlFactory.CreateSfButton("&Cancel", button =>
         {
-            Text = "&Cancel",
-            Width = 120,
-            Height = 40,
-            ThemeName = themeName,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Margin = new Padding(8, 0, 0, 0),
-            Image = LoadIcon("Close32"),
-            AccessibleName = "Cancel Edit"
-        };
+            button.Width = LayoutTokens.GetScaled(120);
+            button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
+            button.Font = actionFont;
+            button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
+            button.Image = LoadIcon("Close32");
+            button.AccessibleName = "Cancel Edit";
+        });
         _btnCancel.Click += (s, e) => ParentForm?.Close();
         _toolTip.SetToolTip(_btnCancel, "Close without saving changes (Esc).");
 
-        _btnDelete = new SfButton
+        _btnDelete = ControlFactory.CreateSfButton("&Delete Payment", button =>
         {
-            Text = "&Delete Selected",
-            Width = 120,
-            Height = 40,
-            ThemeName = themeName,
-            Font = new System.Drawing.Font("Segoe UI", 11F),
-            Visible = false,
-            Margin = new Padding(8, 0, 0, 0),
-            Image = LoadIcon("Delete32"),
-            AccessibleName = "Delete Payment"
-        };
+            button.Width = LayoutTokens.GetScaled(156);
+            button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
+            button.Font = actionFont;
+            button.Visible = false;
+            button.Margin = new Padding(0);
+            button.Image = LoadIcon("Delete32");
+            button.AccessibleName = "Delete Payment";
+        });
         _btnDelete.Click += BtnDelete_Click;
         _toolTip.SetToolTip(_btnDelete, "Delete this payment entry.");
 
-        buttonPanel.Controls.Add(_btnCancel);
-        buttonPanel.Controls.Add(_btnDelete);
-        buttonPanel.Controls.Add(_btnSave);
+        destructiveButtonPanel.Controls.Add(_btnDelete);
+        actionButtonPanel.Controls.Add(_btnSave);
+        actionButtonPanel.Controls.Add(_btnCancel);
 
-        mainLayout.Controls.Add(buttonPanel, 0, row);
-        mainLayout.SetColumnSpan(buttonPanel, 2);
+        footerLayout.Controls.Add(destructiveButtonPanel, 0, 1);
+        footerLayout.Controls.Add(actionButtonPanel, 1, 1);
+
+        mainLayout.Controls.Add(footerLayout, 0, row);
+        mainLayout.SetColumnSpan(footerLayout, 2);
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         formPanel.Controls.Add(mainLayout);
         mainContainer.Controls.Add(formPanel, 0, 1);
         Controls.Add(mainContainer);
+        ApplyProfessionalPanelLayout();
 
         // Wire up autocomplete filters
         _cmbPayee.Filter = FilterVendors;
         _cmbAccount.Filter = FilterAccounts;
 
         _toolTip.SetToolTip(_cmbPayee, "Select or enter the payee.");
+        _toolTip.SetToolTip(_btnAddVendor, "Create a vendor without leaving the payment form.");
+        _toolTip.SetToolTip(_txtCheckNumber, "Enter the printed check number.");
+        _toolTip.SetToolTip(_dtpPaymentDate, "Choose the payment date shown on the check.");
         _toolTip.SetToolTip(_numAmount, "Enter payment amount.");
-        _toolTip.SetToolTip(_cmbAccount, "Select the municipal account for this payment.");
+        _toolTip.SetToolTip(_cmbAccount, "Select the budget account for this payment. Changing it here changes which budget line this payment will post and reconcile against.");
+        _toolTip.SetToolTip(_txtDescription, "Describe what this payment covers.");
+        _toolTip.SetToolTip(_txtMemo, "Optional internal notes for this payment.");
         _toolTip.SetToolTip(_cmbStatus, "Select the current payment status.");
     }
 
@@ -565,45 +670,234 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         var header = new Label
         {
             Text = text,
-            Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold),
+            Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold),
             AutoSize = true,
-            Margin = new Padding(0, topMargin, 0, 16), // Consistent gap below header
+            Margin = new Padding(0, topMargin, 0, 8),
             Padding = new Padding(0),
             UseMnemonic = false
         };
         layout.Controls.Add(header, 0, row);
         layout.SetColumnSpan(header, 2);
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var headerRowHeight = header.GetPreferredSize(Size.Empty).Height + topMargin + LayoutTokens.GetScaled(8);
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, headerRowHeight));
         row++;
     }
 
     /// <summary>
     /// Adds a labeled control with consistent spacing
     /// </summary>
-    private void AddLabeledControl(TableLayoutPanel layout, ref int row, string labelText, Control control, int bottomMargin)
+    private void AddLabeledControl(TableLayoutPanel layout, ref int row, string labelText, Control control, int bottomMargin, bool alignTop = false)
     {
+        var labelGap = LayoutTokens.GetScaled(14);
+
         if (!string.IsNullOrEmpty(labelText))
         {
             var label = new Label
             {
                 Text = labelText + ":",
-                Font = new System.Drawing.Font("Segoe UI", 11F),
-                TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-                Anchor = AnchorStyles.Right,
-                AutoSize = true,
-                Padding = new Padding(0, 6, 12, 0)
+                Font = new System.Drawing.Font("Segoe UI", 10.5F),
+                TextAlign = alignTop ? System.Drawing.ContentAlignment.TopRight : System.Drawing.ContentAlignment.MiddleRight,
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                Padding = new Padding(0),
+                Margin = new Padding(0, 0, labelGap, bottomMargin)
             };
             layout.Controls.Add(label, 0, row);
         }
         else
         {
-            layout.Controls.Add(new Label { Text = string.Empty }, 0, row);
+            layout.Controls.Add(new Label
+            {
+                Text = string.Empty,
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, labelGap, bottomMargin)
+            }, 0, row);
         }
 
         control.Margin = new Padding(0, 0, 0, bottomMargin);
         layout.Controls.Add(control, 1, row);
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var preferredHeight = control.GetPreferredSize(new Size(control.Width > 0 ? control.Width : control.MinimumSize.Width, 0)).Height;
+        var contentHeight = Math.Max(Math.Max(control.Height, control.MinimumSize.Height), preferredHeight);
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, contentHeight + bottomMargin));
         row++;
+    }
+
+    private void EnsureExistingVendorSelectionIsVisible(BindingList<VendorDisplayItem> items)
+    {
+        if (_existingPayment == null || _isNew || string.IsNullOrWhiteSpace(_existingPayment.Payee))
+        {
+            return;
+        }
+
+        var alreadyPresent = items.Any(x =>
+            string.Equals(x.PayeeName, _existingPayment.Payee, StringComparison.OrdinalIgnoreCase) ||
+            (x.VendorId.HasValue && x.VendorId == _existingPayment.VendorId));
+
+        if (alreadyPresent)
+        {
+            return;
+        }
+
+        items.Insert(0, new VendorDisplayItem
+        {
+            Display = BuildVendorDisplay(_existingPayment.Payee, isInactiveFallback: true),
+            VendorId = _existingPayment.VendorId,
+            PayeeName = _existingPayment.Payee
+        });
+    }
+
+    private void BindVendorOptions(BindingList<VendorDisplayItem> items)
+    {
+        _cmbPayee.DataSource = null;
+        _cmbPayee.DisplayMember = nameof(VendorDisplayItem.Display);
+        _cmbPayee.ValueMember = nameof(VendorDisplayItem.VendorId);
+        _cmbPayee.DataSource = items;
+    }
+
+    private void EnsureExistingAccountSelectionIsVisible(BindingList<AccountDisplayItem> items)
+    {
+        if (_existingPayment?.MunicipalAccountId is not int accountId || _isNew)
+        {
+            return;
+        }
+
+        if (items.Any(x => x.AccountId == accountId))
+        {
+            return;
+        }
+
+        var existingAccount = _existingPayment.MunicipalAccount;
+        items.Insert(0, new AccountDisplayItem
+        {
+            Display = BuildAccountDisplay(existingAccount, accountId, isInactiveFallback: true),
+            Account = existingAccount,
+            AccountId = accountId
+        });
+    }
+
+    private void BindAccountOptions(BindingList<AccountDisplayItem> items)
+    {
+        _cmbAccount.DataSource = null;
+        _cmbAccount.DisplayMember = nameof(AccountDisplayItem.Display);
+        _cmbAccount.ValueMember = nameof(AccountDisplayItem.AccountId);
+        _cmbAccount.DataSource = items;
+    }
+
+    private static void ClearComboSelection(SfComboBox comboBox)
+    {
+        comboBox.SelectedIndex = -1;
+        comboBox.Text = string.Empty;
+    }
+
+    private void SelectVendorByIdentity(int? vendorId, string? payeeName)
+    {
+        if (vendorId.HasValue)
+        {
+            _cmbPayee.SelectedValue = vendorId.Value;
+            if (_cmbPayee.SelectedItem is VendorDisplayItem)
+            {
+                return;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(payeeName) && _cmbPayee.DataSource is BindingList<VendorDisplayItem> vendorItems)
+        {
+            var vendorIndex = vendorItems.ToList().FindIndex(x =>
+                string.Equals(x.PayeeName, payeeName, StringComparison.OrdinalIgnoreCase) ||
+                (vendorId.HasValue && x.VendorId == vendorId));
+            if (vendorIndex >= 0)
+            {
+                _cmbPayee.SelectedIndex = vendorIndex;
+                return;
+            }
+
+            _cmbPayee.SelectedIndex = -1;
+            _cmbPayee.Text = payeeName.Trim();
+            return;
+        }
+
+        ClearComboSelection(_cmbPayee);
+    }
+
+    private void SelectAccountById(int? accountId)
+    {
+        if (!accountId.HasValue)
+        {
+            ClearComboSelection(_cmbAccount);
+            return;
+        }
+
+        _cmbAccount.SelectedValue = accountId.Value;
+        if (_cmbAccount.SelectedItem is AccountDisplayItem)
+        {
+            return;
+        }
+
+        if (_cmbAccount.DataSource is BindingList<AccountDisplayItem> items)
+        {
+            var itemIndex = items.ToList().FindIndex(x => x.AccountId == accountId.Value);
+            if (itemIndex >= 0)
+            {
+                _cmbAccount.SelectedIndex = itemIndex;
+                return;
+            }
+        }
+
+        ClearComboSelection(_cmbAccount);
+    }
+
+    private static string NormalizeEditableStatus(string? status)
+    {
+        return IsVoidStatus(status) ? "Void" : status?.Trim() ?? "Pending";
+    }
+
+    private static string BuildVendorDisplay(string payeeName, bool isInactiveFallback = false)
+    {
+        return isInactiveFallback ? $"{payeeName} [inactive vendor]" : payeeName;
+    }
+
+    private static string BuildAccountDisplay(MunicipalAccount account)
+    {
+        return BuildAccountDisplay(account, account.Id, isInactiveFallback: false);
+    }
+
+    private static string BuildAccountDisplay(MunicipalAccount? account, int accountId, bool isInactiveFallback)
+    {
+        var accountNumber = account?.AccountNumber?.DisplayValue;
+        var accountName = account?.Name;
+
+        string baseText;
+        if (!string.IsNullOrWhiteSpace(accountNumber) && !string.IsNullOrWhiteSpace(accountName))
+        {
+            baseText = $"{accountNumber} - {accountName}";
+        }
+        else if (!string.IsNullOrWhiteSpace(accountName))
+        {
+            baseText = accountName;
+        }
+        else
+        {
+            baseText = $"Historical Account #{accountId}";
+        }
+
+        return isInactiveFallback ? $"[Inactive] {baseText}" : baseText;
+    }
+
+    private void ShowInlineFeedback(string message, Color textColor)
+    {
+        _feedbackLabel.Text = message;
+        _feedbackLabel.ForeColor = textColor;
+        _feedbackLabel.Visible = !string.IsNullOrWhiteSpace(message);
+    }
+
+    private DialogResult ShowWarningDialog(string message, string title, MessageBoxButtons buttons = MessageBoxButtons.OK, MessageBoxDefaultButton defaultButton = MessageBoxDefaultButton.Button1)
+    {
+        return ControlFactory.ShowSemanticMessageBox(this, message, title, SyncfusionControlFactory.MessageSemanticKind.Warning, buttons, defaultButton);
+    }
+
+    private DialogResult ShowErrorDialog(string message, string title, string? details = null)
+    {
+        return ControlFactory.ShowSemanticMessageBox(this, message, title, SyncfusionControlFactory.MessageSemanticKind.Error, MessageBoxButtons.OK, MessageBoxDefaultButton.Button1, details: details);
     }
 
     /// <summary>
@@ -663,18 +957,24 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 return;
             }
 
+            var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
+
             // Create a simple dialog to add a new vendor
-            var dialog = new Form
+            using var dialog = new Form
             {
                 Text = "Add New Vendor",
-                Width = 540,
-                Height = 600,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Width = LayoutTokens.GetScaled(680),
+                Height = LayoutTokens.GetScaled(660),
+                MinimumSize = LayoutTokens.GetScaled(new Size(640, 620)),
+                FormBorderStyle = FormBorderStyle.Sizable,
                 StartPosition = FormStartPosition.CenterParent,
                 MinimizeBox = false,
-                MaximizeBox = false,
-                AutoScaleMode = AutoScaleMode.Dpi  // High-DPI display support
+                MaximizeBox = true,
+                AutoScaleMode = AutoScaleMode.Dpi,
+                ShowIcon = false,
+                ShowInTaskbar = false
             };
+            SfSkinManager.SetVisualStyle(dialog, themeName);
 
             var tableLayout = new TableLayoutPanel
             {
@@ -704,7 +1004,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, dialogLabelWidth));
             tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            static Label CreateDialogLabel(string text)
+            Label CreateDialogLabel(string text)
             {
                 return new Label
                 {
@@ -719,16 +1019,16 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 };
             }
 
-            static TextBox CreateDialogTextBox(int maxLength)
+            TextBoxExt CreateDialogTextBox(int maxLength)
             {
-                return new TextBox
+                return ControlFactory.CreateTextBoxExt(textBox =>
                 {
-                    Dock = DockStyle.Fill,
-                    Font = new System.Drawing.Font("Segoe UI", 10F),
-                    MaxLength = maxLength,
-                    Margin = new Padding(0, 2, 0, 2),
-                    MinimumSize = new System.Drawing.Size(0, 26)
-                };
+                    textBox.Dock = DockStyle.Fill;
+                    textBox.Font = new System.Drawing.Font("Segoe UI", 10F);
+                    textBox.MaxLength = maxLength;
+                    textBox.Margin = new Padding(0, 2, 0, 2);
+                    textBox.MinimumSize = new System.Drawing.Size(0, LayoutTokens.GetScaled(32));
+                });
             }
 
             // Section Header: Vendor Details
@@ -837,24 +1137,22 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                 Padding = new Padding(0)
             };
 
-            var btnSaveVendor = new Button
+            var btnSaveVendor = ControlFactory.CreateSfButton("&Save Vendor", button =>
             {
-                Text = "Save",
-                Width = 80,
-                Height = 35,
-                Font = new System.Drawing.Font("Segoe UI", 10F),
-                DialogResult = DialogResult.OK
-            };
+                button.Width = LayoutTokens.GetScaled(132);
+                button.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+                button.Font = new System.Drawing.Font("Segoe UI", 10F);
+                button.DialogResult = DialogResult.OK;
+            });
 
-            var btnCancel = new Button
+            var btnCancel = ControlFactory.CreateSfButton("&Cancel", button =>
             {
-                Text = "Cancel",
-                Width = 80,
-                Height = 35,
-                Font = new System.Drawing.Font("Segoe UI", 10F),
-                DialogResult = DialogResult.Cancel,
-                Margin = new Padding(5, 0, 0, 0)
-            };
+                button.Width = LayoutTokens.GetScaled(112);
+                button.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+                button.Font = new System.Drawing.Font("Segoe UI", 10F);
+                button.DialogResult = DialogResult.Cancel;
+                button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
+            });
 
             buttonPanel.Controls.Add(btnCancel);
             buttonPanel.Controls.Add(btnSaveVendor);
@@ -901,33 +1199,31 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                     var vendorDisplayList = new BindingList<VendorDisplayItem>(
                         _vendors.Select(v => new VendorDisplayItem
                         {
-                            Display = v.Name,
-                            Vendor = v
+                            Display = BuildVendorDisplay(v.Name),
+                            Vendor = v,
+                            VendorId = v.Id,
+                            PayeeName = v.Name
                         }).ToList()
                     );
 
-                    _cmbPayee.DataSource = null;
-                    _cmbPayee.DataSource = vendorDisplayList;
-                    _cmbPayee.DisplayMember = "Display";
-                    _cmbPayee.ValueMember = "Vendor";
+                    BindVendorOptions(vendorDisplayList);
+                    SelectVendorByIdentity(createdVendor.Id, createdVendor.Name);
 
-                    // Select the newly created vendor
-                    var newIndex = vendorDisplayList.ToList().FindIndex(x => x.Vendor.Id == createdVendor.Id);
-                    if (newIndex >= 0)
-                    {
-                        _cmbPayee.SelectedIndex = newIndex;
-                    }
-
-                    MessageBox.Show("Vendor created successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    _ = ControlFactory.ShowSemanticMessageBox(
+                        this,
+                        "Vendor created successfully",
+                        "Success",
+                        SyncfusionControlFactory.MessageSemanticKind.Success,
+                        MessageBoxButtons.OK,
+                        playNotificationSound: true);
                 }
             }
 
-            dialog.Dispose();
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "PaymentEditPanel: Error adding vendor");
-            MessageBox.Show($"Error adding vendor: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowErrorDialog("Unable to add vendor.", "Vendor Error", ex.Message);
         }
     }
 
@@ -940,17 +1236,20 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             var selectedStatus = _cmbStatus.SelectedItem?.ToString() ?? "Pending";
             var isVoidStatus = IsVoidStatus(selectedStatus);
             var amount = (decimal)(_numAmount.Value ?? 0);
+            ShowInlineFeedback(string.Empty, Color.Green);
 
             // Validate
             if (string.IsNullOrWhiteSpace(_txtCheckNumber.Text))
             {
-                MessageBox.Show("Check number is required", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowWarningDialog("Check number is required.", "Validation Error");
+                _txtCheckNumber.Focus();
                 return;
             }
 
             if (_cmbPayee.SelectedItem == null && string.IsNullOrWhiteSpace(_cmbPayee.Text))
             {
-                MessageBox.Show("Please select or enter a payee (vendor)", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowWarningDialog("Please select or enter a payee (vendor).", "Validation Error");
+                _cmbPayee.Focus();
                 return;
             }
 
@@ -958,7 +1257,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             {
                 if (amount != 0m)
                 {
-                    MessageBox.Show("Voided checks must have an amount of 0.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    ShowWarningDialog("Voided checks must have an amount of 0.", "Validation Error");
                     _numAmount.Value = 0;
                     _numAmount.Focus();
                     return;
@@ -966,20 +1265,22 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             }
             else if (amount <= 0)
             {
-                MessageBox.Show("Amount must be greater than zero", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowWarningDialog("Amount must be greater than zero.", "Validation Error");
+                _numAmount.Focus();
                 return;
             }
 
             if (_cmbAccount.SelectedIndex < 0)
             {
-                MessageBox.Show("Please select a Municipal Account / Budget Category", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowWarningDialog("Please select a budget account.", "Validation Error");
                 _cmbAccount.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(_txtDescription.Text))
             {
-                MessageBox.Show("Description is required", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowWarningDialog("Description is required.", "Validation Error");
+                _txtDescription.Focus();
                 return;
             }
 
@@ -999,8 +1300,8 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             // Get payee from selected vendor or typed text
             if (_cmbPayee.SelectedItem is VendorDisplayItem selectedVendor)
             {
-                payment.Payee = selectedVendor.Vendor.Name;
-                payment.VendorId = selectedVendor.Vendor.Id;
+                payment.Payee = selectedVendor.PayeeName;
+                payment.VendorId = selectedVendor.VendorId;
             }
             else if (!string.IsNullOrWhiteSpace(_cmbPayee.Text))
             {
@@ -1021,7 +1322,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             // Set the associated account
             if (_cmbAccount.SelectedIndex >= 0 && _cmbAccount.SelectedItem is AccountDisplayItem selectedItem)
             {
-                payment.MunicipalAccountId = selectedItem.Account.Id;
+                payment.MunicipalAccountId = selectedItem.AccountId;
             }
             else
             {
@@ -1037,6 +1338,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
                     payment.CheckNumber, payment.Amount, payment.Payee);
 
                 PrepareForNextNewPaymentEntry();
+                ShowInlineFeedback($"Payment {payment.CheckNumber} created successfully. Adjust the budget account here any time you need to reroute a payment to a different budget line.", Color.Green);
                 return;
             }
             else
@@ -1046,7 +1348,13 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
                 Logger?.LogInformation("PaymentEditPanel: Payment updated successfully - ID: {Id}, CheckNumber: {CheckNumber}, Amount: {Amount}",
                     payment.Id, payment.CheckNumber, payment.Amount);
-                MessageBox.Show("Payment updated successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _ = ControlFactory.ShowSemanticMessageBox(
+                    this,
+                    "Payment updated successfully",
+                    "Update Successful",
+                    SyncfusionControlFactory.MessageSemanticKind.Success,
+                    MessageBoxButtons.OK,
+                    playNotificationSound: true);
             }
 
             if (ParentForm is Form parentForm)
@@ -1059,18 +1367,16 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
         {
             Logger?.LogWarning(ex, "PaymentEditPanel: Duplicate check number {CheckNumber}", _txtCheckNumber.Text?.Trim());
-            MessageBox.Show(
+            ShowWarningDialog(
                 "That check number already exists. Enter a unique check number or edit the existing payment record.",
-                "Duplicate Check Number",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
+                "Duplicate Check Number");
             _txtCheckNumber.Focus();
             _txtCheckNumber.SelectAll();
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "PaymentEditPanel: Error saving payment");
-            MessageBox.Show($"Error saving payment: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowErrorDialog("Unable to save payment.", "Save Error", ex.Message);
         }
         finally
         {
@@ -1082,15 +1388,14 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     {
         if (_existingPayment == null || _isNew)
         {
-            MessageBox.Show("Cannot delete a new payment", "Invalid Operation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            ShowWarningDialog("Cannot delete a new payment.", "Invalid Operation");
             return;
         }
 
-        var result = MessageBox.Show(
+        var result = ShowWarningDialog(
             $"Are you sure you want to delete payment {_existingPayment.CheckNumber} to {_existingPayment.Payee}?\n\nThis action cannot be undone.",
             "Confirm Delete",
             MessageBoxButtons.YesNo,
-            MessageBoxIcon.Warning,
             MessageBoxDefaultButton.Button2);
 
         if (result != DialogResult.Yes)
@@ -1110,7 +1415,13 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
             await repository.DeleteAsync(_existingPayment.Id, CancellationToken.None);
 
-            MessageBox.Show("Payment deleted successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            _ = ControlFactory.ShowSemanticMessageBox(
+                this,
+                "Payment deleted successfully",
+                "Delete Successful",
+                SyncfusionControlFactory.MessageSemanticKind.Success,
+                MessageBoxButtons.OK,
+                playNotificationSound: true);
 
             if (ParentForm is Form parentForm)
             {
@@ -1121,7 +1432,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         catch (Exception ex)
         {
             Logger?.LogError(ex, "PaymentEditPanel: Error deleting payment");
-            MessageBox.Show($"Error deleting payment: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            ShowErrorDialog("Unable to delete payment.", "Delete Error", ex.Message);
         }
         finally
         {
@@ -1150,22 +1461,35 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     {
         if (disposing)
         {
-            _btnSave?.Dispose();
-            _btnCancel?.Dispose();
-            _btnDelete?.Dispose();
-            _txtCheckNumber?.Dispose();
-            _cmbPayee?.Dispose();
-            _btnAddVendor?.Dispose();
-            _txtDescription?.Dispose();
-            _txtMemo?.Dispose();
-            _dtpPaymentDate?.Dispose();
-            _numAmount?.Dispose();
-            _cmbStatus?.Dispose();
-            _cmbAccount?.Dispose();
-            _chkCleared?.Dispose();
-            _toolTip?.Dispose();
+            _numAmount.Enter -= NumAmount_Enter;
+            try { _btnSave?.SafeDispose(); } catch { }
+            try { _btnCancel?.SafeDispose(); } catch { }
+            try { _btnDelete?.SafeDispose(); } catch { }
+            try { _txtCheckNumber?.SafeDispose(); } catch { }
+            try { _cmbPayee?.SafeClearDataSource(); _cmbPayee?.SafeDispose(); } catch { }
+            try { _btnAddVendor?.SafeDispose(); } catch { }
+            try { _txtDescription?.SafeDispose(); } catch { }
+            try { _txtMemo?.SafeDispose(); } catch { }
+            try { _dtpPaymentDate?.SafeDispose(); } catch { }
+            try { _numAmount?.SafeDispose(); } catch { }
+            try { _cmbStatus?.SafeClearDataSource(); _cmbStatus?.SafeDispose(); } catch { }
+            try { _cmbAccount?.SafeClearDataSource(); _cmbAccount?.SafeDispose(); } catch { }
+            try { _chkCleared?.SafeDispose(); } catch { }
+            try { _toolTip?.Dispose(); } catch { }
         }
         base.Dispose(disposing);
+    }
+
+    private void NumAmount_Enter(object? sender, EventArgs e)
+    {
+        try
+        {
+            _numAmount.SelectAll();
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogDebug(ex, "PaymentEditPanel: Unable to select amount text on focus");
+        }
     }
 
     /// <summary>
@@ -1240,12 +1564,11 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         _txtCheckNumber.Text = string.Empty;
         _txtCheckNumber.Enabled = true;
         _dtpPaymentDate.Value = DateTime.Now;
-        _cmbPayee.SelectedIndex = -1;
-        _cmbPayee.Text = string.Empty;
+        ClearComboSelection(_cmbPayee);
         _numAmount.Value = 0;
         _txtDescription.Text = string.Empty;
         _txtMemo.Text = string.Empty;
-        _cmbAccount.SelectedIndex = -1;
+        ClearComboSelection(_cmbAccount);
         _cmbStatus.SelectedItem = "Pending";
         _chkCleared.Checked = false;
         _txtCheckNumber.Focus();

@@ -33,8 +33,12 @@ namespace WileyWidget.WinForms.Controls.Panels
         public FormHostPanel()
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(560, 420);
-            MinimumSize = new Size(420, 360);
+            Size = new Size(
+                (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(560f),
+                (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(420f));
+            MinimumSize = new Size(
+                (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(420f),
+                (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(360f));
             Dock = DockStyle.Fill;
             AccessibleRole = AccessibleRole.Pane;
             AccessibleName = "Form host panel";

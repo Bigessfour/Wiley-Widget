@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
@@ -46,9 +47,6 @@ public partial class MainForm
             // Save ribbon state
             SaveRibbonState(serializer);
 
-            // Save MDI documents
-            SaveMDIDocumentState(serializer);
-
             InitializeMDIManager();
             if (_tabbedMdi != null)
             {
@@ -87,6 +85,7 @@ public partial class MainForm
             }
 
             _logger?.LogInformation("Loading workspace layout from {LayoutPath}", layoutPath);
+            TraceLayoutSnapshot("LoadWorkspaceLayout.BeforeRestore");
 
             var serializer = new AppStateSerializer(SerializeMode.XMLFile, layoutPath);
 
@@ -102,15 +101,14 @@ public partial class MainForm
                 _tabbedMdi.LoadTabGroupStates(serializer);
             }
 
-            // Restore MDI documents
-            RestoreMDIDocumentState(serializer);
-
             // Restore status bar state
             RestoreStatusBarState(serializer);
 
-            // Re-fire the active theme after layout restore so docking hosts and nested Syncfusion
-            // controls repaint with the current visual style.
-            ReapplyCurrentThemeAfterLayoutRestore();
+            // Layout restore can recreate or reparent themed surfaces. Reapply the current
+            // theme without mutating persisted settings so the visual tree converges again.
+            _themeService?.ReapplyCurrentTheme();
+            _panelHost?.PerformLayout();
+            TraceLayoutSnapshot("LoadWorkspaceLayout.AfterRestore");
 
             _logger?.LogInformation("Workspace layout loaded successfully");
             ApplyStatus($"Layout loaded: {layoutName ?? "default"}");
@@ -208,105 +206,6 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Saves open MDI documents and their positions.
-    /// </summary>
-    private void SaveMDIDocumentState(AppStateSerializer serializer)
-    {
-        if (!this.IsMdiContainer || this.MdiChildren == null) return;
-
-        try
-        {
-            var openPanels = new List<string>();
-
-            var mdiChildren = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
-
-            foreach (var child in mdiChildren)
-            {
-                if (child.IsDisposed) continue;
-
-                var panelName = child.Text;
-                openPanels.Add(panelName);
-
-                // Save individual document state
-                serializer.SerializeObject($"MDIDoc.{panelName}.Location", child.Location);
-                serializer.SerializeObject($"MDIDoc.{panelName}.Size", child.Size);
-                serializer.SerializeObject($"MDIDoc.{panelName}.WindowState", child.WindowState);
-            }
-
-            serializer.SerializeObject("MDI.OpenPanels", openPanels.ToArray());
-
-            _logger?.LogDebug("Saved {Count} MDI documents", openPanels.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Error saving MDI document state");
-        }
-    }
-
-    /// <summary>
-    /// Restores open MDI documents.
-    /// </summary>
-    private void RestoreMDIDocumentState(AppStateSerializer serializer)
-    {
-        if (!this.IsMdiContainer) return;
-
-        try
-        {
-            var openPanelsObj = serializer.DeserializeObject("MDI.OpenPanels", Array.Empty<string>());
-            var openPanels = (string[])(openPanelsObj ?? Array.Empty<string>());
-
-            foreach (var panelName in openPanels)
-            {
-                try
-                {
-                    // Find panel in registry
-                    var panel = Services.PanelRegistry.Panels
-                        .FirstOrDefault(p => string.Equals(p.DisplayName, panelName, StringComparison.OrdinalIgnoreCase));
-
-                    if (panel != null)
-                    {
-                        // Reopen panel (will be handled by navigation service)
-                        ShowPanel(panel.PanelType, panel.DisplayName, panel.DefaultDock);
-
-                        // Restore document state
-                        var locationObj = serializer.DeserializeObject($"MDIDoc.{panelName}.Location", Point.Empty);
-                        var sizeObj = serializer.DeserializeObject($"MDIDoc.{panelName}.Size", Size.Empty);
-                        var windowStateObj = serializer.DeserializeObject($"MDIDoc.{panelName}.WindowState", FormWindowState.Normal);
-
-                        var location = (Point)(locationObj ?? Point.Empty);
-                        var size = (Size)(sizeObj ?? Size.Empty);
-                        var windowState = (FormWindowState)(windowStateObj ?? FormWindowState.Normal);
-
-                        // Apply restored state to newly opened document
-                        var mdiChildren = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
-                        var mdiChild = mdiChildren.LastOrDefault();
-                        if (mdiChild != null)
-                        {
-                            if (windowState != FormWindowState.Maximized)
-                            {
-                                mdiChild.WindowState = FormWindowState.Normal;
-                                mdiChild.Location = location;
-                                mdiChild.Size = size;
-                            }
-                            mdiChild.WindowState = windowState;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogDebug(ex, "Error restoring MDI document: {PanelName}", panelName);
-                }
-            }
-
-            _logger?.LogDebug("Restored {Count} MDI documents", openPanels.Length);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Error restoring MDI document state");
-        }
-    }
-
-    /// <summary>
     /// Saves status bar state.
     /// </summary>
     private void SaveStatusBarState(AppStateSerializer serializer)
@@ -360,7 +259,9 @@ public partial class MainForm
 
             // Reset main form to default position/size
             this.WindowState = FormWindowState.Normal;
-            this.Size = new Size(1400, 900);
+            this.Size = new Size(
+                (int)DpiAware.LogicalToDeviceUnits(1400f),
+                (int)DpiAware.LogicalToDeviceUnits(900f));
             this.CenterToScreen();
 
             // Reset ribbon to default tab
@@ -421,63 +322,4 @@ public partial class MainForm
         }
     }
 
-    /// <summary>
-    /// Auto-loads layout on form shown.
-    /// </summary>
-    private void AutoLoadLayoutOnShown()
-    {
-        try
-        {
-            LoadWorkspaceLayout(AutoSaveLayoutFile);
-            _logger?.LogDebug("Auto-loaded layout on form shown");
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Error auto-loading layout on shown");
-        }
-    }
-
-    private void ReapplyCurrentThemeAfterLayoutRestore()
-    {
-        try
-        {
-            var activeTheme = _themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme;
-            if (string.IsNullOrWhiteSpace(activeTheme))
-            {
-                return;
-            }
-
-            // Immediate pass after deserialization/load (equivalent to post-LoadDockState refresh)
-            OnThemeServiceChanged(this, activeTheme);
-
-            // Deferred pass after pending docking/layout messages complete.
-            // This ensures newly restored hosts and nested Syncfusion controls repaint with
-            // the active theme once docking finishes final bounds calculations.
-            if (!IsDisposed && IsHandleCreated)
-            {
-                BeginInvoke((MethodInvoker)(() =>
-                {
-                    try
-                    {
-                        if (IsDisposed || Disposing)
-                        {
-                            return;
-                        }
-
-                        OnThemeServiceChanged(this, activeTheme);
-                    }
-                    catch (Exception deferredEx)
-                    {
-                        _logger?.LogDebug(deferredEx, "Deferred theme reapply after layout restore failed");
-                    }
-                }));
-            }
-
-            _logger?.LogDebug("Reapplied theme after layout restore (immediate + deferred): {Theme}", activeTheme);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug(ex, "Failed to reapply theme after layout restore");
-        }
-    }
 }

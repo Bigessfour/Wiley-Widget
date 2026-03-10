@@ -1,5 +1,17 @@
 # QuickBooks Sandbox Seeding - Option 2 Quick Start
 
+## Important
+
+Use the current Wiley Widget sandbox localhost callback flow, not the Intuit OAuth Playground redirect.
+
+Before running any seed step:
+
+- run `scripts/quickbooks/prepare-sandbox-seed.ps1`
+- connect to sandbox in Wiley Widget so diagnostics show `Redirect OK : YES`
+- export the active session into the shell with `scripts/quickbooks/export-qbo-session.ps1`
+
+Treat the rest of this document as legacy background until it is fully refreshed.
+
 ## Overview
 
 **Option 2: API Seeding** uses PowerShell scripts to automatically populate your QuickBooks sandbox with municipal finance accounts via the REST API.

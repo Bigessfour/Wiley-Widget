@@ -52,6 +52,21 @@ namespace WileyWidget.Services.Abstractions
         void LogMetric(string metricName, double metricValue, Dictionary<string, object>? metadata = null);
 
         /// <summary>
+        /// Logs the specific tools or functions used while fulfilling a query.
+        /// </summary>
+        /// <param name="query">The user query associated with the tool execution.</param>
+        /// <param name="source">The execution source, such as SemanticKernel or ResponsesApi.</param>
+        /// <param name="tools">The tool or function names that were invoked.</param>
+        void LogToolExecution(string query, string source, IReadOnlyCollection<string> tools);
+
+        /// <summary>
+        /// Begins a correlation scope so all AI logs emitted on the current async flow share the same request identifier.
+        /// </summary>
+        /// <param name="correlationId">The correlation identifier for the current request.</param>
+        /// <returns>A disposable scope that restores the previous correlation identifier when disposed.</returns>
+        IDisposable BeginCorrelationScope(string correlationId);
+
+        /// <summary>
         /// Gets usage statistics for a specified time period.
         /// </summary>
         /// <param name="startDate">Start date for statistics</param>

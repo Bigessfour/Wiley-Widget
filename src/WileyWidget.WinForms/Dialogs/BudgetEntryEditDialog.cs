@@ -1,167 +1,306 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.Data;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
-using WileyWidget.Data;
-using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Dialogs;
 
 public partial class BudgetEntryEditDialog : SfForm
 {
     public BudgetEntry Entry { get; private set; }
+
     public bool IsNew { get; private set; }
 
     private readonly IServiceProvider _serviceProvider;
-    private readonly List<Department> _departments = new List<Department>();
-    private readonly List<Fund> _funds = new List<Fund>();
-    private ToolTip _tooltip = new ToolTip { AutoPopDelay = 5000, InitialDelay = 500 };
+    private readonly List<Department> _departments = new();
+    private readonly List<Fund> _funds = new();
+    private readonly ToolTip _tooltip = new() { AutoPopDelay = 5000, InitialDelay = 500 };
 
-    // Designer controls
-    private SfButton btnOK;
-    private SfButton btnCancel;
-    private TextBox txtAccountNumber;
-    private TextBox txtDescription;
-    private TextBox txtBudgetedAmount;
-    private TextBox txtActualAmount;
-    private ComboBox cmbDepartment;
-    private ComboBox cmbFund;
-    private ComboBox cmbFundType;
-    private TableLayoutPanel tableLayout;
-    private FlowLayoutPanel buttonPanel;
+    private SfButton btnOK = null!;
+    private SfButton btnCancel = null!;
+    private TextBox txtAccountNumber = null!;
+    private TextBox txtDescription = null!;
+    private TextBox txtAccountType = null!;
+    private TextBox txtFiscalYear = null!;
+    private TextBox txtBudgetedAmount = null!;
+    private TextBox txtActualAmount = null!;
+    private ComboBox cmbDepartment = null!;
+    private ComboBox cmbFund = null!;
+    private ComboBox cmbFundType = null!;
+    private TableLayoutPanel editorTable = null!;
+    private FlowLayoutPanel buttonPanel = null!;
 
-    public BudgetEntryEditDialog(BudgetEntry? entryToEdit, IServiceProvider serviceProvider)
+    public BudgetEntryEditDialog(BudgetEntry? entryToEdit, IServiceProvider serviceProvider, int? fiscalYear = null)
     {
-        InitializeComponent();
-
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         IsNew = entryToEdit == null;
-        Entry = entryToEdit ?? new BudgetEntry { FiscalYear = DateTime.Now.Year, CreatedAt = DateTime.UtcNow };
+        Entry = entryToEdit ?? new BudgetEntry
+        {
+            FiscalYear = fiscalYear ?? DateTime.Now.Year,
+            CreatedAt = DateTime.UtcNow,
+            IsGASBCompliant = true,
+        };
 
-        Text = IsNew ? "Add New Budget Entry" : "Edit Budget Entry";
-
-        // Load data asynchronously
-        LoadAsync();
+        InitializeComponent();
+        Text = IsNew ? "Add Budget Entry" : "Edit Budget Entry";
     }
 
-    // Simple manual InitializeComponent to avoid needing a separate .Designer.cs file for now
     private void InitializeComponent()
     {
-        this.Size = new Size(550, 520);
-        this.StartPosition = FormStartPosition.CenterParent;
-        this.FormBorderStyle = FormBorderStyle.FixedDialog;
-        this.MaximizeBox = false;
-        this.MinimizeBox = false;
-        this.KeyPreview = true;
-        this.KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) { DialogResult = DialogResult.Cancel; Close(); } };
+        SuspendLayout();
 
-        tableLayout = new TableLayoutPanel
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Size = LayoutTokens.GetScaled(new Size(860, 660));
+        MinimumSize = LayoutTokens.GetScaled(new Size(760, 620));
+        StartPosition = FormStartPosition.CenterParent;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
+        MinimizeBox = false;
+        ShowIcon = false;
+        ShowInTaskbar = false;
+        KeyPreview = true;
+        KeyDown += HandleKeyDown;
+
+        Style.Border = new Pen(SystemColors.WindowFrame, 1);
+        Style.InactiveBorder = new Pen(SystemColors.GrayText, 1);
+
+        WileyWidget.WinForms.Themes.ThemeColors.ApplyTheme(this);
+
+        var rootLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = LayoutTokens.GetScaled(LayoutTokens.DialogShellPadding),
+        };
+        rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        rootLayout.Controls.Add(CreateHeaderLayout(), 0, 0);
+
+        var contentHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            Margin = new Padding(0),
+        };
+
+        editorTable = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
             ColumnCount = 2,
-            RowCount = 10,
-            Padding = new Padding(15),
-            AutoSize = false
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = LayoutTokens.GetScaled(LayoutTokens.DialogContentPadding),
         };
-        tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35F));
-        tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
+        editorTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(180)));
+        editorTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-        // Account Information Section (visual grouping)
-        var acctLabel = new Label { Text = "Account Information", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold) };
-        tableLayout.Controls.Add(acctLabel, 0, 0);
+        BuildEditorRows();
+        contentHost.Controls.Add(editorTable);
+        rootLayout.Controls.Add(contentHost, 0, 1);
 
-        // Account Number
-        AddControlRow(tableLayout, "Account Number:", txtAccountNumber = new TextBox { Dock = DockStyle.Fill }, 1);
-        AddTooltip(txtAccountNumber, "Unique account identifier (e.g., 101-001)");
-
-        // Description
-        AddControlRow(tableLayout, "Account Name:", txtDescription = new TextBox { Dock = DockStyle.Fill }, 2);
-        AddTooltip(txtDescription, "Human-readable account name for displays and reports");
-
-        // Account Type (auto-filled from Chart of Accounts — never editable here)
-        var txtAccountType = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
-        AddControlRow(tableLayout, "Account Type:", txtAccountType, 3);
-        AddTooltip(txtAccountType, "Automatically pulled from your official Chart of Accounts (Revenue or Expenditure)");
-
-        // Classification Section
-        var classLabel = new Label { Text = "Budget Classification", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), Margin = new Padding(0, 10, 0, 0) };
-        tableLayout.Controls.Add(classLabel, 0, 4);
-
-        // Department
-        cmbDepartment = new ComboBox
-        {
-            Dock = DockStyle.Fill,
-            DropDownStyle = ComboBoxStyle.DropDown,
-            DisplayMember = "Name",
-            ValueMember = "Id",
-            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            AutoCompleteSource = AutoCompleteSource.ListItems
-        };
-        AddControlRow(tableLayout, "Department:", cmbDepartment, 5);
-        AddTooltip(cmbDepartment, "Select the department responsible for this budget");
-
-        // Fund
-        cmbFund = new ComboBox
-        {
-            Dock = DockStyle.Fill,
-            DropDownStyle = ComboBoxStyle.DropDown,
-            DisplayMember = "Name",
-            ValueMember = "Id",
-            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-            AutoCompleteSource = AutoCompleteSource.ListItems
-        };
-        AddControlRow(tableLayout, "Fund:", cmbFund, 6);
-        AddTooltip(cmbFund, "Choose the fund this budget belongs to");
-
-        // Fund Type
-        cmbFundType = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-        cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
-        if (cmbFundType.Items.Count > 0) cmbFundType.SelectedIndex = 0;
-        AddControlRow(tableLayout, "Fund Type:", cmbFundType, 7);
-        AddTooltip(cmbFundType, "Categorizes this entry by fund type");
-
-        // Amounts Section
-        var amtLabel = new Label { Text = "Budget Amounts", Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold), Margin = new Padding(0, 10, 0, 0) };
-        tableLayout.Controls.Add(amtLabel, 0, 8);
-
-        // Budgeted Amount
-        AddControlRow(tableLayout, "Budgeted Amount:", txtBudgetedAmount = new TextBox { Dock = DockStyle.Fill, Text = "0.00", TextAlign = HorizontalAlignment.Right }, 9);
-        AddTooltip(txtBudgetedAmount, "Total budgeted amount for this entry (must be a valid number)");
-
-        // Actual Amount
-        AddControlRow(tableLayout, "Actual Amount:", txtActualAmount = new TextBox { Dock = DockStyle.Fill, Text = "0.00", TextAlign = HorizontalAlignment.Right }, 10);
-        AddTooltip(txtActualAmount, "Amount actually spent to date");
-
-        // Buttons
         buttonPanel = new FlowLayoutPanel
         {
-            Dock = DockStyle.Bottom,
-            Height = 50,
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(15, 10, 15, 10)
+            WrapContents = false,
+            Padding = new Padding(0, LayoutTokens.GetScaled(14), 0, 0),
+            Margin = new Padding(0),
         };
 
-        btnOK = new SfButton { Text = "Save Entry", Width = 100, Height = 36 };
+        var buttonSize = LayoutTokens.GetScaled(LayoutTokens.DefaultButtonSize);
+        btnOK = new SfButton
+        {
+            Text = IsNew ? "Save Entry" : "Save Changes",
+            Size = buttonSize,
+        };
         btnOK.Click += btnOK_Click;
 
-        btnCancel = new SfButton { Text = "Cancel", Width = 90, Height = 36 };
-        btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        btnCancel = new SfButton
+        {
+            Text = "Cancel",
+            Size = buttonSize,
+            Margin = new Padding(0, 0, LayoutTokens.GetScaled(10), 0),
+        };
+        btnCancel.Click += (_, _) =>
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        };
 
         buttonPanel.Controls.Add(btnCancel);
         buttonPanel.Controls.Add(btnOK);
+        rootLayout.Controls.Add(buttonPanel, 0, 2);
 
-        this.Controls.Add(tableLayout);
-        this.Controls.Add(buttonPanel);
+        Controls.Add(rootLayout);
+
+        AcceptButton = btnOK;
+        CancelButton = btnCancel;
+        Load += BudgetEntryEditDialog_Load;
+
+        ResumeLayout(performLayout: true);
+    }
+
+    private TableLayoutPanel CreateHeaderLayout()
+    {
+        var headerLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            ColumnCount = 1,
+            RowCount = 2,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0, 0, 0, LayoutTokens.GetScaled(12)),
+        };
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        headerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        headerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var titleLabel = new Label
+        {
+            AutoSize = true,
+            Text = IsNew ? "Create budget entry" : "Update budget entry",
+            Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+            Margin = new Padding(0),
+        };
+        headerLayout.Controls.Add(titleLabel, 0, 0);
+
+        var subtitleLabel = new Label
+        {
+            AutoSize = true,
+            Text = "Capture the account, classification, and financial amounts in one place.",
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+            Margin = new Padding(0, LayoutTokens.GetScaled(4), 0, 0),
+        };
+        headerLayout.Controls.Add(subtitleLabel, 0, 1);
+
+        return headerLayout;
+    }
+
+    private void BuildEditorRows()
+    {
+        var row = 0;
+
+        AddSectionHeader("Account details", row++, "Use the official account number and display description used in reports.");
+
+        txtAccountNumber = CreateTextBox();
+        AddControlRow("Account Number", txtAccountNumber, row++);
+        AddTooltip(txtAccountNumber, "Unique account identifier such as 101-001.");
+
+        txtDescription = CreateTextBox();
+        AddControlRow("Description", txtDescription, row++);
+        AddTooltip(txtDescription, "Human-readable name shown across the budget grid and reports.");
+
+        txtAccountType = CreateReadOnlyTextBox();
+        AddControlRow("Account Type", txtAccountType, row++);
+        AddTooltip(txtAccountType, "Pulled from the chart of accounts after you enter an account number.");
+
+        txtFiscalYear = CreateReadOnlyTextBox();
+        AddControlRow("Fiscal Year", txtFiscalYear, row++);
+        AddTooltip(txtFiscalYear, "The dialog saves this entry into the currently selected fiscal year.");
+
+        AddSectionHeader("Classification", row++, "Assign the operating department, fund, and fund type.");
+
+        cmbDepartment = CreateLookupComboBox();
+        cmbDepartment.DisplayMember = "Name";
+        cmbDepartment.ValueMember = "Id";
+        AddControlRow("Department", cmbDepartment, row++);
+        AddTooltip(cmbDepartment, "Select the department responsible for the budget line.");
+
+        cmbFund = CreateLookupComboBox();
+        cmbFund.DisplayMember = "Name";
+        cmbFund.ValueMember = "Id";
+        AddControlRow("Fund", cmbFund, row++);
+        AddTooltip(cmbFund, "Choose the fund where this budget line belongs.");
+
+        cmbFundType = CreateDropDownListComboBox();
+        cmbFundType.Items.AddRange(Enum.GetNames(typeof(FundType)));
+        AddControlRow("Fund Type", cmbFundType, row++);
+        AddTooltip(cmbFundType, "Categorizes the entry for financial reporting.");
+
+        AddSectionHeader("Financial amounts", row++, "Enter approved budget and actual spend values for this line.");
+
+        txtBudgetedAmount = CreateAmountTextBox();
+        AddControlRow("Budgeted Amount", txtBudgetedAmount, row++);
+        AddTooltip(txtBudgetedAmount, "Approved amount for the selected fiscal year.");
+
+        txtActualAmount = CreateAmountTextBox();
+        AddControlRow("Actual Amount", txtActualAmount, row++);
+        AddTooltip(txtActualAmount, "Actual amount posted so far.");
+    }
+
+    private static TextBox CreateTextBox()
+    {
+        return new TextBox
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, LayoutTokens.GetScaled(4), 0, LayoutTokens.GetScaled(8)),
+            MinimumSize = LayoutTokens.GetScaled(new Size(240, 32)),
+        };
+    }
+
+    private static TextBox CreateReadOnlyTextBox()
+    {
+        return new TextBox
+        {
+            Dock = DockStyle.Fill,
+            ReadOnly = true,
+            TabStop = false,
+            Margin = new Padding(0, LayoutTokens.GetScaled(4), 0, LayoutTokens.GetScaled(8)),
+            MinimumSize = LayoutTokens.GetScaled(new Size(240, 32)),
+        };
+    }
+
+    private static TextBox CreateAmountTextBox()
+    {
+        return new TextBox
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, LayoutTokens.GetScaled(4), 0, LayoutTokens.GetScaled(8)),
+            MinimumSize = LayoutTokens.GetScaled(new Size(160, 32)),
+            Text = "0.00",
+            TextAlign = HorizontalAlignment.Right,
+        };
+    }
+
+    private static ComboBox CreateLookupComboBox()
+    {
+        return new ComboBox
+        {
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDown,
+            AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+            AutoCompleteSource = AutoCompleteSource.ListItems,
+            Margin = new Padding(0, LayoutTokens.GetScaled(4), 0, LayoutTokens.GetScaled(8)),
+            MinimumSize = LayoutTokens.GetScaled(new Size(240, 32)),
+        };
+    }
+
+    private static ComboBox CreateDropDownListComboBox()
+    {
+        return new ComboBox
+        {
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Margin = new Padding(0, LayoutTokens.GetScaled(4), 0, LayoutTokens.GetScaled(8)),
+            MinimumSize = LayoutTokens.GetScaled(new Size(240, 32)),
+        };
     }
 
     private void AddTooltip(Control control, string text)
@@ -169,120 +308,203 @@ public partial class BudgetEntryEditDialog : SfForm
         _tooltip.SetToolTip(control, text);
     }
 
-    private void AddControlRow(TableLayoutPanel panel, string labelText, Control control, int row)
+    private void AddSectionHeader(string title, int row, string? description = null)
     {
-        panel.Controls.Add(new Label { Text = labelText, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleRight, AutoSize = true }, 0, row);
-        panel.Controls.Add(control, 1, row);
+        editorTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var sectionLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = description == null ? 1 : 2,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0, row == 0 ? 0 : LayoutTokens.GetScaled(12), 0, LayoutTokens.GetScaled(4)),
+        };
+        sectionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        sectionLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        if (description != null)
+        {
+            sectionLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        }
+
+        sectionLayout.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Text = title,
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+            Margin = new Padding(0),
+        }, 0, 0);
+
+        if (description != null)
+        {
+            sectionLayout.Controls.Add(new Label
+            {
+                AutoSize = true,
+                Text = description,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                Margin = new Padding(0, LayoutTokens.GetScaled(2), 0, 0),
+            }, 0, 1);
+        }
+
+        editorTable.Controls.Add(sectionLayout, 0, row);
+        editorTable.SetColumnSpan(sectionLayout, 2);
     }
 
-    private async void LoadAsync()
+    private void AddControlRow(string labelText, Control control, int row)
     {
-        await LoadDepartmentsAndFundsAsync();
+        editorTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        // Ensure UI is updated on UI thread
-        if (IsHandleCreated)
+        var label = new Label
         {
-            Invoke(new Action(BindControls));
+            AutoSize = true,
+            Text = labelText,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(0, LayoutTokens.GetScaled(10), LayoutTokens.GetScaled(16), 0),
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+        };
+
+        editorTable.Controls.Add(label, 0, row);
+        editorTable.Controls.Add(control, 1, row);
+    }
+
+    private void HandleKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Escape)
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
         }
-        else
+    }
+
+    private async void BudgetEntryEditDialog_Load(object? sender, EventArgs e)
+    {
+        btnOK.Enabled = false;
+
+        try
         {
+            await LoadDepartmentsAndFundsAsync();
             BindControls();
-        }
+            txtAccountNumber.Leave += txtAccountNumber_Leave;
 
-        txtAccountNumber.Leave += txtAccountNumber_Leave;
+            if (!string.IsNullOrWhiteSpace(txtAccountNumber.Text))
+            {
+                await RefreshAccountMetadataAsync(txtAccountNumber.Text.Trim());
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Error loading dialog data: {ex.Message}", "Budget Entry", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            btnOK.Enabled = true;
+        }
     }
 
     private async Task LoadDepartmentsAndFundsAsync()
     {
-        try
-        {
-            var contextFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDbContextFactory<AppDbContext>>(_serviceProvider);
-            using var ctx = await contextFactory.CreateDbContextAsync();
+        var contextFactory = ServiceProviderServiceExtensions.GetRequiredService<IDbContextFactory<AppDbContext>>(_serviceProvider);
+        await using var ctx = await contextFactory.CreateDbContextAsync();
 
-            var depts = await ctx.Departments.OrderBy(d => d.Name).ToListAsync();
-            var funds = await ctx.Funds.OrderBy(f => f.Name).ToListAsync();
+        var departments = await ctx.Departments
+            .AsNoTracking()
+            .OrderBy(d => d.Name)
+            .ToListAsync();
 
-            _departments.Clear();
-            _departments.AddRange(depts);
+        var funds = await ctx.Funds
+            .AsNoTracking()
+            .OrderBy(f => f.Name)
+            .ToListAsync();
 
-            _funds.Clear();
-            _funds.AddRange(funds);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Error loading data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+        _departments.Clear();
+        _departments.AddRange(departments);
+
+        _funds.Clear();
+        _funds.AddRange(funds);
     }
 
     private void BindControls()
     {
-        // Bind combos
+        cmbDepartment.DataSource = null;
         cmbDepartment.DataSource = new BindingSource { DataSource = _departments };
+
+        cmbFund.DataSource = null;
         cmbFund.DataSource = new BindingSource { DataSource = _funds };
 
-        if (IsNew)
+        txtFiscalYear.Text = Entry.FiscalYear.ToString();
+        txtAccountNumber.Text = Entry.AccountNumber;
+        txtDescription.Text = Entry.Description;
+        txtBudgetedAmount.Text = Entry.BudgetedAmount.ToString("F2");
+        txtActualAmount.Text = Entry.ActualAmount.ToString("F2");
+        txtAccountType.Text = Entry.MunicipalAccount?.Type.ToString() ?? "Look up from chart of accounts";
+
+        if (cmbFundType.Items.Count > 0)
         {
-            // Set defaults for new entry
-            cmbFundType.SelectedIndex = 0;
-        }
-        else
-        {
-            // Populate fields for existing entry
-            txtAccountNumber.Text = Entry.AccountNumber;
-            txtDescription.Text = Entry.Description;
-            txtBudgetedAmount.Text = Entry.BudgetedAmount.ToString("F2");
-            txtActualAmount.Text = Entry.ActualAmount.ToString("F2");
-
-            if (Entry.DepartmentId > 0)
-                cmbDepartment.SelectedValue = Entry.DepartmentId;
-
-            if (Entry.FundId.HasValue)
-                cmbFund.SelectedValue = Entry.FundId.Value;
-
             cmbFundType.SelectedItem = Entry.FundType.ToString();
+            if (cmbFundType.SelectedIndex < 0)
+            {
+                cmbFundType.SelectedIndex = 0;
+            }
+        }
+
+        if (Entry.DepartmentId > 0)
+        {
+            cmbDepartment.SelectedValue = Entry.DepartmentId;
+        }
+        else if (_departments.Count > 0)
+        {
+            cmbDepartment.SelectedIndex = 0;
+        }
+
+        if (Entry.FundId.HasValue)
+        {
+            cmbFund.SelectedValue = Entry.FundId.Value;
+        }
+        else if (_funds.Count > 0)
+        {
+            cmbFund.SelectedIndex = 0;
         }
     }
 
     private async void txtAccountNumber_Leave(object? sender, EventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(txtAccountNumber.Text)) return;
-
-        try
+        if (string.IsNullOrWhiteSpace(txtAccountNumber.Text))
         {
-            var contextFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDbContextFactory<AppDbContext>>(_serviceProvider);
-            await using var ctx = await contextFactory.CreateDbContextAsync();
-
-            var acct = await ctx.MunicipalAccounts
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.AccountNumber_Value == txtAccountNumber.Text.Trim());
-
-            // Update the Entry so the grid gets the correct Type when saved
-            Entry.MunicipalAccountId = acct?.Id;
-
-            // Find our read-only type textbox
-            var typeBox = tableLayout.Controls.OfType<TextBox>()
-                .FirstOrDefault(t => t.ReadOnly && t.BackColor.R == 240);
-
-            if (typeBox != null)
-                typeBox.Text = acct?.Type.ToString() ?? "Unknown (add to Chart of Accounts first)";
+            Entry.MunicipalAccountId = null;
+            txtAccountType.Text = "Look up from chart of accounts";
+            return;
         }
-        catch { /* silent — user can still save */ }
+
+        await RefreshAccountMetadataAsync(txtAccountNumber.Text.Trim());
     }
 
-    private async void btnOK_Click(object? sender, EventArgs e)
+    private async Task RefreshAccountMetadataAsync(string accountNumber)
     {
-        if (!ValidateEntry()) return;
-
-        // NEW: Check for duplicate BEFORE saving
-        if (IsNew && await IsDuplicateAsync())
+        try
         {
-            var result = MessageBox.Show(
-                $"Account {Entry.AccountNumber} already has a budget for FY {Entry.FiscalYear}.\n\n" +
-                "A duplicate entry already exists. Please edit the existing entry instead.",
-                "Duplicate Budget Entry",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-            return; // Stay in dialog so user can fix the duplicate
+            var contextFactory = ServiceProviderServiceExtensions.GetRequiredService<IDbContextFactory<AppDbContext>>(_serviceProvider);
+            await using var ctx = await contextFactory.CreateDbContextAsync();
+
+            var account = await ctx.MunicipalAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.AccountNumber_Value == accountNumber);
+
+            Entry.MunicipalAccountId = account?.Id;
+            txtAccountType.Text = account?.Type.ToString() ?? "Unknown account number";
+        }
+        catch
+        {
+            txtAccountType.Text = "Unable to load account type";
+        }
+    }
+
+    private void btnOK_Click(object? sender, EventArgs e)
+    {
+        if (!ValidateEntry())
+        {
+            return;
         }
 
         UpdateEntryFromControls();
@@ -295,68 +517,103 @@ public partial class BudgetEntryEditDialog : SfForm
         Entry.AccountNumber = txtAccountNumber.Text.Trim();
         Entry.Description = txtDescription.Text.Trim();
 
-        if (decimal.TryParse(txtBudgetedAmount.Text, out var budgeted))
-            Entry.BudgetedAmount = budgeted;
+        if (decimal.TryParse(txtBudgetedAmount.Text, out var budgetedAmount))
+        {
+            Entry.BudgetedAmount = budgetedAmount;
+        }
 
-        if (decimal.TryParse(txtActualAmount.Text, out var actual))
-            Entry.ActualAmount = actual;
+        if (decimal.TryParse(txtActualAmount.Text, out var actualAmount))
+        {
+            Entry.ActualAmount = actualAmount;
+        }
 
-        if (cmbDepartment.SelectedValue is int deptId)
-            Entry.DepartmentId = deptId;
-        else if (cmbDepartment.SelectedItem is Department dept)
-            Entry.DepartmentId = dept.Id;
+        if (cmbDepartment.SelectedItem is Department department)
+        {
+            Entry.DepartmentId = department.Id;
+            Entry.Department = department;
+        }
+        else if (cmbDepartment.SelectedValue is int departmentId)
+        {
+            Entry.DepartmentId = departmentId;
+        }
 
-        if (cmbFund.SelectedValue is int fundId)
-            Entry.FundId = fundId;
-        else if (cmbFund.SelectedItem is Fund fund)
+        if (cmbFund.SelectedItem is Fund fund)
+        {
             Entry.FundId = fund.Id;
+            Entry.Fund = fund;
+        }
+        else if (cmbFund.SelectedValue is int fundId)
+        {
+            Entry.FundId = fundId;
+        }
 
         if (cmbFundType.SelectedItem != null && Enum.TryParse<FundType>(cmbFundType.SelectedItem.ToString(), out var fundType))
+        {
             Entry.FundType = fundType;
+        }
+
+        Entry.Variance = Entry.BudgetedAmount - Entry.ActualAmount;
+        Entry.StartPeriod = new DateTime(Entry.FiscalYear, 1, 1);
+        Entry.EndPeriod = new DateTime(Entry.FiscalYear, 12, 31);
+        Entry.IsGASBCompliant = true;
+        Entry.CreatedAt = Entry.CreatedAt == default ? DateTime.UtcNow : Entry.CreatedAt;
+        Entry.UpdatedAt = IsNew ? Entry.UpdatedAt : DateTime.UtcNow;
     }
 
     private bool ValidateEntry()
     {
         if (string.IsNullOrWhiteSpace(txtAccountNumber.Text))
         {
-            MessageBox.Show("Please enter an account number. This uniquely identifies the account.", "Account Number Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "Enter an account number before saving.", "Account Number Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
             txtAccountNumber.Focus();
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(txtDescription.Text))
         {
-            MessageBox.Show("Please enter an account name for display purposes.", "Account Name Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "Enter a description for the budget line before saving.", "Description Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
             txtDescription.Focus();
             return false;
         }
 
-        if (!decimal.TryParse(txtBudgetedAmount.Text, out _))
+        if (!decimal.TryParse(txtBudgetedAmount.Text, out var budgetedAmount) || budgetedAmount < 0)
         {
-            MessageBox.Show("Please enter a valid dollar amount for the budgeted amount.", "Invalid Amount", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "Budgeted amount must be a valid number zero or greater.", "Invalid Budgeted Amount", MessageBoxButtons.OK, MessageBoxIcon.Information);
             txtBudgetedAmount.Focus();
+            return false;
+        }
+
+        if (!decimal.TryParse(txtActualAmount.Text, out var actualAmount) || actualAmount < 0)
+        {
+            MessageBox.Show(this, "Actual amount must be zero or greater.", "Invalid Actual Amount", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            txtActualAmount.Focus();
+            return false;
+        }
+
+        if (cmbDepartment.SelectedItem == null && cmbDepartment.SelectedValue == null)
+        {
+            MessageBox.Show(this, "Select a department before saving.", "Department Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            cmbDepartment.Focus();
+            return false;
+        }
+
+        if (cmbFund.SelectedItem == null && cmbFund.SelectedValue == null)
+        {
+            MessageBox.Show(this, "Select a fund before saving.", "Fund Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            cmbFund.Focus();
             return false;
         }
 
         return true;
     }
 
-    private async Task<bool> IsDuplicateAsync()
+    protected override void Dispose(bool disposing)
     {
-        if (string.IsNullOrWhiteSpace(Entry.AccountNumber) || Entry.FiscalYear <= 0) return false;
-
-        try
+        if (disposing)
         {
-            var contextFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IDbContextFactory<AppDbContext>>(_serviceProvider);
-            await using var ctx = await contextFactory.CreateDbContextAsync();
+            _tooltip.Dispose();
+        }
 
-            return await ctx.BudgetEntries
-                .AnyAsync(b => b.AccountNumber == Entry.AccountNumber.Trim() &&
-                               b.FiscalYear == Entry.FiscalYear);
-        }
-        catch
-        {
-            return false; // if DB down, let them save (worst case duplicate error)
-        }
+        base.Dispose(disposing);
     }
 }

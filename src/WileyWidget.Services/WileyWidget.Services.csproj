@@ -22,7 +22,6 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Package versions managed centrally in Directory.Packages.props -->
-    <!-- BoldReports package for report functionality -->
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <!-- MSAL extensions removed (archived). -->
     <!-- Specific package removed for WinForms compatibility -->
@@ -68,7 +67,6 @@
     <PackageReference Include="Syncfusion.Pdf.WinForms" />
     <PackageReference Include="Syncfusion.XlsIO.WinForms" />
 
-    <!-- BoldReports.WPF only - WinForms and Syncfusion.ReportViewer packages don't exist on nuget.org -->
     <!-- FastReport Open Source packages -->
     <PackageReference Include="FastReport.OpenSource" />
 

@@ -31,12 +31,23 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public partial class MainForm
 {
+    private static readonly TimeSpan StartupUiStabilityMinUptime = TimeSpan.FromSeconds(6);
+    private static readonly TimeSpan MainInitializationMaxStabilityWait = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan JarvisAutoOpenMaxStabilityWait = TimeSpan.FromSeconds(10);
+
     private int _initializeAsyncInvocationCount;
     private int _initializeAsyncStarted;
     private int _startupUiPhasesQueued;
     private int _startupUiPhasesIndex;
+    private int _deferredMainInitializationQueued;
+    private DateTime _mainInitializationStabilityCheckStartedUtc;
+    private DateTime _jarvisAutoOpenStabilityCheckStartedUtc;
+    private System.Windows.Forms.Timer? _deferredMainInitializationTimer;
+    private System.Windows.Forms.Timer? _deferredJarvisAutoOpenTimer;
     private CancellationTokenSource? _onShownStartupCts;
     private System.Windows.Forms.Timer? _startupUiPhasesTimer;
+    private bool _jarvisAutoOpenPolicyLogged;
+    private bool _jarvisDependencyMissingLogged;
 
     /// <summary>
     /// Implements IAsyncInitializable.InitializeAsync.
@@ -95,10 +106,11 @@ public partial class MainForm
 
             // Chrome initialization is done in OnLoad.
 
-            // Apply theme — SfSkinManager is sole authority, no per-control ThemeName assignments needed here.
+            // Re-apply the active theme after startup initialization so late-created surfaces
+            // converge even when the selected theme itself has not changed.
             if (_themeService != null)
             {
-                _themeService.ApplyTheme(_themeService.CurrentTheme);
+                _themeService.ReapplyCurrentTheme();
             }
             else
             {
@@ -140,6 +152,11 @@ public partial class MainForm
             }
 
             _asyncLogger?.Information("MainForm.InitializeAsync call #{InvocationId} completed successfully", invocationId);
+            if (_rightDockSplitter != null && !_rightDockSplitter.IsDisposed)
+            {
+                _rightDockSplitter.Visible = true;
+            }
+            SetJarvisAutoHideButtonState(isSidebarVisible: true);
         }
         catch (OperationCanceledException)
         {
@@ -337,6 +354,7 @@ public partial class MainForm
                 {
                     _menuStrip.ValidateAndConvertImages(_logger);
                 }
+
                 _logger?.LogDebug("OnShown: Late image validation completed");
             }
             catch (Exception validationEx)
@@ -725,6 +743,7 @@ public partial class MainForm
         PrepareStartupFadeIn();
         base.OnShown(e);
         BeginStartupFadeInIfNeeded();
+        TraceLayoutSnapshot("OnShown.Enter");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var redrawSuspended = TrySuspendRedraw("ONSHOWN");
@@ -799,7 +818,7 @@ public partial class MainForm
     {
         if (IsDisposed || Disposing)
         {
-            CompleteDeferredStartupUiPhases();
+            CompleteDeferredStartupUiPhases(cancelDeferredWork: true);
             return;
         }
 
@@ -808,31 +827,52 @@ public partial class MainForm
             switch (_startupUiPhasesIndex)
             {
                 case 0:
-                    InitializeChrome();
-                    QueueDeferredChromeInitialization();
-                    InitializeStartupNavigation();
-                    LoadMruList();
-                    ApplyStatus("Ready — loading dashboard...");
+                    SuspendLayout();
+                    _panelHost?.SuspendLayout();
+                    try
+                    {
+                        InitializeChrome();
+                        QueueDeferredChromeInitialization();
+                        InitializeStartupNavigation();
+                        LoadMruList();
+                        RefreshPanelHostLayout("StartupPhase0.AfterChromeAndNavigation");
+                        ApplyStatus("Ready — loading dashboard...");
+                        TraceLayoutSnapshot("StartupPhase0.AfterChromeAndNavigation");
+                    }
+                    finally
+                    {
+                        _panelHost?.ResumeLayout(true);
+                        ResumeLayout(true);
+                    }
                     break;
 
                 case 1:
                     if (ShouldAutoLoadPrimaryPanelOnStartup())
                     {
                         LoadPrimaryDashboardPanel();
+                        RefreshPanelHostLayout("StartupPhase1.AfterPrimaryPanel");
+                        TraceLayoutSnapshot("StartupPhase1.AfterPrimaryPanel");
                     }
                     else
                     {
                         _logger?.LogDebug("Startup primary panel preload skipped (set WILEYWIDGET_PRELOAD_PRIMARY_PANEL=true to enable)");
+                    }
+
+                    if (ShouldAutoOpenBudgetOnStartup())
+                    {
+                        _logger?.LogInformation("Startup diagnostics mode: auto-opening Budget panel");
+                        ShowPanel<BudgetPanel>("Budget Management & Analysis", DockingStyle.Right, allowFloating: true);
                     }
                     break;
 
                 case 2:
                     if (ShouldAutoOpenJarvisOnStartup())
                     {
-                        TryOpenJarvisStartupPanel();
+                        _logger?.LogDebug("Startup JARVIS auto-open requested; deferring right dock materialization until UI stability gate passes");
+                        QueueDeferredJarvisStartupOpen();
                     }
 
-                    _ = InitializeAsync(CancellationToken.None);
+                    QueueDeferredMainFormInitialization();
                     ApplyStatus("Ready");
                     CompleteDeferredStartupUiPhases();
                     return;
@@ -847,12 +887,12 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Deferred startup phase {Phase} failed", _startupUiPhasesIndex);
-            CompleteDeferredStartupUiPhases();
+            CompleteDeferredStartupUiPhases(cancelDeferredWork: true);
             UIHelper.ShowMessageOnUI(this, "Dashboard load had an issue — check logs.", "Startup Note", MessageBoxButtons.OK, MessageBoxIcon.Information, _logger);
         }
     }
 
-    private void CompleteDeferredStartupUiPhases()
+    private void CompleteDeferredStartupUiPhases(bool cancelDeferredWork = false)
     {
         if (_startupUiPhasesTimer != null)
         {
@@ -862,38 +902,181 @@ public partial class MainForm
             _startupUiPhasesTimer = null;
         }
 
+        if (cancelDeferredWork && _deferredMainInitializationTimer != null)
+        {
+            _deferredMainInitializationTimer.Stop();
+            _deferredMainInitializationTimer.Dispose();
+            _deferredMainInitializationTimer = null;
+        }
+
+        if (cancelDeferredWork && _deferredJarvisAutoOpenTimer != null)
+        {
+            _deferredJarvisAutoOpenTimer.Stop();
+            _deferredJarvisAutoOpenTimer.Dispose();
+            _deferredJarvisAutoOpenTimer = null;
+        }
+
         Interlocked.Exchange(ref _startupUiPhasesQueued, 0);
     }
 
-    private void InitializeStartupNavigation()
+    private bool IsStartupUiStableForDeferredWork()
     {
-        if (_panelNavigationService != null)
+        var probeActive = _uiProbeStartUtc != default && _uiResponsivenessProbeTimer != null;
+        var stabilityOriginUtc = probeActive
+            ? _uiProbeStartUtc
+            : _mainInitializationStabilityCheckStartedUtc;
+
+        if (stabilityOriginUtc == default)
+        {
+            return false;
+        }
+
+        var uptime = DateTime.UtcNow - stabilityOriginUtc;
+        if (uptime < StartupUiStabilityMinUptime)
+        {
+            return false;
+        }
+
+        // In UI test/runtime harnesses the responsiveness probe may be disabled.
+        // In that case we still allow deferred initialization once a minimum uptime has elapsed.
+        if (!probeActive)
+        {
+            return true;
+        }
+
+        // Treat sustained probe failures as unstable, but allow isolated transient spikes.
+        if (Volatile.Read(ref _uiProbeConsecutiveTimeoutCount) >= 2)
+        {
+            return false;
+        }
+
+        var sequence = Interlocked.Read(ref _uiProbeSequence);
+        var ack = Interlocked.Read(ref _uiProbeAckSequence);
+
+        if (sequence == 0)
+        {
+            return false;
+        }
+
+        return sequence <= ack + 1;
+    }
+
+    private void QueueDeferredMainFormInitialization()
+    {
+        if (Interlocked.Exchange(ref _deferredMainInitializationQueued, 1) == 1)
         {
             return;
         }
 
-        InitializeLayoutComponents();
-
-        if (_serviceProvider == null)
+        if (IsDisposed || Disposing)
         {
-            throw new InvalidOperationException("Service provider unavailable.");
+            return;
         }
 
-        var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-            .GetService<Microsoft.Extensions.Logging.ILogger<PanelNavigationService>>(_serviceProvider);
+        _mainInitializationStabilityCheckStartedUtc = DateTime.UtcNow;
 
-        _panelNavigationService = new PanelNavigationService(
-            owner: this,
-            serviceProvider: _serviceProvider,
-            logger: navLogger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PanelNavigationService>.Instance);
-
-        if (_tabbedMdi != null)
+        _deferredMainInitializationTimer?.Stop();
+        _deferredMainInitializationTimer?.Dispose();
+        _deferredMainInitializationTimer = new System.Windows.Forms.Timer { Interval = 350 };
+        _deferredMainInitializationTimer.Tick += (_, _) =>
         {
-            _panelNavigationService.SetTabbedManager(_tabbedMdi);
-            _logger?.LogDebug("TabbedMDIManager wired");
+            if (IsDisposed || Disposing)
+            {
+                _deferredMainInitializationTimer?.Stop();
+                _deferredMainInitializationTimer?.Dispose();
+                _deferredMainInitializationTimer = null;
+                return;
+            }
+
+            var stabilityWait = DateTime.UtcNow - _mainInitializationStabilityCheckStartedUtc;
+            var timedOutWaitingForStability = stabilityWait >= MainInitializationMaxStabilityWait;
+            if (!IsStartupUiStableForDeferredWork() && !timedOutWaitingForStability)
+            {
+                return;
+            }
+
+            if (timedOutWaitingForStability)
+            {
+                _logger?.LogWarning(
+                    "Deferred MainForm.InitializeAsync starting after stability wait timeout ({WaitSeconds}s). ProbeActive={ProbeActive}, ProbeSequence={ProbeSequence}, ProbeAck={ProbeAck}, ConsecutiveTimeouts={ConsecutiveTimeouts}.",
+                    MainInitializationMaxStabilityWait.TotalSeconds,
+                    _uiProbeStartUtc != default && _uiResponsivenessProbeTimer != null,
+                    Interlocked.Read(ref _uiProbeSequence),
+                    Interlocked.Read(ref _uiProbeAckSequence),
+                    Volatile.Read(ref _uiProbeConsecutiveTimeoutCount));
+            }
+
+            _deferredMainInitializationTimer?.Stop();
+            _deferredMainInitializationTimer?.Dispose();
+            _deferredMainInitializationTimer = null;
+
+            try
+            {
+                _ = InitializeAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Deferred MainForm.InitializeAsync scheduling failed");
+            }
+        };
+
+        _deferredMainInitializationTimer.Start();
+    }
+
+    private void QueueDeferredJarvisStartupOpen()
+    {
+        if (IsDisposed || Disposing)
+        {
+            return;
         }
 
-        _panelNavigator = _panelNavigationService;
+        _jarvisAutoOpenStabilityCheckStartedUtc = DateTime.UtcNow;
+
+        _deferredJarvisAutoOpenTimer?.Stop();
+        _deferredJarvisAutoOpenTimer?.Dispose();
+        _deferredJarvisAutoOpenTimer = new System.Windows.Forms.Timer { Interval = 500 };
+        _deferredJarvisAutoOpenTimer.Tick += (_, _) =>
+        {
+            if (IsDisposed || Disposing)
+            {
+                _deferredJarvisAutoOpenTimer?.Stop();
+                _deferredJarvisAutoOpenTimer?.Dispose();
+                _deferredJarvisAutoOpenTimer = null;
+                return;
+            }
+
+            var stabilityWait = DateTime.UtcNow - _jarvisAutoOpenStabilityCheckStartedUtc;
+            if (IsStartupUiStableForDeferredWork())
+            {
+                _deferredJarvisAutoOpenTimer?.Stop();
+                _deferredJarvisAutoOpenTimer?.Dispose();
+                _deferredJarvisAutoOpenTimer = null;
+
+                TryOpenJarvisStartupPanel();
+                return;
+            }
+
+            if (stabilityWait >= JarvisAutoOpenMaxStabilityWait)
+            {
+                _deferredJarvisAutoOpenTimer?.Stop();
+                _deferredJarvisAutoOpenTimer?.Dispose();
+                _deferredJarvisAutoOpenTimer = null;
+
+                _logger?.LogInformation(
+                    "Proceeding with startup JARVIS auto-open after UI stability wait timeout ({WaitSeconds}s).",
+                    JarvisAutoOpenMaxStabilityWait.TotalSeconds);
+
+                TryOpenJarvisStartupPanel();
+            }
+        };
+
+        _deferredJarvisAutoOpenTimer.Start();
+    }
+
+    private void InitializeStartupNavigation()
+    {
+        _ = EnsurePanelNavigationServiceInitialized("InitializeStartupNavigation");
+        TraceLayoutSnapshot("InitializeStartupNavigation.Complete");
     }
 
     private void LoadPrimaryDashboardPanel()
@@ -908,6 +1091,7 @@ public partial class MainForm
             panelName: "Enterprise Vital Signs",
             preferredStyle: DockingStyle.Fill,
             allowFloating: false);
+        TraceLayoutSnapshot("LoadPrimaryDashboardPanel.AfterShow");
         _logger?.LogDebug("Enterprise Vital Signs loaded in {ElapsedMs}ms", panelSw.ElapsedMilliseconds);
     }
 
@@ -918,34 +1102,51 @@ public partial class MainForm
             return;
         }
 
-        if (!ShouldAutoOpenJarvisOnStartup() || !EnsureRightDockPanelInitialized())
+        if (!ShouldAutoOpenJarvisOnStartup())
         {
             return;
         }
 
-        var jarvisTab = FindRightDockTab("RightDockTab_JARVIS");
-        if (jarvisTab != null && _rightDockTabs != null)
+        if (_jarvisStartupAutoOpenCompleted)
         {
-            _rightDockTabs.SelectedTab = jarvisTab;
+            return;
         }
 
-        if (_rightDockPanel != null)
+        if (!ShowJarvisInRightDock())
         {
-            _rightDockPanel.Visible = true;
-            _rightDockPanel.BringToFront();
+            _logger?.LogWarning("Startup JARVIS auto-open requested but ShowJarvisInRightDock returned false");
+            return;
         }
+
+        _jarvisStartupAutoOpenCompleted = true;
     }
 
     private bool ShouldAutoLoadPrimaryPanelOnStartup()
     {
         if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
         {
-            return true;
+            return _uiConfig.AutoShowDashboard;
         }
 
         var preloadPrimaryPanel = Environment.GetEnvironmentVariable("WILEYWIDGET_PRELOAD_PRIMARY_PANEL");
         return string.Equals(preloadPrimaryPanel, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(preloadPrimaryPanel, "1", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldAutoOpenBudgetOnStartup()
+    {
+        var openBudget = Environment.GetEnvironmentVariable("WILEYWIDGET_AUTO_OPEN_BUDGET");
+        if (string.Equals(openBudget, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(openBudget, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(openBudget, "yes", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var runDiagnostics = Environment.GetEnvironmentVariable("WILEYWIDGET_RUN_BUDGET_TEST");
+        return string.Equals(runDiagnostics, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(runDiagnostics, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(runDiagnostics, "yes", StringComparison.OrdinalIgnoreCase);
     }
 
     private void QueueOnShownStartupWorkflow(CancellationToken cancellationToken)
@@ -986,27 +1187,9 @@ public partial class MainForm
             await Task.Yield();
             cancellationToken.ThrowIfCancellationRequested();
 
-            // ── 2. Create the navigation service (this was the missing piece!)
+            // ── 2. Create the navigation service via the canonical initializer.
             var navServiceStopwatch = System.Diagnostics.Stopwatch.StartNew();
-            var navLogger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-                .GetService<Microsoft.Extensions.Logging.ILogger<PanelNavigationService>>(_serviceProvider);
-
-            _panelNavigationService = new PanelNavigationService(
-                owner: this,
-                serviceProvider: _serviceProvider,
-                logger: navLogger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<PanelNavigationService>.Instance);
-
-            // If you're using the beautiful TabbedMDIManager layout (recommended for modern look)
-            if (_tabbedMdi != null)
-            {
-                _panelNavigationService.SetTabbedManager(_tabbedMdi);
-                _logger?.LogDebug("TabbedMDIManager wired to PanelNavigationService");
-            }
-
-            // Synchronise _panelNavigator (used by Navigation.cs ShowPanel<T>/ShowForm<T>/ClosePanel)
-            // with the concrete instance created here, so that both fields always share the same
-            // PanelNavigationService and no second instance is lazily constructed on first navigation.
-            _panelNavigator = _panelNavigationService;
+            _ = EnsurePanelNavigationServiceInitialized("OnShownStartupWorkflow");
 
             navServiceStopwatch.Stop();
             _logger?.LogDebug("OnShown Phase 2 (Navigation service setup) in {ElapsedMs}ms", navServiceStopwatch.ElapsedMilliseconds);
@@ -1031,53 +1214,6 @@ public partial class MainForm
             // to time out because the outer lambda exited before the inner lambda even queued on
             // the UI thread, leaving panels invisible to UI Automation for 30-90 s per test.
             QueueDeferredPrimaryPanelLoad(cancellationToken);
-
-            // Defer secondary panel even further to reduce startup thrash
-            BeginInvoke((MethodInvoker)(() =>
-            {
-                try
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    if (_panelNavigationService == null || IsDisposed || Disposing)
-                    {
-                        return;
-                    }
-
-                    if (!ShouldAutoOpenJarvisOnStartup())
-                    {
-                        _logger?.LogDebug("OnShown deferred phase: JARVIS Chat auto-open skipped");
-                        return;
-                    }
-
-                    if (!EnsureRightDockPanelInitialized())
-                    {
-                        _logger?.LogWarning("OnShown deferred phase: right dock panel unavailable; JARVIS auto-show skipped");
-                        return;
-                    }
-
-                    var jarvisTab = FindRightDockTab("RightDockTab_JARVIS");
-                    if (jarvisTab != null && _rightDockTabs != null && !ReferenceEquals(_rightDockTabs.SelectedTab, jarvisTab))
-                    {
-                        _rightDockTabs.SelectedTab = jarvisTab;
-                    }
-
-                    if (_rightDockPanel != null)
-                    {
-                        _rightDockPanel.Visible = true;
-                        _rightDockPanel.BringToFront();
-                    }
-
-                    _logger?.LogDebug("OnShown deferred phase: JARVIS Chat auto-show confirmed via right dock tab selection");
-                }
-                catch (Exception deferredEx)
-                {
-                    _logger?.LogWarning(deferredEx, "Failed to open deferred JARVIS Chat panel during OnShown");
-                }
-            }));
 
             // Req 5 (IAsyncInitializable): call InitializeAsync after panels are deferred.
             // Handles theme propagation, visibility notifications, and nav-strip hardening.
@@ -1107,6 +1243,22 @@ public partial class MainForm
                     CancellationToken.None,
                     TaskContinuationOptions.OnlyOnRanToCompletion,
                     TaskScheduler.FromCurrentSynchronizationContext());
+
+                // Final safety net: retry only if the canonical deferred startup open has not succeeded.
+                if (ShouldAutoOpenJarvisOnStartup() && !_jarvisStartupAutoOpenCompleted)
+                {
+                    BeginInvoke((MethodInvoker)(() =>
+                    {
+                        try
+                        {
+                            QueueDeferredJarvisStartupOpen();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogDebug(ex, "Deferred post-initialize JARVIS startup requeue failed");
+                        }
+                    }));
+                }
             }));
 
             _logger?.LogInformation("✅ SUCCESS — OnShown completed, panels loading asynchronously for faster startup");
@@ -1179,6 +1331,7 @@ public partial class MainForm
                 panelName: "Enterprise Vital Signs",
                 preferredStyle: DockingStyle.Fill,
                 allowFloating: false);
+            TraceLayoutSnapshot("DeferredPrimaryPanel.AfterShow");
 
             primaryPanelStopwatch.Stop();
             _logger?.LogDebug("Deferred Phase 3a (Enterprise Vital Signs) in {ElapsedMs}ms", primaryPanelStopwatch.ElapsedMilliseconds);
@@ -1202,6 +1355,7 @@ public partial class MainForm
                     panelName: "Enterprise Vital Signs",
                     preferredStyle: DockingStyle.Fill,
                     allowFloating: false);
+                TraceLayoutSnapshot("DeferredPrimaryPanel.AfterRetryShow");
             }
             catch (Exception retryEx)
             {
@@ -1239,7 +1393,7 @@ public partial class MainForm
 
     private void CancelOnShownStartupWorkflow()
     {
-        CompleteDeferredStartupUiPhases();
+        CompleteDeferredStartupUiPhases(cancelDeferredWork: true);
 
         _onShownStartupCts?.Cancel();
         _onShownStartupCts?.Dispose();
@@ -1248,20 +1402,6 @@ public partial class MainForm
 
     private bool ShouldAutoOpenJarvisOnStartup()
     {
-        if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
-        {
-            // Allow an explicit test override to auto-open JARVIS during UI automation runs.
-            // Tests may set WILEYWIDGET_UI_AUTOMATION_JARVIS=true to force the panel open
-            var jarvisAuto = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS");
-            if (string.Equals(jarvisAuto, "true", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: Jarvis automation override detected; auto-opening JARVIS for UI automation");
-                return true;
-            }
-
-            return false;
-        }
-
         var disableAutoOpen = Environment.GetEnvironmentVariable("WILEYWIDGET_DISABLE_STARTUP_JARVIS");
         if (string.Equals(disableAutoOpen, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(disableAutoOpen, "1", StringComparison.OrdinalIgnoreCase))
@@ -1272,11 +1412,45 @@ public partial class MainForm
         var forceAutoOpen = Environment.GetEnvironmentVariable("WILEYWIDGET_AUTO_OPEN_JARVIS");
         var shouldForceAutoOpen = string.Equals(forceAutoOpen, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(forceAutoOpen, "1", StringComparison.OrdinalIgnoreCase);
+        var shouldForceDisableAutoOpen = string.Equals(forceAutoOpen, "false", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(forceAutoOpen, "0", StringComparison.OrdinalIgnoreCase);
 
-        if (!shouldForceAutoOpen)
+        if (shouldForceDisableAutoOpen)
         {
-            _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: defaulting to disabled for responsive startup (set WILEYWIDGET_AUTO_OPEN_JARVIS=true to enable)");
+            _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: explicit WILEYWIDGET_AUTO_OPEN_JARVIS=false override detected");
             return false;
+        }
+
+        if (shouldForceAutoOpen)
+        {
+            _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: explicit WILEYWIDGET_AUTO_OPEN_JARVIS=true override detected");
+            return true;
+        }
+
+        if (_uiConfig.IsUiTestHarness || IsUiTestEnvironment())
+        {
+            // Allow an explicit test override to auto-open JARVIS during UI automation runs.
+            // Tests may set WILEYWIDGET_UI_AUTOMATION_JARVIS=true to force the panel open.
+            var jarvisAuto = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS");
+            if (string.Equals(jarvisAuto, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger?.LogDebug("ShouldAutoOpenJarvisOnStartup: Jarvis automation override detected; auto-opening JARVIS for UI automation");
+                return true;
+            }
+
+            return false;
+        }
+
+        // For normal interactive runs, keep the startup surface centered on the primary panel.
+        // JARVIS remains available in the right dock, but only auto-opens when explicitly
+        // requested via environment override or UI automation.
+        if (!_jarvisAutoOpenPolicyLogged)
+        {
+            _logger?.LogInformation(
+                "ShouldAutoOpenJarvisOnStartup: defaulting to disabled for normal startup (AutoShowPanels={AutoShowPanels}, MinimalMode={MinimalMode})",
+                _uiConfig.AutoShowPanels,
+                _uiConfig.MinimalMode);
+            _jarvisAutoOpenPolicyLogged = true;
         }
 
         // Microsoft.WinForms.Utilities.Shared.dll is a transitive dependency of BlazorWebView
@@ -1286,15 +1460,19 @@ public partial class MainForm
         var winFormsUtilitiesSharedPath = Path.Combine(AppContext.BaseDirectory, "Microsoft.WinForms.Utilities.Shared.dll");
         if (!File.Exists(winFormsUtilitiesSharedPath))
         {
-            _logger?.LogDebug(
-                "Optional JARVIS dependency not found: {DependencyPath}. " +
-                "JARVIS Assistant may not function correctly if BlazorWebView is unavailable. " +
-                "Ensure Visual Studio with .NET Desktop workload is installed for full functionality.",
-                winFormsUtilitiesSharedPath);
+            if (!_jarvisDependencyMissingLogged)
+            {
+                _logger?.LogDebug(
+                    "Optional JARVIS dependency not found: {DependencyPath}. " +
+                    "JARVIS Assistant may not function correctly if BlazorWebView is unavailable. " +
+                    "Ensure Visual Studio with .NET Desktop workload is installed for full functionality.",
+                    winFormsUtilitiesSharedPath);
+                _jarvisDependencyMissingLogged = true;
+            }
             // Don't block startup - allow JARVIS to attempt initialization and fail gracefully if needed
         }
 
-        return true;
+        return false;
     }
 
     private bool ShouldRunStartupFadeIn()
@@ -1397,55 +1575,63 @@ public partial class MainForm
     // NEW: Safe initialization (called automatically in real app, manually in tests)
     private void InitializeLayoutComponents()
     {
+        TraceLayoutSnapshot("InitializeLayoutComponents.Enter");
+
         var preloadRightDock = Environment.GetEnvironmentVariable("WILEYWIDGET_PRELOAD_RIGHT_DOCK");
         var shouldPreloadRightDock = string.Equals(preloadRightDock, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(preloadRightDock, "1", StringComparison.OrdinalIgnoreCase);
+        var requireRightDockFactory = string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_REQUIRE_RIGHT_DOCK_FACTORY"), "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_REQUIRE_RIGHT_DOCK_FACTORY"), "1", StringComparison.OrdinalIgnoreCase);
 
         // Microsoft UI-thread guidance recommends keeping startup callbacks short and deferring
         // non-essential work. The right dock (Activity Log + JARVIS composition) is expensive,
         // so we lazy-load it on first explicit use unless prewarm is explicitly requested.
-        if (shouldPreloadRightDock && _serviceProvider != null)
+        // NOTE: Right dock now has a single canonical lifecycle via EnsureRightDockPanelInitialized().
+        // We no longer create a temporary placeholder panel in this method.
+        if (requireRightDockFactory && _serviceProvider == null)
+        {
+            throw new InvalidOperationException("InitializeLayoutComponents: right dock factory is required but service provider is unavailable.");
+        }
+
+        if ((shouldPreloadRightDock || requireRightDockFactory) && _serviceProvider != null)
         {
             try
             {
                 var initialized = EnsureRightDockPanelInitialized();
                 if (initialized)
                 {
-                    _logger?.LogDebug("InitializeLayoutComponents: preloaded real right dock panel via factory (WILEYWIDGET_PRELOAD_RIGHT_DOCK enabled)");
+                    _logger?.LogDebug("InitializeLayoutComponents: preloaded real right dock panel via factory");
                 }
                 else
                 {
-                    _logger?.LogWarning("InitializeLayoutComponents: right dock prewarm requested but initialization returned false — using temporary panel");
+                    if (requireRightDockFactory)
+                    {
+                        throw new InvalidOperationException("InitializeLayoutComponents: right dock factory is required but initialization returned false.");
+                    }
+
+                    _logger?.LogWarning("InitializeLayoutComponents: right dock prewarm requested but initialization returned false — deferring to on-demand initialization");
                 }
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "InitializeLayoutComponents: right dock prewarm failed — using temporary panel");
+                _logger?.LogError(ex, "InitializeLayoutComponents: right dock prewarm failed");
+                if (requireRightDockFactory)
+                {
+                    throw;
+                }
+
                 _rightDockPanel = null;
                 _rightDockTabs = null;
                 _rightDockJarvisPanel = null;
             }
         }
 
-        // Temporary right-dock panel: used when DI is absent (tests) OR when the factory threw above.
-        // The catch block resets _rightDockPanel to null so this condition catches both cases.
-        if (_rightDockPanel == null || _rightDockPanel.IsDisposed)
+        if (!shouldPreloadRightDock && !requireRightDockFactory)
         {
-            var jarvisPanel = new Panel
-            {
-                Name = "JarvisPanel",
-                Tag = "Jarvis",
-                Width = 500,
-                Dock = DockStyle.Right,
-                MinimumSize = new Size(350, 0),
-                MaximumSize = new Size(0, 0),   // 0,0 = no maximum constraint
-            };
-            _rightDockPanel = jarvisPanel;
-            var host = (_contentHostPanel as Control) ?? (Control)this;
-            host.Controls.Add(jarvisPanel);
-            _logger?.LogDebug("InitializeLayoutComponents: temporary right dock panel added to {Host} (factory unavailable or failed)", host.Name);
+            _logger?.LogInformation("InitializeLayoutComponents: right dock deferred for lazy initialization. Set WILEYWIDGET_PRELOAD_RIGHT_DOCK=true to prewarm or WILEYWIDGET_REQUIRE_RIGHT_DOCK_FACTORY=true to fail fast in diagnostics/CI.");
         }
 
         InitializeMDIManager();
+        TraceLayoutSnapshot("InitializeLayoutComponents.Complete");
     }
 }

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
@@ -15,7 +14,23 @@ namespace WileyWidget.WinForms.Services.AI
     /// </summary>
     public static class KernelPluginRegistrar
     {
-        private static readonly Lazy<MethodInfo?> ImportPluginFromObjectMethod = new(ResolveImportPluginFromObjectMethod);
+        public static void ImportPluginsFromTypes(Kernel kernel, IEnumerable<Type> pluginTypes, ILogger? logger = null, IServiceProvider? serviceProvider = null)
+        {
+            if (kernel == null) throw new ArgumentNullException(nameof(kernel));
+            if (pluginTypes == null) throw new ArgumentNullException(nameof(pluginTypes));
+
+            foreach (var pluginType in pluginTypes.Where(IsKernelPluginType).Distinct())
+            {
+                try
+                {
+                    ImportPluginFromType(kernel, pluginType, logger, serviceProvider);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "Failed to register kernel plugin from type {Type}", pluginType.FullName);
+                }
+            }
+        }
 
         public static void ImportPluginsFromAssemblies(Kernel kernel, IEnumerable<Assembly> assemblies, ILogger? logger = null, IServiceProvider? serviceProvider = null)
         {
@@ -56,17 +71,7 @@ namespace WileyWidget.WinForms.Services.AI
 
                 logger?.LogDebug("Found {Count} plugin type(s) in assembly {Assembly}", pluginTypes.Count, assembly.FullName);
 
-                foreach (var pluginType in pluginTypes)
-                {
-                    try
-                    {
-                        ImportPluginFromType(kernel, pluginType, logger, serviceProvider);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.LogWarning(ex, "Failed to register kernel plugin from type {Type}", pluginType.FullName);
-                    }
-                }
+                ImportPluginsFromTypes(kernel, pluginTypes, logger, serviceProvider);
             }
         }
 
@@ -111,117 +116,8 @@ namespace WileyWidget.WinForms.Services.AI
                 return;
             }
 
-            var importMethodDefinition = ImportPluginFromObjectMethod.Value;
-            if (importMethodDefinition == null)
-            {
-                logger?.LogWarning("Could not locate Semantic Kernel ImportPluginFromObject API; plugin {PluginName} will not be registered", pluginName);
-                return;
-            }
-
-            var importMethod = importMethodDefinition;
-            if (importMethod.IsGenericMethodDefinition)
-            {
-                // Common shape in some SK versions: ImportPluginFromObject<T>(this Kernel kernel, T plugin, ...)
-                importMethod = importMethod.MakeGenericMethod(pluginType);
-            }
-
-            var parameters = importMethod.GetParameters();
-
-            // Expected extension shape: ImportPluginFromObject(this Kernel kernel, object plugin, string? pluginName = null)
-            // Some SK versions omit pluginName; call the best matching overload we found.
-            object? result;
-            if (parameters.Length >= 3 && parameters[2].ParameterType == typeof(string))
-            {
-                result = importMethod.Invoke(null, new object?[] { kernel, pluginInstance, pluginName });
-            }
-            else
-            {
-                result = importMethod.Invoke(null, new object?[] { kernel, pluginInstance });
-            }
-
-            _ = result;
+            kernel.ImportPluginFromObject(pluginInstance, pluginName);
             logger?.LogInformation("Registered kernel plugin {PluginName} from type {Type}", pluginName, pluginType.FullName);
-        }
-
-        private static MethodInfo? ResolveImportPluginFromObjectMethod()
-        {
-            try
-            {
-                // In SK 1.16, many public extension APIs live in Microsoft.SemanticKernel.Core / Abstractions,
-                // while Microsoft.SemanticKernel.dll may just be a facade assembly.
-                // Scan only loaded Semantic Kernel assemblies (not the full AppDomain).
-                var skAssemblies = AppDomain.CurrentDomain
-                    .GetAssemblies()
-                    .Where(a => a != null && !a.IsDynamic)
-                    .Where(a => (a.GetName().Name ?? string.Empty).StartsWith("Microsoft.SemanticKernel", StringComparison.Ordinal))
-                    .Distinct()
-                    .ToList();
-
-                // Prefer a non-generic overload with (Kernel, object, string?) if present.
-                MethodInfo? bestWithoutName = null;
-
-                foreach (var assembly in skAssemblies)
-                {
-                    Type[] types;
-                    try
-                    {
-                        types = assembly.GetTypes();
-                    }
-                    catch (ReflectionTypeLoadException ex)
-                    {
-                        types = ex.Types.Where(t => t != null).ToArray()!;
-                    }
-
-                    foreach (var type in types)
-                    {
-                        if (type == null) continue;
-                        if (!type.IsSealed || !type.IsAbstract) continue;
-
-                        foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-                        {
-                            if (!string.Equals(method.Name, "ImportPluginFromObject", StringComparison.Ordinal))
-                            {
-                                continue;
-                            }
-
-                            if (!method.IsDefined(typeof(ExtensionAttribute), inherit: false))
-                            {
-                                continue;
-                            }
-
-                            var parameters = method.GetParameters();
-                            if (parameters.Length < 2)
-                            {
-                                continue;
-                            }
-
-                            if (parameters[0].ParameterType != typeof(Kernel))
-                            {
-                                continue;
-                            }
-
-                            // The plugin parameter may be `object` or a generic parameter (ImportPluginFromObject<T>).
-                            if (parameters[1].ParameterType != typeof(object) && !parameters[1].ParameterType.IsGenericParameter)
-                            {
-                                continue;
-                            }
-
-                            if (parameters.Length >= 3 && parameters[2].ParameterType == typeof(string))
-                            {
-                                return method;
-                            }
-
-                            bestWithoutName ??= method;
-                        }
-                    }
-                }
-
-                return bestWithoutName;
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         private static bool IsKernelPluginType(Type? type)

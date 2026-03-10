@@ -12,6 +12,7 @@ using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Forms;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Services
 {
@@ -181,7 +182,7 @@ namespace WileyWidget.WinForms.Services
 
                     // Apply theme to ensure Syncfusion cascade (best practice: SetVisualStyle post-creation)
                     var themeService = _serviceProvider.GetService(typeof(IThemeService)) as IThemeService;
-                    var themeName = themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                    var themeName = themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
                     SfSkinManager.SetVisualStyle(panel, themeName);
                     _logger?.LogDebug("[PANEL_NAV] Applied theme '{ThemeName}' to panel '{PanelName}'", themeName, panelName);
 
@@ -420,6 +421,11 @@ namespace WileyWidget.WinForms.Services
                 if (!ReferenceEquals(host.MdiParent, _owner))
                 {
                     host.MdiParent = _owner;
+                }
+
+                if (!host.Visible && ShouldMaximizeMdiHost(preferredStyle) && host.WindowState != FormWindowState.Maximized)
+                {
+                    host.WindowState = FormWindowState.Maximized;
                 }
 
                 if (!host.Visible)
@@ -852,6 +858,11 @@ namespace WileyWidget.WinForms.Services
                         TryInitializeAsyncPanel(hostedPanel, host.Text);
                         EnsureControlVisibleAndLaidOut(hostedPanel);
                     }
+
+                    if (_owner is MainForm mainForm)
+                    {
+                        mainForm.RefreshPanelHostLayout("PanelNavigationService.DeferredPostShowLayout");
+                    }
                 }));
             }
             catch
@@ -901,8 +912,22 @@ namespace WileyWidget.WinForms.Services
 
             if (!_owner.IsMdiContainer)
             {
-                _logger.LogError("[PANEL_NAV] CreateMDIChild: owner is not an MDI container for '{PanelName}'.", panelName);
-                throw new InvalidOperationException($"Owner form must be an MDI container before showing panel '{panelName}'.");
+                _logger.LogWarning("[PANEL_NAV] CreateMDIChild: owner not in MDI mode for '{PanelName}' - attempting recovery.", panelName);
+
+                try
+                {
+                    _owner.IsMdiContainer = true;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[PANEL_NAV] Failed to enable IsMdiContainer for '{PanelName}'.", panelName);
+                }
+
+                if (!_owner.IsMdiContainer)
+                {
+                    _logger.LogError("[PANEL_NAV] CreateMDIChild: owner is not an MDI container for '{PanelName}'.", panelName);
+                    throw new InvalidOperationException($"Owner form must be an MDI container before showing panel '{panelName}'.");
+                }
             }
 
             // All CreateParams-affecting properties (ShowInTaskbar, FormBorderStyle, etc.)
@@ -932,7 +957,7 @@ namespace WileyWidget.WinForms.Services
 
             // Apply theme — SfSkinManager handles pre-handle state gracefully.
             var currentTheme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme
-                ?? "Office2019Colorful";
+                ?? ThemeColors.DefaultTheme;
             Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(mdiChild, currentTheme);
 
             _logger.LogDebug("[PANEL_NAV] MDI child created for '{PanelName}' (IsMdiChild={IsMdiChild})", panelName, mdiChild.IsMdiChild);
