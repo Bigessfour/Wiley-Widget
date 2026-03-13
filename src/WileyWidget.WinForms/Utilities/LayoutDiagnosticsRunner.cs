@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -18,6 +20,7 @@ using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
 using WinFormsLazyLoadViewModel = WileyWidget.WinForms.ViewModels.ILazyLoadViewModel;
@@ -37,6 +40,16 @@ namespace WileyWidget.WinForms.Utilities
         public int StabilizationTimeoutMs { get; init; } = 2500;
 
         public int StabilitySampleCount { get; init; } = 3;
+
+        public bool EnablePixelProof { get; init; } = true;
+
+        public bool CapturePixelProofScreenshots { get; init; } = true;
+
+        public string PixelProofScreenshotDirectory { get; init; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "diagnostics");
+
+        public int PixelProofSampleStride { get; init; } = 4;
+
+        public int PixelProofBackgroundTolerance { get; init; } = 8;
     }
 
     public sealed class PanelLayoutIssue
@@ -63,6 +76,44 @@ namespace WileyWidget.WinForms.Utilities
         public string Recommendation { get; init; } = string.Empty;
 
         public string Evidence { get; init; } = string.Empty;
+    }
+
+    public sealed class PanelChecklistItem
+    {
+        public string Section { get; init; } = string.Empty;
+
+        public string CheckId { get; init; } = string.Empty;
+
+        public string Title { get; init; } = string.Empty;
+
+        public string Status { get; init; } = string.Empty;
+
+        public string Evidence { get; init; } = string.Empty;
+
+        public string Recommendation { get; init; } = string.Empty;
+
+        public string Source { get; init; } = "docs/WileyWidgetUIStandards.md";
+    }
+
+    public sealed class PanelChecklistSummary
+    {
+        public const string CurrentVersion = "2026-03-10";
+
+        public string Version { get; init; } = CurrentVersion;
+
+        public int Score { get; init; }
+
+        public int Passed { get; init; }
+
+        public int Failed { get; init; }
+
+        public int ManualReview { get; init; }
+
+        public int NotApplicable { get; init; }
+
+        public string Summary { get; init; } = string.Empty;
+
+        public IReadOnlyList<PanelChecklistItem> Items { get; init; } = Array.Empty<PanelChecklistItem>();
     }
 
     public sealed class TokenFootprintSummary
@@ -101,9 +152,15 @@ namespace WileyWidget.WinForms.Utilities
 
         public bool MeaningfulContentDetected { get; init; }
 
+        public int VisualScore { get; init; }
+
+        public string VisualSummary { get; init; } = string.Empty;
+
         public int PolishScore { get; init; }
 
         public string PolishSummary { get; init; } = string.Empty;
+
+        public string? ScreenshotPath { get; init; }
 
         public Size ClientSize { get; init; }
 
@@ -127,7 +184,11 @@ namespace WileyWidget.WinForms.Utilities
 
         public IReadOnlyList<PanelLayoutIssue> Issues { get; init; } = Array.Empty<PanelLayoutIssue>();
 
+        public IReadOnlyList<PanelPolishFinding> VisualFindings { get; init; } = Array.Empty<PanelPolishFinding>();
+
         public IReadOnlyList<PanelPolishFinding> PolishFindings { get; init; } = Array.Empty<PanelPolishFinding>();
+
+        public PanelChecklistSummary Checklist { get; init; } = new();
 
         public string? Error { get; init; }
     }
@@ -135,6 +196,8 @@ namespace WileyWidget.WinForms.Utilities
     public sealed class LayoutDiagnosticsReport
     {
         public DateTimeOffset GeneratedAtUtc { get; init; }
+
+        public string ChecklistVersion { get; init; } = PanelChecklistSummary.CurrentVersion;
 
         public string ThemeName { get; init; } = string.Empty;
 
@@ -156,11 +219,26 @@ namespace WileyWidget.WinForms.Utilities
 
         public double AverageLeafWhitespacePercent { get; init; }
 
+        public double AverageVisualScore { get; init; }
+
+        public double AverageChecklistScore { get; init; }
+
+        public int PanelsWithVisualFailures { get; init; }
+
+        public int PanelsWithChecklistFailures { get; init; }
+
         public IReadOnlyList<TokenFootprintSummary> AggregateTokenFootprint { get; init; } = Array.Empty<TokenFootprintSummary>();
 
         public IReadOnlyList<LayoutTokenRecommendation> Recommendations { get; init; } = Array.Empty<LayoutTokenRecommendation>();
 
         public IReadOnlyList<PanelLayoutDiagnostic> Panels { get; init; } = Array.Empty<PanelLayoutDiagnostic>();
+    }
+
+    internal sealed class PixelProofCaptureResult
+    {
+        public string? ScreenshotPath { get; init; }
+
+        public IReadOnlyList<PanelLayoutIssue> Issues { get; init; } = Array.Empty<PanelLayoutIssue>();
     }
 
     public static class LayoutDiagnosticsRunner
@@ -173,7 +251,8 @@ namespace WileyWidget.WinForms.Utilities
         private static readonly TokenPattern[] PaddingPatterns =
         {
             TokenPattern.ForPadding("PanelPadding", "LayoutTokens.PanelPadding", new Padding(LayoutTokens.PanelPadding)),
-            TokenPattern.ForPadding("UniformPadding8", "LayoutTokens.ContentInnerPadding | LayoutTokens.PanelPaddingCompact", LayoutTokens.ContentInnerPadding),
+            TokenPattern.ForPadding("UniformPadding6", "LayoutTokens.ContentInnerPadding", LayoutTokens.ContentInnerPadding),
+            TokenPattern.ForPadding("UniformPadding8", "LayoutTokens.PanelPaddingCompact", LayoutTokens.PanelPaddingCompact),
             TokenPattern.ForPadding("SectionPanelPadding", "LayoutTokens.SectionPanelPadding", LayoutTokens.SectionPanelPadding),
             TokenPattern.ForPadding("PanelPaddingTight", "LayoutTokens.PanelPaddingTight", LayoutTokens.PanelPaddingTight),
             TokenPattern.ForPadding("PanelPaddingSpacious", "LayoutTokens.PanelPaddingSpacious", LayoutTokens.PanelPaddingSpacious),
@@ -204,6 +283,8 @@ namespace WileyWidget.WinForms.Utilities
             "variance",
         };
 
+
+        private sealed record FieldThemeSnapshot(Control Control, string Category, string ThemeName, Color BackColor, Color ForeColor, string Signature);
         public static string RunAllPanelsAsJson()
         {
             return JsonSerializer.Serialize(RunAllPanels(), JsonOptions);
@@ -267,6 +348,7 @@ namespace WileyWidget.WinForms.Utilities
             return new LayoutDiagnosticsReport
             {
                 GeneratedAtUtc = DateTimeOffset.UtcNow,
+                ChecklistVersion = PanelChecklistSummary.CurrentVersion,
                 ThemeName = options.ThemeName,
                 SimulatedScale = options.SimulatedScale,
                 LogicalClientSize = options.LogicalClientSize,
@@ -277,6 +359,10 @@ namespace WileyWidget.WinForms.Utilities
                 PanelsInconclusive = successfulPanels.Count - meaningfulPanels.Count,
                 AverageTopLevelWhitespacePercent = Round(meaningfulPanels.Select(panel => panel.TopLevelWhitespacePercent).DefaultIfEmpty(0d).Average()),
                 AverageLeafWhitespacePercent = Round(meaningfulPanels.Select(panel => panel.LeafWhitespacePercent).DefaultIfEmpty(0d).Average()),
+                AverageVisualScore = Round(meaningfulPanels.Select(panel => (double)panel.VisualScore).DefaultIfEmpty(0d).Average()),
+                AverageChecklistScore = Round(successfulPanels.Select(panel => (double)panel.Checklist.Score).DefaultIfEmpty(0d).Average()),
+                PanelsWithVisualFailures = successfulPanels.Count(panel => panel.VisualFindings.Count > 0),
+                PanelsWithChecklistFailures = successfulPanels.Count(panel => panel.Checklist.Failed > 0),
                 AggregateTokenFootprint = aggregateFootprint,
                 Recommendations = BuildRecommendations(aggregateFootprint),
                 Panels = diagnostics
@@ -295,11 +381,12 @@ namespace WileyWidget.WinForms.Utilities
             try
             {
                 panel = CreatePanelInstance(serviceProvider, panelType);
+                ConfigureSpecialHostPanels(serviceProvider, panel, panelType);
                 host = CreateHost(options.LogicalClientSize);
 
                 host.Controls.Add(panel);
 
-                PrepareForAnalysis(host, panel, options);
+                var pixelProof = PrepareForAnalysis(host, panel, panelType, options);
 
                 var analysisSurface = GetAnalysisSurface(panel);
                 var visibleControls = GetVisibleDescendants(analysisSurface).ToList();
@@ -314,10 +401,24 @@ namespace WileyWidget.WinForms.Utilities
                 var topLevelEnvelope = GetEnvelope(topLevelRects);
                 var meaningfulContentDetected = visibleControls.Count > 0 && topLevelArea > 0;
                 var issues = FindIssues(panel, analysisSurface, options)
+                    .Concat(pixelProof.Issues)
                     .Concat(FindStructuralIssues(panel, analysisSurface, visibleControls.Count, visibleLeafControls.Count, topLevelArea))
                     .Concat(FindPanelSpecificIssues(panelType, analysisSurface, options))
                     .ToList();
+                var visualReview = BuildVisualReview(panelType, analysisSurface, issues, meaningfulContentDetected, options.SimulatedScale);
                 var polishReview = BuildPolishReview(panelType, analysisSurface, issues, meaningfulContentDetected, options.SimulatedScale);
+                var checklistReview = BuildChecklistReview(
+                    panelType,
+                    panel,
+                    analysisSurface,
+                    issues,
+                    meaningfulContentDetected,
+                    Round(100d * (clientArea - topLevelArea) / clientArea),
+                    Round(100d * (clientArea - leafArea) / clientArea),
+                    topLevelEnvelope == Rectangle.Empty ? analysisSurface.ClientSize.Width : Math.Max(0, topLevelEnvelope.Left),
+                    topLevelEnvelope == Rectangle.Empty ? analysisSurface.ClientSize.Height : Math.Max(0, topLevelEnvelope.Top),
+                    topLevelEnvelope == Rectangle.Empty ? analysisSurface.ClientSize.Width : Math.Max(0, analysisSurface.ClientSize.Width - topLevelEnvelope.Right),
+                    topLevelEnvelope == Rectangle.Empty ? analysisSurface.ClientSize.Height : Math.Max(0, analysisSurface.ClientSize.Height - topLevelEnvelope.Bottom));
                 var tokenFootprint = AnalyzeTokenFootprint(analysisSurface)
                     .Values
                     .OrderByDescending(token => token.ApproxWhitespaceArea)
@@ -331,8 +432,11 @@ namespace WileyWidget.WinForms.Utilities
                     AnalysisSurfaceName = GetControlIdentifier(analysisSurface),
                     Success = true,
                     MeaningfulContentDetected = meaningfulContentDetected,
+                    VisualScore = visualReview.Score,
+                    VisualSummary = visualReview.Summary,
                     PolishScore = polishReview.Score,
                     PolishSummary = polishReview.Summary,
+                    ScreenshotPath = pixelProof.ScreenshotPath,
                     ClientSize = analysisSurface.ClientSize,
                     VisibleControlCount = visibleControls.Count,
                     VisibleLeafControlCount = visibleLeafControls.Count,
@@ -344,7 +448,9 @@ namespace WileyWidget.WinForms.Utilities
                     BottomWhitespace = topLevelEnvelope == Rectangle.Empty ? analysisSurface.ClientSize.Height : Math.Max(0, analysisSurface.ClientSize.Height - topLevelEnvelope.Bottom),
                     TokenFootprint = tokenFootprint,
                     Issues = issues,
+                    VisualFindings = visualReview.Findings,
                     PolishFindings = polishReview.Findings,
+                    Checklist = checklistReview,
                 };
             }
             catch (Exception ex)
@@ -378,7 +484,7 @@ namespace WileyWidget.WinForms.Utilities
             }
         }
 
-        private static void PrepareForAnalysis(Form host, Control panel, LayoutDiagnosticsOptions options)
+        private static PixelProofCaptureResult PrepareForAnalysis(Form host, Control panel, Type panelType, LayoutDiagnosticsOptions options)
         {
             host.AutoScaleMode = AutoScaleMode.Dpi;
             host.AutoScaleDimensions = new SizeF(96F, 96F);
@@ -422,6 +528,10 @@ namespace WileyWidget.WinForms.Utilities
 
             WaitForVisualTreeStable(host, panel, options);
             RunLayoutPass(host, panel);
+            ValidateSpecializedContentSurfaces(GetAnalysisSurface(panel));
+            var pixelProof = CapturePixelProof(panel, panelType, options);
+            RunLayoutPass(host, panel);
+            return pixelProof;
         }
 
         private static void RunLayoutPass(Form host, Control panel)
@@ -443,6 +553,27 @@ namespace WileyWidget.WinForms.Utilities
             host.Update();
             panel.Update();
             Application.DoEvents();
+        }
+
+        private static void ConfigureSpecialHostPanels(IServiceProvider serviceProvider, Control panel, Type panelType)
+        {
+            if (panel is not WileyWidget.WinForms.Controls.Panels.FormHostPanel formHostPanel)
+            {
+                return;
+            }
+
+            if (!string.Equals(ResolveDisplayName(panelType), "Rates", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (formHostPanel.HostedForm != null && !formHostPanel.HostedForm.IsDisposed)
+            {
+                return;
+            }
+
+            var ratesForm = ActivatorUtilities.CreateInstance<WileyWidget.WinForms.Forms.RatesPage>(serviceProvider);
+            formHostPanel.HostForm(ratesForm);
         }
 
         private static void TryPrimePanelContent(Control panel, int timeoutMs)
@@ -520,6 +651,288 @@ namespace WileyWidget.WinForms.Utilities
 
                 Thread.Sleep(40);
             }
+        }
+
+        private static void ValidateSpecializedContentSurfaces(Control analysisSurface)
+        {
+            var webView = GetVisibleDescendants(analysisSurface)
+                .FirstOrDefault(control => control.GetType().Name.Contains("BlazorWebView", StringComparison.Ordinal));
+            if (webView != null)
+            {
+                webView.Invalidate(true);
+                webView.Update();
+                Application.DoEvents();
+
+                if (GetObjectProperty(webView, "CoreWebView2") != null)
+                {
+                    TryInvokeNoArgMethod(webView, "Refresh");
+                    TryInvokeNoArgMethod(webView, "Invalidate");
+                }
+            }
+
+            var pdfViewer = GetVisibleDescendants(analysisSurface)
+                .OfType<Syncfusion.Windows.Forms.PdfViewer.PdfViewerControl>()
+                .FirstOrDefault();
+            if (pdfViewer != null && pdfViewer.Visible)
+            {
+                pdfViewer.Invalidate(true);
+                pdfViewer.Update();
+                TryInvokeNoArgMethod(pdfViewer, "Refresh");
+                Application.DoEvents();
+            }
+
+            foreach (var splitter in GetVisibleDescendants(analysisSurface)
+                .OfType<Syncfusion.Windows.Forms.Tools.SplitContainerAdv>())
+            {
+                if (!splitter.IsHandleCreated)
+                {
+                    continue;
+                }
+
+                var oldDistance = splitter.SplitterDistance;
+                var targetDistance = oldDistance + 50;
+                if (!SafeSplitterDistanceHelper.TrySetSplitterDistance(splitter, targetDistance))
+                {
+                    continue;
+                }
+
+                splitter.PerformLayout();
+                Application.DoEvents();
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(splitter, oldDistance);
+                Application.DoEvents();
+            }
+        }
+
+        private static PixelProofCaptureResult CapturePixelProof(Control panel, Type panelType, LayoutDiagnosticsOptions options)
+        {
+            if (!options.EnablePixelProof || !LayoutDiagnosticsMode.IsActive || panel.Width <= 0 || panel.Height <= 0)
+            {
+                return new PixelProofCaptureResult();
+            }
+
+            try
+            {
+                using var bitmap = new Bitmap(panel.Width, panel.Height);
+                panel.DrawToBitmap(bitmap, new Rectangle(Point.Empty, bitmap.Size));
+
+                var screenshotPath = options.CapturePixelProofScreenshots
+                    ? SavePixelProofScreenshot(bitmap, panelType, options)
+                    : null;
+                var issues = new List<PanelLayoutIssue>();
+                var backgroundColor = SampleDominantBorderColor(bitmap, options.PixelProofSampleStride);
+
+                DetectPanelHeaderClipping(panel, bitmap, backgroundColor, options, issues);
+                DetectEmptyGraphicsSurfaces(panel, bitmap, backgroundColor, options, issues);
+
+                return new PixelProofCaptureResult
+                {
+                    ScreenshotPath = screenshotPath,
+                    Issues = issues,
+                };
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Pixel proof failed for {panelType.Name}: {ex.Message}");
+                return new PixelProofCaptureResult();
+            }
+        }
+
+        private static string SavePixelProofScreenshot(Bitmap bitmap, Type panelType, LayoutDiagnosticsOptions options)
+        {
+            var directory = string.IsNullOrWhiteSpace(options.PixelProofScreenshotDirectory)
+                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "diagnostics")
+                : options.PixelProofScreenshotDirectory;
+            Directory.CreateDirectory(directory);
+
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmssfff", System.Globalization.CultureInfo.InvariantCulture);
+            var fileName = $"{SanitizeFileNamePart(panelType.Name)}_{SanitizeFileNamePart(options.ThemeName)}_{options.SimulatedScale:0.##}x_{timestamp}.png";
+            var screenshotPath = Path.Combine(directory, fileName);
+            bitmap.Save(screenshotPath, ImageFormat.Png);
+            return screenshotPath;
+        }
+
+        private static void DetectPanelHeaderClipping(Control panel, Bitmap bitmap, Color backgroundColor, LayoutDiagnosticsOptions options, ICollection<PanelLayoutIssue> issues)
+        {
+            var header = EnumerateControls(panel).OfType<PanelHeader>().FirstOrDefault(IsVisibleForLayout);
+            if (header == null)
+            {
+                return;
+            }
+
+            var actionsPanel = header.Controls.OfType<FlowLayoutPanel>().FirstOrDefault(IsVisibleForLayout);
+            if (actionsPanel == null)
+            {
+                return;
+            }
+
+            var visibleActions = actionsPanel.Controls.Cast<Control>()
+                .Where(IsVisibleForLayout)
+                .ToList();
+            if (visibleActions.Count == 0)
+            {
+                return;
+            }
+
+            var requiredWidth = actionsPanel.Padding.Horizontal + visibleActions.Sum(control => control.Width + control.Margin.Horizontal);
+            var recommendedWidth = visibleActions.Count >= 3 ? LayoutTokens.GetScaled(280) : requiredWidth;
+            var expectedWidth = Math.Max(requiredWidth, recommendedWidth);
+            if (actionsPanel.Width >= expectedWidth)
+            {
+                return;
+            }
+
+            var actionsBounds = Rectangle.Intersect(new Rectangle(Point.Empty, panel.Size), GetBoundsRelativeToRoot(actionsPanel, panel));
+            if (actionsBounds.Width <= 0 || actionsBounds.Height <= 0)
+            {
+                return;
+            }
+
+            var probeWidth = Math.Min(Math.Max(12, options.PixelProofSampleStride * 3), actionsBounds.Width);
+            var probeRect = new Rectangle(actionsBounds.Right - probeWidth, actionsBounds.Top, probeWidth, actionsBounds.Height);
+            var backgroundCoverage = CalculateBackgroundCoverage(bitmap, probeRect, backgroundColor, options.PixelProofSampleStride, options.PixelProofBackgroundTolerance);
+            if (backgroundCoverage < 80d)
+            {
+                return;
+            }
+
+            issues.Add(new PanelLayoutIssue
+            {
+                Severity = "warning",
+                Kind = "panel-header-clipping",
+                ControlName = GetControlIdentifier(actionsPanel),
+                Message = $"Panel header actions render at {actionsPanel.Width}px but need about {expectedWidth}px; the right edge of the action strip is {backgroundCoverage:0.#}% background pixels.",
+            });
+        }
+
+        private static void DetectEmptyGraphicsSurfaces(Control panel, Bitmap bitmap, Color backgroundColor, LayoutDiagnosticsOptions options, ICollection<PanelLayoutIssue> issues)
+        {
+            var panelArea = Math.Max(1L, (long)panel.Width * panel.Height);
+
+            foreach (var candidate in EnumerateControls(panel)
+                .Where(IsVisibleForLayout)
+                .Where(IsPixelProofSurfaceCandidate)
+                .Select(control => new
+                {
+                    Control = control,
+                    Bounds = Rectangle.Intersect(new Rectangle(Point.Empty, panel.Size), GetBoundsRelativeToRoot(control, panel)),
+                })
+                .Where(entry => entry.Bounds.Width >= 64 && entry.Bounds.Height >= 64)
+                .Where(entry => ((long)entry.Bounds.Width * entry.Bounds.Height) >= panelArea / 8)
+                .OrderByDescending(entry => (long)entry.Bounds.Width * entry.Bounds.Height)
+                .Take(4))
+            {
+                var backgroundCoverage = CalculateBackgroundCoverage(bitmap, candidate.Bounds, backgroundColor, options.PixelProofSampleStride, options.PixelProofBackgroundTolerance);
+                if (backgroundCoverage <= 65d)
+                {
+                    continue;
+                }
+
+                issues.Add(new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "empty-graphics-surface",
+                    ControlName = GetControlIdentifier(candidate.Control),
+                    Message = $"The rendered surface is {backgroundCoverage:0.#}% background pixels after stabilization, which suggests the graphics or preview content did not materialize.",
+                });
+            }
+        }
+
+        private static bool IsPixelProofSurfaceCandidate(Control control)
+        {
+            var identifier = GetControlIdentifier(control);
+            var typeName = control.GetType().Name;
+
+            return typeName.Contains("PdfViewer", StringComparison.OrdinalIgnoreCase)
+                || typeName.Contains("WebView", StringComparison.OrdinalIgnoreCase)
+                || typeName.Contains("Chart", StringComparison.OrdinalIgnoreCase)
+                || typeName.Contains("SplitContainer", StringComparison.OrdinalIgnoreCase)
+                || identifier.Contains("reportviewer", StringComparison.OrdinalIgnoreCase)
+                || identifier.Contains("preview", StringComparison.OrdinalIgnoreCase)
+                || identifier.Contains("chart", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static double CalculateBackgroundCoverage(Bitmap bitmap, Rectangle region, Color backgroundColor, int sampleStride, int tolerance)
+        {
+            var clippedRegion = Rectangle.Intersect(new Rectangle(Point.Empty, bitmap.Size), region);
+            if (clippedRegion.Width <= 0 || clippedRegion.Height <= 0)
+            {
+                return 0d;
+            }
+
+            var stride = Math.Max(1, sampleStride);
+            var sampleCount = 0;
+            var backgroundCount = 0;
+
+            for (var y = clippedRegion.Top; y < clippedRegion.Bottom; y += stride)
+            {
+                for (var x = clippedRegion.Left; x < clippedRegion.Right; x += stride)
+                {
+                    sampleCount++;
+                    if (IsWithinTolerance(bitmap.GetPixel(x, y), backgroundColor, tolerance))
+                    {
+                        backgroundCount++;
+                    }
+                }
+            }
+
+            return sampleCount == 0 ? 0d : 100d * backgroundCount / sampleCount;
+        }
+
+        private static Color SampleDominantBorderColor(Bitmap bitmap, int sampleStride)
+        {
+            var stride = Math.Max(1, sampleStride);
+            var samples = new List<Color>();
+
+            for (var x = 0; x < bitmap.Width; x += stride)
+            {
+                samples.Add(bitmap.GetPixel(x, 0));
+                samples.Add(bitmap.GetPixel(x, bitmap.Height - 1));
+            }
+
+            for (var y = stride; y < bitmap.Height - 1; y += stride)
+            {
+                samples.Add(bitmap.GetPixel(0, y));
+                samples.Add(bitmap.GetPixel(bitmap.Width - 1, y));
+            }
+
+            var dominantGroup = samples
+                .GroupBy(color => (A: color.A / 8, R: color.R / 8, G: color.G / 8, B: color.B / 8))
+                .OrderByDescending(group => group.Count())
+                .FirstOrDefault();
+
+            if (dominantGroup == null)
+            {
+                return bitmap.GetPixel(0, 0);
+            }
+
+            var averageA = (int)Math.Round(dominantGroup.Average(color => color.A));
+            var averageR = (int)Math.Round(dominantGroup.Average(color => color.R));
+            var averageG = (int)Math.Round(dominantGroup.Average(color => color.G));
+            var averageB = (int)Math.Round(dominantGroup.Average(color => color.B));
+            return Color.FromArgb(averageA, averageR, averageG, averageB);
+        }
+
+        private static bool IsWithinTolerance(Color sample, Color expected, int tolerance)
+        {
+            var channelTolerance = Math.Max(0, tolerance);
+            return Math.Abs(sample.A - expected.A) <= channelTolerance
+                && Math.Abs(sample.R - expected.R) <= channelTolerance
+                && Math.Abs(sample.G - expected.G) <= channelTolerance
+                && Math.Abs(sample.B - expected.B) <= channelTolerance;
+        }
+
+        private static string SanitizeFileNamePart(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "unknown";
+            }
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var characters = value.Trim()
+                .Select(character => invalid.Contains(character) ? '_' : character)
+                .ToArray();
+            return new string(characters);
         }
 
         private static string CaptureLayoutSnapshot(Control panel)
@@ -602,9 +1015,35 @@ namespace WileyWidget.WinForms.Utilities
         private static Control GetAnalysisSurface(Control root)
         {
             var contentHost = FindDescendantByName(root, "ScopedPanelContentHost");
-            return contentHost != null && IsVisibleForLayout(contentHost)
-                ? contentHost
-                : root;
+            if (contentHost != null && IsVisibleForLayout(contentHost) && GetVisibleDescendants(contentHost).Any())
+            {
+                return contentHost;
+            }
+
+            var namedContentChild = root.Controls.Cast<Control>()
+                .Where(IsVisibleForLayout)
+                .Where(control => !string.Equals(control.Name, "ScopedPanelContentHost", StringComparison.Ordinal))
+                .Where(control => control.Name.Contains("Content", StringComparison.OrdinalIgnoreCase))
+                .Where(control => control is not StatusStrip and not MenuStrip)
+                .Where(control => !IsOverlayLike(control))
+                .OrderByDescending(control => control.Width * control.Height)
+                .FirstOrDefault();
+
+            if (namedContentChild != null)
+            {
+                return namedContentChild;
+            }
+
+            var largestVisibleChild = root.Controls.Cast<Control>()
+                .Where(IsVisibleForLayout)
+                .Where(control => !string.Equals(control.Name, "ScopedPanelContentHost", StringComparison.Ordinal))
+                .Where(control => control is not StatusStrip and not MenuStrip)
+                .Where(control => !control.GetType().Name.Contains("Header", StringComparison.OrdinalIgnoreCase))
+                .Where(control => !IsOverlayLike(control))
+                .OrderByDescending(control => control.Width * control.Height)
+                .FirstOrDefault();
+
+            return largestVisibleChild ?? root;
         }
 
         private static Control? FindDescendantByName(Control root, string name)
@@ -976,6 +1415,92 @@ namespace WileyWidget.WinForms.Utilities
             foreach (var issue in FindThemeIssues(root, options.ThemeName))
             {
                 yield return issue;
+            }
+
+            foreach (var issue in FindBaselineConformanceIssues(root, analysisSurface))
+            {
+                yield return issue;
+            }
+        }
+
+        private static IEnumerable<PanelLayoutIssue> FindBaselineConformanceIssues(Control root, Control analysisSurface)
+        {
+            if (root is not WileyWidget.WinForms.Controls.Panels.FormHostPanel && !HasVisiblePanelHeader(root))
+            {
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "panel-header",
+                    ControlName = GetControlIdentifier(root),
+                    Message = "No visible PanelHeader was detected on the panel surface.",
+                };
+            }
+
+            if (root is ContainerControl container && container.AutoScaleMode != AutoScaleMode.Dpi)
+            {
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "autoscale-mode",
+                    ControlName = GetControlIdentifier(root),
+                    Message = $"AutoScaleMode is {container.AutoScaleMode} instead of Dpi.",
+                };
+            }
+
+            if (root.Dock != DockStyle.Fill)
+            {
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "root-dock",
+                    ControlName = GetControlIdentifier(root),
+                    Message = $"Root panel Dock is {root.Dock} instead of Fill.",
+                };
+            }
+
+            var minimumSize = root.MinimumSize;
+            if (minimumSize.Width <= 0 || minimumSize.Height <= 0)
+            {
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "minimum-size",
+                    ControlName = GetControlIdentifier(root),
+                    Message = "Root panel does not declare a minimum size.",
+                };
+            }
+            else if (minimumSize.Width < 960 || minimumSize.Height < 600)
+            {
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "minimum-size",
+                    ControlName = GetControlIdentifier(root),
+                    Message = $"MinimumSize {minimumSize.Width}x{minimumSize.Height}px is below the repo baseline for panel usability.",
+                };
+            }
+            else if (minimumSize.Width < 1024 || minimumSize.Height < 720)
+            {
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "info",
+                    Kind = "minimum-size",
+                    ControlName = GetControlIdentifier(root),
+                    Message = $"MinimumSize {minimumSize.Width}x{minimumSize.Height}px is usable but below the preferred 1024x720 docked baseline.",
+                };
+            }
+
+            var unnamedInteractiveControls = FindInteractiveControlsMissingAccessibleNames(analysisSurface).ToList();
+            if (unnamedInteractiveControls.Count > 0)
+            {
+                var examples = string.Join(", ", unnamedInteractiveControls.Take(4).Select(GetControlIdentifier));
+                yield return new PanelLayoutIssue
+                {
+                    Severity = "warning",
+                    Kind = "accessible-name",
+                    ControlName = GetControlIdentifier(analysisSurface),
+                    Message = $"{unnamedInteractiveControls.Count} interactive controls are missing AccessibleName. Examples: {examples}.",
+                };
             }
         }
 
@@ -1366,7 +1891,7 @@ namespace WileyWidget.WinForms.Utilities
 
                     var topVariance = rowControls.Max(control => control.Top) - rowControls.Min(control => control.Top);
                     var centerVariance = rowControls.Max(control => control.Top + (control.Height / 2)) - rowControls.Min(control => control.Top + (control.Height / 2));
-                    if (topVariance > 4 || centerVariance > 4)
+                    if (centerVariance > 4 || (topVariance > 8 && centerVariance > 0))
                     {
                         yield return new PanelLayoutIssue
                         {
@@ -1445,6 +1970,21 @@ namespace WileyWidget.WinForms.Utilities
                 yield break;
             }
 
+            var fieldControls = EnumerateControls(root)
+                .Where(IsThemeAuditableField)
+                .Where(IsVisibleForLayout)
+                .Where(control => control.Enabled)
+                .Where(control => !IsWithinOverlayLikeContainer(control))
+                .Where(control => !HasFieldAncestor(control.Parent))
+                .ToList();
+
+            var explicitFieldThemeNames = fieldControls
+                .Where(control => HasWritableStringProperty(control, "ThemeName"))
+                .Select(control => GetStringProperty(control, "ThemeName"))
+                .Where(themeName => !string.IsNullOrWhiteSpace(themeName))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             foreach (var control in EnumerateControls(root))
             {
                 var actualThemeName = GetStringProperty(control, "ThemeName");
@@ -1469,6 +2009,83 @@ namespace WileyWidget.WinForms.Utilities
                     Kind = "theme-mismatch",
                     ControlName = GetControlIdentifier(control),
                     Message = $"Control theme '{actualThemeName}' does not match expected theme '{expectedThemeName}'.",
+                };
+            }
+
+            if (explicitFieldThemeNames.Count > 0)
+            {
+                var peerThemeName = explicitFieldThemeNames[0];
+                foreach (var control in fieldControls)
+                {
+                    if (!HasWritableStringProperty(control, "ThemeName"))
+                    {
+                        continue;
+                    }
+
+                    var actualThemeName = GetStringProperty(control, "ThemeName");
+                    if (!string.IsNullOrWhiteSpace(actualThemeName))
+                    {
+                        continue;
+                    }
+
+                    yield return new PanelLayoutIssue
+                    {
+                        Severity = "info",
+                        Kind = "field-theme-unset",
+                        ControlName = GetControlIdentifier(control),
+                        Message = $"Field exposes ThemeName but it is unset while peer fields in this panel use '{peerThemeName}'.",
+                    };
+                }
+            }
+
+            foreach (var issue in FindFieldThemeConsistencyIssues(fieldControls))
+            {
+                yield return issue;
+            }
+        }
+
+        private static IEnumerable<PanelLayoutIssue> FindFieldThemeConsistencyIssues(IReadOnlyList<Control> fieldControls)
+        {
+            foreach (var category in fieldControls.GroupBy(GetFieldThemeCategory))
+            {
+                if (category.Count() < 3)
+                {
+                    continue;
+                }
+
+                var snapshots = category
+                    .Select(control => new FieldThemeSnapshot(
+                        control,
+                        GetFieldThemeCategory(control),
+                        GetStringProperty(control, "ThemeName"),
+                        QuantizeColor(control.BackColor),
+                        QuantizeColor(control.ForeColor),
+                        BuildFieldThemeSignature(control)))
+                    .ToList();
+
+                var styleGroups = snapshots
+                    .GroupBy(snapshot => snapshot.Signature)
+                    .OrderByDescending(group => group.Count())
+                    .ToList();
+
+                if (styleGroups.Count <= 1)
+                {
+                    continue;
+                }
+
+                var primary = styleGroups[0].First();
+                var secondary = styleGroups[1].First();
+                var severity = HasStrongFieldThemeSplit(primary, secondary) ? "warning" : "info";
+                var examples = string.Join(
+                    "; ",
+                    styleGroups.Take(3).Select(group => DescribeFieldThemeGroup(group.ToList())));
+
+                yield return new PanelLayoutIssue
+                {
+                    Severity = severity,
+                    Kind = "field-theme-inconsistency",
+                    ControlName = GetControlIdentifier(primary.Control.Parent ?? primary.Control),
+                    Message = $"{DescribeFieldThemeCategory(category.Key)} render with {styleGroups.Count} distinct theme styles instead of one consistent field surface. {examples}.",
                 };
             }
         }
@@ -1524,8 +2141,18 @@ namespace WileyWidget.WinForms.Utilities
                     continue;
                 }
 
+                if (control.Dock == DockStyle.Fill && control.Parent.GetType().Name.Contains("SplitPanel", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (control is Panel && control.Parent.GetType().Name.Contains("SplitPanel", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 var bounds = control.Bounds;
-                var parentClient = control.Parent.ClientRectangle;
+                var parentClient = GetEffectiveClientRectangle(control.Parent);
                 if (bounds.Left >= parentClient.Left
                     && bounds.Top >= parentClient.Top
                     && bounds.Right <= parentClient.Right
@@ -1542,6 +2169,19 @@ namespace WileyWidget.WinForms.Utilities
                     Message = $"Bounds {bounds} exceed parent client {parentClient}.",
                 };
             }
+        }
+
+        private static Rectangle GetEffectiveClientRectangle(Control parent)
+        {
+            var clientRectangle = parent.ClientRectangle;
+            var displayRectangle = parent.DisplayRectangle;
+
+            if (displayRectangle.Width > clientRectangle.Width || displayRectangle.Height > clientRectangle.Height)
+            {
+                return displayRectangle;
+            }
+
+            return clientRectangle;
         }
 
         private static IEnumerable<PanelLayoutIssue> FindOverlayIssues(Control root)
@@ -1830,142 +2470,139 @@ namespace WileyWidget.WinForms.Utilities
             return false;
         }
 
+        private static bool HasFieldAncestor(Control? control)
+        {
+            var current = control;
+            while (current != null)
+            {
+                if (IsThemeAuditableField(current))
+                {
+                    return true;
+                }
+
+                current = current.Parent;
+            }
+
+            return false;
+        }
+
+        private static bool IsThemeAuditableField(Control control)
+        {
+            if (ShouldIgnoreUtilityControl(control))
+            {
+                return false;
+            }
+
+            if (control is TextBoxBase or ComboBox or CheckBox or RadioButton or DateTimePicker or NumericUpDown)
+            {
+                return true;
+            }
+
+            var typeName = control.GetType().Name;
+            return typeName.Contains("TextBox", StringComparison.Ordinal)
+                || typeName.Contains("ComboBox", StringComparison.Ordinal)
+                || typeName.Contains("Numeric", StringComparison.Ordinal)
+                || typeName.Contains("CheckBox", StringComparison.Ordinal)
+                || typeName.Contains("RadioButton", StringComparison.Ordinal)
+                || typeName.Contains("DateTime", StringComparison.Ordinal)
+                || typeName.Contains("DatePicker", StringComparison.Ordinal)
+                || typeName.Contains("MaskedEdit", StringComparison.Ordinal);
+        }
+
+        private static string GetFieldThemeCategory(Control control)
+        {
+            var typeName = control.GetType().Name;
+            return typeName.Contains("CheckBox", StringComparison.Ordinal)
+                || typeName.Contains("RadioButton", StringComparison.Ordinal)
+                || control is CheckBox
+                || control is RadioButton
+                ? "toggle-field"
+                : "input-field";
+        }
+
+        private static string DescribeFieldThemeCategory(string category)
+        {
+            return string.Equals(category, "toggle-field", StringComparison.Ordinal)
+                ? "Toggle fields"
+                : "Input fields";
+        }
+
+        private static string BuildFieldThemeSignature(Control control)
+        {
+            var themeName = GetStringProperty(control, "ThemeName");
+            var backColor = QuantizeColor(control.BackColor);
+            var foreColor = QuantizeColor(control.ForeColor);
+            return string.Join(
+                "|",
+                GetFieldThemeCategory(control),
+                string.IsNullOrWhiteSpace(themeName) ? "<unset>" : themeName.Trim(),
+                FormatColor(backColor),
+                FormatColor(foreColor));
+        }
+
+        private static string DescribeFieldThemeGroup(IReadOnlyList<FieldThemeSnapshot> snapshots)
+        {
+            var sampleControlNames = string.Join(
+                ", ",
+                snapshots.Take(3).Select(snapshot => GetControlIdentifier(snapshot.Control).Split('/').Last()));
+            var representative = snapshots[0];
+            var themeName = string.IsNullOrWhiteSpace(representative.ThemeName) ? "<unset>" : representative.ThemeName;
+            return $"{snapshots.Count} control(s) [{sampleControlNames}] theme '{themeName}' bg {FormatColor(representative.BackColor)} fg {FormatColor(representative.ForeColor)}";
+        }
+
+        private static bool HasStrongFieldThemeSplit(FieldThemeSnapshot primary, FieldThemeSnapshot secondary)
+        {
+            if (!string.Equals(primary.ThemeName, secondary.ThemeName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var backColorDistance = CalculateColorDistance(primary.BackColor, secondary.BackColor);
+            var foreColorDistance = CalculateColorDistance(primary.ForeColor, secondary.ForeColor);
+            return backColorDistance >= 48 || foreColorDistance >= 48;
+        }
+
+        private static int CalculateColorDistance(Color left, Color right)
+        {
+            return Math.Abs(left.R - right.R)
+                + Math.Abs(left.G - right.G)
+                + Math.Abs(left.B - right.B)
+                + (Math.Abs(left.A - right.A) / 2);
+        }
+
+        private static Color QuantizeColor(Color color)
+        {
+            if (color.IsEmpty)
+            {
+                return Color.Empty;
+            }
+
+            static int QuantizeComponent(byte value)
+            {
+                return (int)Math.Round(value / 24d) * 24;
+            }
+
+            return Color.FromArgb(
+                color.A,
+                Math.Clamp(QuantizeComponent(color.R), 0, 255),
+                Math.Clamp(QuantizeComponent(color.G), 0, 255),
+                Math.Clamp(QuantizeComponent(color.B), 0, 255));
+        }
+
+        private static string FormatColor(Color color)
+        {
+            return color.IsEmpty
+                ? "<empty>"
+                : $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+        }
+
         private static PolishReview BuildPolishReview(Type panelType, Control analysisSurface, IReadOnlyList<PanelLayoutIssue> issues, bool meaningfulContentDetected, float simulatedScale)
         {
             var findings = new List<PanelPolishFinding>();
 
             foreach (var issue in issues)
             {
-                var finding = issue.Kind switch
-                {
-                    "text-truncation" => CreatePolishFinding(
-                        issue,
-                        "Clipping & Truncation",
-                        "Readable text is being squeezed or cut off.",
-                        "A finance user has to stop and infer what the control or message was supposed to say instead of scanning the screen quickly.",
-                        "Increase the control width or height, or for labels set a wider container and enable wrapping. For grid headers, increase GridColumn.MinimumWidth or HeaderRowHeight."),
-                    "overlay-placeholder-text" => CreatePolishFinding(
-                        issue,
-                        "Empty State / Overlay",
-                        "A transient loading or status message is using ellipsis text during diagnostics.",
-                        "This usually reflects an intermediate state rather than a true polish defect, but it can still obscure how the panel feels before data arrives.",
-                        "Keep transient overlay copy readable and centered, but avoid treating loading ellipses as equivalent to clipping in the working state."),
-                    "text-clipping" => CreatePolishFinding(
-                        issue,
-                        "Clipping & Truncation",
-                        "Text height is too tight for the current DPI-scaled font.",
-                        "The screen feels slightly broken at higher DPI and users lose confidence in the numbers shown.",
-                        "Increase the hosting control height, or reduce competing padding so the text can render cleanly at 125% and 150% scaling."),
-                    "grid-header-truncation" => CreatePolishFinding(
-                        issue,
-                        "Grid Header Polish",
-                        "A grid header is likely to truncate under the current column sizing.",
-                        "Users spend extra time deciphering abbreviated headers and are more likely to misread the wrong column.",
-                        "Raise the column Width or MinimumWidth, or switch the affected column away from aggressive Fill sizing. If needed, increase SfDataGrid.HeaderRowHeight."),
-                    "grid-header-height" => CreatePolishFinding(
-                        issue,
-                        "Grid Header Polish",
-                        "A grid header row is too short for the current header font and wrapping pressure.",
-                        "Users get a cramped first impression and multi-word column headers feel unstable as DPI increases.",
-                        "Increase SfDataGrid.HeaderRowHeight or reduce competing header padding so the header can breathe at 125% and 150% scaling."),
-                    "grid-column-width" => CreatePolishFinding(
-                        issue,
-                        "Grid Density & Legibility",
-                        "A finance-oriented grid column is narrower than a comfortable scanning width.",
-                        "Monetary values, account identifiers, and dates become harder to compare quickly, which raises the odds of a bad operational read.",
-                        "Raise Width or MinimumWidth for the affected column and reserve Fill sizing for low-density text fields."),
-                    "grid-row-height" => CreatePolishFinding(
-                        issue,
-                        "Grid Density & Legibility",
-                        "Grid rows are shorter than the scaled font comfortably supports.",
-                        "Rows look cramped and daily scanning fatigue goes up, especially on number-heavy screens.",
-                        "Increase RowHeight so it lands at or above about 1.4x the effective font height for the diagnostic scale."),
-                    "grid-horizontal-scroll" => CreatePolishFinding(
-                        issue,
-                        "Grid Density & Legibility",
-                        "The main grid already requires horizontal scrolling at the simulated scale.",
-                        "Users lose vertical working space and have to pan sideways to verify totals or compare adjacent fields.",
-                        "Widen the hosting surface, simplify low-value columns, or assign minimum widths more deliberately so the main workflow stays visible without panning."),
-                    "chart-surface-sizing" => CreatePolishFinding(
-                        issue,
-                        "Chart Density & Legibility",
-                        "A chart surface is too small for reliable finance-style reading.",
-                        "Axis labels, legends, and currency series compete for too little space, which makes trend reading feel cramped.",
-                        "Increase the chart host size or reduce nearby gutters so the plotted area can support titles, legends, and scaled labels cleanly."),
-                    "chart-axis-padding" => CreatePolishFinding(
-                        issue,
-                        "Chart Density & Legibility",
-                        "A chart is using tight internal spacing while axis labeling pressure is high.",
-                        "Rotated labels and titled axes are more likely to crowd the plot area or clip near the edges as DPI increases.",
-                        "Increase chart element spacing or hosting size when rotated labels or finance-oriented axis titles are active."),
-                    "chart-axis-label-fit" => CreatePolishFinding(
-                        issue,
-                        "Chart Density & Legibility",
-                        "Rotated chart labels do not have much vertical breathing room.",
-                        "Bottom-axis labels can dominate the plot or clip first when the user runs at 125% or 150% scaling.",
-                        "Give the chart more vertical space, reduce competing chrome, or simplify the label cadence so rotated labels remain readable."),
-                    "control-sizing" => CreatePolishFinding(
-                        issue,
-                        "Control Sizing & Usability",
-                        "An interactive control is smaller than it should be for repeated daily use.",
-                        "Small controls slow down clicking, reduce readability, and make the panel feel cramped on a 1080p display at 125% scaling.",
-                        "Increase MinimumSize or explicit Size. For buttons and selectors in this repo, align to LayoutTokens.StandardControlHeightLarge and a width that comfortably fits the caption."),
-                    "summary-card-sizing" => CreatePolishFinding(
-                        issue,
-                        "Metric Card Readability",
-                        "A KPI card is too small for finance-grade at-a-glance scanning.",
-                        "Large balances and percentages feel compressed, which weakens trust in the dashboard even when the values are correct.",
-                        "Increase the card width and height, or reduce surrounding gutters so the summary surface can carry larger numeric text comfortably."),
-                    "alignment-row" => CreatePolishFinding(
-                        issue,
-                        "Alignment & Visual Hierarchy",
-                        "Controls in the same row are not visually centered against each other.",
-                        "The toolbar or filter area looks improvised instead of deliberate, which slows down scanning even when everything technically works.",
-                        "Normalize control heights, disable stray AutoSize behavior on labels in that row, and center-align contents within the TableLayoutPanel."),
-                    "alignment-spacing" => CreatePolishFinding(
-                        issue,
-                        "Alignment & Visual Hierarchy",
-                        "Spacing inside a shared row is visually inconsistent.",
-                        "The row reads as hand-placed instead of systematized, which makes dense finance screens feel lower quality.",
-                        "Normalize sibling margins and use consistent gap tokens so the row lands on an intentional rhythm."),
-                    "alignment-card-balance" => CreatePolishFinding(
-                        issue,
-                        "Alignment & Visual Hierarchy",
-                        "Summary cards in the same strip do not share a balanced width.",
-                        "Users interpret the KPI row as unstable and have to work harder to compare values side by side.",
-                        "Move the cards to fixed columns or normalize their widths so the strip reads as one deliberate dashboard band."),
-                    "summary-row-balance" => CreatePolishFinding(
-                        issue,
-                        "Alignment & Visual Hierarchy",
-                        "The KPI row is not using the available width well.",
-                        "The cards read as undersized and the top of the panel feels visually weak compared to the amount of open space around it.",
-                        "Replace the FlowLayoutPanel KPI strip with a five-column TableLayoutPanel or increase each card width and reduce the leftover whitespace."),
-                    "toolbar-fit" => CreatePolishFinding(
-                        issue,
-                        "Control Sizing & Usability",
-                        "The top toolbar is already width-constrained before higher DPI pressure is applied.",
-                        "This is the kind of row that starts to clip or misalign first when the user changes monitor scale.",
-                        "Use explicit fixed widths for the key actions, add a stretch column, and keep label and selector heights consistent with the action buttons."),
-                    "theme-mismatch" => CreatePolishFinding(
-                        issue,
-                        "Theme Consistency",
-                        "A control is not following the active Syncfusion theme.",
-                        "A single off-theme control makes the panel look less trustworthy and less professionally finished.",
-                        "Ensure the control ThemeName matches the active theme or rely on SfSkinManager theme cascade from the parent surface."),
-                    "overlay" => CreatePolishFinding(
-                        issue,
-                        "Empty State / Overlay",
-                        "The panel is dominated by an overlay state during diagnostics.",
-                        "This is useful to know because empty-state layout can mask the real working layout that users see most often.",
-                        "Keep the overlay content readable and centered, but also rerun diagnostics with representative data when evaluating day-to-day polish."),
-                    "inconclusive" => CreatePolishFinding(
-                        issue,
-                        "Diagnostics Coverage",
-                        "The panel did not render enough real content for a trustworthy polish review.",
-                        "A shell-only result can hide the actual layout issues that matter once data loads.",
-                        "Load representative data or activate the hosted content path before using this panel in aggregate polish decisions."),
-                    _ => null,
-                };
+                var finding = TryCreatePolishFinding(issue);
 
                 if (finding != null)
                 {
@@ -1977,6 +2614,220 @@ namespace WileyWidget.WinForms.Utilities
             var displayName = ResolveDisplayName(panelType);
             var summary = BuildPolishSummary(displayName, score, findings, meaningfulContentDetected, simulatedScale, analysisSurface.ClientSize);
             return new PolishReview(score, summary, findings);
+        }
+
+        private static VisualReview BuildVisualReview(Type panelType, Control analysisSurface, IReadOnlyList<PanelLayoutIssue> issues, bool meaningfulContentDetected, float simulatedScale)
+        {
+            var visualIssues = issues.Where(IsVisualIssue).ToList();
+            var findings = new List<PanelPolishFinding>(visualIssues.Count);
+
+            foreach (var issue in visualIssues)
+            {
+                var finding = TryCreatePolishFinding(issue);
+                if (finding != null)
+                {
+                    findings.Add(finding);
+                }
+            }
+
+            var displayName = ResolveDisplayName(panelType);
+            var score = CalculateVisualScore(visualIssues, meaningfulContentDetected);
+            var summary = BuildVisualSummary(displayName, score, findings, meaningfulContentDetected, simulatedScale, analysisSurface.ClientSize);
+            return new VisualReview(score, summary, findings);
+        }
+
+        private static PanelPolishFinding? TryCreatePolishFinding(PanelLayoutIssue issue)
+        {
+            return issue.Kind switch
+            {
+                "panel-header" => CreatePolishFinding(
+                    issue,
+                    "First Impression & Orientation",
+                    "The panel lacks a visible header region.",
+                    "Users land on content without a clear title or top-of-surface orientation cue, which makes the panel feel unfinished.",
+                    "Add a visible PanelHeader or equivalent top title band so the panel purpose and context are obvious immediately."),
+                "autoscale-mode" => CreatePolishFinding(
+                    issue,
+                    "Resize & DPI",
+                    "The root panel is not configured for DPI-aware autoscaling.",
+                    "A panel can look acceptable on one monitor and then break or crowd at 125% or 150% scaling.",
+                    "Set AutoScaleMode = AutoScaleMode.Dpi on the root panel so the layout follows Windows scaling rules."),
+                "root-dock" => CreatePolishFinding(
+                    issue,
+                    "Responsive Layout",
+                    "The root panel is not filling its host surface.",
+                    "Panels that do not fill their shell leave dead space and behave unpredictably when the working area changes.",
+                    "Use DockStyle.Fill on the root panel unless there is a documented reason to behave as an embedded fragment."),
+                "minimum-size" => CreatePolishFinding(
+                    issue,
+                    "Responsive Layout",
+                    "The panel minimum size baseline is weak or missing.",
+                    "Complex data-entry or analytics panels become fragile when users shrink the surface or move between displays.",
+                    "Declare a meaningful MinimumSize so the working layout stays viable under resize and DPI pressure."),
+                "panel-header-clipping" => CreatePolishFinding(
+                    issue,
+                    "Clipping & Truncation",
+                    "The panel header action strip is clipping at the right edge.",
+                    "Top-level actions such as refresh, help, pin, or close can disappear or feel broken even though the rest of the panel loads.",
+                    "Increase the header action strip width budget or reduce competing title/header chrome so the full action set remains visible at the target DPI."),
+                "accessible-name" => CreatePolishFinding(
+                    issue,
+                    "Accessibility Baseline",
+                    "Interactive controls are missing accessible names.",
+                    "Keyboard and screen-reader users lose context and the panel falls below a professional accessibility baseline.",
+                    "Assign AccessibleName to icon-only buttons, inputs, grids, charts, and other interactive surfaces that do not expose a reliable built-in label."),
+                "text-truncation" => CreatePolishFinding(
+                    issue,
+                    "Clipping & Truncation",
+                    "Readable text is being squeezed or cut off.",
+                    "A finance user has to stop and infer what the control or message was supposed to say instead of scanning the screen quickly.",
+                    "Increase the control width or height, or for labels set a wider container and enable wrapping. For grid headers, increase GridColumn.MinimumWidth or HeaderRowHeight."),
+                "overlay-placeholder-text" => CreatePolishFinding(
+                    issue,
+                    "Empty State / Overlay",
+                    "A transient loading or status message is using ellipsis text during diagnostics.",
+                    "This usually reflects an intermediate state rather than a true polish defect, but it can still obscure how the panel feels before data arrives.",
+                    "Keep transient overlay copy readable and centered, but avoid treating loading ellipses as equivalent to clipping in the working state."),
+                "text-clipping" => CreatePolishFinding(
+                    issue,
+                    "Clipping & Truncation",
+                    "Text height is too tight for the current DPI-scaled font.",
+                    "The screen feels slightly broken at higher DPI and users lose confidence in the numbers shown.",
+                    "Increase the hosting control height, or reduce competing padding so the text can render cleanly at 125% and 150% scaling."),
+                "grid-header-truncation" => CreatePolishFinding(
+                    issue,
+                    "Grid Header Polish",
+                    "A grid header is likely to truncate under the current column sizing.",
+                    "Users spend extra time deciphering abbreviated headers and are more likely to misread the wrong column.",
+                    "Raise the column Width or MinimumWidth, or switch the affected column away from aggressive Fill sizing. If needed, increase SfDataGrid.HeaderRowHeight."),
+                "grid-header-height" => CreatePolishFinding(
+                    issue,
+                    "Grid Header Polish",
+                    "A grid header row is too short for the current header font and wrapping pressure.",
+                    "Users get a cramped first impression and multi-word column headers feel unstable as DPI increases.",
+                    "Increase SfDataGrid.HeaderRowHeight or reduce competing header padding so the header can breathe at 125% and 150% scaling."),
+                "grid-column-width" => CreatePolishFinding(
+                    issue,
+                    "Grid Density & Legibility",
+                    "A finance-oriented grid column is narrower than a comfortable scanning width.",
+                    "Monetary values, account identifiers, and dates become harder to compare quickly, which raises the odds of a bad operational read.",
+                    "Raise Width or MinimumWidth for the affected column and reserve Fill sizing for low-density text fields."),
+                "grid-row-height" => CreatePolishFinding(
+                    issue,
+                    "Grid Density & Legibility",
+                    "Grid rows are shorter than the scaled font comfortably supports.",
+                    "Rows look cramped and daily scanning fatigue goes up, especially on number-heavy screens.",
+                    "Increase RowHeight so it lands at or above about 1.4x the effective font height for the diagnostic scale."),
+                "grid-horizontal-scroll" => CreatePolishFinding(
+                    issue,
+                    "Grid Density & Legibility",
+                    "The main grid already requires horizontal scrolling at the simulated scale.",
+                    "Users lose vertical working space and have to pan sideways to verify totals or compare adjacent fields.",
+                    "Widen the hosting surface, simplify low-value columns, or assign minimum widths more deliberately so the main workflow stays visible without panning."),
+                "chart-surface-sizing" => CreatePolishFinding(
+                    issue,
+                    "Chart Density & Legibility",
+                    "A chart surface is too small for reliable finance-style reading.",
+                    "Axis labels, legends, and currency series compete for too little space, which makes trend reading feel cramped.",
+                    "Increase the chart host size or reduce nearby gutters so the plotted area can support titles, legends, and scaled labels cleanly."),
+                "chart-axis-padding" => CreatePolishFinding(
+                    issue,
+                    "Chart Density & Legibility",
+                    "A chart is using tight internal spacing while axis labeling pressure is high.",
+                    "Rotated labels and titled axes are more likely to crowd the plot area or clip near the edges as DPI increases.",
+                    "Increase chart element spacing or hosting size when rotated labels or finance-oriented axis titles are active."),
+                "chart-axis-label-fit" => CreatePolishFinding(
+                    issue,
+                    "Chart Density & Legibility",
+                    "Rotated chart labels do not have much vertical breathing room.",
+                    "Bottom-axis labels can dominate the plot or clip first when the user runs at 125% or 150% scaling.",
+                    "Give the chart more vertical space, reduce competing chrome, or simplify the label cadence so rotated labels remain readable."),
+                "chart-legend-crowding" => CreatePolishFinding(
+                    issue,
+                    "Chart Density & Legibility",
+                    "The chart legend is crowding the visual surface.",
+                    "The legend starts competing with the plotted data, which makes the panel feel cramped and less presentation-ready.",
+                    "Reduce legend entries, move the legend to a roomier edge, or increase chart width so the legend and plot area can breathe."),
+                "control-sizing" => CreatePolishFinding(
+                    issue,
+                    "Control Sizing & Usability",
+                    "An interactive control is smaller than it should be for repeated daily use.",
+                    "Small controls slow down clicking, reduce readability, and make the panel feel cramped on a 1080p display at 125% scaling.",
+                    "Increase MinimumSize or explicit Size. For buttons and selectors in this repo, align to LayoutTokens.StandardControlHeightLarge and a width that comfortably fits the caption."),
+                "summary-card-sizing" => CreatePolishFinding(
+                    issue,
+                    "Metric Card Readability",
+                    "A KPI card is too small for finance-grade at-a-glance scanning.",
+                    "Large balances and percentages feel compressed, which weakens trust in the dashboard even when the values are correct.",
+                    "Increase the card width and height, or reduce surrounding gutters so the summary surface can carry larger numeric text comfortably."),
+                "alignment-row" => CreatePolishFinding(
+                    issue,
+                    "Alignment & Visual Hierarchy",
+                    "Controls in the same row are not visually centered against each other.",
+                    "The toolbar or filter area looks improvised instead of deliberate, which slows down scanning even when everything technically works.",
+                    "Normalize control heights, disable stray AutoSize behavior on labels in that row, and center-align contents within the TableLayoutPanel."),
+                "alignment-spacing" => CreatePolishFinding(
+                    issue,
+                    "Alignment & Visual Hierarchy",
+                    "Spacing inside a shared row is visually inconsistent.",
+                    "The row reads as hand-placed instead of systematized, which makes dense finance screens feel lower quality.",
+                    "Normalize sibling margins and use consistent gap tokens so the row lands on an intentional rhythm."),
+                "alignment-card-balance" => CreatePolishFinding(
+                    issue,
+                    "Alignment & Visual Hierarchy",
+                    "Summary cards in the same strip do not share a balanced width.",
+                    "Users interpret the KPI row as unstable and have to work harder to compare values side by side.",
+                    "Move the cards to fixed columns or normalize their widths so the strip reads as one deliberate dashboard band."),
+                "summary-row-balance" => CreatePolishFinding(
+                    issue,
+                    "Alignment & Visual Hierarchy",
+                    "The KPI row is not using the available width well.",
+                    "The cards read as undersized and the top of the panel feels visually weak compared to the amount of open space around it.",
+                    "Replace the FlowLayoutPanel KPI strip with a five-column TableLayoutPanel or increase each card width and reduce the leftover whitespace."),
+                "toolbar-fit" => CreatePolishFinding(
+                    issue,
+                    "Control Sizing & Usability",
+                    "The top toolbar is already width-constrained before higher DPI pressure is applied.",
+                    "This is the kind of row that starts to clip or misalign first when the user changes monitor scale.",
+                    "Use explicit fixed widths for the key actions, add a stretch column, and keep label and selector heights consistent with the action buttons."),
+                "theme-mismatch" => CreatePolishFinding(
+                    issue,
+                    "Theme Consistency",
+                    "A control is not following the active Syncfusion theme.",
+                    "A single off-theme control makes the panel look less trustworthy and less professionally finished.",
+                    "Ensure the control ThemeName matches the active theme or rely on SfSkinManager theme cascade from the parent surface."),
+                "field-theme-unset" => CreatePolishFinding(
+                    issue,
+                    "Theme Consistency",
+                    "A field control is not carrying the same explicit theme contract as its peers.",
+                    "Field surfaces can drift away from the rest of the panel after dynamic creation, rebinding, or runtime theme switches.",
+                    "When peer fields use explicit ThemeName values, apply the same active theme to this field or re-run the recursive theme pass after control creation."),
+                "field-theme-inconsistency" => CreatePolishFinding(
+                    issue,
+                    "Theme Consistency",
+                    "Field controls inside the same panel are rendering with conflicting visual themes.",
+                    "Mixed dark and light field treatments make a form feel broken even when the data and commands still work.",
+                    "Reapply the active Syncfusion theme recursively to the panel and verify text boxes, numeric inputs, selectors, and toggles share one coherent field palette."),
+                "overlay" => CreatePolishFinding(
+                    issue,
+                    "Empty State / Overlay",
+                    "The panel is dominated by an overlay state during diagnostics.",
+                    "This is useful to know because empty-state layout can mask the real working layout that users see most often.",
+                    "Keep the overlay content readable and centered, but also rerun diagnostics with representative data when evaluating day-to-day polish."),
+                "empty-graphics-surface" => CreatePolishFinding(
+                    issue,
+                    "Rendered Content",
+                    "A large graphics or preview surface rendered mostly as background pixels.",
+                    "Users see a blank report, chart, PDF preview, or embedded web surface even though the surrounding panel chrome appears ready.",
+                    "Verify the surface is initialized after the final layout pass and that the hosted control is painting real content before diagnostics capture runs."),
+                "inconclusive" => CreatePolishFinding(
+                    issue,
+                    "Diagnostics Coverage",
+                    "The panel did not render enough real content for a trustworthy polish review.",
+                    "A shell-only result can hide the actual layout issues that matter once data loads.",
+                    "Load representative data or activate the hosted content path before using this panel in aggregate polish decisions."),
+                _ => null,
+            };
         }
 
         private static PanelPolishFinding CreatePolishFinding(PanelLayoutIssue issue, string category, string problem, string userImpact, string recommendation)
@@ -1998,32 +2849,7 @@ namespace WileyWidget.WinForms.Utilities
 
             foreach (var issue in issues)
             {
-                score -= issue.Kind switch
-                {
-                    "text-truncation" => 8,
-                    "overlay-placeholder-text" => 1,
-                    "text-clipping" => 7,
-                    "grid-header-truncation" => 7,
-                    "grid-header-height" => 4,
-                    "grid-column-width" => issue.Severity == "warning" ? 6 : 3,
-                    "grid-row-height" => 5,
-                    "grid-horizontal-scroll" => 3,
-                    "chart-surface-sizing" => issue.Severity == "warning" ? 4 : 2,
-                    "chart-axis-padding" => issue.Severity == "warning" ? 4 : 2,
-                    "chart-axis-label-fit" => issue.Severity == "warning" ? 4 : 2,
-                    "clipping" => 6,
-                    "theme-mismatch" => 5,
-                    "control-sizing" => issue.Severity == "warning" ? 5 : 2,
-                    "summary-card-sizing" => issue.Severity == "warning" ? 4 : 2,
-                    "alignment-row" => 3,
-                    "alignment-spacing" => 2,
-                    "alignment-card-balance" => 3,
-                    "summary-row-balance" => 3,
-                    "toolbar-fit" => 3,
-                    "overlay" => 2,
-                    "inconclusive" => 10,
-                    _ => issue.Severity == "warning" ? 3 : 1,
-                };
+                score -= GetIssueScorePenalty(issue);
             }
 
             if (!meaningfulContentDetected)
@@ -2032,6 +2858,62 @@ namespace WileyWidget.WinForms.Utilities
             }
 
             return Math.Max(0, score);
+        }
+
+        private static int CalculateVisualScore(IReadOnlyList<PanelLayoutIssue> visualIssues, bool meaningfulContentDetected)
+        {
+            if (!meaningfulContentDetected)
+            {
+                return 0;
+            }
+
+            var score = 100;
+            foreach (var issue in visualIssues)
+            {
+                score -= GetIssueScorePenalty(issue);
+            }
+
+            return Math.Max(0, score);
+        }
+
+        private static int GetIssueScorePenalty(PanelLayoutIssue issue)
+        {
+            return issue.Kind switch
+            {
+                "panel-header" => 6,
+                "autoscale-mode" => 4,
+                "root-dock" => 3,
+                "minimum-size" => issue.Severity == "warning" ? 4 : 2,
+                "panel-header-clipping" => 8,
+                "accessible-name" => 4,
+                "text-truncation" => 8,
+                "overlay-placeholder-text" => 1,
+                "text-clipping" => 7,
+                "grid-header-truncation" => 7,
+                "grid-header-height" => 4,
+                "grid-column-width" => issue.Severity == "warning" ? 6 : 3,
+                "grid-row-height" => 5,
+                "grid-horizontal-scroll" => 3,
+                "chart-surface-sizing" => issue.Severity == "warning" ? 4 : 2,
+                "chart-axis-padding" => issue.Severity == "warning" ? 4 : 2,
+                "chart-axis-label-fit" => issue.Severity == "warning" ? 4 : 2,
+                "chart-legend-crowding" => issue.Severity == "warning" ? 4 : 2,
+                "clipping" => 6,
+                "theme-mismatch" => 5,
+                "field-theme-unset" => 2,
+                "field-theme-inconsistency" => issue.Severity == "warning" ? 6 : 3,
+                "control-sizing" => issue.Severity == "warning" ? 5 : 2,
+                "summary-card-sizing" => issue.Severity == "warning" ? 4 : 2,
+                "alignment-row" => 3,
+                "alignment-spacing" => 2,
+                "alignment-card-balance" => 3,
+                "summary-row-balance" => 3,
+                "toolbar-fit" => 3,
+                "overlay" => 2,
+                "empty-graphics-surface" => 7,
+                "inconclusive" => 10,
+                _ => issue.Severity == "warning" ? 3 : 1,
+            };
         }
 
         private static string BuildPolishSummary(string displayName, int score, IReadOnlyList<PanelPolishFinding> findings, bool meaningfulContentDetected, float simulatedScale, Size clientSize)
@@ -2053,6 +2935,378 @@ namespace WileyWidget.WinForms.Utilities
 
             return $"{displayName} scores {score}/100 at {simulatedScale:0.##} scale on a {clientSize.Width}x{clientSize.Height} client surface. It is {grade}, with {warningCount} higher-priority and {infoCount} lower-priority polish findings.";
         }
+
+        private static string BuildVisualSummary(string displayName, int score, IReadOnlyList<PanelPolishFinding> findings, bool meaningfulContentDetected, float simulatedScale, Size clientSize)
+        {
+            if (!meaningfulContentDetected)
+            {
+                return $"{displayName} did not render a meaningful working surface at {simulatedScale:0.##} scale, so its visual appearance could not be scored reliably.";
+            }
+
+            var warningCount = findings.Count(finding => string.Equals(finding.Severity, "warning", StringComparison.OrdinalIgnoreCase));
+            var infoCount = findings.Count - warningCount;
+            var grade = score switch
+            {
+                >= 90 => "visually strong",
+                >= 80 => "visually solid with a few rough edges",
+                >= 70 => "visually workable but uneven",
+                _ => "visually underdeveloped",
+            };
+
+            return $"{displayName} has a visual score of {score}/100 at {simulatedScale:0.##} scale on a {clientSize.Width}x{clientSize.Height} client surface. It is {grade}, with {warningCount} higher-priority and {infoCount} lower-priority appearance findings.";
+        }
+
+        private static bool IsVisualIssue(PanelLayoutIssue issue)
+        {
+            return issue.Kind switch
+            {
+                "panel-header" => true,
+                "autoscale-mode" => true,
+                "root-dock" => true,
+                "minimum-size" => true,
+                "panel-header-clipping" => true,
+                "text-truncation" => true,
+                "overlay-placeholder-text" => true,
+                "text-clipping" => true,
+                "grid-header-truncation" => true,
+                "grid-header-height" => true,
+                "grid-column-width" => true,
+                "grid-row-height" => true,
+                "grid-horizontal-scroll" => true,
+                "chart-surface-sizing" => true,
+                "chart-axis-padding" => true,
+                "chart-axis-label-fit" => true,
+                "chart-legend-crowding" => true,
+                "clipping" => true,
+                "theme-mismatch" => true,
+                "field-theme-unset" => true,
+                "field-theme-inconsistency" => true,
+                "control-sizing" => true,
+                "summary-card-sizing" => true,
+                "alignment-row" => true,
+                "alignment-spacing" => true,
+                "alignment-card-balance" => true,
+                "summary-row-balance" => true,
+                "toolbar-fit" => true,
+                "overlay" => true,
+                "empty-graphics-surface" => true,
+                _ => false,
+            };
+        }
+
+        private static PanelChecklistSummary BuildChecklistReview(
+            Type panelType,
+            Control panel,
+            Control analysisSurface,
+            IReadOnlyList<PanelLayoutIssue> issues,
+            bool meaningfulContentDetected,
+            double topLevelWhitespacePercent,
+            double leafWhitespacePercent,
+            int leftWhitespace,
+            int topWhitespace,
+            int rightWhitespace,
+            int bottomWhitespace)
+        {
+            var items = new List<PanelChecklistItem>();
+            var displayName = ResolveDisplayName(panelType);
+
+            var hasGrid = EnumerateControls(analysisSurface).OfType<SfDataGrid>().Any(IsVisibleForLayout);
+            var hasChart = EnumerateControls(analysisSurface).OfType<ChartControl>().Any(IsVisibleForLayout);
+
+            items.Add(CreateChecklistItem(
+                "Purpose & First Impression",
+                "panel-header",
+                "Panel has a visible title/header region",
+                HasIssue(issues, "panel-header") ? "fail" : "pass",
+                HasIssueMessage(issues, "panel-header", "A visible PanelHeader or top title band is present."),
+                "Use PanelHeader so the panel purpose and context are obvious within the first scan."));
+
+            items.Add(CreateChecklistItem(
+                "Structure & Resize",
+                "autoscale-mode",
+                "Root panel uses DPI-aware autoscaling",
+                HasIssue(issues, "autoscale-mode") ? "fail" : "pass",
+                HasIssueMessage(issues, "autoscale-mode", "AutoScaleMode is set to Dpi or inherited correctly."),
+                "Keep the root panel on AutoScaleMode.Dpi so it survives scale changes cleanly."));
+
+            items.Add(CreateChecklistItem(
+                "Structure & Resize",
+                "root-dock",
+                "Root panel fills its host surface",
+                HasIssue(issues, "root-dock") ? "fail" : "pass",
+                HasIssueMessage(issues, "root-dock", "Root panel is docked to Fill."),
+                "Dock the panel to Fill unless it is intentionally an embedded fragment."));
+
+            items.Add(CreateChecklistItem(
+                "Structure & Resize",
+                "minimum-size",
+                "Panel declares a viable minimum working size",
+                HasIssue(issues, "minimum-size") ? "fail" : "pass",
+                HasIssueMessage(issues, "minimum-size", $"MinimumSize baseline is {panel.MinimumSize.Width}x{panel.MinimumSize.Height}px."),
+                "Use a minimum size that preserves working layout under resize and DPI pressure."));
+
+            items.Add(CreateChecklistItem(
+                "Purpose & First Impression",
+                "meaningful-content",
+                "Diagnostics rendered a meaningful working surface",
+                meaningfulContentDetected ? "pass" : "fail",
+                meaningfulContentDetected
+                    ? $"The diagnostics run rendered content on {displayName} rather than a shell-only surface."
+                    : "The diagnostics run did not render enough working content for a trustworthy visual audit.",
+                "Prime representative data and active content paths before relying on the panel score."));
+
+            items.Add(CreateChecklistItem(
+                "Layout & Spacing",
+                "content-balance",
+                "Whitespace balance stays within a usable range",
+                EvaluateWhitespaceStatus(topLevelWhitespacePercent, leftWhitespace, rightWhitespace, topWhitespace, bottomWhitespace, analysisSurface.ClientSize),
+                $"Top-level whitespace {topLevelWhitespacePercent:0.#}% and leaf whitespace {leafWhitespacePercent:0.#}%; edges L{leftWhitespace}/T{topWhitespace}/R{rightWhitespace}/B{bottomWhitespace}.",
+                "Extreme whitespace is a prompt to review grouping, docking, and content density against the panel checklist."));
+
+            items.Add(CreateChecklistItem(
+                "Typography & Legibility",
+                "text-fit",
+                "Readable text is not clipping or truncating",
+                HasIssue(issues, "text-truncation", "text-clipping", "clipping", "grid-header-truncation", "grid-header-height") ? "fail" : "pass",
+                HasIssueMessage(issues, new[] { "text-truncation", "text-clipping", "clipping", "grid-header-truncation", "grid-header-height" }, "No text-fit defects were detected in labels, controls, or grid headers."),
+                "Widen, wrap, or resize the affected surfaces so text reads cleanly at the simulated scale."));
+
+            items.Add(CreateChecklistItem(
+                "Controls & Forms",
+                "interactive-sizing",
+                "Interactive controls meet a comfortable working size",
+                HasIssue(issues, "control-sizing", "summary-card-sizing") ? "fail" : "pass",
+                HasIssueMessage(issues, new[] { "control-sizing", "summary-card-sizing" }, "Buttons, selectors, and summary cards are sized comfortably for repeated use."),
+                "Raise control heights and widths so daily finance workflows do not feel cramped."));
+
+            items.Add(CreateChecklistItem(
+                "Layout & Spacing",
+                "alignment-rhythm",
+                "Rows, gaps, and card bands feel aligned and deliberate",
+                HasIssue(issues, "alignment-row", "alignment-spacing", "alignment-card-balance", "summary-row-balance", "toolbar-fit") ? "fail" : "pass",
+                HasIssueMessage(issues, new[] { "alignment-row", "alignment-spacing", "alignment-card-balance", "summary-row-balance", "toolbar-fit" }, "No major row, spacing, or KPI balance issues were detected."),
+                "Normalize margins, widths, and stretch columns so the surface reads as one deliberate system."));
+
+            items.Add(CreateChecklistItem(
+                "Theme & Contrast",
+                "theme-consistency",
+                "Visible controls follow the active application theme",
+                HasIssue(issues, "theme-mismatch", "field-theme-inconsistency") ? "fail" : "pass",
+                HasIssueMessage(issues, new[] { "theme-mismatch", "field-theme-inconsistency", "field-theme-unset" }, "No theme mismatch was detected among themed controls or field surfaces."),
+                "Keep theme application centralized through SfSkinManager and the active ThemeName."));
+
+            items.Add(CreateChecklistItem(
+                "Accessibility Baseline",
+                "accessible-name",
+                "Interactive controls expose an accessible name baseline",
+                HasIssue(issues, "accessible-name") ? "fail" : "pass",
+                HasIssueMessage(issues, "accessible-name", "No missing AccessibleName baseline defects were detected for textless or high-value interactive controls."),
+                "Assign AccessibleName to icon-only controls, input surfaces, grids, charts, and other interactive elements that do not present a reliable built-in label."));
+
+            items.Add(CreateChecklistItem(
+                "Data-Dense Surfaces",
+                "grid-readability",
+                "Grids remain readable without cramped headers, rows, or columns",
+                hasGrid
+                    ? (HasIssue(issues, "grid-header-truncation", "grid-header-height", "grid-column-width", "grid-row-height", "grid-horizontal-scroll") ? "fail" : "pass")
+                    : "not-applicable",
+                hasGrid
+                    ? HasIssueMessage(issues, new[] { "grid-header-truncation", "grid-header-height", "grid-column-width", "grid-row-height", "grid-horizontal-scroll" }, "No grid density defects were detected at the simulated scale.")
+                    : "No visible SfDataGrid surface was detected on this panel.",
+                "Keep working columns, headers, and row heights comfortable at 125% and 150% scale."));
+
+            items.Add(CreateChecklistItem(
+                "Data Visualization",
+                "chart-readability",
+                "Charts preserve readable plot, label, and legend space",
+                hasChart
+                    ? (HasIssue(issues, "chart-surface-sizing", "chart-axis-padding", "chart-axis-label-fit", "chart-legend-crowding") ? "fail" : "pass")
+                    : "not-applicable",
+                hasChart
+                    ? HasIssueMessage(issues, new[] { "chart-surface-sizing", "chart-axis-padding", "chart-axis-label-fit", "chart-legend-crowding" }, "No chart density defects were detected at the simulated scale.")
+                    : "No visible chart surface was detected on this panel.",
+                "Give charts enough room for titles, legends, and axis labels before adding more chrome."));
+
+            items.Add(CreateChecklistItem(
+                "Purpose & First Impression",
+                "purpose-manual",
+                "A human reviewer confirms the panel's purpose is obvious within three seconds",
+                "manual-review",
+                "Automation cannot reliably judge whether the panel's mission and focal point are immediately obvious to a first-time user.",
+                "Review the panel against the canonical checklist sections for purpose, focal point, and first action clarity."));
+
+            items.Add(CreateChecklistItem(
+                "Typography & Copy",
+                "copy-manual",
+                "A human reviewer confirms titles, labels, and commands use concise Windows-style copy",
+                "manual-review",
+                "Automation can detect clipping, but it cannot fully judge tone, sentence case quality, or wording clarity.",
+                "Review titles, labels, tooltips, and action verbs against the Microsoft-derived copy rules in the UI standard."));
+
+            items.Add(CreateChecklistItem(
+                "Controls & Forms",
+                "form-labels-manual",
+                "A human reviewer confirms form grouping and label placement match the form checklist",
+                "manual-review",
+                "Automation cannot reliably determine whether labels are semantically above-field, grouped well, or overwhelming for the workflow.",
+                "Review label placement, group spacing, control choice, and validation flow against the form section of the standard."));
+
+            items.Add(CreateChecklistItem(
+                "Commanding & Navigation",
+                "command-manual",
+                "A human reviewer confirms primary commands, destructive actions, and navigation cues are intentional",
+                "manual-review",
+                "Automation cannot fully judge whether the right actions are primary, secondary, reversible, or buried too deeply.",
+                "Review command prominence, confirmation strategy, undo paths, and navigation clarity manually."));
+
+            items.Add(CreateChecklistItem(
+                "Accessibility Baseline",
+                "keyboard-manual",
+                "A human reviewer confirms keyboard-only flow, focus travel, and shortcut discoverability",
+                "manual-review",
+                "Automation can check naming baselines, but it cannot fully validate tab order quality, F6 pane flow, or shortcut usefulness from the control tree alone.",
+                "Run a keyboard-only review for tab order, focus visibility, major pane travel, and shortcut discoverability."));
+
+            items.Add(CreateChecklistItem(
+                "Feedback & Recovery",
+                "state-manual",
+                "A human reviewer confirms loading, empty, success, and error states feel intentional",
+                "manual-review",
+                "Automation can spot overlays, but it cannot fully judge whether the messaging and state transitions feel polished in real use.",
+                "Review empty states, overlays, error copy, and success feedback using representative data and workflow transitions."));
+
+            var automatedItems = items.Where(item => item.Status is "pass" or "fail").ToList();
+            var passed = items.Count(item => item.Status == "pass");
+            var failed = items.Count(item => item.Status == "fail");
+            var manualReview = items.Count(item => item.Status == "manual-review");
+            var notApplicable = items.Count(item => item.Status == "not-applicable");
+            var score = automatedItems.Count == 0
+                ? 100
+                : (int)Math.Round(100d * automatedItems.Count(item => item.Status == "pass") / automatedItems.Count, MidpointRounding.AwayFromZero);
+
+            var summary = $"{displayName} passes {passed} automated checklist items, fails {failed}, and still needs {manualReview} manual review calls from the canonical panel checklist.";
+
+            return new PanelChecklistSummary
+            {
+                Version = PanelChecklistSummary.CurrentVersion,
+                Score = score,
+                Passed = passed,
+                Failed = failed,
+                ManualReview = manualReview,
+                NotApplicable = notApplicable,
+                Summary = summary,
+                Items = items,
+            };
+        }
+
+        private static PanelChecklistItem CreateChecklistItem(string section, string checkId, string title, string status, string evidence, string recommendation)
+        {
+            return new PanelChecklistItem
+            {
+                Section = section,
+                CheckId = checkId,
+                Title = title,
+                Status = status,
+                Evidence = evidence,
+                Recommendation = recommendation,
+            };
+        }
+
+        private static string EvaluateWhitespaceStatus(double topLevelWhitespacePercent, int leftWhitespace, int rightWhitespace, int topWhitespace, int bottomWhitespace, Size clientSize)
+        {
+            if (topLevelWhitespacePercent >= 85d)
+            {
+                return "fail";
+            }
+
+            var horizontalEdgeDrift = Math.Abs(leftWhitespace - rightWhitespace);
+            var verticalEdgeDrift = Math.Abs(topWhitespace - bottomWhitespace);
+            if (topLevelWhitespacePercent >= 70d
+                || horizontalEdgeDrift > Math.Max(32, clientSize.Width / 4)
+                || verticalEdgeDrift > Math.Max(40, clientSize.Height / 4))
+            {
+                return "manual-review";
+            }
+
+            return "pass";
+        }
+
+        private static bool HasIssue(IReadOnlyList<PanelLayoutIssue> issues, params string[] kinds)
+        {
+            return issues.Any(issue => kinds.Any(kind => string.Equals(issue.Kind, kind, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        private static string HasIssueMessage(IReadOnlyList<PanelLayoutIssue> issues, string kind, string fallback)
+        {
+            return HasIssueMessage(issues, new[] { kind }, fallback);
+        }
+
+        private static string HasIssueMessage(IReadOnlyList<PanelLayoutIssue> issues, IEnumerable<string> kinds, string fallback)
+        {
+            var messages = issues
+                .Where(issue => kinds.Any(kind => string.Equals(issue.Kind, kind, StringComparison.OrdinalIgnoreCase)))
+                .Select(issue => issue.Message)
+                .Distinct(StringComparer.Ordinal)
+                .Take(2)
+                .ToList();
+
+            return messages.Count == 0 ? fallback : string.Join(" ", messages);
+        }
+
+        private static bool HasVisiblePanelHeader(Control root)
+        {
+            return EnumerateControls(root).OfType<PanelHeader>().Any(IsVisibleForLayout);
+        }
+
+        private static IEnumerable<Control> FindInteractiveControlsMissingAccessibleNames(Control root)
+        {
+            foreach (var control in EnumerateControls(root))
+            {
+                if (!IsVisibleForLayout(control) || ShouldIgnoreUtilityControl(control) || !RequiresAccessibleNameBaseline(control))
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(control.AccessibleName))
+                {
+                    continue;
+                }
+
+                if (ControlHasImplicitAccessibleText(control))
+                {
+                    continue;
+                }
+
+                yield return control;
+            }
+        }
+
+        private static bool RequiresAccessibleNameBaseline(Control control)
+        {
+            if (IsButtonLike(control) || IsComboLike(control) || control is TextBoxBase or SfDataGrid or ChartControl)
+            {
+                return true;
+            }
+
+            var typeName = control.GetType().Name;
+            return typeName.Contains("TextBox", StringComparison.Ordinal)
+                || typeName.Contains("Grid", StringComparison.Ordinal)
+                || typeName.Contains("ListView", StringComparison.Ordinal)
+                || typeName.Contains("TreeView", StringComparison.Ordinal)
+                || typeName.Contains("Calendar", StringComparison.Ordinal);
+        }
+
+        private static bool ControlHasImplicitAccessibleText(Control control)
+        {
+            if (IsButtonLike(control))
+            {
+                return !string.IsNullOrWhiteSpace(GetDisplayedText(control));
+            }
+
+            return false;
+        }
+
+        private sealed record VisualReview(int Score, string Summary, IReadOnlyList<PanelPolishFinding> Findings);
 
         private sealed record PolishReview(int Score, string Summary, IReadOnlyList<PanelPolishFinding> Findings);
 
@@ -2122,6 +3376,24 @@ namespace WileyWidget.WinForms.Utilities
             }
         }
 
+        private static bool HasWritableStringProperty(object? instance, string propertyName)
+        {
+            if (instance == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                var property = instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+                return property?.CanWrite == true && property.PropertyType == typeof(string);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static IReadOnlyList<LayoutTokenRecommendation> BuildRecommendations(IReadOnlyList<TokenFootprintSummary> aggregateFootprint)
         {
             var recommendations = new List<LayoutTokenRecommendation>();
@@ -2139,13 +3411,26 @@ namespace WileyWidget.WinForms.Utilities
                 });
             }
 
+            var uniformPadding6 = aggregateFootprint.FirstOrDefault(token => token.PatternName == "UniformPadding6");
+            if (uniformPadding6 != null && uniformPadding6.ApproxWhitespaceArea >= 400_000)
+            {
+                recommendations.Add(new LayoutTokenRecommendation
+                {
+                    TokenName = uniformPadding6.CandidateTokens,
+                    CurrentValue = LayoutTokens.ContentInnerPadding.All.ToString(),
+                    RecommendedValue = "5",
+                    Reason = "Dense panel shells are leaving measurable internal gutters after the 125% layout pass.",
+                    Evidence = $"Approx whitespace footprint: {uniformPadding6.ApproxWhitespaceArea:N0} px across {uniformPadding6.MatchCount} matches.",
+                });
+            }
+
             var uniformPadding8 = aggregateFootprint.FirstOrDefault(token => token.PatternName == "UniformPadding8");
             if (uniformPadding8 != null && uniformPadding8.ApproxWhitespaceArea >= 400_000)
             {
                 recommendations.Add(new LayoutTokenRecommendation
                 {
-                    TokenName = "LayoutTokens.ContentInnerPadding and LayoutTokens.PanelPaddingCompact",
-                    CurrentValue = "8",
+                    TokenName = uniformPadding8.CandidateTokens,
+                    CurrentValue = LayoutTokens.PanelPaddingCompact.All.ToString(),
                     RecommendedValue = "6",
                     Reason = "Dense panel shells are leaving measurable internal gutters after the 125% layout pass.",
                     Evidence = $"Approx whitespace footprint: {uniformPadding8.ApproxWhitespaceArea:N0} px across {uniformPadding8.MatchCount} matches.",

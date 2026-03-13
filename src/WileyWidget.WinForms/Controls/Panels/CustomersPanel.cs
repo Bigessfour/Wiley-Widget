@@ -336,7 +336,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             // BackColor removed - let SFSkinManager handle theming
         };
         _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(104)));  // Toolbar - increased for 2 button rows
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(160)));  // Toolbar - allows wrapped search and action rows at 125%+ DPI
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.SummaryPanelHeight)));  // Summary
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Grid
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.StatusBarHeight)));  // Status bar
@@ -394,6 +394,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private void CreateToolbar()
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        var rowGap = LayoutTokens.GetScaled(8);
+        var toolbarRowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge + 10);
         _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
@@ -408,7 +410,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Dock = DockStyle.Fill,
             RowCount = 2,
             ColumnCount = 1,
-            AutoSize = true
+            AutoSize = true,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
         toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -420,7 +424,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
             AutoSize = true,
-            Margin = new Padding(0, 4, 0, 4),
+            Margin = Padding.Empty,
             Padding = Padding.Empty
         };
 
@@ -431,7 +435,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             AutoSize = true,
             Anchor = AnchorStyles.Left,
             TextAlign = ContentAlignment.MiddleRight,
-            Margin = new Padding(0, 6, 8, 0)
+            Margin = new Padding(0, 6, rowGap, 0)
         };
         searchFilterRow.Controls.Add(searchLabel);
 
@@ -442,7 +446,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             textBox.PlaceholderText = "Name, account #, or address...";
             textBox.BorderStyle = BorderStyle.FixedSingle;
             textBox.Anchor = AnchorStyles.Left;
-            textBox.Margin = new Padding(0, 4, 8, 0);
+            textBox.Margin = new Padding(0, 4, rowGap, 0);
         });
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _searchTextBox.KeyPress += SearchTextBox_KeyPress;
@@ -456,7 +460,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             button.AutoSize = false;
             button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeCompact);
-            button.Margin = new Padding(0, 2, 8, 0);
+            button.Margin = new Padding(0, 2, rowGap, 0);
         });
         _searchButton.AccessibleName = "Search Button";
         _searchButton.TabIndex = 11;
@@ -468,8 +472,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         // Clear filters button
         _clearFiltersButton = ControlFactory.CreateSfButton("Clear", button =>
         {
-            button.AutoSize = true;
-            button.Margin = new Padding(0, 2, 12, 0);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeCompact);
+            button.Margin = new Padding(0, 2, rowGap, 0);
         });
         _clearFiltersButton.AccessibleName = "Clear Filters";
         _clearFiltersButton.TabIndex = 12;
@@ -482,7 +487,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             Text = "|",
             AutoSize = true,
-            Margin = new Padding(8, 4, 12, 0)
+            Margin = new Padding(0, 4, rowGap, 0)
         };
         searchFilterRow.Controls.Add(separator1);
 
@@ -492,7 +497,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Text = "Type:",
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleRight,
-            Margin = new Padding(0, 6, 8, 0)
+            Margin = new Padding(0, 6, rowGap, 0)
         };
         searchFilterRow.Controls.Add(typeLabel);
 
@@ -501,7 +506,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             combo.Width = 168;
             combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             combo.DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" };
-            combo.Margin = new Padding(0, 4, 12, 0);
+            combo.Margin = new Padding(0, 4, rowGap, 0);
         });
         _filterTypeComboBox.SelectedIndex = 0;
         _filterTypeComboBox.AccessibleName = "Filter by Type";
@@ -515,7 +520,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Text = "Location:",
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleRight,
-            Margin = new Padding(0, 6, 8, 0)
+            Margin = new Padding(0, 6, rowGap, 0)
         };
         searchFilterRow.Controls.Add(locationLabel);
 
@@ -524,7 +529,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             combo.Width = 188;
             combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             combo.DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" };
-            combo.Margin = new Padding(0, 4, 12, 0);
+            combo.Margin = new Padding(0, 4, rowGap, 0);
         });
         _filterLocationComboBox.SelectedIndex = 0;
         _filterLocationComboBox.AccessibleName = "Filter by Location";
@@ -537,7 +542,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _showActiveOnlyCheckBox = ControlFactory.CreateCheckBoxAdv("Active Only", checkBox =>
         {
             checkBox.Checked = true;
-            checkBox.Margin = new Padding(0, 5, 0, 0);
+            checkBox.Margin = new Padding(0, 5, rowGap, 0);
         });
         _showActiveOnlyCheckBox.AccessibleName = "Show active only";
         _showActiveOnlyCheckBox.TabIndex = 15;
@@ -552,16 +557,17 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
+            WrapContents = true,
             AutoSize = true,
-            Margin = new Padding(0, 5, 0, 5)
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
 
         // Add Customer button
         _addCustomerButton = ControlFactory.CreateSfButton("➕ &Add Customer", button =>
         {
             button.AutoSize = true;
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _addCustomerButton.AccessibleName = "Add Customer";
         _addCustomerButton.TabIndex = 20;
@@ -575,7 +581,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             button.AutoSize = true;
             button.Enabled = false;
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _editCustomerButton.AccessibleName = "Edit Customer";
         _editCustomerButton.TabIndex = 21;
@@ -590,7 +596,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             button.AutoSize = false;
             button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeCompact);
             button.Enabled = false;
-            button.Margin = new Padding(0, 0, 10, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _deleteCustomerButton.AccessibleName = "Delete Customer";
         _deleteCustomerButton.TabIndex = 22;
@@ -604,7 +610,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             button.AutoSize = false;
             button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeMedium);
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _refreshButton.AccessibleName = "Refresh";
         _refreshButton.TabIndex = 23;
@@ -618,7 +624,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             button.AutoSize = false;
             button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeWideCompact);
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _syncQuickBooksButton.AccessibleName = "Sync QuickBooks";
         _syncQuickBooksButton.TabIndex = 24;

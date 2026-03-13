@@ -38,6 +38,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private const int BUTTON_MARGIN_V = 0;
 
         private Label? _titleLabel;
+        private FlowLayoutPanel? _actionsPanel;
         private SfButton? _btnRefresh;
         private SfButton? _btnPin;
         private SfButton? _btnHelp;
@@ -136,6 +137,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _loadingSpinner.Visible = value;
                 }
+
+                RefreshActionLayout();
             }
         }
 
@@ -153,6 +156,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnHelp.Visible = value;
                 }
+
+                RefreshActionLayout();
             }
         }
 
@@ -170,6 +175,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnRefresh.Visible = value;
                 }
+
+                RefreshActionLayout();
             }
         }
 
@@ -187,6 +194,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnPin.Visible = value;
                 }
+
+                RefreshActionLayout();
             }
         }
 
@@ -204,6 +213,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnClose.Visible = value;
                 }
+
+                RefreshActionLayout();
             }
         }
 
@@ -430,11 +441,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
 
             // Right-aligned container for actions
-            var actionsPanel = new FlowLayoutPanel
+            _actionsPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 WrapContents = false,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
@@ -551,19 +563,21 @@ namespace WileyWidget.WinForms.Controls.Supporting
             _toolTip.SetToolTip(_btnClose, "Close panel\n\nDismisses this panel and returns to the main view.\n\nKeyboard: Alt+C or Esc");
 
             // Build actions panel layout
-            actionsPanel.Controls.Add(_btnRefresh);
-            actionsPanel.Controls.Add(_loadingSpinner);
-            actionsPanel.Controls.Add(_btnPin);
-            actionsPanel.Controls.Add(_btnHelp);
-            actionsPanel.Controls.Add(_btnClose);
+            _actionsPanel.Controls.Add(_btnRefresh);
+            _actionsPanel.Controls.Add(_loadingSpinner);
+            _actionsPanel.Controls.Add(_btnPin);
+            _actionsPanel.Controls.Add(_btnHelp);
+            _actionsPanel.Controls.Add(_btnClose);
 
             // Add to control hierarchy (order matters: actionsPanel on top, title label behind)
-            Controls.Add(actionsPanel);
+            Controls.Add(_actionsPanel);
             Controls.Add(_titleLabel);
 
             // Accessibility
             AccessibleName = "Panel Header";
             AccessibleDescription = "Contains the title and action buttons for the panel";
+
+            RefreshActionLayout();
         }
 
         private void RefreshButton_Click(object? sender, EventArgs e)
@@ -635,6 +649,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 _btnRefresh.Text = "Refresh";
                 _btnRefresh.Size = new Size(80, _btnRefresh.Height); // Default width
             }
+
+            RefreshActionLayout();
         }
 
         private void UpdatePinButtonIcon()
@@ -657,6 +673,47 @@ namespace WileyWidget.WinForms.Controls.Supporting
             {
                 System.Diagnostics.Debug.WriteLine($"Warning: Failed to load pin button icon: {ex.Message}");
             }
+
+            RefreshActionLayout();
+        }
+
+        private void RefreshActionLayout()
+        {
+            if (_actionsPanel == null || _actionsPanel.IsDisposed)
+            {
+                return;
+            }
+
+            var preferredWidth = CalculatePreferredActionsWidth();
+            if (_actionsPanel.MinimumSize.Width != preferredWidth)
+            {
+                _actionsPanel.MinimumSize = new Size(preferredWidth, 0);
+            }
+
+            _actionsPanel.PerformLayout();
+            PerformLayout();
+            Invalidate(true);
+        }
+
+        private int CalculatePreferredActionsWidth()
+        {
+            if (_actionsPanel == null)
+            {
+                return 0;
+            }
+
+            var visibleActions = _actionsPanel.Controls.Cast<Control>()
+                .Where(control => control.Visible)
+                .ToList();
+
+            if (visibleActions.Count == 0)
+            {
+                return 0;
+            }
+
+            var requiredWidth = _actionsPanel.Padding.Horizontal + visibleActions.Sum(control => control.Width + control.Margin.Horizontal);
+            var recommendedWidth = visibleActions.Count >= 3 ? LayoutTokens.GetScaled(280) : requiredWidth;
+            return Math.Max(requiredWidth, recommendedWidth);
         }
 
         /// <summary>

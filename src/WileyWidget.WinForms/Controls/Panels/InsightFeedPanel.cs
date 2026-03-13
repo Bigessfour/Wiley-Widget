@@ -139,12 +139,15 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Status label - Theme colors applied via SfSkinManager
                 _lblStatus = new Label
                 {
-                    Text = "Loading insights...",
+                    Text = "Loading insights",
                     Dock = DockStyle.Right,
                     TextAlign = ContentAlignment.MiddleRight,
                     Margin = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
-                    AutoSize = true,
-                    MaximumSize = new Size(300, int.MaxValue),
+                    AutoSize = false,
+                    Width = LayoutTokens.GetScaled(360),
+                    MinimumSize = new Size(LayoutTokens.GetScaled(260), LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge)),
+                    Padding = LayoutTokens.GetScaled(new Padding(8, 0, 8, 0)),
+                    MaximumSize = Size.Empty,
                     AutoEllipsis = true,
                     Name = "StatusLabel",
                     AccessibleName = "Status Label",
@@ -178,10 +181,21 @@ namespace WileyWidget.WinForms.Controls.Panels
                 _toolStrip.Items.Add(_btnRefresh);
 
                 // Panel header - add last so DockStyle.Fill sizes correctly after other docked controls
-                _panelHeader = new PanelHeader
+                var controlFactory = GetControlFactory();
+                _panelHeader = controlFactory?.CreatePanelHeader(header =>
+                {
+                    header.Dock = DockStyle.Fill;
+                    header.Title = "Insight Feed";
+                    header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                    header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+                    header.AccessibleName = "Insights Header";
+                    header.AccessibleDescription = "Title area for the insights feed";
+                }) ?? new PanelHeader
                 {
                     Dock = DockStyle.Fill,
                     Title = "Insight Feed",
+                    Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge),
+                    MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)),
                     AccessibleName = "Insights Header",
                     AccessibleDescription = "Title area for the insights feed"
                 };

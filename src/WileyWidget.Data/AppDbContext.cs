@@ -1,13 +1,15 @@
 #nullable enable
 
 using System;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Data
 {
-    public class AppDbContext : DbContext, IAppDbContext
+    public class AppDbContext : IdentityDbContext<AppIdentityUser, IdentityRole<Guid>, Guid>, IAppDbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -50,6 +52,7 @@ namespace WileyWidget.Data
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
         public DbSet<TelemetryLog> TelemetryLogs { get; set; } = null!;
         public DbSet<SavedScenarioSnapshot> SavedScenarioSnapshots { get; set; } = null!;
+        public DbSet<AppIdentityUser> AppUsers { get; set; } = null!;
         public DbSet<global::WileyWidget.Services.Abstractions.ConversationHistory> ConversationHistories { get; set; } = null!;
         public DbSet<global::WileyWidget.Services.Abstractions.UserMemoryFact> UserMemoryFacts { get; set; } = null!;
         public DbSet<TownOfWileyBudget2026> TownOfWileyBudgetData { get; set; } = null!;
@@ -70,6 +73,23 @@ namespace WileyWidget.Data
 
             // EF Core 10: Enable named default constraints for better migration control
             // modelBuilder.UseNamedDefaultConstraints(); // Commented out - requires EF Core 10+
+
+            modelBuilder.Entity<AppIdentityUser>(entity =>
+            {
+                entity.Property(e => e.DisplayName)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(e => e.IsEnabled)
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.CreatedAtUtc)
+                    .HasColumnType("datetime2")
+                    .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                entity.Property(e => e.LastSignedInAtUtc)
+                    .HasColumnType("datetime2");
+            });
 
             // BudgetEntry (updated)
             modelBuilder.Entity<BudgetEntry>(entity =>

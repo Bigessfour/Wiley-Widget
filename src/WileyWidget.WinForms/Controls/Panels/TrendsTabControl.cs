@@ -62,7 +62,7 @@ public partial class TrendsTabControl : UserControl
         this.Dock = DockStyle.Fill;
         this.AutoScaleMode = AutoScaleMode.Dpi;
         this.AutoScroll = true;
-        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        this.MinimumSize = Size.Empty;
         this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
         _toolTip = new ToolTip();
 

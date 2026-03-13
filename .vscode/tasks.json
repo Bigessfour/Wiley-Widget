@@ -329,6 +329,39 @@
 			}
 		},
 		{
+			"label": "run: release visual assessment",
+			"dependsOn": [
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--configuration",
+				"Release",
+				"--project",
+				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
+			],
+			"type": "shell",
+			"group": "build",
+			"options": {
+				"env": {
+					"DOTNET_ENVIRONMENT": "Production",
+					"WILEYWIDGET_AUTH_FORCE_DEVELOPMENT_BYPASS": "true"
+				}
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": true,
+				"clear": false
+			}
+		},
+		{
 			"label": "test: budget panel behavior diagnostics",
 			"dependsOn": [
 				"build: fast"
@@ -2535,6 +2568,24 @@
 			"group": "test"
 		},
 		{
+			"label": "shell: test: auth mcp bootstrapper",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--",
+				"--run-script",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/Tests/AuthenticationBootstrapper_RememberMe.csx"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
 			"label": "temp: quickbooks unit regressions",
 			"type": "shell",
 			"command": "dotnet",
@@ -2740,6 +2791,26 @@
 				"$msCompile"
 			],
 			"group": "test"
+		},
+		{
+			"label": "temp: panel clipping integration validation",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"(FullyQualifiedName~MunicipalAccountsPanel_RendersBelowRibbon|FullyQualifiedName~PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches|FullyQualifiedName~ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange|FullyQualifiedName~LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad)",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "temp: panel clipping integration validation quoted",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter 'FullyQualifiedName~MunicipalAccountsPanel_RendersBelowRibbon|FullyQualifiedName~PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches|FullyQualifiedName~ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange|FullyQualifiedName~LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad' -v minimal",
+			"isBackground": false
 		}
 	],
 	"inputs": [

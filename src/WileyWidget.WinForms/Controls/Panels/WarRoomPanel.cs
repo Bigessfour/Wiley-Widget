@@ -1,3 +1,4 @@
+using Syncfusion.Data;
 #nullable enable
 
 using System;
@@ -73,11 +74,22 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             SuspendLayout();
 
+            var actionRowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge)
+                + LayoutTokens.GetScaled(LayoutTokens.ToolbarPadding.Top + LayoutTokens.ToolbarPadding.Bottom);
+            var compactPanelPadding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
+            var toolbarPadding = LayoutTokens.GetScaled(new Padding(
+                LayoutTokens.PanelPaddingCompact.Left,
+                LayoutTokens.ToolbarPadding.Top,
+                LayoutTokens.PanelPaddingCompact.Right,
+                LayoutTokens.ToolbarPadding.Bottom));
+
             Name = "WarRoomPanel";
             AccessibleName = "War Room"; // Panel title for UI automation
             Size = ScaleLogicalToDevice(new Size(1100, 760));
             MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
             AutoScaleMode = AutoScaleMode.Dpi;
+            Dock = DockStyle.Fill;
+            AutoScroll = false;
             Padding = Padding.Empty;
 
             // Apply theme for cascade to all child controls
@@ -106,7 +118,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
             _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             _content.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.HeaderHeight));
-            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.Dp(84)));
+            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, actionRowHeight));
             _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             _content.Controls.Add(_panelHeader, 0, 0);
 
@@ -114,15 +126,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             _topPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = LayoutTokens.Dp(84),
-                Padding = new Padding(LayoutTokens.PanelPadding, Math.Max(4, LayoutTokens.ContentMargin / 2), LayoutTokens.PanelPadding, LayoutTokens.ContentMargin / 2)
+                Height = actionRowHeight,
+                MinimumSize = new Size(0, actionRowHeight),
+                Padding = toolbarPadding
             };
 
             var actionsRow = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 3,
-                RowCount = 1
+                RowCount = 1,
+                AutoSize = false,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge),
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
             };
             actionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             actionsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -141,6 +158,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _btnRunScenario = _factory!.CreateSfButton("Run Scenario", button =>
             {
+                button.Dock = DockStyle.Fill;
                 button.AutoSize = false;
                 button.MinimumSize = LayoutTokens.GetScaled(new Size(136, LayoutTokens.StandardControlHeightLarge));
                 button.Size = LayoutTokens.GetScaled(new Size(136, LayoutTokens.StandardControlHeightLarge));
@@ -150,6 +168,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _btnExportForecast = _factory!.CreateSfButton("Export Forecast", button =>
             {
+                button.Dock = DockStyle.Fill;
                 button.AutoSize = false;
                 button.MinimumSize = LayoutTokens.GetScaled(new Size(148, LayoutTokens.StandardControlHeightLarge));
                 button.Size = LayoutTokens.GetScaled(new Size(148, LayoutTokens.StandardControlHeightLarge));
@@ -164,7 +183,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(LayoutTokens.PanelPadding)
+                Padding = compactPanelPadding
             };
 
             _resultsPanel = new Panel
@@ -179,8 +198,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _statusLabel = new Label
             {
                 Dock = DockStyle.Bottom,
-                Height = 24,
-                Padding = new Padding(4, 0, 0, 0),
+                Height = LayoutTokens.GetScaled(LayoutTokens.StatusBarHeight),
+                Padding = LayoutTokens.GetScaled(new Padding(LayoutTokens.ToolbarPadding.Left, 0, 0, 0)),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Text = "Ready",
                 AccessibleName = "War Room Status"
@@ -284,7 +303,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             var kpiBorder = _factory.CreatePanel(panel =>
             {
                 panel.Dock = DockStyle.Fill;
-                panel.Padding = new Padding(4);
+                panel.Padding = LayoutTokens.GetScaled(LayoutTokens.ToolbarPadding);
                 panel.Margin = new Padding(0, 0, 0, 2);
                 panel.AccessibleName = "War Room KPI Summary";
             });
@@ -293,6 +312,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _revenueChart = _factory.CreateChartControl("Scenario Revenue and Expense Trend", chart =>
             {
+                chart.Dock = DockStyle.Fill;
                 chart.Margin = new Padding(0, 0, 0, LayoutTokens.ContentMargin);
                 chart.MinimumSize = LayoutTokens.GetScaled(new Size(0, 280));
                 chart.PrimaryXAxis.Title = "Year";
@@ -324,30 +344,30 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _projectionsGrid = _factory.CreateSfDataGrid(grid =>
             {
+                grid.Dock = DockStyle.Fill;
                 grid.Name = "WarRoomProjectionsGrid";
                 grid.AllowEditing = false;
                 grid.AllowDeleting = false;
                 grid.AllowGrouping = false;
                 grid.ShowGroupDropArea = false;
                 grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill;
-                grid.AddNewRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
-                grid.AddNewRowText = string.Empty;
+                DisableAddNewRowSurface(grid);
             });
 
             _departmentGrid = _factory.CreateSfDataGrid(grid =>
             {
+                grid.Dock = DockStyle.Fill;
                 grid.Name = "WarRoomDepartmentImpactGrid";
                 grid.AllowEditing = false;
                 grid.AllowDeleting = false;
                 grid.AllowGrouping = false;
                 grid.ShowGroupDropArea = false;
                 grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill;
-                grid.AddNewRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
-                grid.AddNewRowText = string.Empty;
+                DisableAddNewRowSurface(grid);
             });
 
-            gridsLayout.Controls.Add(CreateResultsSection("Projections", _projectionsGrid), 0, 0);
-            gridsLayout.Controls.Add(CreateResultsSection("Department Impacts", _departmentGrid), 1, 0);
+            gridsLayout.Controls.Add(CreateResultsSection("Projections", _projectionsGrid, isLast: false), 0, 0);
+            gridsLayout.Controls.Add(CreateResultsSection("Department Impacts", _departmentGrid, isLast: true), 1, 0);
             layout.Controls.Add(gridsLayout, 0, 3);
 
             _resultsPanel.Controls.Add(layout);
@@ -380,11 +400,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
             row.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            _requiredRateCard = CreateKpiCard("Required Increase", "n/a", "Target rate change");
-            _riskCard = CreateKpiCard("Risk Score", "0%", "Higher means more risk");
-            _baselineRevenueCard = CreateKpiCard("Baseline Revenue", "$0", "Current monthly");
-            _projectedRevenueCard = CreateKpiCard("Projected Revenue", "$0", "Scenario monthly");
-            _deltaCard = CreateKpiCard("Revenue Delta", "$0", "Projected - baseline");
+            _requiredRateCard = CreateKpiCard("Required Increase", "n/a", "Target rate change", isLast: false);
+            _riskCard = CreateKpiCard("Risk Score", "0%", "Higher means more risk", isLast: false);
+            _baselineRevenueCard = CreateKpiCard("Baseline Revenue", "$0", "Current monthly", isLast: false);
+            _projectedRevenueCard = CreateKpiCard("Projected Revenue", "$0", "Scenario monthly", isLast: false);
+            _deltaCard = CreateKpiCard("Revenue Delta", "$0", "Projected - baseline", isLast: true);
 
             row.Controls.Add(_requiredRateCard, 0, 0);
             row.Controls.Add(_riskCard, 1, 0);
@@ -394,24 +414,26 @@ namespace WileyWidget.WinForms.Controls.Panels
             return row;
         }
 
-        private KpiCardControl CreateKpiCard(string title, string value, string subtitle)
+        private KpiCardControl CreateKpiCard(string title, string value, string subtitle, bool isLast)
         {
             return _factory!.CreateKpiCardControl(card =>
             {
                 card.Dock = DockStyle.Fill;
-                card.Margin = new Padding(0, 0, LayoutTokens.ContentMargin, 0);
+                var metricCardSpacing = LayoutTokens.GetScaled(LayoutTokens.MetricCardMargin).Right;
+                card.Margin = isLast ? Padding.Empty : new Padding(0, 0, metricCardSpacing, 0);
                 card.Title = title;
                 card.Value = value;
                 card.Subtitle = subtitle;
             });
         }
 
-        private Panel CreateResultsSection(string title, Control content)
+        private Panel CreateResultsSection(string title, Control content, bool isLast)
         {
             var sectionPanel = _factory!.CreatePanel(panel =>
             {
                 panel.Dock = DockStyle.Fill;
-                panel.Margin = new Padding(0, 0, LayoutTokens.ContentMargin, 0);
+                var sectionSpacing = LayoutTokens.GetScaled(LayoutTokens.ContentInnerPadding).Right;
+                panel.Margin = isLast ? Padding.Empty : new Padding(0, 0, sectionSpacing, 0);
                 panel.Padding = Padding.Empty;
                 panel.AccessibleName = title;
             });
@@ -847,8 +869,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _projectionsGrid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill;
-            _projectionsGrid.AddNewRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
-            _projectionsGrid.AddNewRowText = string.Empty;
+            DisableAddNewRowSurface(_projectionsGrid);
             _projectionsGrid.AllowEditing = false;
             _projectionsGrid.AllowFiltering = false;
             _projectionsGrid.FilterRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
@@ -872,8 +893,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _departmentGrid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill;
-            _departmentGrid.AddNewRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
-            _departmentGrid.AddNewRowText = string.Empty;
+            DisableAddNewRowSurface(_departmentGrid);
             _departmentGrid.AllowEditing = false;
             _departmentGrid.AllowFiltering = false;
             _departmentGrid.FilterRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
@@ -911,6 +931,28 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             grid.Invalidate();
             grid.View?.Refresh();
+        }
+
+        private static void DisableAddNewRowSurface(SfDataGrid grid)
+        {
+            grid.AddNewRowPosition = Syncfusion.WinForms.DataGrid.Enums.RowPosition.None;
+            grid.AddNewRowText = string.Empty;
+
+            var placeholderProperty = grid.GetType().GetProperty("NewItemPlaceholderPosition");
+            if (placeholderProperty?.CanWrite != true || !placeholderProperty.PropertyType.IsEnum)
+            {
+                return;
+            }
+
+            try
+            {
+                var noneValue = Enum.Parse(placeholderProperty.PropertyType, "None", ignoreCase: false);
+                placeholderProperty.SetValue(grid, noneValue);
+            }
+            catch
+            {
+                // Older grid variants may not expose the placeholder enum without extra framework references.
+            }
         }
 
         private void RenderRevenueChart()

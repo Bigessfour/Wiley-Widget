@@ -68,7 +68,7 @@ public class AdvancedScenariosTabControl : UserControl
         Dock = DockStyle.Fill;
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScroll = true;
-        MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        MinimumSize = Size.Empty;
         Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
         _toolTip = new ToolTip();
 

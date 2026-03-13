@@ -1,5 +1,6 @@
 using System.Threading;
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
@@ -98,6 +99,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         private BindingSource? _summaryBindingSource;
         private bool _uiInitialized;
         private bool _viewModelBound;
+        private bool _diagnosticsFallbackApplied;
+        private IReadOnlyList<BudgetMetric>? _diagnosticsFallbackMetrics;
 
         /// <summary>
         /// Constructor using DI scope factory for proper lifecycle management.
@@ -217,7 +220,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _topPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = LayoutTokens.GetScaled(56),
+                Height = LayoutTokens.GetScaled(72),
                 Padding = LayoutTokens.GetScaled(new Padding(12, 6, 12, 6)),
                 BorderStyle = BorderStyle.None,
             };
@@ -225,10 +228,11 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             var toolbar = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
                 ColumnCount = 7,
                 RowCount = 1,
                 AutoSize = false,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge),
                 Margin = new Padding(0),
                 Padding = new Padding(0)
             };
@@ -239,7 +243,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 10));  // Spacer
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));      // Export button
             toolbar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));  // Stretch
-            toolbar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            toolbar.RowStyles.Add(new RowStyle(SizeType.Absolute, toolbar.Height));
 
             // Fiscal year selector label
             var lblFiscalYear = new Label
@@ -248,7 +252,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 0, 6, 0),
-                AutoSize = true
+                AutoSize = false
             };
             toolbar.Controls.Add(lblFiscalYear, 0, 0);
 
@@ -508,19 +512,19 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             if (_metricsGrid == null) return;
 
-            var deptCol = new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 150 };
+            var deptCol = new GridTextColumn { MappingName = "DepartmentName", HeaderText = "Department", MinimumWidth = 140 };
             _metricsGrid.Columns.Add(deptCol);
 
-            var budgetCol = new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 132, Format = "C2" };
+            var budgetCol = new GridNumericColumn { MappingName = "BudgetedAmount", HeaderText = "Budgeted", MinimumWidth = 124, Format = "C2" };
             _metricsGrid.Columns.Add(budgetCol);
 
-            var actualCol = new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 132, Format = "C2" };
+            var actualCol = new GridNumericColumn { MappingName = "Amount", HeaderText = "Actual", MinimumWidth = 124, Format = "C2" };
             _metricsGrid.Columns.Add(actualCol);
 
-            var varianceCol = new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 132, Format = "C2" };
+            var varianceCol = new GridNumericColumn { MappingName = "Variance", HeaderText = "Variance", MinimumWidth = 124, Format = "C2" };
             _metricsGrid.Columns.Add(varianceCol);
 
-            var varPctCol = new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 112 };
+            var varPctCol = new GridTextColumn { MappingName = "VariancePercent", HeaderText = "Variance %", MinimumWidth = 96 };
             _metricsGrid.Columns.Add(varPctCol);
         }
 
@@ -700,6 +704,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 if (IsDisposed || ViewModel == null) return;
 
+                ApplyDiagnosticsFallbackContentIfNeeded();
+
                 // Summary tiles are now bound via BindingSource - no manual update needed
                 // Just update semantic color for variance (red = over, green = under)
                 if (_lblVariance != null)
@@ -709,7 +715,9 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 // Update last-updated timestamp
                 if (_lblLastUpdated != null)
-                    _lblLastUpdated.Text = $"Last updated: {ViewModel.LastUpdated:yyyy-MM-dd HH:mm:ss}";
+                    _lblLastUpdated.Text = _diagnosticsFallbackApplied
+                        ? "Last updated: Diagnostics sample snapshot"
+                        : $"Last updated: {ViewModel.LastUpdated:yyyy-MM-dd HH:mm:ss}";
 
                 // Update chart
                 UpdateChart();
@@ -719,7 +727,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 // Show no-data overlay if needed
                 if (_noDataOverlay != null)
-                    _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.Metrics.Any();
+                    _noDataOverlay.Visible = !ViewModel.IsLoading && !GetEffectiveMetrics().Any();
             }
             catch (Exception ex)
             {
@@ -733,6 +741,26 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             try
             {
+                var effectiveMetrics = GetEffectiveMetrics().ToList();
+
+                if (_metricsGrid.DataSource is BindingSource gridBinding)
+                {
+                    var currentDataSource = gridBinding.DataSource;
+                    if (!ReferenceEquals(currentDataSource, effectiveMetrics) &&
+                        !ReferenceEquals(currentDataSource, ViewModel.Metrics))
+                    {
+                        gridBinding.DataSource = effectiveMetrics;
+                    }
+                    else if (_diagnosticsFallbackApplied && !ReferenceEquals(currentDataSource, effectiveMetrics))
+                    {
+                        gridBinding.DataSource = effectiveMetrics;
+                    }
+                    else if (!_diagnosticsFallbackApplied && !ReferenceEquals(currentDataSource, ViewModel.Metrics))
+                    {
+                        gridBinding.DataSource = ViewModel.Metrics;
+                    }
+                }
+
                 // Grid is bound via BindingSource which auto-updates on collection changes
                 // This method now only handles layout refresh if needed
                 _metricsGrid.SuspendLayout();
@@ -755,7 +783,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 var budgetSeries = new ChartSeries("Budgeted", ChartSeriesType.Column);
                 var actualSeries = new ChartSeries("Actual", ChartSeriesType.Column);
 
-                foreach (var metric in ViewModel.Metrics.Take(10)) // Limit to top 10 for chart readability
+                foreach (var metric in GetEffectiveMetrics().Take(10)) // Limit to top 10 for chart readability
                 {
                     budgetSeries.Points.Add(metric.DepartmentName, (double)metric.BudgetedAmount);
                     actualSeries.Points.Add(metric.DepartmentName, (double)metric.Amount);
@@ -769,6 +797,84 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Logger.LogWarning(ex, "BudgetOverviewPanel: UpdateChart failed");
             }
+        }
+
+        private IReadOnlyList<BudgetMetric> GetEffectiveMetrics()
+        {
+            if (_diagnosticsFallbackApplied && _diagnosticsFallbackMetrics != null)
+            {
+                return _diagnosticsFallbackMetrics;
+            }
+
+            if (ViewModel == null)
+            {
+                return Array.Empty<BudgetMetric>();
+            }
+
+            return ViewModel.Metrics.ToList();
+        }
+
+        private void ApplyDiagnosticsFallbackContentIfNeeded()
+        {
+            if (!LayoutDiagnosticsMode.IsActive || ViewModel == null || _diagnosticsFallbackApplied)
+            {
+                return;
+            }
+
+            if (ViewModel.Metrics.Any())
+            {
+                return;
+            }
+
+            _diagnosticsFallbackMetrics ??= CreateDiagnosticsFallbackMetrics();
+            var fallbackMetrics = _diagnosticsFallbackMetrics;
+            var totalBudget = fallbackMetrics.Sum(metric => metric.BudgetedAmount);
+            var totalActual = fallbackMetrics.Sum(metric => metric.Amount);
+            var totalVariance = fallbackMetrics.Sum(metric => metric.Variance);
+            var overBudgetCount = fallbackMetrics.Count(metric => metric.IsOverBudget);
+            var underBudgetCount = fallbackMetrics.Count - overBudgetCount;
+
+            _diagnosticsFallbackApplied = true;
+
+            if (!ViewModel.AvailableFiscalYears.Contains(ViewModel.SelectedFiscalYear))
+            {
+                ViewModel.AvailableFiscalYears.Add(ViewModel.SelectedFiscalYear);
+            }
+
+            ViewModel.Metrics.Clear();
+            foreach (var metric in fallbackMetrics)
+            {
+                ViewModel.Metrics.Add(metric);
+            }
+
+            ViewModel.TotalBudget = totalBudget;
+            ViewModel.TotalActual = totalActual;
+            ViewModel.TotalEncumbrance = 0m;
+            ViewModel.TotalAvailable = totalBudget - totalActual;
+            ViewModel.TotalVariance = totalVariance;
+            ViewModel.OverallVariancePercent = totalBudget == 0m ? 0m : totalVariance / totalBudget;
+            ViewModel.OverBudgetCount = overBudgetCount;
+            ViewModel.UnderBudgetCount = underBudgetCount;
+            ViewModel.LastUpdated = DateTime.Today.AddHours(8).AddMinutes(45);
+            ViewModel.StatusText = "Diagnostics sample budget snapshot active";
+
+            if (_noDataOverlay != null)
+            {
+                _noDataOverlay.Visible = false;
+            }
+        }
+
+        private static IReadOnlyList<BudgetMetric> CreateDiagnosticsFallbackMetrics()
+        {
+            return new List<BudgetMetric>
+            {
+                new("Water Treatment", 118000m, "Water Treatment", 118000m, 111200m, 6800m, 0.058m, false),
+                new("Wastewater", 94000m, "Wastewater", 94000m, 97150m, -3150m, -0.034m, true),
+                new("Streets", 76000m, "Streets", 76000m, 70250m, 5750m, 0.076m, false),
+                new("Parks", 58250m, "Parks", 58250m, 54880m, 3370m, 0.058m, false),
+                new("Public Safety", 142000m, "Public Safety", 142000m, 149600m, -7600m, -0.054m, true),
+                new("Administration", 68800m, "Administration", 68800m, 65340m, 3460m, 0.05m, false),
+            };
         }
 
         private void ComboFiscalYear_SelectedIndexChanged(object? sender, EventArgs e)

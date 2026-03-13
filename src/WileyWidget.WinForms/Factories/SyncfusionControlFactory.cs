@@ -90,6 +90,57 @@ public class SyncfusionControlFactory
         }
     }
 
+    private static void PropagateComboAccessibility(SfComboBox comboBox)
+    {
+        static void ApplyToChildren(Control parent, string ownerName, string ownerDescription)
+        {
+            foreach (Control child in parent.Controls)
+            {
+                var typeName = child.GetType().Name;
+
+                if (typeName.Contains("SfButton", StringComparison.OrdinalIgnoreCase)
+                    || typeName.Contains("DropDownButton", StringComparison.OrdinalIgnoreCase))
+                {
+                    child.AccessibleName = $"{ownerName} drop-down";
+                    child.AccessibleDescription = string.IsNullOrWhiteSpace(ownerDescription)
+                        ? $"Open the {ownerName} options"
+                        : $"Open the {ownerDescription.ToLowerInvariant()} options";
+                }
+                else if (typeName.Contains("TextBox", StringComparison.OrdinalIgnoreCase))
+                {
+                    child.AccessibleName = $"{ownerName} input";
+                    child.AccessibleDescription = string.IsNullOrWhiteSpace(ownerDescription)
+                        ? $"Type or review the {ownerName} value"
+                        : ownerDescription;
+                }
+
+                if (child.HasChildren)
+                {
+                    ApplyToChildren(child, ownerName, ownerDescription);
+                }
+            }
+        }
+
+        void Apply()
+        {
+            var ownerName = string.IsNullOrWhiteSpace(comboBox.AccessibleName)
+                ? (!string.IsNullOrWhiteSpace(comboBox.Name) ? comboBox.Name : "Selection")
+                : comboBox.AccessibleName;
+
+            var ownerDescription = string.IsNullOrWhiteSpace(comboBox.AccessibleDescription)
+                ? $"Select {ownerName}"
+                : comboBox.AccessibleDescription;
+
+            comboBox.AccessibleName = ownerName;
+            comboBox.AccessibleDescription = ownerDescription;
+            ApplyToChildren(comboBox, ownerName, ownerDescription);
+        }
+
+        comboBox.HandleCreated += (_, _) => Apply();
+        comboBox.ControlAdded += (_, _) => Apply();
+        Apply();
+    }
+
     private Image? TryGetIcon(string icon)
     {
         if (string.IsNullOrWhiteSpace(icon) || _dpiAwareImageService == null)
@@ -668,7 +719,7 @@ public class SyncfusionControlFactory
             Size = new Size(200, LayoutTokens.StandardControlHeight),
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
             ThemeName = _currentTheme,
-            CanOverrideStyle = false,
+            CanOverrideStyle = true,
             MaxLength = short.MaxValue,
             CharacterCasing = CharacterCasing.Normal,
             TextAlign = HorizontalAlignment.Left,
@@ -904,6 +955,52 @@ public class SyncfusionControlFactory
         panel.ApplySyncfusionTheme(_currentTheme, _logger);
         configure?.Invoke(panel);
         return panel;
+    }
+
+    public Panel CreateAuthenticationSurfacePanel(Action<Panel>? configure = null)
+    {
+        _logger.LogDebug("Creating authentication surface panel");
+
+        return CreatePanel(panel =>
+        {
+            panel.Dock = DockStyle.Fill;
+            panel.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelOuterPadding);
+            panel.Margin = Padding.Empty;
+            panel.AccessibleName = "Authentication surface";
+            configure?.Invoke(panel);
+        });
+    }
+
+    public TextBoxExt CreateAuthenticationTextBox(string accessibleName, bool password = false, Action<TextBoxExt>? configure = null)
+    {
+        _logger.LogDebug("Creating authentication TextBoxExt: {AccessibleName}", accessibleName);
+
+        return CreateTextBoxExt(multiline: false, readOnly: false, passwordChar: password, textBox =>
+        {
+            textBox.Dock = DockStyle.Top;
+            textBox.Width = 360;
+            textBox.AccessibleName = accessibleName;
+            textBox.AccessibleDescription = accessibleName;
+            textBox.Margin = new Padding(0, 4, 0, 4);
+            configure?.Invoke(textBox);
+        });
+    }
+
+    public Label CreateAuthenticationStatusLabel(Action<Label>? configure = null)
+    {
+        _logger.LogDebug("Creating authentication status label");
+
+        return CreateLabel(label =>
+        {
+            label.AutoSize = false;
+            label.Dock = DockStyle.Fill;
+            label.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point);
+            label.Height = LayoutTokens.GetScaled(28);
+            label.Padding = new Padding(0, 8, 0, 0);
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            label.AccessibleName = "Authentication status";
+            configure?.Invoke(label);
+        });
     }
 
     public PanelHeader CreatePanelHeader(Action<PanelHeader>? configure = null)
@@ -1163,6 +1260,8 @@ public class SyncfusionControlFactory
 
         var palette = GetSemanticPalette(options.SemanticKind);
 
+        // MessageBoxAdv exposes MetroColorTable as its own styling surface. Treat this as
+        // a semantic dialog override, not a general child-control theme replacement.
         SetInstancePropertyIfExists(metroColorTable, "CaptionBarColor", palette.CaptionBarColor);
         SetInstancePropertyIfExists(metroColorTable, "CaptionForeColor", palette.CaptionForeColor);
         SetInstancePropertyIfExists(metroColorTable, "BackColor", palette.BackColor);
@@ -1472,6 +1571,7 @@ public class SyncfusionControlFactory
 
         ApplyThemeAndInit(comboBox);
         configure?.Invoke(comboBox);
+        PropagateComboAccessibility(comboBox);
         return comboBox;
     }
 

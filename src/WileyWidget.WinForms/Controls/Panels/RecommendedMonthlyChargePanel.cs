@@ -285,11 +285,13 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         // ============================================================================
         // Button Panel - Top Action Buttons (Dock-based, responsive)
         // ============================================================================
+        var actionRowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge + (AppLayoutConstants.PanelPadding * 2));
         _buttonPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight),
-            Padding = new Padding(AppLayoutConstants.PanelPadding),
+            Height = actionRowHeight,
+            MinimumSize = new Size(0, actionRowHeight),
+            Padding = new Padding(AppLayoutConstants.PanelPadding, 0, AppLayoutConstants.PanelPadding, 0),
             BorderStyle = BorderStyle.None,
         };
         SfSkinManager.SetVisualStyle(_buttonPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
@@ -298,14 +300,18 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
-            AutoSize = true,
-            WrapContents = false
+            AutoSize = false,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
         };
 
         _refreshButton = ControlFactory.CreateSfButton("&Refresh Data", button =>
         {
-            button.AutoSize = true;
-            button.Margin = new Padding(AppLayoutConstants.ButtonSpacing);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(152, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(152, LayoutTokens.StandardControlHeightLarge));
+            button.Margin = new Padding(0, 0, LayoutTokens.GetScaled(AppLayoutConstants.ButtonSpacing), 0);
             button.TabIndex = 1;
             button.AccessibleName = "Refresh Data";
             button.AccessibleDescription = "Refresh department expense data from QuickBooks";
@@ -318,8 +324,10 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
         _queryGrokButton = ControlFactory.CreateSfButton("Query &AI", button =>
         {
-            button.AutoSize = true;
-            button.Margin = new Padding(AppLayoutConstants.ButtonSpacing);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(152, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(152, LayoutTokens.StandardControlHeightLarge));
+            button.Margin = new Padding(0, 0, LayoutTokens.GetScaled(AppLayoutConstants.ButtonSpacing), 0);
             button.TabIndex = 2;
             button.AccessibleName = "Query AI";
             button.AccessibleDescription = "Get AI-driven rate recommendations from Grok";
@@ -332,8 +340,10 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
         _saveButton = ControlFactory.CreateSfButton("&Save Changes", button =>
         {
-            button.AutoSize = true;
-            button.Margin = new Padding(AppLayoutConstants.ButtonSpacing);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(152, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(152, LayoutTokens.StandardControlHeightLarge));
+            button.Margin = Padding.Empty;
             button.TabIndex = 3;
             button.AccessibleName = "Save Changes";
             button.AccessibleDescription = "Save current charge modifications to database";
@@ -455,7 +465,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             splitter.Orientation = Orientation.Vertical;
             splitter.BorderStyle = BorderStyle.FixedSingle;
         });
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 700);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_mainSplitContainer, 720, 360, 660);
+        SafeSplitterDistanceHelper.SetupProportionalResizing(_mainSplitContainer, 0.60d);
 
         // ============================================================================
         // Left Split Container - Top (Departments) | Bottom (Benchmarks)
@@ -466,7 +477,8 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             splitter.Orientation = Orientation.Horizontal;
             splitter.BorderStyle = BorderStyle.None;
         });
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(_leftSplitContainer, 350);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(_leftSplitContainer, 220, 180, 350);
+        SafeSplitterDistanceHelper.SetupProportionalResizing(_leftSplitContainer, 0.58d);
 
         // ============================================================================
         // Departments Grid (Top Left)
@@ -474,6 +486,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         var deptGridPanel = new Panel
         {
             Dock = DockStyle.Fill,
+            MinimumSize = LayoutTokens.GetScaled(new Size(0, 220)),
             Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight),
             BorderStyle = BorderStyle.None,
         };
@@ -497,6 +510,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             grid.AllowFiltering = false;
             grid.AutoGenerateColumns = false;
             grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.ShowGroupDropArea = false;
             grid.RowHeight = LayoutTokens.GetScaled(34);
             grid.HeaderRowHeight = LayoutTokens.GetScaled(42);
             grid.SelectionMode = GridSelectionMode.Single;
@@ -511,7 +525,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             MappingName = "Department",
             HeaderText = "Department",
-            Width = 120,
+            Width = 112,
             AllowEditing = false
         });
 
@@ -519,7 +533,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             MappingName = "CustomerCount",
             HeaderText = "Customers",
-            Width = 90,
+            Width = 84,
             AllowEditing = false,
             Format = "N0"
         });
@@ -529,7 +543,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "MonthlyExpenses",
             HeaderText = "Monthly Expenses",
             Format = "C2",
-            Width = 140,
+            Width = 132,
             AllowEditing = false
         });
 
@@ -538,7 +552,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "CurrentCharge",
             HeaderText = "Current Charge",
             Format = "C2",
-            Width = 120,
+            Width = 112,
             AllowEditing = true
         });
 
@@ -547,7 +561,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "SuggestedCharge",
             HeaderText = "Suggested",
             Format = "C2",
-            Width = 110,
+            Width = 104,
             AllowEditing = false
         });
 
@@ -556,7 +570,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "MonthlyGainLoss",
             HeaderText = "Gain/Loss",
             Format = "C2",
-            Width = 120,
+            Width = 112,
             AllowEditing = false
         });
 
@@ -564,7 +578,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             MappingName = "PositionStatus",
             HeaderText = "Status",
-            Width = 110,
+            Width = 100,
             AllowEditing = false
         });
 
@@ -573,14 +587,14 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "StateAverage",
             HeaderText = "State Avg",
             Format = "C2",
-            Width = 100,
+            Width = 96,
             AllowEditing = false
         });
 
-        SetMinimumColumnWidth(_departmentsGrid, "MonthlyExpenses", 130);
-        SetMinimumColumnWidth(_departmentsGrid, "CurrentCharge", 130);
-        SetMinimumColumnWidth(_departmentsGrid, "SuggestedCharge", 130);
-        SetMinimumColumnWidth(_departmentsGrid, "MonthlyGainLoss", 130);
+        SetMinimumColumnWidth(_departmentsGrid, "MonthlyExpenses", 120);
+        SetMinimumColumnWidth(_departmentsGrid, "CurrentCharge", 120);
+        SetMinimumColumnWidth(_departmentsGrid, "SuggestedCharge", 120);
+        SetMinimumColumnWidth(_departmentsGrid, "MonthlyGainLoss", 120);
 
         // Mark grid as dirty on edit for unsaved changes tracking
         _departmentsGrid.CurrentCellEndEdit += (s, e) => SetHasUnsavedChanges(true);
@@ -597,6 +611,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         var benchmarkPanel = new Panel
         {
             Dock = DockStyle.Fill,
+            MinimumSize = LayoutTokens.GetScaled(new Size(0, 180)),
             Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight),
             BorderStyle = BorderStyle.None,
         };
@@ -621,6 +636,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             grid.AllowFiltering = false;
             grid.AutoGenerateColumns = false;
             grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+            grid.ShowGroupDropArea = false;
             grid.RowHeight = LayoutTokens.GetScaled(34);
             grid.HeaderRowHeight = LayoutTokens.GetScaled(42);
             grid.SelectionMode = GridSelectionMode.Single;
@@ -634,7 +650,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             MappingName = "Department",
             HeaderText = "Department",
-            Width = 120,
+            Width = 110,
             AllowEditing = false
         });
 
@@ -643,7 +659,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "StateAverage",
             HeaderText = "State Avg",
             Format = "C2",
-            Width = 110,
+            Width = 100,
             AllowEditing = false
         });
 
@@ -652,7 +668,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "TownSizeAverage",
             HeaderText = "Town Size Avg",
             Format = "C2",
-            Width = 120,
+            Width = 112,
             AllowEditing = false
         });
 
@@ -661,7 +677,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             MappingName = "NationalAverage",
             HeaderText = "National Avg",
             Format = "C2",
-            Width = 110,
+            Width = 100,
             AllowEditing = false
         });
 
@@ -669,7 +685,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             MappingName = "PopulationRange",
             HeaderText = "Pop Range",
-            Width = 100,
+            Width = 92,
             AllowEditing = false
         });
 
@@ -677,7 +693,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         {
             MappingName = "Source",
             HeaderText = "Source",
-            Width = 200,
+            Width = 180,
             AllowEditing = false
         });
 
@@ -697,7 +713,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         _chartPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = LayoutTokens.GetScaled(LayoutTokens.DialogContentPadding),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight),
             BorderStyle = BorderStyle.None,
         };
         SfSkinManager.SetVisualStyle(_chartPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
@@ -705,7 +721,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         _chartControl = ControlFactory.CreateChartControl("Expenses vs Current vs Suggested Charges", chart =>
         {
             chart.Dock = DockStyle.Fill;
-            chart.MinimumSize = LayoutTokens.GetScaled(new Size(520, 380));
+            chart.MinimumSize = LayoutTokens.GetScaled(new Size(420, 320));
             chart.TabIndex = 12;
             chart.AccessibleName = "Department Expense Chart";
             chart.AccessibleDescription = "Visual comparison of department expenses, current charges, and suggested charges";
@@ -722,7 +738,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         _chartControl.PrimaryYAxis.Title = "Amount ($)";
         _chartControl.PrimaryYAxis.RangeType = ChartAxisRangeType.Auto;
 
-        _chartPanel.MinimumSize = LayoutTokens.GetScaled(new Size(520, 380));
+        _chartPanel.MinimumSize = LayoutTokens.GetScaled(new Size(420, 320));
         _chartPanel.Controls.Add(_chartControl);
         _mainSplitContainer.Panel2.Controls.Add(_chartPanel);
 

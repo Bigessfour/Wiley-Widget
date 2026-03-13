@@ -134,7 +134,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
             AutoScroll = false;
-            MinimumSize = ScaleLogicalToDevice(new Size(360, 520));
+            MinimumSize = ScaleLogicalToDevice(new Size(820, 576));
 
             // Panel Header - added directly to Controls with Dock = Top
             _panelHeader = new PanelHeader

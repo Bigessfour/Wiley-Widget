@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -75,6 +76,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private int _layoutNestingDepth = 0; // Hard limit on nesting depth — prevents runaway cascades
     private bool _splittersConfigured = false; // Ensures ConfigureSplitContainersSafely runs only once after layout
     private readonly HashSet<string> _splitterWidthRetryPending = new(StringComparer.Ordinal);
+    private bool _applyingDiagnosticsFallback;
+    private IReadOnlyList<QuickBooksSyncHistoryRecord>? _diagnosticsFallbackHistory;
 
     // Main layout containers (organized using SplitContainerAdv for professional layout)
     private TableLayoutPanel? _content;
@@ -249,6 +252,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 initializeStopwatch.Stop();
                 LogSlowUiOperation("LoadAsync.ViewModel.InitializeAsync", initializeStopwatch.ElapsedMilliseconds, warningThresholdMs: 1500);
 
+                ApplyDiagnosticsFallbackContentIfNeeded();
                 UpdateLoadingState();
                 UpdateNoDataOverlay();
 
@@ -377,8 +381,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // after _factory and InitializeComponent have both completed.
         _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         ThemeColors.EnsureThemeAssemblyLoaded(Logger);
-        SafeSuspendAndLayout(InitializeComponent);
-        BuildPanelUI();
+        SafeSuspendAndLayout(() =>
+        {
+            InitializeComponent();
+            BuildPanelUI();
+        });
     }
 
     private static ILogger ResolveLogger()
@@ -1783,8 +1790,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         };
         _connectionPanel.Controls.Add(connectionHeader);
 
-        var connectionButtonRowHeight = ToolbarButtonHeightPx() + DpiHeight(10f);
-        var connectionButtonPanelHeight = (connectionButtonRowHeight * 2) + DpiHeight(10f);
+        var connectionButtonRowHeight = ToolbarButtonHeightPx() + DpiHeight(4f);
+        var connectionButtonPanelHeight = (connectionButtonRowHeight * 2) + DpiHeight(4f);
 
         // TableLayoutPanel for organized content layout
         var tableLayout = new TableLayoutPanel
@@ -1870,7 +1877,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             AutoSize = false,
             ColumnCount = 3,
             RowCount = 2,
-            Padding = new Padding(0, 6, 0, 0),
+            Padding = new Padding(0, 2, 0, 0),
             Margin = Padding.Empty
         };
         buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34F));
@@ -2371,6 +2378,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             grid.AllowResizingColumns = true;
             grid.AllowSorting = true;
             grid.AllowFiltering = false;
+            grid.ShowGroupDropArea = false;
             grid.ShowRowHeader = false;
             grid.SelectionMode = GridSelectionMode.Single;
             grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
@@ -2524,6 +2532,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         if (ViewModel == null) return;
 
+        ApplyDiagnosticsFallbackContentIfNeeded();
+
         // Bind sync history grid with performance optimization
         _syncHistoryGrid!.BeginUpdate();
         try
@@ -2537,6 +2547,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Subscribe to property changes
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        UpdateConnectionStatus();
+        UpdateSummaryPanel();
+        RefreshSyncHistoryDisplay();
+        UpdateNoDataOverlay();
 
         Logger.LogDebug("QuickBooksPanel: ViewModel bound to UI");
     }
@@ -2562,6 +2577,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         }
 
         if (IsDisposed) return;
+
+        ApplyDiagnosticsFallbackContentIfNeeded();
 
         switch (e.PropertyName)
         {
@@ -2638,10 +2655,20 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         var isConnected = ViewModel.IsConnected;
 
-        // Use semantic status colors only for connection indicator (exception to theme rule)
         if (_connectionStatusLabel != null)
         {
+            _connectionStatusLabel.Text = ViewModel.ConnectionStatusMessage;
             _connectionStatusLabel.ForeColor = isConnected ? Color.Green : Color.Red;
+        }
+
+        if (_companyNameLabel != null)
+        {
+            _companyNameLabel.Text = string.IsNullOrWhiteSpace(ViewModel.CompanyName) ? "-" : ViewModel.CompanyName;
+        }
+
+        if (_lastSyncLabel != null)
+        {
+            _lastSyncLabel.Text = string.IsNullOrWhiteSpace(ViewModel.LastSyncTime) ? "-" : ViewModel.LastSyncTime;
         }
 
         // Update right-side status bar badge
@@ -2715,6 +2742,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     private void RefreshSyncHistoryDisplay()
     {
+        if (_syncHistoryGrid != null && ViewModel != null && !ReferenceEquals(_syncHistoryGrid.DataSource, ViewModel.FilteredSyncHistory))
+        {
+            _syncHistoryGrid.DataSource = ViewModel.FilteredSyncHistory;
+        }
+
         if (_syncHistoryGrid?.View != null)
         {
             _syncHistoryGrid.SafeInvoke(() =>
@@ -2748,6 +2780,99 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         var hasData = ViewModel.FilteredSyncHistory.Count > 0;
         if (!_noDataOverlay.IsDisposed)
             _noDataOverlay.SafeInvoke(() => _noDataOverlay.Visible = !hasData && !ViewModel.IsLoading);
+    }
+
+    private void ApplyDiagnosticsFallbackContentIfNeeded()
+    {
+        if (!LayoutDiagnosticsMode.IsActive || ViewModel == null || _applyingDiagnosticsFallback)
+        {
+            return;
+        }
+
+        if (ViewModel.IsConnected && ViewModel.FilteredSyncHistory.Count > 0 && ViewModel.TotalSyncs > 0)
+        {
+            return;
+        }
+
+        _applyingDiagnosticsFallback = true;
+        try
+        {
+            _diagnosticsFallbackHistory ??= CreateDiagnosticsFallbackHistory();
+            var history = _diagnosticsFallbackHistory;
+            var successfulSyncs = history.Count(record => string.Equals(record.Status, "Success", StringComparison.OrdinalIgnoreCase));
+            var failedSyncs = history.Count(record => string.Equals(record.Status, "Failed", StringComparison.OrdinalIgnoreCase));
+            var totalRecords = history.Sum(record => record.RecordsProcessed);
+            var averageDuration = history.Count == 0 ? 0d : history.Average(record => record.Duration.TotalSeconds);
+            var importedRecord = history.FirstOrDefault(record => string.Equals(record.Operation, "Import Accounts", StringComparison.OrdinalIgnoreCase));
+
+            ViewModel.IsConnected = true;
+            ViewModel.CompanyName = "Wiley Utility Sandbox";
+            ViewModel.LastSyncTime = DateTime.Today.AddHours(9).AddMinutes(30).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+            ViewModel.ConnectionStatusMessage = "Diagnostics snapshot active";
+            ViewModel.StatusText = "Diagnostics sample QuickBooks activity active";
+            ViewModel.ErrorMessage = null;
+
+            ViewModel.SyncHistory.Clear();
+            foreach (var record in history)
+            {
+                ViewModel.SyncHistory.Add(record);
+            }
+
+            ViewModel.FilteredSyncHistory = new ObservableCollection<QuickBooksSyncHistoryRecord>(history);
+            ViewModel.TotalSyncs = history.Count;
+            ViewModel.SuccessfulSyncs = successfulSyncs;
+            ViewModel.FailedSyncs = failedSyncs;
+            ViewModel.TotalRecordsSynced = totalRecords;
+            ViewModel.AccountsImported = importedRecord?.RecordsProcessed ?? totalRecords;
+            ViewModel.AverageSyncDuration = averageDuration;
+        }
+        finally
+        {
+            _applyingDiagnosticsFallback = false;
+        }
+    }
+
+    private static IReadOnlyList<QuickBooksSyncHistoryRecord> CreateDiagnosticsFallbackHistory()
+    {
+        return new List<QuickBooksSyncHistoryRecord>
+        {
+            new()
+            {
+                Timestamp = DateTime.Today.AddHours(9).AddMinutes(30),
+                Operation = "Connect",
+                Status = "Success",
+                RecordsProcessed = 1,
+                Duration = TimeSpan.FromSeconds(1.4),
+                Message = "Connected to sandbox company file and refreshed tokens.",
+            },
+            new()
+            {
+                Timestamp = DateTime.Today.AddHours(9).AddMinutes(36),
+                Operation = "Sync Data",
+                Status = "Success",
+                RecordsProcessed = 142,
+                Duration = TimeSpan.FromSeconds(18.2),
+                Message = "Invoices, payments, and balances were synchronized successfully.",
+            },
+            new()
+            {
+                Timestamp = DateTime.Today.AddHours(9).AddMinutes(44),
+                Operation = "Import Accounts",
+                Status = "Success",
+                RecordsProcessed = 68,
+                Duration = TimeSpan.FromSeconds(7.6),
+                Message = "Chart of accounts imported and matched to utility funds.",
+            },
+            new()
+            {
+                Timestamp = DateTime.Today.AddHours(9).AddMinutes(52),
+                Operation = "Sync Data",
+                Status = "Failed",
+                RecordsProcessed = 24,
+                Duration = TimeSpan.FromSeconds(5.1),
+                Message = "One customer batch timed out and was queued for retry.",
+            },
+        };
     }
 
     #endregion
@@ -3381,31 +3506,31 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             // ------------------------------------------------------------------
             // Main horizontal splitter (top section vs bottom section)
             // ------------------------------------------------------------------
-            int topSectionPreferred = CalculateTopSectionMinHeight() + DpiHeight(16f);
-            int mainTopPreferred = Math.Max(topSectionPreferred, DpiHeight(336f));
-            int mainPanel1Min = Math.Max(DpiHeight(220f), CalculateTopSectionMinHeight());
-            int mainPanel2Min = DpiHeight(260f);
+            int topSectionPreferred = CalculateTopSectionMinHeight() + DpiHeight(8f);
+            int mainTopPreferred = Math.Max(topSectionPreferred, DpiHeight(296f));
+            int mainPanel1Min = Math.Max(DpiHeight(200f), CalculateTopSectionMinHeight());
+            int mainPanel2Min = DpiHeight(280f);
 
             // Validate container can hold minimum sizes
             int mainRequiredHeight = mainPanel1Min + mainPanel2Min + _splitContainerMain.SplitterWidth;
             if (_splitContainerMain.Height >= mainRequiredHeight)
             {
-                _splitContainerMain.Panel1MinSize = mainPanel1Min;
-                _splitContainerMain.Panel2MinSize = mainPanel2Min;
+                ApplySplitterMinSizesWithConstraintCheck(_splitContainerMain, mainPanel1Min, mainPanel2Min, "Main");
 
                 // Set distance within validated bounds
-                int safeDistance = Math.Max(mainPanel1Min,
-                    Math.Min(mainTopPreferred, _splitContainerMain.Height - mainPanel2Min - _splitContainerMain.SplitterWidth));
-                _splitContainerMain.SplitterDistance = safeDistance;
+                int actualMin1 = Math.Max(0, _splitContainerMain.Panel1MinSize);
+                int actualMin2 = Math.Max(0, _splitContainerMain.Panel2MinSize);
+                int safeDistance = Math.Max(actualMin1,
+                    Math.Min(mainTopPreferred, _splitContainerMain.Height - actualMin2 - _splitContainerMain.SplitterWidth));
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerMain, safeDistance);
             }
             else
             {
                 // Fallback: use proportional min sizes when container is smaller than ideal
                 int fallbackMin1 = Math.Max(50, _splitContainerMain.Height / 3);
                 int fallbackMin2 = Math.Max(50, _splitContainerMain.Height / 3);
-                _splitContainerMain.Panel1MinSize = fallbackMin1;
-                _splitContainerMain.Panel2MinSize = fallbackMin2;
-                _splitContainerMain.SplitterDistance = fallbackMin1;
+                ApplySplitterMinSizesWithConstraintCheck(_splitContainerMain, fallbackMin1, fallbackMin2, "MainFallback");
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerMain, Math.Max(0, _splitContainerMain.Panel1MinSize));
                 Logger.LogDebug("QuickBooksPanel: Using fallback main splitter sizes - container height {Height} < required {Required}",
                     _splitContainerMain.Height, mainRequiredHeight);
             }
@@ -3428,22 +3553,22 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             int topRequiredWidth = topPanel1Min + topPanel2Min + _splitContainerTop.SplitterWidth;
             if (_splitContainerTop.Width >= topRequiredWidth)
             {
-                _splitContainerTop.Panel1MinSize = topPanel1Min;
-                _splitContainerTop.Panel2MinSize = topPanel2Min;
+                ApplySplitterMinSizesWithConstraintCheck(_splitContainerTop, topPanel1Min, topPanel2Min, "Top");
 
-                int topDistance = Math.Max(topPanel1Min, (int)(_splitContainerTop.Width * 0.60f));
-                topDistance = Math.Max(topPanel1Min,
-                    Math.Min(topDistance, _splitContainerTop.Width - topPanel2Min - _splitContainerTop.SplitterWidth));
-                _splitContainerTop.SplitterDistance = topDistance;
+                int actualMin1 = Math.Max(0, _splitContainerTop.Panel1MinSize);
+                int actualMin2 = Math.Max(0, _splitContainerTop.Panel2MinSize);
+                int topDistance = Math.Max(actualMin1, (int)(_splitContainerTop.Width * 0.60f));
+                topDistance = Math.Max(actualMin1,
+                    Math.Min(topDistance, _splitContainerTop.Width - actualMin2 - _splitContainerTop.SplitterWidth));
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerTop, topDistance);
             }
             else
             {
                 // Fallback proportional
                 int fallbackMin1 = Math.Max(50, _splitContainerTop.Width / 2);
                 int fallbackMin2 = Math.Max(50, _splitContainerTop.Width / 4);
-                _splitContainerTop.Panel1MinSize = fallbackMin1;
-                _splitContainerTop.Panel2MinSize = fallbackMin2;
-                _splitContainerTop.SplitterDistance = fallbackMin1;
+                ApplySplitterMinSizesWithConstraintCheck(_splitContainerTop, fallbackMin1, fallbackMin2, "TopFallback");
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerTop, Math.Max(0, _splitContainerTop.Panel1MinSize));
                 Logger.LogDebug("QuickBooksPanel: Using fallback top splitter sizes - container width {Width} < required {Required}",
                     _splitContainerTop.Width, topRequiredWidth);
             }
@@ -3467,21 +3592,21 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             int bottomRequiredHeight = bottomPanel1Min + bottomPanel2Min + _splitContainerBottom.SplitterWidth;
             if (_splitContainerBottom.Height >= bottomRequiredHeight)
             {
-                _splitContainerBottom.Panel1MinSize = bottomPanel1Min;
-                _splitContainerBottom.Panel2MinSize = bottomPanel2Min;
+                ApplySplitterMinSizesWithConstraintCheck(_splitContainerBottom, bottomPanel1Min, bottomPanel2Min, "Bottom");
 
-                int safeDistance = Math.Max(bottomPanel1Min,
-                    Math.Min(summaryPreferred, _splitContainerBottom.Height - bottomPanel2Min - _splitContainerBottom.SplitterWidth));
-                _splitContainerBottom.SplitterDistance = safeDistance;
+                int actualMin1 = Math.Max(0, _splitContainerBottom.Panel1MinSize);
+                int actualMin2 = Math.Max(0, _splitContainerBottom.Panel2MinSize);
+                int safeDistance = Math.Max(actualMin1,
+                    Math.Min(summaryPreferred, _splitContainerBottom.Height - actualMin2 - _splitContainerBottom.SplitterWidth));
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerBottom, safeDistance);
             }
             else
             {
                 // Fallback proportional
                 int fallbackMin1 = Math.Max(50, _splitContainerBottom.Height / 3);
                 int fallbackMin2 = Math.Max(50, _splitContainerBottom.Height / 3);
-                _splitContainerBottom.Panel1MinSize = fallbackMin1;
-                _splitContainerBottom.Panel2MinSize = fallbackMin2;
-                _splitContainerBottom.SplitterDistance = fallbackMin1;
+                ApplySplitterMinSizesWithConstraintCheck(_splitContainerBottom, fallbackMin1, fallbackMin2, "BottomFallback");
+                SafeSplitterDistanceHelper.TrySetSplitterDistance(_splitContainerBottom, Math.Max(0, _splitContainerBottom.Panel1MinSize));
                 Logger.LogDebug("QuickBooksPanel: Using fallback bottom splitter sizes - container height {Height} < required {Required}",
                     _splitContainerBottom.Height, bottomRequiredHeight);
             }

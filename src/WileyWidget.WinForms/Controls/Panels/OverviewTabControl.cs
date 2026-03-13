@@ -14,6 +14,7 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
@@ -67,15 +68,16 @@ public partial class OverviewTabControl : UserControl
         this.Dock = DockStyle.Fill;
         this.AutoScaleMode = AutoScaleMode.Dpi;
         this.AutoScroll = false;
-        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
-        this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
+        this.MinimumSize = Size.Empty;
+        this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight);
         _toolTip = new ToolTip();
 
         var mainSplit = _controlFactory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Orientation = Orientation.Vertical;
-            splitter.SplitterDistance = 100;
         });
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(mainSplit, 280, 420, 320);
+        SafeSplitterDistanceHelper.SetupProportionalResizing(mainSplit, 0.28d);
 
         InitializeSummaryTiles(mainSplit.Panel1);
         InitializeChartAndGrid(mainSplit.Panel2);
@@ -120,13 +122,15 @@ public partial class OverviewTabControl : UserControl
         {
             splitter.Orientation = Orientation.Horizontal;
         });
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(split, 300, 220, 320);
+        SafeSplitterDistanceHelper.SetupProportionalResizing(split, 0.52d);
 
         _varianceChart = _controlFactory.CreateChartControl("Budget Variance", chart =>
         {
             chart.AccessibleName = "Budget variance chart";
             chart.AccessibleDescription = "Displays budget vs actual variance by department";
             chart.Legend.Visible = true;
-            chart.Legend.Position = ChartDock.Right;
+            chart.Legend.Position = ChartDock.Top;
             chart.PrimaryXAxis.Title = string.Empty;
             chart.PrimaryYAxis.Title = string.Empty;
         });

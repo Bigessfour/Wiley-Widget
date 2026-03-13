@@ -66,6 +66,7 @@ namespace WileyWidget.WinForms.Forms
         private EventHandler<StatusProgressUpdate>? _statusProgressChangedHandler;
         private SyncfusionControlFactory? _controlFactory;
         private ContainerControl? _contentHostPanel;   // Sub-container below ribbon, above status bar — houses right-dock panel and MDI client area
+        private LocalIdentityHostPanel? _hostedAuthenticationPanel;
         private bool _mdiLayoutSyncHooksAttached;
         private bool _dashboardAutoShown;
         private bool _reportViewerLaunched;
@@ -1493,10 +1494,16 @@ namespace WileyWidget.WinForms.Forms
                     mdiClient.Bounds = targetBounds;
                 }
 
+                // During hosted authentication, the content host must own the foreground so the
+                // login surface remains visible above the MDI client.
+                if (IsHostedAuthenticationPanelActive())
+                {
+                    EnsureHostedAuthenticationForeground();
+                }
                 // Ensure MdiClient is in front of ContentHostPanel (which has Dock=Fill and paints
                 // over the MDI area when behind MdiClient).  Then immediately re-assert the ribbon
                 // on top so its z-order is not displaced on every constrain call.
-                if (boundsChanged || dockWasReset)
+                else if (boundsChanged || dockWasReset)
                 {
                     try
                     {

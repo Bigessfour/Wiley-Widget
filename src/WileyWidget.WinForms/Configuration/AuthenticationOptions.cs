@@ -6,16 +6,7 @@ namespace WileyWidget.WinForms.Configuration;
 public static class AuthenticationModes
 {
     public const string DevelopmentBypass = "DevelopmentBypass";
-    public const string ExternalId = "ExternalId";
-}
-
-public static class ExternalIdRedirectUris
-{
-    // Microsoft guidance: embedded browser desktop apps should use nativeclient redirect URI.
-    public const string EmbeddedNativeClient = "https://login.microsoftonline.com/common/oauth2/nativeclient";
-
-    // Microsoft guidance: system browser desktop apps should use localhost redirect URI.
-    public const string SystemBrowserLocalhost = "http://localhost";
+    public const string LocalIdentity = "LocalIdentity";
 }
 
 /// <summary>
@@ -25,17 +16,32 @@ public sealed class AuthenticationOptions
 {
     public string Mode { get; set; } = AuthenticationModes.DevelopmentBypass;
 
+    public AuthenticationEnvironmentOptions Environment { get; set; } = new();
+
     public DevelopmentBypassAuthenticationOptions DevelopmentBypass { get; set; } = new();
 
-    public ExternalIdAuthenticationOptions ExternalId { get; set; } = new();
+    public LocalIdentityAuthenticationOptions LocalIdentity { get; set; } = new();
 
     public UserOnboardingOptions Onboarding { get; set; } = new();
 
     public bool IsDevelopmentBypassMode =>
         string.Equals(Mode, AuthenticationModes.DevelopmentBypass, StringComparison.OrdinalIgnoreCase);
 
-    public bool IsExternalIdMode =>
-        string.Equals(Mode, AuthenticationModes.ExternalId, StringComparison.OrdinalIgnoreCase);
+    public bool IsLocalIdentityMode =>
+        string.Equals(Mode, AuthenticationModes.LocalIdentity, StringComparison.OrdinalIgnoreCase);
+}
+
+public sealed class AuthenticationEnvironmentOptions
+{
+    public bool EnableModeOverride { get; set; } = true;
+
+    public string DevelopmentMode { get; set; } = AuthenticationModes.DevelopmentBypass;
+
+    public string NonDevelopmentMode { get; set; } = AuthenticationModes.LocalIdentity;
+
+    public string ForceDevelopmentBypassFlag { get; set; } = "WILEYWIDGET_AUTH_FORCE_DEVELOPMENT_BYPASS";
+
+    public string ForceLocalIdentityFlag { get; set; } = "WILEYWIDGET_AUTH_FORCE_LOCAL_IDENTITY";
 }
 
 public sealed class DevelopmentBypassAuthenticationOptions
@@ -47,19 +53,29 @@ public sealed class DevelopmentBypassAuthenticationOptions
     public string Email { get; set; } = "developer@local";
 }
 
-public sealed class ExternalIdAuthenticationOptions
+public sealed class LocalIdentityAuthenticationOptions
 {
-    public bool Enabled { get; set; }
+    public bool Enabled { get; set; } = true;
 
-    public string ClientId { get; set; } = string.Empty;
+    public bool AllowPersistentRememberMe { get; set; } = true;
 
-    public string Authority { get; set; } = string.Empty;
+    public bool RememberMeDefaultSelection { get; set; }
 
-    public string RedirectUri { get; set; } = ExternalIdRedirectUris.EmbeddedNativeClient;
+    public int RememberMeDurationDays { get; set; } = 14;
 
-    public bool UseEmbeddedWebView { get; set; } = true;
+    public string RememberMeVaultKey { get; set; } = "WILEYWIDGET_AUTH_LOCAL_IDENTITY_REMEMBER_ME";
 
-    public List<string> Scopes { get; set; } = new() { "openid", "profile", "email", "offline_access" };
+    public bool AllowInitialAdminRegistration { get; set; } = true;
+
+    public string SeedAdminUserName { get; set; } = "admin";
+
+    public string SeedAdminDisplayName { get; set; } = "Administrator";
+
+    public string SeedAdminEmail { get; set; } = "admin@local";
+
+    public string BootstrapPassword { get; set; } = string.Empty;
+
+    public string BootstrapPasswordEnvironmentVariable { get; set; } = "WILEYWIDGET_BOOTSTRAP_ADMIN_PASSWORD";
 }
 
 public sealed class UserOnboardingOptions

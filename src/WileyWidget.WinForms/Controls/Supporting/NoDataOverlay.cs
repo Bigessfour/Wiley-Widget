@@ -144,7 +144,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             set
             {
                 _messageLabel.Text = value ?? string.Empty;
-                CenterControls();
+                RefreshOverlayLayout();
             }
         }
 
@@ -165,11 +165,31 @@ namespace WileyWidget.WinForms.Controls.Supporting
             set
             {
                 base.Visible = value;
+                if (value)
+                {
+                    RefreshOverlayLayout();
+                }
                 if (Parent != null && value)
                     BringToFront();
                 // If becoming visible, attempt to set accessibility focus
                 try { if (value && _actionButton?.Visible == true) _actionButton?.Focus(); else _messageLabel?.Focus(); } catch { }
             }
+        }
+
+        private void RefreshOverlayLayout()
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (Controls.Count > 0 && Controls[0] is TableLayoutPanel table)
+            {
+                table.PerformLayout();
+            }
+
+            PerformLayout();
+            Invalidate(true);
         }
 
         public void ShowActionButton(string buttonText, EventHandler clickHandler)

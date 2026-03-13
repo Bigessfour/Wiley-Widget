@@ -454,15 +454,28 @@ namespace WileyWidget.WinForms.Services
                 .GetService<IOptions<AuthenticationOptions>>(serviceProvider)
                 ?.Value;
 
-            var useLocalMsalHostForm = authenticationOptions?.IsExternalIdMode == true;
-
             _logger.LogInformation(
-                "[STARTUP-DIAG] Starting authentication bootstrap before MainForm creation. LocalMsalHostForm={UseLocalMsalHostForm}",
-                useLocalMsalHostForm);
+                "[STARTUP-DIAG] Starting authentication bootstrap before MainForm creation. Mode={AuthenticationMode}",
+                authenticationOptions?.Mode ?? AuthenticationModes.DevelopmentBypass);
 
-            if (useLocalMsalHostForm)
+            var rememberedSession = authenticationBootstrapper
+                .TryRestoreRememberedSessionAsync(CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+
+            if (rememberedSession != null)
             {
-                return MsalSignInHostForm.ShowForInitialSignIn(authenticationBootstrapper, _logger, authenticationOptions ?? new AuthenticationOptions());
+                _logger.LogInformation(
+                    "[STARTUP-DIAG] Restored remembered local identity session before MainForm creation. User={UserId}, Provider={Provider}",
+                    rememberedSession.UserId,
+                    rememberedSession.Provider);
+                return rememberedSession;
+            }
+
+            if (authenticationOptions?.IsLocalIdentityMode == true)
+            {
+                _logger.LogInformation("[STARTUP-DIAG] Deferring LocalIdentity authentication to the MainForm hosted panel.");
+                return null;
             }
 
             return authenticationBootstrapper

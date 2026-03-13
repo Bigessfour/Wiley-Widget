@@ -349,6 +349,42 @@ namespace WileyWidget.WinForms.Controls.Panels
                 DataSourceUpdateMode.OnPropertyChanged);
         }
 
+        private void ApplyCurrentTheme()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            var themeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+
+            try
+            {
+                ThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName, Logger);
+                SyncfusionControlFactory.ApplyThemeToAllControls(this, themeName, Logger);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogDebug(ex, "AccountEditPanel: Failed to apply current theme {ThemeName}", themeName);
+            }
+        }
+
+        private void ApplyCurrentThemeDeferred()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            if (IsHandleCreated)
+            {
+                BeginInvoke((MethodInvoker)ApplyCurrentTheme);
+                return;
+            }
+
+            ApplyCurrentTheme();
+        }
+
         /// <summary>
         /// Implements ICompletablePanel lifecycle: ValidateAsync
         /// Integrates with ErrorProvider to show visual feedback.
@@ -544,17 +580,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); // Title
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Account Number
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Name
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Description
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Department
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Fund
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Type
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Balance
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Budget
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Active
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64)); // Button Panel
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(44))); // Title
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Account Number
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Name
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(96))); // Description
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Department
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Fund
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Type
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(48))); // Balance
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(48))); // Budget
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(44))); // Active
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(64))); // Button Panel
 
             // === TITLE ROW (Row 0) ===
             lblTitle = new Label
@@ -754,7 +790,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Text = "Current Balance:",
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable)),
                 Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblBalance, 0, 7);
@@ -763,6 +801,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 numericTextBox.Name = "numBalance";
                 numericTextBox.AllowNull = false;
+                numericTextBox.AutoSize = false;
                 numericTextBox.Value = 0;
                 numericTextBox.MinValue = (double)decimal.MinValue;
                 numericTextBox.MaxValue = (double)decimal.MaxValue;
@@ -789,7 +828,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Text = "Budget Amount:",
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable)),
                 Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblBudget, 0, 8);
@@ -798,6 +839,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 numericTextBox.Name = "numBudget";
                 numericTextBox.AllowNull = false;
+                numericTextBox.AutoSize = false;
                 numericTextBox.Value = 0;
                 numericTextBox.MinValue = 0;
                 numericTextBox.MaxValue = (double)decimal.MaxValue;
@@ -823,8 +865,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Text = " ",
                 AutoSize = false,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0)
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable)),
+                Margin = new Padding(0, 4, 12, 4)
             };
             _mainLayout.Controls.Add(lblActive, 0, 9);
 
@@ -832,10 +876,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 checkBox.Name = "chkActive";
                 checkBox.Checked = true;
-                checkBox.AutoSize = true;
+                checkBox.AutoSize = false;
                 checkBox.AccessibleName = "Active Status";
                 checkBox.AccessibleDescription = "Check to mark this account as active";
                 checkBox.Anchor = AnchorStyles.Left;
+                checkBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
+                checkBox.MinimumSize = ScaleLogicalToDevice(new Size(140, LayoutTokens.StandardControlHeightComfortable));
                 checkBox.Margin = new Padding(0, 4, 0, 4);
                 checkBox.TabIndex = 9;
             });
@@ -934,6 +980,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             ResumeLayout(false);
             PerformLayout();
             Refresh();
+            ApplyCurrentThemeDeferred();
 
             // Handle form close button as cancel
             Load += AccountEditPanel_Load;
@@ -972,6 +1019,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             PerformLayout();
+            ApplyCurrentThemeDeferred();
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)

@@ -13,9 +13,19 @@ public sealed record AuthenticationSessionResult(
     bool IsDevelopmentBypass,
     IReadOnlyDictionary<string, string?> ProfileFields);
 
+public sealed record LocalIdentityRegistrationRequest(
+    string UserName,
+    string DisplayName,
+    string Email,
+    string Password);
+
 public interface IAuthenticationBootstrapper
 {
     AuthenticationSessionResult? CurrentSession { get; }
 
+    bool IsHostedLocalIdentityMode { get; }
+
     Task<AuthenticationSessionResult> EnsureAuthenticatedAsync(IWin32Window? ownerWindow, CancellationToken cancellationToken = default);
+
+    Task<AuthenticationSessionResult?> TryRestoreRememberedSessionAsync(CancellationToken cancellationToken = default);
 }

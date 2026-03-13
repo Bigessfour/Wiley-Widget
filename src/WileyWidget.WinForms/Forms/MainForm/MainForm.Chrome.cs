@@ -224,6 +224,186 @@ public partial class MainForm
         }
     }
 
+    private bool TryShowHostedAuthenticationPanel()
+    {
+        if (IsDisposed || Disposing || _serviceProvider == null || _contentHostPanel == null || _contentHostPanel.IsDisposed)
+        {
+            _logger?.LogWarning(
+                "Hosted authentication panel could not be shown. IsDisposed={IsDisposed} Disposing={Disposing} ServiceProviderAvailable={HasServiceProvider} ContentHostAvailable={HasContentHost}",
+                IsDisposed,
+                Disposing,
+                _serviceProvider != null,
+                _contentHostPanel != null && !_contentHostPanel.IsDisposed);
+            return false;
+        }
+
+        var authenticationBootstrapper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetService<AuthenticationBootstrapper>(_serviceProvider);
+
+        if (authenticationBootstrapper == null || !authenticationBootstrapper.IsHostedLocalIdentityMode)
+        {
+            _logger?.LogInformation(
+                "Hosted authentication panel not shown. BootstrapperAvailable={BootstrapperAvailable} HostedLocalIdentityMode={HostedLocalIdentityMode}",
+                authenticationBootstrapper != null,
+                authenticationBootstrapper?.IsHostedLocalIdentityMode ?? false);
+            return false;
+        }
+
+        if (_hostedAuthenticationPanel != null && !_hostedAuthenticationPanel.IsDisposed)
+        {
+            PauseDeferredStartupUiPhasesForAuthentication();
+            _hostedAuthenticationPanel.BringToFront();
+            LogHostedAuthenticationPanelState("ReuseExistingHostedAuthenticationPanel");
+            return true;
+        }
+
+        _hostedAuthenticationPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<LocalIdentityHostPanel>(_serviceProvider);
+
+        _hostedAuthenticationPanel.Dock = DockStyle.Fill;
+        _hostedAuthenticationPanel.AuthenticationCompleted += HandleHostedAuthenticationCompleted;
+        _hostedAuthenticationPanel.AuthenticationCanceled += HandleHostedAuthenticationCanceled;
+
+        if (!_contentHostPanel.Controls.Contains(_hostedAuthenticationPanel))
+        {
+            _contentHostPanel.Controls.Add(_hostedAuthenticationPanel);
+        }
+
+        _logger?.LogInformation(
+            "Hosted authentication panel added to content host. ContentHostControlCount={ControlCount} ContentHostBounds={ContentHostBounds}",
+            _contentHostPanel.Controls.Count,
+            _contentHostPanel.Bounds);
+
+        PauseDeferredStartupUiPhasesForAuthentication();
+        EnsureHostedAuthenticationForeground();
+        _hostedAuthenticationPanel.BringToFront();
+        _hostedAuthenticationPanel.FocusInitialField();
+        ApplyStatus("Sign in required.");
+        LogHostedAuthenticationPanelState("TryShowHostedAuthenticationPanel.AfterShow");
+        TraceLayoutSnapshot("HostedAuthenticationPanel.AfterShow");
+        return true;
+    }
+
+    private bool IsHostedAuthenticationPanelActive()
+    {
+        return _hostedAuthenticationPanel != null
+            && !_hostedAuthenticationPanel.IsDisposed
+            && _contentHostPanel != null
+            && !_contentHostPanel.IsDisposed
+            && _contentHostPanel.Controls.Contains(_hostedAuthenticationPanel);
+    }
+
+    private void EnsureHostedAuthenticationForeground()
+    {
+        if (!IsHostedAuthenticationPanelActive() || _contentHostPanel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            _contentHostPanel.BringToFront();
+            _hostedAuthenticationPanel!.BringToFront();
+
+            if (_statusBar != null && !_statusBar.IsDisposed)
+            {
+                _statusBar.BringToFront();
+            }
+
+            if (_ribbon != null && !_ribbon.IsDisposed)
+            {
+                _ribbon.BringToFront();
+            }
+
+            LogHostedAuthenticationPanelState("EnsureHostedAuthenticationForeground");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to foreground hosted authentication panel");
+        }
+    }
+
+    private void PauseDeferredStartupUiPhasesForAuthentication()
+    {
+        _startupUiPhasesTimer?.Stop();
+    }
+
+    private void ResumeDeferredStartupUiPhasesAfterAuthentication()
+    {
+        if (_startupUiPhasesTimer == null)
+        {
+            QueueDeferredStartupUiPhases();
+            return;
+        }
+
+        _startupUiPhasesTimer.Start();
+    }
+
+    private void HandleHostedAuthenticationCompleted(object? sender, LocalIdentityHostPanel.AuthenticationCompletedEventArgs e)
+    {
+        _logger?.LogInformation(
+            "Hosted authentication completed. UserId={UserId} DisplayName={DisplayName}",
+            e.Session.UserId,
+            e.Session.DisplayName);
+        ApplyStatus($"Welcome, {e.Session.DisplayName}.");
+        RefreshProfessionalStatusBarSnapshot();
+        RemoveHostedAuthenticationPanel();
+        ResumeDeferredStartupUiPhasesAfterAuthentication();
+    }
+
+    private void HandleHostedAuthenticationCanceled(object? sender, EventArgs e)
+    {
+        _logger?.LogInformation("Hosted authentication canceled by user.");
+        ApplyStatus("Authentication canceled.");
+        RemoveHostedAuthenticationPanel();
+        BeginInvoke((MethodInvoker)(Close));
+    }
+
+    private void RemoveHostedAuthenticationPanel()
+    {
+        if (_hostedAuthenticationPanel == null)
+        {
+            return;
+        }
+
+        LogHostedAuthenticationPanelState("RemoveHostedAuthenticationPanel.BeforeDispose");
+
+        _hostedAuthenticationPanel.AuthenticationCompleted -= HandleHostedAuthenticationCompleted;
+        _hostedAuthenticationPanel.AuthenticationCanceled -= HandleHostedAuthenticationCanceled;
+
+        if (_contentHostPanel != null && !_contentHostPanel.IsDisposed && _contentHostPanel.Controls.Contains(_hostedAuthenticationPanel))
+        {
+            _contentHostPanel.Controls.Remove(_hostedAuthenticationPanel);
+        }
+
+        _hostedAuthenticationPanel.Dispose();
+        _hostedAuthenticationPanel = null;
+        _logger?.LogInformation("Hosted authentication panel removed from content host.");
+        RequestMdiConstrain("HostedAuthentication.Removed", force: true);
+    }
+
+    private void LogHostedAuthenticationPanelState(string reason)
+    {
+        if (_logger == null)
+        {
+            return;
+        }
+
+        var panel = _hostedAuthenticationPanel;
+        var contentHost = _contentHostPanel;
+
+        _logger.LogInformation(
+            "Hosted authentication panel state. Reason={Reason} PanelExists={PanelExists} PanelVisible={PanelVisible} PanelParent={PanelParent} PanelBounds={PanelBounds} ContentHostVisible={ContentHostVisible} ContentHostBounds={ContentHostBounds} FormWindowState={WindowState}",
+            reason,
+            panel != null && !panel.IsDisposed,
+            panel != null && !panel.IsDisposed && panel.Visible,
+            panel != null && !panel.IsDisposed ? panel.Parent?.Name ?? "<null>" : "<null>",
+            panel != null && !panel.IsDisposed ? panel.Bounds : Rectangle.Empty,
+            contentHost != null && !contentHost.IsDisposed && contentHost.Visible,
+            contentHost != null && !contentHost.IsDisposed ? contentHost.Bounds : Rectangle.Empty,
+            WindowState);
+    }
+
     private async Task RunDeferredChromeInitializationAsync()
     {
         try

@@ -838,6 +838,12 @@ public partial class MainForm
                         RefreshPanelHostLayout("StartupPhase0.AfterChromeAndNavigation");
                         ApplyStatus("Ready — loading dashboard...");
                         TraceLayoutSnapshot("StartupPhase0.AfterChromeAndNavigation");
+
+                        if (TryShowHostedAuthenticationPanel())
+                        {
+                            _startupUiPhasesIndex = 1;
+                            return;
+                        }
                     }
                     finally
                     {

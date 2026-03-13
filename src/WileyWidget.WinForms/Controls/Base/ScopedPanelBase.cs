@@ -128,7 +128,7 @@ namespace WileyWidget.WinForms.Controls.Base
                 // Apply consistent padding using LayoutTokens
                 this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelOuterPadding);
                 this.Margin = Padding.Empty;
-                this.AutoScroll = true;
+                this.AutoScroll = false;
                 this.Dock = DockStyle.Fill;
                 SfSkinManager.SetVisualStyle(this, themeName);
 
@@ -194,6 +194,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
                 contentHost.Name = ProfessionalContentHostName;
                 contentHost.Dock = DockStyle.Fill;
+                contentHost.AutoScroll = false;
                 contentHost.Padding = LayoutTokens.GetScaled(LayoutTokens.ContentInnerPadding);
                 contentHost.Margin = Padding.Empty;
                 SfSkinManager.SetVisualStyle(contentHost, themeName);

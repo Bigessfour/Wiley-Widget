@@ -33,9 +33,9 @@ namespace WileyWidget.WinForms.Controls.Panels
         private static readonly TimeSpan StartupInitializationDeferWindow = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan StartupInitializationDelay = TimeSpan.FromMilliseconds(1500);
         private static readonly TimeSpan StandardInitializationDelay = TimeSpan.FromMilliseconds(150);
-        private const int DefaultPanelWidth = 500;
-        private const int DefaultPanelHeight = 600;
-        private const int MinimumPanelWidth = 350;
+        private const int DefaultPanelWidth = 1280;
+        private const int DefaultPanelHeight = 900;
+        private const int MinimumPanelWidth = 1280;
 
         private BlazorWebView? _blazorWebView;
         private readonly IServiceProvider _serviceProvider;
@@ -552,9 +552,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.SuspendLayout();
             this.Name = "JARVISChatUserControl";
             this.Size = LayoutTokens.GetScaled(new Size(DefaultPanelWidth, DefaultPanelHeight));
-            // 350 px wide minimum matches the right dock panel minimum; no height floor so the
-            // control adapts freely when the user or OS resizes the host.
-            this.MinimumSize = LayoutTokens.GetScaled(new Size(MinimumPanelWidth, 0));
+            this.MinimumSize = LayoutTokens.GetScaled(new Size(MinimumPanelWidth, DefaultPanelHeight));
             this.AutoScroll = false;
             try
             {

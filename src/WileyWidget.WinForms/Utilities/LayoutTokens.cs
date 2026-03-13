@@ -68,7 +68,7 @@ namespace WileyWidget.WinForms.Utilities
         public static readonly Padding PanelOuterPadding = new(PanelPadding);
 
         /// <summary>Inner content-host padding token.</summary>
-        public static readonly Padding ContentInnerPadding = new(8);
+        public static readonly Padding ContentInnerPadding = new(6);
 
         /// <summary>Standard section shell padding for card-like panel regions.</summary>
         public static readonly Padding SectionPanelPadding = new(12, 8, 12, 8);

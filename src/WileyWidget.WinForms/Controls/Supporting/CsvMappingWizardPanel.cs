@@ -67,6 +67,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         }
         private readonly ILogger? _logger;
         private readonly SyncfusionControlFactory? _factory;
+        private PanelHeader? _panelHeader;
         private SfDataGrid _previewGrid = null!;
         private SfComboBox _cbAccount = null!;
         private SfComboBox _cbDescription = null!;
@@ -118,6 +119,40 @@ namespace WileyWidget.WinForms.Controls.Supporting
         {
             this.SuspendLayout();
             Dock = DockStyle.Fill;
+            Name = "CsvMappingWizardPanel";
+            MinimumSize = LayoutTokens.GetScaled(LayoutTokens.StandardPanelMinimumSize);
+
+            var rootLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = Padding.Empty,
+                Margin = Padding.Empty,
+                AutoSize = false,
+            };
+            rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            _panelHeader = _factory?.CreatePanelHeader(header =>
+            {
+                header.Title = "Data Mapper";
+                header.Dock = DockStyle.Fill;
+                header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+                header.AccessibleName = "Data Mapper Header";
+                header.AccessibleDescription = "Header for the data mapper panel";
+            }) ?? new PanelHeader
+            {
+                Title = "Data Mapper",
+                Dock = DockStyle.Fill,
+                Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)),
+                AccessibleName = "Data Mapper Header",
+                AccessibleDescription = "Header for the data mapper panel",
+            };
+            rootLayout.Controls.Add(_panelHeader, 0, 0);
 
             var rightColumnWidth = LayoutTokens.GetScaled(360);
             var mainTable = new TableLayoutPanel
@@ -172,7 +207,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
             rightPanel.Controls.Add(mappingFlow);
 
             mainTable.Controls.Add(rightPanel, 1, 0);
-            this.Controls.Add(mainTable);
+            rootLayout.Controls.Add(mainTable, 0, 1);
+            this.Controls.Add(rootLayout);
 
             // Apply theme via SfSkinManager
             try

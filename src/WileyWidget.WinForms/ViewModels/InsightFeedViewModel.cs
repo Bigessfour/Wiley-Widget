@@ -60,7 +60,7 @@ namespace WileyWidget.WinForms.ViewModels
         private bool isLoading = false;
 
         [ObservableProperty]
-        private string statusMessage = "Loading proactive insights...";
+        private string statusMessage = "Loading proactive insights";
 
         [ObservableProperty]
         private int highPriorityCount = 0;
@@ -332,7 +332,7 @@ namespace WileyWidget.WinForms.ViewModels
             try
             {
                 _logger.LogInformation("Manual refresh requested by user");
-                StatusMessage = "Refreshing insights...";
+                StatusMessage = "Refreshing insights";
 
                 // Trigger a manual refresh by syncing with service
                 OnInsightsChanged();

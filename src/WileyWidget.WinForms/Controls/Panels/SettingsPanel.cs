@@ -238,6 +238,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             base.OnHandleCreated(e);
             MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
             PerformLayout();
+            QueueThemeRefresh();
         }
 
         /// <summary>
@@ -314,6 +315,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Logger.LogDebug(ex, "SettingsPanel: Failed to queue delayed LoadAsync");
             }
+
+            QueueThemeRefresh();
         }
 
         public override async Task LoadAsync(CancellationToken ct = default)
@@ -433,6 +436,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 header.ShowRefreshButton = false;
                 header.ShowHelpButton = false;
                 header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
             });
             _panelHeader.CloseClicked += (s, e) => ClosePanel();
 
@@ -448,7 +452,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 table.Name = "SettingsPanelContent";
             });
             _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.HeaderHeight));
+            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, _panelHeader.Height));
             _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             _content.Controls.Add(_panelHeader, 0, 0);
 
@@ -502,7 +506,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _txtAppTitle = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtAppTitle";
-                textBox.Width = 300;
+                ConfigureStandardRowInput(textBox, 300);
                 textBox.MaxLength = 100;
                 textBox.AccessibleName = "Application Title";
                 textBox.AccessibleDescription = "Set the friendly application title";
@@ -517,7 +521,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 combo.MinimumSize = LayoutTokens.GetScaled(new Size(240, LayoutTokens.StandardControlHeightLarge));
                 combo.AllowDropDownResize = false;
                 combo.MaxDropDownItems = 5;
-                combo.AccessibleName = "Theme";
+                ConfigureStandardRowInput(combo);
+                ConfigureComboAccessibility(combo, "Theme", "Select the application theme");
                 combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             });
             appearanceTable.Controls.Add(_themeCombo, 1, 1);
@@ -532,6 +537,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 combo.MaxDropDownItems = 10;
                 combo.DropDownWidth = LayoutTokens.GetScaled(460);
                 combo.DisplayMember = nameof(FontOption.Display);
+                ConfigureStandardRowInput(combo);
+                ConfigureComboAccessibility(combo, "Font", "Select the application font family");
             });
             appearanceTable.Controls.Add(_fontCombo, 1, 2);
             _fontCombo.DataSource = GetAvailableFonts();
@@ -544,7 +551,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             generalTable.Controls.Add(CreateRowLabel("Open edit forms docked:"), 0, 0);
             _chkOpenEditFormsDocked = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
-                checkBox.AutoSize = true;
+                ConfigureStandardRowToggle(checkBox);
                 checkBox.Checked = ViewModel?.OpenEditFormsDocked ?? false;
                 checkBox.AccessibleName = "Open edit forms docked";
             });
@@ -553,7 +560,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             generalTable.Controls.Add(CreateRowLabel("Use demo data:"), 0, 1);
             _chkUseDemoData = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
-                checkBox.AutoSize = true;
+                ConfigureStandardRowToggle(checkBox);
                 checkBox.Checked = ViewModel?.UseDemoData ?? false;
                 checkBox.AccessibleName = "Use demo data";
             });
@@ -569,7 +576,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _txtExportPath = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtExportPath";
-                textBox.Width = 200;
+                ConfigureStandardRowInput(textBox, 240);
                 textBox.MaxLength = 260;
                 textBox.AccessibleName = "Export path";
             });
@@ -585,7 +592,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 button.Text = "Browse";
                 button.Size = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
                 button.MinimumSize = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
-                button.Margin = Padding.Empty;
+                ConfigureStandardRowButton(button, 96);
             });
             exportTable.Controls.Add(_btnBrowseExportPath, 2, 0);
             _tooltip?.SetToolTip(_btnBrowseExportPath, "Open folder browser to select export directory");
@@ -599,8 +606,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _numAutoSaveInterval = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numAutoSaveInterval";
-                textBox.Size = LayoutTokens.GetScaled(new Size(100, LayoutTokens.StandardControlHeightLarge));
-                textBox.MinimumSize = LayoutTokens.GetScaled(new Size(100, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardNumericRowInput(textBox, 100);
                 textBox.MinValue = 1;
                 textBox.MaxValue = 60;
                 textBox.Value = ViewModel != null ? ViewModel.AutoSaveIntervalMinutes : 5;
@@ -613,6 +619,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 combo.Name = "cmbLogLevel";
                 combo.Size = LayoutTokens.GetScaled(new Size(180, LayoutTokens.StandardControlHeightLarge));
                 combo.MinimumSize = LayoutTokens.GetScaled(new Size(180, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardRowInput(combo);
+                ConfigureComboAccessibility(combo, "Log Level", "Select the application logging level");
                 combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             });
             behaviorTable.Controls.Add(_cmbLogLevel, 1, 1);
@@ -629,7 +637,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             aiTable.Controls.Add(CreateRowLabel("Enable AI:"), 0, 0);
             _chkEnableAi = ControlFactory.CreateCheckBoxAdv("", checkBox =>
             {
-                checkBox.AutoSize = true;
+                ConfigureStandardRowToggle(checkBox);
                 checkBox.Checked = ViewModel?.EnableAi ?? false;
             });
             aiTable.Controls.Add(_chkEnableAi, 1, 0);
@@ -638,7 +646,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _txtXaiApiEndpoint = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtXaiApiEndpoint";
-                textBox.Width = 250;
+                ConfigureStandardRowInput(textBox, 320);
                 textBox.MinimumSize = LayoutTokens.GetScaled(new Size(320, LayoutTokens.StandardControlHeightLarge));
                 textBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
                 textBox.MaxLength = 500;
@@ -652,6 +660,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 combo.Name = "cmbXaiModel";
                 combo.Size = LayoutTokens.GetScaled(new Size(260, LayoutTokens.StandardControlHeightLarge));
                 combo.MinimumSize = LayoutTokens.GetScaled(new Size(220, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardRowInput(combo);
+                ConfigureComboAccessibility(combo, "AI Model", "Select the xAI model used for recommendations");
                 combo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             });
             aiTable.Controls.Add(_cmbXaiModel, 1, 2);
@@ -672,11 +682,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                 flow.Padding = Padding.Empty;
                 flow.Dock = DockStyle.Fill;
                 flow.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+                flow.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             });
             _txtXaiApiKey = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtXaiApiKey";
-                textBox.Width = 240;
+                ConfigureStandardRowInput(textBox, 240);
                 textBox.MinimumSize = LayoutTokens.GetScaled(new Size(240, LayoutTokens.StandardControlHeightLarge));
                 textBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
                 textBox.MaxLength = 500;
@@ -687,8 +698,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnShowApiKey = ControlFactory.CreateSfButton("Show", button =>
             {
                 button.Name = "btnShowApiKey";
-                button.Size = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
-                button.MinimumSize = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardRowButton(button, 96);
                 button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
             });
             apiKeyPanel.Controls.Add(_btnShowApiKey);
@@ -704,11 +714,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                 flow.Padding = Padding.Empty;
                 flow.Dock = DockStyle.Fill;
                 flow.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+                flow.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             });
             _txtSyncfusionLicenseKey = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtSyncfusionLicenseKey";
-                textBox.Width = 240;
+                ConfigureStandardRowInput(textBox, 240);
                 textBox.MinimumSize = LayoutTokens.GetScaled(new Size(240, LayoutTokens.StandardControlHeightLarge));
                 textBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
                 textBox.MaxLength = 500;
@@ -719,8 +730,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnShowSyncfusionLicenseKey = ControlFactory.CreateSfButton("Show", button =>
             {
                 button.Name = "btnShowSyncfusionLicenseKey";
-                button.Size = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
-                button.MinimumSize = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardRowButton(button, 96);
                 button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
             });
             syncfusionLicensePanel.Controls.Add(_btnShowSyncfusionLicenseKey);
@@ -730,8 +740,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _numXaiTimeout = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numXaiTimeout";
-                textBox.Size = LayoutTokens.GetScaled(new Size(100, LayoutTokens.StandardControlHeightLarge));
-                textBox.MinimumSize = LayoutTokens.GetScaled(new Size(100, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardNumericRowInput(textBox, 100);
                 textBox.MinValue = 1;
                 textBox.MaxValue = 300;
                 textBox.Value = ViewModel?.XaiTimeout ?? 30;
@@ -742,8 +751,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _numXaiMaxTokens = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numXaiMaxTokens";
-                textBox.Size = LayoutTokens.GetScaled(new Size(120, LayoutTokens.StandardControlHeightLarge));
-                textBox.MinimumSize = LayoutTokens.GetScaled(new Size(120, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardNumericRowInput(textBox, 120);
                 textBox.MinValue = 1;
                 textBox.MaxValue = 65536;
                 textBox.Value = ViewModel?.XaiMaxTokens ?? 2000;
@@ -753,8 +761,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _numXaiTemperature = ControlFactory.CreateSfNumericTextBox(textBox =>
             {
                 textBox.Name = "numXaiTemperature";
-                textBox.Size = LayoutTokens.GetScaled(new Size(100, LayoutTokens.StandardControlHeightLarge));
-                textBox.MinimumSize = LayoutTokens.GetScaled(new Size(100, LayoutTokens.StandardControlHeightLarge));
+                ConfigureStandardNumericRowInput(textBox, 100);
                 textBox.MinValue = 0.0;
                 textBox.MaxValue = 1.0;
                 textBox.Value = ViewModel?.XaiTemperature ?? 0.7;
@@ -801,7 +808,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _txtDateFormat = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtDateFormat";
-                textBox.Width = 120;
+                ConfigureStandardRowInput(textBox, 120);
                 textBox.MaxLength = 50;
                 textBox.Text = ViewModel?.DateFormat ?? "yyyy-MM-dd";
             });
@@ -810,7 +817,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _txtCurrencyFormat = ControlFactory.CreateTextBoxExt(textBox =>
             {
                 textBox.Name = "txtCurrencyFormat";
-                textBox.Width = 80;
+                ConfigureStandardRowInput(textBox, 96);
                 textBox.MaxLength = 10;
                 textBox.Text = ViewModel?.CurrencyFormat ?? "C2";
             });
@@ -879,13 +886,13 @@ namespace WileyWidget.WinForms.Controls.Panels
         // Helper: Create a TableLayoutPanel with auto-sizing columns/rows
         private TableLayoutPanel CreateTableLayoutPanel(int rowCount, params ColumnStyle[] columnStyles)
         {
-            var rowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge + 6);
+            var rowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
             var table = ControlFactory.CreateTableLayoutPanel(layout =>
             {
                 layout.RowCount = rowCount;
                 layout.ColumnCount = columnStyles.Length;
                 layout.AutoSize = true;
-                layout.Padding = new Padding(CONTROL_SPACING, LayoutTokens.GetScaled(4), CONTROL_SPACING, LayoutTokens.GetScaled(4));
+                layout.Padding = new Padding(CONTROL_SPACING, 0, CONTROL_SPACING, 0);
                 layout.Margin = Padding.Empty;
                 layout.Dock = DockStyle.Fill;
             });
@@ -907,12 +914,94 @@ namespace WileyWidget.WinForms.Controls.Panels
             return table;
         }
 
+        private void ConfigureStandardRowInput(Control control, int logicalWidth = 0)
+        {
+            var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+            control.AutoSize = false;
+            control.Margin = Padding.Empty;
+            control.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+
+            if (logicalWidth > 0)
+            {
+                control.Width = LayoutTokens.GetScaled(logicalWidth);
+            }
+
+            control.MinimumSize = new Size(control.MinimumSize.Width, controlHeight);
+            control.Height = controlHeight;
+        }
+
+        private void ConfigureStandardNumericRowInput(Control control, int logicalWidth)
+        {
+            ConfigureStandardRowInput(control, logicalWidth);
+            control.Anchor = AnchorStyles.Left;
+        }
+
+        private void ConfigureStandardRowToggle(Control control)
+        {
+            var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+            control.AutoSize = false;
+            control.Margin = Padding.Empty;
+            control.Padding = Padding.Empty;
+            control.Anchor = AnchorStyles.Left;
+            control.MinimumSize = new Size(LayoutTokens.GetScaled(24), controlHeight);
+            control.Size = new Size(Math.Max(control.Width, LayoutTokens.GetScaled(24)), controlHeight);
+        }
+
+        private void ConfigureStandardRowButton(Control control, int logicalWidth)
+        {
+            var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+            control.AutoSize = false;
+            control.Margin = Padding.Empty;
+            control.Anchor = AnchorStyles.Left;
+            control.Size = LayoutTokens.GetScaled(new Size(logicalWidth, LayoutTokens.StandardControlHeightLarge));
+            control.MinimumSize = new Size(LayoutTokens.GetScaled(logicalWidth), controlHeight);
+            control.Height = controlHeight;
+        }
+
+        private void ConfigureComboAccessibility(SfComboBox combo, string accessibleName, string accessibleDescription)
+        {
+            combo.AccessibleName = accessibleName;
+            combo.AccessibleDescription = accessibleDescription;
+
+            void ApplyEmbeddedButtonText()
+            {
+                ApplyEmbeddedComboButtonAccessibility(combo, accessibleName, accessibleDescription);
+            }
+
+            ApplyEmbeddedButtonText();
+            combo.HandleCreated += (_, _) => ApplyEmbeddedButtonText();
+            combo.ControlAdded += (_, _) => ApplyEmbeddedButtonText();
+        }
+
+        private static void ApplyEmbeddedComboButtonAccessibility(Control control, string accessibleName, string accessibleDescription)
+        {
+            foreach (Control child in control.Controls)
+            {
+                if (child.GetType().Name.Contains("SfButton", StringComparison.OrdinalIgnoreCase)
+                    || child.GetType().Name.Contains("DropDownButton", StringComparison.OrdinalIgnoreCase))
+                {
+                    child.AccessibleName = $"{accessibleName} drop-down";
+                    child.AccessibleDescription = string.IsNullOrWhiteSpace(accessibleDescription)
+                        ? $"Open the {accessibleName} options"
+                        : $"Open the {accessibleDescription.ToLowerInvariant()} options";
+                }
+
+                if (child.HasChildren)
+                {
+                    ApplyEmbeddedComboButtonAccessibility(child, accessibleName, accessibleDescription);
+                }
+            }
+        }
+
         private Label CreateRowLabel(string text)
         {
+            var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
             return ControlFactory.CreateLabel(text, label =>
             {
                 label.AutoSize = false;
-                label.Dock = DockStyle.Fill;
+                label.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+                label.Height = controlHeight;
+                label.MinimumSize = new Size(0, controlHeight);
                 label.Margin = new Padding(0, 0, LayoutTokens.GetScaled(CONTROL_SPACING), 0);
                 label.Padding = Padding.Empty;
                 label.TextAlign = ContentAlignment.MiddleRight;
@@ -1550,6 +1639,22 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Logger.LogDebug(ex, "SettingsPanel: failed to reapply current theme");
             }
+        }
+
+        private void QueueThemeRefresh()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            if (IsHandleCreated)
+            {
+                BeginInvoke((MethodInvoker)ApplyCurrentTheme);
+                return;
+            }
+
+            ApplyCurrentTheme();
         }
 
         private void ApplyThemeRecursively(Control? control, string themeName)

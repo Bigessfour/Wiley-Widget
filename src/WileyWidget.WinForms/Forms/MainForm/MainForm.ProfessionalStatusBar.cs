@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
@@ -152,17 +153,39 @@ public partial class MainForm
     /// </summary>
     private void CreateUserPanel()
     {
+        var currentUserDisplayName = GetAuthenticatedUserDisplayName();
+
         _userPanel = new StatusBarAdvPanel
         {
             Name = "UserPanel",
-            Text = $"👤 {Environment.UserName}",
+            Text = $"👤 {currentUserDisplayName}",
             Width = 150,
             BorderStyle = BorderStyle.Fixed3D
         };
 
         _userPanel.Click += OnUserPanelClick;
 
-        _statusBarToolTip?.SetToolTip(_userPanel, $"Current user: {Environment.UserName}\nClick for user menu");
+        _statusBarToolTip?.SetToolTip(_userPanel, $"Current user: {currentUserDisplayName}\nClick for user menu");
+    }
+
+    private string GetAuthenticatedUserDisplayName()
+    {
+        var currentUser = _serviceProvider == null
+            ? null
+            : Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Abstractions.IUserContext>(_serviceProvider)?.DisplayName;
+        return string.IsNullOrWhiteSpace(currentUser) ? Environment.UserName : currentUser;
+    }
+
+    private void UpdateUserDisplay()
+    {
+        if (_userPanel == null || _userPanel.IsDisposed)
+        {
+            return;
+        }
+
+        var currentUserDisplayName = GetAuthenticatedUserDisplayName();
+        _userPanel.Text = $"👤 {currentUserDisplayName}";
+        _statusBarToolTip?.SetToolTip(_userPanel, $"Current user: {currentUserDisplayName}\nClick for user menu");
     }
 
     /// <summary>
@@ -244,6 +267,7 @@ public partial class MainForm
         UpdateMemoryDisplay();
         UpdateRowCountDisplay(GetActiveGridRowCount());
         UpdateConnectionStatus(_serviceProvider != null, _serviceProvider != null ? "Services ready" : "Services unavailable");
+        UpdateUserDisplay();
     }
 
     private int GetActiveGridRowCount()
@@ -447,9 +471,10 @@ Click OK to refresh the status snapshot.";
     {
         try
         {
+            var currentUserDisplayName = GetAuthenticatedUserDisplayName();
             var userMenu = new ContextMenuStrip();
 
-            userMenu.Items.Add($"User: {Environment.UserName}").Enabled = false;
+            userMenu.Items.Add($"User: {currentUserDisplayName}").Enabled = false;
             userMenu.Items.Add(new ToolStripSeparator());
             userMenu.Items.Add("Profile Settings", null, (s, args) =>
             {

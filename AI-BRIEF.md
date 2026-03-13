@@ -1,6 +1,6 @@
 # WileyWidget — AI Briefing
 
-> Generated: 2026-03-09 09:42 | Branch: `chore/remove-dead-docking-manager` | Commit: `9dfe5d85c0`
+> Generated: 2026-03-12 13:51 | Branch: `chore/remove-dead-docking-manager` | Commit: `7f0784a011`
 
 ## Project Purpose
 
@@ -174,11 +174,11 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 - `src/WileyWidget.Services/Export/ExcelExportService.cs`
 - `src/WileyWidget.Services/FallbackDataService.cs`
 - `src/WileyWidget.Services/FastReportService.cs`
-- `src/WileyWidget.Services/GlobalSearchService.cs`
 - `src/WileyWidget.Services/HealthBasedRoutingService.cs`
 - `src/WileyWidget.Services/HealthCheckService.cs`
 - `src/WileyWidget.Services/InMemoryCacheService.cs`
 - `src/WileyWidget.Services/IntuitDataServiceAdapter.cs`
+- `src/WileyWidget.Services/IWileyWidgetContextService.cs`
 
 ## Controls
 
@@ -201,9 +201,9 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Manifest Stats
 
-- Total files indexed: **8165**
+- Total files indexed: **8387**
 - Files with embedded content: **400**
-- Total source size: **415,718 KB**
+- Total source size: **468,712 KB**
 - Manifest mode: **full-context**
 
 ---

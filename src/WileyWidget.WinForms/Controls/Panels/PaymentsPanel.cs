@@ -231,8 +231,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.CheckNumber),
             HeaderText = "Check #",
-            MinimumWidth = 96,
-            Width = 104,
+            MinimumWidth = 88,
+            Width = 96,
             AllowEditing = false,
             AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells
         });
@@ -250,8 +250,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.Payee),
             HeaderText = "Payee",
-            MinimumWidth = 220,
-            Width = 240,
+            MinimumWidth = 180,
+            Width = 208,
             AllowEditing = false,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill
         });
@@ -260,8 +260,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             MappingName = nameof(Payment.Amount),
             HeaderText = "Amount",
             Format = "C2",
-            MinimumWidth = 104,
-            Width = 116,
+            MinimumWidth = 96,
+            Width = 104,
             AllowEditing = false,
             AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells
         });
@@ -269,8 +269,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.Description),
             HeaderText = "Description",
-            MinimumWidth = 220,
-            Width = 240,
+            MinimumWidth = 180,
+            Width = 200,
             AllowEditing = false,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill
         });
@@ -278,8 +278,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.MunicipalAccountId),
             HeaderText = "Budget Account",
-            MinimumWidth = 220,
-            Width = 240,
+            MinimumWidth = 176,
+            Width = 196,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             AllowEditing = true,
             AllowSorting = true,
@@ -293,8 +293,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.BudgetPostingDisplay),
             HeaderText = "Budget Posting",
-            MinimumWidth = 180,
-            Width = 200,
+            MinimumWidth = 144,
+            Width = 168,
             AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
             AllowEditing = false,
             AllowSorting = true,
@@ -304,8 +304,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.Status),
             HeaderText = "Status",
-            MinimumWidth = 96,
-            Width = 108,
+            MinimumWidth = 88,
+            Width = 96,
             AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells,
             AllowEditing = false,
             AllowSorting = true,
@@ -315,8 +315,8 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         {
             MappingName = nameof(Payment.IsCleared),
             HeaderText = "Cleared",
-            MinimumWidth = 88,
-            Width = 96,
+            MinimumWidth = 80,
+            Width = 88,
             AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells,
             AllowEditing = false // Read-only indicator, synced with Status field
         });

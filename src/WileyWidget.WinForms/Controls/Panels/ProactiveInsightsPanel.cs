@@ -171,10 +171,21 @@ namespace WileyWidget.WinForms.Controls.Panels
             _topPanel.Controls.Add(headerLayout);
 
             // Panel header with title (fills the left column)
-            _panelHeader = new PanelHeader
+            var controlFactory = GetControlFactory();
+            _panelHeader = controlFactory?.CreatePanelHeader(header =>
+            {
+                header.Dock = DockStyle.Fill;
+                header.Title = "Proactive AI Insights";
+                header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+                header.AccessibleName = "Proactive Insights Title";
+                header.AccessibleDescription = "Title of the Proactive Insights panel";
+            }) ?? new PanelHeader
             {
                 Dock = DockStyle.Fill,
                 Title = "Proactive AI Insights",
+                Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)),
                 AccessibleName = "Proactive Insights Title",
                 AccessibleDescription = "Title of the Proactive Insights panel"
             };

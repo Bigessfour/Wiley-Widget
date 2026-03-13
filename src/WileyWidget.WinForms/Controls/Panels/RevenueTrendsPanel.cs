@@ -152,6 +152,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         {
             header.Dock = DockStyle.Top;
             header.Title = "Revenue Trends";
+            header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+            header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
             header.AccessibleName = "Revenue Trends panel header";
             header.AccessibleDescription = "Header with title, refresh, and close actions for the Revenue Trends panel";
         });

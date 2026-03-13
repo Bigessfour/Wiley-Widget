@@ -34,8 +34,8 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// </summary>
 public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 {
-    private static readonly Size DefaultHostedDialogLogicalSize = new(800, 660);
-    private static readonly Size MinimumHostedDialogLogicalSize = new(720, 600);
+    private static readonly Size DefaultHostedDialogLogicalSize = new(900, 700);
+    private static readonly Size MinimumHostedDialogLogicalSize = new(820, 576);
 
     private Payment? _existingPayment;
     private bool _isNew;
@@ -274,22 +274,22 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             toolTip.ShowAlways = true;
         });
 
-        var bodyFont = new Font("Segoe UI", 10.5F, FontStyle.Regular);
-        var sectionHeaderFont = new Font("Segoe UI", 11F, FontStyle.Bold);
-        var actionFont = new Font("Segoe UI", 10.5F, FontStyle.Regular);
-        var primaryActionFont = new Font("Segoe UI", 10.5F, FontStyle.Bold);
-        var feedbackFont = new Font("Segoe UI", 9.75F, FontStyle.Regular);
+        var bodyFont = new Font("Segoe UI", 9F, FontStyle.Regular);
+        var sectionHeaderFont = new Font("Segoe UI", 10F, FontStyle.Bold);
+        var actionFont = new Font("Segoe UI", 9F, FontStyle.Regular);
+        var primaryActionFont = new Font("Segoe UI", 9F, FontStyle.Bold);
+        var feedbackFont = new Font("Segoe UI", 9F, FontStyle.Regular);
 
-        var rowSpacing = LayoutTokens.GetScaled(6);
+        var rowSpacing = LayoutTokens.GetScaled(4);
         var firstSectionGap = 0;
-        var sectionGap = LayoutTokens.GetScaled(12);
-        var controlHeight = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
-        var multilineHeight = LayoutTokens.GetScaled(84);
-        var labelWidth = LayoutTokens.GetScaled(168);
-        var compactFieldWidth = LayoutTokens.GetScaled(236);
-        var wideFieldMinWidth = LayoutTokens.GetScaled(320);
-        var payeeButtonWidth = LayoutTokens.GetScaled(132);
-        var headerHeight = LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight);
+        var sectionGap = LayoutTokens.GetScaled(10);
+        var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
+        var multilineHeight = LayoutTokens.GetScaled(72);
+        var labelWidth = LayoutTokens.GetScaled(152);
+        var compactFieldWidth = LayoutTokens.GetScaled(200);
+        var wideFieldMinWidth = LayoutTokens.GetScaled(300);
+        var payeeButtonWidth = LayoutTokens.GetScaled(112);
+        var headerHeight = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
 
         var currencyFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
         currencyFormat.CurrencyDecimalDigits = 2;
@@ -382,7 +382,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         AddSectionHeader(mainLayout, ref row, "Payee & Amount", sectionGap);
 
         // Payee with Add Vendor button
-        var payeeRowHeight = controlHeight + LayoutTokens.GetScaled(4);
+        var payeeRowHeight = controlHeight + LayoutTokens.GetScaled(2);
         var payeeContainer = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -594,10 +594,10 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
         _btnSave = ControlFactory.CreateSfButton("&Create Payment", button =>
         {
-            button.Width = LayoutTokens.GetScaled(156);
+            button.Width = LayoutTokens.GetScaled(136);
             button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
             button.Font = primaryActionFont;
-            button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
+            button.Margin = new Padding(0);
             button.Image = LoadIcon("Save32");
             button.AccessibleName = "Create Payment";
         });
@@ -606,10 +606,10 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
         _btnCancel = ControlFactory.CreateSfButton("&Cancel", button =>
         {
-            button.Width = LayoutTokens.GetScaled(120);
+            button.Width = LayoutTokens.GetScaled(112);
             button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
             button.Font = actionFont;
-            button.Margin = new Padding(LayoutTokens.GetScaled(8), 0, 0, 0);
+            button.Margin = new Padding(0);
             button.Image = LoadIcon("Close32");
             button.AccessibleName = "Cancel Edit";
         });
@@ -618,7 +618,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
 
         _btnDelete = ControlFactory.CreateSfButton("&Delete Payment", button =>
         {
-            button.Width = LayoutTokens.GetScaled(156);
+            button.Width = LayoutTokens.GetScaled(136);
             button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
             button.Font = actionFont;
             button.Visible = false;
@@ -630,6 +630,12 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         _toolTip.SetToolTip(_btnDelete, "Delete this payment entry.");
 
         destructiveButtonPanel.Controls.Add(_btnDelete);
+        actionButtonPanel.Controls.Add(new Panel
+        {
+            Width = LayoutTokens.GetScaled(8),
+            Height = 1,
+            Margin = new Padding(0)
+        });
         actionButtonPanel.Controls.Add(_btnSave);
         actionButtonPanel.Controls.Add(_btnCancel);
 
@@ -670,7 +676,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
         var header = new Label
         {
             Text = text,
-            Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold),
+            Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold),
             AutoSize = true,
             Margin = new Padding(0, topMargin, 0, 8),
             Padding = new Padding(0),
@@ -695,7 +701,7 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
             var label = new Label
             {
                 Text = labelText + ":",
-                Font = new System.Drawing.Font("Segoe UI", 10.5F),
+                Font = new System.Drawing.Font("Segoe UI", 9F),
                 TextAlign = alignTop ? System.Drawing.ContentAlignment.TopRight : System.Drawing.ContentAlignment.MiddleRight,
                 Dock = DockStyle.Fill,
                 AutoSize = false,

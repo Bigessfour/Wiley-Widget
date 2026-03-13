@@ -141,16 +141,16 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
         var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
-        var fiscalYearLabelWidth = LayoutTokens.GetScaled(118);
-        var fiscalYearSelectorWidth = LayoutTokens.GetScaled(160);
-        var searchLabelWidth = LayoutTokens.GetScaled(88);
-        var actionLaneWidth = LayoutTokens.GetScaled(244);
+        var fiscalYearLabelWidth = LayoutTokens.GetScaled(104);
+        var fiscalYearSelectorWidth = LayoutTokens.GetScaled(148);
+        var searchLabelWidth = LayoutTokens.GetScaled(72);
+        var actionLaneWidth = LayoutTokens.GetScaled(216);
 
         _filtersPanel = new Panel
         {
             Dock = DockStyle.Fill,
             Height = controlHeight + LayoutTokens.GetScaled(24),
-            Padding = new Padding(12, 10, 12, 10),
+            Padding = new Padding(12, 8, 12, 8),
             BorderStyle = BorderStyle.None
         };
         SfSkinManager.SetVisualStyle(_filtersPanel, themeName);
@@ -292,7 +292,13 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private static TabPageAdv CreateTabPage(string text, Control content)
     {
-        var page = new TabPageAdv { Text = text };
+        content.Margin = Padding.Empty;
+        var page = new TabPageAdv
+        {
+            Text = text,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+        };
         page.Controls.Add(content);
         return page;
     }
@@ -301,7 +307,10 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         _statusStrip = ControlFactory.CreateStatusStrip(statusStrip =>
         {
-            statusStrip.Dock = DockStyle.Fill;
+            statusStrip.Dock = DockStyle.Bottom;
+            statusStrip.SizingGrip = false;
+            statusStrip.AutoSize = false;
+            statusStrip.Height = LayoutTokens.GetScaled(24);
         });
         _statusLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
         {
@@ -325,7 +334,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 3,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
@@ -333,7 +342,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // header
         _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // filters
         _layoutRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // tabs
-        _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // status strip
 
         if (_panelHeader != null)
         {
@@ -350,13 +358,15 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             _tabControl.Margin = Padding.Empty;
             _layoutRoot.Controls.Add(_tabControl, 0, 2);
         }
+
+        Controls.Add(_layoutRoot);
+
         if (_statusStrip != null)
         {
             _statusStrip.Margin = Padding.Empty;
-            _layoutRoot.Controls.Add(_statusStrip, 0, 3);
+            Controls.Add(_statusStrip);
+            _statusStrip.BringToFront();
         }
-
-        Controls.Add(_layoutRoot);
     }
 
     private void InitializeOverlays()
@@ -377,19 +387,10 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             overlay.Visible = false;
         });
 
-        if (_layoutRoot != null)
-        {
-            _layoutRoot.Controls.Add(_loadingOverlay, 0, 2);
-            _layoutRoot.Controls.Add(_noDataOverlay, 0, 2);
-            _loadingOverlay.BringToFront();
-        }
-        else
-        {
-            Controls.Add(_loadingOverlay);
-            Controls.Add(_noDataOverlay);
-        }
-
-        _noDataOverlay.BringToFront();
+        Controls.Add(_loadingOverlay);
+        Controls.Add(_noDataOverlay);
+        _loadingOverlay.SendToBack();
+        _noDataOverlay.SendToBack();
     }
 
     // -------------------------------------------------------------------------

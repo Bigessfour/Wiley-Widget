@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using DI = Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.Models.Entities;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
@@ -128,6 +130,8 @@ namespace WileyWidget.WinForms.Configuration
 
             // Register Microsoft health checks to provide HealthCheckService for custom wrapper
             services.AddHealthChecks();
+
+            services.AddDataProtection();
 
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
@@ -273,6 +277,7 @@ namespace WileyWidget.WinForms.Configuration
 
             services.AddOptions<AuthenticationOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("Authentication").Bind(opts));
+            services.AddSingleton<IPostConfigureOptions<AuthenticationOptions>, AuthenticationOptionsPostConfigure>();
 
             services.AddOptions<WileyWidget.Models.AppOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.Bind(opts));
@@ -336,6 +341,31 @@ namespace WileyWidget.WinForms.Configuration
                         }), ServiceLifetime.Scoped);
                 }
             }
+
+            services
+                .AddAuthentication();
+
+            services.AddHttpContextAccessor();
+
+            services
+                .AddIdentityCore<AppIdentityUser>(options =>
+                {
+                    options.Password.RequireDigit = true;
+                    options.Password.RequireLowercase = true;
+                    options.Password.RequireUppercase = true;
+                    options.Password.RequireNonAlphanumeric = false;
+                    options.Password.RequiredLength = 12;
+                    options.Password.RequiredUniqueChars = 4;
+
+                    options.User.RequireUniqueEmail = true;
+
+                    options.Lockout.AllowedForNewUsers = true;
+                    options.Lockout.MaxFailedAccessAttempts = 5;
+                    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                })
+                .AddSignInManager<SignInManager<AppIdentityUser>>()
+                .AddEntityFrameworkStores<AppDbContext>()
+                .AddDefaultTokenProviders();
 
             // =====================================================================
             // DATABASE REPOSITORIES (Scoped - one per request/scope)
@@ -449,7 +479,8 @@ namespace WileyWidget.WinForms.Configuration
 
             // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
             services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
-            services.AddScoped<IAuthenticationBootstrapper, AuthenticationBootstrapper>();
+            services.AddScoped<AuthenticationBootstrapper>();
+            services.AddScoped<IAuthenticationBootstrapper>(sp => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AuthenticationBootstrapper>(sp));
 
             // AI Services (Singleton - heavy initialization, shared across application)
             // ✅ CRITICAL FIX: GrokAgentService is Singleton to prevent duplicate initialization
@@ -797,6 +828,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.InsightFeedPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.LocalIdentityHostPanel>();
             services.AddScoped<EnterpriseVitalSignsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 

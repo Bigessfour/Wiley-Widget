@@ -203,7 +203,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         });
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight + LayoutTokens.PanelPaddingCompact.Top)));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight + LayoutTokens.PanelPaddingCompact.Top + LayoutTokens.PanelPaddingCompact.Bottom)));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight + LayoutTokens.ContentInnerPadding.Bottom)));
         SfSkinManager.SetVisualStyle(root, themeName);
@@ -221,7 +221,8 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             panel.Dock = DockStyle.Fill;
             panel.Padding = new Padding(LayoutTokens.Dp(4), 0, LayoutTokens.Dp(4), LayoutTokens.Dp(4));
-            panel.AutoSize = false;
+            panel.AutoSize = true;
+            panel.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         });
         SfSkinManager.SetVisualStyle(_filterPanel, themeName);
         _filterPanel.Controls.Add(CreateCompactFilterBar());
@@ -250,16 +251,17 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _noDataOverlay = ControlFactory.CreateNoDataOverlay(overlay =>
         {
             overlay.Message = "No budget entries yet\r\nCreate a new budget to get started";
+            overlay.Visible = false;
         });
         Controls.Add(_noDataOverlay);
-        _noDataOverlay.BringToFront();
+        _noDataOverlay.SendToBack();
         Controls.Add(_statusStrip);
 
         SetTabOrder();
         InitializeTooltips();
 
         _loadingOverlay?.SendToBack();
-        _noDataOverlay?.BringToFront();
+        _noDataOverlay?.SendToBack();
         _panelHeader?.BringToFront();
 
         ResumeLayout(false);
@@ -1405,6 +1407,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         Control CreateFieldGroup(Control label, Control field)
         {
+            var rowHeight = LayoutTokens.Dp(LayoutTokens.StandardControlHeightComfortable);
             var group = ControlFactory.CreateTableLayoutPanel(table =>
             {
                 table.AutoSize = true;
@@ -1416,11 +1419,20 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             });
             group.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             group.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            group.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            group.RowStyles.Add(new RowStyle(SizeType.Absolute, rowHeight));
 
-            label.Margin = new Padding(0, LayoutTokens.Dp(3), 6, 0);
+            label.AutoSize = false;
+            label.Anchor = AnchorStyles.Left;
+            label.Height = rowHeight;
+            label.Margin = new Padding(0, 0, 6, 0);
+            if (label is Label labelControl)
+            {
+                labelControl.TextAlign = ContentAlignment.MiddleLeft;
+            }
             field.Margin = Padding.Empty;
-            field.MinimumSize = new Size(field.Width, LayoutTokens.Dp(LayoutTokens.StandardControlHeightComfortable));
+            field.Anchor = AnchorStyles.Left;
+            field.MinimumSize = new Size(Math.Max(field.MinimumSize.Width, field.Width), rowHeight);
+            field.Height = rowHeight;
             group.Controls.Add(label, 0, 0);
             group.Controls.Add(field, 1, 0);
             return group;
