@@ -300,6 +300,8 @@ namespace WileyWidget.WinForms.Configuration
 
             var providerLabel = useInMemory ? "InMemory" : "SqlServer";
             var connectionForLog = useInMemory ? "Data Source=:memory:" : resolvedConnection;
+            var localIdentityOptions = effectiveConfig?.GetSection("Authentication:LocalIdentity").Get<LocalIdentityAuthenticationOptions>()
+                ?? new LocalIdentityAuthenticationOptions();
             Log.Information("DI: AppDbContext provider={Provider} TestHarness={IsUiTestHarness} Connection={ConnectionString}",
                 providerLabel, isUiTestHarness, connectionForLog);
 
@@ -362,6 +364,10 @@ namespace WileyWidget.WinForms.Configuration
                     options.Lockout.AllowedForNewUsers = true;
                     options.Lockout.MaxFailedAccessAttempts = 5;
                     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+
+                    options.SignIn.RequireConfirmedAccount = localIdentityOptions.RequireConfirmedAccount;
+                    options.SignIn.RequireConfirmedEmail = localIdentityOptions.RequireConfirmedEmail;
+                    options.SignIn.RequireConfirmedPhoneNumber = localIdentityOptions.RequireConfirmedPhoneNumber;
                 })
                 .AddSignInManager<SignInManager<AppIdentityUser>>()
                 .AddEntityFrameworkStores<AppDbContext>()

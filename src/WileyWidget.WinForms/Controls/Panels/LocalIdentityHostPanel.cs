@@ -450,34 +450,26 @@ internal sealed class LocalIdentityHostPanel : UserControl, IThemable
         {
             SetBusy(true, _bootstrapMode ? "Creating administrator..." : "Signing in...");
 
+            var rememberMe = _rememberMeCheckBox.Visible && _rememberMeCheckBox.Checked;
+
             AuthenticationSessionResult session;
             if (_bootstrapMode)
             {
-                ValidateBootstrapInput();
+                var request = BuildBootstrapRequest();
                 session = await _authenticationBootstrapper.RegisterHostedLocalIdentityAsync(
-                    new LocalIdentityRegistrationRequest(
-                        UserName: GetTrimmedText(_identityTextBox),
-                        DisplayName: GetTrimmedText(_displayNameTextBox),
-                        Email: GetTrimmedText(_emailTextBox),
-                        Password: _passwordTextBox.Text),
-                    rememberMe: _rememberMeCheckBox.Visible && _rememberMeCheckBox.Checked,
+                    request,
+                    rememberMe: rememberMe,
                     _panelCancellation.Token).ConfigureAwait(true);
             }
             else
             {
-                var identity = GetTrimmedText(_identityTextBox);
-                var password = _passwordTextBox.Text;
-
-                if (string.IsNullOrWhiteSpace(identity) || string.IsNullOrWhiteSpace(password))
-                {
-                    throw new InvalidOperationException("Username/email and password are required.");
-                }
+                var (identity, password) = ValidateSignInInput();
 
                 session = await _authenticationBootstrapper
                     .SignInHostedLocalIdentityAsync(
                         identity,
                         password,
-                        rememberMe: _rememberMeCheckBox.Visible && _rememberMeCheckBox.Checked,
+                        rememberMe: rememberMe,
                         _panelCancellation.Token)
                     .ConfigureAwait(true);
             }
@@ -492,9 +484,7 @@ internal sealed class LocalIdentityHostPanel : UserControl, IThemable
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Hosted local identity authentication failed.");
-            SetStatus(ex.Message, isError: true);
-            _passwordTextBox.SelectAll();
-            _passwordTextBox.Focus();
+            HandleAuthenticationFailure(ex.Message);
         }
         finally
         {
@@ -502,32 +492,83 @@ internal sealed class LocalIdentityHostPanel : UserControl, IThemable
         }
     }
 
-    private void ValidateBootstrapInput()
+    private (string Identity, string Password) ValidateSignInInput()
+    {
+        var identity = GetTrimmedText(_identityTextBox);
+        if (string.IsNullOrWhiteSpace(identity))
+        {
+            _identityTextBox.Focus();
+            _identityTextBox.SelectAll();
+            throw new InvalidOperationException("Username or email is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_passwordTextBox.Text))
+        {
+            _passwordTextBox.Focus();
+            _passwordTextBox.SelectAll();
+            throw new InvalidOperationException("Password is required.");
+        }
+
+        return (identity, _passwordTextBox.Text);
+    }
+
+    private LocalIdentityRegistrationRequest BuildBootstrapRequest()
     {
         if (string.IsNullOrWhiteSpace(GetTrimmedText(_identityTextBox)))
         {
+            _identityTextBox.Focus();
+            _identityTextBox.SelectAll();
             throw new InvalidOperationException("Administrator username is required.");
         }
 
         if (string.IsNullOrWhiteSpace(GetTrimmedText(_displayNameTextBox)))
         {
+            _displayNameTextBox.Focus();
+            _displayNameTextBox.SelectAll();
             throw new InvalidOperationException("Display name is required.");
         }
 
         if (string.IsNullOrWhiteSpace(GetTrimmedText(_emailTextBox)))
         {
+            _emailTextBox.Focus();
+            _emailTextBox.SelectAll();
             throw new InvalidOperationException("Email is required.");
         }
 
         if (string.IsNullOrWhiteSpace(_passwordTextBox.Text))
         {
+            _passwordTextBox.Focus();
+            _passwordTextBox.SelectAll();
             throw new InvalidOperationException("Password is required.");
         }
 
         if (!string.Equals(_passwordTextBox.Text, _confirmPasswordTextBox.Text, StringComparison.Ordinal))
         {
+            _confirmPasswordTextBox.Focus();
+            _confirmPasswordTextBox.SelectAll();
             throw new InvalidOperationException("Password confirmation does not match.");
         }
+
+        return new LocalIdentityRegistrationRequest(
+            UserName: GetTrimmedText(_identityTextBox),
+            DisplayName: GetTrimmedText(_displayNameTextBox),
+            Email: GetTrimmedText(_emailTextBox),
+            Password: _passwordTextBox.Text);
+    }
+
+    private void HandleAuthenticationFailure(string message)
+    {
+        SetStatus(message, isError: true);
+
+        if (_bootstrapMode)
+        {
+            _passwordTextBox.SelectAll();
+            _passwordTextBox.Focus();
+            return;
+        }
+
+        _passwordTextBox.Clear();
+        _passwordTextBox.Focus();
     }
 
     private void UpdateModeUi(bool bootstrapMode)

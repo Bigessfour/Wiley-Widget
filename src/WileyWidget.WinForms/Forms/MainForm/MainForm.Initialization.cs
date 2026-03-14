@@ -844,6 +844,11 @@ public partial class MainForm
                             _startupUiPhasesIndex = 1;
                             return;
                         }
+
+                        if (HaltStartupForHostedAuthenticationFailure())
+                        {
+                            return;
+                        }
                     }
                     finally
                     {

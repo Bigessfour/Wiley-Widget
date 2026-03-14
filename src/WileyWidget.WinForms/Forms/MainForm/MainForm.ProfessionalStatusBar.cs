@@ -266,7 +266,20 @@ public partial class MainForm
 
         UpdateMemoryDisplay();
         UpdateRowCountDisplay(GetActiveGridRowCount());
-        UpdateConnectionStatus(_serviceProvider != null, _serviceProvider != null ? "Services ready" : "Services unavailable");
+
+        if (_hostedAuthenticationStartupFailed)
+        {
+            UpdateConnectionStatus(false, "Authentication unavailable");
+        }
+        else if (IsHostedAuthenticationPanelActive() || IsHostedAuthenticationPending())
+        {
+            UpdateConnectionStatus(false, "Authentication required");
+        }
+        else
+        {
+            UpdateConnectionStatus(_serviceProvider != null, _serviceProvider != null ? "Services ready" : "Services unavailable");
+        }
+
         UpdateUserDisplay();
     }
 

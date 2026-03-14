@@ -20,6 +20,7 @@ using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Factories;
 
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
@@ -206,6 +207,12 @@ public partial class MainForm
             return;
         }
 
+        if (IsHostedAuthenticationPending() || IsHostedAuthenticationPanelActive())
+        {
+            _logger?.LogInformation("Deferred ribbon initialization postponed while hosted authentication is pending.");
+            return;
+        }
+
         if (_deferredChromeInitializationQueued)
         {
             return;
@@ -238,49 +245,105 @@ public partial class MainForm
         }
 
         var authenticationBootstrapper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-            .GetService<AuthenticationBootstrapper>(_serviceProvider);
+            .GetService<IAuthenticationBootstrapper>(_serviceProvider);
 
         if (authenticationBootstrapper == null || !authenticationBootstrapper.IsHostedLocalIdentityMode)
         {
             _logger?.LogInformation(
-                "Hosted authentication panel not shown. BootstrapperAvailable={BootstrapperAvailable} HostedLocalIdentityMode={HostedLocalIdentityMode}",
+                "Hosted authentication panel not shown. BootstrapperAvailable={BootstrapperAvailable} HostedLocalIdentityMode={HostedLocalIdentityMode} HasCurrentSession={HasCurrentSession}",
                 authenticationBootstrapper != null,
-                authenticationBootstrapper?.IsHostedLocalIdentityMode ?? false);
+                authenticationBootstrapper?.IsHostedLocalIdentityMode ?? false,
+                authenticationBootstrapper?.CurrentSession != null);
             return false;
         }
 
         if (_hostedAuthenticationPanel != null && !_hostedAuthenticationPanel.IsDisposed)
         {
+            _hostedAuthenticationStartupFailed = false;
             PauseDeferredStartupUiPhasesForAuthentication();
             _hostedAuthenticationPanel.BringToFront();
+            UpdateHostedAuthenticationStatusIndicators();
             LogHostedAuthenticationPanelState("ReuseExistingHostedAuthenticationPanel");
             return true;
         }
 
-        _hostedAuthenticationPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
-            .GetRequiredService<LocalIdentityHostPanel>(_serviceProvider);
-
-        _hostedAuthenticationPanel.Dock = DockStyle.Fill;
-        _hostedAuthenticationPanel.AuthenticationCompleted += HandleHostedAuthenticationCompleted;
-        _hostedAuthenticationPanel.AuthenticationCanceled += HandleHostedAuthenticationCanceled;
-
-        if (!_contentHostPanel.Controls.Contains(_hostedAuthenticationPanel))
+        try
         {
-            _contentHostPanel.Controls.Add(_hostedAuthenticationPanel);
+            _hostedAuthenticationPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetRequiredService<LocalIdentityHostPanel>(_serviceProvider);
+
+            _hostedAuthenticationPanel.Dock = DockStyle.Fill;
+            _hostedAuthenticationPanel.AuthenticationCompleted += HandleHostedAuthenticationCompleted;
+            _hostedAuthenticationPanel.AuthenticationCanceled += HandleHostedAuthenticationCanceled;
+
+            if (!_contentHostPanel.Controls.Contains(_hostedAuthenticationPanel))
+            {
+                _contentHostPanel.Controls.Add(_hostedAuthenticationPanel);
+            }
+
+            _logger?.LogInformation(
+                "Hosted authentication panel added to content host. ContentHostControlCount={ControlCount} ContentHostBounds={ContentHostBounds}",
+                _contentHostPanel.Controls.Count,
+                _contentHostPanel.Bounds);
+
+            _hostedAuthenticationStartupFailed = false;
+            PauseDeferredStartupUiPhasesForAuthentication();
+            EnsureHostedAuthenticationForeground();
+            _hostedAuthenticationPanel.BringToFront();
+            _hostedAuthenticationPanel.FocusInitialField();
+            UpdateHostedAuthenticationStatusIndicators();
+            LogHostedAuthenticationPanelState("TryShowHostedAuthenticationPanel.AfterShow");
+            TraceLayoutSnapshot("HostedAuthenticationPanel.AfterShow");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Hosted authentication panel failed to initialize.");
+            return false;
+        }
+    }
+
+    private void UpdateHostedAuthenticationStatusIndicators()
+    {
+        if (_hostedAuthenticationStartupFailed)
+        {
+            ApplyStatus("Authentication is required, but the sign-in panel could not be displayed.");
+            UpdateConnectionStatus(false, "Authentication unavailable");
+            return;
         }
 
-        _logger?.LogInformation(
-            "Hosted authentication panel added to content host. ContentHostControlCount={ControlCount} ContentHostBounds={ContentHostBounds}",
-            _contentHostPanel.Controls.Count,
-            _contentHostPanel.Bounds);
+        if (IsHostedAuthenticationPanelActive() || IsHostedAuthenticationPending())
+        {
+            ApplyStatus("Authentication required - sign in to continue startup.");
+            UpdateConnectionStatus(false, "Authentication required");
+        }
+    }
 
-        PauseDeferredStartupUiPhasesForAuthentication();
-        EnsureHostedAuthenticationForeground();
-        _hostedAuthenticationPanel.BringToFront();
-        _hostedAuthenticationPanel.FocusInitialField();
-        ApplyStatus("Sign in required.");
-        LogHostedAuthenticationPanelState("TryShowHostedAuthenticationPanel.AfterShow");
-        TraceLayoutSnapshot("HostedAuthenticationPanel.AfterShow");
+    private bool IsHostedAuthenticationPending()
+    {
+        if (_serviceProvider == null)
+        {
+            return false;
+        }
+
+        var authenticationBootstrapper = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetService<IAuthenticationBootstrapper>(_serviceProvider);
+
+        return authenticationBootstrapper?.IsHostedLocalIdentityMode == true;
+    }
+
+    private bool HaltStartupForHostedAuthenticationFailure()
+    {
+        if (!IsHostedAuthenticationPending())
+        {
+            return false;
+        }
+
+        _hostedAuthenticationStartupFailed = true;
+        _logger?.LogError("Hosted LocalIdentity authentication is required, but the sign-in panel was not displayed.");
+        UpdateHostedAuthenticationStatusIndicators();
+        TraceLayoutSnapshot("HostedAuthenticationPanel.Unavailable");
+        CompleteDeferredStartupUiPhases(cancelDeferredWork: true);
         return true;
     }
 
@@ -345,16 +408,20 @@ public partial class MainForm
             "Hosted authentication completed. UserId={UserId} DisplayName={DisplayName}",
             e.Session.UserId,
             e.Session.DisplayName);
+        _hostedAuthenticationStartupFailed = false;
         ApplyStatus($"Welcome, {e.Session.DisplayName}.");
         RefreshProfessionalStatusBarSnapshot();
         RemoveHostedAuthenticationPanel();
+        QueueDeferredChromeInitialization();
         ResumeDeferredStartupUiPhasesAfterAuthentication();
     }
 
     private void HandleHostedAuthenticationCanceled(object? sender, EventArgs e)
     {
         _logger?.LogInformation("Hosted authentication canceled by user.");
+        _hostedAuthenticationStartupFailed = false;
         ApplyStatus("Authentication canceled.");
+        UpdateConnectionStatus(false, "Authentication canceled");
         RemoveHostedAuthenticationPanel();
         BeginInvoke((MethodInvoker)(Close));
     }
@@ -683,7 +750,7 @@ public partial class MainForm
 
             CacheGlobalSearchTextBox();
             EnsureRibbonAccessibility();
-            AnalyzeAndNormalizeRibbonTabHeights(ribbon, "initial-home-tab-population");
+            AnalyzeAndNormalizeRibbonTabHeights(ribbon, "initial-home-tab-population", homeTab);
 
             // Allow FlaUI-driven automation to visually attach the ribbon so UIA can find navigation buttons.
             var skipRibbonVisualAttach = isUiTestRuntime && !IsFlaUiAutomationTest();
@@ -811,7 +878,8 @@ public partial class MainForm
                 return;
             }
 
-            EnsureRibbonTabPopulation(
+            await PopulateRibbonTabBatchAsync(
+                ribbon,
                 financialsTab,
                 expectedStripCount: 3,
                 buildTabContent: () =>
@@ -825,14 +893,8 @@ public partial class MainForm
                 },
                 reason: "deferred-population");
 
-            await Task.Delay(1).ConfigureAwait(true);
-
-            if (IsDisposed || Disposing || ribbon.IsDisposed)
-            {
-                return;
-            }
-
-            EnsureRibbonTabPopulation(
+            await PopulateRibbonTabBatchAsync(
+                ribbon,
                 analyticsTab,
                 expectedStripCount: 3,
                 buildTabContent: () =>
@@ -846,14 +908,8 @@ public partial class MainForm
                 },
                 reason: "deferred-population");
 
-            await Task.Delay(1).ConfigureAwait(true);
-
-            if (IsDisposed || Disposing || ribbon.IsDisposed)
-            {
-                return;
-            }
-
-            EnsureRibbonTabPopulation(
+            await PopulateRibbonTabBatchAsync(
+                ribbon,
                 utilitiesTab,
                 expectedStripCount: 1,
                 buildTabContent: () =>
@@ -863,7 +919,8 @@ public partial class MainForm
                 },
                 reason: "deferred-population");
 
-            EnsureRibbonTabPopulation(
+            await PopulateRibbonTabBatchAsync(
+                ribbon,
                 administrationTab,
                 expectedStripCount: 2,
                 buildTabContent: () =>
@@ -874,17 +931,6 @@ public partial class MainForm
                     AddToolStripToTabPanel(administrationTab, auditLogsStrip, themeName, _logger);
                 },
                 reason: "deferred-population");
-
-            foreach (var tab in new[] { financialsTab, analyticsTab, utilitiesTab, administrationTab })
-            {
-                if (tab.Panel != null)
-                {
-                    tab.Panel.AutoSize = true;
-                    tab.Panel.Padding = new Padding(6, 4, 6, 4);
-                }
-            }
-
-            AnalyzeAndNormalizeRibbonTabHeights(ribbon, "deferred-all-tab-population");
 
             ribbon.Invalidate();
             QueueRibbonLayoutSync("DeferredRibbonTabPopulation.Complete");
@@ -898,6 +944,35 @@ public partial class MainForm
         {
             // no-op: this RibbonControlAdv version does not expose BeginUpdate/EndUpdate
         }
+    }
+
+    private async Task PopulateRibbonTabBatchAsync(
+        RibbonControlAdv ribbon,
+        ToolStripTabItem tab,
+        int expectedStripCount,
+        MethodInvoker buildTabContent,
+        string reason)
+    {
+        if (IsDisposed || Disposing || ribbon.IsDisposed)
+        {
+            return;
+        }
+
+        EnsureRibbonTabPopulation(tab, expectedStripCount, buildTabContent, reason);
+        AnalyzeAndNormalizeRibbonTabHeights(ribbon, $"{reason}:{tab.Name}", tab);
+        await YieldAfterRibbonBatchAsync(ribbon, tab.Name ?? "<unnamed>").ConfigureAwait(true);
+    }
+
+    private async Task YieldAfterRibbonBatchAsync(RibbonControlAdv ribbon, string tabName)
+    {
+        await Task.Yield();
+
+        if (IsDisposed || Disposing || ribbon.IsDisposed)
+        {
+            return;
+        }
+
+        _logger?.LogDebug("Yielded UI thread after ribbon batch for tab {TabName}", tabName);
     }
 
     private void EnsureRibbonTabPopulation(
@@ -938,7 +1013,7 @@ public partial class MainForm
         }
     }
 
-    private void AnalyzeAndNormalizeRibbonTabHeights(RibbonControlAdv ribbon, string reason)
+    private void AnalyzeAndNormalizeRibbonTabHeights(RibbonControlAdv ribbon, string reason, params ToolStripTabItem[] tabs)
     {
         if (ribbon?.Header?.MainItems == null)
         {
@@ -963,8 +1038,12 @@ public partial class MainForm
             var minimumRibbonWidth = Math.Max(200, ribbon.MinimumSize.Width);
             ribbon.MinimumSize = new Size(minimumRibbonWidth, Math.Max(ribbon.MinimumSize.Height, minimumRibbonHeight));
 
+            var targetTabs = tabs.Length > 0
+                ? tabs.Where(static tab => tab != null)
+                : ribbon.Header.MainItems.OfType<ToolStripTabItem>();
+
             var tabSummaries = new List<string>();
-            foreach (var tab in ribbon.Header.MainItems.OfType<ToolStripTabItem>())
+            foreach (var tab in targetTabs)
             {
                 if (tab.Panel == null)
                 {

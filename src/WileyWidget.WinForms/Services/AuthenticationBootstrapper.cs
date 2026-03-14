@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -14,7 +15,6 @@ using WileyWidget.Data;
 using WileyWidget.Models.Entities;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Configuration;
-using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services.Abstractions;
 
 namespace WileyWidget.WinForms.Services;
@@ -277,12 +277,13 @@ public sealed class AuthenticationBootstrapper : IAuthenticationBootstrapper
                 "No local identity user exists. Enable initial administrator registration or configure a bootstrap admin password.");
         }
 
-        return LocalIdentitySignInForm.ShowForInitialSignIn(
-            ownerWindow,
-            HasAnyLocalIdentityUsersAsync,
-            AuthenticateLocalUserCredentialsAsync,
-            RegisterInitialLocalIdentityUserAsync,
-            _logger);
+        _logger.LogError(
+            "Interactive LocalIdentity sign-in was requested through {MethodName}, but the application now requires hosted authentication via MainForm. OwnerWindowProvided={OwnerWindowProvided}",
+            nameof(EnsureAuthenticatedAsync),
+            ownerWindow != null);
+
+        throw new InvalidOperationException(
+            "Interactive local identity sign-in must be hosted in the MainForm authentication panel. Start the application in hosted LocalIdentity mode or use the hosted sign-in APIs.");
     }
 
     private Task<bool> HasAnyLocalIdentityUsersAsync(CancellationToken cancellationToken)
@@ -351,16 +352,18 @@ public sealed class AuthenticationBootstrapper : IAuthenticationBootstrapper
         var user = await FindUserByIdentityAsync(normalizedIdentity).ConfigureAwait(false);
         if (user == null)
         {
+            _logger.LogWarning("Local identity sign-in failed because the account was not found. Identity={Identity}", normalizedIdentity);
             throw new InvalidOperationException("Invalid username/email or password.");
         }
 
         if (!user.IsEnabled)
         {
+            _logger.LogWarning("Local identity sign-in blocked because the account is disabled. UserId={UserId}", user.Id);
             throw new InvalidOperationException("This account is disabled.");
         }
 
         var signInResult = await _signInManager
-            .CheckPasswordSignInAsync(user, password, lockoutOnFailure: true)
+            .CheckPasswordSignInAsync(user, password, lockoutOnFailure: _userManager.SupportsUserLockout)
             .ConfigureAwait(false);
 
         if (signInResult.Succeeded)
@@ -377,22 +380,62 @@ public sealed class AuthenticationBootstrapper : IAuthenticationBootstrapper
             return BuildLocalIdentitySession(user, provider: AuthenticationModes.LocalIdentity);
         }
 
+        _logger.LogWarning(
+            "Local identity sign-in failed. UserId={UserId} LockedOut={IsLockedOut} RequiresTwoFactor={RequiresTwoFactor} IsNotAllowed={IsNotAllowed}",
+            user.Id,
+            signInResult.IsLockedOut,
+            signInResult.RequiresTwoFactor,
+            signInResult.IsNotAllowed);
+
+        throw new InvalidOperationException(
+            await BuildInteractiveSignInFailureMessageAsync(user, signInResult).ConfigureAwait(false));
+    }
+
+    private async Task<string> BuildInteractiveSignInFailureMessageAsync(AppIdentityUser user, SignInResult signInResult)
+    {
         if (signInResult.IsLockedOut)
         {
-            throw new InvalidOperationException("This account is temporarily locked due to repeated failed sign-in attempts.");
+            if (_userManager.SupportsUserLockout)
+            {
+                var lockoutEnd = await _userManager.GetLockoutEndDateAsync(user).ConfigureAwait(false);
+                if (lockoutEnd.HasValue && lockoutEnd.Value > DateTimeOffset.UtcNow)
+                {
+                    return string.Format(
+                        CultureInfo.CurrentCulture,
+                        "This account is temporarily locked. Try again after {0:g}.",
+                        lockoutEnd.Value.LocalDateTime);
+                }
+            }
+
+            return "This account is temporarily locked due to repeated failed sign-in attempts.";
         }
 
         if (signInResult.RequiresTwoFactor)
         {
-            throw new InvalidOperationException("This account requires two-factor authentication, which is not yet supported by the desktop sign-in flow.");
+            return "This account requires two-factor authentication, which is not yet supported by the desktop sign-in flow.";
         }
 
         if (signInResult.IsNotAllowed)
         {
-            throw new InvalidOperationException("This account is not permitted to sign in.");
+            if (_options.LocalIdentity.RequireConfirmedEmail && !user.EmailConfirmed)
+            {
+                return "This account must confirm its email address before it can sign in.";
+            }
+
+            if (_options.LocalIdentity.RequireConfirmedPhoneNumber && !user.PhoneNumberConfirmed)
+            {
+                return "This account must confirm its phone number before it can sign in.";
+            }
+
+            if (_options.LocalIdentity.RequireConfirmedAccount)
+            {
+                return "This account must complete account confirmation before it can sign in.";
+            }
+
+            return "This account is not permitted to sign in.";
         }
 
-        throw new InvalidOperationException("Invalid username/email or password.");
+        return "Invalid username/email or password.";
     }
 
     private async Task<AppIdentityUser?> FindUserByIdentityAsync(string identity)

@@ -67,6 +67,7 @@ namespace WileyWidget.WinForms.Forms
         private SyncfusionControlFactory? _controlFactory;
         private ContainerControl? _contentHostPanel;   // Sub-container below ribbon, above status bar — houses right-dock panel and MDI client area
         private LocalIdentityHostPanel? _hostedAuthenticationPanel;
+        private bool _hostedAuthenticationStartupFailed;
         private bool _mdiLayoutSyncHooksAttached;
         private bool _dashboardAutoShown;
         private bool _reportViewerLaunched;

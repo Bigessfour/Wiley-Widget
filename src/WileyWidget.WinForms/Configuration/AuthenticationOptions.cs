@@ -57,6 +57,12 @@ public sealed class LocalIdentityAuthenticationOptions
 {
     public bool Enabled { get; set; } = true;
 
+    public bool RequireConfirmedAccount { get; set; }
+
+    public bool RequireConfirmedEmail { get; set; }
+
+    public bool RequireConfirmedPhoneNumber { get; set; }
+
     public bool AllowPersistentRememberMe { get; set; } = true;
 
     public bool RememberMeDefaultSelection { get; set; }
