@@ -32,6 +32,7 @@ using WileyWidget.WinForms.ViewModels;
 using Action = System.Action;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.Data;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
@@ -193,6 +194,14 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void BindControls()
         {
+            ClearBinding(txtAccountNumber, nameof(TextBoxExt.Text));
+            ClearBinding(txtName, nameof(TextBoxExt.Text));
+            ClearBinding(txtDescription, nameof(TextBoxExt.Text));
+            ClearBinding(numBalance, "Value");
+            ClearBinding(numBudget, "Value");
+            ClearBinding(chkActive, nameof(CheckBoxAdv.Checked));
+            ClearBinding(cmbDepartment, "SelectedValue");
+
             // Bind controls to _editModel properties (MVVM style)
             txtAccountNumber.DataBindings.Add(
                 nameof(TextBoxExt.Text),
@@ -237,7 +246,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 true,
                 DataSourceUpdateMode.OnPropertyChanged);
 
-            // SfComboBox bindings - SelectedValue binds to model property
+            // Department selection always binds to the persisted DepartmentId.
             cmbDepartment.DataBindings.Add(
                 "SelectedValue",
                 _bindingSource,
@@ -245,23 +254,135 @@ namespace WileyWidget.WinForms.Controls.Panels
                 true,
                 DataSourceUpdateMode.OnPropertyChanged);
 
-            cmbFund.DataBindings.Add(
-                "SelectedValue",
-                _bindingSource,
-                nameof(MunicipalAccountEditModel.FundType),
-                true,
-                DataSourceUpdateMode.OnPropertyChanged);
-
-            cmbType.DataBindings.Add(
-                "SelectedValue",
-                _bindingSource,
-                nameof(MunicipalAccountEditModel.Type),
-                true,
-                DataSourceUpdateMode.OnPropertyChanged);
+            BindFundSelection(useFundIdBinding: false);
+            BindTypeSelection();
 
             // Wire binding complete to track unsaved changes for ICompletablePanel
+            if (_bindingCompleteHandler != null)
+            {
+                _bindingSource.BindingComplete -= _bindingCompleteHandler;
+            }
+
             _bindingCompleteHandler = (s, e) => SetHasUnsavedChanges(true);
             _bindingSource.BindingComplete += _bindingCompleteHandler;
+        }
+
+        private static void ClearBinding(Control control, string propertyName)
+        {
+            foreach (var binding in control.DataBindings.Cast<Binding>().ToList())
+            {
+                if (string.Equals(binding.PropertyName, propertyName, StringComparison.Ordinal))
+                {
+                    control.DataBindings.Remove(binding);
+                }
+            }
+        }
+
+        private void BindFundSelection(bool useFundIdBinding)
+        {
+            RebindComboBox(
+                cmbFund,
+                useFundIdBinding ? "SelectedValue" : "SelectedItem",
+                useFundIdBinding ? nameof(MunicipalAccountEditModel.FundId) : nameof(MunicipalAccountEditModel.FundType));
+        }
+
+        private void BindTypeSelection()
+        {
+            RebindComboBox(cmbType, "SelectedItem", nameof(MunicipalAccountEditModel.Type));
+        }
+
+        private void ReapplyComboTheme(SfComboBox? comboBox)
+        {
+            if (comboBox == null || comboBox.IsDisposed)
+            {
+                return;
+            }
+
+            var themeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+
+            void ApplyTheme()
+            {
+                if (comboBox.IsDisposed)
+                {
+                    return;
+                }
+
+                try
+                {
+                    comboBox.ThemeName = themeName;
+                    SyncfusionControlFactory.ApplyThemeToAllControls(comboBox, themeName, Logger);
+                    comboBox.Invalidate(true);
+                    comboBox.Update();
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogDebug(ex, "AccountEditPanel: Failed to reapply combo theme for {ControlName}", comboBox.Name);
+                }
+            }
+
+            if (comboBox.IsHandleCreated)
+            {
+                comboBox.BeginInvoke((MethodInvoker)ApplyTheme);
+            }
+            else
+            {
+                ApplyTheme();
+            }
+        }
+
+        private void RebindComboBox(Control control, string propertyName, string dataMember)
+        {
+            foreach (var binding in control.DataBindings.Cast<Binding>().ToList())
+            {
+                if (string.Equals(binding.PropertyName, "SelectedValue", StringComparison.Ordinal) ||
+                    string.Equals(binding.PropertyName, "SelectedItem", StringComparison.Ordinal))
+                {
+                    control.DataBindings.Remove(binding);
+                }
+            }
+
+            control.DataBindings.Add(
+                propertyName,
+                _bindingSource,
+                dataMember,
+                true,
+                DataSourceUpdateMode.OnPropertyChanged);
+        }
+
+        private void ApplyCurrentTheme()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            var themeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+
+            try
+            {
+                ThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName, Logger);
+                SyncfusionControlFactory.ApplyThemeToAllControls(this, themeName, Logger);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogDebug(ex, "AccountEditPanel: Failed to apply current theme {ThemeName}", themeName);
+            }
+        }
+
+        private void ApplyCurrentThemeDeferred()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            if (IsHandleCreated)
+            {
+                BeginInvoke((MethodInvoker)ApplyCurrentTheme);
+                return;
+            }
+
+            ApplyCurrentTheme();
         }
 
         /// <summary>
@@ -385,6 +506,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 BindControls();
                 SetupValidation();
                 await LoadDataAsync(ct);
+                IsLoaded = true;
             }
             finally
             {
@@ -425,10 +547,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
 
             _toolTip = new ToolTip();
-            this.Padding = new Padding(20);
+            this.Padding = LayoutTokens.GetScaled(LayoutTokens.DialogShellPadding);
             this.AutoScroll = true;
-            this.MinimumSize = new Size(1024, 720);
-            this.Size = new Size(1100, 780);
+            this.MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
+            this.Size = ScaleLogicalToDevice(new Size(1100, 780));
 
             _panelHeader = new PanelHeader
             {
@@ -449,7 +571,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 ColumnCount = 2,
                 RowCount = 11, // Title + 9 fields + button panel
                 AutoSize = false,
-                Padding = new Padding(20)
+                Padding = LayoutTokens.GetScaled(LayoutTokens.DialogShellPadding)
             };
             _content = _mainLayout;
 
@@ -458,24 +580,24 @@ namespace WileyWidget.WinForms.Controls.Panels
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); // Title
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Account Number
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Name
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 96)); // Description
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Department
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Fund
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Type
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Balance
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42)); // Budget
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); // Active
-            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64)); // Button Panel
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(44))); // Title
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Account Number
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Name
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(96))); // Description
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Department
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Fund
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(42))); // Type
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(48))); // Balance
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(48))); // Budget
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(44))); // Active
+            _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(64))); // Button Panel
 
             // === TITLE ROW (Row 0) ===
             lblTitle = new Label
             {
                 Text = "Account Details",
                 AutoSize = false,
-                Height = 32,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Dock = DockStyle.Fill,
                 Margin = new Padding(0, 0, 0, 8),
@@ -503,14 +625,15 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.Enabled = _isNew;
                 textBox.AutoSize = false;
                 textBox.Anchor = AnchorStyles.Left;
-                textBox.Width = 160;
-                textBox.Height = 32;
+                textBox.Width = 180;
+                textBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 textBox.Margin = new Padding(0, 4, 0, 4);
-                textBox.MinimumSize = new Size(160, 32);
+                textBox.MinimumSize = ScaleLogicalToDevice(new Size(180, 32));
                 textBox.TabIndex = 1;
             });
+            txtAccountNumber.Validated += AccountNumberTextBox_Validated;
             _mainLayout.Controls.Add(txtAccountNumber, 1, 1);
-            _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 1000, 2100)");
+            _toolTip.SetToolTip(txtAccountNumber, "Unique identifier for this account (e.g., 333.00 or 405.10)");
 
             // === NAME (Row 2) ===
             lblName = new Label
@@ -532,9 +655,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.AutoSize = false;
                 textBox.Anchor = AnchorStyles.Left;
                 textBox.Width = 320;
-                textBox.Height = 32;
+                textBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 textBox.Margin = new Padding(0, 4, 0, 4);
-                textBox.MinimumSize = new Size(320, 32);
+                textBox.MinimumSize = ScaleLogicalToDevice(new Size(320, 32));
                 textBox.TabIndex = 2;
             });
             _mainLayout.Controls.Add(txtName, 1, 2);
@@ -562,7 +685,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 textBox.ScrollBars = ScrollBars.Vertical;
                 textBox.Dock = DockStyle.Fill;
                 textBox.Margin = new Padding(0, 4, 0, 4);
-                textBox.MinimumSize = new Size(320, 88);
+                textBox.MinimumSize = ScaleLogicalToDevice(new Size(320, 88));
                 textBox.TabIndex = 3;
             });
             _mainLayout.Controls.Add(txtDescription, 1, 3);
@@ -591,9 +714,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 comboBox.AccessibleDescription = "Select the department this account belongs to";
                 comboBox.Anchor = AnchorStyles.Left;
                 comboBox.Width = 320;
-                comboBox.Height = 32;
+                comboBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 comboBox.Margin = new Padding(0, 4, 0, 4);
-                comboBox.MinimumSize = new Size(320, 32);
+                comboBox.MinimumSize = ScaleLogicalToDevice(new Size(320, 32));
                 comboBox.TabIndex = 4;
             });
             _mainLayout.Controls.Add(cmbDepartment, 1, 4);
@@ -622,9 +745,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 comboBox.AccessibleDescription = "Select a municipal fund type for this account";
                 comboBox.Anchor = AnchorStyles.Left;
                 comboBox.Width = 320;
-                comboBox.Height = 32;
+                comboBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 comboBox.Margin = new Padding(0, 4, 0, 4);
-                comboBox.MinimumSize = new Size(320, 32);
+                comboBox.MinimumSize = ScaleLogicalToDevice(new Size(320, 32));
                 comboBox.TabIndex = 5;
             });
             _mainLayout.Controls.Add(cmbFund, 1, 5);
@@ -653,9 +776,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 comboBox.AccessibleDescription = "Select the account type";
                 comboBox.Anchor = AnchorStyles.Left;
                 comboBox.Width = 320;
-                comboBox.Height = 32;
+                comboBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 comboBox.Margin = new Padding(0, 4, 0, 4);
-                comboBox.MinimumSize = new Size(320, 32);
+                comboBox.MinimumSize = ScaleLogicalToDevice(new Size(320, 32));
                 comboBox.TabIndex = 6;
             });
             _mainLayout.Controls.Add(cmbType, 1, 6);
@@ -667,7 +790,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Text = "Current Balance:",
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable)),
                 Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblBalance, 0, 7);
@@ -676,6 +801,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 numericTextBox.Name = "numBalance";
                 numericTextBox.AllowNull = false;
+                numericTextBox.AutoSize = false;
                 numericTextBox.Value = 0;
                 numericTextBox.MinValue = (double)decimal.MinValue;
                 numericTextBox.MaxValue = (double)decimal.MaxValue;
@@ -683,9 +809,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 numericTextBox.AccessibleDescription = "Enter the current account balance";
                 numericTextBox.Anchor = AnchorStyles.Left;
                 numericTextBox.Width = 165;
-                numericTextBox.Height = 32;
+                numericTextBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 numericTextBox.Margin = new Padding(0, 4, 0, 4);
-                numericTextBox.MinimumSize = new Size(165, 32);
+                numericTextBox.MinimumSize = ScaleLogicalToDevice(new Size(165, 32));
                 numericTextBox.TabIndex = 7;
                 numericTextBox.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
                 numericTextBox.NumberFormatInfo = CurrencyFormat;
@@ -702,7 +828,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Text = "Budget Amount:",
                 TextAlign = ContentAlignment.MiddleRight,
                 AutoSize = false,
-                Dock = DockStyle.Fill,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable)),
                 Margin = new Padding(0, 4, 12, 4),
             };
             _mainLayout.Controls.Add(lblBudget, 0, 8);
@@ -711,6 +839,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 numericTextBox.Name = "numBudget";
                 numericTextBox.AllowNull = false;
+                numericTextBox.AutoSize = false;
                 numericTextBox.Value = 0;
                 numericTextBox.MinValue = 0;
                 numericTextBox.MaxValue = (double)decimal.MaxValue;
@@ -718,9 +847,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 numericTextBox.AccessibleDescription = "Enter the budgeted amount for this account";
                 numericTextBox.Anchor = AnchorStyles.Left;
                 numericTextBox.Width = 165;
-                numericTextBox.Height = 32;
+                numericTextBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
                 numericTextBox.Margin = new Padding(0, 4, 0, 4);
-                numericTextBox.MinimumSize = new Size(165, 32);
+                numericTextBox.MinimumSize = ScaleLogicalToDevice(new Size(165, 32));
                 numericTextBox.TabIndex = 8;
                 numericTextBox.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency;
                 numericTextBox.NumberFormatInfo = CurrencyFormat;
@@ -736,8 +865,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Text = " ",
                 AutoSize = false,
-                Dock = DockStyle.Fill,
-                Margin = new Padding(0)
+                Anchor = AnchorStyles.Left | AnchorStyles.Right,
+                Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable)),
+                Margin = new Padding(0, 4, 12, 4)
             };
             _mainLayout.Controls.Add(lblActive, 0, 9);
 
@@ -745,10 +876,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 checkBox.Name = "chkActive";
                 checkBox.Checked = true;
-                checkBox.AutoSize = true;
+                checkBox.AutoSize = false;
                 checkBox.AccessibleName = "Active Status";
                 checkBox.AccessibleDescription = "Check to mark this account as active";
                 checkBox.Anchor = AnchorStyles.Left;
+                checkBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightComfortable);
+                checkBox.MinimumSize = ScaleLogicalToDevice(new Size(140, LayoutTokens.StandardControlHeightComfortable));
                 checkBox.Margin = new Padding(0, 4, 0, 4);
                 checkBox.TabIndex = 9;
             });
@@ -777,7 +910,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 button.Name = "btnSave";
                 button.Width = 112;
-                button.Height = 36;
+                button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
                 button.Anchor = AnchorStyles.None;
                 button.AccessibleName = _isNew ? "Create Account" : "Save Account";
                 button.AccessibleDescription = "Save the account changes";
@@ -791,7 +924,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 button.Name = "btnCancel";
                 button.Width = 112;
-                button.Height = 36;
+                button.Height = LayoutTokens.GetScaled(LayoutTokens.DialogButtonHeight);
                 button.Anchor = AnchorStyles.None;
                 button.AccessibleName = "Cancel";
                 button.AccessibleDescription = "Cancel and discard changes";
@@ -814,8 +947,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             try
             {
                 // Get compact icons for dialog buttons
-                btnSave.Image = _imageService?.GetScaledImage("save", new Size(16, 16));
-                btnCancel.Image = _imageService?.GetScaledImage("close", new Size(16, 16));
+                btnSave.Image = _imageService?.GetScaledImage("save", LayoutTokens.GetScaled(LayoutTokens.CompactIconSize));
+                btnCancel.Image = _imageService?.GetScaledImage("close", LayoutTokens.GetScaled(LayoutTokens.CompactIconSize));
 
                 // Layout: compact horizontal button content
                 btnSave.TextImageRelation = TextImageRelation.ImageBeforeText;
@@ -847,6 +980,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             ResumeLayout(false);
             PerformLayout();
             Refresh();
+            ApplyCurrentThemeDeferred();
 
             // Handle form close button as cancel
             Load += AccountEditPanel_Load;
@@ -881,10 +1015,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             base.OnHandleCreated(e);
             if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
             {
-                MinimumSize = new Size(1024, 720);
+                MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
             }
 
             PerformLayout();
+            ApplyCurrentThemeDeferred();
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)
@@ -954,6 +1089,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     cmbDepartment.DisplayMember = "Name";
                     cmbDepartment.ValueMember = "Id";
                     cmbDepartment.DataSource = depts;
+                    ReapplyComboTheme(cmbDepartment);
 
                     // Select existing department if editing
                     if (_existingAccount?.Department != null)
@@ -975,6 +1111,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     cmbDepartment.DisplayMember = "Name";
                     cmbDepartment.ValueMember = "Id";
                     cmbDepartment.DataSource = sampleDepts;
+                    ReapplyComboTheme(cmbDepartment);
                     Logger?.LogWarning("AccountEditPanel: Using sample departments (repository returned no data)");
                 }
 
@@ -1002,6 +1139,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                     cmbFund.DisplayMember = "Name";
                     cmbFund.ValueMember = "Id";
                     cmbFund.DataSource = _fundBindingList;
+                    BindFundSelection(useFundIdBinding: true);
+                    ReapplyComboTheme(cmbFund);
                     if (_existingAccount?.FundId != null)
                     {
                         cmbFund.SelectedValue = _existingAccount.FundId.Value;
@@ -1010,7 +1149,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                 else
                 {
                     // Fallback to enum if database load fails
+                    cmbFund.DisplayMember = string.Empty;
+                    cmbFund.ValueMember = string.Empty;
                     cmbFund.DataSource = Enum.GetValues(typeof(MunicipalFundType));
+                    BindFundSelection(useFundIdBinding: false);
+                    ReapplyComboTheme(cmbFund);
                     if (_existingAccount != null)
                     {
                         cmbFund.SelectedItem = _existingAccount.FundType;
@@ -1019,6 +1162,8 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 // Set account types
                 cmbType.DataSource = Enum.GetValues(typeof(AccountType));
+                BindTypeSelection();
+                ReapplyComboTheme(cmbType);
                 if (_existingAccount != null)
                 {
                     cmbType.SelectedItem = _existingAccount.Type;
@@ -1055,7 +1200,9 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             if (txtAccountNumber != null)
             {
-                _editModel.AccountNumber = txtAccountNumber.Text?.Trim() ?? string.Empty;
+                var normalizedAccountNumber = WileyWidget.Models.AccountNumber.FormatDisplay(txtAccountNumber.Text);
+                _editModel.AccountNumber = normalizedAccountNumber;
+                txtAccountNumber.Text = normalizedAccountNumber;
             }
 
             if (txtName != null)
@@ -1123,6 +1270,27 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
+        private void AccountNumberTextBox_Validated(object? sender, EventArgs e)
+        {
+            if (txtAccountNumber == null)
+            {
+                return;
+            }
+
+            var normalizedAccountNumber = WileyWidget.Models.AccountNumber.FormatDisplay(txtAccountNumber.Text);
+            if (string.Equals(txtAccountNumber.Text, normalizedAccountNumber, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            txtAccountNumber.Text = normalizedAccountNumber;
+
+            if (_editModel != null)
+            {
+                _editModel.AccountNumber = normalizedAccountNumber;
+            }
+        }
+
         /// <summary>
         /// Executes save operation with proper state management and error handling.
         /// Updates ICompletablePanel state (IsBusy, HasUnsavedChanges) throughout lifecycle.
@@ -1166,13 +1334,14 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (_isNew && !string.IsNullOrWhiteSpace(_editModel.AccountNumber)
                     && ViewModel.Accounts != null
                     && ViewModel.Accounts.Any(a =>
-                        string.Equals(a.AccountNumber, _editModel.AccountNumber, StringComparison.OrdinalIgnoreCase)))
+                        WileyWidget.Models.AccountNumber.GetEquivalentValues(a.AccountNumber)
+                            .Contains(WileyWidget.Models.AccountNumber.FormatDisplay(_editModel.AccountNumber), StringComparer.OrdinalIgnoreCase)))
                 {
                     Dialogs.ValidationDialog.Show(
                         this,
                         "Validation Error",
                         "Duplicate Account Number",
-                        new[] { $"An account with number '{_editModel.AccountNumber}' already exists." },
+                        new[] { $"An account with number '{WileyWidget.Models.AccountNumber.FormatDisplay(_editModel.AccountNumber)}' already exists." },
                         null);
                     return;
                 }
@@ -1225,7 +1394,16 @@ namespace WileyWidget.WinForms.Controls.Panels
                 SetHasUnsavedChanges(false);
                 SaveDialogResult = DialogResult.OK;
 
-                // Raise save completed event instead of directly closing form
+                _ = Factory.ShowSemanticMessageBox(
+                    this,
+                    _isNew
+                        ? $"Account {WileyWidget.Models.AccountNumber.FormatDisplay(_editModel.AccountNumber)} created successfully."
+                        : $"Account {WileyWidget.Models.AccountNumber.FormatDisplay(_editModel.AccountNumber)} updated successfully.",
+                    _isNew ? "Create Successful" : "Update Successful",
+                    SyncfusionControlFactory.MessageSemanticKind.Success,
+                    MessageBoxButtons.OK,
+                    playNotificationSound: true);
+
                 SaveCompleted?.Invoke(this, EventArgs.Empty);
 
                 Logger?.LogInformation("AccountEditPanel: Account saved successfully - {AccountNumber}", _editModel.AccountNumber);
@@ -1375,6 +1553,9 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);   // starts the 180ms _finalLayoutTimer in ScopedPanelBase
+            ReapplyComboTheme(cmbDepartment);
+            ReapplyComboTheme(cmbFund);
+            ReapplyComboTheme(cmbType);
             // Note: ForceFullLayout is handled by base timer - no need to call it again
         }
 

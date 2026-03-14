@@ -80,6 +80,11 @@ public interface IMunicipalAccountRepository
     System.Threading.Tasks.Task<IEnumerable<MunicipalAccount>> GetAllWithRelatedAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets active municipal accounts that participate in budget tracking.
+    /// </summary>
+    System.Threading.Tasks.Task<IEnumerable<MunicipalAccount>> GetBudgetAccountsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets the current active budget period.
     /// </summary>
     System.Threading.Tasks.Task<BudgetPeriod?> GetCurrentActiveBudgetPeriodAsync(CancellationToken cancellationToken = default);

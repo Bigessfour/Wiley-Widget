@@ -76,7 +76,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
             // Add padding for proper spacing
-            this.Padding = new Padding(12);
+            this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelOuterPadding);
 
             // Create controls programmatically instead of using InitializeComponent
             SafeSuspendAndLayout(CreateControls);
@@ -129,9 +129,12 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             WileyWidget.WinForms.Themes.ThemeColors.EnsureThemeAssemblyLoaded(Logger);
 
+            var toolbarRowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge) + LayoutTokens.GetScaled(10);
+
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(1024, 720);
+            AutoScroll = false;
+            MinimumSize = ScaleLogicalToDevice(new Size(820, 576));
 
             // Panel Header - added directly to Controls with Dock = Top
             _panelHeader = new PanelHeader
@@ -158,12 +161,16 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Name = "MainTable",
                 Dock = DockStyle.Fill,
                 RowCount = 2,
-                ColumnCount = 1
+                ColumnCount = 1,
+                AutoSize = false,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
             };
             _content = mainTable;
+            mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
             // Row 0: Button controls
-            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, toolbarRowHeight));
             mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Button panel (Row 0)
@@ -171,16 +178,19 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "ButtonPanel",
                 Dock = DockStyle.Fill,
-                Height = 36,
-                Padding = new Padding(8)
+                Height = toolbarRowHeight,
+                MinimumSize = new Size(0, toolbarRowHeight),
+                Padding = new Padding(LayoutTokens.GetScaled(4))
             };
 
             // Control buttons - add right-docked controls first
             _btnExport = Factory.CreateSfButton("Export", button =>
             {
-                button.AutoSize = true;
+                button.AutoSize = false;
                 button.Dock = DockStyle.Right;
-                button.Padding = new Padding(8);
+                button.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
+                button.Size = LayoutTokens.GetScaled(new Size(108, LayoutTokens.StandardControlHeightLarge));
+                button.MinimumSize = LayoutTokens.GetScaled(new Size(108, LayoutTokens.StandardControlHeightLarge));
             });
             _btnExport.Click += OnExportClicked;
             _btnExport.AccessibleName = "Export Activity Log";
@@ -191,9 +201,11 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _btnClearLog = Factory.CreateSfButton("Clear", button =>
             {
-                button.AutoSize = true;
+                button.AutoSize = false;
                 button.Dock = DockStyle.Right;
-                button.Padding = new Padding(8);
+                button.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
+                button.Size = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
+                button.MinimumSize = LayoutTokens.GetScaled(new Size(96, LayoutTokens.StandardControlHeightLarge));
             });
             _btnClearLog.Click += OnClearLogClicked;
             _btnClearLog.AccessibleName = "Clear Activity Log";
@@ -205,9 +217,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             _chkAutoRefresh = Factory.CreateCheckBoxAdv("Auto-refresh", checkBox =>
             {
                 checkBox.AutoSize = true;
-                checkBox.Checked = true;
+                checkBox.Checked = false;
                 checkBox.Dock = DockStyle.Right;
-                checkBox.Padding = new Padding(8);
+                checkBox.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
             });
             _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
             _chkAutoRefresh.AccessibleName = "Auto Refresh";
@@ -286,6 +298,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                     grid.AllowSorting = true;
                     grid.AllowFiltering = true;
                     grid.ShowBusyIndicator = false;
+                    grid.ShowGroupDropArea = false;
+                    grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.None;
+                    grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
+                    grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightComfortable);
                 });
                 _activityGrid.AccessibleName = "Activity Log Grid";
                 _activityGrid.AccessibleDescription = "Grid listing recent activity entries";
@@ -327,6 +343,8 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 _gridSplit.Panel1.Controls.Add(_activityGrid);
                 _mainTable.Controls.Add(_gridSplit, 0, 1);
+
+                ApplyTheme();
 
                 // Now that the grid is added and the parent is sized, setup UI bindings
                 SetupUI();
@@ -401,7 +419,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Store handler reference to prevent GC issues and ensure proper unsubscription in Dispose
             _autoRefreshTickHandler = OnAutoRefreshTick;
             _autoRefreshTimer.Tick += _autoRefreshTickHandler;
-            _autoRefreshTimer.Start();
+
+            // Keep background churn low by default; auto-refresh starts only when user opts in.
+            if (_chkAutoRefresh?.Checked == true)
+            {
+                _autoRefreshTimer.Start();
+            }
         }
 
         private void ClearActivityLog()
@@ -431,9 +454,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                 var theme = SfSkinManager.ApplicationVisualTheme;
                 if (!string.IsNullOrEmpty(theme))
                 {
-                    // SfSkinManager.SetVisualStyle applies theme cascade to form and all child controls
-                    // Do NOT set ThemeName manually; rely on theme cascade from ScopedPanelBase
+                    // Deferred Syncfusion controls can be created after the initial panel theme pass.
+                    // Reapply theme recursively so GridSplit and the grid match the active host theme.
                     SfSkinManager.SetVisualStyle(this, theme);
+                    SyncfusionControlFactory.ApplyThemeToAllControls(this, theme, Logger);
                 }
             }
             catch (Exception ex)
@@ -538,7 +562,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             if (_autoRefreshTimer != null && _chkAutoRefresh != null)
             {
-                _autoRefreshTimer.Enabled = _chkAutoRefresh.Checked;
+                if (_chkAutoRefresh.Checked)
+                {
+                    _autoRefreshTimer.Start();
+                }
+                else
+                {
+                    _autoRefreshTimer.Stop();
+                }
             }
         }
 
@@ -559,23 +590,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             }
         }
 
-        private Control? FindDockedHost(Syncfusion.Windows.Forms.Tools.DockingManager dockingManager)
-        {
-            Control? current = this;
-            while (current != null)
-            {
-                try
-                {
-                    if (dockingManager.GetEnableDocking(current))
-                    {
-                        return current;
-                    }
-                }
-                catch { }
-                current = current.Parent;
-            }
-            return null;
-        }
+
 
         /// <summary>
         /// Performs async activity log refresh on the UI thread.
@@ -681,9 +696,9 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
+            if (MinimumSize.Width < 360 || MinimumSize.Height < 520)
             {
-                MinimumSize = new Size(1024, 720);
+                MinimumSize = ScaleLogicalToDevice(new Size(360, 520));
             }
 
             PerformLayout();

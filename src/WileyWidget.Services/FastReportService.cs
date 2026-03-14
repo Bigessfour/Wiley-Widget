@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using FastReport;
 using FastReport.Export;
 using Microsoft.Extensions.Logging;
@@ -15,18 +16,100 @@ using WileyWidget.Services.Abstractions;
 namespace WileyWidget.Services
 {
     /// <summary>
-    /// Service for interacting with FastReport Open Source WinForms ReportViewer control.
-    /// Provides full programmatic control over report generation, export, and viewer operations.
+    /// Service for interacting with FastReport Open Source report objects and prepared reports.
+    /// Provides programmatic control over report generation, parameter application, export handoff, and printing.
     /// All methods must be called on the UI thread.
     /// </summary>
     public class FastReportService : IReportService
     {
         private readonly ILogger<FastReportService> _logger;
 
+        private enum ReportLoadStage
+        {
+            ResolveTemplatePath,
+            LoadTemplate,
+            RegisterDataSources,
+            PrepareReport,
+        }
+
         public FastReportService(ILogger<FastReportService> logger)
         {
             ArgumentNullException.ThrowIfNull(logger);
             _logger = logger;
+        }
+
+        private static string DescribeDataSources(IReadOnlyDictionary<string, object>? dataSources)
+        {
+            if (dataSources == null || dataSources.Count == 0)
+            {
+                return "none";
+            }
+
+            return string.Join(", ",
+                dataSources.Select(kvp => $"{kvp.Key}:{kvp.Value?.GetType().Name ?? "null"}"));
+        }
+
+        private static InvalidOperationException CreateStageFailure(
+            ReportLoadStage stage,
+            string reportPath,
+            Exception innerException,
+            string? detail = null)
+        {
+            var pathDisplay = Path.GetFileName(reportPath);
+            var message = string.IsNullOrWhiteSpace(detail)
+                ? $"FastReport load failed during {stage} for '{pathDisplay}'."
+                : $"FastReport load failed during {stage} for '{pathDisplay}': {detail}";
+
+            return new InvalidOperationException(message, innerException);
+        }
+
+        private static bool NormalizeLegacyContainerNodes(XContainer root)
+        {
+            var modified = false;
+            modified |= UnwrapContainerNodes(root, "Parameters");
+            modified |= UnwrapContainerNodes(root, "TableDataSources");
+            modified |= UnwrapContainerNodes(root, "Columns");
+            return modified;
+        }
+
+        private static Stream OpenTemplateStream(string reportPath, ILogger logger)
+        {
+            var document = XDocument.Load(reportPath, LoadOptions.PreserveWhitespace);
+            var normalized = NormalizeLegacyContainerNodes(document);
+
+            if (!normalized)
+            {
+                return File.OpenRead(reportPath);
+            }
+
+            logger.LogWarning(
+                "[FASTREPORT] Normalized legacy wrapper nodes in template before load: {ReportPath}",
+                reportPath);
+
+            var stream = new MemoryStream();
+            document.Save(stream);
+            stream.Position = 0;
+            return stream;
+        }
+
+        private static bool UnwrapContainerNodes(XContainer root, string containerName)
+        {
+            var wrappers = root
+                .Descendants()
+                .Where(element => string.Equals(element.Name.LocalName, containerName, StringComparison.Ordinal))
+                .ToList();
+
+            if (wrappers.Count == 0)
+            {
+                return false;
+            }
+
+            foreach (var wrapper in wrappers)
+            {
+                wrapper.ReplaceWith(wrapper.Nodes());
+            }
+
+            return true;
         }
 
         private static DataSet ConvertEnumerableToDataSet(IEnumerable items, string dataSetName)
@@ -110,6 +193,48 @@ namespace WileyWidget.Services
             return ds;
         }
 
+        private static void EnableDataSourceIfPresent(Report report, string? dataSourceName)
+        {
+            if (string.IsNullOrWhiteSpace(dataSourceName))
+            {
+                return;
+            }
+
+            var dataSource = report.GetDataSource(dataSourceName);
+            if (dataSource != null)
+            {
+                dataSource.Enabled = true;
+            }
+        }
+
+        private static void EnableRegisteredDataSources(Report report, string registrationName, object value)
+        {
+            EnableDataSourceIfPresent(report, registrationName);
+
+            if (value is DataSet dataSet)
+            {
+                foreach (DataTable table in dataSet.Tables)
+                {
+                    EnableDataSourceIfPresent(report, table.TableName);
+                }
+
+                return;
+            }
+
+            if (value is DataTable tableValue)
+            {
+                EnableDataSourceIfPresent(report, tableValue.TableName);
+            }
+        }
+
+        private static void PrepareReport(Report report)
+        {
+            if (!report.Prepare())
+            {
+                throw new InvalidOperationException("FastReport did not prepare the report successfully.");
+            }
+        }
+
         /// <summary>
         /// Loads a report asynchronously. Must be called on UI thread.
         /// </summary>
@@ -137,23 +262,48 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            var resolvedReportPath = Path.GetFullPath(reportPath);
+            var currentStage = ReportLoadStage.ResolveTemplatePath;
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                _logger.LogInformation(
+                    "[FASTREPORT] Starting report load: Template={ReportPath}, DataSources={DataSources}",
+                    resolvedReportPath,
+                    DescribeDataSources(dataSources));
+
+                if (!File.Exists(resolvedReportPath))
+                {
+                    throw new FileNotFoundException("FastReport template file was not found.", resolvedReportPath);
+                }
+
                 progress?.Report(0.1);
 
                 // Load the report template (must be executed on the UI thread)
-                report.Load(reportPath);
+                currentStage = ReportLoadStage.LoadTemplate;
+                _logger.LogInformation("[FASTREPORT] Loading template: {ReportPath}", resolvedReportPath);
+                using (var templateStream = OpenTemplateStream(resolvedReportPath, _logger))
+                {
+                    report.Load(templateStream);
+                }
+                _logger.LogInformation("[FASTREPORT] Template loaded: {ReportPath}", resolvedReportPath);
 
                 progress?.Report(0.3);
 
-                // Register data sources (accept DataSet, DataTable, or IEnumerable and convert to DataSet)
+                // Register data sources after loading the template, then enable them so the template can bind.
                 if (dataSources != null)
                 {
+                    currentStage = ReportLoadStage.RegisterDataSources;
                     foreach (var kvp in dataSources)
                     {
                         try
                         {
+                            _logger.LogDebug(
+                                "[FASTREPORT] Registering data source: {DataSourceName} ({DataSourceType})",
+                                kvp.Key,
+                                kvp.Value?.GetType().FullName ?? "null");
+
                             if (kvp.Value is DataSet ds)
                             {
                                 report.RegisterData(ds, kvp.Key);
@@ -175,10 +325,18 @@ namespace WileyWidget.Services
                             {
                                 _logger.LogWarning("Data source {Name} of type {Type} is not supported for automatic registration - skipping.", kvp.Key, kvp.Value?.GetType().FullName ?? "null");
                             }
+
+                            EnableRegisteredDataSources(report, kvp.Key, kvp.Value);
+                            _logger.LogDebug("[FASTREPORT] Registered data source: {DataSourceName}", kvp.Key);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to register data source {Name}", kvp.Key);
+                            _logger.LogError(ex, "[FASTREPORT] Failed to register data source {Name}", kvp.Key);
+                            throw CreateStageFailure(
+                                currentStage,
+                                resolvedReportPath,
+                                ex,
+                                $"Data source '{kvp.Key}' could not be registered.");
                         }
                     }
                 }
@@ -186,21 +344,29 @@ namespace WileyWidget.Services
                 progress?.Report(0.6);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // Prepare the report (must be called on the UI thread)
-                report.Prepare();
+                // Prepare the report after all data and parameters are registered.
+                currentStage = ReportLoadStage.PrepareReport;
+                _logger.LogInformation("[FASTREPORT] Preparing report: {ReportPath}", resolvedReportPath);
+                PrepareReport(report);
+                _logger.LogInformation("[FASTREPORT] Report prepared: {ReportPath}", resolvedReportPath);
 
                 progress?.Report(1.0);
-                _logger.LogInformation("Report loaded successfully: {ReportPath}", reportPath);
+                _logger.LogInformation("Report loaded successfully: {ReportPath}", resolvedReportPath);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Report load canceled for {ReportPath}", reportPath);
+                _logger.LogDebug("[FASTREPORT] Report load canceled during {Stage} for {ReportPath}", currentStage, resolvedReportPath);
+                throw;
+            }
+            catch (InvalidOperationException ex) when (ex.InnerException != null && ex.Message.StartsWith("FastReport load failed during ", StringComparison.Ordinal))
+            {
+                _logger.LogError(ex, "[FASTREPORT] Report load failed during {Stage}: {ReportPath}", currentStage, resolvedReportPath);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load report: {ReportPath}", reportPath);
-                throw;
+                _logger.LogError(ex, "[FASTREPORT] Report load failed during {Stage}: {ReportPath}", currentStage, resolvedReportPath);
+                throw CreateStageFailure(currentStage, resolvedReportPath, ex, ex.Message);
             }
         }
 
@@ -223,7 +389,7 @@ namespace WileyWidget.Services
                 cancellationToken.ThrowIfCancellationRequested();
                 await Task.Yield();
 
-                report.Prepare();
+                PrepareReport(report);
 
                 _logger.LogDebug("Report refreshed");
             }
@@ -368,8 +534,8 @@ namespace WileyWidget.Services
                     report.SetParameterValue(kvp.Key, kvp.Value);
                 }
 
-                // Re-prepare the report with new parameters
-                report.Prepare();
+                // Re-prepare the report with the updated parameters.
+                PrepareReport(report);
 
                 _logger.LogDebug("Report parameters set: {Count} parameters", parameters.Count);
             }
@@ -404,9 +570,8 @@ namespace WileyWidget.Services
                 cancellationToken.ThrowIfCancellationRequested();
                 await Task.Yield();
 
-                // FastReport Open Source doesn't support direct printing
-                // Export to PDF and let the user print from there
-                throw new NotSupportedException("Direct printing is not supported in FastReport Open Source. Export to PDF and print from there.");
+                PrepareReport(report);
+                throw new NotSupportedException("The FastReport Open Source package in this solution does not expose a direct print API. Use the PDF preview/export workflow instead.");
             }
             catch (OperationCanceledException)
             {

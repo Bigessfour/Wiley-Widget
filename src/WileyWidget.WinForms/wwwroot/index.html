@@ -5,45 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JARVIS - WileyWidget Assistant</title>
     <base href="/" />
-    <link href="css/github-dark.min.css" rel="stylesheet" />
     <link href="_framework/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link
+      id="syncfusion-blazor-theme"
+      href="_content/Syncfusion.Blazor.Themes/fluent2.css"
+      rel="stylesheet"
+    />
+    <script
+      src="_content/Syncfusion.Blazor.Core/scripts/syncfusion-blazor.min.js"
+      type="text/javascript"
+    ></script>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
       html,
       body,
       #app {
         width: 100%;
         height: 100%;
-        background-color: #0d1117;
-        color: #c9d1d9;
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
-          sans-serif;
-        font-size: 14px;
+        background-color: #17181c;
+        color: #f3f6fb;
       }
 
       body {
+        margin: 0;
         overflow: hidden;
       }
 
-      #app {
-        display: flex;
-        flex-direction: column;
-      }
-
-      /* Loading fallback */
       .loading-spinner {
         display: flex;
         align-items: center;
         justify-content: center;
         height: 100%;
         font-size: 18px;
-        color: #58a6ff;
+        background-color: #17181c;
+        color: #f3f6fb;
       }
 
       .loading-spinner::after {
@@ -51,7 +45,7 @@
         display: inline-block;
         width: 20px;
         height: 20px;
-        border: 3px solid #58a6ff;
+        border: 3px solid currentColor;
         border-top-color: transparent;
         border-radius: 50%;
         animation: spinner 0.6s linear infinite;
@@ -74,8 +68,8 @@
       id="blazor-error-ui"
       style="
         display: none;
-        background-color: #f03c15;
-        color: #fff;
+        background-color: #b42318;
+        color: #ffffff;
         padding: 20px;
         text-align: center;
         z-index: 9999;
@@ -85,15 +79,7 @@
       <p>An error occurred while loading JARVIS. Please refresh the page.</p>
       <button
         onclick="location.reload()"
-        style="
-          background: #fff;
-          color: #f03c15;
-          border: none;
-          padding: 10px 20px;
-          cursor: pointer;
-          border-radius: 4px;
-          font-weight: bold;
-        "
+        style="padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold"
       >
         Reload
       </button>
@@ -102,6 +88,10 @@
     <script src="_framework/blazor.webview.js"></script>
     <script src="app.js"></script>
     <script>
+      window.addEventListener("load", function () {
+        console.log("[JARVIS] Syncfusion JS bundle confirmed loaded");
+      });
+
       window.addEventListener("beforeunload", function () {
         document.getElementById("app").innerHTML =
           '<div class="loading-spinner">Loading JARVIS...</div>';

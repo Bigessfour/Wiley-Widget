@@ -10,9 +10,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
+using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -25,6 +27,9 @@ namespace WileyWidget.WinForms.Controls.Panels
     /// </summary>
     public partial class EnterpriseVitalSignsPanel : ScopedPanelBase<EnterpriseVitalSignsViewModel>, ICompletablePanel
     {
+        private const string RateStudySourceUrl = "https://trace.tennessee.edu/utk_mtaspubs/164";
+        private const string RateStudyFootnoteText = "Configured according to the University of Tennessee MTAS guide \"How Any City Can Conduct a Utility Rate Study and Successfully Increase Rates\" (2012). Source: https://trace.tennessee.edu/utk_mtaspubs/164";
+
         // ── Sacred Panel Skeleton mandatory fields ───────────────────────────────
         private readonly EnterpriseVitalSignsViewModel _vm;
         private readonly SyncfusionControlFactory _factory;
@@ -33,13 +38,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         private LoadingOverlay _loader = null!;
 
         // ── Panel-specific fields ────────────────────────────────────────────────
-        private FlowLayoutPanel _gaugeFlow = null!;
-        private TableLayoutPanel _chartTable = null!;
+        private TabControlAdv _enterpriseTabs = null!;
         private Label _statusLabel = null!;
+        private Label _studyFootnoteLabel = null!;
         private NoDataOverlay _noDataOverlay = null!;
         private ToolTip? _toolTip;
         private string? _lastErrorMessage;
         private bool _loadTriggered;
+        private int _refreshAllVisualsQueued;
         private NotifyCollectionChangedEventHandler? _snapshotsChangedHandler;
         private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
 
@@ -69,6 +75,10 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void InitializeLayout()
         {
+            var headerHeight = Math.Max(
+                LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge),
+                LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight));
+
             // ── Sacred Panel Skeleton layout properties ──────────────────────
             Dock = DockStyle.Fill;
             MinimumSize = new Size(
@@ -78,78 +88,74 @@ namespace WileyWidget.WinForms.Controls.Panels
             Padding = new Padding(0);
 
             // ── Header ──────────────────────────────────────────────────────
-            _header = new PanelHeader(_factory)
+            _header = _factory.CreatePanelHeader(header =>
             {
-                Dock = DockStyle.Top,
-                Title = "Enterprise Vital Signs — FY 2026",
-                AccessibleName = "Enterprise vital signs header",
-                ShowHelpButton = false,
-                ShowPinButton = false,
-                ShowCloseButton = true,
-                ShowRefreshButton = true
-            };
+                header.Dock = DockStyle.Fill;
+                header.MinimumSize = new Size(0, headerHeight);
+                header.Height = headerHeight;
+                header.Margin = Padding.Empty;
+                header.Title = "Enterprise Vital Signs — FY 2026";
+                header.AccessibleName = "Enterprise vital signs header";
+                header.ShowHelpButton = false;
+                header.ShowPinButton = false;
+                header.ShowCloseButton = true;
+                header.ShowRefreshButton = true;
+            });
             _header.RefreshClicked += (s, e) => _vm.RefreshCommand.Execute(null);
             _header.CloseClicked += (s, e) => ClosePanel();
-            _toolTip = new ToolTip();
+            _toolTip = _factory.CreateToolTip();
             _toolTip.SetToolTip(_header, "Refresh enterprise metrics or close this panel.");
 
-            // ── Root content (3-row: header slot / body / status) ────────────
+            // ── Root content (header / body / status / footnote) ─────────────
             _content = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                RowCount = 3,
+                RowCount = 4,
                 ColumnCount = 1,
                 Margin = Padding.Empty,
-                Padding = new Padding(8)
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact)
             };
             _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));  // header slot unused (header docked top)
+            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, headerHeight));
             _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(32)));
+            _content.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(56)));
+            _content.Controls.Add(_header, 0, 0);
 
-            // ── Gauge flow ───────────────────────────────────────────────────
-            _gaugeFlow = new FlowLayoutPanel
+            // ── Enterprise tabs ─────────────────────────────────────────────
+            _enterpriseTabs = _factory.CreateTabControlAdv(tabControl =>
             {
-                Dock = DockStyle.Top,
-                Height = 280,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                AutoScroll = true,
-                Padding = new Padding(20),
-                AccessibleName = "Enterprise gauges"
-            };
-            _toolTip.SetToolTip(_gaugeFlow, "Gauge cards for current enterprise health.");
-
-            // ── Chart table ──────────────────────────────────────────────────
-            _chartTable = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 2,
-                Padding = new Padding(15),
-                CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
-                AccessibleName = "Enterprise chart table"
-            };
-            _toolTip.SetToolTip(_chartTable, "Comparative enterprise chart data.");
-            for (int i = 0; i < 2; i++)
-            {
-                _chartTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-                _chartTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-            }
+                tabControl.Dock = DockStyle.Fill;
+                tabControl.Multiline = false;
+                tabControl.Margin = Padding.Empty;
+                tabControl.ItemSize = new Size(
+                    LayoutTokens.GetScaled(LayoutTokens.TabItemSizeTall).Width,
+                    Math.Max(LayoutTokens.GetScaled(LayoutTokens.TabItemSizeTall).Height, 44));
+                tabControl.Alignment = TabAlignment.Top;
+                tabControl.Padding = new Point(18, 10);
+                tabControl.AccessibleName = "Enterprise tabs";
+                tabControl.AccessibleDescription = "Separate tabs for each enterprise financial view";
+            });
+            _toolTip.SetToolTip(_enterpriseTabs, "Switch between enterprise-specific financial analysis tabs.");
 
             // ── Content host ─────────────────────────────────────────────────
-            var contentHost = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
-            contentHost.Controls.Add(_chartTable);
-            contentHost.Controls.Add(_gaugeFlow);
+            var contentHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                AutoScroll = false
+            };
+            contentHost.Controls.Add(_enterpriseTabs);
 
             // ── Overlays (via factory) ───────────────────────────────────────
-            _noDataOverlay = new NoDataOverlay
+            _noDataOverlay = _factory.CreateNoDataOverlay(overlay =>
             {
-                Message = "No enterprise vital signs available\r\nImport or sync budget data to populate.",
-                Dock = DockStyle.Fill,
-                Visible = false,
-                AccessibleName = "No enterprise data overlay"
-            };
+                overlay.Message = "No enterprise vital signs available\r\nImport or sync budget data to populate.";
+                overlay.Dock = DockStyle.Fill;
+                overlay.Visible = false;
+                overlay.AccessibleName = "No enterprise data overlay";
+            });
             contentHost.Controls.Add(_noDataOverlay);
             _noDataOverlay.BringToFront();
 
@@ -170,10 +176,21 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
             _content.Controls.Add(_statusLabel, 0, 2);
 
+            _studyFootnoteLabel = new Label
+            {
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(4, 2, 4, 0),
+                Text = RateStudyFootnoteText,
+                AccessibleName = "Enterprise vital signs study footnote",
+                AutoEllipsis = true,
+                Font = new Font(Font.FontFamily, 8f, FontStyle.Regular)
+            };
+            _toolTip.SetToolTip(_studyFootnoteLabel, RateStudySourceUrl);
+            _content.Controls.Add(_studyFootnoteLabel, 0, 3);
+
             // ── Wire to panel ─────────────────────────────────────────────────
             Controls.Add(_content);
-            Controls.Add(_header);
-            _header.BringToFront();
         }
 
         // RefreshClicked and CloseClicked are now wired inline in InitializeLayout.
@@ -182,18 +199,57 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             _snapshotsChangedHandler = (_, _) =>
             {
-                if (IsHandleCreated && InvokeRequired)
-                    BeginInvoke((Action)RefreshAllVisuals);
-                else
-                    RefreshAllVisuals();
+                QueueRefreshAllVisuals();
             };
             _vm.EnterpriseSnapshots.CollectionChanged += _snapshotsChangedHandler;
 
             _viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
             _vm.PropertyChanged += _viewModelPropertyChangedHandler;
 
-            RefreshAllVisuals();
+            QueueRefreshAllVisuals();
             UpdateLoadingState();
+        }
+
+        private void QueueRefreshAllVisuals()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            if (Interlocked.Exchange(ref _refreshAllVisualsQueued, 1) == 1)
+            {
+                return;
+            }
+
+            void RefreshQueued()
+            {
+                Interlocked.Exchange(ref _refreshAllVisualsQueued, 0);
+
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                RefreshAllVisuals();
+            }
+
+            if (IsHandleCreated)
+            {
+                BeginInvoke((System.Action)RefreshQueued);
+                return;
+            }
+
+            HandleCreated += HandleCreatedRefreshOnce;
+
+            void HandleCreatedRefreshOnce(object? sender, EventArgs args)
+            {
+                HandleCreated -= HandleCreatedRefreshOnce;
+                if (!IsDisposed)
+                {
+                    BeginInvoke((System.Action)RefreshQueued);
+                }
+            }
         }
 
         private async void EnterpriseVitalSignsPanel_Load(object? sender, EventArgs e)
@@ -220,7 +276,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                                 or nameof(EnterpriseVitalSignsViewModel.ErrorMessage))
             {
                 if (IsHandleCreated && InvokeRequired)
-                    BeginInvoke((Action)UpdateLoadingState);
+                    BeginInvoke((System.Action)UpdateLoadingState);
                 else
                     UpdateLoadingState();
             }
@@ -261,8 +317,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void RefreshAllVisuals()
         {
-            _gaugeFlow.Controls.Clear();
-            _chartTable.Controls.Clear();
+            _enterpriseTabs.TabPages.Clear();
 
             if (_vm.EnterpriseSnapshots.Count == 0)
             {
@@ -274,46 +329,39 @@ namespace WileyWidget.WinForms.Controls.Panels
             int index = 0;
             foreach (var snapshot in _vm.EnterpriseSnapshots)
             {
-                var gaugePanel = new Panel()
-                {
-                    Margin = new Padding(10),
-                    Width = 260,
-                    Height = 260
-                };
-
-                var gauge = _factory.CreateEnterpriseGauge(snapshot.BreakEvenRatio, snapshot.Name);
-                gauge.Dock = DockStyle.Fill;
-                gaugePanel.Controls.Add(gauge);
-                _gaugeFlow.Controls.Add(gaugePanel);
-
                 var chartPanel = new Panel()
                 {
                     Dock = DockStyle.Fill,
-                    BorderStyle = BorderStyle.FixedSingle,
-                    Padding = new Padding(8)
+                    BorderStyle = BorderStyle.None,
+                    Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
+                    Margin = Padding.Empty,
+                    AutoScroll = true
                 };
 
-                var chart = _factory.CreateEnterpriseChart(snapshot);
-                chart.Dock = DockStyle.Fill;
-                chartPanel.Controls.Add(chart);
+                var card = _factory.CreateEnterpriseFinancialCard(snapshot);
+                card.Dock = DockStyle.Top;
+                card.AutoSize = true;
+                chartPanel.Controls.Add(card);
 
-                int row = index / _chartTable.ColumnCount;
-                int col = index % _chartTable.ColumnCount;
-
-                while (row >= _chartTable.RowCount)
+                var page = _factory.CreateTabPageAdv(snapshot.Name, chartPanel, tabPage =>
                 {
-                    _chartTable.RowCount++;
-                    _chartTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-                }
+                    tabPage.AccessibleName = $"{snapshot.Name} enterprise tab";
+                    tabPage.AccessibleDescription = $"Detailed financial tab for {snapshot.Name}";
+                });
 
-                _chartTable.Controls.Add(chartPanel, col, row);
+                _enterpriseTabs.TabPages.Add(page);
                 index++;
+            }
+
+            if (_enterpriseTabs.TabPages.Count > 0)
+            {
+                _enterpriseTabs.SelectedTab = _enterpriseTabs.TabPages[0];
             }
 
             UpdateLoadingState();
 
-            Logger.LogDebug("[{Panel}] Refreshed visuals. Gauges: {GaugeCount}, Charts: {ChartCount}",
-                GetType().Name, _gaugeFlow.Controls.Count, _chartTable.Controls.Count);
+            Logger.LogDebug("[{Panel}] Refreshed visuals. Tabs: {TabCount}",
+                GetType().Name, _enterpriseTabs.TabPages.Count);
 
             SetStatusMessage(_vm.EnterpriseSnapshots.Count == 1
                 ? "Showing 1 enterprise snapshot."

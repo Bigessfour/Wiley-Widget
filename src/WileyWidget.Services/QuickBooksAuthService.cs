@@ -231,9 +231,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             }
 
             _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
-                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientId", _logger).ConfigureAwait(false)
                         ?? envClientCandidate
-                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_ID")
                         ?? throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
 
             var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
@@ -243,32 +241,38 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             }
 
             _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
-                            ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
                             ?? envSecretCandidate
-                            ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
                             ?? string.Empty;
 
-            var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
+            var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID");
             if (!string.IsNullOrWhiteSpace(envRealmCandidate))
             {
                 _logger.LogInformation("QBO_REALM_ID found in environment (machine/process/user). Using env value.");
             }
 
             _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
-                       ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
                        ?? _oauthOptions?.RealmId
                        ?? envRealmCandidate;
 
+            if (_tokenStore != null)
+            {
+                await _tokenStore.GetTokenAsync().ConfigureAwait(false);
+                var persistedRealmId = _tokenStore.GetRealmId();
+                if (!string.IsNullOrWhiteSpace(persistedRealmId))
+                {
+                    _realmId = persistedRealmId;
+                    _logger.LogInformation("QuickBooks realmId restored from token store persistence");
+                }
+            }
+
             // Redirect URI priority: User Secrets > Environment > IOptions from appsettings.json
-            var envRedirectCandidate = GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI")
-                                    ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REDIRECT_URI");
+            var envRedirectCandidate = GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI");
             if (!string.IsNullOrWhiteSpace(envRedirectCandidate))
             {
                 _logger.LogInformation("QBO_REDIRECT_URI found in environment (machine/process/user). Using env value: {RedirectUri}", envRedirectCandidate);
             }
 
             _redirectUri = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
-                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RedirectUri", _logger).ConfigureAwait(false)
                         ?? envRedirectCandidate
                         ?? _oauthOptions?.RedirectUri
                         ?? throw new InvalidOperationException("RedirectUri not configured in user secrets, environment, or appsettings.json");
@@ -284,7 +288,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             // Sync RealmId to TokenStore if available
             if (!string.IsNullOrEmpty(_realmId) && _tokenStore != null)
             {
-                _tokenStore.SetRealmId(_realmId);
+                await _tokenStore.SetRealmIdAsync(_realmId, cancellationToken).ConfigureAwait(false);
             }
 
             _initialized = true;
@@ -366,7 +370,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             using var activity = _activitySource.StartActivity("RefreshToken");
             activity?.SetTag("realm_id", _realmId);
 
-            var result = await PerformTokenRefreshAsync(refreshToken).ConfigureAwait(false);
+            var result = await PerformTokenRefreshAsync(refreshToken, cancellationToken).ConfigureAwait(false);
 
             if (result?.IsSuccess != true)
             {
@@ -374,6 +378,12 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             }
 
             return result;
+        }
+        catch (InvalidOperationException ex) when (RequiresReauthorization(ex.Message))
+        {
+            await ClearCachedAuthorizationStateAsync().ConfigureAwait(false);
+            _logger.LogWarning(ex, "Refresh token is no longer usable; cleared local QuickBooks authorization state");
+            return Abstractions.TokenResult.Failure("QuickBooks authorization expired. Please reconnect QuickBooks.", ex);
         }
         catch (Exception ex)
         {
@@ -383,7 +393,13 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<Abstractions.TokenResult> ExchangeCodeForTokenAsync(string authorizationCode, CancellationToken cancellationToken = default)
+    public Task<Abstractions.TokenResult> ExchangeCodeForTokenAsync(string authorizationCode, CancellationToken cancellationToken = default)
+    {
+        return ExchangeCodeForTokenAsync(authorizationCode, redirectUriOverride: null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<Abstractions.TokenResult> ExchangeCodeForTokenAsync(string authorizationCode, string? redirectUriOverride, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(authorizationCode))
         {
@@ -400,8 +416,20 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
         try
         {
-            var effectiveRedirectUri = _redirectUri ?? _oauthOptions?.RedirectUri
-                ?? throw new InvalidOperationException("RedirectUri is not configured");
+            var effectiveRedirectUri = string.IsNullOrWhiteSpace(redirectUriOverride)
+                ? _redirectUri ?? _oauthOptions?.RedirectUri
+                : redirectUriOverride;
+
+            if (string.IsNullOrWhiteSpace(effectiveRedirectUri))
+            {
+                throw new InvalidOperationException("RedirectUri is not configured");
+            }
+
+            _logger.LogInformation(
+                "[QBO-PROOF] Starting OAuth token exchange. Environment: {Environment}, RedirectUri: {RedirectUri}, HasConfiguredRealmId: {HasConfiguredRealmId}",
+                _environment,
+                effectiveRedirectUri,
+                !string.IsNullOrWhiteSpace(_realmId));
 
             // Intuit requires credentials as HTTP Basic Auth, not in the POST body.
             var basicCredentials = Convert.ToBase64String(
@@ -461,7 +489,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                 // Sync realmId to store if we have one from the init phase
                 if (!string.IsNullOrEmpty(_realmId))
                 {
-                    _tokenStore.SetRealmId(_realmId);
+                    await _tokenStore.SetRealmIdAsync(_realmId, cancellationToken).ConfigureAwait(false);
                 }
 
                 _logger.LogInformation("Successfully exchanged authorization code for tokens — token persisted to store");
@@ -477,6 +505,12 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             _settings.Current.QboTokenExpiry = token.AccessTokenExpiresAtUtc;
             _settings.Save();
 
+            _logger.LogInformation(
+                "[QBO-PROOF] OAuth token exchange completed. Environment: {Environment}, TokenExpiryUtc: {TokenExpiryUtc}, RealmIdInAuthService: {RealmId}",
+                _environment,
+                token.AccessTokenExpiresAtUtc,
+                _realmId ?? "<unset>");
+
             return Abstractions.TokenResult.Success(token);
         }
         catch (Exception ex)
@@ -487,7 +521,13 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task<string> GenerateAuthorizationUrlAsync(CancellationToken cancellationToken = default)
+    public Task<string> GenerateAuthorizationUrlAsync(CancellationToken cancellationToken = default)
+    {
+        return GenerateAuthorizationUrlAsync(redirectUriOverride: null, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<string> GenerateAuthorizationUrlAsync(string? redirectUriOverride, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Generating QuickBooks OAuth authorization URL");
 
@@ -501,8 +541,14 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
         var effectiveClientId = _clientId ?? _oauthOptions.ClientId
             ?? throw new InvalidOperationException("QuickBooks ClientId is not configured");
-        var effectiveRedirectUri = _redirectUri ?? _oauthOptions.RedirectUri
-            ?? throw new InvalidOperationException("QuickBooks RedirectUri is not configured");
+        var effectiveRedirectUri = string.IsNullOrWhiteSpace(redirectUriOverride)
+            ? _redirectUri ?? _oauthOptions.RedirectUri
+            : redirectUriOverride;
+
+        if (string.IsNullOrWhiteSpace(effectiveRedirectUri))
+        {
+            throw new InvalidOperationException("QuickBooks RedirectUri is not configured");
+        }
 
         // Log masked client ID so we can confirm the real value (not placeholder) is being used.
         var maskedClientId = effectiveClientId.Length > 8
@@ -535,6 +581,11 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             "OAuth authorization URL generated — state: {State}, endpoint: {Endpoint}",
             state,
             _oauthOptions.AuthorizationEndpoint);
+        _logger.LogInformation(
+            "[QBO-PROOF] OAuth authorization prepared. Environment: {Environment}, RedirectUri: {RedirectUri}, ScopeCount: {ScopeCount}",
+            _environment,
+            effectiveRedirectUri,
+            _oauthOptions.Scopes.Count);
 
         return authUrl;
     }
@@ -587,27 +638,15 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             var response = await _httpClient.SendAsync(revokeRequest, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
-            // Clear local token
-            if (_tokenStore != null)
-            {
-                await _tokenStore.ClearTokenAsync().ConfigureAwait(false);
-            }
-
-            _settings.Current.QboAccessToken = null;
-            _settings.Current.QboRefreshToken = null;
-            _settings.Current.QboTokenExpiry = default;
-            _settings.Save();
-
             _logger.LogInformation("OAuth token revoked successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to revoke OAuth token: {Message}", ex.Message);
-            // Continue despite error - clear local state anyway
-            if (_tokenStore != null)
-            {
-                await _tokenStore.ClearTokenAsync().ConfigureAwait(false);
-            }
+            _logger.LogWarning(ex, "Failed to revoke OAuth token remotely: {Message}. Clearing local auth state anyway.", ex.Message);
+        }
+        finally
+        {
+            await ClearCachedAuthorizationStateAsync().ConfigureAwait(false);
         }
     }
 
@@ -646,14 +685,14 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
     public async Task RefreshTokenIfNeededAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureInitializedAsync().ConfigureAwait(false);
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
         var s = _settings.Current;
         if (HasValidAccessToken()) return;
 
         if (string.IsNullOrWhiteSpace(s.QboRefreshToken))
         {
-            throw new InvalidOperationException(
-                "No refresh token available. Please re-authorize the application.");
+            await ClearCachedAuthorizationStateAsync().ConfigureAwait(false);
+            throw new QuickBooksAuthException("QuickBooks authorization is required. Please reconnect QuickBooks.");
         }
 
         var refreshResult = await RefreshTokenAsync(s.QboRefreshToken, cancellationToken).ConfigureAwait(false);
@@ -673,9 +712,41 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
         }
         else
         {
-            throw new InvalidOperationException(
-                $"Token refresh failed: {refreshResult.ErrorMessage ?? "unknown error"}. Please re-authorize the application.");
+            var message = refreshResult.ErrorMessage ?? "QuickBooks authorization is required. Please reconnect QuickBooks.";
+            throw refreshResult.Exception is null
+                ? new QuickBooksAuthException(message)
+                : new QuickBooksAuthException(message, refreshResult.Exception);
         }
+    }
+
+    private async Task ClearCachedAuthorizationStateAsync()
+    {
+        if (_tokenStore != null)
+        {
+            await _tokenStore.ClearTokenAsync().ConfigureAwait(false);
+        }
+
+        _settings.Current.QboAccessToken = null;
+        _settings.Current.QboRefreshToken = null;
+        _settings.Current.QboTokenExpiry = default;
+        _settings.Current.QuickBooksAccessToken = null;
+        _settings.Current.QuickBooksRefreshToken = null;
+        _settings.Current.QuickBooksTokenExpiresUtc = null;
+        _settings.Save();
+    }
+
+    private static bool RequiresReauthorization(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return false;
+        }
+
+        return message.Contains("re-authorize", StringComparison.OrdinalIgnoreCase) ||
+             message.Contains("reauthorize", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("invalid or expired", StringComparison.OrdinalIgnoreCase) ||
+             message.Contains("refresh token", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("invalid_grant", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -761,7 +832,54 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
         return s.QboAccessToken!;
     }
 
-    public string? GetRealmId() => _realmId;
+    public string? GetRealmId() => _realmId ?? _tokenStore?.GetRealmId() ?? _settings.Current.QuickBooksRealmId;
+
+    public async Task SetRealmIdAsync(string realmId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(realmId))
+        {
+            _logger.LogWarning("Attempt to update QuickBooks realmId with an empty value was ignored");
+            return;
+        }
+
+        var normalizedRealmId = realmId.Trim();
+        var previousRealmId = _realmId ?? _tokenStore?.GetRealmId() ?? _settings.Current.QuickBooksRealmId;
+        _realmId = normalizedRealmId;
+
+        if (_tokenStore != null)
+        {
+            await _tokenStore.SetRealmIdAsync(normalizedRealmId, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!string.Equals(_settings.Current.QuickBooksRealmId, normalizedRealmId, StringComparison.Ordinal))
+        {
+            _settings.Current.QuickBooksRealmId = normalizedRealmId;
+            _settings.Save();
+            _logger.LogDebug("QuickBooks realmId persisted to settings");
+        }
+
+        if (_secretVault != null)
+        {
+            try
+            {
+                await _secretVault.SetSecretAsync("QBO-REALM-ID", normalizedRealmId).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to persist QuickBooks realmId to secret vault");
+            }
+        }
+
+        _logger.LogInformation(
+            "QuickBooks realmId updated from {PreviousRealmId} to {RealmId}",
+            previousRealmId ?? "<unset>",
+            normalizedRealmId);
+        _logger.LogInformation(
+            "[QBO-PROOF] QuickBooks realm persisted. PreviousRealmId: {PreviousRealmId}, CurrentRealmId: {RealmId}",
+            previousRealmId ?? "<unset>",
+            normalizedRealmId);
+    }
+
     public string GetEnvironment() => _environment;
 
     /// <summary>
@@ -789,6 +907,11 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                 pending[..Math.Min(8, pending.Length)] + "...",
                 (returnedState ?? string.Empty)[..Math.Min(8, (returnedState ?? string.Empty).Length)] + "...");
         }
+        else
+        {
+            _logger.LogInformation("[QBO-PROOF] OAuth callback state validated successfully.");
+        }
+
         return matches;
     }
 

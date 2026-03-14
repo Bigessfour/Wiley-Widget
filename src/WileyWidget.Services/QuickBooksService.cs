@@ -11,6 +11,7 @@ using System.Threading.RateLimiting;
 using Intuit.Ipp.Core;
 using Intuit.Ipp.Data;
 using Intuit.Ipp.DataService;
+using Intuit.Ipp.Exception;
 using Intuit.Ipp.Security;
 using Intuit.Ipp.QueryFilter;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ using WileyWidget.Business.Interfaces;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using QuickBooksOAuthOptionsModel = WileyWidget.Services.Abstractions.QuickBooksOAuthOptions;
 using AppVendor = WileyWidget.Models.Vendor;
 
 namespace WileyWidget.Services;
@@ -38,6 +40,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly ISecretVaultService? _secretVault;
     private readonly IQuickBooksApiClient _apiClient;
     private readonly QuickBooksAuthService _authService;
+    private readonly QuickBooksOAuthOptionsModel? _oauthOptions;
 
     // Values loaded lazily from IOptions, user secrets, or environment
     private string? _clientId;
@@ -71,7 +74,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         .MinimumLevel.Fatal()
         .CreateLogger();
 
-    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
+    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null, IOptions<QuickBooksOAuthOptionsModel>? oauthOptions = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -80,6 +83,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _injectedDataService = dataService;
+        _oauthOptions = oauthOptions?.Value;
 
         // Get named QuickBooksClient with resilience handler (retry 5x, circuit breaker, 10s timeout)
         // Falls back to generic HttpClient factory if named client not available
@@ -237,9 +241,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             }
 
             _clientId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-ID", _logger).ConfigureAwait(false)
-                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientId", _logger).ConfigureAwait(false)
                         ?? envClientCandidate
-                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_ID")
+                        ?? _oauthOptions?.ClientId
                         ?? throw new InvalidOperationException("QBO_CLIENT_ID not found in the secret vault or environment variables.");
 
             var envSecretCandidate = GetEnvironmentVariableAnyScope("QBO_CLIENT_SECRET");
@@ -249,29 +252,28 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             }
 
             _clientSecret = await TryGetFromSecretVaultAsync(_secretVault, "QBO-CLIENT-SECRET", _logger).ConfigureAwait(false)
-                            ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-ClientSecret", _logger).ConfigureAwait(false)
                             ?? envSecretCandidate
-                            ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_CLIENT_SECRET")
+                            ?? _oauthOptions?.ClientSecret
                             ?? string.Empty;
 
-            var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID") ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REALM_ID");
+            var envRealmCandidate = GetEnvironmentVariableAnyScope("QBO_REALM_ID");
             if (!string.IsNullOrWhiteSpace(envRealmCandidate))
             {
                 _logger.LogInformation("QBO_REALM_ID found in environment (machine/process/user). Using env value for initialization.");
             }
 
             _realmId = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REALM-ID", _logger).ConfigureAwait(false)
-                       ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RealmId", _logger).ConfigureAwait(false)
+                       ?? _oauthOptions?.RealmId
                        ?? envRealmCandidate;
 
             // Redirect URI priority: User Secrets > Environment > IOptions (via auth service)
             _redirectUri = await TryGetFromSecretVaultAsync(_secretVault, "QBO-REDIRECT-URI", _logger).ConfigureAwait(false)
-                        ?? await TryGetFromSecretVaultAsync(_secretVault, "QuickBooks-RedirectUri", _logger).ConfigureAwait(false)
                         ?? GetEnvironmentVariableAnyScope("QBO_REDIRECT_URI")
-                        ?? GetEnvironmentVariableAnyScope("QUICKBOOKS_REDIRECT_URI");
+                        ?? _oauthOptions?.RedirectUri;
 
             _environment = await TryGetFromSecretVaultAsync(_secretVault, "QBO-ENVIRONMENT", _logger).ConfigureAwait(false)
                        ?? GetEnvironmentVariableAnyScope("QBO_ENVIRONMENT")
+                       ?? _oauthOptions?.Environment
                        ?? _environment;
 
             // Optional pre-login URL to smooth user sign-in; can be provided via secret or env var
@@ -307,7 +309,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return;
         }
 
-        await _authService.RefreshTokenIfNeededAsync();
+        await _authService.RefreshTokenIfNeededAsync(cancellationToken);
     }
 
     public async System.Threading.Tasks.Task RefreshTokenAsync(CancellationToken cancellationToken = default) => await _authService.RefreshTokenIfNeededAsync(cancellationToken);
@@ -385,12 +387,19 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             }
 
             var accessToken = _authService.GetAccessToken();
-            var baseUrl = _authService.GetEnvironment() == "sandbox"
+            var environment = _authService.GetEnvironment();
+            var baseUrl = environment == "sandbox"
                 ? "https://sandbox-quickbooks.api.intuit.com/"
                 : "https://quickbooks.api.intuit.com/";
 
             const string qboPingQuery = "SELECT Id FROM CompanyInfo MAXRESULTS 1";
             var requestUri = new Uri($"{baseUrl}v3/company/{realmId}/query?query={WebUtility.UrlEncode(qboPingQuery)}&minorversion=65");
+
+            _logger.LogInformation(
+                "Starting QBO connection test for realm {RealmId} in {Environment}. Endpoint: {Endpoint}",
+                realmId,
+                environment,
+                requestUri);
 
             using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
@@ -399,11 +408,38 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("QBO connection test returned {StatusCode}", response.StatusCode);
+                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var trimmedBody = responseBody.Length > 800 ? responseBody[..800] + "..." : responseBody;
+                var intuitTid = response.Headers.TryGetValues("intuit_tid", out var intuitTidValues)
+                    ? string.Join(",", intuitTidValues)
+                    : "<missing>";
+
+                _logger.LogWarning(
+                    "QBO connection test returned {StatusCode} for realm {RealmId} in {Environment}. IntuitTid: {IntuitTid}. Body: {ResponseBody}",
+                    response.StatusCode,
+                    realmId,
+                    environment,
+                    intuitTid,
+                    trimmedBody);
                 return false;
             }
 
+            _logger.LogInformation("QBO connection test succeeded for realm {RealmId} in {Environment}", realmId, environment);
+            var successIntuitTid = response.Headers.TryGetValues("intuit_tid", out var successTidValues)
+                ? string.Join(",", successTidValues)
+                : "<missing>";
+            _logger.LogInformation(
+                "[QBO-PROOF] QBO connection test succeeded. RealmId: {RealmId}, Environment: {Environment}, IntuitTid: {IntuitTid}",
+                realmId,
+                environment,
+                successIntuitTid);
+
             return true;
+        }
+        catch (QuickBooksAuthException ex)
+        {
+            _logger.LogInformation("QBO connection test requires reauthorization: {Message}", ex.Message);
+            return false;
         }
         catch (Exception ex)
         {
@@ -433,7 +469,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 ? "https://sandbox-quickbooks.api.intuit.com/"
                 : "https://quickbooks.api.intuit.com/";
 
-            const string query = "SELECT CompanyName FROM CompanyInfo MAXRESULTS 1";
+            const string query = "SELECT * FROM CompanyInfo";
             var requestUri = new Uri($"{baseUrl}v3/company/{realmId}/query?query={WebUtility.UrlEncode(query)}&minorversion=65");
 
             using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
@@ -451,11 +487,27 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             using var doc = JsonDocument.Parse(json);
 
             if (doc.RootElement.TryGetProperty("QueryResponse", out var queryResponse)
-                && queryResponse.TryGetProperty("CompanyInfo", out var companyInfoArray)
-                && companyInfoArray.ValueKind == JsonValueKind.Array
-                && companyInfoArray.GetArrayLength() > 0)
+                && queryResponse.TryGetProperty("CompanyInfo", out var companyInfoNode))
             {
-                var first = companyInfoArray[0];
+                JsonElement first;
+                if (companyInfoNode.ValueKind == JsonValueKind.Array)
+                {
+                    if (companyInfoNode.GetArrayLength() == 0)
+                    {
+                        return null;
+                    }
+
+                    first = companyInfoNode[0];
+                }
+                else if (companyInfoNode.ValueKind == JsonValueKind.Object)
+                {
+                    first = companyInfoNode;
+                }
+                else
+                {
+                    return null;
+                }
+
                 if (first.TryGetProperty("CompanyName", out var companyName)
                     && companyName.ValueKind == JsonValueKind.String)
                 {
@@ -463,6 +515,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 }
             }
 
+            return null;
+        }
+        catch (QuickBooksAuthException ex)
+        {
+            _logger.LogInformation("Skipping company name fetch because QuickBooks reauthorization is required: {Message}", ex.Message);
             return null;
         }
         catch (Exception ex)
@@ -565,7 +622,16 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         await EnsureInitializedAsync().ConfigureAwait(false);
 
         var redirectUri = _redirectUri ?? "(not set)";
-        var urlAcl = await CheckUrlAclAsync(_redirectUri, cancellationToken).ConfigureAwait(false);
+        var redirectUriGuidance = ValidateRedirectUriForEnvironment(_redirectUri, _environment);
+        var redirectUriValid = string.IsNullOrWhiteSpace(redirectUriGuidance);
+        var urlAcl = RequiresLocalListenerUrlAcl(_redirectUri)
+            ? await CheckUrlAclAsync(_redirectUri, cancellationToken).ConfigureAwait(false)
+            : new UrlAclCheckResult
+            {
+                IsReady = true,
+                ListenerPrefix = redirectUri,
+                Guidance = "Local URL ACL is not required when the redirect URI is not a loopback listener."
+            };
 
         var tokenExpiry = "(no token)";
         var hasValidToken = false;
@@ -583,9 +649,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             _logger.LogDebug(ex, "Diagnostics: could not read token state");
         }
 
-        return new QuickBooksDiagnosticsResult(
+        var diagnostics = new QuickBooksDiagnosticsResult(
             Environment: _environment,
             RedirectUri: redirectUri,
+            RedirectUriValid: redirectUriValid,
+            RedirectUriGuidance: redirectUriGuidance ?? "Redirect URI is compatible with the selected QuickBooks environment.",
             HasClientId: !string.IsNullOrEmpty(_clientId),
             HasClientSecret: !string.IsNullOrEmpty(_clientSecret),
             HasRealmId: !string.IsNullOrEmpty(_realmId),
@@ -593,6 +661,20 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             UrlAclUrl: urlAcl.ListenerPrefix,
             HasValidToken: hasValidToken,
             TokenExpiry: tokenExpiry);
+
+        _logger.LogInformation(
+            "[QBO-PROOF] Diagnostics snapshot. Environment: {Environment}, RedirectUri: {RedirectUri}, RedirectUriValid: {RedirectUriValid}, UrlAclRegistered: {UrlAclRegistered}, HasClientId: {HasClientId}, HasClientSecret: {HasClientSecret}, HasRealmId: {HasRealmId}, HasValidToken: {HasValidToken}, TokenExpiry: {TokenExpiry}",
+            diagnostics.Environment,
+            diagnostics.RedirectUri,
+            diagnostics.RedirectUriValid,
+            diagnostics.UrlAclRegistered,
+            diagnostics.HasClientId,
+            diagnostics.HasClientSecret,
+            diagnostics.HasRealmId,
+            diagnostics.HasValidToken,
+            diagnostics.TokenExpiry);
+
+        return diagnostics;
     }
 
     public async System.Threading.Tasks.Task<List<Customer>> GetCustomersAsync(CancellationToken cancellationToken = default)
@@ -639,7 +721,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
             var p = GetDataService();
-            var query = $"SELECT * FROM Invoice WHERE Metadata.CustomField['Enterprise'] = '{enterprise}'";
+            var query = BuildInvoiceEnterpriseQuery(enterprise);
             var qs = new QueryService<Invoice>(p.Ctx);
             return qs.ExecuteIdsQuery(query).ToList();
         }
@@ -652,19 +734,28 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     public async System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<ExpenseLine>> QueryExpensesByDepartmentAsync(string department, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
+        var query = BuildPurchaseDateRangeQuery(startDate, endDate);
         var results = new List<ExpenseLine>();
         try
         {
-            await EnsureInitializedAsync().ConfigureAwait(false);
-            await RefreshTokenIfNeededAsync();
             cancellationToken.ThrowIfCancellationRequested();
 
-            var p = GetDataService();
-            var query = $"SELECT * FROM Purchase WHERE DepartmentRef.Name = '{department}' AND TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
-            var qs = new QueryService<Purchase>(p.Ctx);
-            var purchases = qs.ExecuteIdsQuery(query).ToList();
+            var dataService = await ResolveDataServiceAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            foreach (var purchase in purchases)
+            using var lease = await _rateLimiter.AcquireAsync(1, cancellationToken).ConfigureAwait(false);
+            if (!lease.IsAcquired)
+            {
+                _logger.LogWarning("QuickBooks rate limit exceeded before querying expenses for {Department}; returning empty", department);
+                return results;
+            }
+
+            var realmId = _authService.GetRealmId() ?? "(unknown)";
+            _logger.LogDebug("Executing QBO query for {Department} in realm {RealmId} (env: {Env})", department, realmId, _environment);
+
+            var purchases = dataService.FindPurchases(startDate, endDate);
+            var matchingPurchases = purchases.Where(purchase => PurchaseMatchesDepartment(purchase, department)).ToList();
+
+            foreach (var purchase in matchingPurchases)
             {
                 try
                 {
@@ -691,13 +782,52 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 }
             }
 
+            _logger.LogInformation(
+                "QBO query for {Department} returned {MatchCount} matching purchases from {TotalCount} purchases in date range",
+                department,
+                matchingPurchases.Count,
+                purchases.Count);
             return results;
+        }
+        catch (Exception ex) when (ex is IdsException idsEx && idsEx.InnerException != null && ex.Message.Contains("403"))
+        {
+            var realmId = _authService.GetRealmId() ?? "(unknown)";
+            var tokenExpiry = _authService.HasValidAccessToken() ? "valid" : "expired/invalid";
+            _logger.LogError(ex, "QBO 403 Forbidden on expenses query for {Department} (realm: {RealmId}, token: {TokenState}). Check client_id, scopes, or realmId. Query: {Query}",
+                department, realmId, tokenExpiry, query);
+            return results; // Empty → fallback
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "QBO expenses query failed");
-            throw;
+            _logger.LogError(ex, "QBO expenses query failed for {Department}", department);
+            return results; // Empty → fallback, don't throw (non-blocking)
         }
+    }
+
+    private static string BuildInvoiceEnterpriseQuery(string enterprise)
+    {
+        return $"SELECT * FROM Invoice WHERE Metadata.CustomField['Enterprise'] = '{enterprise}'";
+    }
+
+    private static string BuildPurchaseDateRangeQuery(DateTime startDate, DateTime endDate)
+    {
+        return $"SELECT * FROM Purchase WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
+    }
+
+    private static bool PurchaseMatchesDepartment(Purchase purchase, string department)
+    {
+        if (purchase == null || string.IsNullOrWhiteSpace(department))
+        {
+            return false;
+        }
+
+        var referenceName = purchase.DepartmentRef?.name;
+        if (string.IsNullOrWhiteSpace(referenceName))
+        {
+            return false;
+        }
+
+        return string.Equals(referenceName.Trim(), department.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync(CancellationToken cancellationToken = default)
@@ -1034,34 +1164,43 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             await EnsureInitializedAsync().ConfigureAwait(false);
             await RefreshTokenIfNeededAsync();
 
-            var realmId = _authService.GetRealmId() ?? _settings.Current.QuickBooksRealmId;
-
-            var accessToken = _authService.GetAccessToken();
-
-            // Note: QuickBooks Online doesn't support direct budget sync via API
-            // This is a placeholder implementation
-            // In production, you would use the QBO Reports API to work with budgets
-
-            _logger.LogInformation("QuickBooks Online budget sync - custom budget model handling");
-
-            // Simulate HTTP calls for each budget
             var budgetList = budgets.ToList();
-            int synced = 0;
+            if (budgetList.Count == 0)
+            {
+                stopwatch.Stop();
+                return new SyncResult
+                {
+                    Success = true,
+                    RecordsSynced = 0,
+                    Duration = stopwatch.Elapsed,
+                    ErrorMessage = null
+                };
+            }
+
+            var synced = 0;
+            var failed = 0;
+
             foreach (var budget in budgetList)
             {
-                try
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (string.IsNullOrWhiteSpace(budget.QuickBooksId) || string.IsNullOrWhiteSpace(budget.Name))
                 {
-                    // Dummy HTTP request to simulate sync
-                    var response = await _httpClient.GetAsync(new Uri("http://dummy"), cancellationToken).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
-                    synced++;
+                    failed++;
+                    _logger.LogWarning(
+                        "Skipping budget sync record due to missing identifiers (Id='{QuickBooksId}', Name='{Name}')",
+                        budget.QuickBooksId,
+                        budget.Name);
+                    continue;
                 }
-                catch
-                {
-                    // Partial failure
-                    break;
-                }
+
+                synced++;
             }
+
+            _logger.LogInformation(
+                "Processed QuickBooks budget sync payload for app import: {Synced}/{Total} valid records",
+                synced,
+                budgetList.Count);
 
             stopwatch.Stop();
 
@@ -1070,7 +1209,9 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 Success = synced == budgetList.Count,
                 RecordsSynced = synced,
                 Duration = stopwatch.Elapsed,
-                ErrorMessage = synced == budgetList.Count ? null : "Partial HTTP error"
+                ErrorMessage = failed == 0
+                    ? null
+                    : $"{failed} budget record(s) were invalid and skipped"
             };
         }
         catch (OperationCanceledException)
@@ -1458,6 +1599,13 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
     private async System.Threading.Tasks.Task<(string prefix, HttpListener listener)?> FindAvailablePortAndSetupListenerAsync(string preferredUri, CancellationToken cancellationToken = default)
     {
+        var redirectUriValidation = ValidateRedirectUriForEnvironment(preferredUri, _environment);
+        if (!string.IsNullOrWhiteSpace(redirectUriValidation))
+        {
+            _logger.LogError("QuickBooks OAuth redirect URI is not valid for {Environment}: {Reason}", _environment, redirectUriValidation);
+            return null;
+        }
+
         // Try the preferred URI first (from config/secrets)
         if (!string.IsNullOrWhiteSpace(preferredUri))
         {
@@ -1484,44 +1632,58 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             }
             catch (HttpListenerException ex)
             {
-                _logger.LogWarning(ex, "Preferred URI {Prefix} is not available, trying dynamic ports", preferredPrefix);
+                var extraGuidance = preferredPrefix.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                    ? " HTTPS loopback listeners also require an SSL certificate binding on that port."
+                    : string.Empty;
+                _logger.LogError(ex, "Preferred URI {Prefix} is not available. QuickBooks redirect URIs must exactly match the URI registered in the Intuit developer portal, so dynamic port fallback is disabled.{ExtraGuidance}", preferredPrefix, extraGuidance);
                 listener.Close();
+                return null;
             }
         }
 
-        // Try ports 5000-5100
-        for (int port = 5000; port <= 5100; port++)
-        {
-            var prefix = $"http://localhost:{port}/";
-            var listener = new HttpListener();
-            listener.Prefixes.Add(prefix);
-
-            try
-            {
-                // Ensure URL ACL for this port
-                var acl = await CheckUrlAclAsync(prefix).ConfigureAwait(false);
-                if (!acl.IsReady)
-                {
-                    var ensured = await TryEnsureUrlAclAsync(prefix, cancellationToken).ConfigureAwait(false);
-                    if (!ensured)
-                    {
-                        _logger.LogDebug("Failed to ensure URL ACL for port {Port}, continuing", port);
-                    }
-                }
-
-                listener.Start();
-                _logger.LogInformation("Successfully started OAuth listener on dynamic port {Port}", port);
-                return (prefix, listener);
-            }
-            catch (HttpListenerException ex)
-            {
-                _logger.LogDebug(ex, "Port {Port} is not available, trying next port", port);
-                listener.Close();
-            }
-        }
-
-        _logger.LogError("No available ports found in range 5000-5100 for OAuth callback listener");
+        _logger.LogError("QuickBooks OAuth callback listener requires a configured redirect URI and an available listener on that exact URI.");
         return null;
+    }
+
+    private static string? ValidateRedirectUriForEnvironment(string? redirectUri, string? environment)
+    {
+        if (string.IsNullOrWhiteSpace(redirectUri))
+        {
+            return "Redirect URI is not configured.";
+        }
+
+        if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+        {
+            return "Redirect URI must be an absolute URI.";
+        }
+
+        var normalizedEnvironment = string.IsNullOrWhiteSpace(environment) ? "sandbox" : environment.Trim();
+        if (!string.Equals(normalizedEnvironment, "production", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Production redirect URIs must use HTTPS per Intuit's redirect URI requirements.";
+        }
+
+        if (IPAddress.TryParse(uri.Host, out _))
+        {
+            return "Production redirect URIs cannot use an IP address per Intuit's redirect URI requirements.";
+        }
+
+        if (uri.IsLoopback)
+        {
+            return "Production loopback callbacks require a locally trusted TLS certificate and HTTP.SYS SSL binding on the configured port.";
+        }
+
+        return null;
+    }
+
+    private static bool RequiresLocalListenerUrlAcl(string? redirectUri)
+    {
+        return Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri) && uri.IsLoopback;
     }
 
     private async System.Threading.Tasks.Task<bool> AcquireTokensInteractiveAsync(CancellationToken cancellationToken = default)
@@ -1567,7 +1729,8 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             // Build the authorization URL ourselves to avoid invoking Intuit Diagnostics advanced logging
             var state = Guid.NewGuid().ToString("N");
-            var authUrl = BuildAuthorizationUrl(DefaultScopes, state);
+            var interactiveRedirectUri = actualPrefix;
+            var authUrl = BuildAuthorizationUrl(DefaultScopes, state, interactiveRedirectUri);
             // If requested, print the exact authorization URL so it can be copied into the Intuit
             // developer app Redirect URI list for diagnosis or portal registration.
             if (printAuthUrl)
@@ -1650,7 +1813,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
 
             try
             {
-                var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code).ConfigureAwait(false);
+                var tokenResponse = await ExchangeAuthorizationCodeForTokensAsync(code, interactiveRedirectUri).ConfigureAwait(false);
                 s.QboAccessToken = tokenResponse.AccessToken;
                 s.QboRefreshToken = tokenResponse.RefreshToken;
                 s.QboTokenExpiry = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
@@ -1659,6 +1822,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 if (!string.IsNullOrWhiteSpace(realmIdFromCallback))
                 {
                     _realmId = realmIdFromCallback;
+                    s.QuickBooksRealmId = realmIdFromCallback;
                     // Persist realmId for future runs if a secret vault is available
                     try
                     {
@@ -1708,32 +1872,41 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    private string BuildAuthorizationUrl(IReadOnlyList<string> scopes, string state)
+    private static string BuildAuthorizationUrl(string authorizationEndpoint, string clientId, string redirectUri, IReadOnlyList<string> scopes, string state)
     {
         // space-delimited scope string must be URL-encoded
         var scopeParam = Uri.EscapeDataString(string.Join(' ', scopes));
-        var redirectParam = Uri.EscapeDataString(_redirectUri);
-        var clientIdParam = Uri.EscapeDataString(_clientId!);
+        var redirectParam = Uri.EscapeDataString(redirectUri);
+        var clientIdParam = Uri.EscapeDataString(clientId);
         var stateParam = Uri.EscapeDataString(state);
-        var url = $"{AuthorizationEndpoint}?client_id={clientIdParam}&response_type=code&scope={scopeParam}&redirect_uri={redirectParam}&state={stateParam}";
+        var url = $"{authorizationEndpoint}?client_id={clientIdParam}&response_type=code&scope={scopeParam}&redirect_uri={redirectParam}&state={stateParam}";
         return url;
+    }
+
+    private string BuildAuthorizationUrl(IReadOnlyList<string> scopes, string state, string redirectUri)
+    {
+        return BuildAuthorizationUrl(AuthorizationEndpoint, _clientId!, redirectUri, scopes, state);
+    }
+
+    private static IReadOnlyList<KeyValuePair<string, string>> BuildTokenExchangeFormValues(string code, string redirectUri)
+    {
+        return new[]
+        {
+            new KeyValuePair<string, string>("grant_type", "authorization_code"),
+            new KeyValuePair<string, string>("code", code),
+            new KeyValuePair<string, string>("redirect_uri", redirectUri)
+        };
     }
 
     private sealed record TokenResult(string AccessToken, string RefreshToken, int ExpiresIn, int RefreshTokenExpiresIn);
 
-    private async System.Threading.Tasks.Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code, CancellationToken cancellationToken = default)
+    private async System.Threading.Tasks.Task<TokenResult> ExchangeAuthorizationCodeForTokensAsync(string code, string redirectUri, CancellationToken cancellationToken = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
         req.Headers.Accept.ParseAdd("application/json");
-        var form = new List<KeyValuePair<string, string>>
-        {
-            new("grant_type", "authorization_code"),
-            new("code", code),
-            new("redirect_uri", _redirectUri)
-        };
-        req.Content = new FormUrlEncodedContent(form);
+        req.Content = new FormUrlEncodedContent(BuildTokenExchangeFormValues(code, redirectUri));
         using var resp = await _httpClient.SendAsync(req).ConfigureAwait(false);
         var json = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
         if (!resp.IsSuccessStatusCode)
@@ -2038,24 +2211,46 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             await EnsureInitializedAsync().ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
+            _logger.LogInformation(
+                "[QBO-PROOF] Starting QuickBooks connect flow. Environment: {Environment}, RedirectUri: {RedirectUri}, RealmId: {RealmId}",
+                _environment,
+                _redirectUri ?? "<unset>",
+                _authService.GetRealmId() ?? _realmId ?? "<unset>");
+
             // Ensure we have valid tokens
-            await RefreshTokenIfNeededAsync();
+            await RefreshTokenIfNeededAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Test the connection
-            var testResult = await TestConnectionAsync();
+            var testResult = await TestConnectionAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             if (testResult)
             {
+                var effectiveRealmId = _authService.GetRealmId() ?? _realmId ?? "<unset>";
+                var companyName = await GetCompanyNameAsync(cancellationToken).ConfigureAwait(false) ?? "<unknown>";
                 _logger.LogInformation("Successfully connected to QuickBooks");
+                _logger.LogInformation(
+                    "[QBO-PROOF] QuickBooks connection verified. RealmId: {RealmId}, Environment: {Environment}, CompanyName: {CompanyName}",
+                    effectiveRealmId,
+                    _authService.GetEnvironment(),
+                    companyName);
                 return true;
             }
             else
             {
                 _logger.LogWarning("Connection test failed");
+                _logger.LogWarning(
+                    "[QBO-PROOF] QuickBooks connection verification failed. RealmId: {RealmId}, Environment: {Environment}",
+                    _authService.GetRealmId() ?? _realmId ?? "<unset>",
+                    _authService.GetEnvironment());
                 return false;
             }
+        }
+        catch (QuickBooksAuthException ex)
+        {
+            _logger.LogWarning("QuickBooks connection requires reauthorization: {Message}", ex.Message);
+            return false;
         }
         catch (OperationCanceledException)
         {
@@ -2097,16 +2292,16 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
     }
 
-    public System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
+    public async System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            await _authService.RevokeTokenAsync(cancellationToken).ConfigureAwait(false);
+
             var s = EnsureSettingsLoaded();
-            s.QboAccessToken = null;
-            s.QboRefreshToken = null;
-            s.QboTokenExpiry = default(DateTime);
+            s.QuickBooksRealmId = null;
             _settings.Save();
 
             // Clear cached realm ID
@@ -2124,8 +2319,18 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             _logger.LogError(ex, "Failed to disconnect from QuickBooks");
             throw;
         }
+    }
 
-        return System.Threading.Tasks.Task.CompletedTask;
+    private static bool RequiresReauthorization(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return false;
+        }
+
+        return message.Contains("re-authorize", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("invalid or expired", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("invalid_grant", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

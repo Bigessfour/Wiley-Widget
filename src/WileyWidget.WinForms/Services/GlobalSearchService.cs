@@ -61,24 +61,30 @@ namespace WileyWidget.WinForms.Services
                     TotalResults = 0
                 };
 
-                var activities = await _activityLogService.GetActivityEntriesAsync().ConfigureAwait(false);
-                var activityMatches = activities
-                    .Where(activity =>
-                        activity.Activity.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
-                        activity.Details.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
-                        activity.Category.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
-                        activity.Status.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(activity => activity.Timestamp)
-                    .Take(50)
-                    .Select(activity => new GlobalSearchMatch
-                    {
-                        Title = activity.Activity,
-                        Category = "Activity",
-                        Description = $"{activity.Category} • {activity.Status} • {activity.Timestamp:g} — {activity.Details}",
-                        TargetPanelName = "Activity Log"
-                    });
+                var releasePanels = PanelRegistry.GetTownReleasePanels().ToList();
+                var includeActivityMatches = releasePanels.Any(panel =>
+                    string.Equals(panel.DisplayName, "Activity Log", StringComparison.OrdinalIgnoreCase));
 
-                var panelMatches = PanelRegistry.Panels
+                var activities = await _activityLogService.GetActivityEntriesAsync().ConfigureAwait(false);
+                var activityMatches = includeActivityMatches
+                    ? activities
+                        .Where(activity =>
+                            activity.Activity.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                            activity.Details.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                            activity.Category.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                            activity.Status.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                        .OrderByDescending(activity => activity.Timestamp)
+                        .Take(50)
+                        .Select(activity => new GlobalSearchMatch
+                        {
+                            Title = activity.Activity,
+                            Category = "Activity",
+                            Description = $"{activity.Category} • {activity.Status} • {activity.Timestamp:g} — {activity.Details}",
+                            TargetPanelName = "Activity Log"
+                        })
+                    : Enumerable.Empty<GlobalSearchMatch>();
+
+                var panelMatches = releasePanels
                     .Where(panel =>
                         panel.DisplayName.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
                         panel.DefaultGroup.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase))

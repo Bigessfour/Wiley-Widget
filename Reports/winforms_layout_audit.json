@@ -1,0 +1,777 @@
+{
+  "generatedAtUtc": "2026-03-13T21:44:57.992736+00:00",
+  "workspaceRoot": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
+  "scan": {
+    "includePatterns": [
+      "src/WileyWidget.WinForms/**/*.cs"
+    ],
+    "scannedFiles": 215,
+    "excludedDesignerFiles": true,
+    "includedTests": false
+  },
+  "sizingInventory": {
+    "totals": {
+      "sizeLiteralCount": 138,
+      "minimumSizeAssignments": 22,
+      "maximumSizeAssignments": 7,
+      "dockFillAssignments": 457,
+      "splitterWidthAssignments": 4
+    },
+    "topFilesBySizeLiteralCount": [
+      {
+        "file": "src/WileyWidget.WinForms/Extensions/SyncfusionThemingExtensions.cs",
+        "sizeLiteralCount": 17,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 0,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 400,
+          "height": 300
+        },
+        "maxLiteralSize": {
+          "width": 1400,
+          "height": 900
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/CustomerEditDialog.cs",
+        "sizeLiteralCount": 12,
+        "minimumSizeAssignments": 11,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 3,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 80,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 760,
+          "height": 840
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/AccountEditPanel.cs",
+        "sizeLiteralCount": 11,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 11,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 165,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 780
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/RecommendedMonthlyChargePanel.cs",
+        "sizeLiteralCount": 8,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 19,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 0,
+          "height": 180
+        },
+        "maxLiteralSize": {
+          "width": 1400,
+          "height": 900
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/AccountCreateDialog.cs",
+        "sizeLiteralCount": 7,
+        "minimumSizeAssignments": 6,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 3,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 160,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 760,
+          "height": 620
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/BudgetEntryEditDialog.cs",
+        "sizeLiteralCount": 7,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 10,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 160,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 860,
+          "height": 660
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs",
+        "sizeLiteralCount": 7,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 33,
+        "splitterWidthAssignments": 1,
+        "minLiteralSize": {
+          "width": 0,
+          "height": 0
+        },
+        "maxLiteralSize": {
+          "width": 900,
+          "height": 620
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/SettingsPanel.cs",
+        "sizeLiteralCount": 6,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 2,
+        "dockFillAssignments": 8,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 980,
+          "height": 0
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/RevenueTrendsPanel.cs",
+        "sizeLiteralCount": 4,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 10,
+        "splitterWidthAssignments": 1,
+        "minLiteralSize": {
+          "width": 480,
+          "height": 300
+        },
+        "maxLiteralSize": {
+          "width": 1400,
+          "height": 900
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/WarRoomPanel.cs",
+        "sizeLiteralCount": 4,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 23,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 0,
+          "height": 280
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/ValidationDialog.cs",
+        "sizeLiteralCount": 4,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 4,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 32,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 500,
+          "height": 350
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/AnalyticsHubPanel.cs",
+        "sizeLiteralCount": 3,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 16,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1400,
+          "height": 900
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/CustomersPanel.cs",
+        "sizeLiteralCount": 3,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 13,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/ProactiveInsightsPanel.cs",
+        "sizeLiteralCount": 3,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 8,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/ReportsPanel.cs",
+        "sizeLiteralCount": 3,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 19,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1400,
+          "height": 900
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/UtilityBillPanel.cs",
+        "sizeLiteralCount": 3,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 18,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/DeleteConfirmationDialog.cs",
+        "sizeLiteralCount": 3,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 4,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 32,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 90,
+          "height": 32
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/ActivityLogPanel.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 7,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 360,
+          "height": 520
+        },
+        "maxLiteralSize": {
+          "width": 820,
+          "height": 576
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/BudgetPanel.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 16,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1400,
+          "height": 900
+        },
+        "maxLiteralSize": {
+          "width": 1400,
+          "height": 900
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/DepartmentSummaryPanel.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 10,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1100,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/PaymentsPanel.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 12,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 720
+        },
+        "maxLiteralSize": {
+          "width": 1180,
+          "height": 760
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Supporting/NoDataOverlay.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 2,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 140,
+          "height": 40
+        },
+        "maxLiteralSize": {
+          "width": 140,
+          "height": 40
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/AccountEditDialog.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 1,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 1,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 720,
+          "height": 620
+        },
+        "maxLiteralSize": {
+          "width": 760,
+          "height": 660
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Dialogs/ChartWizardFaqDialog.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 3,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 90,
+          "height": 32
+        },
+        "maxLiteralSize": {
+          "width": 720,
+          "height": 640
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Navigation.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 1,
+        "maximumSizeAssignments": 1,
+        "dockFillAssignments": 1,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 0,
+          "height": 0
+        },
+        "maxLiteralSize": {
+          "width": 350,
+          "height": 0
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Forms/MainForm/MainForm.RibbonHelpers.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 4,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 40,
+          "height": 40
+        },
+        "maxLiteralSize": {
+          "width": 200,
+          "height": 100
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Forms/RatesPage.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 1,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 1,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 1024,
+          "height": 700
+        },
+        "maxLiteralSize": {
+          "width": 1300,
+          "height": 720
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Services/DpiAwareImageService.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 0,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 16,
+          "height": 16
+        },
+        "maxLiteralSize": {
+          "width": 32,
+          "height": 32
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Services/FloatingPanelManager.cs",
+        "sizeLiteralCount": 2,
+        "minimumSizeAssignments": 1,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 2,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 200,
+          "height": 150
+        },
+        "maxLiteralSize": {
+          "width": 400,
+          "height": 300
+        }
+      },
+      {
+        "file": "src/WileyWidget.WinForms/Controls/Panels/AccountsPanel.cs",
+        "sizeLiteralCount": 1,
+        "minimumSizeAssignments": 0,
+        "maximumSizeAssignments": 0,
+        "dockFillAssignments": 4,
+        "splitterWidthAssignments": 0,
+        "minLiteralSize": {
+          "width": 200,
+          "height": 30
+        },
+        "maxLiteralSize": {
+          "width": 200,
+          "height": 30
+        }
+      }
+    ]
+  },
+  "mainFormSizingProfile": {
+    "mainFormFiles": [
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Chrome.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.DocumentManagement.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.GlobalSearch.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Initialization.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Keyboard.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.KeyboardNavigation.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.LayoutPersistence.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Navigation.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.ProfessionalStatusBar.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.QuickAccessToolbar.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.RibbonHelpers.cs",
+      "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Testing.cs"
+    ],
+    "minimumSizeAssignments": [
+      {
+        "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Navigation.cs:304",
+        "width": 350,
+        "height": 0,
+        "evidence": "_rightDockPanel.MinimumSize = new Size(350, 0);"
+      }
+    ],
+    "rightDockMinimumSizes": [
+      {
+        "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Navigation.cs:304",
+        "width": 350,
+        "height": 0,
+        "evidence": "_rightDockPanel.MinimumSize = new Size(350, 0);"
+      }
+    ],
+    "autoScaleDpi": {
+      "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Chrome.cs:80",
+      "evidence": "AutoScaleMode = AutoScaleMode.Dpi;"
+    },
+    "largestMinimumSize": {
+      "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Navigation.cs:304",
+      "width": 350,
+      "height": 0,
+      "evidence": "_rightDockPanel.MinimumSize = new Size(350, 0);"
+    },
+    "contentHostName": {
+      "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.cs:452",
+      "evidence": "Name = \"ContentHostPanel\","
+    },
+    "smallestRightDockMinimumSize": {
+      "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Navigation.cs:304",
+      "width": 350,
+      "height": 0,
+      "evidence": "_rightDockPanel.MinimumSize = new Size(350, 0);"
+    }
+  },
+  "sources": [
+    "docs/WileyWidgetUIStandards.md",
+    "https://www.syncfusion.com/faq/windowsforms/layout",
+    "https://www.syncfusion.com/faq/windowsforms/layout/i-have-a-form-with-several-controls-on-it-as-i-size-the-form-the-controls-are-being-resized",
+    "https://www.syncfusion.com/faq/windowsforms/layout/how-can-i-programmatically-set-the-initial-position-of-a-form-so-that-it-is-displayed",
+    "src/WileyWidget.WinForms/Forms/MainForm/MainForm.cs",
+    "src/WileyWidget.WinForms/Forms/MainForm/MainForm.Chrome.cs",
+    "src/WileyWidget.WinForms/Forms/MainForm/MainForm.DocumentManagement.cs"
+  ],
+  "summary": {
+    "total": 16,
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 7,
+      "low": 9
+    },
+    "byRule": {
+      "fixed-layout-without-autoscroll": 9,
+      "panel-minimum-size": 4,
+      "manual-pixel-layout-heavy": 2,
+      "mainform-minimum-size-below-baseline": 1
+    },
+    "conformanceScore": 54
+  },
+  "ruleSummaries": [
+    {
+      "rule_id": "panel-minimum-size",
+      "title": "Panel does not set a minimum size baseline",
+      "severity": "medium",
+      "count": 4,
+      "recommendation": "Set MinimumSize to a role-appropriate baseline (e.g., 1024x720 docked, 960x600 embedded).",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "manual-pixel-layout-heavy",
+      "title": "Panel relies heavily on manual pixel layout",
+      "severity": "medium",
+      "count": 2,
+      "recommendation": "Move primary composition to TableLayoutPanel/FlowLayoutPanel and keep only exceptional absolute placement.",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "mainform-minimum-size-below-baseline",
+      "title": "MainForm minimum size is below baseline",
+      "severity": "medium",
+      "count": 1,
+      "recommendation": "Raise MainForm MinimumSize to at least 1280x800 unless a deliberate smaller baseline is documented.",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "severity": "low",
+      "count": 9,
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "source": "docs/WileyWidgetUIStandards.md"
+    }
+  ],
+  "findings": [
+    {
+      "rule_id": "panel-minimum-size",
+      "severity": "medium",
+      "title": "Panel does not set a minimum size baseline",
+      "detail": "Panel standards define minimum logical dimensions to reduce clipped content and maintain predictable resizing behavior.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\BudgetOverviewPanel.cs:1",
+      "recommendation": "Set MinimumSize to a role-appropriate baseline (e.g., 1024x720 docked, 960x600 embedded).",
+      "evidence": "class BudgetOverviewPanel : ScopedPanelBase<BudgetOverviewViewModel>",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "manual-pixel-layout-heavy",
+      "severity": "medium",
+      "title": "Panel relies heavily on manual pixel layout",
+      "detail": "Large volumes of point/size assignments without layout containers increase DPI and resize fragility.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\BudgetPanel.cs:1",
+      "recommendation": "Move primary composition to TableLayoutPanel/FlowLayoutPanel and keep only exceptional absolute placement.",
+      "evidence": "manualLocation=0, manualSize=46, hasLayoutContainer=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "panel-minimum-size",
+      "severity": "medium",
+      "title": "Panel does not set a minimum size baseline",
+      "detail": "Panel standards define minimum logical dimensions to reduce clipped content and maintain predictable resizing behavior.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\CustomersPanel.cs:1",
+      "recommendation": "Set MinimumSize to a role-appropriate baseline (e.g., 1024x720 docked, 960x600 embedded).",
+      "evidence": "class CustomersPanel : ScopedPanelBase<CustomersViewModel>",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "manual-pixel-layout-heavy",
+      "severity": "medium",
+      "title": "Panel relies heavily on manual pixel layout",
+      "detail": "Large volumes of point/size assignments without layout containers increase DPI and resize fragility.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\InsightFeedPanel.cs:1",
+      "recommendation": "Move primary composition to TableLayoutPanel/FlowLayoutPanel and keep only exceptional absolute placement.",
+      "evidence": "manualLocation=0, manualSize=14, hasLayoutContainer=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "panel-minimum-size",
+      "severity": "medium",
+      "title": "Panel does not set a minimum size baseline",
+      "detail": "Panel standards define minimum logical dimensions to reduce clipped content and maintain predictable resizing behavior.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\ReportsPanel.cs:1",
+      "recommendation": "Set MinimumSize to a role-appropriate baseline (e.g., 1024x720 docked, 960x600 embedded).",
+      "evidence": "class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParameterizedPanel",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "panel-minimum-size",
+      "severity": "medium",
+      "title": "Panel does not set a minimum size baseline",
+      "detail": "Panel standards define minimum logical dimensions to reduce clipped content and maintain predictable resizing behavior.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\UtilityBillPanel.cs:1",
+      "recommendation": "Set MinimumSize to a role-appropriate baseline (e.g., 1024x720 docked, 960x600 embedded).",
+      "evidence": "class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "mainform-minimum-size-below-baseline",
+      "severity": "medium",
+      "title": "MainForm minimum size is below baseline",
+      "detail": "MainForm host sizing baseline should preserve ribbon/content host docking and avoid clipped MDI content.",
+      "location": "src\\WileyWidget.WinForms\\Forms\\MainForm\\MainForm.Navigation.cs:304",
+      "recommendation": "Raise MainForm MinimumSize to at least 1280x800 unless a deliberate smaller baseline is documented.",
+      "evidence": "_rightDockPanel.MinimumSize = new Size(350, 0);",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\AccountsPanel.cs:191",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=1, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\ActivityLogPanel.cs:173",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=1, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\AnalyticsHubPanel.cs:167",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=5, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\LocalIdentityHostPanel.cs:87",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=2, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\PaymentsPanel.cs:173",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=5, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\RecommendedMonthlyChargePanel.cs:758",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=3, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\ReportsPanel.cs:314",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=1, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\RevenueTrendsPanel.cs:205",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=4, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    },
+    {
+      "rule_id": "fixed-layout-without-autoscroll",
+      "severity": "low",
+      "title": "Fixed layout regions detected without AutoScroll",
+      "detail": "Embedded fixed-width content is safer with AutoScroll enabled to reduce clipping on smaller hosts.",
+      "location": "src\\WileyWidget.WinForms\\Controls\\Panels\\WarRoomPanel.cs:120",
+      "recommendation": "Set AutoScroll = true on the hosting panel when fixed-width regions are present.",
+      "evidence": "absoluteStyles=3, autoScroll=False",
+      "source": "docs/WileyWidgetUIStandards.md"
+    }
+  ]
+}

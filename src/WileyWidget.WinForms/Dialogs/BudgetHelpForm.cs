@@ -53,10 +53,18 @@ namespace WileyWidget.WinForms.Dialogs
 
         private static RichTextBox CreateWalkthroughBox()
         {
-            var controlFactory = ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(Program.Services);
-            if (controlFactory?.CreateRichTextBoxExt(ConfigureWalkthroughBox) is RichTextBox richTextBox)
+            try
             {
-                return richTextBox;
+                using var scope = Program.Services.CreateScope();
+                var controlFactory = ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(scope.ServiceProvider);
+                if (controlFactory?.CreateRichTextBoxExt(ConfigureWalkthroughBox) is RichTextBox richTextBox)
+                {
+                    return richTextBox;
+                }
+            }
+            catch
+            {
+                // Fall back to a standard RichTextBox when scoped services are unavailable.
             }
 
             var fallback = new RichTextBox();
@@ -82,8 +90,8 @@ namespace WileyWidget.WinForms.Dialogs
 \f0\fs20
 {\b\fs32 Budget Panel - Quick Tour}\par\par
 {\b 1. The Big Picture}\par
-This panel shows your full town budget with actual spending pulled automatically from payments.\par
-When PaymentsPanel saves a transaction with the right MunicipalAccountId, the matching budget account updates here.\par\par
+This panel shows your full town budget with actual spending based on posted budget actuals and imports.\par
+Payments can be mapped to a budget account for traceability, filtering, and reporting.\par\par
 
 {\b 2. CSV Mapping Wizard (Importing Deb's Chart of Accounts)}\par
 - Click Import CSV.\par
@@ -98,16 +106,18 @@ When PaymentsPanel saves a transaction with the right MunicipalAccountId, the ma
 - Export CSV/PDF/Excel: prepares council-ready and audit-ready output.\par\par
 
 {\b 4. How Payments Link to Budget}\par
-PaymentsPanel writes transactions to municipal accounts, and MunicipalAccountId links those entries to budget lines.\par
-That link is the source of truth for Actual values shown in this panel.\par\par
+PaymentsPanel stores the selected budget account on each payment using MunicipalAccountId.\par
+When the account is uniquely linked to a fiscal-year budget line, saving the payment now refreshes that line's Actual amount.\par
+If the account number matches a budget line but the link is missing, use Reconcile Budget in Payments to connect it.\par
+If a payment is mapped to the wrong budget account, open the payment in Edit and change the Budget Account there.\par\par
 
 {\b 5. Filters and Summary}\par
 Use fiscal year, entity, department, fund type, and variance filters to narrow focus.\par
 Summary totals at the top always reflect the current filtered view.\par\par
 
 {\b 6. Single Source of Truth}\par
-Your chart of accounts defines reporting structure for imports, budgeting, and payment rollups.\par
-Keeping account mapping accurate ensures reliable Actuals, Variances, and exports.\par\par
+Your chart of accounts defines reporting structure for imports, budgeting, and payment classification.\par
+Keeping account mapping accurate improves reconciliation, review, and export quality.\par\par
 
 Need more guidance? Use the panel help button and JARVIS chat for step-by-step support.\par
 }";

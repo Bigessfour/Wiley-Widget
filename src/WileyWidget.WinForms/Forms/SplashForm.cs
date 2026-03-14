@@ -66,9 +66,7 @@ namespace WileyWidget.WinForms.Forms
             _uiThread.SetApartmentState(ApartmentState.STA);
             _uiThread.Start();
 
-            // Wait for splash UI to be ready so early progress reports can be displayed.
-            // Increased timeout to ensure splash appears before first progress report.
-            _uiReady.Wait(TimeSpan.FromSeconds(2));
+            Log.Debug("[SPLASH] Splash UI thread started; continuing startup without blocking for readiness");
         }
 
         public void InvokeOnUiThread(Action action)

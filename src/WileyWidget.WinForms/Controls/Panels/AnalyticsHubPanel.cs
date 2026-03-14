@@ -24,6 +24,7 @@ using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -81,16 +82,17 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         ILogger<ScopedPanelBase<AnalyticsHubViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
+        Size = ScaleLogicalToDevice(new Size(1400, 900));
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         Dock = DockStyle.Fill;
+        AutoScroll = false;
         SafeSuspendAndLayout(InitializeControls);
     }
 
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         PerformLayout();
         Invalidate(true);
     }
@@ -106,20 +108,28 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         SuspendLayout();
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-        _panelHeader = new PanelHeader { Title = "Analytics Hub", Dock = DockStyle.Top };
+        _panelHeader = ControlFactory.CreatePanelHeader(header =>
+        {
+            header.Title = "Analytics Hub";
+            header.Dock = DockStyle.Top;
+        });
         _refreshClicked = async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
         _panelHeader.RefreshClicked += _refreshClicked;
         _closeClicked = (_, _) => ClosePanel();
         _panelHeader.CloseClicked += _closeClicked;
+
+        _errorProvider = ControlFactory.CreateErrorProvider(errorProvider =>
+        {
+            errorProvider.BlinkStyle = ErrorBlinkStyle.NeverBlink;
+            errorProvider.BlinkRate = 0;
+        });
+        _toolTip = ControlFactory.CreateToolTip();
 
         InitializeGlobalFilters();
         InitializeTabControl();
         InitializeStatusStrip();
         BuildLayoutRoot();
         InitializeOverlays();
-
-        _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink, BlinkRate = 0 };
-        _toolTip = new ToolTip();
 
         ApplyThemeToControls(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
@@ -130,11 +140,16 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     private void InitializeGlobalFilters()
     {
         var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        var controlHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+        var fiscalYearLabelWidth = LayoutTokens.GetScaled(104);
+        var fiscalYearSelectorWidth = LayoutTokens.GetScaled(148);
+        var searchLabelWidth = LayoutTokens.GetScaled(72);
+        var actionLaneWidth = LayoutTokens.GetScaled(216);
 
         _filtersPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Height = 52,
+            Height = controlHeight + LayoutTokens.GetScaled(24),
             Padding = new Padding(12, 8, 12, 8),
             BorderStyle = BorderStyle.None
         };
@@ -145,21 +160,38 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             Dock = DockStyle.Fill,
             ColumnCount = 5,
             RowCount = 1,
-            AutoSize = false
+            AutoSize = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
+        table.RowStyles.Add(new RowStyle(SizeType.Absolute, controlHeight));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, fiscalYearLabelWidth));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, fiscalYearSelectorWidth));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, searchLabelWidth));
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, actionLaneWidth));
 
-        table.Controls.Add(
-            new Label { Text = "Fiscal Year:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 0, 0);
+        Label CreateFilterLabel(string text, string accessibleName)
+        {
+            return new Label
+            {
+                Text = text,
+                TextAlign = ContentAlignment.MiddleRight,
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                AutoSize = false,
+                AccessibleName = accessibleName
+            };
+        }
+
+        table.Controls.Add(CreateFilterLabel("Fiscal Year:", "Analytics fiscal year label"), 0, 0);
 
         _fiscalYearComboBox = ControlFactory.CreateSfComboBox(c =>
         {
             c.Dock = DockStyle.Fill;
             c.AllowNull = false;
+            c.MinimumSize = LayoutTokens.GetScaled(new Size(160, LayoutTokens.StandardControlHeightLarge));
+            c.Margin = Padding.Empty;
             c.AccessibleName = "Analytics fiscal year selector";
             c.AccessibleDescription = "Select fiscal year for analytics data";
         });
@@ -168,10 +200,15 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _fiscalYearComboBox.SelectedIndexChanged += _fyChanged;
         table.Controls.Add(_fiscalYearComboBox, 1, 0);
 
-        table.Controls.Add(
-            new Label { Text = "Search:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 2, 0);
+        table.Controls.Add(CreateFilterLabel("Search:", "Analytics search label"), 2, 0);
 
-        _searchTextBox = ControlFactory.CreateTextBoxExt(t => t.Dock = DockStyle.Fill);
+        _searchTextBox = ControlFactory.CreateTextBoxExt(t =>
+        {
+            t.Dock = DockStyle.Fill;
+            t.Margin = Padding.Empty;
+        });
+        _searchTextBox.MinimumSize = LayoutTokens.GetScaled(new Size(220, LayoutTokens.StandardControlHeightLarge));
+        _searchTextBox.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
         _searchTextBox.AccessibleName = "Analytics search";
         _searchTextBox.AccessibleDescription = "Search analytics records";
         _toolTip?.SetToolTip(_searchTextBox, "Search across analytics records.");
@@ -183,13 +220,33 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _searchTextBox.TextChanged += _searchChanged;
         table.Controls.Add(_searchTextBox, 3, 0);
 
-        var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = false };
-        _refreshButton = ControlFactory.CreateSfButton("Refresh All", b => b.Width = 110);
+        var btnPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            AutoSize = false,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
+        _refreshButton = ControlFactory.CreateSfButton("Refresh All", b =>
+        {
+            b.Width = LayoutTokens.GetScaled(112);
+            b.Height = controlHeight;
+            b.MinimumSize = new Size(LayoutTokens.GetScaled(112), controlHeight);
+            b.Margin = new Padding(0, 0, LayoutTokens.GetScaled(8), 0);
+        });
         _refreshButton.AccessibleName = "Refresh analytics";
         _refreshButton.AccessibleDescription = "Refreshes all analytics tabs";
         _toolTip?.SetToolTip(_refreshButton, "Refresh all analytics data.");
         _refreshButton.Click += async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
-        _exportButton = ControlFactory.CreateSfButton("Export", b => b.Width = 90);
+        _exportButton = ControlFactory.CreateSfButton("Export", b =>
+        {
+            b.Width = LayoutTokens.GetScaled(96);
+            b.Height = controlHeight;
+            b.MinimumSize = new Size(LayoutTokens.GetScaled(96), controlHeight);
+            b.Margin = Padding.Empty;
+        });
         _exportButton.AccessibleName = "Export analytics";
         _exportButton.AccessibleDescription = "Export analytics data to a file";
         _toolTip?.SetToolTip(_exportButton, "Export analytics data from the active section.");
@@ -206,7 +263,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             t.Dock = DockStyle.Fill;
             t.Multiline = false;
-            t.ItemSize = new Size(150, 36);
+            t.ItemSize = LayoutTokens.GetScaled(LayoutTokens.TabItemSizeTall);
             t.Alignment = TabAlignment.Top;
             t.TabStyle = typeof(Syncfusion.Windows.Forms.Tools.TabRendererMetro);
             t.AccessibleName = "Analytics sections";
@@ -214,11 +271,11 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         });
         _toolTip?.SetToolTip(_tabControl, "Switch between analytics sections.");
 
-        _overviewTab = new OverviewTabControl(ViewModel?.Overview, Logger) { Dock = DockStyle.Fill };
-        _trendsTab = new TrendsTabControl(ViewModel?.Trends, Logger) { Dock = DockStyle.Fill };
-        _scenariosTab = new ScenariosTabControl(ViewModel?.Scenarios, Logger) { Dock = DockStyle.Fill };
+        _overviewTab = new OverviewTabControl(ViewModel?.Overview, ControlFactory, Logger) { Dock = DockStyle.Fill };
+        _trendsTab = new TrendsTabControl(ViewModel?.Trends, ControlFactory, Logger) { Dock = DockStyle.Fill };
+        _scenariosTab = new ScenariosTabControl(ViewModel?.Scenarios, ControlFactory, Logger) { Dock = DockStyle.Fill };
         _advancedScenariosTab = new AdvancedScenariosTabControl(ViewModel?.AdvancedScenarios, ControlFactory, Logger) { Dock = DockStyle.Fill };
-        _variancesTab = new VariancesTabControl(ViewModel?.Variances, Logger) { Dock = DockStyle.Fill };
+        _variancesTab = new VariancesTabControl(ViewModel?.Variances, ControlFactory, Logger) { Dock = DockStyle.Fill };
 
         _tabControl.TabPages.AddRange(new[]
         {
@@ -235,17 +292,39 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
     private static TabPageAdv CreateTabPage(string text, Control content)
     {
-        var page = new TabPageAdv { Text = text };
+        content.Margin = Padding.Empty;
+        var page = new TabPageAdv
+        {
+            Text = text,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+        };
         page.Controls.Add(content);
         return page;
     }
 
     private void InitializeStatusStrip()
     {
-        _statusStrip = new StatusStrip { Dock = DockStyle.Fill };
-        _statusLabel = new ToolStripStatusLabel { Text = "Ready", Spring = true };
-        _recordCountLabel = new ToolStripStatusLabel { Text = "Records: 0" };
-        _lastRefreshLabel = new ToolStripStatusLabel { Text = "Last refresh: Never" };
+        _statusStrip = ControlFactory.CreateStatusStrip(statusStrip =>
+        {
+            statusStrip.Dock = DockStyle.Bottom;
+            statusStrip.SizingGrip = false;
+            statusStrip.AutoSize = false;
+            statusStrip.Height = LayoutTokens.GetScaled(24);
+        });
+        _statusLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
+        {
+            statusLabel.Text = "Ready";
+            statusLabel.Spring = true;
+        });
+        _recordCountLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
+        {
+            statusLabel.Text = "Records: 0";
+        });
+        _lastRefreshLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
+        {
+            statusLabel.Text = "Last refresh: Never";
+        });
         _statusStrip.Items.AddRange(new ToolStripItem[] { _statusLabel, _recordCountLabel, _lastRefreshLabel });
     }
 
@@ -255,7 +334,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 3,
             Margin = Padding.Empty,
             Padding = Padding.Empty
         };
@@ -263,7 +342,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // header
         _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // filters
         _layoutRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));   // tabs
-        _layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));       // status strip
 
         if (_panelHeader != null)
         {
@@ -280,13 +358,15 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             _tabControl.Margin = Padding.Empty;
             _layoutRoot.Controls.Add(_tabControl, 0, 2);
         }
+
+        Controls.Add(_layoutRoot);
+
         if (_statusStrip != null)
         {
             _statusStrip.Margin = Padding.Empty;
-            _layoutRoot.Controls.Add(_statusStrip, 0, 3);
+            Controls.Add(_statusStrip);
+            _statusStrip.BringToFront();
         }
-
-        Controls.Add(_layoutRoot);
     }
 
     private void InitializeOverlays()
@@ -295,19 +375,22 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         {
             Message = "Loading analytics data...",
             Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
             Visible = false
         };
-        Controls.Add(_loadingOverlay);
-        _loadingOverlay.BringToFront();
 
-        _noDataOverlay = new NoDataOverlay
+        _noDataOverlay = ControlFactory.CreateNoDataOverlay(overlay =>
         {
-            Message = "No analytics data available\r\nPerform budget operations to generate insights",
-            Dock = DockStyle.Fill,
-            Visible = false
-        };
+            overlay.Message = "No analytics data available\r\nPerform budget operations to generate insights";
+            overlay.Dock = DockStyle.Fill;
+            overlay.Margin = Padding.Empty;
+            overlay.Visible = false;
+        });
+
+        Controls.Add(_loadingOverlay);
         Controls.Add(_noDataOverlay);
-        _noDataOverlay.BringToFront();
+        _loadingOverlay.SendToBack();
+        _noDataOverlay.SendToBack();
     }
 
     // -------------------------------------------------------------------------
@@ -523,13 +606,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
 
         Apply(_filtersPanel);
         Apply(_fiscalYearComboBox);
-        if (_fiscalYearComboBox != null) _fiscalYearComboBox.ThemeName = themeName;
         Apply(_searchTextBox);
-        if (_searchTextBox != null) _searchTextBox.ThemeName = themeName;
         Apply(_refreshButton);
-        if (_refreshButton != null) _refreshButton.ThemeName = themeName;
         Apply(_exportButton);
-        if (_exportButton != null) _exportButton.ThemeName = themeName;
         Apply(_panelHeader);
         Apply(_tabControl);
         if (_tabControl != null)

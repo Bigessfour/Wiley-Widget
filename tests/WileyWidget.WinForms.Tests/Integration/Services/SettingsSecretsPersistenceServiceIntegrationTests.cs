@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.UserSecrets;
 using Microsoft.Extensions.Logging.Abstractions;
 using WileyWidget.Services.Abstractions;
@@ -24,6 +25,35 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
     private const string SyncfusionEnvironmentVariable = "SYNCFUSION_LICENSE_KEY";
     private const string XaiPrimaryEnvironmentVariable = "XAI__ApiKey";
     private const string XaiSecondaryEnvironmentVariable = "XAI_API_KEY";
+
+    private static readonly string[] SyncfusionUserSecretAliases =
+    {
+        "WILEY_SYNC_LIC_KEY",
+        "Syncfusion:LicenseKey",
+        "SYNCFUSION_LICENSE_KEY",
+        "Syncfusion__LicenseKey",
+        "Syncfusion-LicenseKey",
+        "SyncfusionLicenseKey",
+        "syncfusion-license-key"
+    };
+
+    private static readonly string[] XaiUserSecretAliases =
+    {
+        "XAI:ApiKey",
+        "xAI:ApiKey"
+    };
+
+    private static readonly string[] SyncfusionEnvironmentAliases =
+    {
+        "WILEY_SYNC_LIC_KEY",
+        SyncfusionEnvironmentVariable
+    };
+
+    private static readonly string[] XaiEnvironmentAliases =
+    {
+        XaiPrimaryEnvironmentVariable,
+        XaiSecondaryEnvironmentVariable
+    };
 
     [Fact]
     public async Task LoadCurrentAsync_WhenCancellationRequested_ThrowsOperationCanceledException()
@@ -67,7 +97,7 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
     }
 
     [Fact]
-    public async Task LoadCurrentAsync_WhenEnvironmentIsPlaceholder_FallsBackToVaultAndNormalizes()
+    public async Task LoadCurrentAsync_WhenEnvironmentIsPlaceholder_UsesHighestValidConfiguredSource()
     {
         using var isolation = new SecretEnvironmentIsolation();
 
@@ -87,12 +117,14 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
 
         var snapshot = await service.LoadCurrentAsync();
 
-        var expectedSyncfusion = ResolveExpectedFromEnvironmentOrVault(
-            new[] { SyncfusionEnvironmentVariable },
+        var expectedSyncfusion = ResolveExpectedFromConfiguredSourcesOrVault(
+            SyncfusionUserSecretAliases,
+            SyncfusionEnvironmentAliases,
             "vault-sync-key");
 
-        var expectedXai = ResolveExpectedFromEnvironmentOrVault(
-            new[] { XaiPrimaryEnvironmentVariable, XaiSecondaryEnvironmentVariable },
+        var expectedXai = ResolveExpectedFromConfiguredSourcesOrVault(
+            XaiUserSecretAliases,
+            XaiEnvironmentAliases,
             "vault-xai-key");
 
         Assert.Equal(expectedSyncfusion, snapshot.SyncfusionLicenseKey);
@@ -100,7 +132,7 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
     }
 
     [Fact]
-    public async Task LoadCurrentAsync_WhenHigherEnvironmentScopeIsValid_UsesEnvironmentBeforeVault()
+    public async Task LoadCurrentAsync_WhenHigherPriorityConfiguredValuesExist_DoesNotFallBackToVault()
     {
         using var isolation = new SecretEnvironmentIsolation();
 
@@ -128,19 +160,23 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
 
         if (syncUserSet && xaiUserSet)
         {
-            Assert.Equal(syncUserValue, snapshot.SyncfusionLicenseKey);
-            Assert.Equal(xaiUserValue, snapshot.XaiApiKey);
+            Assert.False(string.IsNullOrWhiteSpace(snapshot.SyncfusionLicenseKey));
+            Assert.False(string.IsNullOrWhiteSpace(snapshot.XaiApiKey));
             Assert.NotEqual("vault-sync-key", snapshot.SyncfusionLicenseKey);
             Assert.NotEqual("vault-xai-key", snapshot.XaiApiKey);
+            Assert.NotEqual("YOUR_SYNCFUSION_LICENSE_KEY_HERE", snapshot.SyncfusionLicenseKey);
+            Assert.NotEqual("PLACEHOLDER_VALUE", snapshot.XaiApiKey);
             return;
         }
 
-        var expectedSyncfusion = ResolveExpectedFromEnvironmentOrVault(
-            new[] { SyncfusionEnvironmentVariable },
+        var expectedSyncfusion = ResolveExpectedFromConfiguredSourcesOrVault(
+            SyncfusionUserSecretAliases,
+            SyncfusionEnvironmentAliases,
             "vault-sync-key");
 
-        var expectedXai = ResolveExpectedFromEnvironmentOrVault(
-            new[] { XaiPrimaryEnvironmentVariable, XaiSecondaryEnvironmentVariable },
+        var expectedXai = ResolveExpectedFromConfiguredSourcesOrVault(
+            XaiUserSecretAliases,
+            XaiEnvironmentAliases,
             "vault-xai-key");
 
         Assert.Equal(expectedSyncfusion, snapshot.SyncfusionLicenseKey);
@@ -192,6 +228,27 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
         var isolatedAppData = Path.Combine(Path.GetTempPath(), "WileyWidget.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(isolatedAppData);
         return isolatedAppData;
+    }
+
+    private static string? ResolveExpectedFromConfiguredSourcesOrVault(
+        IEnumerable<string> userSecretAliases,
+        IEnumerable<string> environmentAliases,
+        string fallbackVaultValue)
+    {
+        var userSecretsConfiguration = new ConfigurationBuilder()
+            .AddUserSecrets<WileyWidget.WinForms.Program>(optional: true)
+            .Build();
+
+        foreach (var alias in userSecretAliases)
+        {
+            var userSecretValue = NormalizeForAssertion(userSecretsConfiguration[alias]);
+            if (!string.IsNullOrWhiteSpace(userSecretValue))
+            {
+                return userSecretValue;
+            }
+        }
+
+        return ResolveExpectedFromEnvironmentOrVault(environmentAliases, fallbackVaultValue);
     }
 
     private static string? ResolveExpectedFromEnvironmentOrVault(IEnumerable<string> aliases, string fallbackVaultValue)

@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Linq;
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
@@ -25,8 +26,10 @@ namespace WileyWidget.WinForms.Themes
     /// </summary>
     internal static class ThemeColors
     {
-        // Theme name for Syncfusion v32.1.19+ (configurable via appsettings.json UI:Theme)
-        // Available themes: Office2019, Office2016, and HighContrast families
+        // Theme name for Syncfusion v32.2.x+ (configurable via appsettings.json UI:Theme)
+        // Supported themes verified against local Syncfusion WinForms samples:
+        // Office2016Black, Office2016White, Office2016DarkGray, Office2016Colorful,
+        // Office2019Colorful, HighContrastBlack.
         // Note: "Fluent" and "Material" themes require additional NuGet packages which are not currently installed.
         // To change theme: Edit appsettings.json UI:Theme property OR set via IThemeService at runtime
         public const string DefaultTheme = "Office2019Colorful";
@@ -37,18 +40,20 @@ namespace WileyWidget.WinForms.Themes
         private static readonly string[] ValidThemes = new[]
         {
             "Office2019Colorful",
-            "Office2019White",
-            "Office2019Black",
-            "Office2019DarkGray",
-            "Office2019Dark",
             "Office2016Colorful",
             "Office2016White",
             "Office2016Black",
             "Office2016DarkGray",
             "HighContrastBlack",
-            "HighContrastWhite",
-            "Default"
         };
+
+        /// <summary>
+        /// Gets the canonical list of supported Syncfusion WinForms themes for this workspace.
+        /// </summary>
+        public static IReadOnlyList<string> GetSupportedThemes()
+        {
+            return Array.AsReadOnly(ValidThemes);
+        }
 
         /// <summary>
         /// Gets the currently active theme name, falling back to DefaultTheme when not set.
@@ -67,15 +72,26 @@ namespace WileyWidget.WinForms.Themes
                 return DefaultTheme;
             }
 
-            if (System.Array.Exists(ValidThemes, t => string.Equals(t, themeName, System.StringComparison.OrdinalIgnoreCase)))
-                return themeName;
-
-            // Legacy aliases from previous theme packs (Fluent/Modern) map to supported Office themes.
-            var mappedTheme = themeName.Trim().ToLowerInvariant() switch
+            var trimmedTheme = themeName.Trim();
+            var canonicalTheme = ValidThemes.FirstOrDefault(t => string.Equals(t, trimmedTheme, System.StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(canonicalTheme))
             {
-                "fluentdark" => "Office2019Dark",
-                "fluentlight" => "Office2019White",
-                "moderndark" => "Office2019Black",
+                return canonicalTheme;
+            }
+
+            // Legacy aliases and deprecated variants map into the supported WinForms theme set.
+            var mappedTheme = trimmedTheme.ToLowerInvariant() switch
+            {
+                "default" => DefaultTheme,
+                "highcontrast" => "HighContrastBlack",
+                "highcontrastwhite" => "HighContrastBlack",
+                "office2019dark" => "Office2019Colorful",
+                "office2019black" => "Office2019Colorful",
+                "office2019white" => "Office2019Colorful",
+                "office2019darkgray" => "Office2019Colorful",
+                "fluentdark" => "Office2019Colorful",
+                "fluentlight" => "Office2019Colorful",
+                "moderndark" => "Office2019Colorful",
                 "moderncolorful" => "Office2019Colorful",
                 "office2016" => "Office2016Colorful",
                 _ => string.Empty
@@ -149,12 +165,12 @@ namespace WileyWidget.WinForms.Themes
         /// Reference: https://github.com/syncfusion/winforms-demos/tree/master/skinmanager/CS/Form1.cs
         /// </summary>
         /// <param name="form">The form to apply theming to.</param>
-        /// <param name="themeName">Optional theme name override (defaults to Office2019Colorful)</param>
+            /// <param name="themeName">Optional theme name override (defaults to the active application theme)</param>
         public static void ApplyTheme(Form form, string? themeName = null)
         {
             if (form == null) return;
 
-            var theme = ValidateTheme(themeName ?? DefaultTheme);
+                var theme = ValidateTheme(themeName ?? SfSkinManager.ApplicationVisualTheme ?? DefaultTheme);
 
             try
             {

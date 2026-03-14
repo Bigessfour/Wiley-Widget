@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
+using Syncfusion.WinForms.ListView;
 using CheckBoxAdv = Syncfusion.Windows.Forms.Tools.CheckBoxAdv;
 using Microsoft.Extensions.Logging;
 using CsvHelper;
@@ -16,6 +17,8 @@ using CsvHelper.Configuration;
 
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -63,13 +66,15 @@ namespace WileyWidget.WinForms.Controls.Supporting
             catch { /* Theme application is best-effort */ }
         }
         private readonly ILogger? _logger;
+        private readonly SyncfusionControlFactory? _factory;
+        private PanelHeader? _panelHeader;
         private SfDataGrid _previewGrid = null!;
-        private ComboBox _cbAccount = null!;
-        private ComboBox _cbDescription = null!;
-        private ComboBox _cbBudgeted = null!;
-        private ComboBox _cbActual = null!;
-        private ComboBox _cbFiscalYear = null!;
-        private ComboBox _cbEntity = null!;
+        private SfComboBox _cbAccount = null!;
+        private SfComboBox _cbDescription = null!;
+        private SfComboBox _cbBudgeted = null!;
+        private SfComboBox _cbActual = null!;
+        private SfComboBox _cbFiscalYear = null!;
+        private SfComboBox _cbEntity = null!;
         private SfButton _btnApply = null!;
         private SfButton _btnCancel = null!;
         private CheckBoxAdv _chkHasHeader = null!;
@@ -81,9 +86,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
         public event EventHandler<MappingAppliedEventArgs>? MappingApplied;
         public event EventHandler? Cancelled;
 
-        public CsvMappingWizardPanel(ILogger? logger = null)
+        public CsvMappingWizardPanel(ILogger? logger = null, SyncfusionControlFactory? factory = null)
         {
             _logger = logger;
+            _factory = factory;
             InitializeControls();
             WireEvents();
 
@@ -113,33 +119,101 @@ namespace WileyWidget.WinForms.Controls.Supporting
         {
             this.SuspendLayout();
             Dock = DockStyle.Fill;
+            Name = "CsvMappingWizardPanel";
+            MinimumSize = LayoutTokens.GetScaled(LayoutTokens.StandardPanelMinimumSize);
 
-            var mainTable = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
-            mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65F));
-            mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 350F));
+            var rootLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = Padding.Empty,
+                Margin = Padding.Empty,
+                AutoSize = false,
+            };
+            rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            _previewGrid = new SfDataGrid
+            _panelHeader = _factory?.CreatePanelHeader(header =>
+            {
+                header.Title = "Data Mapper";
+                header.Dock = DockStyle.Fill;
+                header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+                header.AccessibleName = "Data Mapper Header";
+                header.AccessibleDescription = "Header for the data mapper panel";
+            }) ?? new PanelHeader
+            {
+                Title = "Data Mapper",
+                Dock = DockStyle.Fill,
+                Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)),
+                AccessibleName = "Data Mapper Header",
+                AccessibleDescription = "Header for the data mapper panel",
+            };
+            rootLayout.Controls.Add(_panelHeader, 0, 0);
+
+            var rightColumnWidth = LayoutTokens.GetScaled(360);
+            var mainTable = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
+                Margin = Padding.Empty
+            };
+            mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, rightColumnWidth));
+            mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            _previewGrid = (_factory?.CreateSfDataGrid(grid =>
+            {
+                grid.Dock = DockStyle.Fill;
+                grid.AllowEditing = false;
+                grid.AutoGenerateColumns = true;
+                grid.ShowRowHeader = false;
+                grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
+                grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightMedium);
+                grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill;
+            }) ?? new SfDataGrid
             {
                 Dock = DockStyle.Fill,
                 AllowEditing = false,
                 AutoGenerateColumns = true,
                 ShowRowHeader = false,
+                RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium),
+                HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightMedium),
                 AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.Fill
-            }.PreventStringRelationalFilters(_logger);
+            }).PreventStringRelationalFilters(_logger);
             mainTable.Controls.Add(_previewGrid, 0, 0);
 
-            var rightPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12) };
-            var mappingFlow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, AutoScroll = true };
+            var rightPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
+                MinimumSize = new Size(rightColumnWidth, 0)
+            };
+            var mappingFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Padding = LayoutTokens.GetScaled(LayoutTokens.FilterRowPadding),
+                Margin = Padding.Empty
+            };
             SetupMappingPanel(mappingFlow);
             rightPanel.Controls.Add(mappingFlow);
 
             mainTable.Controls.Add(rightPanel, 1, 0);
-            this.Controls.Add(mainTable);
+            rootLayout.Controls.Add(mainTable, 0, 1);
+            this.Controls.Add(rootLayout);
 
             // Apply theme via SfSkinManager
             try
             {
-                var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+                var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
                 SfSkinManager.SetVisualStyle(this, theme);
             }
             catch { }
@@ -152,40 +226,105 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
         private void SetupMappingPanel(FlowLayoutPanel parent)
         {
-            _chkHasHeader = new CheckBoxAdv { Text = "First row contains headers", Checked = true, AutoSize = true, Margin = new Padding(0, 0, 0, 10) };
+            parent.WrapContents = false;
+
+            _chkHasHeader = _factory?.CreateCheckBoxAdv("First row contains headers", checkBox =>
+            {
+                checkBox.Checked = true;
+                checkBox.AutoSize = true;
+                checkBox.Margin = new Padding(0, 0, 0, 10);
+            }) ?? new CheckBoxAdv { Text = "First row contains headers", Checked = true, AutoSize = true, Margin = new Padding(0, 0, 0, 10) };
             parent.Controls.Add(_chkHasHeader);
 
-            _cbAccount = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbAccount = CreateMappingComboBox("Account Mapping");
             AddMappingField(parent, "Map Account Number", _cbAccount);
 
-            _cbDescription = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbDescription = CreateMappingComboBox("Description Mapping");
             AddMappingField(parent, "Map Description", _cbDescription);
 
-            _cbBudgeted = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbBudgeted = CreateMappingComboBox("Budgeted Amount Mapping");
             AddMappingField(parent, "Map Budgeted Amount", _cbBudgeted);
 
-            _cbActual = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbActual = CreateMappingComboBox("Actual Amount Mapping");
             AddMappingField(parent, "Map Actual Amount", _cbActual);
 
-            _cbFiscalYear = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbFiscalYear = CreateMappingComboBox("Fiscal Year Override");
             AddMappingField(parent, "Fiscal Year (override)", _cbFiscalYear);
 
-            _cbEntity = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbEntity = CreateMappingComboBox("Entity Mapping");
             AddMappingField(parent, "Bulk assign Entity/Fund", _cbEntity);
 
-            var btnPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, Width = parent.Width - 10, Height = 50, Margin = new Padding(0, 20, 0, 0) };
-            _btnApply = new SfButton { Text = "Import", Width = 100, Height = 32 };
-            _btnCancel = new SfButton { Text = "Cancel", Width = 100, Height = 32, Margin = new Padding(0, 0, 10, 0) };
+            var buttonHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+            var buttonWidth = LayoutTokens.GetScaled(112);
+            var btnPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.RightToLeft,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = false,
+                MinimumSize = new Size(0, buttonHeight),
+                Margin = new Padding(0, 20, 0, 0)
+            };
+            _btnApply = _factory?.CreateSfButton("Import", btn =>
+            {
+                btn.Width = buttonWidth;
+                btn.Height = buttonHeight;
+            }) ?? new SfButton { Text = "Import", Width = buttonWidth, Height = buttonHeight };
+
+            _btnCancel = _factory?.CreateSfButton("Cancel", btn =>
+            {
+                btn.Width = buttonWidth;
+                btn.Height = buttonHeight;
+                btn.Margin = new Padding(0, 0, 10, 0);
+            }) ?? new SfButton { Text = "Cancel", Width = buttonWidth, Height = buttonHeight, Margin = new Padding(0, 0, 10, 0) };
 
             btnPanel.Controls.Add(_btnApply);
             btnPanel.Controls.Add(_btnCancel);
             parent.Controls.Add(btnPanel);
         }
 
+        private SfComboBox CreateMappingComboBox(string accessibleName)
+        {
+            var combo = _factory?.CreateSfComboBox(createdCombo =>
+            {
+                createdCombo.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
+                createdCombo.AllowNull = false;
+                createdCombo.AllowDropDownResize = false;
+                createdCombo.MaxDropDownItems = 12;
+                createdCombo.AccessibleName = accessibleName;
+            }) ?? new SfComboBox
+            {
+                DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList,
+                AllowNull = false,
+                AllowDropDownResize = false,
+                MaxDropDownItems = 12,
+                AccessibleName = accessibleName,
+            };
+
+            if (_factory == null)
+            {
+                var theme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+                combo.ApplySyncfusionTheme(theme, _logger);
+            }
+
+            return combo;
+        }
+
         private void AddMappingField(FlowLayoutPanel parent, string label, Control field)
         {
-            parent.Controls.Add(new Label { Text = label, AutoSize = true, Margin = new Padding(0, 10, 0, 0) });
-            field.Width = 320; // Consistent width
+            var labelControl = _factory?.CreateLabel(label, createdLabel =>
+            {
+                createdLabel.AutoSize = true;
+                createdLabel.Margin = new Padding(0, 10, 0, 0);
+            }) ?? new Label { Text = label, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
+
+            parent.Controls.Add(labelControl);
+            var selectorWidth = LayoutTokens.GetScaled(320);
+            var selectorHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
+            field.Width = selectorWidth;
+            field.Height = selectorHeight;
+            field.MinimumSize = new Size(selectorWidth, selectorHeight);
+            field.Margin = new Padding(0, 4, 0, 8);
             parent.Controls.Add(field);
         }
 
@@ -213,19 +352,23 @@ namespace WileyWidget.WinForms.Controls.Supporting
         {
             _filePath = filePath ?? string.Empty;
 
-            _cbEntity.Items.Clear();
-            if (availableEntities != null)
+            var entityOptions = availableEntities?
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<string>();
+            if (entityOptions.Count == 0)
             {
-                foreach (var e in availableEntities.Where(x => !string.IsNullOrWhiteSpace(x)))
-                    _cbEntity.Items.Add(e.Trim());
+                entityOptions.Add("(None)");
             }
-            if (_cbEntity.Items.Count == 0)
-                _cbEntity.Items.Add("(None)");
+
+            _cbEntity.DataSource = null;
+            _cbEntity.DataSource = entityOptions;
             _cbEntity.SelectedIndex = 0;
 
-            _cbFiscalYear.Items.Clear();
-            for (int y = defaultFiscalYear - 2; y <= defaultFiscalYear + 2; y++)
-                _cbFiscalYear.Items.Add(y);
+            var fiscalYearOptions = Enumerable.Range(defaultFiscalYear - 2, 5).ToList();
+            _cbFiscalYear.DataSource = null;
+            _cbFiscalYear.DataSource = fiscalYearOptions;
             _cbFiscalYear.SelectedItem = defaultFiscalYear;
 
             LoadPreviewAndHeaders();
@@ -326,11 +469,14 @@ namespace WileyWidget.WinForms.Controls.Supporting
             var options = indexToName.Select(x => x.Name).ToList();
             options.AddRange(indexToName.Select(x => $"Column{x.Index}"));
 
-            void PopulateCombo(ComboBox cb)
+            void PopulateCombo(SfComboBox cb)
             {
-                cb.Items.Clear();
-                foreach (var o in options) cb.Items.Add(o);
-                if (cb.Items.Count > 0) cb.SelectedIndex = 0;
+                cb.DataSource = null;
+                cb.DataSource = new List<string>(options);
+                if (options.Count > 0)
+                {
+                    cb.SelectedIndex = 0;
+                }
             }
 
             PopulateCombo(_cbAccount);
@@ -468,15 +614,15 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 _errorProvider?.Dispose();
                 _toolTip?.Dispose();
                 _previewGrid?.Dispose();
-                _btnApply?.Dispose();
-                _btnCancel?.Dispose();
-                _chkHasHeader?.Dispose();
-                _cbAccount?.Dispose();
-                _cbDescription?.Dispose();
-                _cbBudgeted?.Dispose();
-                _cbActual?.Dispose();
-                _cbFiscalYear?.Dispose();
-                _cbEntity?.Dispose();
+                try { _btnApply?.SafeDispose(); } catch { }
+                try { _btnCancel?.SafeDispose(); } catch { }
+                try { _chkHasHeader?.SafeDispose(); } catch { }
+                try { _cbAccount?.SafeClearDataSource(); _cbAccount?.SafeDispose(); } catch { }
+                try { _cbDescription?.SafeClearDataSource(); _cbDescription?.SafeDispose(); } catch { }
+                try { _cbBudgeted?.SafeClearDataSource(); _cbBudgeted?.SafeDispose(); } catch { }
+                try { _cbActual?.SafeClearDataSource(); _cbActual?.SafeDispose(); } catch { }
+                try { _cbFiscalYear?.SafeClearDataSource(); _cbFiscalYear?.SafeDispose(); } catch { }
+                try { _cbEntity?.SafeClearDataSource(); _cbEntity?.SafeDispose(); } catch { }
             }
 
             base.Dispose(disposing);

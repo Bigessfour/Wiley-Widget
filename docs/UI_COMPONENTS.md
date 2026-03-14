@@ -385,12 +385,14 @@ public static class ThemeColors
 
 ### **Available Themes**
 
-| Theme              | Assembly                              | UseCase                    |
-| ------------------ | ------------------------------------- | -------------------------- |
-| Office2019Colorful | Syncfusion.Office2019Theme.WinForms   | Default (modern, colorful) |
-| Office2019Black    | Syncfusion.Office2019Theme.WinForms   | Dark mode alternative      |
-| HighContrastBlack  | Syncfusion.HighContrastTheme.WinForms | Accessibility (dark)       |
-| HighContrastWhite  | Syncfusion.HighContrastTheme.WinForms | Accessibility (light)      |
+| Theme              | Assembly                              | UseCase                     |
+| ------------------ | ------------------------------------- | --------------------------- |
+| Office2019Colorful | Syncfusion.Office2019Theme.WinForms   | Default (modern, colorful)  |
+| Office2016Black    | Syncfusion.Office2016Theme.WinForms   | Office 2016 dark variant    |
+| Office2016White    | Syncfusion.Office2016Theme.WinForms   | Office 2016 light variant   |
+| Office2016DarkGray | Syncfusion.Office2016Theme.WinForms   | Office 2016 neutral variant |
+| Office2016Colorful | Syncfusion.Office2016Theme.WinForms   | Office 2016 colorful        |
+| HighContrastBlack  | Syncfusion.HighContrastTheme.WinForms | Accessibility (dark)        |
 
 **FORBIDDEN Anti-Patterns:**
 

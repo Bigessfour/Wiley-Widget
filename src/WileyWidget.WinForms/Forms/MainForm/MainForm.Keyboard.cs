@@ -328,9 +328,12 @@ public partial class MainForm
             return true;
         }
 
-        if (_statusTextPanel != null && !_statusTextPanel.IsDisposed && !string.IsNullOrWhiteSpace(_statusTextPanel.Text))
+        if (_statusLabel != null
+            && !_statusLabel.IsDisposed
+            && !string.IsNullOrWhiteSpace(_statusLabel.Text)
+            && !string.Equals(_statusLabel.Text, "Ready", StringComparison.OrdinalIgnoreCase))
         {
-            _statusTextPanel.Text = string.Empty;
+            UpdatePrimaryStatusLabel(string.Empty);
             return true;
         }
 

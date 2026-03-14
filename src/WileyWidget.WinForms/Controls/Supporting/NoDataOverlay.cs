@@ -6,6 +6,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Themes;
 
 namespace WileyWidget.WinForms.Controls.Supporting
@@ -16,6 +17,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// </summary>
     public class NoDataOverlay : Panel
     {
+        private readonly SyncfusionControlFactory? _factory;
         private Label _messageLabel = null!;
         private SfButton? _actionButton;
         private LayoutEventHandler? _layoutHandler;
@@ -24,8 +26,13 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
         public event EventHandler? ActionButtonClicked;
 
-        public NoDataOverlay()
+        public NoDataOverlay() : this(null)
         {
+        }
+
+        public NoDataOverlay(SyncfusionControlFactory? factory)
+        {
+            _factory = factory;
             InitializeComponent();
         }
 
@@ -89,7 +96,17 @@ namespace WileyWidget.WinForms.Controls.Supporting
             };
             SfSkinManager.SetVisualStyle(container, theme);
 
-            _messageLabel = new Label
+            _messageLabel = _factory?.CreateLabel(label =>
+            {
+                label.AutoSize = true;
+                label.Anchor = AnchorStyles.None;
+                label.TextAlign = ContentAlignment.MiddleCenter;
+                label.Text = "No data available";
+                label.AccessibleName = "No data message";
+                label.AccessibleDescription = "Displays a message when no data is available";
+                label.TabIndex = 1;
+                label.TabStop = true;
+            }) ?? new Label
             {
                 AutoSize = true,
                 Anchor = AnchorStyles.None,
@@ -127,7 +144,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             set
             {
                 _messageLabel.Text = value ?? string.Empty;
-                CenterControls();
+                RefreshOverlayLayout();
             }
         }
 
@@ -148,11 +165,31 @@ namespace WileyWidget.WinForms.Controls.Supporting
             set
             {
                 base.Visible = value;
+                if (value)
+                {
+                    RefreshOverlayLayout();
+                }
                 if (Parent != null && value)
                     BringToFront();
                 // If becoming visible, attempt to set accessibility focus
                 try { if (value && _actionButton?.Visible == true) _actionButton?.Focus(); else _messageLabel?.Focus(); } catch { }
             }
+        }
+
+        private void RefreshOverlayLayout()
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (Controls.Count > 0 && Controls[0] is TableLayoutPanel table)
+            {
+                table.PerformLayout();
+            }
+
+            PerformLayout();
+            Invalidate(true);
         }
 
         public void ShowActionButton(string buttonText, EventHandler clickHandler)
@@ -161,16 +198,28 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
             if (_actionButton == null)
             {
-                _actionButton = new SfButton
+                _actionButton = _factory?.CreateSfButton(buttonText, btn =>
                 {
+                    btn.Size = new Size(140, 40);
+                    btn.AccessibleName = "Action button";
+                    btn.AccessibleDescription = "Button to perform an action when no data is available";
+                    btn.TabIndex = 2;
+                    btn.TabStop = true;
+                }) ?? new SfButton
+                {
+                    Text = buttonText,
                     Size = new Size(140, 40),
                     AccessibleName = "Action button",
                     AccessibleDescription = "Button to perform an action when no data is available",
                     TabIndex = 2,
                     TabStop = true
                 };
-                var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-                SfSkinManager.SetVisualStyle(_actionButton, theme);
+
+                if (_factory == null)
+                {
+                    var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+                    SfSkinManager.SetVisualStyle(_actionButton, theme);
+                }
 
                 var tooltip = new ToolTip();
                 tooltip.SetToolTip(_actionButton, "Click to perform an action");
@@ -202,6 +251,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             }
 
             _actionButton.Text = buttonText;
+            _actionButton.Visible = true;
         }
 
         public void HideActionButton()

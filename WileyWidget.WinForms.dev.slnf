@@ -1,0 +1,14 @@
+{
+  "solution": {
+    "path": "WileyWidget.sln",
+    "projects": [
+      "src\\WileyWidget.Abstractions\\WileyWidget.Abstractions.csproj",
+      "src\\WileyWidget.Business\\WileyWidget.Business.csproj",
+      "src\\WileyWidget.Models\\WileyWidget.Models.csproj",
+      "src\\WileyWidget.Services.Abstractions\\WileyWidget.Services.Abstractions.csproj",
+      "src\\WileyWidget.Data\\WileyWidget.Data.csproj",
+      "src\\WileyWidget.Services\\WileyWidget.Services.csproj",
+      "src\\WileyWidget.WinForms\\WileyWidget.WinForms.csproj"
+    ]
+  }
+}

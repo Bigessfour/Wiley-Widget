@@ -17,6 +17,7 @@ using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -122,7 +123,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             base.OnHandleCreated(e);
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(1024, 720);
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
             PerformLayout();
             Invalidate(true);
         }
@@ -134,9 +135,9 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Dock = DockStyle.Fill;
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
-            Padding = new Padding(8);
+            Size = ScaleLogicalToDevice(new Size(1100, 760));
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
             AccessibleName = "Proactive Insights Panel";
             AccessibleDescription = "Displays proactive AI insights with header and actions";
 
@@ -144,7 +145,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _topPanel = new Panel
             {
                 // Removed fixed Height to allow growth; MinimumSize ensures a reasonable min height
-                MinimumSize = new Size(0, 60), // ensures header can't collapse below 60px
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderMinimumHeight)), // ensures header can't collapse below 60px
                 Dock = DockStyle.Top,
                 Padding = new Padding(12, 8, 12, 8),
                 Name = "ProactiveTopPanel",
@@ -170,10 +171,21 @@ namespace WileyWidget.WinForms.Controls.Panels
             _topPanel.Controls.Add(headerLayout);
 
             // Panel header with title (fills the left column)
-            _panelHeader = new PanelHeader
+            var controlFactory = GetControlFactory();
+            _panelHeader = controlFactory?.CreatePanelHeader(header =>
+            {
+                header.Dock = DockStyle.Fill;
+                header.Title = "Proactive AI Insights";
+                header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+                header.AccessibleName = "Proactive Insights Title";
+                header.AccessibleDescription = "Title of the Proactive Insights panel";
+            }) ?? new PanelHeader
             {
                 Dock = DockStyle.Fill,
                 Title = "Proactive AI Insights",
+                Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge),
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge)),
                 AccessibleName = "Proactive Insights Title",
                 AccessibleDescription = "Title of the Proactive Insights panel"
             };
@@ -219,40 +231,36 @@ namespace WileyWidget.WinForms.Controls.Panels
             SfSkinManager.SetVisualStyle(this, currentTheme);
 
             // Refresh button (using SfButton for Syncfusion consistency)
-            _btnRefresh = new SfButton
+            _btnRefresh = ControlFactory.CreateSfButton("&Refresh Insights", button =>
             {
-                Text = "&Refresh Insights",
-                AutoSize = false,
-                Size = new Size(135, 32),
-                Name = "ProactiveRefresh",
-                AccessibleName = "Refresh Insights Button",
-                AccessibleDescription = "Click to refresh proactive insights",
-                Margin = new Padding(4, 0, 4, 0),
-                TabIndex = 1,
-                TabStop = true
-            };
+                button.AutoSize = false;
+                button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeInsightsRefresh);
+                button.Name = "ProactiveRefresh";
+                button.AccessibleName = "Refresh Insights Button";
+                button.AccessibleDescription = "Click to refresh proactive insights";
+                button.Margin = new Padding(4, 0, 4, 0);
+                button.TabIndex = 1;
+                button.TabStop = true;
+            });
             _buttonToolTip ??= new ToolTip();
             _buttonToolTip.SetToolTip(_btnRefresh, "Refresh the latest proactive insights.");
             SfSkinManager.SetVisualStyle(_btnRefresh, currentTheme);
-            _btnRefresh.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnRefresh);
 
             // Clear button (using SfButton for Syncfusion consistency)
-            _btnClear = new SfButton
+            _btnClear = ControlFactory.CreateSfButton("&Clear Insights", button =>
             {
-                Text = "&Clear Insights",
-                AutoSize = false,
-                Size = new Size(125, 32),
-                Name = "ProactiveClear",
-                AccessibleName = "Clear Insights Button",
-                AccessibleDescription = "Click to clear all proactive insights",
-                Margin = new Padding(4, 0, 4, 0),
-                TabIndex = 2,
-                TabStop = true
-            };
+                button.AutoSize = false;
+                button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeInsightsClear);
+                button.Name = "ProactiveClear";
+                button.AccessibleName = "Clear Insights Button";
+                button.AccessibleDescription = "Click to clear all proactive insights";
+                button.Margin = new Padding(4, 0, 4, 0);
+                button.TabIndex = 2;
+                button.TabStop = true;
+            });
             _buttonToolTip.SetToolTip(_btnClear, "Clear insights from the current view.");
             SfSkinManager.SetVisualStyle(_btnClear, currentTheme);
-            _btnClear.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnClear);
 
             rightFlow.Controls.Add(_buttonContainer);

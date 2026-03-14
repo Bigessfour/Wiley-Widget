@@ -447,19 +447,55 @@ public class BudgetRepository : IBudgetRepository
         if (budgetEntry == null)
             throw new ArgumentNullException(nameof(budgetEntry));
 
+        if (budgetEntry.BudgetedAmount < 0m)
+            throw new ArgumentOutOfRangeException(nameof(budgetEntry.BudgetedAmount), "Budgeted amount must be zero or greater.");
+
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // If navigation objects point to existing rows, track them as unchanged so EF does not
+        // generate INSERTs for identity tables (Departments/Funds).
+        if (budgetEntry.Department != null && budgetEntry.Department.Id > 0)
+        {
+            if (budgetEntry.DepartmentId <= 0)
+            {
+                budgetEntry.DepartmentId = budgetEntry.Department.Id;
+            }
+
+            context.Attach(budgetEntry.Department);
+            context.Entry(budgetEntry.Department).State = EntityState.Unchanged;
+        }
+        else if (budgetEntry.DepartmentId > 0)
+        {
+            budgetEntry.Department = null!;
+        }
+
+        if (budgetEntry.Fund != null && (budgetEntry.FundId.HasValue || budgetEntry.Fund.Id > 0))
+        {
+            if (!budgetEntry.FundId.HasValue && budgetEntry.Fund.Id > 0)
+            {
+                budgetEntry.FundId = budgetEntry.Fund.Id;
+            }
+
+            context.Attach(budgetEntry.Fund);
+            context.Entry(budgetEntry.Fund).State = EntityState.Unchanged;
+        }
+        else if (budgetEntry.FundId.HasValue)
+        {
+            budgetEntry.Fund = null;
+        }
+
         context.BudgetEntries.Add(budgetEntry);
         await context.SaveChangesAsync(cancellationToken);
         InvalidateFiscalYearCaches(budgetEntry.FiscalYear);
     }
 
-    public async Task<bool> ExistsAsync(string accountNumber, int fiscalYear, CancellationToken cancellationToken = default)
+    public async Task<bool> ExistsAsync(string accountNumber, int fiscalYear, int? fundId, CancellationToken cancellationToken = default)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await context.BudgetEntries
-            .AnyAsync(b => b.AccountNumber == accountNumber && b.FiscalYear == fiscalYear, cancellationToken);
+            .AnyAsync(b => b.AccountNumber == accountNumber && b.FiscalYear == fiscalYear && b.FundId == fundId, cancellationToken);
     }
 
     /// <summary>

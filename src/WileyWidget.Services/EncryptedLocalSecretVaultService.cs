@@ -562,13 +562,9 @@ public sealed class EncryptedLocalSecretVaultService : ISecretVaultService, IDis
             "SYNCFUSION_LICENSE_KEY",        // Syncfusion licensing
             "syncfusion-license-key",        // Alternative format
             "QBO_CLIENT_ID",                 // QuickBooks OAuth
-            "QuickBooks-ClientId",           // Alternative format
             "QBO_CLIENT_SECRET",
-            "QuickBooks-ClientSecret",
             "QBO_REDIRECT_URI",
-            "QuickBooks-RedirectUri",
             "QBO_ENVIRONMENT",
-            "QuickBooks-Environment",
             "XAI_API_KEY",                   // xAI Grok API
             "XAI-ApiKey",
             "XAI_BASE_URL",

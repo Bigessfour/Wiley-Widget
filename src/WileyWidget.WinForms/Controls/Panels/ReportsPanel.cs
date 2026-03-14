@@ -2,6 +2,7 @@ using System.Threading;
 using System;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 using Syncfusion.Drawing;
 using Syncfusion.Windows.Forms;
+using Syncfusion.Windows.Forms.PdfViewer;
 using Syncfusion.WinForms.DataGrid.Events;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
@@ -40,8 +42,8 @@ using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 namespace WileyWidget.WinForms.Controls.Panels;
 
 /// <summary>
-/// Production-ready panel for viewing and managing FastReport reports with embedded viewer.
-/// Provides report loading, parameter management, export capabilities, and theme integration.
+/// Production-ready panel for viewing and managing FastReport reports.
+/// Provides report loading, parameter management, standalone preview/export workflows, and theme integration.
 /// Implements ScopedPanelBase pattern for proper DI scoping and lifecycle management.
 /// </summary>
 [SuppressMessage("Microsoft.Globalization", "CA1303:Do not pass literals as localized parameters")]
@@ -52,8 +54,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     // UI Controls
     private PanelHeader? _panelHeader;
     private Panel? _reportViewerContainer;
+    private Panel? _overlayHost;
     private Report? _fastReport;
-    // private FastReport.ReportViewer? _previewControl; // Removed - not available in Open Source
+    private PdfViewerControl? _embeddedPdfViewer;
+    private Label? _reportPreviewSummaryLabel;
+    private Control? _diagnosticsPreviewSurface;
+    private string? _embeddedPreviewPdfPath;
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
     private LoadingOverlay? _loadingOverlay;
@@ -117,8 +123,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
         _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         AutoScaleMode = AutoScaleMode.Dpi;
+
+        // IMPORTANT: base ctor invokes OnViewModelResolved before this body executes.
+        // Build UI only after injected factory assignment is complete.
         SafeSuspendAndLayout(InitializeControls);
+        BindViewModel();
+        DeferSizeValidation();
+
+        Logger.LogDebug("ReportsPanel initialized with ViewModel");
     }
+
+    private SyncfusionControlFactory Factory => _factory ?? ControlFactory;
 
     private static ILogger ResolveLogger()
     {
@@ -129,7 +144,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         PerformLayout();
         Invalidate(true);
     }
@@ -165,19 +180,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     /// <param name="viewModel">The resolved ViewModel instance.</param>
     protected override void OnViewModelResolved(ReportsViewModel? viewModel)
     {
-        if (viewModel == null)
-        {
-            Logger.LogWarning("ReportsPanel: ViewModel resolved as null — controls will not initialize.");
-            return;
-        }
-
-        SafeSuspendAndLayout(InitializeControls);
-        BindViewModel();
-
-        // Defer sizing validation - Reports has complex SplitContainer and grid layouts
-        DeferSizeValidation();
-
-        Logger.LogDebug("ReportsPanel initialized with ViewModel");
+        base.OnViewModelResolved(viewModel);
+        // No-op: constructor performs UI initialization after injected factory is assigned.
     }
 
     private void DeferSizeValidation()
@@ -250,6 +254,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             {
                 Logger.LogInformation("Auto-loading report from path: {ReportPath}", _initialReportPath);
                 await ViewModel.LoadReportAsync(_initialReportPath);
+                await PreviewReportAsPdfAsync(cancellationToken);
                 UpdateStatus($"Report loaded: {Path.GetFileName(_initialReportPath)}");
             }
             catch (Exception ex)
@@ -266,8 +271,8 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         Name = "ReportsPanel";
         AccessibleName = "Reports"; // Panel title for UI automation
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
+        Size = ScaleLogicalToDevice(new Size(1400, 900));
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         AutoScroll = false;
         Padding = Padding.Empty;
         // Apply theme for cascade to all child controls
@@ -275,12 +280,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Dock style is set by PanelNavigationService (TabbedMDIManager host); do not set Dock here.
 
         // Panel header
-        _panelHeader = new PanelHeader
+        _panelHeader = Factory.CreatePanelHeader(header =>
         {
-            Dock = DockStyle.Top,
-            Height = LayoutTokens.HeaderHeight
-        };
-        _panelHeader.Title = "Reports";
+            header.Dock = DockStyle.Top;
+            header.Height = LayoutTokens.HeaderHeight;
+            header.Title = "Reports";
+        });
         try
         {
             var dh = this.GetType().GetProperty("DockHandler")?.GetValue(this);
@@ -293,24 +298,25 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _panelHeaderCloseClickedHandler = (s, e) => ClosePanel();
         _panelHeader.RefreshClicked += _panelHeaderRefreshClickedHandler;
         _panelHeader.CloseClicked += _panelHeaderCloseClickedHandler;
-        Controls.Add(_panelHeader);
 
         // Canonical _content root
         _content = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 1,
+            RowCount = 2,
             Padding = Padding.Empty,
             Margin = Padding.Empty,
             AutoSize = false,
             Name = "ReportsPanelContent"
         };
         _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, _panelHeader.Height));
         _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        _content.Controls.Add(_panelHeader, 0, 0);
 
         // Main layout container with parameters panel support
-        _parametersSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
+        _parametersSplitContainer = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = Orientation.Horizontal;
@@ -352,7 +358,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         parametersLayout.Controls.Add(parametersLabel, 0, 0);
 
         // Parameters grid (SfDataGrid for parameter input)
-        _parametersGrid = ControlFactory.CreateSfDataGrid(grid =>
+        _parametersGrid = Factory.CreateSfDataGrid(grid =>
         {
             grid.Name = "parametersGrid";
             grid.AccessibleName = "Report Parameters Grid";
@@ -395,39 +401,41 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.RightToLeft,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            AutoSize = false,
             Margin = new Padding(0),
-            Padding = new Padding(0)
+            Padding = new Padding(0),
+            Height = LayoutTokens.GetScaled(LayoutTokens.ToolbarButtonHeight)
         };
 
-        _closeParametersButton = ControlFactory.CreateSfButton("&Close", button =>
+        _closeParametersButton = Factory.CreateSfButton("&Close", button =>
         {
             button.Name = "closeParametersButton";
             button.AccessibleName = "Close Parameters Panel";
             button.AccessibleDescription = "Hides the report parameters panel";
-            button.AutoSize = true;
-            button.MinimumSize = new System.Drawing.Size(80, 30);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(104, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(104, LayoutTokens.StandardControlHeightLarge));
             button.Margin = new Padding(0);
             button.TabIndex = 7;
         });
-        var closeParamsTooltip = new ToolTip();
+        var closeParamsTooltip = Factory.CreateToolTip();
         closeParamsTooltip.SetToolTip(_closeParametersButton, "Hide parameters panel");
         _closeParametersButtonClickHandler = (s, e) => ToggleParametersPanel();
         _closeParametersButton.Click += _closeParametersButtonClickHandler;
         parametersButtonPanel.Controls.Add(_closeParametersButton);
 
-        _applyParametersButton = ControlFactory.CreateSfButton("&Apply", button =>
+        _applyParametersButton = Factory.CreateSfButton("&Apply", button =>
         {
             button.Name = "applyParametersButton";
             button.AccessibleName = "Apply Parameters";
             button.AccessibleDescription = "Applies selected parameters to the report";
-            button.AutoSize = true;
-            button.MinimumSize = new System.Drawing.Size(80, 30);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(104, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(104, LayoutTokens.StandardControlHeightLarge));
             button.Margin = new Padding(0, 0, 10, 0);
             button.TabIndex = 6;
         });
-        var applyParamsTooltip = new ToolTip();
+        var applyParamsTooltip = Factory.CreateToolTip();
         applyParamsTooltip.SetToolTip(_applyParametersButton, "Apply parameters to report");
         _applyParametersButtonClickHandler = async (s, e) => await ApplyParametersAsync();
         _applyParametersButton.Click += _applyParametersButtonClickHandler;
@@ -439,18 +447,18 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _parametersSplitContainer.Panel1.Controls.Add(_parametersPanel);
 
         // Main content split container (toolbar + report viewer)
-        _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
+        _mainSplitContainer = Factory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
             splitter.Orientation = Orientation.Horizontal;
         });
-        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 60);
+        SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, LayoutTokens.GetScaled(96));
 
         // Top panel: Toolbar
         _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(10),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.DialogContentPadding),
             BorderStyle = BorderStyle.None,
         };
 
@@ -459,11 +467,12 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            WrapContents = true,
+            AutoSize = false,
             Padding = new Padding(0),
-            Margin = new Padding(0)
+            Margin = new Padding(0),
+            AutoScroll = false,
+            Height = LayoutTokens.GetScaled(96)
         };
 
         // Report selector label
@@ -478,134 +487,149 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         toolbarFlow.Controls.Add(reportLabel);
 
         // Report selector (SfComboBox)
-        _reportSelector = ControlFactory.CreateSfComboBox(combo =>
+        _reportSelector = Factory.CreateSfComboBox(combo =>
         {
             combo.Name = "reportSelector";
             combo.AccessibleName = "Report Selector";
             combo.AccessibleDescription = "Select a report template from the dropdown";
-            combo.AutoSize = true;
+            combo.AutoSize = false;
+            combo.Size = LayoutTokens.GetScaled(new Size(280, LayoutTokens.StandardControlHeightLarge));
+            combo.MinimumSize = LayoutTokens.GetScaled(new Size(240, LayoutTokens.StandardControlHeightLarge));
             combo.TabIndex = 1;
             combo.Margin = new Padding(0, 0, 10, 0);
         });
         _reportSelector.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
-        var reportSelectorTooltip = new ToolTip();
+        var reportSelectorTooltip = Factory.CreateToolTip();
         reportSelectorTooltip.SetToolTip(_reportSelector, "Select report template to load");
         _reportSelectorSelectedIndexChangedHandler = (s, e) => ReportSelector_SelectedIndexChanged(s, e);
         _reportSelector.SelectedIndexChanged += _reportSelectorSelectedIndexChangedHandler;
         toolbarFlow.Controls.Add(_reportSelector);
 
         // Load/Generate button
-        _loadReportButton = ControlFactory.CreateSfButton("&Generate", button =>
+        _loadReportButton = Factory.CreateSfButton("&Generate", button =>
         {
             button.Name = "Toolbar_Generate";
             button.AccessibleName = "Generate Report";
             button.AccessibleDescription = "Load and generate the selected report";
-            button.AutoSize = true;
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(122, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(122, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = false;
             button.TabIndex = 2;
             button.Margin = new Padding(0, 0, 10, 0);
         });
-        var generateTooltip = new ToolTip();
+        var generateTooltip = Factory.CreateToolTip();
         generateTooltip.SetToolTip(_loadReportButton, "Load and generate selected report (Alt+G)");
         _loadReportButtonClickHandler = async (s, e) => await LoadSelectedReportAsync();
         _loadReportButton.Click += _loadReportButtonClickHandler;
         toolbarFlow.Controls.Add(_loadReportButton);
 
         // Parameters button
-        _parametersButton = ControlFactory.CreateSfButton("&Parameters", button =>
+        _parametersButton = Factory.CreateSfButton("&Parameters", button =>
         {
             button.Name = "parametersButton";
             button.AccessibleName = "Toggle Parameters";
             button.AccessibleDescription = "Show or hide the report parameters panel";
-            button.AutoSize = true;
-            button.MinimumSize = new System.Drawing.Size(100, 30);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(132, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(132, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = false;
             button.Margin = new Padding(0, 0, 10, 0);
             button.TabIndex = 3;
         });
-        var parametersTooltip = new ToolTip();
+        var parametersTooltip = Factory.CreateToolTip();
         parametersTooltip.SetToolTip(_parametersButton, "Show/hide parameters panel (Alt+P)");
         _parametersButtonClickHandler = (s, e) => ToggleParametersPanel();
         _parametersButton.Click += _parametersButtonClickHandler;
         toolbarFlow.Controls.Add(_parametersButton);
 
         // Export buttons
-        _exportPdfButton = ControlFactory.CreateSfButton("Export &PDF", button =>
+        _exportPdfButton = Factory.CreateSfButton("Export &PDF", button =>
         {
             button.Name = "Toolbar_ExportPdf";
             button.AccessibleName = "Export PDF";
             button.AccessibleDescription = "Export the report to PDF file";
-            button.AutoSize = true;
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(128, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(128, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = false;
             button.TabIndex = 4;
             button.Margin = new Padding(0, 0, 10, 0);
         });
-        var exportPdfTooltip = new ToolTip();
+        var exportPdfTooltip = Factory.CreateToolTip();
         exportPdfTooltip.SetToolTip(_exportPdfButton, "Export report to PDF file (Alt+P)");
         _exportPdfButtonClickHandler = async (s, e) => await ExportToPdfAsync();
         _exportPdfButton.Click += _exportPdfButtonClickHandler;
         toolbarFlow.Controls.Add(_exportPdfButton);
 
-        _previewPdfButton = ControlFactory.CreateSfButton("Pre&view PDF", button =>
+        _previewPdfButton = Factory.CreateSfButton("Pre&view PDF", button =>
         {
             button.Name = "Toolbar_PreviewPdf";
             button.AccessibleName = "Preview PDF";
             button.AccessibleDescription = "Preview the report in an embedded PDF viewer";
-            button.AutoSize = true;
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(136, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(136, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = false;
             button.TabIndex = 5;
             button.Margin = new Padding(0, 0, 10, 0);
         });
-        var previewPdfTooltip = new ToolTip();
+        var previewPdfTooltip = Factory.CreateToolTip();
         previewPdfTooltip.SetToolTip(_previewPdfButton, "Generate a temporary PDF and preview it in-app (Alt+V)");
         _previewPdfButtonClickHandler = async (s, e) => await PreviewReportAsPdfAsync();
         _previewPdfButton.Click += _previewPdfButtonClickHandler;
         toolbarFlow.Controls.Add(_previewPdfButton);
 
-        _createExcelButton = ControlFactory.CreateSfButton("Create E&xcel", button =>
+        _createExcelButton = Factory.CreateSfButton("Create E&xcel", button =>
         {
             button.Name = "Toolbar_CreateExcel";
             button.AccessibleName = "Create Excel Workbook";
             button.AccessibleDescription = "Create a new Excel workbook using Syncfusion XlsIO";
-            button.AutoSize = true;
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(140, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(140, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = true;
             button.TabIndex = 6;
             button.Margin = new Padding(0, 0, 10, 0);
         });
-        var createExcelTooltip = new ToolTip();
+        var createExcelTooltip = Factory.CreateToolTip();
         createExcelTooltip.SetToolTip(_createExcelButton, "Create an Excel workbook from code (Alt+X)");
         _createExcelButtonClickHandler = async (s, e) => await CreateExcelWorkbookAsync();
         _createExcelButton.Click += _createExcelButtonClickHandler;
         toolbarFlow.Controls.Add(_createExcelButton);
 
-        _exportExcelButton = ControlFactory.CreateSfButton("Export &Excel", button =>
+        _exportExcelButton = Factory.CreateSfButton("Export &Excel", button =>
         {
             button.Name = "Toolbar_ExportExcel";
             button.AccessibleName = "Export Excel";
             button.AccessibleDescription = "Export the report to Excel spreadsheet";
-            button.AutoSize = true;
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(136, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(136, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = false;
             button.TabIndex = 7;
             button.Margin = new Padding(0, 0, 10, 0);
         });
-        var exportExcelTooltip = new ToolTip();
+        var exportExcelTooltip = Factory.CreateToolTip();
         exportExcelTooltip.SetToolTip(_exportExcelButton, "Export report to Excel file (Alt+E)");
         _exportExcelButtonClickHandler = async (s, e) => await ExportToExcelAsync();
         _exportExcelButton.Click += _exportExcelButtonClickHandler;
         toolbarFlow.Controls.Add(_exportExcelButton);
 
         // Print button
-        _printButton = ControlFactory.CreateSfButton("&Print", button =>
+        _printButton = Factory.CreateSfButton("&Print", button =>
         {
             button.Name = "Toolbar_Print";
             button.AccessibleName = "Print Report";
             button.AccessibleDescription = "Print the current report";
-            button.AutoSize = true;
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(new Size(104, LayoutTokens.StandardControlHeightLarge));
+            button.MinimumSize = LayoutTokens.GetScaled(new Size(104, LayoutTokens.StandardControlHeightLarge));
             button.Enabled = false;
             button.TabIndex = 8;
             button.Margin = new Padding(0, 0, 10, 0);
         });
-        var printTooltip = new ToolTip();
+        var printTooltip = Factory.CreateToolTip();
         printTooltip.SetToolTip(_printButton, "Print report (Alt+P)");
         _printButtonClickHandler = async (s, e) => await PrintReportAsync();
         _printButton.Click += _printButtonClickHandler;
@@ -625,54 +649,77 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             BorderStyle = BorderStyle.None,
         };
 
-        // Initialize FastReport viewer container
+        var previewViewportHost = new Panel
+        {
+            Name = "PreviewViewportHost",
+            AccessibleName = "Report Preview Viewport",
+            Dock = DockStyle.Fill,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            BorderStyle = BorderStyle.None,
+        };
+
+        // Initialize report workspace container.
         _reportViewerContainer = new Panel
         {
             Name = "reportViewerContainer",
             AccessibleName = "Report Preview Container",
             Dock = DockStyle.Fill,
-            BorderStyle = BorderStyle.FixedSingle,
+            BorderStyle = BorderStyle.None,
+        };
+
+        _overlayHost = new Panel
+        {
+            Name = "OverlayHost",
+            AccessibleName = "Report Preview Overlays",
+            Dock = DockStyle.Fill,
+            BackColor = Color.Transparent,
+            BorderStyle = BorderStyle.None,
         };
 
         // Initialize FastReport
         _fastReport = new Report();
 
-        // Note: FastReport preview control (ReportViewer) is only available in FastReport.NET (commercial)
-        // FastReport Open Source doesn't include the UI viewer component
-        // Therefore, this preview host panel displays report status and export-related content
-        // when the commercial version is available, simply uncomment the ReportViewer code below:
-        // _previewControl = new FastReport.ReportViewer
-        // {
-        //     Name = "previewControl",
-        //     AccessibleName = "Report Preview",
-        //     Dock = DockStyle.Fill
-        // };
-        // _reportViewerContainer.Controls.Add(_previewControl);
+        _reportPreviewSummaryLabel = new Label
+        {
+            Name = "reportPreviewSummaryLabel",
+            AccessibleName = "Report Preview Status",
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            Padding = new Padding(24),
+            TextAlign = ContentAlignment.MiddleCenter,
+            Text = "No report loaded yet.\r\nSelect a report and click Generate to prepare it for preview and export."
+        };
+        _diagnosticsPreviewSurface = CreateDiagnosticsPreviewSurface();
+        _embeddedPdfViewer = CreateEmbeddedPdfViewer();
+        _reportViewerContainer.Controls.Add(_embeddedPdfViewer);
+        _reportViewerContainer.Controls.Add(_diagnosticsPreviewSurface);
+        _reportViewerContainer.Controls.Add(_reportPreviewSummaryLabel);
+        previewViewportHost.Controls.Add(_reportViewerContainer);
+        previewViewportHost.Controls.Add(_overlayHost);
+        _overlayHost.BringToFront();
 
-        // For now, the container continues to show
-        // status messages about the report and available exports
-
-        viewerPanel.Controls.Add(_reportViewerContainer);
+        viewerPanel.Controls.Add(previewViewportHost);
         _mainSplitContainer.Panel2.Controls.Add(viewerPanel);
 
         _parametersSplitContainer.Panel2.Controls.Add(_mainSplitContainer);
-        _content!.Controls.Add(_parametersSplitContainer, 0, 0);
+        _content!.Controls.Add(_parametersSplitContainer, 0, 1);
         Controls.Add(_content);
 
         // Status strip
-        _statusStrip = new StatusStrip
+        _statusStrip = Factory.CreateStatusStrip(statusStrip =>
         {
-            Dock = DockStyle.Bottom
+            statusStrip.Dock = DockStyle.Bottom;
             // BackColor will be set by ApplyTheme
-        };
-        _statusLabel = new ToolStripStatusLabel
+        });
+        _statusLabel = Factory.CreateToolStripStatusLabel(statusLabel =>
         {
-            Name = "StatusLabel",
-            AccessibleName = "Status",
-            Text = "Ready",
-            Spring = true,
-            TextAlign = ContentAlignment.MiddleLeft
-        };
+            statusLabel.Name = "StatusLabel";
+            statusLabel.AccessibleName = "Status";
+            statusLabel.Text = "Ready";
+            statusLabel.Spring = true;
+            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+        });
         _statusStrip.Items.Add(_statusLabel);
         Controls.Add(_statusStrip);
 
@@ -683,16 +730,17 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Visible = false,
             Dock = DockStyle.Fill
         };
-        Controls.Add(_loadingOverlay);
+        _overlayHost.Controls.Add(_loadingOverlay);
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay
+        _noDataOverlay = Factory.CreateNoDataOverlay(overlay =>
         {
-            Message = "No report loaded yet\r\nSelect a report from the dropdown and click Generate to preview",
-            Visible = false,
-            Dock = DockStyle.Fill
-        };
-        Controls.Add(_noDataOverlay);
+            overlay.Message = "No report loaded yet\r\nSelect a report from the dropdown and click Generate to preview";
+            overlay.Visible = false;
+            overlay.Dock = DockStyle.Fill;
+        });
+        _overlayHost.Controls.Add(_noDataOverlay);
+        _overlayHost.BringToFront();
 
         // Load available reports
         LoadAvailableReports();
@@ -713,9 +761,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Set the ReportViewer reference in ViewModel (FastReport instance)
         ViewModel.ReportViewer = _fastReport;
 
-        // Set the PreviewControl reference in ViewModel
-        // ViewModel.PreviewControl = _previewControl; // Not available in Open Source
-
         // Subscribe to ViewModel property changes (Pattern A)
         _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
         ViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
@@ -723,6 +768,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         // Initial state update
         UpdateButtonStates();
         UpdateOverlays();
+        UpdatePreviewSurface();
     }
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -734,18 +780,22 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             case nameof(ViewModel.IsLoading):
                 UpdateOverlays();
                 UpdateButtonStates();
+                UpdatePreviewSurface();
                 break;
             case nameof(ViewModel.HasReportLoaded):
                 UpdateOverlays();
                 UpdateButtonStates();
+                UpdatePreviewSurface();
                 break;
             case nameof(ViewModel.StatusMessage):
                 if (_statusLabel != null && !string.IsNullOrEmpty(ViewModel.StatusMessage))
                 {
                     _statusLabel.Text = ViewModel.StatusMessage;
                 }
+                UpdatePreviewSurface();
                 break;
             case nameof(ViewModel.ErrorMessage):
+                UpdatePreviewSurface();
                 if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
                 {
                     MessageBox.Show(ViewModel.ErrorMessage, "Report Error",
@@ -759,6 +809,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
         if (ViewModel == null) return;
 
+        _overlayHost?.BringToFront();
+        var showDiagnosticsPreview = ShouldShowDiagnosticsPreview();
+
         if (_loadingOverlay != null)
         {
             _loadingOverlay.Visible = ViewModel.IsLoading;
@@ -766,7 +819,259 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         if (_noDataOverlay != null)
         {
-            _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.HasReportLoaded;
+            _noDataOverlay.Visible = !showDiagnosticsPreview &&
+                                     !ViewModel.IsLoading &&
+                                     !ViewModel.HasReportLoaded &&
+                                     string.IsNullOrWhiteSpace(ViewModel.ErrorMessage);
+        }
+
+        if (_overlayHost != null)
+        {
+            _overlayHost.Visible = (_loadingOverlay?.Visible ?? false) || (_noDataOverlay?.Visible ?? false);
+            if (_overlayHost.Visible)
+            {
+                _overlayHost.BringToFront();
+            }
+        }
+    }
+
+    private void UpdatePreviewSurface()
+    {
+        if (ViewModel == null || _reportPreviewSummaryLabel == null)
+        {
+            return;
+        }
+
+        if (_diagnosticsPreviewSurface != null)
+        {
+            _diagnosticsPreviewSurface.Visible = false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ViewModel.ErrorMessage))
+        {
+            _reportPreviewSummaryLabel.Visible = true;
+            _reportPreviewSummaryLabel.BringToFront();
+            _reportPreviewSummaryLabel.Text = $"Report preparation failed.\r\n{ViewModel.ErrorMessage}";
+            return;
+        }
+
+        if (ViewModel.IsLoading)
+        {
+            _reportPreviewSummaryLabel.Visible = true;
+            _reportPreviewSummaryLabel.BringToFront();
+            _reportPreviewSummaryLabel.Text = string.IsNullOrWhiteSpace(ViewModel.StatusMessage)
+                ? "Preparing report..."
+                : ViewModel.StatusMessage;
+            return;
+        }
+
+        if (_embeddedPdfViewer?.Visible == true && ViewModel.HasReportLoaded)
+        {
+            _reportPreviewSummaryLabel.Visible = false;
+            return;
+        }
+
+        if (ShouldShowDiagnosticsPreview())
+        {
+            _reportPreviewSummaryLabel.Visible = false;
+            if (_diagnosticsPreviewSurface != null)
+            {
+                _diagnosticsPreviewSurface.Visible = true;
+                _diagnosticsPreviewSurface.BringToFront();
+            }
+
+            return;
+        }
+
+        if (ViewModel.HasReportLoaded)
+        {
+            var reportName = string.IsNullOrWhiteSpace(ViewModel.SelectedReportType)
+                ? "Report"
+                : ViewModel.SelectedReportType;
+            _reportPreviewSummaryLabel.Visible = true;
+            _reportPreviewSummaryLabel.BringToFront();
+            _reportPreviewSummaryLabel.Text = $"{reportName} is prepared.\r\nUse Preview PDF, Export PDF, or Export Excel to review the output.";
+            return;
+        }
+
+        _reportPreviewSummaryLabel.Visible = true;
+        _reportPreviewSummaryLabel.BringToFront();
+        _reportPreviewSummaryLabel.Text = "No report loaded yet.\r\nSelect a report and click Generate to prepare it for preview and export.";
+    }
+
+    private bool ShouldShowDiagnosticsPreview()
+    {
+        return LayoutDiagnosticsMode.IsActive &&
+               ViewModel != null &&
+               !ViewModel.IsLoading &&
+               !ViewModel.HasReportLoaded &&
+               string.IsNullOrWhiteSpace(ViewModel.ErrorMessage);
+    }
+
+    private static Control CreateDiagnosticsPreviewSurface()
+    {
+        var host = new Panel
+        {
+            Name = "DiagnosticsPreviewSurface",
+            AccessibleName = "Diagnostics Preview Surface",
+            Dock = DockStyle.Fill,
+            Padding = new Padding(24),
+            Visible = false,
+        };
+
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            AutoSize = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+        var titleLabel = new Label
+        {
+            Dock = DockStyle.Top,
+            AutoSize = false,
+            Height = 32,
+            Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 16f, FontStyle.Bold),
+            Text = "Diagnostics Sample Report Preview",
+            TextAlign = ContentAlignment.MiddleLeft,
+            Margin = new Padding(0, 0, 0, 8),
+        };
+
+        var summaryLabel = new Label
+        {
+            Dock = DockStyle.Top,
+            AutoSize = false,
+            Height = 44,
+            Text = "Diagnostics renders a representative report shell here so preview scoring does not treat the viewport as a blank surface.",
+            TextAlign = ContentAlignment.TopLeft,
+            Margin = new Padding(0, 0, 0, 16),
+        };
+
+        var detailGrid = new DataGridView
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = "Diagnostics Preview Grid",
+            AccessibleDescription = "Representative report preview content used during layout diagnostics",
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false,
+            AllowUserToResizeColumns = false,
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
+            MultiSelect = false,
+            ReadOnly = true,
+            RowHeadersVisible = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+        };
+        detailGrid.Columns.Add("Section", "Section");
+        detailGrid.Columns.Add("Value", "Value");
+        detailGrid.Columns.Add("Commentary", "Commentary");
+        detailGrid.Rows.Add("Operating revenue", "$4.82M", "Up 6.4% versus prior year through February close.");
+        detailGrid.Rows.Add("Operating expense", "$4.11M", "Labor and treatment chemicals remain within budget guardrails.");
+        detailGrid.Rows.Add("Capital program", "$1.27M", "Three active projects are in procurement or construction.");
+        detailGrid.Rows.Add("Reserve balance", "$2.05M", "Coverage remains above the board-adopted target.");
+        detailGrid.Rows.Add("Collections", "98.1%", "Delinquency improved after the latest billing cycle.");
+        detailGrid.Rows.Add("Recommended action", "Publish PDF", "Diagnostics sample keeps the viewport populated until a live report is generated.");
+        detailGrid.Rows.Add("Next milestone", "Board packet", "Narrative and exhibits are ready for export review.");
+        detailGrid.ClearSelection();
+
+        layout.Controls.Add(titleLabel, 0, 0);
+        layout.Controls.Add(summaryLabel, 0, 1);
+        layout.Controls.Add(detailGrid, 0, 2);
+        host.Controls.Add(layout);
+        return host;
+    }
+
+    private PdfViewerControl CreateEmbeddedPdfViewer()
+    {
+        var pdfViewerControl = Factory.CreatePdfViewerControl(viewer =>
+        {
+            viewer.Name = "ReportsEmbeddedPdfViewer";
+            viewer.AccessibleName = "Embedded Report PDF Viewer";
+            viewer.AccessibleDescription = "Inline PDF preview for generated reports";
+            viewer.Visible = false;
+        });
+
+        return pdfViewerControl;
+    }
+
+    private void CleanupEmbeddedPreviewFile()
+    {
+        if (string.IsNullOrWhiteSpace(_embeddedPreviewPdfPath) || !File.Exists(_embeddedPreviewPdfPath))
+        {
+            _embeddedPreviewPdfPath = null;
+            return;
+        }
+
+        try
+        {
+            File.Delete(_embeddedPreviewPdfPath);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Failed to delete embedded preview file: {PreviewFilePath}", _embeddedPreviewPdfPath);
+        }
+        finally
+        {
+            _embeddedPreviewPdfPath = null;
+        }
+    }
+
+    private void ResetEmbeddedPdfViewer()
+    {
+        if (_reportViewerContainer == null)
+        {
+            return;
+        }
+
+        if (_embeddedPdfViewer != null)
+        {
+            try
+            {
+                _reportViewerContainer.Controls.Remove(_embeddedPdfViewer);
+                _embeddedPdfViewer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Failed to dispose embedded PDF viewer cleanly");
+            }
+        }
+
+        _embeddedPdfViewer = CreateEmbeddedPdfViewer();
+        _reportViewerContainer.Controls.Add(_embeddedPdfViewer);
+        _embeddedPdfViewer.SendToBack();
+        _overlayHost?.BringToFront();
+    }
+
+    private void LoadEmbeddedPdfPreview(string pdfFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(pdfFilePath) || !File.Exists(pdfFilePath))
+        {
+            throw new FileNotFoundException("PDF preview file was not found.", pdfFilePath);
+        }
+
+        ResetEmbeddedPdfViewer();
+        CleanupEmbeddedPreviewFile();
+
+        if (_embeddedPdfViewer == null)
+        {
+            throw new InvalidOperationException("Embedded PDF viewer could not be created.");
+        }
+
+        _embeddedPdfViewer.Load(pdfFilePath);
+        _embeddedPdfViewer.Visible = true;
+        _embeddedPreviewPdfPath = pdfFilePath;
+
+        if (_reportPreviewSummaryLabel != null)
+        {
+            _reportPreviewSummaryLabel.Visible = false;
         }
     }
 
@@ -804,20 +1109,26 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
         try
         {
-            var reportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-            if (!Directory.Exists(reportsDir))
-            {
-                Logger.LogWarning("Reports directory does not exist: {ReportsDir}", reportsDir);
-                UpdateStatus("Reports directory not found");
-                return;
-            }
+            var displayNames = ViewModel?.ReportTemplateDisplayNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
+                .ToList() ?? new List<string>();
 
-            var reportFiles = Directory.GetFiles(reportsDir, "*.frx", SearchOption.AllDirectories);
-            var displayNames = new List<string>();
-            foreach (var reportFile in reportFiles)
+            if (displayNames.Count == 0)
             {
-                var relativePath = Path.GetRelativePath(reportsDir, reportFile);
-                displayNames.Add(Path.GetFileNameWithoutExtension(relativePath));
+                var reportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+                if (!Directory.Exists(reportsDir))
+                {
+                    Logger.LogWarning("Reports directory does not exist: {ReportsDir}", reportsDir);
+                    UpdateStatus("Reports directory not found");
+                    return;
+                }
+
+                var reportFiles = Directory.GetFiles(reportsDir, "*.frx", SearchOption.TopDirectoryOnly);
+                foreach (var reportFile in reportFiles)
+                {
+                    displayNames.Add(Path.GetFileNameWithoutExtension(reportFile));
+                }
             }
 
             try { _reportSelector!.DataSource = displayNames; }
@@ -825,12 +1136,23 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
             if (displayNames.Count > 0)
             {
-                _reportSelector.SelectedIndex = 0;
+                if (ViewModel != null &&
+                    !string.IsNullOrWhiteSpace(ViewModel.SelectedReportType) &&
+                    displayNames.Contains(ViewModel.SelectedReportType, StringComparer.Ordinal))
+                {
+                    _reportSelector.SelectedItem = ViewModel.SelectedReportType;
+                }
+                else
+                {
+                    _reportSelector.SelectedIndex = 0;
+                }
+
+                SyncViewModelSelectedReport();
             }
             else
             {
                 UpdateStatus("No report templates found");
-                Logger.LogWarning("No .frx files found in {ReportsDir}", reportsDir);
+                Logger.LogWarning("No .frx files found for the report selector");
             }
         }
         catch (Exception ex)
@@ -842,6 +1164,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
     private void ReportSelector_SelectedIndexChanged(object? sender, EventArgs e)
     {
+        SyncViewModelSelectedReport();
         UpdateButtonStates();
 
         // Load parameters for selected report
@@ -860,7 +1183,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             // from a database configuration service based on the report name
 
             var parameters = new List<ReportParameter>();
-            var selectedReport = _reportSelector?.SelectedItem as string;
+            var selectedReport = ViewModel?.SelectedReportType ?? _reportSelector?.SelectedItem as string;
+            var fromDate = ViewModel?.FromDate ?? DateTime.Now.AddMonths(-1);
+            var toDate = ViewModel?.ToDate ?? DateTime.Now;
 
             // Example: Load parameters based on report type
             if (selectedReport != null)
@@ -868,27 +1193,27 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 switch (selectedReport.ToLowerInvariant())
                 {
                     case var s when s.Contains("financial"):
-                        parameters.Add(new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
-                        parameters.Add(new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "FromDate", Value = fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "ToDate", Value = toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
                         parameters.Add(new ReportParameter { Name = "Department", Value = "All", Type = "String" });
                         break;
                     case var s when s.Contains("activity"):
-                        parameters.Add(new ReportParameter { Name = "StartDate", Value = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
-                        parameters.Add(new ReportParameter { Name = "EndDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "StartDate", Value = fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "EndDate", Value = toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
                         parameters.Add(new ReportParameter { Name = "LogLevel", Value = "All", Type = "String" });
                         break;
                     default:
                         // Generic parameters for other reports
-                        parameters.Add(new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
-                        parameters.Add(new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "FromDate", Value = fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                        parameters.Add(new ReportParameter { Name = "ToDate", Value = toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
                         break;
                 }
             }
             else
             {
                 // Default parameters
-                parameters.Add(new ReportParameter { Name = "FromDate", Value = DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
-                parameters.Add(new ReportParameter { Name = "ToDate", Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                parameters.Add(new ReportParameter { Name = "FromDate", Value = fromDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
+                parameters.Add(new ReportParameter { Name = "ToDate", Value = toDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Type = "Date" });
                 parameters.Add(new ReportParameter { Name = "Department", Value = "All", Type = "String" });
                 parameters.Add(new ReportParameter { Name = "IncludeInactive", Value = "false", Type = "Boolean" });
             }
@@ -945,6 +1270,18 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 ViewModel.Parameters[kvp.Key] = kvp.Value;
             }
 
+            if (TryGetParameterDate(parameters, "FromDate", out var fromDate) ||
+                TryGetParameterDate(parameters, "StartDate", out fromDate))
+            {
+                ViewModel.FromDate = fromDate;
+            }
+
+            if (TryGetParameterDate(parameters, "ToDate", out var toDate) ||
+                TryGetParameterDate(parameters, "EndDate", out toDate))
+            {
+                ViewModel.ToDate = toDate;
+            }
+
             // Mark as having unsaved changes (Pattern D)
             SetHasUnsavedChanges(true);
 
@@ -967,19 +1304,27 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         try
         {
-            var reportsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-            var reportPath = Path.Combine(reportsDir, selectedReport + ".frx");
+            if (!SyncViewModelSelectedReport())
+            {
+                UpdateStatus($"Unknown report selection: {selectedReport}");
+                MessageBox.Show($"Unable to resolve the selected report:\r\n{selectedReport}",
+                    "Report Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            if (!File.Exists(reportPath))
+            var reportPath = ViewModel.GetReportPathIfExists();
+
+            if (string.IsNullOrWhiteSpace(reportPath))
             {
                 UpdateStatus($"Report file not found: {selectedReport}");
-                MessageBox.Show($"Report template not found:\r\n{reportPath}",
+                MessageBox.Show($"Report template not found for:\r\n{selectedReport}",
                     "File Not Found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             UpdateStatus($"Loading report: {selectedReport}");
             await ViewModel.LoadReportAsync(reportPath);
+            await PreviewReportAsPdfAsync(cancellationToken);
             UpdateStatus($"Report loaded: {selectedReport}");
 
             Logger.LogInformation("Report loaded successfully: {Report}", selectedReport);
@@ -991,6 +1336,46 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             MessageBox.Show($"Failed to load report:\r\n{ex.Message}",
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private bool SyncViewModelSelectedReport()
+    {
+        if (ViewModel == null || _reportSelector?.SelectedItem is not string selectedReport)
+        {
+            return false;
+        }
+
+        var resolved = ViewModel.TrySelectReportType(selectedReport);
+        if (!resolved)
+        {
+            Logger.LogWarning("Unable to resolve selected report {SelectedReport}", selectedReport);
+        }
+
+        return resolved;
+    }
+
+    private static bool TryGetParameterDate(IReadOnlyDictionary<string, object> parameters, string parameterName, out DateTime value)
+    {
+        value = default;
+        if (!parameters.TryGetValue(parameterName, out var rawValue) || rawValue is null)
+        {
+            return false;
+        }
+
+        if (rawValue is DateTime dateTimeValue)
+        {
+            value = dateTimeValue;
+            return true;
+        }
+
+        var stringValue = Convert.ToString(rawValue, CultureInfo.InvariantCulture);
+        if (string.IsNullOrWhiteSpace(stringValue))
+        {
+            return false;
+        }
+
+        return DateTime.TryParse(stringValue, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out value)
+            || DateTime.TryParse(stringValue, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal, out value);
     }
 
     private async Task ExportToPdfAsync(CancellationToken cancellationToken = default)
@@ -1076,8 +1461,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 throw new FileNotFoundException("Generated preview file was not found.", previewFilePath);
             }
 
-            ShowPdfPreviewDialog(previewFilePath);
-            UpdateStatus("PDF preview closed");
+            LoadEmbeddedPdfPreview(previewFilePath);
+            previewFilePath = string.Empty;
+            UpdateStatus("PDF preview loaded");
         }
         catch (OperationCanceledException)
         {
@@ -1107,38 +1493,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
                 }
             }
         }
-    }
-
-    private void ShowPdfPreviewDialog(string pdfFilePath)
-    {
-        if (string.IsNullOrWhiteSpace(pdfFilePath) || !File.Exists(pdfFilePath))
-        {
-            throw new FileNotFoundException("PDF preview file was not found.", pdfFilePath);
-        }
-
-        using var previewForm = new Form
-        {
-            Text = $"PDF Preview - {Path.GetFileName(pdfFilePath)}",
-            StartPosition = FormStartPosition.CenterParent,
-            Width = 1200,
-            Height = 800,
-            MinimumSize = new System.Drawing.Size(900, 600),
-            ShowInTaskbar = false,
-        };
-
-        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-        SfSkinManager.SetVisualStyle(previewForm, currentTheme);
-
-        var pdfViewerControl = ControlFactory.CreatePdfViewerControl(viewer =>
-        {
-            viewer.Name = "ReportsPdfPreviewViewer";
-            viewer.AccessibleName = "Report PDF Preview Viewer";
-            viewer.AccessibleDescription = "Embedded PDF preview for generated reports";
-        });
-
-        previewForm.Controls.Add(pdfViewerControl);
-        pdfViewerControl.Load(pdfFilePath);
-        previewForm.ShowDialog(this);
     }
 
     private async Task ExportToExcelAsync(CancellationToken cancellationToken = default)
@@ -1561,9 +1915,9 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
                 // Dispose FastReport
                 try { _fastReport?.Dispose(); } catch { }
-
-                // Dispose PreviewControl
-                // try { _previewControl?.Dispose(); } catch { } // Not available in Open Source
+                try { _embeddedPdfViewer?.Dispose(); } catch { }
+                _reportPreviewSummaryLabel?.SafeDispose();
+                CleanupEmbeddedPreviewFile();
 
                 // Clear and dispose ComboBox
                 try

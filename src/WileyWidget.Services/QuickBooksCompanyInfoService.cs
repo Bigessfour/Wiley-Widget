@@ -155,46 +155,35 @@ public sealed class QuickBooksCompanyInfoService : IQuickBooksCompanyInfoService
                 return null;
             }
 
-            if (!queryResponse.TryGetProperty("CompanyInfo", out var companyInfoArray))
+            if (!queryResponse.TryGetProperty("CompanyInfo", out var companyInfoNode))
             {
                 _logger.LogWarning("No CompanyInfo in response");
                 return null;
             }
 
-            // CompanyInfo query returns array with single element
-            var companyInfoElement = companyInfoArray.EnumerateArray().FirstOrDefault();
-            if (companyInfoElement.ValueKind == JsonValueKind.Undefined)
+            if (!TryGetCompanyInfoElement(companyInfoNode, out var companyInfoElement))
             {
-                _logger.LogWarning("CompanyInfo array is empty");
+                _logger.LogWarning("CompanyInfo payload is empty or has an unexpected JSON shape");
                 return null;
             }
 
             var companyInfo = new QuickBooksCompanyInfo
             {
-                CompanyName = companyInfoElement.TryGetProperty("CompanyName", out var name)
-                    ? name.GetString() ?? "Unknown"
-                    : "Unknown",
-                LegalName = companyInfoElement.TryGetProperty("LegalName", out var legalName)
-                    ? legalName.GetString()
-                    : null,
-                PrimaryEmailAddress = companyInfoElement.TryGetProperty("PrimaryEmailAddr", out var email) &&
-                                     email.TryGetProperty("Address", out var emailAddr)
-                    ? emailAddr.GetString()
-                    : null,
-                CountryCode = companyInfoElement.TryGetProperty("Country", out var country)
-                    ? country.GetString()
-                    : null,
-                TaxIdentifier = companyInfoElement.TryGetProperty("TaxIdentifier", out var taxId)
-                    ? taxId.GetString()
-                    : null,
-                WebAddr = companyInfoElement.TryGetProperty("WebAddr", out var web)
-                    ? web.GetString()
-                    : null,
+                CompanyName = GetStringValue(companyInfoElement, "CompanyName") ?? "Unknown",
+                LegalName = GetStringValue(companyInfoElement, "LegalName"),
+                PrimaryEmailAddress = GetStringValue(companyInfoElement, "PrimaryEmailAddr", "Address"),
+                CountryCode = GetStringValue(companyInfoElement, "Country")
+                    ?? GetStringValue(companyInfoElement, "CountrySubDivisionCode")
+                    ?? GetStringValue(companyInfoElement, "CountrySubDivisionCode", "value"),
+                TaxIdentifier = GetStringValue(companyInfoElement, "TaxIdentifier"),
+                WebAddr = GetStringValue(companyInfoElement, "WebAddr", "URI")
+                    ?? GetStringValue(companyInfoElement, "WebAddr", "value")
+                    ?? GetStringValue(companyInfoElement, "WebAddr"),
                 RealmId = realmId,
-                CurrencyCode = companyInfoElement.TryGetProperty("CurrencyRef", out var currencyRef) &&
-                              currencyRef.TryGetProperty("value", out var currencyValue)
-                    ? currencyValue.GetString()
-                    : "USD",
+                CurrencyCode = GetStringValue(companyInfoElement, "CurrencyRef", "value")
+                    ?? GetStringValue(companyInfoElement, "CurrencyRef", "name")
+                    ?? GetStringValue(companyInfoElement, "CurrencyRef")
+                    ?? "USD",
                 FetchedAtUtc = DateTime.UtcNow,
             };
 
@@ -204,6 +193,92 @@ public sealed class QuickBooksCompanyInfoService : IQuickBooksCompanyInfoService
         {
             _logger.LogError(ex, "Error parsing company info from JSON response");
             return null;
+        }
+    }
+
+    private static bool TryGetCompanyInfoElement(JsonElement companyInfoNode, out JsonElement companyInfoElement)
+    {
+        switch (companyInfoNode.ValueKind)
+        {
+            case JsonValueKind.Array:
+                companyInfoElement = companyInfoNode.EnumerateArray().FirstOrDefault();
+                return companyInfoElement.ValueKind != JsonValueKind.Undefined;
+
+            case JsonValueKind.Object:
+                companyInfoElement = companyInfoNode;
+                return true;
+
+            default:
+                companyInfoElement = default;
+                return false;
+        }
+    }
+
+    private static string? GetStringValue(JsonElement element, params string[] path)
+    {
+        try
+        {
+            var current = element;
+            foreach (var key in path)
+            {
+                if (!current.TryGetProperty(key, out current))
+                {
+                    return null;
+                }
+            }
+
+            return TryConvertElementToString(current);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? TryConvertElementToString(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.String:
+                return element.GetString();
+
+            case JsonValueKind.Number:
+            case JsonValueKind.True:
+            case JsonValueKind.False:
+                return element.ToString();
+
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    var value = TryConvertElementToString(item);
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        return value;
+                    }
+                }
+
+                return null;
+
+            case JsonValueKind.Object:
+            {
+                var preferredKeys = new[] { "value", "Value", "name", "Name", "Address", "URI", "Id", "id" };
+                foreach (var key in preferredKeys)
+                {
+                    if (element.TryGetProperty(key, out var nested))
+                    {
+                        var nestedValue = TryConvertElementToString(nested);
+                        if (!string.IsNullOrWhiteSpace(nestedValue))
+                        {
+                            return nestedValue;
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            default:
+                return null;
         }
     }
 }

@@ -87,7 +87,77 @@ internal static class IntegrationTestServices
         // Harper: MVVM — simple IAIService mock; GrokAgentService/RateScenarioTools/BudgetForecastTools
         // are sealed and intentionally NOT registered — WarRoomViewModel receives null and degrades gracefully.
         services.AddScoped<IAIService>(_ => Mock.Of<IAIService>());
-        services.AddScoped<IQuickBooksService>(_ => Mock.Of<IQuickBooksService>());
+        services.AddScoped<IQuickBooksService>(_ =>
+        {
+            var quickBooksService = new Mock<IQuickBooksService>();
+            quickBooksService
+                .Setup(service => service.GetConnectionStatusAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ConnectionStatus
+                {
+                    IsConnected = false,
+                    CompanyName = "Town of Wiley",
+                    LastSyncTime = string.Empty,
+                    StatusMessage = "Not connected"
+                });
+            quickBooksService
+                .Setup(service => service.ConnectAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            quickBooksService
+                .Setup(service => service.TestConnectionAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            quickBooksService
+                .Setup(service => service.IsConnectedAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            quickBooksService
+                .Setup(service => service.DisconnectAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            quickBooksService
+                .Setup(service => service.SyncDataAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SyncResult
+                {
+                    Success = false,
+                    RecordsSynced = 0,
+                    ErrorMessage = "QuickBooks integration is disabled in integration tests.",
+                    Duration = TimeSpan.Zero
+                });
+            quickBooksService
+                .Setup(service => service.SyncAccountsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new SyncResult
+                {
+                    Success = false,
+                    RecordsSynced = 0,
+                    ErrorMessage = "QuickBooks integration is disabled in integration tests.",
+                    Duration = TimeSpan.Zero
+                });
+            quickBooksService
+                .Setup(service => service.ImportChartOfAccountsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ImportResult
+                {
+                    Success = false,
+                    AccountsImported = 0,
+                    AccountsUpdated = 0,
+                    AccountsSkipped = 0,
+                    ErrorMessage = "QuickBooks integration is disabled in integration tests.",
+                    Duration = TimeSpan.Zero,
+                    ValidationErrors = new List<string>()
+                });
+            quickBooksService
+                .Setup(service => service.RunDiagnosticsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new QuickBooksDiagnosticsResult(
+                    Environment: "integration-test",
+                    RedirectUri: "http://localhost:9876/callback",
+                    RedirectUriValid: true,
+                    RedirectUriGuidance: "OK",
+                    HasClientId: false,
+                    HasClientSecret: false,
+                    HasRealmId: false,
+                    UrlAclRegistered: true,
+                    UrlAclUrl: "http://localhost:9876/callback",
+                    HasValidToken: false,
+                    TokenExpiry: "n/a"));
+
+            return quickBooksService.Object;
+        });
         services.AddScoped<IGlobalSearchService>(_ => Mock.Of<IGlobalSearchService>());
 
         // Repository mocks required by ScopedPanelBase<TViewModel> panel activation paths in integration tests

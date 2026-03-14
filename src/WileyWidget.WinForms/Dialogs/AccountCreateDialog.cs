@@ -271,7 +271,7 @@ namespace WileyWidget.WinForms.Dialogs
                 CreatedAccount = new MunicipalAccount
                 {
                     Id = 0, // Will be assigned by DB
-                    AccountNumber = new AccountNumber(_accountNumberTextBox!.Text.Trim()),
+                    AccountNumber = new AccountNumber(AccountNumber.FormatDisplay(_accountNumberTextBox!.Text.Trim())),
                     Name = _accountNameTextBox!.Text.Trim(),
                     FundType = fundType,
                     Type = accountType,

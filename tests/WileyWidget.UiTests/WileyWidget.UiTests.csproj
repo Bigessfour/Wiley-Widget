@@ -5,6 +5,7 @@
         <IsPackable>false</IsPackable>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <PreserveCompilationContext>true</PreserveCompilationContext>
         <OutputType>Library</OutputType>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     </PropertyGroup>
@@ -20,6 +21,9 @@
         <PackageReference Include="FlaUI.UIA3" />
         <PackageReference Include="Moq" />
         <PackageReference Include="coverlet.collector" />
+        <PackageReference Include="coverlet.msbuild">
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
         <PackageReference Include="Syncfusion.Tools.Windows" />
         <PackageReference Include="Microsoft.Extensions.Configuration" />
     </ItemGroup>

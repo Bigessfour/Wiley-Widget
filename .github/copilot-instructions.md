@@ -797,8 +797,17 @@ Before executing ANY code generation or file operation:
 9. [ ] Run validation (build/test tasks) before presenting results
 10. [ ] Check Problems panel for errors
 11. [ ] Enforce build/test serialization: run only one active build/test process at a time in this workspace
+12. [ ] Fix errors when noticed; do not knowingly defer broken paths or known failures unless the user explicitly asks to defer them.
+13. [ ] Fix warnings when they appear alongside errors; warnings are not later-only cleanup in this workspace.
+14. [ ] When a fix is ambiguous or risky, stop and ask instead of guessing.
 
 **These are not suggestions - they are mandatory architectural rules. Violations must be fixed immediately.**
+
+## Immediate Triage Rule
+
+- If you see an error during recon, implementation, validation, or testing, do not just report it and move on. Fix it in the current pass unless the user explicitly wants investigation only.
+- If warnings appear in the same scope as the error you are working, fix them as part of the same pass.
+- If the correct fix is unclear, stop and ask before making a potentially wrong change.
 
 ---
 

@@ -17,6 +17,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Utilities;
 
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -65,8 +66,9 @@ namespace WileyWidget.WinForms.Controls.Panels
             : base(scopeFactory, logger)
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
+            Size = ScaleLogicalToDevice(new Size(1100, 760));
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
+            Dock = DockStyle.Fill;
 
             // Apply theme via SfSkinManager (single source of truth)
             try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
@@ -86,10 +88,12 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 RowCount = 3,
                 ColumnCount = 1,
-                AutoSize = true,
-                Padding = new Padding(8),
+                AutoSize = false,
+                Margin = Padding.Empty,
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
                 AccessibleName = "Department Summary Layout"
             };
+            rootTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
             // Configure rows
             rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Header
@@ -97,17 +101,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Row 3: Grid (fills remaining space)
 
             // Row 1: Panel header
-            _panelHeader = new PanelHeader
+            _panelHeader = ControlFactory.CreatePanelHeader(header =>
             {
-                Dock = DockStyle.Fill,
-                Title = "Department Summary",
-                AccessibleName = "Department Summary header"
-            };
+                header.Dock = DockStyle.Fill;
+                header.Title = "Department Summary";
+                header.AccessibleName = "Department Summary header";
+            });
             _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
             _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
             _panelHeaderCloseHandler = (s, e) => ClosePanel();
             _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-            _toolTip = new ToolTip();
+            _toolTip = ControlFactory.CreateToolTip();
             _toolTip.SetToolTip(_panelHeader, "Refresh department metrics or close this panel.");
             rootTable.Controls.Add(_panelHeader, 0, 0);
 
@@ -115,8 +119,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             _summaryPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = 120,
-                Padding = new Padding(8),
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.SummaryPanelHeight + 28)),
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
                 BorderStyle = BorderStyle.None,
                 AccessibleName = "Summary metrics panel"
             };
@@ -128,7 +134,9 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 ColumnCount = 5,
                 RowCount = 1,
-                AutoSize = true,
+                AutoSize = false,
+                Margin = Padding.Empty,
+                Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight),
                 AccessibleName = "Summary cards"
             };
 
@@ -150,23 +158,23 @@ namespace WileyWidget.WinForms.Controls.Panels
             rootTable.Controls.Add(_summaryPanel, 0, 1);
 
             // Row 3: Data grid for detailed metrics
-            _metricsGrid = new SfDataGrid
+            _metricsGrid = ControlFactory.CreateSfDataGrid(grid =>
             {
-                Dock = DockStyle.Fill,
-                AutoGenerateColumns = false,
-                AllowFiltering = true,
-                AllowSorting = true,
-                AllowGrouping = false,
-                ShowRowHeader = false,
-                SelectionMode = GridSelectionMode.Single,
-                AutoSizeColumnsMode = AutoSizeColumnsMode.Fill,
-                RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f),
-                HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f),
-                AllowResizingColumns = true,
-                AllowTriStateSorting = true,
-                AccessibleName = "Department metrics grid",
-                AccessibleDescription = "Grid displaying budget metrics for each department"
-            };
+                grid.Dock = DockStyle.Fill;
+                grid.AutoGenerateColumns = false;
+                grid.AllowFiltering = true;
+                grid.AllowSorting = true;
+                grid.AllowGrouping = false;
+                grid.ShowRowHeader = false;
+                grid.SelectionMode = GridSelectionMode.Single;
+                grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
+                grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
+                grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeight);
+                grid.AllowResizingColumns = true;
+                grid.AllowTriStateSorting = true;
+                grid.AccessibleName = "Department metrics grid";
+                grid.AccessibleDescription = "Grid displaying budget metrics for each department";
+            });
             _toolTip.SetToolTip(_metricsGrid, "Detailed budget and variance metrics by department.");
 
             ConfigureGridColumns();
@@ -176,13 +184,16 @@ namespace WileyWidget.WinForms.Controls.Panels
             Controls.Add(rootTable);
 
             // Status strip (bottom of panel)
-            _statusStrip = new StatusStrip { Dock = DockStyle.Bottom };
-            _statusLabel = new ToolStripStatusLabel { Text = "Ready" };
+            _statusStrip = ControlFactory.CreateStatusStrip(statusStrip => statusStrip.Dock = DockStyle.Bottom);
+            _statusLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel => statusLabel.Text = "Ready");
             _statusStrip.Items.Add(_statusLabel);
             Controls.Add(_statusStrip);
 
             // Error provider
-            _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink };
+            _errorProvider = ControlFactory.CreateErrorProvider(errorProvider =>
+            {
+                errorProvider.BlinkStyle = ErrorBlinkStyle.NeverBlink;
+            });
 
             // Loading overlay
             _loadingOverlay = new LoadingOverlay
@@ -195,14 +206,16 @@ namespace WileyWidget.WinForms.Controls.Panels
             _loadingOverlay.BringToFront();
 
             // No-data overlay
-            _noDataOverlay = new NoDataOverlay
+            _noDataOverlay = ControlFactory.CreateNoDataOverlay(overlay =>
             {
-                Message = "No department data available",
-                Dock = DockStyle.Fill,
-                AccessibleName = "No data overlay"
-            };
+                overlay.Message = "No department data available";
+                overlay.Dock = DockStyle.Fill;
+                overlay.AccessibleName = "No data overlay";
+            });
             Controls.Add(_noDataOverlay);
             _noDataOverlay.BringToFront();
+
+            ApplyProfessionalPanelLayout();
 
             ResumeLayout(false);
             this.PerformLayout();
@@ -216,8 +229,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             var cardPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Margin = new Padding(4),
-                Padding = new Padding(8),
+                Margin = LayoutTokens.GetScaled(new Padding(4)),
+                Padding = LayoutTokens.GetScaled(new Padding(6)),
                 AccessibleName = $"{title} card",
                 AccessibleDescription = description,
                 BorderStyle = BorderStyle.FixedSingle,
@@ -229,7 +242,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Text = title,
                 Dock = DockStyle.Top,
-                Height = 24,
+                Height = LayoutTokens.GetScaled(LayoutTokens.CompactControlHeight + 8),
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
                 AccessibleName = $"{title} label"
@@ -242,6 +255,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
+                Padding = LayoutTokens.GetScaled(new Padding(0, 4, 0, 4)),
                 AccessibleName = $"{title} value"
             };
             _toolTip?.SetToolTip(lblValue, description);
@@ -324,22 +338,21 @@ namespace WileyWidget.WinForms.Controls.Panels
                 return;
             }
 
-            // Subscribe to ViewModel property changes
-            _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-            typedViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
-
-            // Subscribe to Metrics collection changes
-            _metricsCollectionChangedHandler = (s, e) => UpdateGridData();
-            typedViewModel.Metrics.CollectionChanged += _metricsCollectionChangedHandler;
-
-            // Initial UI update
-            UpdateUI();
+            BindViewModel(typedViewModel);
 
             // Defer sizing validation until layout is complete
             this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+        }
 
-            // Load data asynchronously
-            _ = LoadDataSafeAsync();
+        private void BindViewModel(DepartmentSummaryViewModel typedViewModel)
+        {
+            _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
+            typedViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+
+            _metricsCollectionChangedHandler = (s, e) => UpdateGridData();
+            typedViewModel.Metrics.CollectionChanged += _metricsCollectionChangedHandler;
+
+            UpdateUI();
         }
 
         private async Task LoadDataSafeAsync(CancellationToken cancellationToken = default)
@@ -462,19 +475,19 @@ namespace WileyWidget.WinForms.Controls.Panels
                 {
                     _lblVarianceValue.Text = ViewModel.Variance.ToString("C0", CultureInfo.CurrentCulture);
                     // Semantic status color: green for under budget, red for over budget
-                    _lblVarianceValue.ForeColor = ViewModel.Variance >= 0 ? ThemeColors.Success : ThemeColors.Error;
+                    _lblVarianceValue.ForeColor = ViewModel.Variance >= 0 ? Color.Green : Color.Red;
                 }
 
                 if (_lblOverBudgetCountValue != null)
                 {
                     _lblOverBudgetCountValue.Text = ViewModel.DepartmentsOverBudget.ToString(CultureInfo.CurrentCulture);
-                    _lblOverBudgetCountValue.ForeColor = ThemeColors.Error;
+                    _lblOverBudgetCountValue.ForeColor = Color.Red;
                 }
 
                 if (_lblUnderBudgetCountValue != null)
                 {
                     _lblUnderBudgetCountValue.Text = ViewModel.DepartmentsUnderBudget.ToString(CultureInfo.CurrentCulture);
-                    _lblUnderBudgetCountValue.ForeColor = ThemeColors.Success;
+                    _lblUnderBudgetCountValue.ForeColor = Color.Green;
                 }
             }
             catch (Exception ex)
@@ -578,16 +591,19 @@ namespace WileyWidget.WinForms.Controls.Panels
                 IsBusy = true;
                 UpdateStatus("Loading department summary data...");
                 await LoadDataSafeAsync(ct);
+                IsLoaded = true;
                 SetHasUnsavedChanges(false);
                 UpdateStatus("Department summary loaded successfully");
             }
             catch (OperationCanceledException)
             {
                 UpdateStatus("Load cancelled");
+                IsLoaded = false;
             }
             catch (Exception ex)
             {
                 UpdateStatus($"Load failed: {ex.Message}");
+                IsLoaded = false;
                 throw;
             }
             finally

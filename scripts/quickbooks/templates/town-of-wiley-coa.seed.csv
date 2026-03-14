@@ -1,0 +1,22 @@
+AccountNumber,Name,QboAccountType
+1000,General Fund Checking,Bank
+1100,General Fund Savings,Bank
+1500,Equipment & Vehicles,FixedAsset
+1550,Accumulated Depreciation,OtherCurrentAsset
+2000,Accounts Payable,AccountsPayable
+2100,Accrued Payroll,OtherCurrentLiability
+3000,Fund Balance,Equity
+4000,Property Tax Revenue,Income
+4100,License & Permit Revenue,Income
+4200,Intergovernmental Revenue,Income
+4300,Fines & Forfeitures,Income
+5100,Police Department Salaries,Expense
+5110,Fire Department Salaries,Expense
+5120,Public Works Salaries,Expense
+5200,Police Department Supplies,Expense
+5210,Fire Department Supplies,Expense
+5300,Utilities Expense,Expense
+5400,Equipment Maintenance,Expense
+5500,Depreciation Expense,Expense
+5600,Professional Services,Expense
+5700,Training & Development,Expense

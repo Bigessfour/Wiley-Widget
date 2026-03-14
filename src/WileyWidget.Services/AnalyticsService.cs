@@ -186,7 +186,7 @@ namespace WileyWidget.Services
                 }
                 else
                 {
-                    _logger.LogWarning("Insufficient historical data for reserve forecasting");
+                    _logger.LogInformation("Insufficient historical data for reserve forecasting; returning 'Insufficient Data' assessment");
                     result.RiskAssessment = "Insufficient Data";
                 }
 

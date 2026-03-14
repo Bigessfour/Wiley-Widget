@@ -160,34 +160,34 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         // Set up panel properties (matches PreferredDockSize extension)
         Text = "Utility Bills";
-        Size = new Size(1100, 760);
-        MinimumSize = new Size(1024, 720);
+        Size = ScaleLogicalToDevice(new Size(1100, 760));
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScroll = false;
         Padding = Padding.Empty;
 
         // Initialize tooltip
-        _toolTip = new ToolTip
+        _toolTip = Factory.CreateToolTip(toolTip =>
         {
-            AutoPopDelay = 5000,
-            InitialDelay = 500,
-            ReshowDelay = 100,
-            ShowAlways = true
-        };
+            toolTip.AutoPopDelay = 5000;
+            toolTip.InitialDelay = 500;
+            toolTip.ReshowDelay = 100;
+            toolTip.ShowAlways = true;
+        });
 
         // Initialize error provider
-        _errorProvider = new ErrorProvider
+        _errorProvider = Factory.CreateErrorProvider(errorProvider =>
         {
-            BlinkStyle = ErrorBlinkStyle.NeverBlink
-        };
+            errorProvider.BlinkStyle = ErrorBlinkStyle.NeverBlink;
+        });
 
         // Panel header
-        _panelHeader = new PanelHeader
+        _panelHeader = Factory.CreatePanelHeader(header =>
         {
-            Dock = DockStyle.Top,
-            Title = "Utility Bill Management",
-            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50f)
-        };
+            header.Dock = DockStyle.Top;
+            header.Title = "Utility Bill Management";
+            header.Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(50f);
+        });
         _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
@@ -223,17 +223,17 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         Controls.Add(_content);
 
         // Status strip
-        _statusStrip = new StatusStrip
+        _statusStrip = Factory.CreateStatusStrip(statusStrip =>
         {
-            Dock = DockStyle.Bottom,
-            Height = (int)DpiAware.LogicalToDeviceUnits(25f)
-        };
-        _statusLabel = new ToolStripStatusLabel
+            statusStrip.Dock = DockStyle.Bottom;
+            statusStrip.Height = (int)DpiAware.LogicalToDeviceUnits(25f);
+        });
+        _statusLabel = Factory.CreateToolStripStatusLabel(statusLabel =>
         {
-            Text = "Ready",
-            Spring = true,
-            TextAlign = ContentAlignment.MiddleLeft
-        };
+            statusLabel.Text = "Ready";
+            statusLabel.Spring = true;
+            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+        });
         _statusStrip.Items.Add(_statusLabel);
         Controls.Add(_statusStrip);
 
@@ -248,12 +248,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _loadingOverlay.BringToFront();
 
         // No data overlay
-        _noDataOverlay = new NoDataOverlay
+        _noDataOverlay = Factory.CreateNoDataOverlay(overlay =>
         {
-            Dock = DockStyle.Fill,
-            Message = "No utility bills yet\r\nCreate a new bill for a customer to get started",
-            Visible = false
-        };
+            overlay.Dock = DockStyle.Fill;
+            overlay.Message = "No utility bills yet\r\nCreate a new bill for a customer to get started";
+            overlay.Visible = false;
+        });
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
 
@@ -355,17 +355,26 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         var buttonSize = new Size((int)DpiAware.LogicalToDeviceUnits(110f), (int)DpiAware.LogicalToDeviceUnits(32f));
 
         _createBillButton = CreateButton("&Create Bill", buttonSize, 1);
-        _createBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.CreateBillCommand);
+        _createBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(
+            ViewModel.CreateBillCommand,
+            successMessage: "Utility bill created successfully.",
+            successTitle: "Create Successful");
         _createBillButton.Click += _createBillButtonClickHandler;
         _toolTip!.SetToolTip(_createBillButton, "Create a new utility bill for the selected customer (Ctrl+N)");
 
         _saveBillButton = CreateButton("&Save", buttonSize, 2);
-        _saveBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.SaveBillCommand);
+        _saveBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(
+            ViewModel.SaveBillCommand,
+            successMessage: "Utility bill saved successfully.",
+            successTitle: "Save Successful");
         _saveBillButton.Click += _saveBillButtonClickHandler;
         _toolTip.SetToolTip(_saveBillButton, "Save changes to the selected bill (Ctrl+S)");
 
         _deleteBillButton = CreateButton("&Delete", buttonSize, 3);
-        _deleteBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.DeleteBillCommand);
+        _deleteBillButtonClickHandler = async (s, e) => await ExecuteCommandAsync(
+            ViewModel.DeleteBillCommand,
+            successMessage: "Utility bill deleted successfully.",
+            successTitle: "Delete Successful");
         _deleteBillButton.Click += _deleteBillButtonClickHandler;
         _toolTip.SetToolTip(_deleteBillButton, "Delete the selected bill (Del)");
 
@@ -544,7 +553,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             button.AccessibleName = "Create Bill";
             button.AccessibleDescription = "Create a new utility bill for the selected customer";
         });
-        _createBillButton.Click += async (s, e) => await ViewModel.CreateBillCommand.ExecuteAsync(null);
+        _createBillButton.Click += async (s, e) => await ExecuteCommandAsync(
+            ViewModel.CreateBillCommand,
+            successMessage: "Utility bill created successfully.",
+            successTitle: "Create Successful");
 
         _saveBillButton = Factory.CreateSfButton("&Save Bill", button =>
         {
@@ -552,7 +564,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             button.AccessibleName = "Save Bill";
             button.AccessibleDescription = "Save changes to the selected bill";
         });
-        _saveBillButton.Click += async (s, e) => await ViewModel.SaveBillCommand.ExecuteAsync(null);
+        _saveBillButton.Click += async (s, e) => await ExecuteCommandAsync(
+            ViewModel.SaveBillCommand,
+            successMessage: "Utility bill saved successfully.",
+            successTitle: "Save Successful");
 
         _deleteBillButton = Factory.CreateSfButton("&Delete Bill", button =>
         {
@@ -560,7 +575,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             button.AccessibleName = "Delete Bill";
             button.AccessibleDescription = "Delete the selected bill";
         });
-        _deleteBillButton.Click += async (s, e) => await ViewModel.DeleteBillCommand.ExecuteAsync(null);
+        _deleteBillButton.Click += async (s, e) => await ExecuteCommandAsync(
+            ViewModel.DeleteBillCommand,
+            successMessage: "Utility bill deleted successfully.",
+            successTitle: "Delete Successful");
 
         _markPaidButton = Factory.CreateSfButton("&Mark Paid", button =>
         {
@@ -1260,13 +1278,28 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         }
     }
 
-    private async Task ExecuteCommandAsync(IAsyncRelayCommand command, CancellationToken cancellationToken = default)
+    private async Task ExecuteCommandAsync(
+        IAsyncRelayCommand command,
+        string? successMessage = null,
+        string? successTitle = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             if (command.CanExecute(null))
             {
                 await command.ExecuteAsync(null);
+
+                if (!string.IsNullOrWhiteSpace(successMessage))
+                {
+                    _ = Factory.ShowSemanticMessageBox(
+                        this,
+                        successMessage,
+                        successTitle ?? "Success",
+                        SyncfusionControlFactory.MessageSemanticKind.Success,
+                        MessageBoxButtons.OK,
+                        playNotificationSound: true);
+                }
             }
         }
         catch (Exception ex)
@@ -1287,7 +1320,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         base.OnHandleCreated(e);
         if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
         {
-            MinimumSize = new Size(1024, 720);
+            MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         }
 
         PerformLayout();
@@ -1341,10 +1374,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             if (ViewModel != null)
             {
-                Task.Run(async () =>
+                BeginInvoke(new MethodInvoker(async () =>
                 {
                     await RefreshDataAsync();
-                }).ConfigureAwait(false);
+                    ApplyProfessionalPanelLayout();
+                    ForceFullLayout();
+                }));
             }
         }
         catch (Exception ex)

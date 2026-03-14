@@ -1,5 +1,6 @@
 using System.Threading;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
@@ -53,15 +54,30 @@ public class ChatBridgeService : IChatBridgeService
     /// </summary>
     public Task RequestExternalPromptAsync(string prompt, CancellationToken cancellationToken = default)
     {
+        return RequestExternalPromptAsync(prompt, Array.Empty<ChatPromptAttachment>(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Requests that a prompt be submitted from an external source (e.g. from an insight card).
+    /// </summary>
+    public Task RequestExternalPromptAsync(string prompt, IReadOnlyList<ChatPromptAttachment> attachments, CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(prompt))
         {
             _logger.LogWarning("Attempted to request empty external prompt");
             return Task.CompletedTask;
         }
 
-        _logger.LogInformation("External prompt requested: {PromptLength} characters", prompt.Length);
+        _logger.LogInformation(
+            "External prompt requested: {PromptLength} characters, {AttachmentCount} attachments",
+            prompt.Length,
+            attachments?.Count ?? 0);
 
-        var args = new ChatExternalPromptEventArgs { Prompt = prompt };
+        var args = new ChatExternalPromptEventArgs
+        {
+            Prompt = prompt,
+            Attachments = attachments ?? Array.Empty<ChatPromptAttachment>()
+        };
         ExternalPromptRequested?.Invoke(this, args);
 
         return Task.CompletedTask;

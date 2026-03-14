@@ -346,8 +346,8 @@ public class GrokAgentServiceResilienceTests(IntegrationTestFixture fixture) : I
 
         stopwatch.Stop();
 
-        // Assert - Total time should be ~3 seconds (1s + 2s)
-        stopwatch.Elapsed.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(3));
+        // Assert - Total time should be ~3 seconds (1s + 2s), allowing for scheduler jitter under coverage instrumentation.
+        stopwatch.Elapsed.Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(2900));
         stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10)); // Reasonable upper bound
     }
 

@@ -1,13 +1,13 @@
 #nullable enable
-using System.Threading;
 using System;
 using System.Globalization;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Serilog;
-using Microsoft.Extensions.Options;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
 
@@ -44,7 +44,6 @@ namespace WileyWidget.Services
         /// Initializes a new instance of the <see cref="SettingsService"/> class.
         /// </summary>
         /// <param name="configuration">The configuration instance for resolving settings directory.</param>
-        /// <param name="logger">The logger instance for diagnostic output.</param>
         /// <remarks>
         /// The settings directory can be overridden via:
         /// - Configuration: Settings:Directory
@@ -55,6 +54,7 @@ namespace WileyWidget.Services
         {
             _configuration = configuration;
             InitializePaths();
+            Load();
         }
 
         /// <summary>
@@ -65,10 +65,30 @@ namespace WileyWidget.Services
             var overrideDir = _configuration?["Settings:Directory"]
                               ?? Environment.GetEnvironmentVariable("WILEYWIDGET_SETTINGS_DIR");
 
+            // Expand environment variables in override (e.g., %ProgramData% -> C:\ProgramData)
+            overrideDir = Environment.ExpandEnvironmentVariables(overrideDir ?? string.Empty);
+
             _root = string.IsNullOrWhiteSpace(overrideDir)
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget")
                 : overrideDir;
             _file = Path.Combine(_root, "settings.json");
+
+            // Validate root is writable; fallback if not
+            try
+            {
+                if (!Directory.Exists(_root) && !Directory.CreateDirectory(_root).Exists)
+                {
+                    Log.Warning("Cannot create settings directory {Root}; falling back to AppData", _root);
+                    _root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget");
+                    _file = Path.Combine(_root, "settings.json");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Invalid settings directory {Root}; falling back to AppData", _root);
+                _root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WileyWidget");
+                _file = Path.Combine(_root, "settings.json");
+            }
 
             Log.Debug("Settings directory resolved to {SettingsDirectory}", _root);
         }
@@ -93,7 +113,7 @@ namespace WileyWidget.Services
                 }
 
                 var json = File.ReadAllText(_file);
-                var loaded = JsonSerializer.Deserialize<AppSettings>(json);
+                var loaded = JsonSerializer.Deserialize<AppSettings>(json, CreateJsonSerializerOptions());
 
                 if (loaded != null)
                 {
@@ -157,30 +177,40 @@ namespace WileyWidget.Services
         /// <exception cref="InvalidOperationException">Thrown when the settings directory cannot be created.</exception>
         public void Save()
         {
-            try
+            const int maxRetries = 3;
+            var delayMs = 100;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                // Ensure directory exists
-                if (!Directory.Exists(_root))
+                try
                 {
-                    Directory.CreateDirectory(_root);
+                    // Ensure directory exists
+                    if (!Directory.Exists(_root))
+                    {
+                        Directory.CreateDirectory(_root);
+                    }
+
+                    var json = JsonSerializer.Serialize(Current, CreateJsonSerializerOptions(writeIndented: true));
+                    File.WriteAllText(_file, json);
+
+                    Log.Debug("Settings saved successfully to {SettingsFile} (attempt {Attempt})", _file, attempt);
+                    return;
                 }
-
-                // Serialize with indentation for readability
-                var options = new JsonSerializerOptions
+                catch (IOException ioEx) when (ioEx.HResult == -2147024864)
                 {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = null // Keep original property names
-                };
-
-                var json = JsonSerializer.Serialize(Current, options);
-                File.WriteAllText(_file, json);
-
-                Log.Debug("Settings saved successfully to {SettingsFile}", _file);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to persist settings to {SettingsFile}", _file);
-                // Don't throw - allow the application to continue running
+                    if (attempt < maxRetries)
+                    {
+                        Log.Debug("Settings save retry {Attempt}/{MaxRetries} due to file lock on {File}", attempt, maxRetries, _file);
+                        Thread.Sleep(delayMs * attempt);
+                        continue;
+                    }
+                    Log.Warning(ioEx, "Failed to persist settings to {SettingsFile} after {MaxRetries} retries (file locked)", _file, maxRetries);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to persist settings to {SettingsFile} (attempt {Attempt})", _file, attempt);
+                    break;
+                }
             }
         }
 
@@ -200,7 +230,6 @@ namespace WileyWidget.Services
         /// </remarks>
         public void SaveFiscalYearSettings(int month, int day)
         {
-            // Validate month
             if (month < 1 || month > 12)
             {
                 var ex = new ArgumentOutOfRangeException(nameof(month), month,
@@ -209,7 +238,6 @@ namespace WileyWidget.Services
                 throw ex;
             }
 
-            // Validate day based on month
             var daysInMonth = DateTime.DaysInMonth(DateTime.Now.Year, month);
             if (day < 1 || day > daysInMonth)
             {
@@ -219,7 +247,6 @@ namespace WileyWidget.Services
                 throw ex;
             }
 
-            // Validate that the date can be constructed
             try
             {
                 _ = new DateTime(DateTime.Now.Year, month, day);
@@ -232,20 +259,16 @@ namespace WileyWidget.Services
 
             try
             {
-                // Update settings
                 Current.FiscalYearStartMonth = month;
                 Current.FiscalYearStartDay = day;
 
-                // Update the formatted strings
                 var monthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(month);
                 Current.FiscalYearStart = $"{monthName} {day}";
 
-                // Calculate fiscal year end (previous day of start date, next year)
                 var fiscalYearEnd = new DateTime(DateTime.Now.Year + 1, month, day).AddDays(-1);
                 var endMonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(fiscalYearEnd.Month);
                 Current.FiscalYearEnd = $"{endMonthName} {fiscalYearEnd.Day}";
 
-                // Persist to disk
                 Save();
 
                 Log.Information(
@@ -278,10 +301,6 @@ namespace WileyWidget.Services
         /// <param name="key">The property name to retrieve.</param>
         /// <returns>The string representation of the setting value, or empty string if not found.</returns>
         /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
-        /// <remarks>
-        /// This is a legacy method maintained for backward compatibility.
-        /// Direct property access via <see cref="Current"/> is preferred.
-        /// </remarks>
         public string Get(string key)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -314,11 +333,6 @@ namespace WileyWidget.Services
         /// <param name="key">The property name to set.</param>
         /// <param name="value">The string value to set (will be converted to the property's type).</param>
         /// <exception cref="ArgumentException">Thrown when key is null or empty.</exception>
-        /// <remarks>
-        /// This is a legacy method maintained for backward compatibility.
-        /// Direct property access via <see cref="Current"/> is preferred.
-        /// Type conversion is attempted automatically but may fail for complex types.
-        /// </remarks>
         public void Set(string key, string value)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -335,11 +349,8 @@ namespace WileyWidget.Services
                     return;
                 }
 
-                // Convert string value to property type
                 object? convertedValue = null;
                 var propertyType = property.PropertyType;
-
-                // Handle nullable types
                 var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
 
                 if (string.IsNullOrWhiteSpace(value))
@@ -368,7 +379,6 @@ namespace WileyWidget.Services
                 }
                 else
                 {
-                    // Attempt generic conversion
                     convertedValue = Convert.ChangeType(value, underlyingType, CultureInfo.InvariantCulture);
                 }
 
@@ -385,11 +395,56 @@ namespace WileyWidget.Services
         /// <summary>
         /// Loads settings and returns the current instance for fluent usage.
         /// </summary>
-        /// <returns>The current <see cref="AppSettings"/> instance after loading.</returns>
         public AppSettings LoadSettings()
         {
             Load();
             return Current;
+        }
+
+        private static JsonSerializerOptions CreateJsonSerializerOptions(bool writeIndented = false)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = writeIndented,
+                PropertyNamingPolicy = null,
+                AllowTrailingCommas = true,
+                ReadCommentHandling = JsonCommentHandling.Skip,
+            };
+
+            options.Converters.Add(new DefaultOnNullDateTimeConverter());
+            return options;
+        }
+
+        private sealed class DefaultOnNullDateTimeConverter : JsonConverter<DateTime>
+        {
+            public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType == JsonTokenType.Null)
+                {
+                    return default;
+                }
+
+                if (reader.TokenType == JsonTokenType.String)
+                {
+                    var raw = reader.GetString();
+                    if (string.IsNullOrWhiteSpace(raw))
+                    {
+                        return default;
+                    }
+
+                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed))
+                    {
+                        return parsed;
+                    }
+                }
+
+                return reader.GetDateTime();
+            }
+
+            public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+            {
+                writer.WriteStringValue(value);
+            }
         }
 
         public string GetEnvironmentName() => GetValue("Environment") ?? "Production";
@@ -407,10 +462,6 @@ namespace WileyWidget.Services
         /// <summary>
         /// Resets the settings to defaults. Used primarily for testing.
         /// </summary>
-        /// <remarks>
-        /// This method does not reinitialize paths - it only resets the in-memory settings.
-        /// Used by unit tests to ensure a clean state.
-        /// </remarks>
         internal void ResetForTests()
         {
             Current = new AppSettings();

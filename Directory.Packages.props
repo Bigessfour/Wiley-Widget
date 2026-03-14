@@ -32,6 +32,7 @@
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.Common" Version="10.2.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.ResourceUtilization" Version="10.2.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
     <!-- IdentityModel – huge security jump, fully net10.0 compatible -->
     <PackageVersion Include="Microsoft.Extensions.Resilience" Version="10.2.0" />
@@ -97,6 +98,7 @@
     <PackageVersion Include="Serilog.Sinks.Email" Version="4.1.0" />
     <PackageVersion Include="Polly.Extensions.Http" Version="3.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.2.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" />
     <PackageVersion Include="Serilog.Sinks.Async" Version="2.1.0" />
     <PackageVersion Include="DotNetEnv" Version="3.1.1" />
     <!-- Test packages -->
@@ -117,6 +119,7 @@
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="FluentAssertions" Version="7.0.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
+    <PackageVersion Include="coverlet.msbuild" Version="6.0.2" />
     <!-- UI Automation (FlaUI) packages -->
     <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
     <PackageVersion Include="FlaUI.UIA2" Version="5.0.0" />
@@ -144,7 +147,6 @@
     <PackageVersion Include="microsoft.winforms.designer.sdk" Version="1.6.0" />
     <!-- FastReport Open Source packages -->
     <PackageVersion Include="FastReport.OpenSource" Version="2026.1.3" />
-    <PackageVersion Include="FastReport.OpenSource.WinForms" Version="2026.1.3" />
     <!-- Force Microsoft.CodeAnalysis.Common to 5.0.0 to resolve version conflict -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Common" Version="5.0.0" />
     <!-- Roslyn components used by local analyzers -->

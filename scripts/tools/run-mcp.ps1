@@ -17,7 +17,14 @@ param(
 Set-StrictMode -Version Latest
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $root)
 $toolsExe = Join-Path $root "..\tools\mcp-csharp.exe" | Resolve-Path -ErrorAction SilentlyContinue
+
+$env:WW_REPO_ROOT = $repoRoot
+$env:CSX_ALLOWED_PATH = $repoRoot
+$env:WW_LOGS_DIR = Join-Path $repoRoot 'logs'
+$env:WILEYWIDGET_LOG_DIR = Join-Path $repoRoot 'logs'
+$env:WILEY_WIDGET_ROOT = $repoRoot
 
 if ($toolsExe) {
     Write-Output "Using bundled MCP binary at $toolsExe"

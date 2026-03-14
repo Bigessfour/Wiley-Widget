@@ -11,6 +11,11 @@
       "version": "1.0.0",
       "commands": ["InfinityFlow.CSharp.Eval"],
       "rollForward": false
+    },
+    "dotnet-reportgenerator-globaltool": {
+      "version": "5.4.6",
+      "commands": ["reportgenerator"],
+      "rollForward": false
     }
   }
 }

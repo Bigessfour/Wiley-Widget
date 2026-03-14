@@ -11,13 +11,13 @@ public sealed class QuickBooksOAuthOptions
 {
     /// <summary>
     /// Intuit app Client ID (registered at developer.intuit.com).
-    /// Load from user secrets or environment variable QUICKBOOKS_CLIENT_ID.
+    /// Load from user secrets or environment variable QBO_CLIENT_ID.
     /// </summary>
     public string? ClientId { get; set; }
 
     /// <summary>
     /// Intuit app Client Secret (registered at developer.intuit.com).
-    /// Load from user secrets or environment variable QUICKBOOKS_CLIENT_SECRET.
+    /// Load from user secrets or environment variable QBO_CLIENT_SECRET.
     /// </summary>
     public string? ClientSecret { get; set; }
 

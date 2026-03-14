@@ -1,8 +1,10 @@
 using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
@@ -23,8 +25,8 @@ public partial class MainForm
     private StatusBarAdvPanel? _userPanel;
     private StatusBarAdvPanel? _rowCountPanel;
     private System.Windows.Forms.Timer? _memoryUpdateTimer;
-    private System.Windows.Forms.Timer? _clockUpdateTimer;
     private ToolTip? _statusBarToolTip;
+    private bool _professionalStatusBarInitialized;
 
     /// <summary>
     /// Initializes professional status bar with system information panels.
@@ -34,7 +36,10 @@ public partial class MainForm
     /// </summary>
     private void InitializeProfessionalStatusBar()
     {
-        if (_statusBar == null) return;
+        if (_statusBar == null || _professionalStatusBarInitialized)
+        {
+            return;
+        }
 
         try
         {
@@ -55,9 +60,28 @@ public partial class MainForm
             CreateRowCountPanel();
             CreateUserPanel();
 
-            // Start update timers
-            StartMemoryUpdateTimer();
-            StartClockUpdateTimer();
+            var panels = (_statusBar.Panels ?? Array.Empty<StatusBarAdvPanel>())
+                .Where(panel => panel != null)
+                .ToList();
+            panels.RemoveAll(panel => panel.Name is "MemoryPanel" or "ConnectionPanel" or "RowCountPanel" or "UserPanel");
+
+            var clockIndex = panels.FindIndex(panel => string.Equals(panel.Name, "ClockPanel", StringComparison.Ordinal));
+            if (clockIndex < 0)
+            {
+                clockIndex = panels.Count;
+            }
+
+            panels.Insert(clockIndex, _rowCountPanel!);
+            panels.Insert(clockIndex + 1, _connectionPanel!);
+            panels.Insert(clockIndex + 2, _memoryPanel!);
+            panels.Insert(clockIndex + 3, _userPanel!);
+
+            _statusBar.Panels = panels.ToArray();
+            _professionalStatusBarInitialized = true;
+
+            // Capture an initial snapshot only. Repeated live updates on StatusBarAdv panels can
+            // trigger excessive Syncfusion window-message churn in the RibbonForm shell.
+            RefreshProfessionalStatusBarSnapshot();
 
             _logger?.LogInformation("Professional status bar initialized");
         }
@@ -74,6 +98,7 @@ public partial class MainForm
     {
         _memoryPanel = new StatusBarAdvPanel
         {
+            Name = "MemoryPanel",
             Text = "Memory: 0 MB",
             Width = 120,
             BorderStyle = BorderStyle.Fixed3D
@@ -95,15 +120,16 @@ public partial class MainForm
         // Color values used as connection-state indicators, not theme overrides.
         _connectionPanel = new StatusBarAdvPanel
         {
-            Text = "● Connected",
-            Width = 100,
+            Name = "ConnectionPanel",
+            Text = "● Services Ready",
+            Width = 130,
             BorderStyle = BorderStyle.Fixed3D,
             ForeColor = AppThemeColors.Success
         };
 
         _connectionPanel.Click += OnConnectionPanelClick;
 
-        _statusBarToolTip?.SetToolTip(_connectionPanel, "Database connection status\nClick for details");
+        _statusBarToolTip?.SetToolTip(_connectionPanel, "Application service readiness\nClick for runtime details");
     }
 
     /// <summary>
@@ -113,8 +139,9 @@ public partial class MainForm
     {
         _rowCountPanel = new StatusBarAdvPanel
         {
+            Name = "RowCountPanel",
             Text = "0 items",
-            Width = 80,
+            Width = 95,
             BorderStyle = BorderStyle.Fixed3D
         };
 
@@ -126,16 +153,39 @@ public partial class MainForm
     /// </summary>
     private void CreateUserPanel()
     {
+        var currentUserDisplayName = GetAuthenticatedUserDisplayName();
+
         _userPanel = new StatusBarAdvPanel
         {
-            Text = $"👤 {Environment.UserName}",
+            Name = "UserPanel",
+            Text = $"👤 {currentUserDisplayName}",
             Width = 150,
             BorderStyle = BorderStyle.Fixed3D
         };
 
         _userPanel.Click += OnUserPanelClick;
 
-        _statusBarToolTip?.SetToolTip(_userPanel, $"Current user: {Environment.UserName}\nClick for user menu");
+        _statusBarToolTip?.SetToolTip(_userPanel, $"Current user: {currentUserDisplayName}\nClick for user menu");
+    }
+
+    private string GetAuthenticatedUserDisplayName()
+    {
+        var currentUser = _serviceProvider == null
+            ? null
+            : Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.Services.Abstractions.IUserContext>(_serviceProvider)?.DisplayName;
+        return string.IsNullOrWhiteSpace(currentUser) ? Environment.UserName : currentUser;
+    }
+
+    private void UpdateUserDisplay()
+    {
+        if (_userPanel == null || _userPanel.IsDisposed)
+        {
+            return;
+        }
+
+        var currentUserDisplayName = GetAuthenticatedUserDisplayName();
+        _userPanel.Text = $"👤 {currentUserDisplayName}";
+        _statusBarToolTip?.SetToolTip(_userPanel, $"Current user: {currentUserDisplayName}\nClick for user menu");
     }
 
     /// <summary>
@@ -148,28 +198,10 @@ public partial class MainForm
             Interval = 5000 // 5 seconds
         };
 
-        _memoryUpdateTimer.Tick += (s, e) => UpdateMemoryDisplay();
+        _memoryUpdateTimer.Tick += (s, e) => RefreshProfessionalStatusBarSnapshot();
         _memoryUpdateTimer.Start();
 
-        // Update immediately
-        UpdateMemoryDisplay();
-    }
-
-    /// <summary>
-    /// Starts clock update timer (updates every second).
-    /// </summary>
-    private void StartClockUpdateTimer()
-    {
-        _clockUpdateTimer = new System.Windows.Forms.Timer
-        {
-            Interval = 1000 // 1 second
-        };
-
-        _clockUpdateTimer.Tick += (s, e) => UpdateClockDisplay();
-        _clockUpdateTimer.Start();
-
-        // Update immediately
-        UpdateClockDisplay();
+        RefreshProfessionalStatusBarSnapshot();
     }
 
     /// <summary>
@@ -225,6 +257,108 @@ public partial class MainForm
         }
     }
 
+    private void RefreshProfessionalStatusBarSnapshot()
+    {
+        if (!_professionalStatusBarInitialized)
+        {
+            return;
+        }
+
+        UpdateMemoryDisplay();
+        UpdateRowCountDisplay(GetActiveGridRowCount());
+
+        if (_hostedAuthenticationStartupFailed)
+        {
+            UpdateConnectionStatus(false, "Authentication unavailable");
+        }
+        else if (IsHostedAuthenticationPanelActive() || IsHostedAuthenticationPending())
+        {
+            UpdateConnectionStatus(false, "Authentication required");
+        }
+        else
+        {
+            UpdateConnectionStatus(_serviceProvider != null, _serviceProvider != null ? "Services ready" : "Services unavailable");
+        }
+
+        UpdateUserDisplay();
+    }
+
+    private int GetActiveGridRowCount()
+    {
+        try
+        {
+            var activeGrid = GetActiveGrid();
+            if (activeGrid == null || activeGrid.IsDisposed)
+            {
+                return 0;
+            }
+
+            if (activeGrid.DataSource is BindingSource bindingSource)
+            {
+                return bindingSource.Count;
+            }
+
+            if (activeGrid.DataSource is ICollection collection)
+            {
+                return collection.Count;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to determine active grid row count");
+        }
+
+        return 0;
+    }
+
+    private void UpdatePrimaryStatusLabel(string statusText)
+    {
+        if (_statusLabel == null || _statusLabel.IsDisposed)
+        {
+            return;
+        }
+
+        var normalized = statusText?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            _statusLabel.Text = "Ready";
+            _statusLabel.ForeColor = AppThemeColors.Success;
+            return;
+        }
+
+        if (normalized.Contains("error", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("failed", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("unable", StringComparison.OrdinalIgnoreCase))
+        {
+            _statusLabel.Text = normalized;
+            _statusLabel.ForeColor = AppThemeColors.Error;
+            return;
+        }
+
+        if (normalized.Contains("warning", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("timeout", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("retry", StringComparison.OrdinalIgnoreCase))
+        {
+            _statusLabel.Text = normalized;
+            _statusLabel.ForeColor = AppThemeColors.Warning;
+            return;
+        }
+
+        if (normalized.Contains("loading", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("opening", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("initializing", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("refresh", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("import", StringComparison.OrdinalIgnoreCase))
+        {
+            _statusLabel.Text = normalized;
+            _statusLabel.ResetForeColor();
+            return;
+        }
+
+        _statusLabel.Text = normalized;
+        _statusLabel.ForeColor = AppThemeColors.Success;
+    }
+
     /// <summary>
     /// Updates row count display for active grid.
     /// </summary>
@@ -253,17 +387,13 @@ public partial class MainForm
 
             if (connected)
             {
-                _connectionPanel.Text = message ?? "● Connected";
+                _connectionPanel.Text = $"● {message ?? "Services Ready"}";
                 _connectionPanel.ForeColor = AppThemeColors.Success;
-                _statusBarToolTip?.SetToolTip(_connectionPanel,
-                    $"Database: Connected\n{message ?? "Connection active"}");
             }
             else
             {
-                _connectionPanel.Text = message ?? "● Disconnected";
+                _connectionPanel.Text = $"● {message ?? "Attention"}";
                 _connectionPanel.ForeColor = AppThemeColors.Error;
-                _statusBarToolTip?.SetToolTip(_connectionPanel,
-                    $"Database: Disconnected\n{message ?? "No connection"}");
             }
         }
         catch (Exception ex)
@@ -323,24 +453,22 @@ CPU Time: {process.TotalProcessorTime}";
     {
         try
         {
-            // Show database connection details
-            var details = @"Database Connection
+            var details = $@"Runtime Status
 
-Status: Connected
-Server: localhost
-Database: WileyWidget
-Provider: SQLite
+Services: {(_serviceProvider != null ? "Ready" : "Unavailable")}
+Theme: {SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme}
+UI Test Harness: {_uiConfig.IsUiTestHarness}
+Automation Mode: {IsUiAutomationMode()}
 
-Click to refresh connection...";
+Click OK to refresh the status snapshot.";
 
             var result = MessageBoxAdv.Show(this, details, "Connection Status",
                 MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
 
             if (result == DialogResult.OK)
             {
-                // Refresh connection
-                UpdateConnectionStatus(true, "Connection refreshed");
-                _logger?.LogDebug("Database connection refreshed");
+                RefreshProfessionalStatusBarSnapshot();
+                _logger?.LogDebug("Professional status snapshot refreshed");
             }
         }
         catch (Exception ex)
@@ -356,9 +484,10 @@ Click to refresh connection...";
     {
         try
         {
+            var currentUserDisplayName = GetAuthenticatedUserDisplayName();
             var userMenu = new ContextMenuStrip();
 
-            userMenu.Items.Add($"User: {Environment.UserName}").Enabled = false;
+            userMenu.Items.Add($"User: {currentUserDisplayName}").Enabled = false;
             userMenu.Items.Add(new ToolStripSeparator());
             userMenu.Items.Add("Profile Settings", null, (s, args) =>
             {
@@ -398,10 +527,6 @@ Click to refresh connection...";
             _memoryUpdateTimer?.Stop();
             _memoryUpdateTimer?.Dispose();
             _memoryUpdateTimer = null;
-
-            _clockUpdateTimer?.Stop();
-            _clockUpdateTimer?.Dispose();
-            _clockUpdateTimer = null;
 
             _statusBarToolTip?.Dispose();
             _statusBarToolTip = null;

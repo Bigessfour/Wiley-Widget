@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Syncfusion.Windows.Forms.Tools;
 using System.Windows.Forms;
 using WileyWidget.WinForms.Controls;
@@ -29,43 +30,79 @@ namespace WileyWidget.WinForms.Services
     /// </summary>
     public static class PanelRegistry
     {
-        public sealed record PanelEntry(Type PanelType, string DisplayName, string DefaultGroup = "Views", DockingStyle DefaultDock = DockingStyle.Right, bool ShowInRibbonPanelsMenu = true);
+        public sealed record PanelEntry(
+            Type PanelType,
+            string DisplayName,
+            string DefaultGroup = "Views",
+            DockingStyle DefaultDock = DockingStyle.Right,
+            bool ShowInRibbonPanelsMenu = true,
+            bool IncludeInTownReleaseScope = true);
 
         // NOTE: Keep this list alphabetized by DisplayName for readability.
         public static readonly IReadOnlyList<PanelEntry> Panels = new List<PanelEntry>
         {
             // ── Administration tab ──────────────────────────────────────────────
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountEditPanel),  "Account Editor",          "Administration", DockingStyle.Right,  false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ActivityLogPanel),  "Activity Log",            "AuditLogs",      DockingStyle.Bottom, false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AuditLogPanel),     "Audit Log & Activity",    "AuditLogs",      DockingStyle.Bottom, false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel), "Data Mapper",     "Administration", DockingStyle.Right,  false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.SettingsPanel),     "Settings",                "Administration", DockingStyle.Right,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountEditPanel),  "Account Editor",          "Administration", DockingStyle.Right,  false, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ActivityLogPanel),  "Activity Log",            "AuditLogs",      DockingStyle.Bottom, false, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AuditLogPanel),     "Audit Log & Activity",    "AuditLogs",      DockingStyle.Bottom, false, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel), "Data Mapper",     "Administration", DockingStyle.Right,  false, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.SettingsPanel),     "Settings",                "Administration", DockingStyle.Right,  true,  true),
 
             // ── Analytics & Reports tab ─────────────────────────────────────────
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel),          "Analytics Hub",             "Analytics",  DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel),     "Department Summary",        "Operations", DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.InsightFeedPanel),           "Insight Feed",              "Analytics",  DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel),     "Proactive AI Insights",     "Operations", DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ReportsPanel),               "Reports",                   "Reporting",  DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel),         "Revenue Trends",            "Analytics",  DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.WarRoomPanel),               "War Room",                  "Operations", DockingStyle.Right),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel),          "Analytics Hub",             "Analytics",  DockingStyle.Right, true,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.DepartmentSummaryPanel),     "Department Summary",        "Operations", DockingStyle.Right, true,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.InsightFeedPanel),           "Insight Feed",              "Analytics",  DockingStyle.Right, true,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ProactiveInsightsPanel),     "Proactive AI Insights",     "Operations", DockingStyle.Right, true,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ReportsPanel),               "Reports",                   "Reporting",  DockingStyle.Right, true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RevenueTrendsPanel),         "Revenue Trends",            "Analytics",  DockingStyle.Right, true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.WarRoomPanel),               "War Room",                  "Operations", DockingStyle.Right, true,  false),
 
             // ── Financials tab ──────────────────────────────────────────────────
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.BudgetPanel),       "Budget Management & Analysis", "Financials",  DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel),     "Municipal Accounts",           "Financials",  DockingStyle.Left),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.PaymentEditPanel),  "Payment Editor",               "Payments",    DockingStyle.Right, false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.PaymentsPanel),     "Payments",                     "Payments",    DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel),     "Rates",                        "Financials",  DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel),   "QuickBooks",                   "Integration", DockingStyle.Right, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.BudgetPanel),       "Budget Management & Analysis", "Financials",  DockingStyle.Right, true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AccountsPanel),     "Municipal Accounts",           "Financials",  DockingStyle.Left,  true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.PaymentEditPanel),  "Payment Editor",               "Payments",    DockingStyle.Right, false, false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.PaymentsPanel),     "Payments",                     "Payments",    DockingStyle.Right, true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.FormHostPanel),     "Rates",                        "Financials",  DockingStyle.Right, true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.QuickBooksPanel),   "QuickBooks",                   "Integration", DockingStyle.Right, true,  true),
 
             // ── Home tab ────────────────────────────────────────────────────────
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel), "Enterprise Vital Signs", "Core Navigation", DockingStyle.Fill, true),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl),     "JARVIS Chat",            "Core Navigation", DockingStyle.Right, true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel), "Enterprise Vital Signs", "Core Navigation", DockingStyle.Fill,  true, true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl),     "JARVIS Chat",            "Core Navigation", DockingStyle.Right, true, true),
 
             // ── Utilities tab ───────────────────────────────────────────────────
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.CustomersPanel),                "Customers",                  "Utilities", DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel), "Recommended Monthly Charge", "Utilities", DockingStyle.Right),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.UtilityBillPanel),              "Utility Bills",              "Utilities", DockingStyle.Right),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.CustomersPanel),                "Customers",                  "Utilities", DockingStyle.Right, true,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.RecommendedMonthlyChargePanel), "Recommended Monthly Charge", "Utilities", DockingStyle.Right, true,  true),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.UtilityBillPanel),              "Utility Bills",              "Utilities", DockingStyle.Right, true,  false),
         };
+
+        /// <summary>
+        /// Returns registered panels for UI navigation surfaces.
+        /// </summary>
+        /// <param name="includeHidden">
+        /// When true, includes panels marked as hidden from standard ribbon menus.
+        /// </param>
+        public static IEnumerable<PanelEntry> GetAllRegisteredPanels(bool includeHidden = false)
+        {
+            if (includeHidden)
+            {
+                return Panels;
+            }
+
+            return Panels.Where(panel => panel.ShowInRibbonPanelsMenu);
+        }
+
+        /// <summary>
+        /// Returns panels that are currently in scope for the town-focused release surface.
+        /// </summary>
+        public static IEnumerable<PanelEntry> GetTownReleasePanels(bool includeHidden = false)
+        {
+            var scopedPanels = Panels.Where(panel => panel.IncludeInTownReleaseScope);
+            if (includeHidden)
+            {
+                return scopedPanels;
+            }
+
+            return scopedPanels.Where(panel => panel.ShowInRibbonPanelsMenu);
+        }
     }
 }

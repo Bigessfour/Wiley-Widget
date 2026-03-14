@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,8 +25,12 @@ public partial class MainForm
     private TextBoxExt? _globalSearchBox;
     private SfListView? _searchResultsList;
     private AutoComplete? _globalSearchAutoComplete;
+    private System.Windows.Forms.Timer? _globalSearchDebounceTimer;
     private readonly HashSet<string> _globalSearchSuggestions = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<SearchResult> _searchDialogResults = new();
+    private string[] _globalSearchSuggestionSnapshot = Array.Empty<string>();
+    private string _pendingGlobalSearchQuery = string.Empty;
+    private long _globalSearchRequestVersion;
 
     /// <summary>
     /// Shows the global search dialog (Ctrl+K).
@@ -48,11 +53,15 @@ public partial class MainForm
             {
                 Text = "Search Everything (Ctrl+K)",
                 StartPosition = FormStartPosition.CenterParent,
-                Size = new Size(600, 400),
+                Size = new Size(
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f),
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(400f)),
                 FormBorderStyle = FormBorderStyle.SizableToolWindow,
                 ShowIcon = false,
                 ShowInTaskbar = false,
-                MinimumSize = new Size(400, 300)
+                MinimumSize = new Size(
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(400f),
+                    (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(300f))
             };
 
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
@@ -71,7 +80,7 @@ public partial class MainForm
                 throw new InvalidOperationException("SyncfusionControlFactory is not available for global search");
             }
 
-            _globalSearchBox.TextChanged += async (s, e) => await PerformGlobalSearchDialogAsync(_globalSearchBox.Text);
+            _globalSearchBox.TextChanged += OnGlobalSearchTextChanged;
             _globalSearchBox.KeyDown += OnSearchBoxKeyDown;
 
             _searchDialog.Controls.Add(_globalSearchBox);
@@ -96,13 +105,7 @@ public partial class MainForm
 
             _searchDialog.FormClosed += (s, e) =>
             {
-                _globalSearchAutoComplete?.Dispose();
-                _globalSearchAutoComplete = null;
-                _searchDialog = null;
-                _globalSearchBox = null;
-                _searchResultsList = null;
-                _globalSearchSuggestions.Clear();
-                _searchDialogResults.Clear();
+                ResetGlobalSearchDialogResources();
             };
 
             _searchDialog.Show(this);
@@ -117,7 +120,7 @@ public partial class MainForm
     /// <summary>
     /// Performs global search across panels, commands, and data.
     /// </summary>
-    private async Task PerformGlobalSearchDialogAsync(string query)
+    private async Task PerformGlobalSearchDialogAsync(string query, long requestVersion = 0)
     {
         if (_searchResultsList == null)
         {
@@ -129,6 +132,11 @@ public partial class MainForm
             var normalizedQuery = query?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(normalizedQuery))
             {
+                if (requestVersion != 0 && requestVersion != Volatile.Read(ref _globalSearchRequestVersion))
+                {
+                    return;
+                }
+
                 _searchDialogResults.Clear();
                 _searchResultsList.DataSource = Array.Empty<string>();
                 return;
@@ -144,6 +152,11 @@ public partial class MainForm
             if (searchService != null)
             {
                 var globalResult = await searchService.SearchAsync(normalizedQuery).ConfigureAwait(true);
+                if (requestVersion != 0 && requestVersion != Volatile.Read(ref _globalSearchRequestVersion))
+                {
+                    return;
+                }
+
                 results = globalResult.Matches
                     .Select(match => new SearchResult
                     {
@@ -208,7 +221,7 @@ public partial class MainForm
                 _globalSearchSuggestions.Add(suggestion);
             }
 
-            _globalSearchAutoComplete.DataSource = _globalSearchSuggestions.OrderBy(value => value).ToList();
+            RefreshGlobalSearchAutoCompleteDataSource();
             _globalSearchAutoComplete.SetAutoComplete(_globalSearchBox, AutoCompleteModes.AutoSuggest);
         }
         catch (Exception ex)
@@ -224,42 +237,171 @@ public partial class MainForm
             return;
         }
 
+        var suggestionsChanged = false;
+
         if (!string.IsNullOrWhiteSpace(query))
         {
-            _globalSearchSuggestions.Add(query.Trim());
+            suggestionsChanged |= _globalSearchSuggestions.Add(query.Trim());
         }
 
         foreach (var result in results)
         {
             if (!string.IsNullOrWhiteSpace(result.Name))
             {
-                _globalSearchSuggestions.Add(result.Name);
+                suggestionsChanged |= _globalSearchSuggestions.Add(result.Name);
             }
 
             if (!string.IsNullOrWhiteSpace(result.Description) && result.Description.Length <= 120)
             {
-                _globalSearchSuggestions.Add(result.Description);
+                suggestionsChanged |= _globalSearchSuggestions.Add(result.Description);
             }
         }
 
-        _globalSearchAutoComplete.DataSource = _globalSearchSuggestions.OrderBy(value => value).ToList();
+        if (suggestionsChanged)
+        {
+            RefreshGlobalSearchAutoCompleteDataSource();
+        }
+    }
+
+    private void OnGlobalSearchTextChanged(object? sender, EventArgs e)
+    {
+        QueueGlobalSearchDialogSearch(_globalSearchBox?.Text ?? string.Empty);
+    }
+
+    private async Task EnsureSearchDialogVisibleAsync(string query)
+    {
+        var normalizedQuery = query?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            return;
+        }
+
+        if (_searchDialog == null || _searchDialog.IsDisposed)
+        {
+            ShowGlobalSearchDialog();
+        }
+
+        if (_searchDialog == null || _searchDialog.IsDisposed || _globalSearchBox == null)
+        {
+            return;
+        }
+
+        if (!string.Equals(_globalSearchBox.Text, normalizedQuery, StringComparison.Ordinal))
+        {
+            _globalSearchBox.TextChanged -= OnGlobalSearchTextChanged;
+            try
+            {
+                _globalSearchBox.Text = normalizedQuery;
+            }
+            finally
+            {
+                _globalSearchBox.TextChanged += OnGlobalSearchTextChanged;
+            }
+        }
+
+        await PerformGlobalSearchDialogAsync(normalizedQuery).ConfigureAwait(true);
+
+        if (_searchResultsList != null && _searchDialogResults.Count > 0 && _searchResultsList.SelectedIndex < 0)
+        {
+            _searchResultsList.SelectedIndex = 0;
+        }
+
+        _searchDialog.Activate();
+        _globalSearchBox.Focus();
+        _globalSearchBox.SelectAll();
+    }
+
+    private void QueueGlobalSearchDialogSearch(string query)
+    {
+        _pendingGlobalSearchQuery = query;
+        EnsureGlobalSearchDebounceTimer();
+        _globalSearchDebounceTimer?.Stop();
+        _globalSearchDebounceTimer?.Start();
+    }
+
+    private void EnsureGlobalSearchDebounceTimer()
+    {
+        if (_globalSearchDebounceTimer != null)
+        {
+            return;
+        }
+
+        _globalSearchDebounceTimer = new System.Windows.Forms.Timer
+        {
+            Interval = 180,
+        };
+        _globalSearchDebounceTimer.Tick += async (_, _) => await FlushQueuedGlobalSearchAsync().ConfigureAwait(true);
+    }
+
+    private async Task FlushQueuedGlobalSearchAsync()
+    {
+        if (_searchResultsList == null)
+        {
+            return;
+        }
+
+        _globalSearchDebounceTimer?.Stop();
+        var requestVersion = Interlocked.Increment(ref _globalSearchRequestVersion);
+        await PerformGlobalSearchDialogAsync(_pendingGlobalSearchQuery, requestVersion).ConfigureAwait(true);
+    }
+
+    private void RefreshGlobalSearchAutoCompleteDataSource()
+    {
+        if (_globalSearchAutoComplete == null)
+        {
+            return;
+        }
+
+        var orderedSuggestions = _globalSearchSuggestions
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (_globalSearchSuggestionSnapshot.SequenceEqual(orderedSuggestions, StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _globalSearchSuggestionSnapshot = orderedSuggestions;
+        _globalSearchAutoComplete.DataSource = orderedSuggestions;
+    }
+
+    private void ResetGlobalSearchDialogResources()
+    {
+        _globalSearchDebounceTimer?.Stop();
+        _globalSearchDebounceTimer?.Dispose();
+        _globalSearchDebounceTimer = null;
+
+        _globalSearchAutoComplete?.Dispose();
+        _globalSearchAutoComplete = null;
+        _searchDialog = null;
+        _globalSearchBox = null;
+        _searchResultsList = null;
+        _globalSearchSuggestions.Clear();
+        _globalSearchSuggestionSnapshot = Array.Empty<string>();
+        _searchDialogResults.Clear();
+        _pendingGlobalSearchQuery = string.Empty;
+        Interlocked.Exchange(ref _globalSearchRequestVersion, 0);
+    }
+
+    private void DisposeGlobalSearchResources()
+    {
+        ResetGlobalSearchDialogResources();
     }
 
     private IEnumerable<string> BuildInitialGlobalSearchSuggestions()
     {
-        var panelSuggestions = PanelRegistry.Panels
+        var panelSuggestions = PanelRegistry.GetTownReleasePanels()
             .SelectMany(panel => new[] { panel.DisplayName, panel.DefaultGroup })
             .Where(value => !string.IsNullOrWhiteSpace(value));
 
         return panelSuggestions
             .Concat(new[]
             {
-                "Activity Log",
                 "Dashboard",
                 "Reports",
-                "Customers",
                 "Accounts",
-                "Payments",
+                "Rates",
+                "QuickBooks",
                 "Settings"
             })
             .Distinct(StringComparer.OrdinalIgnoreCase);
@@ -275,7 +417,7 @@ public partial class MainForm
         // Handle key events
         if (e.KeyCode == Keys.Enter)
         {
-            ExecuteSelectedSearchResult();
+            _ = ExecuteQueuedGlobalSearchAndSelectionAsync();
             e.Handled = true;
             e.SuppressKeyPress = true;
             return;
@@ -313,6 +455,12 @@ public partial class MainForm
         {
             _logger?.LogError(ex, "Error executing search result action");
         }
+    }
+
+    private async Task ExecuteQueuedGlobalSearchAndSelectionAsync()
+    {
+        await FlushQueuedGlobalSearchAsync().ConfigureAwait(true);
+        ExecuteSelectedSearchResult();
     }
 
     private void ExecuteSelectedSearchResult()
@@ -402,18 +550,13 @@ public partial class MainForm
     {
         if (!string.IsNullOrWhiteSpace(match.TargetPanelName))
         {
-            var panel = PanelRegistry.Panels.FirstOrDefault(entry =>
+            var panel = PanelRegistry.GetTownReleasePanels(includeHidden: true).FirstOrDefault(entry =>
                 string.Equals(entry.DisplayName, match.TargetPanelName, StringComparison.OrdinalIgnoreCase));
 
             if (panel != null)
             {
                 return () => ShowPanel(panel.PanelType, panel.DisplayName, panel.DefaultDock);
             }
-        }
-
-        if (string.Equals(match.Category, "Activity", StringComparison.OrdinalIgnoreCase))
-        {
-            return () => ShowPanel<Controls.Panels.ActivityLogPanel>("Activity Log", DockingStyle.Bottom, allowFloating: true);
         }
 
         return null;

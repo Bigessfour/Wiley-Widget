@@ -24,6 +24,13 @@
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Production startup optimizations -->
+    <TieredPGO>true</TieredPGO>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <ReadyToRunUseCrossgen2>true</ReadyToRunUseCrossgen2>
+  </PropertyGroup>
+
   <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.Runtime.Versioning.RuntimeConfiguration.AppContext.TryGetSwitch"
@@ -32,6 +39,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="WileyWidget.WinForms.Tests" />
+    <InternalsVisibleTo Include="WileyWidget.LayoutRegression.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -48,7 +56,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Resilience" />
-    <!-- FastReport Open Source WinForms viewer -->
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
@@ -65,6 +72,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
@@ -111,7 +119,6 @@
     <PackageReference Include="microsoft.winforms.designer.sdk">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- FastReport Open Source WinForms viewer -->
     <!-- Force Microsoft.CodeAnalysis.Common to 4.8.0 to resolve version conflict -->
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     <!-- Roslyn scripting for C# evaluation plugin (JARVIS) -->
@@ -147,9 +154,7 @@
     <Content Include="Reports\\**\\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <!-- Reference root-level FastReport templates for shared reports -->
-    <Content Include="..\\..\\Reports\\*.frx">
-      <Link>Reports\%(Filename)%(Extension)</Link>
+    <Content Include="Resources\\Branding\\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <!-- App settings must be copied because default content items are disabled -->

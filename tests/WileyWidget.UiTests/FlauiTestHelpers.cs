@@ -97,8 +97,7 @@ namespace WileyWidget.UiTests
 
         public static void AssertNoCriticalLogs(this ILogger logger, string runLog)
         {
-            if (runLog.Contains("[CRITICAL] DockingManager is null"))
-                throw new InvalidOperationException("DockingManager null warning still present – use TestDockingManagerStub!");
+            // DockingManager removed; no suppressed crash signatures tracked here
         }
     }
 }

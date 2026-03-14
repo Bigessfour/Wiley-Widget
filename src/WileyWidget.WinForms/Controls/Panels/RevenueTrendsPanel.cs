@@ -38,6 +38,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Utilities;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Themes;
 
@@ -117,9 +118,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         ILogger<ScopedPanelBase<RevenueTrendsViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
+        Size = ScaleLogicalToDevice(new Size(1400, 900));
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         Dock = DockStyle.Fill;
+        AutoScroll = false;
 
         // Initialize UI once, then apply theme and subscribe to changes
         SafeSuspendAndLayout(InitializeComponent);
@@ -133,7 +135,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         PerformLayout();
         Invalidate(true);
     }
@@ -146,13 +148,15 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
         // PANEL HEADER (Dock.Top, fixed height)
         // ══════════════════════════════════════════════════════════════
-        _panelHeader = new PanelHeader
+        _panelHeader = ControlFactory.CreatePanelHeader(header =>
         {
-            Dock = DockStyle.Top,
-            Title = "Revenue Trends",
-            AccessibleName = "Revenue Trends panel header",
-            AccessibleDescription = "Header with title, refresh, and close actions for the Revenue Trends panel"
-        };
+            header.Dock = DockStyle.Top;
+            header.Title = "Revenue Trends";
+            header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+            header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+            header.AccessibleName = "Revenue Trends panel header";
+            header.AccessibleDescription = "Header with title, refresh, and close actions for the Revenue Trends panel";
+        });
         _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderHelpClickedHandler = (s, e) => Dialogs.ChartWizardFaqDialog.ShowModal(this);
@@ -172,7 +176,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f),
             MinimumSize = new Size(0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f)),
             // CHANGE 4: Added consistent padding (10px) to summary panel
-            Padding = new Padding(10),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.DialogContentPadding),
             AccessibleName = "Revenue summary metrics panel",
             AccessibleDescription = "Panel displaying key revenue metrics: total revenue, average monthly revenue, peak month, and growth rate"
         };
@@ -187,7 +191,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             RowCount = 1,
             AutoSize = false, // CRITICAL: Explicit false prevents measurement loops
             // CHANGE 6: Added padding to summary cards layout
-            Padding = new Padding(4),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.ToolbarPadding),
             AccessibleName = "Summary metric cards container",
             AccessibleDescription = "Contains four metric cards arranged in a row"
         };
@@ -215,14 +219,14 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _mainSplit = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = Orientation.Horizontal;
-            splitter.SplitterWidth = 6;  // Slightly thicker splitter for better UX
+            splitter.Orientation = Orientation.Vertical;
+            splitter.SplitterWidth = 13;
             splitter.Padding = new Padding(0);
             splitter.AccessibleName = "Chart and grid split container";
             splitter.AccessibleDescription = "Resizable container splitting chart visualization above and data grid below. Drag splitter to adjust proportions.";
         });
         // Defer setting min sizes and splitter distance until control is sized
-        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(_mainSplit, 200, 150, 350);
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainerAdvanced(_mainSplit, 280, 220, 430);
 
         // CHART CONTROL (Panel1, Dock.Fill)
         // ══════════════════════════════════════════════════════════════
@@ -230,6 +234,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _chartControl = ControlFactory.CreateChartControl("Revenue Trends", chart =>
         {
             chart.Dock = DockStyle.Fill;
+            chart.MinimumSize = LayoutTokens.GetScaled(new Size(480, 300));
             // CHANGE 12: Added comprehensive accessibility information
             chart.AccessibleName = "Revenue trends line chart";
             chart.AccessibleDescription = "Line chart visualization showing monthly revenue trends over time. Y-axis shows revenue in currency, X-axis shows months.";
@@ -287,6 +292,33 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         };
         Controls.Add(_lblLastUpdated);
 
+        var rootLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            AutoSize = false,
+            Name = "RevenueTrendsRootLayout"
+        };
+        rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, _panelHeader.Height));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, _summaryPanel.Height));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, _lblLastUpdated.Height));
+
+        Controls.Remove(_panelHeader);
+        Controls.Remove(_summaryPanel);
+        Controls.Remove(_mainSplit);
+        Controls.Remove(_lblLastUpdated);
+
+        rootLayout.Controls.Add(_panelHeader, 0, 0);
+        rootLayout.Controls.Add(_summaryPanel, 0, 1);
+        rootLayout.Controls.Add(_mainSplit, 0, 2);
+        rootLayout.Controls.Add(_lblLastUpdated, 0, 3);
+        Controls.Add(rootLayout);
+
         // OVERLAYS (Absolute positioning via Controls.Add)
         // ══════════════════════════════════════════════════════════════
         // Loading overlay
@@ -301,13 +333,13 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _loadingOverlay.BringToFront();
 
         // No-data overlay
-        _noDataOverlay = new NoDataOverlay
+        _noDataOverlay = ControlFactory.CreateNoDataOverlay(overlay =>
         {
-            Message = "No revenue data for this period\r\nAdd transactions to see trends over time",
-            Dock = DockStyle.Fill,
-            AccessibleName = "No data overlay",
-            AccessibleDescription = "Message displayed when no revenue data is available for the selected period"
-        };
+            overlay.Message = "No revenue data for this period\r\nAdd transactions to see trends over time";
+            overlay.Dock = DockStyle.Fill;
+            overlay.AccessibleName = "No data overlay";
+            overlay.AccessibleDescription = "Message displayed when no revenue data is available for the selected period";
+        });
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
 
@@ -324,10 +356,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         var cardPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(6),  // CHANGE: Increased margin between cards for breathing room
-            Padding = new Padding(10),  // CHANGE: Consistent padding inside cards
+            Margin = LayoutTokens.GetScaled(LayoutTokens.MetricCardMargin),  // CHANGE: Increased margin between cards for breathing room
+            Padding = LayoutTokens.GetScaled(LayoutTokens.DialogContentPadding),  // CHANGE: Consistent padding inside cards
             AutoSize = false,
-            MinimumSize = new Size(80, 80),  // CHANGE: Ensure cards have reasonable minimum size
+            MinimumSize = LayoutTokens.GetScaled(LayoutTokens.MetricCardMinimumSize),  // CHANGE: Ensure cards have reasonable minimum size
             AccessibleName = $"{title} summary card",
             AccessibleDescription = description
         };
@@ -384,6 +416,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // Grid line colors inherited from global theme (no manual color assignment)
 
         // Date formatting for X-axis labels
+        _chartControl.PrimaryXAxis.Title = "Month";
+        _chartControl.PrimaryXAxis.TitleFont = this.Font;
+        _chartControl.PrimaryXAxis.Font = this.Font;
         try
         {
             var xAxis = _chartControl.PrimaryXAxis;
@@ -413,8 +448,11 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // Enable legend per Syncfusion best practices
         // CHANGE 20: Added accessibility info to legend
         _chartControl.ShowLegend = true;
+        _chartControl.Legend.Position = ChartDock.Bottom;
+        _chartControl.Legend.Alignment = ChartAlignment.Center;
         _chartControl.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside;
         _chartControl.Legend.Font = this.Font;
+        _chartControl.ElementsSpacing = 8;
         // Legend colors inherited from global theme
     }
 
@@ -484,10 +522,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         try
         {
             // Set row height for better visual spacing and clickability
-            grid.RowHeight = 32;
+            grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
 
             // Set header row height for better visual hierarchy
-            grid.HeaderRowHeight = 40;
+            grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightTall);
 
             Logger?.LogDebug("Revenue metrics grid spacing applied");
         }
@@ -646,7 +684,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             {
                 _lblGrowthRateValue.Text = ViewModel.GrowthRate.ToString("F1", CultureInfo.CurrentCulture) + "%";
                 // CHANGE 23: Semantic status color (green/red) - allowed by project rules for status indicators
-                _lblGrowthRateValue.ForeColor = ViewModel.GrowthRate >= 0 ? ThemeColors.Success : ThemeColors.Error;
+                _lblGrowthRateValue.ForeColor = ViewModel.GrowthRate >= 0 ? Color.Green : Color.Red;
             }
 
             if (_lblLastUpdated != null)
@@ -694,7 +732,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
                 // Configure series style
                 lineSeries.Style.Border.Width = 2;
-                lineSeries.Style.Symbol.Size = new Size(8, 8);
+                lineSeries.Style.Symbol.Size = LayoutTokens.GetScaled(LayoutTokens.ChartMarkerSize);
 
                 // Configure tooltip format
                 lineSeries.PointsToolTipFormat = "{1:C0}";
@@ -760,8 +798,8 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             int availableHeight = _mainSplit.Height;
             if (availableHeight > 0)
             {
-                // Default to 50% split, but respect minimum sizes
-                int proposedDistance = availableHeight / 2;
+                // Bias slightly toward the chart so titled axes and legends keep adequate breathing room.
+                int proposedDistance = (int)Math.Round(availableHeight * 0.58d);
                 int minDistance = _mainSplit.Panel1MinSize;
                 int maxDistance = availableHeight - _mainSplit.Panel2MinSize;
 

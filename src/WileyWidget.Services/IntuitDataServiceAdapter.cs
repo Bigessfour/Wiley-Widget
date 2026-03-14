@@ -69,6 +69,39 @@ namespace WileyWidget.Services
             return _ds.FindAll(new JournalEntry(), 1, 500).ToList();
         }
 
+        public List<Purchase> FindPurchases(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                var query = BuildPurchaseDateRangeQuery(startDate, endDate);
+                if (_ctx != null)
+                {
+                    var qs = new QueryService<Purchase>(_ctx);
+                    return qs.ExecuteIdsQuery(query).Cast<Purchase>().ToList();
+                }
+
+                var executeQuery = _ds.GetType().GetMethod("ExecuteQuery", new[] { typeof(string) });
+                if (executeQuery != null)
+                {
+                    var results = executeQuery.Invoke(_ds, new object[] { query }) as System.Collections.IEnumerable;
+                    return results?.Cast<Purchase>().ToList() ?? new List<Purchase>();
+                }
+            }
+            catch
+            {
+                // fall through to FindAll fallback below
+            }
+
+            return _ds.FindAll(new Purchase(), 1, 500)
+                .Where(p => p.TxnDate >= startDate.Date && p.TxnDate <= endDate.Date)
+                .ToList();
+        }
+
+        private static string BuildPurchaseDateRangeQuery(DateTime startDate, DateTime endDate)
+        {
+            return $"SELECT * FROM Purchase WHERE TxnDate >= '{startDate:yyyy-MM-dd}' AND TxnDate <= '{endDate:yyyy-MM-dd}'";
+        }
+
         public List<Budget> FindBudgets(int startPosition = 1, int pageSize = 100)
         {
             // Some SDK versions expose Budget; this implements a simple FindAll-based adapter.

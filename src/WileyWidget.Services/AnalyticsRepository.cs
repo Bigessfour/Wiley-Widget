@@ -92,7 +92,7 @@ namespace WileyWidget.Services
 
             if (!latestTransactions.Any())
             {
-                _logger.LogWarning("No reserve transactions found for current balance calculation");
+                _logger.LogInformation("No reserve transactions found for current balance calculation; defaulting reserve balance to 0");
                 return 0;
             }
 

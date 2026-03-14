@@ -17,7 +17,7 @@ namespace WileyWidget.WinForms.Extensions
         internal sealed class Options
         {
             public SmoothingMode SmoothingMode { get; init; } = SmoothingMode.AntiAlias;
-            public int ElementsSpacing { get; init; } = 5;
+            public int ElementsSpacing { get; init; } = 8;
             public bool ShowToolTips { get; init; } = true;
             public bool TransparentChartArea { get; init; } = false;
             public bool EnableZooming { get; init; } = true;

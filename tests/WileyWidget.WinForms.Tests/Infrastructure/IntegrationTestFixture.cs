@@ -101,10 +101,6 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
                 Application.SetCompatibleTextRenderingDefault(false);
                 Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme =
                     WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-
-                var dummyDocking = new Syncfusion.Windows.Forms.Tools.DockingManager();
-                dummyDocking.ThemeName = WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                dummyDocking.Dispose();
             }
             catch (Exception ex)
             {

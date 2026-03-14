@@ -1,4 +1,5 @@
 using System;
+using FlaUI.Core.AutomationElements;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Ui
@@ -7,16 +8,20 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
     public class PaymentEditPanelFlaUiTests : FlaUiTestBase
     {
         [StaFact]
-        public void PaymentEditPanel_HasAllFieldsAndSaveButton_WhenPanelLoaded()
+        public void PaymentAddDialog_HasAllFieldsAndSaveButton_WhenOpenedFromPaymentsPanel()
         {
             EnsureAppLaunched();
-            if (!PanelActivationHelpers.EnsurePanelVisibleOrHostGated(SharedMainWindow!, "New Payment", TimeSpan.FromSeconds(30)))
+            if (!PanelActivationHelpers.EnsurePanelVisibleOrHostGated(SharedMainWindow!, "Payments", TimeSpan.FromSeconds(30)))
             {
                 return;
             }
 
+            var addPaymentButton = FlaUiHelpers.FindElementByName(SharedMainWindow!, "Add Payment", TimeSpan.FromSeconds(8));
+            Assert.NotNull(addPaymentButton);
+            addPaymentButton!.AsButton().Invoke();
+
             Assert.NotNull(FlaUiHelpers.FindElementByName(SharedMainWindow!, "Check Number", TimeSpan.FromSeconds(8)));
-            Assert.NotNull(FlaUiHelpers.FindElementByName(SharedMainWindow!, "Save Changes", TimeSpan.FromSeconds(8)));
+            Assert.NotNull(FlaUiHelpers.FindElementByName(SharedMainWindow!, "Save Payment", TimeSpan.FromSeconds(8)));
         }
     }
 }

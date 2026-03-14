@@ -59,9 +59,24 @@ public sealed class ThemeService : IThemeService
     /// Applies the specified theme globally and notifies subscribers.
     /// This also persists the theme choice to application settings.
     /// </summary>
-    /// <param name="themeName">The name of the theme to apply (e.g., "Office2019Dark").</param>
+    /// <param name="themeName">The name of the theme to apply (e.g., "Office2016Black").</param>
     public void ApplyTheme(string themeName)
     {
+        ApplyThemeCore(themeName, forceRefresh: false, persistSelection: true);
+    }
+
+    /// <summary>
+    /// Re-applies the active theme to Syncfusion and all theme subscribers without persisting settings again.
+    /// </summary>
+    public void ReapplyCurrentTheme()
+    {
+        ApplyThemeCore(_currentTheme, forceRefresh: true, persistSelection: false);
+    }
+
+    private void ApplyThemeCore(string themeName, bool forceRefresh, bool persistSelection)
+    {
+        var themeSwitchStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
         if (string.IsNullOrWhiteSpace(themeName))
         {
             _logger.LogWarning("Attempted to apply null or empty theme name. Ignoring.");
@@ -69,7 +84,7 @@ public sealed class ThemeService : IThemeService
         }
 
         var validatedTheme = ThemeColors.ValidateTheme(themeName, _logger);
-        if (validatedTheme == _currentTheme)
+        if (!forceRefresh && validatedTheme == _currentTheme)
         {
             _logger.LogDebug("Theme '{Theme}' is already active. Skipping.", validatedTheme);
             return;
@@ -78,7 +93,14 @@ public sealed class ThemeService : IThemeService
         var previousTheme = _currentTheme;
         _currentTheme = validatedTheme;
 
-        _logger.LogInformation("Theme changed from '{PreviousTheme}' to '{NewTheme}'", previousTheme, _currentTheme);
+        if (forceRefresh)
+        {
+            _logger.LogInformation("Reapplying active theme '{Theme}'", _currentTheme);
+        }
+        else
+        {
+            _logger.LogInformation("Theme changed from '{PreviousTheme}' to '{NewTheme}'", previousTheme, _currentTheme);
+        }
 
         // Ensure theme assembly is loaded
         ThemeColors.EnsureThemeAssemblyLoadedForTheme(_currentTheme, _logger);
@@ -95,16 +117,18 @@ public sealed class ThemeService : IThemeService
         }
 
         // Notify subscribers
+        var subscriberCount = ThemeChanged?.GetInvocationList().Length ?? 0;
         try
         {
             ThemeChanged?.Invoke(this, _currentTheme);
+            _logger.LogDebug("[THEME] Notified {SubscriberCount} theme subscribers for {Theme}", subscriberCount, _currentTheme);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error notifying theme change subscribers");
         }
 
-        if (_settingsService != null)
+        if (persistSelection && _settingsService != null)
         {
             try
             {
@@ -117,5 +141,14 @@ public sealed class ThemeService : IThemeService
                 _logger.LogWarning(ex, "Failed to persist theme '{Theme}' to user settings", _currentTheme);
             }
         }
+
+        themeSwitchStopwatch.Stop();
+        _logger.LogInformation(
+            forceRefresh
+                ? "[THEME] Theme refresh completed: {PreviousTheme} -> {Theme} in {ElapsedMs}ms"
+                : "[THEME] Theme switch completed: {PreviousTheme} -> {Theme} in {ElapsedMs}ms",
+            previousTheme,
+            _currentTheme,
+            themeSwitchStopwatch.ElapsedMilliseconds);
     }
 }

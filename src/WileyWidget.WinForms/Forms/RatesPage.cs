@@ -17,6 +17,7 @@ using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Forms
 {
@@ -256,7 +257,8 @@ namespace WileyWidget.WinForms.Forms
             }.PreventStringRelationalFilters(null, "EnterpriseName");
 
             // Force header visibility and height
-            _sfDataGrid.HeaderRowHeight = 38;
+            _sfDataGrid.RowHeight = LayoutTokens.GetScaled(34);
+            _sfDataGrid.HeaderRowHeight = LayoutTokens.GetScaled(42);
             _sfDataGrid.Style.HeaderStyle.Font = new GridFontInfo(new Font("Segoe UI", 10F, FontStyle.Bold));
             _sfDataGrid.Style.HeaderStyle.HorizontalAlignment = HorizontalAlignment.Center;
 
@@ -270,7 +272,16 @@ namespace WileyWidget.WinForms.Forms
             _sfDataGrid.Columns.Add(new GridNumericColumn { MappingName = "CurrentCharge", HeaderText = "Current Monthly Charge", Format = "C2" });
             _sfDataGrid.Columns.Add(new GridNumericColumn { MappingName = "AverageExpenses", HeaderText = "Average Monthly Expenses", Format = "C2", AllowEditing = false });
             _sfDataGrid.Columns.Add(new GridNumericColumn { MappingName = "ProfitLoss", HeaderText = "Monthly Profit or Loss (Average)", Format = "C2", AllowEditing = false });
-            _sfDataGrid.Columns.Add(new GridNumericColumn { MappingName = "SimilarCommunitiesAverage", HeaderText = "Avg Charge Similar CO Communities (Statewide Proxy)", Format = "C2", AllowEditing = false });
+            var similarCommunitiesAverageColumn = new GridNumericColumn
+            {
+                MappingName = "SimilarCommunitiesAverage",
+                HeaderText = "Avg Charge Similar CO Communities",
+                Format = "C2",
+                AllowEditing = false,
+                Width = LayoutTokens.GetScaled(340),
+                MinimumWidth = LayoutTokens.GetScaled(340)
+            };
+            _sfDataGrid.Columns.Add(similarCommunitiesAverageColumn);
 
             // Conditional formatting for Profit/Loss
             _sfDataGrid.QueryCellStyle += (s, e) =>

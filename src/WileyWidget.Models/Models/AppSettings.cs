@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace WileyWidget.Models;
 
@@ -36,6 +37,10 @@ public class AppSettings
     public bool EnableAutoSave { get; set; } = true;
     public int AutoSaveIntervalMinutes { get; set; } = 5;
     public string ApplicationFont { get; set; } = "Segoe UI, 9pt";
+    public string DefaultExportPath { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "WileyWidget",
+        "Exports");
 
     // Grid column preferences
     public bool UseDynamicColumns { get; set; } = false;

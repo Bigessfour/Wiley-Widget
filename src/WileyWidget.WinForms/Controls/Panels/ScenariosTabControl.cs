@@ -15,6 +15,8 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utilities;
 
@@ -28,6 +30,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 public partial class ScenariosTabControl : UserControl
 {
     private readonly ScenariosTabViewModel? _viewModel;
+    private readonly SyncfusionControlFactory _controlFactory;
     private readonly ILogger _logger;
 
     // UI Controls
@@ -47,15 +50,16 @@ public partial class ScenariosTabControl : UserControl
 
     public bool IsLoaded { get; private set; }
 
-    public ScenariosTabControl(ScenariosTabViewModel? viewModel, ILogger? logger = null)
+    public ScenariosTabControl(ScenariosTabViewModel? viewModel, SyncfusionControlFactory controlFactory, ILogger? logger = null)
     {
         _viewModel = viewModel;
+        _controlFactory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         _logger = logger ?? NullLogger.Instance;
 
         // Apply Syncfusion theme
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, theme);
         }
         catch { /* Theme application is best-effort */ }
@@ -72,17 +76,16 @@ public partial class ScenariosTabControl : UserControl
         this.Dock = DockStyle.Fill;
         this.AutoScaleMode = AutoScaleMode.Dpi;
         this.AutoScroll = true;
-        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
-        this.Padding = new Padding(8);
+        this.MinimumSize = Size.Empty;
+        this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
         _toolTip = new ToolTip();
 
         // Main layout - inputs on top, results below
-        var mainSplit = new SplitContainerAdv
+        var mainSplit = _controlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 120
-        };
+            splitter.Orientation = Orientation.Vertical;
+            splitter.SplitterDistance = 120;
+        });
 
         // Top: Input panel
         InitializeInputPanel();
@@ -107,7 +110,7 @@ public partial class ScenariosTabControl : UserControl
 
     private void InitializeInputPanel()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
 
         _inputPanel = new Panel
         {
@@ -135,34 +138,34 @@ public partial class ScenariosTabControl : UserControl
 
         // Rate Increase
         var rateLabel = new Label { Text = "Rate Increase %:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _rateIncreaseTextBox = new TextBoxExt
+        _rateIncreaseTextBox = _controlFactory.CreateTextBoxExt(textBox =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Rate increase percent",
-            AccessibleDescription = "Rate increase percentage input"
-        };
+            textBox.Dock = DockStyle.Fill;
+            textBox.AccessibleName = "Rate increase percent";
+            textBox.AccessibleDescription = "Rate increase percentage input";
+        });
         _toolTip?.SetToolTip(_rateIncreaseTextBox, "Enter the projected rate increase percentage.");
         _rateIncreaseTextBox.TextChanged += RateIncreaseTextBox_TextChanged;
 
         // Expense Increase
         var expenseLabel = new Label { Text = "Expense Increase %:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _expenseIncreaseTextBox = new TextBoxExt
+        _expenseIncreaseTextBox = _controlFactory.CreateTextBoxExt(textBox =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Expense increase percent",
-            AccessibleDescription = "Expense increase percentage input"
-        };
+            textBox.Dock = DockStyle.Fill;
+            textBox.AccessibleName = "Expense increase percent";
+            textBox.AccessibleDescription = "Expense increase percentage input";
+        });
         _toolTip?.SetToolTip(_expenseIncreaseTextBox, "Enter the projected expense increase percentage.");
         _expenseIncreaseTextBox.TextChanged += ExpenseIncreaseTextBox_TextChanged;
 
         // Revenue Target
         var revenueLabel = new Label { Text = "Revenue Target:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill };
-        _revenueTargetTextBox = new TextBoxExt
+        _revenueTargetTextBox = _controlFactory.CreateTextBoxExt(textBox =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Revenue target",
-            AccessibleDescription = "Revenue target input"
-        };
+            textBox.Dock = DockStyle.Fill;
+            textBox.AccessibleName = "Revenue target";
+            textBox.AccessibleDescription = "Revenue target input";
+        });
         _toolTip?.SetToolTip(_revenueTargetTextBox, "Enter the projected revenue target.");
         _revenueTargetTextBox.TextChanged += RevenueTargetTextBox_TextChanged;
 
@@ -175,27 +178,23 @@ public partial class ScenariosTabControl : UserControl
             WrapContents = false
         };
 
-        _runScenarioButton = new SfButton
+        _runScenarioButton = _controlFactory.CreateSfButton("Run Scenario", button =>
         {
-            Text = "Run Scenario",
-            AutoSize = false,
-            Size = new Size(120, 32),
-            ThemeName = themeName,
-            Margin = new Padding(4, 0, 4, 0)
-        };
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeRunScenario);
+            button.Margin = new Padding(4, 0, 4, 0);
+        });
         _runScenarioButton.AccessibleName = "Run scenario";
         _runScenarioButton.AccessibleDescription = "Executes the scenario with current inputs";
         _toolTip?.SetToolTip(_runScenarioButton, "Run the scenario with current parameters.");
         _runScenarioButton.Click += RunScenarioButton_Click;
 
-        _saveScenarioButton = new SfButton
+        _saveScenarioButton = _controlFactory.CreateSfButton("Save", button =>
         {
-            Text = "Save",
-            AutoSize = false,
-            Size = new Size(96, 32),
-            ThemeName = themeName,
-            Margin = new Padding(4, 0, 4, 0)
-        };
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeSaveCompact);
+            button.Margin = new Padding(4, 0, 4, 0);
+        });
         _saveScenarioButton.AccessibleName = "Save scenario";
         _saveScenarioButton.AccessibleDescription = "Saves the current scenario configuration";
         _toolTip?.SetToolTip(_saveScenarioButton, "Save this scenario configuration.");
@@ -218,16 +217,13 @@ public partial class ScenariosTabControl : UserControl
 
     private void InitializeResultsGrid()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-        _resultsGrid = new SfDataGrid
+        _resultsGrid = _controlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AllowEditing = false,
-            AutoGenerateColumns = false,
-            ThemeName = themeName,
-            AccessibleName = "Scenario results grid",
-            AccessibleDescription = "Results of the scenario calculation"
-        }.PreventStringRelationalFilters(null, "Description");
+            grid.AllowEditing = false;
+            grid.AutoGenerateColumns = false;
+            grid.AccessibleName = "Scenario results grid";
+            grid.AccessibleDescription = "Results of the scenario calculation";
+        }).PreventStringRelationalFilters(null, "Description");
         _toolTip?.SetToolTip(_resultsGrid, "Scenario outcomes and variance results.");
 
         // Configure columns for scenario results

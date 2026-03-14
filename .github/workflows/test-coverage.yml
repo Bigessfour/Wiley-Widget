@@ -28,13 +28,17 @@ jobs:
       - name: Build
         run: dotnet build WileyWidget.sln --no-restore --configuration Release
 
+      - name: Restore local tools
+        run: dotnet tool restore
+
       - name: Test with Coverage
+        shell: pwsh
         run: |
-          dotnet test WileyWidget.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+          ./scripts/tests/run-coverage.ps1 -Configuration Release -NoRestore
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage/**/coverage.cobertura.xml
+          files: ./CoverageReport/Cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false

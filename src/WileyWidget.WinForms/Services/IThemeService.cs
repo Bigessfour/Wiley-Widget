@@ -27,6 +27,12 @@ public interface IThemeService
     /// Applies the specified theme globally and notifies subscribers.
     /// This also persists the theme choice to application settings.
     /// </summary>
-    /// <param name="themeName">The name of the theme to apply (e.g., "Office2019Dark").</param>
+    /// <param name="themeName">The name of the theme to apply (e.g., "Office2016Black").</param>
     void ApplyTheme(string themeName);
+
+    /// <summary>
+    /// Re-applies the current validated theme to the global skin manager and all subscribers.
+    /// Use this when layout restore or late-created surfaces need a refresh without changing the selected theme.
+    /// </summary>
+    void ReapplyCurrentTheme();
 }

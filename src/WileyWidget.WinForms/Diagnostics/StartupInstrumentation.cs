@@ -20,7 +20,7 @@ namespace WileyWidget.WinForms.Diagnostics
         /// <summary>
         /// Records the time taken for a specific initialization phase.
         /// </summary>
-        /// <param name="phaseName">Name of the phase (e.g., "DockingManager Init", "Theme Application")</param>
+        /// <param name="phaseName">Name of the phase (e.g., "Docking Init", "Theme Application")</param>
         /// <param name="milliseconds">Time taken in milliseconds</param>
         public static void RecordPhaseTime(string phaseName, long milliseconds)
         {

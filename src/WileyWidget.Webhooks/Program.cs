@@ -25,14 +25,14 @@ app.MapGet("/app/launch", () => Results.Content("<html><body><h3>Wiley Widget</h
 // App disconnect URL (Intuit settings → Disconnect URL)
 app.MapGet("/app/disconnect", () => Results.Content("<html><body><h3>Wiley Widget</h3><p>Disconnect acknowledged.</p></body></html>", "text/html"));
 
-// Privacy Policy (for Intuit settings) - simple placeholder for sandbox/dev
+// Privacy Policy (for Intuit settings)
 app.MapGet("/privacy", () => Results.Content(
-    "<html><body><h3>Wiley Widget - Privacy Policy (Sandbox)</h3><p>This is a development placeholder. No personal data is collected by this dev endpoint.</p></body></html>",
+    "<html><body><h3>Wiley Widget - Privacy Policy</h3><p>Wiley Widget processes customer and financial data only for authorized municipal finance operations.</p><p>Webhook payloads are used to synchronize accounting events and are retained according to operational and legal requirements.</p><p>No data is sold or shared for advertising purposes.</p><p>For requests regarding data handling, contact the Wiley Widget administrator for your organization.</p></body></html>",
     "text/html"));
 
-// End-User License Agreement (for Intuit settings) - simple placeholder for sandbox/dev
+// End-User License Agreement (for Intuit settings)
 app.MapGet("/eula", () => Results.Content(
-    "<html><body><h3>Wiley Widget - EULA (Sandbox)</h3><p>Development placeholder EULA. By using this sandbox, you agree this is for testing only.</p></body></html>",
+    "<html><body><h3>Wiley Widget - End User License Agreement</h3><p>Use of Wiley Widget is limited to authorized users operating under their organization's agreement.</p><p>The software and related services are provided for internal business operations, subject to applicable laws, compliance policies, and service terms.</p><p>By using this application, users agree to follow organizational security, privacy, and records-retention requirements.</p></body></html>",
     "text/html"));
 
 // Intuit Webhooks endpoint
@@ -94,3 +94,5 @@ app.MapPost("/qbo/webhooks", async (HttpRequest req) =>
 });
 
 app.Run();
+
+public partial class Program;

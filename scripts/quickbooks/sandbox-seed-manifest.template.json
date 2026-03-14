@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "environment": "sandbox",
+    "companyName": "Town of Wiley Sandbox",
+    "realmId": "YOUR_SANDBOX_REALM_ID",
+    "redirectUri": "http://localhost:5000/callback/",
+    "owner": "Wiley Widget",
+    "notes": "Canonical prep manifest for the current sandbox seed path. Update realmId after the first successful connect."
+  },
+  "inputs": {
+    "chartOfAccountsCsvPath": "templates/town-of-wiley-coa.seed.csv",
+    "vendorSeedPath": "",
+    "budgetSeedPath": ""
+  },
+  "execution": {
+    "validateOnly": true,
+    "seedChartOfAccounts": true,
+    "seedVendors": false,
+    "seedBudgets": false,
+    "tokenSource": "WileyWidget settings.json via export-qbo-session.ps1"
+  },
+  "acceptanceCriteria": [
+    "QuickBooks diagnostics show sandbox environment and Redirect OK = YES.",
+    "Sandbox connection succeeds and realm ID is captured.",
+    "COA CSV seed source is reviewed before execution.",
+    "Seed scripts are run only against sandbox credentials and sandbox realm ID."
+  ]
+}

@@ -13,8 +13,31 @@
 #endregion
 
 #region Early Setup
-$WidgetRoot = 'C:\Users\biges\Desktop\Wiley-Widget'
+function Resolve-WidgetRoot {
+    $candidates = @(
+        $env:WW_REPO_ROOT,
+        $env:WILEY_WIDGET_ROOT,
+        (Join-Path $PSScriptRoot '..' | Resolve-Path -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Path),
+        'C:\Users\biges\Desktop\Wiley-Widget'
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path (Join-Path $candidate 'WileyWidget.sln')) {
+            return $candidate
+        }
+    }
+
+    throw 'Unable to resolve the Wiley Widget workspace root.'
+}
+
+$WidgetRoot = Resolve-WidgetRoot
 $ProfileStartTime = Get-Date
+
+$env:WW_REPO_ROOT = $WidgetRoot
+$env:CSX_ALLOWED_PATH = $WidgetRoot
+$env:WW_LOGS_DIR = Join-Path $WidgetRoot 'logs'
+$env:WILEYWIDGET_LOG_DIR = Join-Path $WidgetRoot 'logs'
+$env:WILEY_WIDGET_ROOT = $WidgetRoot
 
 # Create $PSStyle for older PowerShell versions
 if ($PSVersionTable.PSVersion -lt '7.2.0') {

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
@@ -33,7 +34,7 @@ namespace WileyWidget.UiTests
                 Keyboard.Release(VirtualKeyShort.ALT);
 
                 // Assert ribbon is focused
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Ribbon_Main", "Ribbon_Main", TimeSpan.FromSeconds(20));
                 Assert.NotNull(ribbon);
                 Assert.True(ribbon.Properties.HasKeyboardFocus.ValueOrDefault);
 
@@ -70,16 +71,21 @@ namespace WileyWidget.UiTests
 
                 // Simulate arrow key navigation within panel
                 var panel = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanel"));
-                panel.Focus();
+                Assert.NotNull(panel);
+                panel!.Focus();
 
                 Keyboard.Type(VirtualKeyShort.DOWN); // Move focus down
                 // Assert focus moved to next control (e.g., grid or button)
-                var focusedElement = automation.GetFocusedElement();
+                var focusedElement = window.FindAllDescendants()
+                    .FirstOrDefault(element => element.Properties.HasKeyboardFocus.ValueOrDefault);
                 Assert.NotNull(focusedElement);
-                Assert.True(focusedElement.Name.Contains("Budget")); // Approximate
+                Assert.True(
+                    focusedElement!.Name.Contains("Budget", StringComparison.OrdinalIgnoreCase)
+                    || focusedElement.AutomationId.Contains("Budget", StringComparison.OrdinalIgnoreCase));
 
                 Keyboard.Type(VirtualKeyShort.TAB); // Tab navigation
-                focusedElement = automation.GetFocusedElement();
+                focusedElement = window.FindAllDescendants()
+                    .FirstOrDefault(element => element.Properties.HasKeyboardFocus.ValueOrDefault);
                 Assert.NotNull(focusedElement);
             }
             finally

@@ -43,14 +43,15 @@ namespace WileyWidget.Services
         {
             var s = _settings.Current;
             if (!HasValidAccessToken(s)) throw new InvalidOperationException("Access token invalid – refresh required.");
-            if (string.IsNullOrWhiteSpace(s.QuickBooksRealmId))
+            var realmId = _authService.GetRealmId() ?? s.QuickBooksRealmId;
+            if (string.IsNullOrWhiteSpace(realmId))
                 throw new InvalidOperationException("QuickBooks company (realmId) is not set. Connect to QuickBooks first.");
 
             // Use IQuickBooksAuthService as the single source of truth for environment
             // so SDK context and REST calls always target the same host.
             var environment = _authService.GetEnvironment();
             var validator = new OAuth2RequestValidator(s.QboAccessToken);
-            var ctx = new ServiceContext(s.QuickBooksRealmId, IntuitServicesType.QBO, validator);
+            var ctx = new ServiceContext(realmId, IntuitServicesType.QBO, validator);
             ctx.IppConfiguration.BaseUrl.Qbo = environment == "sandbox"
                 ? "https://sandbox-quickbooks.api.intuit.com/"
                 : "https://quickbooks.api.intuit.com/";

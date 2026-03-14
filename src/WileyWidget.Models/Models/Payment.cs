@@ -85,6 +85,40 @@ public class Payment : IAuditable
     public bool IsCleared { get; set; } = false;
 
     /// <summary>
+    /// Display-friendly budget account mapping for grids and reports.
+    /// </summary>
+    [NotMapped]
+    public string BudgetAccountDisplay => MunicipalAccount != null
+        ? MunicipalAccount.DisplayName
+        : MunicipalAccountId.HasValue
+            ? $"Historical Account #{MunicipalAccountId.Value}"
+            : string.Empty;
+
+    /// <summary>
+    /// Budget posting status for the payment row.
+    /// </summary>
+    [NotMapped]
+    public string BudgetPostingStatus { get; set; } = "Unreviewed";
+
+    /// <summary>
+    /// Display-friendly posting result used in the payments grid.
+    /// </summary>
+    [NotMapped]
+    public string BudgetPostingDisplay { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Resolved budget line display for the payment when a unique match exists.
+    /// </summary>
+    [NotMapped]
+    public string BudgetLineDisplay { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Matched budget entry identifier when reconciliation resolves a unique budget line.
+    /// </summary>
+    [NotMapped]
+    public int? MatchedBudgetEntryId { get; set; }
+
+    /// <summary>
     /// Memo/notes
     /// </summary>
     [StringLength(1000)]

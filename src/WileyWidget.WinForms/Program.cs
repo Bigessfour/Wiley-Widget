@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -18,6 +19,7 @@ using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.Services;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
@@ -35,6 +37,7 @@ namespace WileyWidget.WinForms
         private static SplashForm? _splashForm;
         private static int _syncfusionLicenseRegistrationAttempted;
         private static int _syncfusionUserSecretsGuidanceLogged;
+        private static readonly string _startupSessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
 
         public static IServiceProvider Services => _services ?? CreateFallbackServiceProvider();
 
@@ -140,6 +143,29 @@ namespace WileyWidget.WinForms
                 || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XUNIT_TESTRUNNING"));
         }
 
+        private static bool IsTruthyEnvironmentValue(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "on", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool ShouldEmitStartupTimeline(StartupOptions startupOptions)
+        {
+            if (startupOptions.EnableStartupTimelineReport || startupOptions.IsDiagnosticProfile)
+            {
+                return true;
+            }
+
+            return IsTruthyEnvironmentValue(Environment.GetEnvironmentVariable("WILEYWIDGET_STARTUP_TIMELINE"));
+        }
+
         [STAThread]
         static void Main(string[] args)
         {
@@ -158,6 +184,12 @@ namespace WileyWidget.WinForms
             if (repoRoot != null)
             {
                 Directory.SetCurrentDirectory(repoRoot.FullName);
+            }
+
+            if (args.Contains("--layout-diagnostics-all-panels", StringComparer.OrdinalIgnoreCase))
+            {
+                RunLayoutDiagnosticsAndExitSafely(args);
+                return;
             }
 
             // Ensure log directory exists before Serilog initialization
@@ -195,15 +227,17 @@ namespace WileyWidget.WinForms
 
             Log.Information("Program.Main: Starting WileyWidget application");
             Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
+            Log.Information("[STARTUP-DIAG] SessionId={SessionId} ProcessId={ProcessId} Is64BitProcess={Is64BitProcess} CLR={ClrVersion}",
+                _startupSessionId,
+                Environment.ProcessId,
+                Environment.Is64BitProcess,
+                Environment.Version);
 
-            // DEBUG: Log masked API key to verify configuration loading chain
+            // DEBUG: Confirm API key presence without logging any key material
             var apiKeyFromConfig = configuration["xAI:ApiKey"] ?? configuration["XAI:ApiKey"];
             if (!string.IsNullOrWhiteSpace(apiKeyFromConfig))
             {
-                var maskedKey = apiKeyFromConfig.Length > 8
-                    ? apiKeyFromConfig.Substring(0, 4) + "***" + apiKeyFromConfig.Substring(apiKeyFromConfig.Length - 4)
-                    : "***";
-                Log.Debug("[CONFIG DEBUG] xAI:ApiKey found in configuration chain: {MaskedKey} (length: {Length})", maskedKey, apiKeyFromConfig.Length);
+                Log.Debug("[CONFIG DEBUG] xAI:ApiKey found in configuration chain (length: {Length})", apiKeyFromConfig.Length);
             }
             else
             {
@@ -281,13 +315,6 @@ namespace WileyWidget.WinForms
 
             System.Windows.Forms.Application.ThreadException += static (s, e) =>
             {
-                if (e.Exception is NullReferenceException &&
-                    e.Exception.StackTrace?.Contains("Syncfusion.Windows.Forms.Tools.DockingManager.HostControl_Paint", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    Log.Warning(e.Exception, "[SYNCFUSION] Ignored known DockingManager HostControl paint null-reference exception");
-                    return;
-                }
-
                 Log.Error(e.Exception, "[CRITICAL] Unhandled UI thread exception - application will terminate with code -1");
                 // Log full exception details before showing dialog
                 var ex = e.Exception;
@@ -374,20 +401,18 @@ namespace WileyWidget.WinForms
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Starting application initialization with configured startup timeout...");
                 Log.Information("Program.Main: Starting application initialization with timeout");
                 ReportSplash(0.7, "Initializing services...");
-                // CRITICAL: Use GetAwaiter().GetResult() to preserve STA thread mode for WinForms
-                // async Task Main breaks STA context after await, causing drag-drop registration failures
-                // See: errors-20260205.log - ThreadStateException during MainForm.OnHandleCreated
-                ExecuteStartupWithTimeoutAsync(orchestrator, host.Services).GetAwaiter().GetResult();
+                ExecuteStartupWithTimeout(orchestrator, host.Services);
 
                 Log.Information("Program.Main: Application initialization completed");
                 ReportSplash(0.85, "Starting application...");
 
                 // Run the WinForms message loop without a timeout (normal app lifetime).
                 Log.Information("Program.Main: Starting WinForms message loop");
+                Log.Information("[STARTUP-DIAG] Entering message loop (SessionId={SessionId})", _startupSessionId);
                 ReportSplash(0.95, "Launching main window...");
                 try
                 {
-                    orchestrator.RunApplicationAsync(host.Services).GetAwaiter().GetResult();
+                    orchestrator.RunApplication(host.Services);
                 }
                 catch (Exception ex)
                 {
@@ -396,7 +421,7 @@ namespace WileyWidget.WinForms
                 }
                 finally
                 {
-                    Log.Information("Application exited");
+                    Log.Information("Application exited (SessionId={SessionId})", _startupSessionId);
                 }
             }
             catch (Exception ex)
@@ -428,6 +453,7 @@ namespace WileyWidget.WinForms
             finally
             {
                 CompleteSplash("Exiting...");
+                Log.Information("[STARTUP-DIAG] SessionId={SessionId} shutdown sequence reached Program.Main finally", _startupSessionId);
                 Log.CloseAndFlush();
             }
         }
@@ -436,13 +462,18 @@ namespace WileyWidget.WinForms
         /// Executes startup initialization with configurable timeout protection.
         /// Uses Task.WhenAny to enforce timeout and logs detailed phase budgets so diagnostics can point to the slowest phases.
         /// </summary>
-        static async Task ExecuteStartupWithTimeoutAsync(IStartupOrchestrator orchestrator, IServiceProvider serviceProvider)
+        static void ExecuteStartupWithTimeout(IStartupOrchestrator orchestrator, IServiceProvider serviceProvider)
         {
             var startupOptions = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IOptions<StartupOptions>>(serviceProvider)?.Value ?? new StartupOptions();
             var timeoutSeconds = Math.Max(startupOptions.TimeoutSeconds, 120);
             var phaseTimeouts = startupOptions.PhaseTimeouts ?? new PhaseTimeoutsOptions();
-            var timelineService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(serviceProvider);
-            var timelineScope = timelineService?.BeginPhaseScope("Application Startup", expectedOrder: 12, isUiCritical: true);
+            var emitStartupTimeline = ShouldEmitStartupTimeline(startupOptions);
+            var timelineService = emitStartupTimeline
+                ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IStartupTimelineService>(serviceProvider)
+                : null;
+            var timelineScope = emitStartupTimeline
+                ? timelineService?.BeginPhaseScope("Application Startup", expectedOrder: 12, isUiCritical: true)
+                : null;
 
             try
             {
@@ -456,14 +487,10 @@ namespace WileyWidget.WinForms
 
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] 🚀 Starting startup initialization with {timeoutSeconds}s timeout (phase budgets: docking {phaseTimeouts.DockingInitMs}ms, viewmodel {phaseTimeouts.ViewModelInitMs}ms, data {phaseTimeouts.DataLoadMs}ms)");
 
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-                var initTask = orchestrator.InitializeAsync();
-                var delayTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cts.Token);
-
-                var completedTask = await Task.WhenAny(initTask, delayTask);
+                orchestrator.Initialize();
                 var elapsedMs = startupStopwatch.Elapsed.TotalMilliseconds;
 
-                if (completedTask == delayTask)
+                if (elapsedMs > TimeSpan.FromSeconds(timeoutSeconds).TotalMilliseconds)
                 {
                     Log.Warning(
                         "⚠️ Startup initialization exceeded {TimeoutSeconds}s after {ElapsedMs:F0}ms (phase budgets: docking {DockingInitMs}ms, viewmodel {ViewModelInitMs}ms, data {DataLoadMs}ms). Consider increasing Startup.TimeoutSeconds or reviewing the slowest phases.",
@@ -477,24 +504,17 @@ namespace WileyWidget.WinForms
                 }
                 else
                 {
-                    cts.Cancel();
-                    try
-                    {
-                        await initTask; // Ensure any exceptions are propagated
-                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Startup initialization completed in {elapsedMs:F0}ms (within {timeoutSeconds}s timeout)");
-                        Log.Information("Startup initialization completed successfully in {ElapsedMs}ms (timeout {TimeoutSeconds}s)", elapsedMs, timeoutSeconds);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Startup initialization completed within timeout but raised exception");
-                        throw;
-                    }
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Startup initialization completed in {elapsedMs:F0}ms (within {timeoutSeconds}s timeout)");
+                    Log.Information("Startup initialization completed successfully in {ElapsedMs}ms (timeout {TimeoutSeconds}s)", elapsedMs, timeoutSeconds);
                 }
             }
             finally
             {
                 timelineScope?.Dispose();
-                timelineService?.GenerateReport();
+                if (emitStartupTimeline)
+                {
+                    timelineService?.GenerateReport();
+                }
             }
         }
 
@@ -856,6 +876,95 @@ namespace WileyWidget.WinForms
                 // Fallback: write to console if directory creation fails
                 Console.WriteLine($"Warning: Failed to create log directory: {ex.Message}");
             }
+        }
+
+        private static void RunLayoutDiagnosticsAndExitSafely(string[] args)
+        {
+            try
+            {
+                RunLayoutDiagnosticsAndExit(args);
+                Environment.ExitCode = 0;
+            }
+            catch (Exception ex)
+            {
+                var diagnosticsDir = Path.Combine(Directory.GetCurrentDirectory(), "diagnostics");
+                Directory.CreateDirectory(diagnosticsDir);
+
+                var errorPath = Path.Combine(
+                    diagnosticsDir,
+                    $"layout-token-optimizer-all-panels-{DateTime.UtcNow:yyyyMMdd-HHmmss}.error.txt");
+
+                File.WriteAllText(errorPath, ex.ToString());
+                Console.Error.WriteLine($"Layout diagnostics failed. Error written to: {errorPath}");
+                Console.Error.WriteLine(ex);
+                Environment.ExitCode = 1;
+            }
+        }
+
+        private static void RunLayoutDiagnosticsAndExit(string[] args)
+        {
+            EnsureLogDirectoryExists();
+
+            var options = CreateLayoutDiagnosticsOptions(args);
+            var reportJson = LayoutDiagnosticsRunner.RunAllPanelsAsJson(options);
+            var diagnosticsDir = Path.Combine(Directory.GetCurrentDirectory(), "diagnostics");
+            Directory.CreateDirectory(diagnosticsDir);
+
+            var outputPath = Path.Combine(
+                diagnosticsDir,
+                $"layout-token-optimizer-all-panels-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json");
+
+            File.WriteAllText(outputPath, reportJson);
+            Console.WriteLine($"Layout diagnostics written to: {outputPath}");
+            Console.WriteLine(reportJson);
+        }
+
+        private static LayoutDiagnosticsOptions CreateLayoutDiagnosticsOptions(string[] args)
+        {
+            var themeName = GetArgumentValue(args, "--layout-theme") ?? AppThemeColors.DefaultTheme;
+            var scale = 1.25f;
+            var width = 1400;
+            var height = 900;
+
+            if (float.TryParse(GetArgumentValue(args, "--layout-scale"), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedScale)
+                && parsedScale > 0.5f
+                && parsedScale <= 3f)
+            {
+                scale = parsedScale;
+            }
+
+            if (int.TryParse(GetArgumentValue(args, "--layout-width"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedWidth)
+                && parsedWidth >= 800)
+            {
+                width = parsedWidth;
+            }
+
+            if (int.TryParse(GetArgumentValue(args, "--layout-height"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedHeight)
+                && parsedHeight >= 600)
+            {
+                height = parsedHeight;
+            }
+
+            return new LayoutDiagnosticsOptions
+            {
+                ThemeName = AppThemeColors.ValidateTheme(themeName),
+                SimulatedScale = scale,
+                LogicalClientSize = new System.Drawing.Size(width, height),
+            };
+        }
+
+        private static string? GetArgumentValue(string[] args, string argumentName)
+        {
+            for (var index = 0; index < args.Length - 1; index++)
+            {
+                if (string.Equals(args[index], argumentName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return args[index + 1];
+                }
+            }
+
+            var prefix = argumentName + "=";
+            return args.FirstOrDefault(arg => arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))?[prefix.Length..];
         }
 
         /// <summary>

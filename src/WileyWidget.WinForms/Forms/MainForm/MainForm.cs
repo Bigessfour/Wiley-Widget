@@ -38,6 +38,7 @@ namespace WileyWidget.WinForms.Forms
     {
         public const string FormTitle = "Wiley Widget - Municipal Budget Management System";
         public const string ApplicationVersion = "1.0.0";
+        public const string DocumentationUrl = "https://github.com/WileyWidget/WileyWidget/wiki";
         public const string LoadingText = "Loading...";
     }
 
@@ -50,6 +51,8 @@ namespace WileyWidget.WinForms.Forms
         private const uint RDW_ALLCHILDREN = 0x0080;
         private const uint RDW_UPDATENOW = 0x0100;
         private const uint RDW_FRAME = 0x0400;
+        private static readonly TimeSpan UiProbeWarmupWindow = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan UiProbeWarningCooldown = TimeSpan.FromSeconds(8);
 
         // Core services — _panelNavigator (IPanelNavigationService) is declared in Navigation partial;
         private IServiceProvider? _serviceProvider;
@@ -63,12 +66,15 @@ namespace WileyWidget.WinForms.Forms
         private EventHandler<StatusProgressUpdate>? _statusProgressChangedHandler;
         private SyncfusionControlFactory? _controlFactory;
         private ContainerControl? _contentHostPanel;   // Sub-container below ribbon, above status bar — houses right-dock panel and MDI client area
+        private LocalIdentityHostPanel? _hostedAuthenticationPanel;
+        private bool _hostedAuthenticationStartupFailed;
         private bool _mdiLayoutSyncHooksAttached;
         private bool _dashboardAutoShown;
         private bool _reportViewerLaunched;
         private IServiceScope? _mainViewModelScope;
         private System.Windows.Forms.Timer? _startupFadeTimer;
         private bool _startupFadePrepared;
+        private bool _jarvisStartupAutoOpenCompleted;
 
         // MDI constraint coalescing + diagnostics
         private int _mdiConstrainPending;
@@ -77,13 +83,24 @@ namespace WileyWidget.WinForms.Forms
         private int _mdiConstrainRequestCount;
         private int _mdiConstrainExecutionCount;
         private int _mdiConstrainSkipCount;
+        private int _ribbonLayoutSyncQueued;
+        private int _ribbonLayoutSyncRequestCount;
+        private int _ribbonLayoutSyncExecutionCount;
+        private int _ribbonLayoutSyncCoalesceCount;
+        private string _pendingRibbonLayoutReason = "Ribbon.Layout";
 
         // UI responsiveness probe diagnostics
         private System.Threading.Timer? _uiResponsivenessProbeTimer;
         private long _uiProbeSequence;
         private long _uiProbeAckSequence;
         private int _uiProbeTimeoutCount;
+        private int _uiProbeConsecutiveHighLatencyCount;
+        private int _uiProbeConsecutiveTimeoutCount;
+        private long _uiProbeLastWarningTicksUtc;
         private DateTime _uiProbeStartUtc;
+        private readonly object _uiProbeOperationGate = new();
+        private string _uiProbeCurrentOperation = "idle";
+        private long _uiProbeOperationStartTimestamp;
 
         // UI State
         private UIConfiguration _uiConfig = null!;
@@ -105,12 +122,16 @@ namespace WileyWidget.WinForms.Forms
         private Panel? _rightDockPanel;
         private TabControlAdv? _rightDockTabs;
         private JARVISChatUserControl? _rightDockJarvisPanel;
+        private int _rightDockJarvisPanelCreationQueued;
+        private object? _pendingRightDockJarvisParameters;
         private Splitter? _rightDockSplitter;
 
         // JARVIS auto-hide toggle strip (always visible so user can re-expand)
         private Panel? _jarvisAutoHideStrip;
         private Button? _jarvisAutoHideButton;
         private int _jarvisExpandedWidth = 500;
+        private int _activityLogExpandedWidth = RightDockPanelFactory.ActivityLogPreferredWidth;
+        private bool _isApplyingRightDockWidth;
 
         // Concrete navigation service — kept alongside the interface field (_panelNavigator in Navigation.cs)
         // so OnShown can call SetTabbedManager() before _panelNavigator is assigned.
@@ -126,6 +147,35 @@ namespace WileyWidget.WinForms.Forms
 
         /// <summary>Sub-container positioned below ribbon and above status bar. Houses the right-dock panel and MDI client area.</summary>
         public ContainerControl? ContentHostPanel => _contentHostPanel;
+
+        // Compatibility alias for legacy MainForm partials/services that still reference _panelHost.
+        // The content host is now the canonical panel host container.
+        private ContainerControl? _panelHost => _contentHostPanel;
+
+        /// <summary>
+        /// Refreshes panel-host/ribbon layout and re-constrains the MDI client region.
+        /// This wrapper preserves existing call sites that trigger layout recovery.
+        /// </summary>
+        internal void RefreshPanelHostLayout(string reason, bool force = false)
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            var effectiveReason = string.IsNullOrWhiteSpace(reason)
+                ? "RefreshPanelHostLayout"
+                : reason;
+
+            if (force)
+            {
+                SyncContentHostTopInsetToRibbon(effectiveReason);
+                RequestMdiConstrain(effectiveReason, force: true);
+                return;
+            }
+
+            QueueRibbonLayoutSync(effectiveReason);
+        }
 
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
@@ -204,7 +254,147 @@ namespace WileyWidget.WinForms.Forms
                 return;
             }
 
+            SyncContentHostTopInsetToRibbon("ContentHostPanel.Resize");
             RequestMdiConstrain("ContentHostPanel.Resize");
+        }
+
+        private void SyncContentHostTopInsetToRibbon(string reason)
+        {
+            if (_contentHostPanel == null || _contentHostPanel.IsDisposed)
+            {
+                return;
+            }
+
+            var baseInset = AppLayoutConstants.ContentHostPadding;
+            var topInset = baseInset;
+
+            var contentHostTopInForm = _contentHostPanel.Top;
+            if (IsHandleCreated)
+            {
+                try
+                {
+                    contentHostTopInForm = PointToClient(_contentHostPanel.PointToScreen(Point.Empty)).Y;
+                }
+                catch
+                {
+                    contentHostTopInForm = _contentHostPanel.Top;
+                }
+            }
+
+            if (_uiConfig.ShowRibbon && _ribbon != null && !_ribbon.IsDisposed && _ribbon.Visible)
+            {
+                try
+                {
+                    var ribbonBottomScreen = _ribbon.PointToScreen(new Point(0, _ribbon.Height));
+                    var ribbonBottomInForm = PointToClient(ribbonBottomScreen).Y;
+                    if (ribbonBottomInForm > 0)
+                    {
+                        var desiredClientTopInForm = ribbonBottomInForm + baseInset;
+                        topInset = Math.Max(baseInset, desiredClientTopInForm - contentHostTopInForm);
+                    }
+                }
+                catch
+                {
+                    var desiredClientTopInForm = _ribbon.Bottom + baseInset;
+                    topInset = Math.Max(baseInset, desiredClientTopInForm - contentHostTopInForm);
+                }
+            }
+
+            var desiredPadding = new Padding(baseInset, topInset, baseInset, baseInset);
+            if (_contentHostPanel.Padding == desiredPadding)
+            {
+                return;
+            }
+
+            _contentHostPanel.SuspendLayout();
+            try
+            {
+                _contentHostPanel.Padding = desiredPadding;
+                PerformLayoutRecursive(_contentHostPanel);
+                TryForceLayoutOnScopedPanelChildren(_contentHostPanel);
+                _contentHostPanel.Invalidate(true);
+                _contentHostPanel.Update();
+            }
+            finally
+            {
+                _contentHostPanel.ResumeLayout(performLayout: true);
+            }
+
+            _logger?.LogDebug("[LAYOUT] ContentHostPanel padding synced ({Reason}) => {Padding}", reason, desiredPadding);
+        }
+
+        private void QueueRibbonLayoutSync(string reason)
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            var effectiveReason = string.IsNullOrWhiteSpace(reason)
+                ? "Ribbon.Layout"
+                : reason;
+
+            Interlocked.Increment(ref _ribbonLayoutSyncRequestCount);
+
+            if (!IsHandleCreated)
+            {
+                SyncContentHostTopInsetToRibbon(effectiveReason);
+                RequestMdiConstrain(effectiveReason);
+                return;
+            }
+
+            _pendingRibbonLayoutReason = effectiveReason;
+
+            if (Interlocked.Exchange(ref _ribbonLayoutSyncQueued, 1) == 1)
+            {
+                var coalesced = Interlocked.Increment(ref _ribbonLayoutSyncCoalesceCount);
+                if (coalesced % 50 == 0)
+                {
+                    _logger?.LogDebug(
+                        "[LAYOUT] Coalesced {Coalesced} queued panel-host layout requests (latest reason={Reason})",
+                        coalesced,
+                        effectiveReason);
+                }
+
+                return;
+            }
+
+            try
+            {
+                BeginInvoke((MethodInvoker)(() =>
+                {
+                    Interlocked.Exchange(ref _ribbonLayoutSyncQueued, 0);
+
+                    if (IsDisposed || Disposing)
+                    {
+                        return;
+                    }
+
+                    var queuedReason = _pendingRibbonLayoutReason;
+                    var layoutStopwatch = Stopwatch.StartNew();
+
+                    SyncContentHostTopInsetToRibbon(queuedReason);
+                    RequestMdiConstrain(queuedReason);
+
+                    layoutStopwatch.Stop();
+                    var executed = Interlocked.Increment(ref _ribbonLayoutSyncExecutionCount);
+                    if (layoutStopwatch.ElapsedMilliseconds >= 20 || executed % 25 == 0)
+                    {
+                        _logger?.LogInformation(
+                            "[LAYOUT] Panel-host sync completed in {ElapsedMs}ms (reason={Reason}, requested={Requested}, executed={Executed}, coalesced={Coalesced})",
+                            layoutStopwatch.ElapsedMilliseconds,
+                            queuedReason,
+                            _ribbonLayoutSyncRequestCount,
+                            executed,
+                            _ribbonLayoutSyncCoalesceCount);
+                    }
+                }));
+            }
+            catch (Exception ex)
+            {
+                Interlocked.Exchange(ref _ribbonLayoutSyncQueued, 0);
+                _logger?.LogDebug(ex, "[LAYOUT] Failed to queue ribbon layout sync ({Reason})", effectiveReason);
+            }
         }
 
         private void RightDockPanel_LayoutChanged(object? sender, EventArgs e)
@@ -221,7 +411,7 @@ namespace WileyWidget.WinForms.Forms
         {
             try
             {
-                SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+                SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
                 DoubleBuffered = true;
                 UpdateStyles();
             }
@@ -261,7 +451,7 @@ namespace WileyWidget.WinForms.Forms
             {
                 Name = "ContentHostPanel",
                 Dock = DockStyle.Fill,
-                Padding = new Padding(0),  // Match AppLayoutConstants if defined
+                Padding = new Padding(AppLayoutConstants.ContentHostPadding),
                 TabStop = false,
                 Visible = true
             };
@@ -269,12 +459,16 @@ namespace WileyWidget.WinForms.Forms
             Controls.Add(_contentHostPanel);
             _contentHostPanel.Resize -= ContentHostPanel_Resize;
             _contentHostPanel.Resize += ContentHostPanel_Resize;
+            SyncContentHostTopInsetToRibbon("Constructor");
+            TraceLayoutSnapshot("Constructor.ContentHostCreated");
             _logger?.LogDebug("ContentHostPanel created early in constructor, theme={Theme}", themeName);
 
             AutoScaleMode = AutoScaleMode.Dpi;
             KeyPreview = true;
-            Size = new Size(1400, 900);
-            MinimumSize = new Size(1280, 800);
+            Size = new Size(
+                (int)DpiAware.LogicalToDeviceUnits(1400f),
+                (int)DpiAware.LogicalToDeviceUnits(900f));
+            MinimumSize = new Size((int)DpiAware.LogicalToDeviceUnits(1280f), (int)DpiAware.LogicalToDeviceUnits(800f));
             StartPosition = FormStartPosition.Manual;
 
             try
@@ -322,8 +516,10 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 _logger?.LogInformation("[ONLOAD] Starting minimal startup path");
+                TraceLayoutSnapshot("OnLoad.BeforeRestoreWindowState");
 
                 _windowStateService.RestoreWindowState(this);
+                TraceLayoutSnapshot("OnLoad.AfterRestoreWindowState");
 
                 _logger?.LogInformation("[ONLOAD] Completed minimal startup path in {ElapsedMs}ms", onLoadStopwatch.ElapsedMilliseconds);
             }
@@ -350,6 +546,9 @@ namespace WileyWidget.WinForms.Forms
                     _statusProgressService.ProgressChanged -= _statusProgressChangedHandler;
                     _statusProgressChangedHandler = null;
                 }
+
+                DisposeStatusBarTimers();
+                DisposeGlobalSearchResources();
 
                 // === FIX: Prevent Dispose race with CreateHandle (Syncfusion v32.2.3 stability) ===
                 // If handle creation is in progress, don't dispose yet; let base.Dispose() handle it safely
@@ -782,7 +981,7 @@ namespace WileyWidget.WinForms.Forms
                 if (lastCompletion > 0)
                 {
                     var elapsed = Stopwatch.GetElapsedTime(lastCompletion);
-                    if (elapsed < TimeSpan.FromMilliseconds(12))
+                    if (elapsed < TimeSpan.FromMilliseconds(40))
                     {
                         var skipped = Interlocked.Increment(ref _mdiConstrainSkipCount);
                         if (skipped % 100 == 0)
@@ -823,6 +1022,11 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        internal void ForceMdiConstrain(string reason)
+        {
+            RequestMdiConstrain(reason, force: true);
+        }
+
         private void StartUiResponsivenessProbe()
         {
             if (_uiResponsivenessProbeTimer != null || IsDisposed || Disposing || IsUiTestEnvironment())
@@ -834,6 +1038,14 @@ namespace WileyWidget.WinForms.Forms
             _uiProbeSequence = 0;
             _uiProbeAckSequence = 0;
             _uiProbeTimeoutCount = 0;
+            _uiProbeConsecutiveHighLatencyCount = 0;
+            _uiProbeConsecutiveTimeoutCount = 0;
+            _uiProbeLastWarningTicksUtc = 0;
+            lock (_uiProbeOperationGate)
+            {
+                _uiProbeCurrentOperation = "idle";
+                _uiProbeOperationStartTimestamp = Stopwatch.GetTimestamp();
+            }
 
             _uiResponsivenessProbeTimer = new System.Threading.Timer(
                 static state =>
@@ -876,6 +1088,103 @@ namespace WileyWidget.WinForms.Forms
             }
         }
 
+        private IDisposable BeginUiProbeOperationScope(string operationName)
+        {
+            var normalizedOperation = string.IsNullOrWhiteSpace(operationName)
+                ? "unknown"
+                : operationName;
+
+            var startedAt = Stopwatch.GetTimestamp();
+            string previousOperation;
+            long previousStartTimestamp;
+
+            lock (_uiProbeOperationGate)
+            {
+                previousOperation = _uiProbeCurrentOperation;
+                previousStartTimestamp = _uiProbeOperationStartTimestamp;
+                _uiProbeCurrentOperation = normalizedOperation;
+                _uiProbeOperationStartTimestamp = startedAt;
+            }
+
+            return new UiProbeOperationScope(this, previousOperation, previousStartTimestamp, normalizedOperation, startedAt);
+        }
+
+        private (string ActiveOperation, double OperationElapsedMs, string ActivePanel) CaptureUiProbeContext()
+        {
+            string activeOperation;
+            long operationStartTimestamp;
+
+            lock (_uiProbeOperationGate)
+            {
+                activeOperation = _uiProbeCurrentOperation;
+                operationStartTimestamp = _uiProbeOperationStartTimestamp;
+            }
+
+            var operationElapsedMs = operationStartTimestamp > 0
+                ? Stopwatch.GetElapsedTime(operationStartTimestamp).TotalMilliseconds
+                : 0d;
+
+            var activePanel = "<none>";
+            try
+            {
+                activePanel = _panelNavigator?.GetActivePanelName() ?? "<none>";
+            }
+            catch
+            {
+                activePanel = "<unavailable>";
+            }
+
+            return (activeOperation, operationElapsedMs, activePanel);
+        }
+
+        private void EndUiProbeOperationScope(string previousOperation, long previousStartTimestamp, string completedOperation, long completedStartTimestamp)
+        {
+            lock (_uiProbeOperationGate)
+            {
+                _uiProbeCurrentOperation = previousOperation;
+                _uiProbeOperationStartTimestamp = previousStartTimestamp;
+            }
+
+            var elapsedMs = Stopwatch.GetElapsedTime(completedStartTimestamp).TotalMilliseconds;
+            if (elapsedMs >= 800)
+            {
+                _logger?.LogWarning("[UI-PROBE] Slow UI operation {Operation} took {ElapsedMs:F0}ms", completedOperation, elapsedMs);
+            }
+        }
+
+        private sealed class UiProbeOperationScope : IDisposable
+        {
+            private readonly MainForm _owner;
+            private readonly string _previousOperation;
+            private readonly long _previousStartTimestamp;
+            private readonly string _completedOperation;
+            private readonly long _completedStartTimestamp;
+            private int _disposed;
+
+            public UiProbeOperationScope(MainForm owner, string previousOperation, long previousStartTimestamp, string completedOperation, long completedStartTimestamp)
+            {
+                _owner = owner;
+                _previousOperation = previousOperation;
+                _previousStartTimestamp = previousStartTimestamp;
+                _completedOperation = completedOperation;
+                _completedStartTimestamp = completedStartTimestamp;
+            }
+
+            public void Dispose()
+            {
+                if (Interlocked.Exchange(ref _disposed, 1) != 0)
+                {
+                    return;
+                }
+
+                _owner.EndUiProbeOperationScope(
+                    _previousOperation,
+                    _previousStartTimestamp,
+                    _completedOperation,
+                    _completedStartTimestamp);
+            }
+        }
+
         private void QueueUiResponsivenessProbe()
         {
             if (IsDisposed || Disposing || !IsHandleCreated)
@@ -892,18 +1201,54 @@ namespace WileyWidget.WinForms.Forms
                 {
                     var latencyMs = Stopwatch.GetElapsedTime(queuedAt).TotalMilliseconds;
                     Interlocked.Exchange(ref _uiProbeAckSequence, sequence);
+                    Interlocked.Exchange(ref _uiProbeConsecutiveTimeoutCount, 0);
+                    var isWarmupWindow = IsUiProbeWarmupWindowActive();
 
                     if (latencyMs >= 750)
                     {
-                        _logger?.LogWarning(
-                            "[UI-PROBE] High UI callback latency {LatencyMs:F0}ms (seq={Sequence}, ack={Ack})",
-                            latencyMs,
-                            sequence,
-                            _uiProbeAckSequence);
+                        if (isWarmupWindow)
+                        {
+                            _logger?.LogDebug(
+                                "[UI-PROBE] Warm-up high UI callback latency {LatencyMs:F0}ms (seq={Sequence}, ack={Ack}, warmupSeconds={WarmupSeconds})",
+                                latencyMs,
+                                sequence,
+                                _uiProbeAckSequence,
+                                UiProbeWarmupWindow.TotalSeconds);
+                        }
+                        else
+                        {
+                            var consecutiveHighLatency = Interlocked.Increment(ref _uiProbeConsecutiveHighLatencyCount);
+                            if (consecutiveHighLatency >= 2 && ShouldEmitUiProbeWarning())
+                            {
+                                var context = CaptureUiProbeContext();
+                                _logger?.LogWarning(
+                                    "[UI-PROBE] High UI callback latency {LatencyMs:F0}ms (seq={Sequence}, ack={Ack}, consecutive={Consecutive}, activeOp={ActiveOperation}, activePanel={ActivePanel}, opElapsedMs={OperationElapsedMs:F0})",
+                                    latencyMs,
+                                    sequence,
+                                    _uiProbeAckSequence,
+                                    consecutiveHighLatency,
+                                    context.ActiveOperation,
+                                    context.ActivePanel,
+                                    context.OperationElapsedMs);
+                            }
+                            else
+                            {
+                                _logger?.LogDebug(
+                                    "[UI-PROBE] Suppressed transient high latency {LatencyMs:F0}ms (seq={Sequence}, consecutive={Consecutive})",
+                                    latencyMs,
+                                    sequence,
+                                    consecutiveHighLatency);
+                            }
+                        }
                     }
                     else if (latencyMs >= 250)
                     {
+                        Interlocked.Exchange(ref _uiProbeConsecutiveHighLatencyCount, 0);
                         _logger?.LogDebug("[UI-PROBE] Elevated callback latency {LatencyMs:F0}ms (seq={Sequence})", latencyMs, sequence);
+                    }
+                    else
+                    {
+                        Interlocked.Exchange(ref _uiProbeConsecutiveHighLatencyCount, 0);
                     }
                 }));
             }
@@ -928,12 +1273,64 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 var timeouts = Interlocked.Increment(ref _uiProbeTimeoutCount);
-                _logger?.LogWarning(
-                    "[UI-PROBE] UI thread did not service probe within 3000ms (seq={Sequence}, ack={Acked}, timeouts={Timeouts})",
-                    sequence,
-                    acked,
-                    timeouts);
+                if (IsUiProbeWarmupWindowActive())
+                {
+                    _logger?.LogDebug(
+                        "[UI-PROBE] Warm-up probe timeout after 3000ms (seq={Sequence}, ack={Acked}, timeouts={Timeouts}, warmupSeconds={WarmupSeconds})",
+                        sequence,
+                        acked,
+                        timeouts,
+                        UiProbeWarmupWindow.TotalSeconds);
+                }
+                else
+                {
+                    var consecutiveTimeouts = Interlocked.Increment(ref _uiProbeConsecutiveTimeoutCount);
+                    if (consecutiveTimeouts >= 2 && ShouldEmitUiProbeWarning())
+                    {
+                        var context = CaptureUiProbeContext();
+                        _logger?.LogWarning(
+                            "[UI-PROBE] UI thread did not service probe within 3000ms (seq={Sequence}, ack={Acked}, timeouts={Timeouts}, consecutive={Consecutive}, activeOp={ActiveOperation}, activePanel={ActivePanel}, opElapsedMs={OperationElapsedMs:F0})",
+                            sequence,
+                            acked,
+                            timeouts,
+                            consecutiveTimeouts,
+                            context.ActiveOperation,
+                            context.ActivePanel,
+                            context.OperationElapsedMs);
+                    }
+                    else
+                    {
+                        _logger?.LogDebug(
+                            "[UI-PROBE] Suppressed transient timeout (seq={Sequence}, ack={Acked}, consecutive={Consecutive})",
+                            sequence,
+                            acked,
+                            consecutiveTimeouts);
+                    }
+                }
             });
+        }
+
+        private bool ShouldEmitUiProbeWarning()
+        {
+            var nowTicks = DateTime.UtcNow.Ticks;
+            var lastTicks = Interlocked.Read(ref _uiProbeLastWarningTicksUtc);
+            if (lastTicks > 0 && new TimeSpan(nowTicks - lastTicks) < UiProbeWarningCooldown)
+            {
+                return false;
+            }
+
+            Interlocked.Exchange(ref _uiProbeLastWarningTicksUtc, nowTicks);
+            return true;
+        }
+
+        private bool IsUiProbeWarmupWindowActive()
+        {
+            if (_uiProbeStartUtc == default)
+            {
+                return false;
+            }
+
+            return (DateTime.UtcNow - _uiProbeStartUtc) < UiProbeWarmupWindow;
         }
 
         private void ConstrainMdiClientToContentHost(string reason = "direct")
@@ -1007,7 +1404,7 @@ namespace WileyWidget.WinForms.Forms
 
                 // Fallback: if we found no DockStyle.Top controls (e.g. DockStyleEx.Top used for
                 // ribbon and not caught above), use direct PointToScreen on _ribbon.
-                if (topY == 0 && _ribbon != null && !_ribbon.IsDisposed && _ribbon.Visible)
+                if (topY == 0 && _ribbon != null && !_ribbon.IsDisposed)
                 {
                     try
                     {
@@ -1051,6 +1448,31 @@ namespace WileyWidget.WinForms.Forms
                     }
                 }
 
+                // Guard against transient handle/layout races where topY can remain 0.
+                // The content host is docked below the ribbon/status chrome, so using its
+                // top edge as a floor guarantees MDI children never render underneath ribbon.
+                var safeTopFloor = _contentHostPanel.Top;
+                try
+                {
+                    if (IsHandleCreated)
+                    {
+                        // Use the actual content-host client top (includes container padding) to
+                        // keep MDI children below ribbon chrome and any top insets.
+                        var contentClientTopScreen = _contentHostPanel.PointToScreen(
+                            new Point(_contentHostPanel.DisplayRectangle.Left, _contentHostPanel.DisplayRectangle.Top));
+                        safeTopFloor = this.PointToClient(contentClientTopScreen).Y;
+                    }
+                }
+                catch
+                {
+                    safeTopFloor = _contentHostPanel.Top;
+                }
+                if (_ribbon != null && !_ribbon.IsDisposed)
+                {
+                    safeTopFloor = Math.Max(safeTopFloor, _ribbon.Bottom + AppLayoutConstants.ContentHostPadding);
+                }
+                topY = Math.Max(topY, safeTopFloor);
+
                 var targetBounds = new Rectangle(
                     hostLeft,
                     topY,
@@ -1067,23 +1489,33 @@ namespace WileyWidget.WinForms.Forms
                     mdiClient.Dock = DockStyle.None;
                 }
 
-                if (mdiClient.Bounds != targetBounds)
+                var boundsChanged = mdiClient.Bounds != targetBounds;
+                if (boundsChanged)
                 {
                     mdiClient.Bounds = targetBounds;
                 }
 
+                // During hosted authentication, the content host must own the foreground so the
+                // login surface remains visible above the MDI client.
+                if (IsHostedAuthenticationPanelActive())
+                {
+                    EnsureHostedAuthenticationForeground();
+                }
                 // Ensure MdiClient is in front of ContentHostPanel (which has Dock=Fill and paints
                 // over the MDI area when behind MdiClient).  Then immediately re-assert the ribbon
                 // on top so its z-order is not displaced on every constrain call.
-                try
+                else if (boundsChanged || dockWasReset)
                 {
-                    mdiClient.BringToFront();
-                    if (_ribbon != null && !_ribbon.IsDisposed)
-                        _ribbon.BringToFront();
-                }
-                catch
-                {
-                    // Non-critical — ignore z-order failures during form close / layout races.
+                    try
+                    {
+                        mdiClient.BringToFront();
+                        if (_ribbon != null && !_ribbon.IsDisposed)
+                            _ribbon.BringToFront();
+                    }
+                    catch
+                    {
+                        // Non-critical — ignore z-order failures during form close / layout races.
+                    }
                 }
 
                 // Diagnostic — log on bounds change or whenever a Dock reset was detected.
@@ -1099,6 +1531,11 @@ namespace WileyWidget.WinForms.Forms
                         dockWasReset,
                         targetBounds,
                         DeviceDpi);
+
+                    if (dockWasReset || boundsChanged)
+                    {
+                        TraceLayoutSnapshot($"MdiConstrain.{reason}");
+                    }
                 }
 
             }
@@ -1139,10 +1576,7 @@ namespace WileyWidget.WinForms.Forms
                     await MainViewModel.GlobalSearchCommand.ExecuteAsync(query).ConfigureAwait(true);
                 }
 
-                if (_searchDialog != null && !_searchDialog.IsDisposed)
-                {
-                    await PerformGlobalSearchDialogAsync(query).ConfigureAwait(true);
-                }
+                await EnsureSearchDialogVisibleAsync(query).ConfigureAwait(true);
 
                 ApplyStatus($"Search completed: {query}");
             }
@@ -1160,8 +1594,6 @@ namespace WileyWidget.WinForms.Forms
         private void SetStatusBarPanels(
             StatusBarAdv statusBar,
             StatusBarAdvPanel statusLabel,
-            StatusBarAdvPanel statusTextPanel,
-            StatusBarAdvPanel statePanel,
             StatusBarAdvPanel progressPanel,
             Syncfusion.Windows.Forms.Tools.ProgressBarAdv progressBar,
             StatusBarAdvPanel clockPanel)

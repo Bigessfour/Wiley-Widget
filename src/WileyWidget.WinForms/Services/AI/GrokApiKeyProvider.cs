@@ -20,6 +20,7 @@ namespace WileyWidget.WinForms.Services.AI
 
         private string? _apiKey;
         private bool _isValidated = false;
+        private bool _validationAttempted = false;
         private bool _isFromUserSecrets = false;
         private string _configurationSource = "not configured";
 
@@ -252,6 +253,9 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         public async Task<(bool Success, string Message)> ValidateAsync()
         {
+            _validationAttempted = true;
+            _isValidated = false;
+
             if (string.IsNullOrWhiteSpace(_apiKey))
             {
                 var msg = "API key not configured. JARVIS Chat will not function.";
@@ -354,7 +358,10 @@ namespace WileyWidget.WinForms.Services.AI
         /// </summary>
         public string GetConfigurationSource()
         {
-            return $"API Key: {_configurationSource} | Validated: {_isValidated} | Source: {(IsFromUserSecrets ? "User Secrets (Secure)" : "Configuration/Environment")}";
+            var validationState = _validationAttempted
+                ? (_isValidated ? "validated" : "failed")
+                : "startup-deferred";
+            return $"API Key: {_configurationSource} | Validation: {validationState} | Source: {(IsFromUserSecrets ? "User Secrets (Secure)" : "Configuration/Environment")}";
         }
 
         private Uri GetBaseEndpoint()
@@ -368,6 +375,13 @@ namespace WileyWidget.WinForms.Services.AI
             if (endpointStr.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
             {
                 endpointStr = endpointStr.Substring(0, endpointStr.Length - "/chat/completions".Length);
+            }
+
+            if (Uri.TryCreate(endpointStr, UriKind.Absolute, out var parsed) &&
+                parsed.Host.Equals("api.x.ai", StringComparison.OrdinalIgnoreCase) &&
+                (parsed.AbsolutePath == "/" || string.IsNullOrEmpty(parsed.AbsolutePath)))
+            {
+                endpointStr = parsed.GetLeftPart(UriPartial.Authority) + "/v1";
             }
 
             return new Uri(endpointStr + '/', UriKind.Absolute);

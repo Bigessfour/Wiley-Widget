@@ -6,11 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <!-- Disable xUnit test collection parallelization to avoid static/service races in UI tests -->
     <xUnitParallelizeTestCollections>false</xUnitParallelizeTestCollections>
+    <EmitMissingWinFormsUtilitiesSharedWarning Condition="'$(EmitMissingWinFormsUtilitiesSharedWarning)'==''">false</EmitMissingWinFormsUtilitiesSharedWarning>
+    <RunFlaUiTests Condition="'$(RunFlaUiTests)'==''">false</RunFlaUiTests>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +25,9 @@
     <PackageReference Include="Moq" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="coverlet.msbuild">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Syncfusion.Tools.Windows" />
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA2" />
@@ -77,12 +83,17 @@
       SkipUnchangedFiles="true"
       ContinueOnError="WarnAndContinue" />
     <Warning
-      Condition="!Exists('$(_WinFormsUtilDll)')"
+      Condition="'$(EmitMissingWinFormsUtilitiesSharedWarning)' == 'true' And !Exists('$(_WinFormsUtilDll)')"
       Text="Microsoft.WinForms.Utilities.Shared.dll was not found in any Visual Studio installation. Tests that load BlazorWebView-derived types may fail with FileNotFoundException. Install Visual Studio 2022/2026 with the .NET Desktop workload." />
   </Target>
 
   <ItemGroup>
     <Compile Remove="Unit\Startup\StartupOrchestratorTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(RunFlaUiTests)' != 'true'">
+    <!-- FlaUI tests launch the full WinForms app and are intended to run only via dedicated tasks. -->
+    <Compile Remove="FLAui Tests\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

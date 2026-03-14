@@ -76,16 +76,18 @@ namespace WileyWidget.UiTests
                 // Test maximize/restore
                 var maximizeButton = window.FindFirstDescendant(cf => cf.ByAutomationId("MaximizeButton"));
                 Assert.NotNull(maximizeButton);
-                maximizeButton.Click();
+                maximizeButton!.Click();
 
                 // Assert window is maximized
-                Assert.Equal(WindowVisualState.Maximized, window.VisualState);
+                var windowPattern = window.Patterns.Window.PatternOrDefault;
+                Assert.NotNull(windowPattern);
+                Assert.Equal(WindowVisualState.Maximized, windowPattern!.WindowVisualState.Value);
 
                 // Test close button
                 var closeButton = window.FindFirstDescendant(cf => cf.ByAutomationId("CloseButton"));
                 Assert.NotNull(closeButton);
                 // Don't actually close, just verify existence and enabled state
-                Assert.True(closeButton.IsEnabled);
+                Assert.True(closeButton!.IsEnabled);
             }
             finally
             {

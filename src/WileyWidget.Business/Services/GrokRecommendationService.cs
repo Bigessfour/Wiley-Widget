@@ -41,7 +41,8 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
     private readonly IMemoryCache _cache;
     private readonly bool _useGrokApi;
     private readonly string? _apiKey;
-    private readonly string _apiEndpoint;
+    private readonly string _chatCompletionsEndpoint;
+    private readonly Uri _semanticKernelEndpoint;
     private readonly string _model;
     private readonly Kernel? _kernel;
 
@@ -87,23 +88,25 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         // Load xAI configuration - use centralized IGrokApiKeyProvider for consistent env var handling
         // This ensures XAI__ApiKey (double underscore) is properly resolved from environment
         _apiKey = apiKeyProvider.ApiKey;
-        _apiEndpoint = NormalizeChatCompletionsEndpoint(_configuration["XAI:Endpoint"]);
-        _model = _configuration["XAI:Model"] ?? "grok-4.1";
+        _chatCompletionsEndpoint = NormalizeChatCompletionsEndpoint(_configuration["XAI:Endpoint"]);
+        _semanticKernelEndpoint = NormalizeSemanticKernelEndpoint(_configuration["XAI:Endpoint"]);
+        _model = _configuration["XAI:Model"] ?? "grok-4-1-fast-reasoning";
         _useGrokApi = !string.IsNullOrWhiteSpace(_apiKey) &&
                       _configuration.GetValue<bool>("XAI:Enabled", true);
+        var validationState = apiKeyProvider.IsValidated ? "validated" : "startup-deferred";
 
         // Log API key source for diagnostics
         _logger.LogInformation(
-            "[GrokRecommendation] Using API key from {Source} (Enabled: {UseGrokApi}, Validated: {IsValidated})",
+            "[GrokRecommendation] Using API key from {Source} (Enabled: {UseGrokApi}, Validation: {ValidationState})",
             apiKeyProvider.GetConfigurationSource(),
             _useGrokApi,
-            apiKeyProvider.IsValidated);
+            validationState);
 
         // Initialize Semantic Kernel if API is enabled
         if (_useGrokApi && !string.IsNullOrWhiteSpace(_apiKey))
         {
             var builder = Kernel.CreateBuilder();
-            builder.AddOpenAIChatCompletion(_model, _apiKey, _apiEndpoint);
+            builder.AddOpenAIChatCompletion(_model, _apiKey, _semanticKernelEndpoint.ToString());
             _kernel = builder.Build();
 
             // Register the recommendation tool
@@ -493,7 +496,7 @@ The tool will return factors as multipliers (e.g., 1.15 for 15% increase) and a 
                 max_tokens = 10
             };
 
-            using var response = await client.PostAsJsonAsync(_apiEndpoint, testRequest, cancellationToken);
+            using var response = await client.PostAsJsonAsync(_chatCompletionsEndpoint, testRequest, cancellationToken);
             if (response.IsSuccessStatusCode)
             {
                 return HealthCheckResult.Healthy("Grok API is responding");
@@ -521,18 +524,36 @@ The tool will return factors as multipliers (e.g., 1.15 for 15% increase) and a 
 
     private static string NormalizeChatCompletionsEndpoint(string? endpoint)
     {
-        var candidate = (endpoint ?? "https://api.x.ai/v1").Trim().TrimEnd('/');
-        if (candidate.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
-        {
-            return candidate;
-        }
+        var baseEndpoint = NormalizeSemanticKernelEndpoint(endpoint);
+        return new Uri(baseEndpoint, "chat/completions").ToString();
+    }
 
+    private static Uri NormalizeSemanticKernelEndpoint(string? endpoint)
+    {
+        var candidate = (endpoint ?? "https://api.x.ai/v1").Trim().TrimEnd('/');
         if (candidate.EndsWith("/responses", StringComparison.OrdinalIgnoreCase))
         {
             candidate = candidate.Substring(0, candidate.Length - "/responses".Length);
         }
 
-        return $"{candidate}/chat/completions";
+        if (candidate.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate.Substring(0, candidate.Length - "/chat/completions".Length);
+        }
+
+        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var parsed))
+        {
+            throw new InvalidOperationException($"Invalid xAI endpoint configured: '{endpoint}'");
+        }
+
+        if (parsed.Host.Equals("api.x.ai", StringComparison.OrdinalIgnoreCase) &&
+            (parsed.AbsolutePath == "/" || string.IsNullOrEmpty(parsed.AbsolutePath)))
+        {
+            candidate = parsed.GetLeftPart(UriPartial.Authority) + "/v1";
+        }
+
+        candidate = candidate.TrimEnd('/') + '/';
+        return new Uri(candidate, UriKind.Absolute);
     }
 
     /// <summary>

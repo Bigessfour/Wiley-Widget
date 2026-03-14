@@ -21,6 +21,25 @@
   "github.copilot.chat.tools.changes.enabled": true,
   "github.copilot.editor.enableAutoCompletions": true,
   "github.copilot.chat.agent.autoStartMcpServers": true,
+  "chat.plugins.enabled": true,
+  "workbench.browser.enableChatTools": true,
+  "chat.tips.enabled": true,
+  "chat.tools.terminal.simpleCollapsible": true,
+  "chat.notifyWindowOnResponseReceived": "always",
+  "chat.notifyWindowOnConfirmation": "always",
+  "inlineChat.affordance": "editor",
+  "inlineChat.renderMode": "gutter",
+  "workbench.notifications.position": "bottom-right",
+
+  // Enable long-distance Next Edit Suggestions from VS Code 1.110.
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "github.copilot.nextEditSuggestions.extendedRange": true,
+
+  // New in VS Code 1.110: Python Environments extension rollout toggle.
+  "python.useEnvsExtension": true,
+
+  // Optional source control attribution for agent/chat generated changes.
+  "git.addAICoAuthor": "chatAndAgent",
 
   // ============================================================================
   // Custom Copilot Agents Configuration
@@ -32,72 +51,16 @@
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": true,
+  "terminal.integrated.enableImages": true,
+  "terminal.integrated.gpuAcceleration": "on",
+  "terminal.integrated.windowsUseConptyDll": true,
   "task.autoClose": true,
   "chat.tools.terminal.outputLocation": "terminal",
 
   // ============================================================================
   // MCP (Model Context Protocol) Server Configuration
+  // Single source of truth: .vscode/mcp.json
   // ============================================================================
-  "github.copilot.chat.mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "."
-      ]
-    },
-    "microsoft-learn": {
-      "type": "http",
-      "url": "https://learn.microsoft.com/api/mcp"
-    },
-    "csharp-mcp": {
-      "command": "dotnet",
-      "args": [
-        "tool",
-        "run",
-        "InfinityFlow.CSharp.Eval"
-      ],
-      "env": {
-        "CSX_ALLOWED_PATH": "C:\\Users\\biges\\Desktop\\Wiley-Widget",
-        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
-        "DOTNET_NOLOGO": "1"
-      }
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "env": {
-        "DISABLE_THOUGHT_LOGGING": "false"
-      }
-    },
-    "mssql": {
-      "command": "npx",
-      "args": ["-y", "mssql-mcp"],
-      "env": {
-        "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
-      },
-      "disabled": false
-    },
-    "syncfusion-winforms-assistant": {
-      "command": "npx",
-      "args": ["-y", "@syncfusion/winforms-assistant@latest"],
-      "env": {
-        "Syncfusion_API_Key": "${env:SYNCFUSION_MCP_API_KEY}"
-      }
-    },
-    "mcp-debugger": {
-      "command": "npx",
-      "args": ["-y", "@debugmcp/mcp-debugger@0.17.0", "stdio", "--log-level", "info", "--log-file", "${workspaceFolder}\\logs\\mcp-debugger.log"]
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
-      }
-    }
-  },
 
   // ============================================================================
   // ============================================================================
@@ -198,9 +161,6 @@
   "omnisharp.projectLoadTimeout": 60000,
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
-  "omnisharp.excludePaths": [
-    "**/tests/**"
-  ],
   "omnisharp.enableAsyncCompletion": true,
   "omnisharp.analyzeOpenDocumentsOnly": false,
 
@@ -211,8 +171,8 @@
   // open files (not just the active tab). This eliminates stale squiggles and
   // Problems-panel entries when switching between files.
   // Docs: https://learn.microsoft.com/visualstudio/code-quality/configure-live-code-analysis-scope-managed-code
-  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
-  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
+  "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "activeDocuments",
+  "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "activeDocuments",
 
   "[csharp]": {
     "editor.formatOnSave": true,
@@ -246,8 +206,12 @@
   // Testing Configuration
   // ============================================================================
   "testExplorer.useNativeTesting": true,
-  "dotnet-test-explorer.testProjectPath": "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer.Tests/WileyWidgetMcpServer.Tests.csproj",
+  "dotnet-test-explorer.testProjectPath": "tests/**/*Tests.csproj",
+  "dotnet-test-explorer.testArguments": "--no-restore -m:1",
+  "dotnet-test-explorer.pathForResultFile": "TestResults",
+  "dotnet-test-explorer.runInParallel": false,
   "dotnet-test-explorer.autoWatch": false,
+  "dotnet-test-explorer.enableTelemetry": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
 
@@ -418,6 +382,7 @@
       ],
       "icon": "terminal-cmd"
     }
-  }
+  },
+  "editor.codeActions.triggerOnFocusChange": true
 }
 

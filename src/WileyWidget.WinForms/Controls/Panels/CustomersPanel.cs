@@ -18,6 +18,7 @@ using WileyWidget.WinForms.Controls.Base;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Controls.Supporting;
 using System.Collections.Generic;
+using System.Linq;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
 using System.Windows.Forms;
@@ -33,6 +34,8 @@ using System.Windows.Forms;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.Dialogs;
 using WileyWidget.Models;
 
@@ -106,6 +109,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
     private ErrorProvider? _errorProvider;
     private ToolTip? _toolTip;
+    private IReadOnlyList<UtilityCustomer>? _diagnosticsFallbackCustomers;
 
     #endregion
 
@@ -120,11 +124,26 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         : base(scopeFactory, logger)
     {
         // Set preferred size for proper docking display (matches PreferredDockSize extension)
-        Size = new Size(1100, 760);
-        MinimumSize = new Size(1024, 720);
+        Size = ScaleLogicalToDevice(new Size(1100, 760));
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
 
         // NOTE: InitializeControls() moved to OnViewModelResolved()
         ApplySyncfusionTheme();
+
+        if (_mainLayout == null)
+        {
+            SafeSuspendAndLayout(InitializeControls);
+
+            if (ViewModel != null)
+            {
+                WireupToolbarEventHandlers();
+                BindViewModel();
+            }
+            else
+            {
+                ApplyDiagnosticsFallbackContentIfNeeded();
+            }
+        }
 
         _logger?.LogDebug("CustomersPanel initialized");
     }
@@ -132,7 +151,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
+        MinimumSize = ScaleLogicalToDevice(new Size(1024, 720));
         PerformLayout();
         Invalidate(true);
     }
@@ -142,8 +161,14 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         base.OnViewModelResolved(viewModel);
         if (viewModel is CustomersViewModel)
         {
-            SafeSuspendAndLayout(InitializeControls);
+            if (_mainLayout == null)
+            {
+                SafeSuspendAndLayout(InitializeControls);
+            }
+
             WireupToolbarEventHandlers();
+            BindViewModel();
+            ApplyDiagnosticsFallbackContentIfNeeded();
         }
     }
 
@@ -155,12 +180,22 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         if (_clearFiltersButton != null)
         {
+            if (_clearFiltersClickHandler != null)
+            {
+                _clearFiltersButton.Click -= _clearFiltersClickHandler;
+            }
+
             _clearFiltersClickHandler = (s, e) => ViewModel?.ClearFiltersCommand.Execute(null);
             _clearFiltersButton.Click += _clearFiltersClickHandler;
         }
 
         if (_showActiveOnlyCheckBox != null)
         {
+            if (_showActiveOnlyChangedHandler != null)
+            {
+                _showActiveOnlyCheckBox.CheckedChanged -= _showActiveOnlyChangedHandler;
+            }
+
             _showActiveOnlyChangedHandler = (s, e) =>
             {
                 if (ViewModel != null)
@@ -230,6 +265,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             {
                 // Header styling
                 _customersGrid.Style.HeaderStyle.Font.Bold = true;
+                ApplyDiagnosticsFallbackContentIfNeeded();
                 _customersGrid.Style.HeaderStyle.Font.Size = 9.5f;
 
                 // Selection styling
@@ -267,23 +303,24 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         Name = "CustomersPanel";
         Dock = DockStyle.Fill;
         AutoSize = false;
+        AutoScroll = true;
 
         // Initialize UI helpers
-        _errorProvider = new ErrorProvider
+        _errorProvider = ControlFactory.CreateErrorProvider(errorProvider =>
         {
-            BlinkStyle = ErrorBlinkStyle.NeverBlink,
-            ContainerControl = this
-        };
+            errorProvider.BlinkStyle = ErrorBlinkStyle.NeverBlink;
+            errorProvider.ContainerControl = this;
+        });
 
-        _toolTip = new ToolTip();
+        _toolTip = ControlFactory.CreateToolTip();
 
         // Panel header
-        _panelHeader = new PanelHeader
+        _panelHeader = ControlFactory.CreatePanelHeader(header =>
         {
-            Dock = DockStyle.Top,
-            Height = 50
-        };
-        _panelHeader.Title = "Customers Management";
+            header.Dock = DockStyle.Top;
+            header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+            header.Title = "Customers Management";
+        });
         _panelHeaderRefreshHandler = (s, e) => { _ = RefreshCustomersAsync(); };
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
@@ -298,10 +335,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             ColumnCount = 1
             // BackColor removed - let SFSkinManager handle theming
         };
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 130));  // Toolbar - increased for 2 button rows
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));  // Summary
+        _mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(160)));  // Toolbar - allows wrapped search and action rows at 125%+ DPI
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.SummaryPanelHeight)));  // Summary
         _mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));  // Grid
-        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));  // Status bar
+        _mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(LayoutTokens.StatusBarHeight)));  // Status bar
 
         // Create toolbar
         CreateToolbar();
@@ -331,14 +369,17 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         Controls.Add(_loadingOverlay);
         _loadingOverlay.BringToFront();
 
-        _noDataOverlay = new NoDataOverlay
+        _noDataOverlay = ControlFactory.CreateNoDataOverlay(overlay =>
         {
-            Message = "No customers found. Click 'Add Customer' to create one.",
-            Dock = DockStyle.Fill,
-            Visible = false
-        };
+            overlay.Message = "No customers found. Click 'Add Customer' to create one.";
+            overlay.Dock = DockStyle.Fill;
+            overlay.Visible = false;
+        });
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
+
+        ApplyProfessionalPanelLayout();
+        ApplyDiagnosticsFallbackContentIfNeeded();
 
         ResumeLayout(false);
         this.PerformLayout();
@@ -353,6 +394,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private void CreateToolbar()
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+        var rowGap = LayoutTokens.GetScaled(8);
+        var toolbarRowHeight = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge + 10);
         _toolbarPanel = new Panel
         {
             Dock = DockStyle.Fill,
@@ -367,7 +410,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Dock = DockStyle.Fill,
             RowCount = 2,
             ColumnCount = 1,
-            AutoSize = true
+            AutoSize = true,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
         toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -377,9 +422,10 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
+            WrapContents = true,
             AutoSize = true,
-            Margin = new Padding(0, 5, 0, 5)
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
 
         // Search label
@@ -389,7 +435,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             AutoSize = true,
             Anchor = AnchorStyles.Left,
             TextAlign = ContentAlignment.MiddleRight,
-            Margin = new Padding(0, 8, 5, 0)
+            Margin = new Padding(0, 6, rowGap, 0)
         };
         searchFilterRow.Controls.Add(searchLabel);
 
@@ -400,7 +446,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             textBox.PlaceholderText = "Name, account #, or address...";
             textBox.BorderStyle = BorderStyle.FixedSingle;
             textBox.Anchor = AnchorStyles.Left;
-            textBox.Margin = new Padding(0, 5, 5, 0);
+            textBox.Margin = new Padding(0, 4, rowGap, 0);
         });
         _searchTextBox.TextChanged += SearchTextBox_TextChanged;
         _searchTextBox.KeyPress += SearchTextBox_KeyPress;
@@ -413,8 +459,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _searchButton = ControlFactory.CreateSfButton("🔍 &Search", button =>
         {
             button.AutoSize = false;
-            button.Size = new Size(95, 32);
-            button.Margin = new Padding(0, 3, 5, 0);
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeCompact);
+            button.Margin = new Padding(0, 2, rowGap, 0);
         });
         _searchButton.AccessibleName = "Search Button";
         _searchButton.TabIndex = 11;
@@ -426,8 +472,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         // Clear filters button
         _clearFiltersButton = ControlFactory.CreateSfButton("Clear", button =>
         {
-            button.AutoSize = true;
-            button.Margin = new Padding(0, 3, 10, 0);
+            button.AutoSize = false;
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeCompact);
+            button.Margin = new Padding(0, 2, rowGap, 0);
         });
         _clearFiltersButton.AccessibleName = "Clear Filters";
         _clearFiltersButton.TabIndex = 12;
@@ -440,7 +487,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             Text = "|",
             AutoSize = true,
-            Margin = new Padding(5, 5, 5, 0)
+            Margin = new Padding(0, 4, rowGap, 0)
         };
         searchFilterRow.Controls.Add(separator1);
 
@@ -450,16 +497,16 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Text = "Type:",
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleRight,
-            Margin = new Padding(0, 8, 5, 0)
+            Margin = new Padding(0, 6, rowGap, 0)
         };
         searchFilterRow.Controls.Add(typeLabel);
 
         _filterTypeComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            combo.Width = 120;
+            combo.Width = 168;
             combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             combo.DataSource = new List<string> { "All Types", "Residential", "Commercial", "Industrial" };
-            combo.Margin = new Padding(0, 5, 5, 0);
+            combo.Margin = new Padding(0, 4, rowGap, 0);
         });
         _filterTypeComboBox.SelectedIndex = 0;
         _filterTypeComboBox.AccessibleName = "Filter by Type";
@@ -473,16 +520,16 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             Text = "Location:",
             AutoSize = true,
             TextAlign = ContentAlignment.MiddleRight,
-            Margin = new Padding(0, 8, 5, 0)
+            Margin = new Padding(0, 6, rowGap, 0)
         };
         searchFilterRow.Controls.Add(locationLabel);
 
         _filterLocationComboBox = ControlFactory.CreateSfComboBox(combo =>
         {
-            combo.Width = 140;
+            combo.Width = 188;
             combo.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
             combo.DataSource = new List<string> { "All Locations", "Inside City Limits", "Outside City Limits" };
-            combo.Margin = new Padding(0, 5, 10, 0);
+            combo.Margin = new Padding(0, 4, rowGap, 0);
         });
         _filterLocationComboBox.SelectedIndex = 0;
         _filterLocationComboBox.AccessibleName = "Filter by Location";
@@ -495,7 +542,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _showActiveOnlyCheckBox = ControlFactory.CreateCheckBoxAdv("Active Only", checkBox =>
         {
             checkBox.Checked = true;
-            checkBox.Margin = new Padding(0, 7, 0, 0);
+            checkBox.Margin = new Padding(0, 5, rowGap, 0);
         });
         _showActiveOnlyCheckBox.AccessibleName = "Show active only";
         _showActiveOnlyCheckBox.TabIndex = 15;
@@ -510,16 +557,17 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
-            WrapContents = false,
+            WrapContents = true,
             AutoSize = true,
-            Margin = new Padding(0, 5, 0, 5)
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
 
         // Add Customer button
         _addCustomerButton = ControlFactory.CreateSfButton("➕ &Add Customer", button =>
         {
             button.AutoSize = true;
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _addCustomerButton.AccessibleName = "Add Customer";
         _addCustomerButton.TabIndex = 20;
@@ -533,7 +581,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         {
             button.AutoSize = true;
             button.Enabled = false;
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _editCustomerButton.AccessibleName = "Edit Customer";
         _editCustomerButton.TabIndex = 21;
@@ -546,9 +594,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _deleteCustomerButton = ControlFactory.CreateSfButton("🗑️ &Delete", button =>
         {
             button.AutoSize = false;
-            button.Size = new Size(95, 32);
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeCompact);
             button.Enabled = false;
-            button.Margin = new Padding(0, 0, 10, 0);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _deleteCustomerButton.AccessibleName = "Delete Customer";
         _deleteCustomerButton.TabIndex = 22;
@@ -561,8 +609,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _refreshButton = ControlFactory.CreateSfButton("🔄 &Refresh", button =>
         {
             button.AutoSize = false;
-            button.Size = new Size(100, 32);
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeMedium);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _refreshButton.AccessibleName = "Refresh";
         _refreshButton.TabIndex = 23;
@@ -575,8 +623,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _syncQuickBooksButton = ControlFactory.CreateSfButton("📊 Sync QB", button =>
         {
             button.AutoSize = false;
-            button.Size = new Size(110, 32);
-            button.Margin = new Padding(0, 0, 5, 0);
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeWideCompact);
+            button.Margin = new Padding(0, 0, rowGap, 0);
         });
         _syncQuickBooksButton.AccessibleName = "Sync QuickBooks";
         _syncQuickBooksButton.TabIndex = 24;
@@ -589,7 +637,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         _exportButton = ControlFactory.CreateSfButton("💾 E&xport", button =>
         {
             button.AutoSize = false;
-            button.Size = new Size(100, 32);
+            button.Size = LayoutTokens.GetScaled(LayoutTokens.ButtonSizeMedium);
             button.Margin = new Padding(0, 0, 0, 0);
         });
         _exportButton.AccessibleName = "Export Customers";
@@ -624,37 +672,34 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         };
 
         // Total Customers card
-        _totalCustomersLabel = CreateSummaryLabel("Total: 0");
-        summaryLayout.Controls.Add(_totalCustomersLabel);
+        summaryLayout.Controls.Add(CreateSummaryCard("Total: 0", out _totalCustomersLabel));
 
         // Active Customers card
-        _activeCustomersLabel = CreateSummaryLabel("Active: 0");
-        summaryLayout.Controls.Add(_activeCustomersLabel);
+        summaryLayout.Controls.Add(CreateSummaryCard("Active: 0", out _activeCustomersLabel));
 
         // Balance Summary card
-        _balanceSummaryLabel = CreateSummaryLabel("Balance: $0.00");
-        summaryLayout.Controls.Add(_balanceSummaryLabel);
+        summaryLayout.Controls.Add(CreateSummaryCard("Balance: $0.00", out _balanceSummaryLabel));
 
         _summaryPanel.Controls.Add(summaryLayout);
     }
 
     /// <summary>
-    /// Creates a styled summary label inside a GradientPanelExt.
+    /// Creates a styled summary card and returns the inner label for later updates.
     /// </summary>
-    private Label CreateSummaryLabel(string text)
+    private Panel CreateSummaryCard(string text, out Label label)
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
         var cardPanel = new Panel
         {
-            Width = 180,
-            Height = 40,
+            Width = LayoutTokens.GetScaled(LayoutTokens.MetricCardWidth),
+            Height = LayoutTokens.GetScaled(LayoutTokens.MetricCardHeight),
             BorderStyle = BorderStyle.FixedSingle,
-            Margin = new Padding(5),
+            Margin = LayoutTokens.GetScaled(LayoutTokens.MetricCardMargin),
             AutoSize = false
         };
         SfSkinManager.SetVisualStyle(cardPanel, currentTheme);
 
-        var label = new Label
+        label = new Label
         {
             Text = text,
             Dock = DockStyle.Fill,
@@ -662,7 +707,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         };
         cardPanel.Controls.Add(label);
 
-        return label;
+        return cardPanel;
     }
 
     /// <summary>
@@ -681,9 +726,9 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             grid.SelectionMode = GridSelectionMode.Single;
             grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Row;
             grid.ShowRowHeader = true;
-            grid.RowHeight = 32;
-            // AutoSizeColumnsMode for better column management
-            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.None;
+            grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
+            grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightMedium);
+            grid.AutoSizeColumnsMode = AutoSizeColumnsMode.Fill;
         });
 
         _customersGrid.PreventStringRelationalFilters(
@@ -781,9 +826,25 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             AllowFiltering = true
         });
 
+        SetColumnMinimumWidth(_customersGrid, nameof(UtilityCustomer.AccountNumber), 120);
+        SetColumnMinimumWidth(_customersGrid, nameof(UtilityCustomer.PhoneNumber), 120);
+        SetColumnMinimumWidth(_customersGrid, nameof(UtilityCustomer.CurrentBalance), 120);
+
         // Wire up events
         _customersGrid.SelectionChanged += CustomersGrid_SelectionChanged;
         _customersGrid.CellDoubleClick += CustomersGrid_CellDoubleClick;
+    }
+
+    private static void SetColumnMinimumWidth(SfDataGrid grid, string mappingName, int minLogical)
+    {
+        foreach (var column in grid.Columns)
+        {
+            if (column.MappingName == mappingName)
+            {
+                column.MinimumWidth = LayoutTokens.GetScaled(minLogical);
+                break;
+            }
+        }
     }
 
     /// <summary>
@@ -791,34 +852,34 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void CreateStatusStrip()
     {
-        _statusStrip = new StatusStrip
+        _statusStrip = ControlFactory.CreateStatusStrip(statusStrip =>
         {
-            Dock = DockStyle.Fill
+            statusStrip.Dock = DockStyle.Fill;
             // BackColor removed - let SFSkinManager handle theming
-        };
+        });
 
-        _statusLabel = new ToolStripStatusLabel
+        _statusLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
         {
-            Text = "Ready",
-            Spring = true,
-            TextAlign = ContentAlignment.MiddleLeft
-        };
+            statusLabel.Text = "Ready";
+            statusLabel.Spring = true;
+            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
+        });
         _statusStrip.Items.Add(_statusLabel);
 
-        _countLabel = new ToolStripStatusLabel
+        _countLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
         {
-            Text = "0 customers",
-            BorderSides = ToolStripStatusLabelBorderSides.Left,
-            BorderStyle = Border3DStyle.Etched
-        };
+            statusLabel.Text = "0 customers";
+            statusLabel.BorderSides = ToolStripStatusLabelBorderSides.Left;
+            statusLabel.BorderStyle = Border3DStyle.Etched;
+        });
         _statusStrip.Items.Add(_countLabel);
 
-        _balanceLabel = new ToolStripStatusLabel
+        _balanceLabel = ControlFactory.CreateToolStripStatusLabel(statusLabel =>
         {
-            Text = "Total Balance: $0.00",
-            BorderSides = ToolStripStatusLabelBorderSides.Left,
-            BorderStyle = Border3DStyle.Etched
-        };
+            statusLabel.Text = "Total Balance: $0.00";
+            statusLabel.BorderSides = ToolStripStatusLabelBorderSides.Left;
+            statusLabel.BorderStyle = Border3DStyle.Etched;
+        });
         _statusStrip.Items.Add(_balanceLabel);
     }
 
@@ -842,10 +903,13 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         }
 
         // Create BindingSource for the ViewModel
-        var viewModelBinding = new BindingSource
-        {
-            DataSource = ViewModel
-        };
+        var viewModelBinding = ControlFactory.CreateBindingSource(ViewModel);
+
+        _searchTextBox?.DataBindings.Clear();
+        _showActiveOnlyCheckBox?.DataBindings.Clear();
+        _totalCustomersLabel?.DataBindings.Clear();
+        _activeCustomersLabel?.DataBindings.Clear();
+        _balanceSummaryLabel?.DataBindings.Clear();
 
         // Bind grid to filtered customers collection
         if (_customersGrid != null && ViewModel?.FilteredCustomers != null)
@@ -1051,6 +1115,16 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void UpdateNoDataOverlay()
     {
+        if (LayoutDiagnosticsMode.IsActive)
+        {
+            ApplyDiagnosticsFallbackContentIfNeeded();
+
+            if ((ViewModel?.FilteredCustomers.Count ?? _diagnosticsFallbackCustomers?.Count ?? 0) > 0)
+            {
+                return;
+            }
+        }
+
         if (_noDataOverlay != null)
         {
             var hasNoData = (ViewModel?.IsLoading == false) && (ViewModel?.FilteredCustomers.Count == 0);
@@ -1067,6 +1141,131 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
                 _noDataOverlay.HideActionButton();
             }
         }
+    }
+
+    private void ApplyDiagnosticsFallbackContentIfNeeded()
+    {
+        if (!LayoutDiagnosticsMode.IsActive || _customersGrid == null)
+        {
+            return;
+        }
+
+        if (ViewModel?.FilteredCustomers.Count > 0)
+        {
+            _diagnosticsFallbackCustomers = null;
+            return;
+        }
+
+        _diagnosticsFallbackCustomers ??= CreateDiagnosticsFallbackCustomers();
+        var sampleCustomers = _diagnosticsFallbackCustomers;
+        var activeCustomers = sampleCustomers.Count(customer => customer.Status == CustomerStatus.Active);
+        var totalBalance = sampleCustomers.Sum(customer => customer.CurrentBalance);
+
+        if (ViewModel != null)
+        {
+            ViewModel.Customers.Clear();
+            ViewModel.FilteredCustomers.Clear();
+
+            foreach (var customer in sampleCustomers)
+            {
+                ViewModel.Customers.Add(customer);
+                ViewModel.FilteredCustomers.Add(customer);
+            }
+
+            ViewModel.TotalCustomers = sampleCustomers.Count;
+            ViewModel.ActiveCustomers = activeCustomers;
+            ViewModel.TotalOutstandingBalance = totalBalance;
+            ViewModel.StatusText = "Diagnostics sample customers active";
+            _customersGrid.DataSource = ViewModel.FilteredCustomers;
+        }
+        else
+        {
+            _customersGrid.DataSource = sampleCustomers.ToList();
+
+            if (_totalCustomersLabel != null)
+            {
+                _totalCustomersLabel.Text = $"Total: {sampleCustomers.Count}";
+            }
+
+            if (_activeCustomersLabel != null)
+            {
+                _activeCustomersLabel.Text = $"Active: {activeCustomers}";
+            }
+
+            if (_balanceSummaryLabel != null)
+            {
+                _balanceSummaryLabel.Text = $"Balance: {totalBalance:C2}";
+            }
+
+            if (_countLabel != null)
+            {
+                _countLabel.Text = $"{sampleCustomers.Count} customers";
+            }
+
+            if (_balanceLabel != null)
+            {
+                _balanceLabel.Text = $"Total Balance: {totalBalance:C2}";
+            }
+
+            UpdateStatus("Diagnostics sample customers active");
+        }
+
+        if (_noDataOverlay != null)
+        {
+            _noDataOverlay.HideActionButton();
+            _noDataOverlay.Visible = false;
+        }
+    }
+
+    private static List<UtilityCustomer> CreateDiagnosticsFallbackCustomers()
+    {
+        return new List<UtilityCustomer>
+        {
+            new()
+            {
+                Id = 9101,
+                AccountNumber = "W-10452",
+                FirstName = "Maya",
+                LastName = "Reed",
+                CustomerType = CustomerType.Residential,
+                ServiceAddress = "145 Cedar Street",
+                ServiceCity = "Wiley",
+                ServiceState = "CO",
+                PhoneNumber = "970-555-0182",
+                CurrentBalance = 84.12m,
+                Status = CustomerStatus.Active,
+            },
+            new()
+            {
+                Id = 9102,
+                AccountNumber = "C-20817",
+                CompanyName = "Mesa Market",
+                FirstName = "Rita",
+                LastName = "Lopez",
+                CustomerType = CustomerType.Commercial,
+                ServiceAddress = "22 Main Street",
+                ServiceCity = "Wiley",
+                ServiceState = "CO",
+                PhoneNumber = "970-555-0146",
+                CurrentBalance = 212.48m,
+                Status = CustomerStatus.Active,
+            },
+            new()
+            {
+                Id = 9103,
+                AccountNumber = "M-33009",
+                CompanyName = "Maple Court Apartments",
+                FirstName = "Ethan",
+                LastName = "Cole",
+                CustomerType = CustomerType.MultiFamily,
+                ServiceAddress = "300 Maple Court",
+                ServiceCity = "Wiley",
+                ServiceState = "CO",
+                PhoneNumber = "970-555-0199",
+                CurrentBalance = 468.30m,
+                Status = CustomerStatus.Active,
+            },
+        };
     }
 
     /// <summary>
@@ -1302,6 +1501,14 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
                     // Save the changes to the database
                     await ViewModel.SaveCustomerAsync(ViewModel.SelectedCustomer);
                     _logger.LogDebug("Customer {Account} updated successfully", ViewModel.SelectedCustomer.AccountNumber);
+
+                    _ = ControlFactory.ShowSemanticMessageBox(
+                        this,
+                        $"Customer {ViewModel.SelectedCustomer.AccountNumber} updated successfully.",
+                        "Update Successful",
+                        SyncfusionControlFactory.MessageSemanticKind.Success,
+                        MessageBoxButtons.OK,
+                        playNotificationSound: true);
                 }
             }
             catch (Exception ex)
@@ -1341,8 +1548,13 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
 
                 if (success)
                 {
-                    MessageBox.Show("Customer deleted successfully", "Success",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    _ = ControlFactory.ShowSemanticMessageBox(
+                        this,
+                        "Customer deleted successfully",
+                        "Delete Successful",
+                        SyncfusionControlFactory.MessageSemanticKind.Success,
+                        MessageBoxButtons.OK,
+                        playNotificationSound: true);
                 }
             }
         }
@@ -1476,18 +1688,15 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     protected override void OnPanelLoaded(EventArgs e)
     {
+        base.OnPanelLoaded(e);
         if (!DesignMode)
         {
-            WireupToolbarEventHandlers();
-
-            if (ViewModel != null)
+            BeginInvoke(new MethodInvoker(() =>
             {
-                BindViewModel();
-            }
-
-            // Defer sizing validation until layout is complete
-            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
-
+                ApplyProfessionalPanelLayout();
+                ForceFullLayout();
+                SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _);
+            }));
         }
     }
 

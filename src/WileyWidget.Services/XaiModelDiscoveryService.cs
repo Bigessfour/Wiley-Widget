@@ -204,10 +204,23 @@ namespace WileyWidget.Services
         private static string NormalizeBaseEndpoint(string endpoint)
         {
             var baseEndpointCandidate = (endpoint ?? string.Empty).TrimEnd('/');
+            const string responsesSuffix = "/responses";
             const string chatSuffix = "/chat/completions";
+            if (baseEndpointCandidate.EndsWith(responsesSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - responsesSuffix.Length);
+            }
+
             if (baseEndpointCandidate.EndsWith(chatSuffix, StringComparison.OrdinalIgnoreCase))
             {
                 baseEndpointCandidate = baseEndpointCandidate.Substring(0, baseEndpointCandidate.Length - chatSuffix.Length);
+            }
+
+            if (Uri.TryCreate(baseEndpointCandidate, UriKind.Absolute, out var parsed) &&
+                parsed.Host.Equals("api.x.ai", StringComparison.OrdinalIgnoreCase) &&
+                (parsed.AbsolutePath == "/" || string.IsNullOrEmpty(parsed.AbsolutePath)))
+            {
+                baseEndpointCandidate = parsed.GetLeftPart(UriPartial.Authority) + "/v1";
             }
 
             baseEndpointCandidate = baseEndpointCandidate.TrimEnd('/');

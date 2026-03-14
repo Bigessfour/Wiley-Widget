@@ -13,6 +13,10 @@ using SfDataGrid = Syncfusion.WinForms.DataGrid.SfDataGrid;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 
 
@@ -25,6 +29,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 public partial class OverviewTabControl : UserControl
 {
     private readonly OverviewTabViewModel? _viewModel;
+    private readonly SyncfusionControlFactory _controlFactory;
     private readonly ILogger _logger;
 
     private Panel? _summaryPanel;
@@ -41,14 +46,15 @@ public partial class OverviewTabControl : UserControl
 
     public bool IsLoaded { get; private set; }
 
-    public OverviewTabControl(OverviewTabViewModel? viewModel, ILogger? logger = null)
+    public OverviewTabControl(OverviewTabViewModel? viewModel, SyncfusionControlFactory controlFactory, ILogger? logger = null)
     {
         _viewModel = viewModel;
+        _controlFactory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         _logger = logger ?? NullLogger.Instance;
 
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, theme);
         }
         catch { /* best-effort */ }
@@ -61,17 +67,17 @@ public partial class OverviewTabControl : UserControl
     {
         this.Dock = DockStyle.Fill;
         this.AutoScaleMode = AutoScaleMode.Dpi;
-        this.AutoScroll = true;
-        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
-        this.Padding = new Padding(8);
+        this.AutoScroll = false;
+        this.MinimumSize = Size.Empty;
+        this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight);
         _toolTip = new ToolTip();
 
-        var mainSplit = new SplitContainerAdv
+        var mainSplit = _controlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 100
-        };
+            splitter.Orientation = Orientation.Vertical;
+        });
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(mainSplit, 280, 420, 320);
+        SafeSplitterDistanceHelper.SetupProportionalResizing(mainSplit, 0.28d);
 
         InitializeSummaryTiles(mainSplit.Panel1);
         InitializeChartAndGrid(mainSplit.Panel2);
@@ -89,8 +95,9 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeSummaryTiles(Control parent)
     {
-        _summaryPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-        SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+        _summaryPanel = new Panel { Dock = DockStyle.Fill, Padding = LayoutTokens.GetScaled(LayoutTokens.DialogContentPadding) };
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+        SfSkinManager.SetVisualStyle(_summaryPanel, themeName);
 
         var flow = new FlowLayoutPanel
         {
@@ -111,14 +118,22 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeChartAndGrid(Control parent)
     {
-        var split = new SplitContainerAdv { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
-
-        _varianceChart = new ChartControl
+        var split = _controlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Budget variance chart",
-            AccessibleDescription = "Displays budget vs actual variance by department"
-        };
+            splitter.Orientation = Orientation.Horizontal;
+        });
+        SafeSplitterDistanceHelper.ConfigureSafeSplitContainer(split, 300, 220, 320);
+        SafeSplitterDistanceHelper.SetupProportionalResizing(split, 0.52d);
+
+        _varianceChart = _controlFactory.CreateChartControl("Budget Variance", chart =>
+        {
+            chart.AccessibleName = "Budget variance chart";
+            chart.AccessibleDescription = "Displays budget vs actual variance by department";
+            chart.Legend.Visible = true;
+            chart.Legend.Position = ChartDock.Top;
+            chart.PrimaryXAxis.Title = string.Empty;
+            chart.PrimaryYAxis.Title = string.Empty;
+        });
         _toolTip?.SetToolTip(_varianceChart, "Variance chart by department.");
         split.Panel1.Controls.Add(_varianceChart);
 
@@ -128,26 +143,27 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeMetricsGrid(Control parent)
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-        _metricsGrid = new SfDataGrid
+        _metricsGrid = _controlFactory.CreateSfDataGrid(grid =>
         {
-            Dock = DockStyle.Fill,
-            AllowEditing = false,
-            AllowGrouping = true,
-            AutoGenerateColumns = false,
-            ThemeName = themeName,
-            AccessibleName = "Overview metrics grid",
-            AccessibleDescription = "Department-level budget metrics for the overview tab"
-        }.PreventStringRelationalFilters(null, "DepartmentName");
+            grid.AllowEditing = false;
+            grid.AllowGrouping = false;
+            grid.AutoGenerateColumns = false;
+            grid.ShowGroupDropArea = false;
+            grid.AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.None;
+            grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
+            grid.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightComfortable);
+            grid.AccessibleName = "Overview metrics grid";
+            grid.AccessibleDescription = "Department-level budget metrics for the overview tab";
+        }).PreventStringRelationalFilters(null, "DepartmentName");
         _toolTip?.SetToolTip(_metricsGrid, "Detailed overview metrics.");
 
         GridColumn[] columns =
         [
-            new GridTextColumn    { MappingName = "DepartmentName",  HeaderText = "Department"  },
-            new GridNumericColumn { MappingName = "BudgetedAmount",  HeaderText = "Budget",     Format = "C2" },
-            new GridNumericColumn { MappingName = "Amount",          HeaderText = "Actual",     Format = "C2" },
-            new GridNumericColumn { MappingName = "Variance",        HeaderText = "Variance",   Format = "C2" },
-            new GridNumericColumn { MappingName = "VariancePercent", HeaderText = "Variance %", Format = "P2" }
+            new GridTextColumn    { MappingName = "DepartmentName",  HeaderText = "Department",  Width = 170, MinimumWidth = 150 },
+            new GridNumericColumn { MappingName = "BudgetedAmount",  HeaderText = "Budget",     Format = "C2", Width = 135, MinimumWidth = 120 },
+            new GridNumericColumn { MappingName = "Amount",          HeaderText = "Actual",     Format = "C2", Width = 135, MinimumWidth = 120 },
+            new GridNumericColumn { MappingName = "Variance",        HeaderText = "Variance",   Format = "C2", Width = 135, MinimumWidth = 120 },
+            new GridNumericColumn { MappingName = "VariancePercent", HeaderText = "Variance %", Format = "P2", Width = 120, MinimumWidth = 110 }
         ];
 
         foreach (var col in columns) _metricsGrid.Columns.Add(col);
@@ -156,12 +172,12 @@ public partial class OverviewTabControl : UserControl
 
     private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
     {
-        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
         var tile = new Panel
         {
             Width = 150,
             Height = 80,
-            Margin = new Padding(5),
+            Margin = LayoutTokens.GetScaled(LayoutTokens.InputControlMargin),
             BorderStyle = BorderStyle.None,
             AccessibleName = $"{title} summary card",
             AccessibleDescription = $"Displays {title.ToLowerInvariant()} metric"

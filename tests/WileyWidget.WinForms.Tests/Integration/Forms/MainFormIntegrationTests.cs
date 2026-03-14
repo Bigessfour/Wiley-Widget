@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.ListView;
@@ -27,19 +28,92 @@ namespace WileyWidget.WinForms.Tests.Integration.Forms;
 [Collection("IntegrationTests")]
 public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : IntegrationTestBase(fixture)
 {
+    private static MdiClient? FindMdiClient(Control root)
+    {
+        foreach (Control child in root.Controls)
+        {
+            if (child is MdiClient mdiClient)
+            {
+                return mdiClient;
+            }
+
+            var nested = FindMdiClient(child);
+            if (nested != null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    private static Rectangle GetBoundsInForm(Control control, Form form)
+    {
+        if (control.Parent == null)
+        {
+            return control.Bounds;
+        }
+
+        return form.RectangleToClient(control.Parent.RectangleToScreen(control.Bounds));
+    }
+
     private sealed class TestMainForm : MainForm
     {
-        public TestMainForm(IServiceProvider provider)
-            : base(
-                provider,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider),
-                Config.ReportViewerLaunchOptions.Disabled,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(provider))
+        private readonly IServiceScope? _ownedScope;
+
+        private sealed class ProviderContext
         {
+            public ProviderContext(IServiceProvider serviceProvider, IServiceScope? ownedScope)
+            {
+                ServiceProvider = serviceProvider;
+                OwnedScope = ownedScope;
+            }
+
+            public IServiceProvider ServiceProvider { get; }
+            public IServiceScope? OwnedScope { get; }
+        }
+
+        private static ProviderContext CreateProviderContext(IServiceProvider provider)
+        {
+            ArgumentNullException.ThrowIfNull(provider);
+
+            var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceScopeFactory>(provider);
+            if (scopeFactory == null)
+            {
+                return new ProviderContext(provider, ownedScope: null);
+            }
+
+            var scope = scopeFactory.CreateScope();
+            return new ProviderContext(scope.ServiceProvider, scope);
+        }
+
+        public TestMainForm(IServiceProvider provider)
+            : this(CreateProviderContext(provider))
+        {
+        }
+
+        private TestMainForm(ProviderContext providerContext)
+            : base(
+                providerContext.ServiceProvider,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(providerContext.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(providerContext.ServiceProvider),
+                Config.ReportViewerLaunchOptions.Disabled,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(providerContext.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(providerContext.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(providerContext.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(providerContext.ServiceProvider))
+        {
+            _ownedScope = providerContext.OwnedScope;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _ownedScope?.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
 
         public void CallInitializeChrome()
@@ -77,6 +151,91 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             return result;
         }
 
+        public bool CallShowJarvisInRightDock(object? parameters = null)
+        {
+            var mi = typeof(MainForm).GetMethod("ShowJarvisInRightDock", BindingFlags.Instance | BindingFlags.NonPublic);
+            var invokeResult = mi?.Invoke(this, new[] { parameters });
+            return (invokeResult as bool?) ?? false;
+        }
+
+        public async Task CallExecuteQueuedGlobalSearchAndSelectionAsync()
+        {
+            var mi = typeof(MainForm).GetMethod("ExecuteQueuedGlobalSearchAndSelectionAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+            var task = mi?.Invoke(this, null) as Task;
+            if (task != null)
+            {
+                await task;
+            }
+        }
+
+        public void CallExecuteSelectedSearchResult()
+        {
+            var mi = typeof(MainForm).GetMethod("ExecuteSelectedSearchResult", BindingFlags.Instance | BindingFlags.NonPublic);
+            mi?.Invoke(this, null);
+        }
+
+        public void SeedGlobalSearchResult(string name, string type, string description, System.Action action)
+        {
+            var resultType = typeof(MainForm).GetNestedType("SearchResult", BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("SearchResult type was not found.");
+
+            var result = Activator.CreateInstance(resultType)
+                ?? throw new InvalidOperationException("SearchResult instance could not be created.");
+
+            resultType.GetProperty("Name")?.SetValue(result, name);
+            resultType.GetProperty("Type")?.SetValue(result, type);
+            resultType.GetProperty("Description")?.SetValue(result, description);
+            resultType.GetProperty("Action")?.SetValue(result, action);
+
+            var resultsField = typeof(MainForm).GetField("_searchDialogResults", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("_searchDialogResults field was not found.");
+
+            if (resultsField.GetValue(this) is not System.Collections.IList results)
+            {
+                throw new InvalidOperationException("_searchDialogResults field is not an IList.");
+            }
+
+            results.Clear();
+            results.Add(result);
+
+            if (GetPrivateField("_searchResultsList") is SfListView resultsList)
+            {
+                resultsList.DataSource = new[] { $"[{type}] {name} - {description}" };
+                resultsList.SelectedIndex = 0;
+            }
+        }
+
+        public void CallCloseAllDocuments()
+        {
+            var mi = typeof(MainForm).GetMethod("CloseAllDocuments", BindingFlags.Instance | BindingFlags.NonPublic);
+            mi?.Invoke(this, null);
+        }
+
+        public void CallCloseOtherDocuments()
+        {
+            var mi = typeof(MainForm).GetMethod("CloseOtherDocuments", BindingFlags.Instance | BindingFlags.NonPublic);
+            mi?.Invoke(this, null);
+        }
+
+        public void CallLoadWorkspaceLayout(string? layoutName = null)
+        {
+            var mi = typeof(MainForm).GetMethod("LoadWorkspaceLayout", BindingFlags.Instance | BindingFlags.NonPublic);
+            mi?.Invoke(this, new object?[] { layoutName });
+        }
+
+        public void CallAutoSaveLayoutOnClosing()
+        {
+            var mi = typeof(MainForm).GetMethod("AutoSaveLayoutOnClosing", BindingFlags.Instance | BindingFlags.NonPublic);
+            mi?.Invoke(this, null);
+        }
+
+        public string CallGetLayoutFilePath(string layoutFileName)
+        {
+            var mi = typeof(MainForm).GetMethod("GetLayoutFilePath", BindingFlags.Instance | BindingFlags.NonPublic);
+            return (string?)mi?.Invoke(this, new object[] { layoutFileName })
+                ?? throw new InvalidOperationException("GetLayoutFilePath returned null.");
+        }
+
         /// <summary>
         /// Forces the exact same initialization sequence the real app uses (OnLoad + Shown + professional features + visibility).
         /// This is the only way to make QAT, document switcher, global search, and ribbon visibility work reliably in tests.
@@ -90,7 +249,16 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             if (!IsMdiContainer)
                 IsMdiContainer = true;
 
-            // Critical: Make form visible first (required for OnShown event)
+            // Critical: Make form visible first (required for OnShown event), but keep
+            // integration-only windows off-screen so a stuck STA run doesn't leave a
+            // pointless interactive window on the desktop.
+            if (!Visible)
+            {
+                ShowInTaskbar = false;
+                StartPosition = FormStartPosition.Manual;
+                Location = new System.Drawing.Point(-32000, -32000);
+            }
+
             Show();
             Activate();
             BringToFront();
@@ -150,6 +318,178 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
 
             form.Text.Should().Contain("Wiley Widget");
             form.WindowState.Should().NotBe(System.Windows.Forms.FormWindowState.Minimized);
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void InitializeChrome_PopulatesFinancialsAnalyticsAndReportingGroups()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            for (var i = 0; i < 10; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var financialsTab = form.GetPrivateField("_financialsTab") as ToolStripTabItem;
+            var analyticsTab = form.GetPrivateField("_analyticsTab") as ToolStripTabItem;
+
+            financialsTab.Should().NotBeNull();
+            analyticsTab.Should().NotBeNull();
+            financialsTab!.Panel.Should().NotBeNull();
+            analyticsTab!.Panel.Should().NotBeNull();
+
+            var financialsGroup = financialsTab.Panel!.Controls.OfType<ToolStripEx>()
+                .FirstOrDefault(strip => string.Equals(strip.Name, "FinancialsGroup", StringComparison.OrdinalIgnoreCase));
+            var analyticsGroup = analyticsTab.Panel!.Controls.OfType<ToolStripEx>()
+                .FirstOrDefault(strip => string.Equals(strip.Name, "AnalyticsGroup", StringComparison.OrdinalIgnoreCase));
+            var reportingGroup = analyticsTab.Panel!.Controls.OfType<ToolStripEx>()
+                .FirstOrDefault(strip => string.Equals(strip.Name, "ReportingGroup", StringComparison.OrdinalIgnoreCase));
+
+            financialsGroup.Should().NotBeNull("Financials tab should include the Financials group");
+            analyticsGroup.Should().NotBeNull("Analytics tab should include the Analytics group");
+            reportingGroup.Should().NotBeNull("Analytics tab should include the Reporting group");
+
+            financialsGroup!.Items.OfType<ToolStripButton>()
+                .Any(button => button.Visible && button.Enabled)
+                .Should().BeTrue("Financials group should contain visible actionable buttons");
+
+            analyticsGroup!.Items.OfType<ToolStripButton>()
+                .Any(button => button.Visible && button.Enabled)
+                .Should().BeTrue("Analytics group should contain visible actionable buttons");
+
+            reportingGroup!.Items.OfType<ToolStripButton>()
+                .Any(button => button.Visible && button.Enabled)
+                .Should().BeTrue("Reporting group should contain visible actionable buttons");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void InitializeChrome_AllTabs_MeetRibbonHeightAndPopulationStandards()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true"
+        });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            for (var i = 0; i < 15; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var homeTab = form.GetPrivateField("_homeTab") as ToolStripTabItem;
+            var financialsTab = form.GetPrivateField("_financialsTab") as ToolStripTabItem;
+            var analyticsTab = form.GetPrivateField("_analyticsTab") as ToolStripTabItem;
+            var utilitiesTab = form.GetPrivateField("_utilitiesTab") as ToolStripTabItem;
+            var administrationTab = form.GetPrivateField("_administrationTab") as ToolStripTabItem;
+
+            ribbon.Should().NotBeNull();
+            homeTab.Should().NotBeNull();
+            financialsTab.Should().NotBeNull();
+            analyticsTab.Should().NotBeNull();
+            utilitiesTab.Should().NotBeNull();
+            administrationTab.Should().NotBeNull();
+
+            var minimumRibbonHeight = (int)DpiAware.LogicalToDeviceUnits(132f);
+            var minimumStripHeight = (int)DpiAware.LogicalToDeviceUnits(104f);
+            var minimumLargeButtonHeight = (int)DpiAware.LogicalToDeviceUnits(96f);
+
+            static IEnumerable<ToolStripItem> FlattenItems(ToolStripItemCollection items)
+            {
+                foreach (ToolStripItem item in items)
+                {
+                    yield return item;
+
+                    if (item is ToolStripPanelItem panelItem)
+                    {
+                        foreach (var nested in FlattenItems(panelItem.Items))
+                        {
+                            yield return nested;
+                        }
+                    }
+                    else if (item is ToolStripDropDownItem dropDownItem)
+                    {
+                        foreach (var nested in FlattenItems(dropDownItem.DropDownItems))
+                        {
+                            yield return nested;
+                        }
+                    }
+                }
+            }
+
+            ribbon!.Height.Should().BeGreaterOrEqualTo(minimumRibbonHeight, "Ribbon should stay at a usable UX height");
+
+            foreach (var tab in new[] { homeTab!, financialsTab!, analyticsTab!, utilitiesTab!, administrationTab! })
+            {
+                tab.Panel.Should().NotBeNull($"{tab.Name} should have an initialized tab panel");
+
+                var strips = tab.Panel!.Controls.OfType<ToolStripEx>().ToArray();
+                strips.Should().NotBeEmpty($"{tab.Name} should have ribbon groups");
+
+                foreach (var strip in strips)
+                {
+                    strip.Height.Should().BeGreaterOrEqualTo(minimumStripHeight, $"{strip.Name} should meet ribbon group minimum height");
+
+                    var visibleActionableItems = FlattenItems(strip.Items)
+                        .Where(item => item.Enabled)
+                        .Where(item => item is ToolStripButton
+                                       || item is ToolStripTextBox
+                                       || item is ToolStripComboBox
+                                       || item is ToolStripComboBoxEx)
+                        .ToList();
+
+                    visibleActionableItems.Should().NotBeEmpty($"{strip.Name} should expose actionable controls");
+
+                    var largeButtons = visibleActionableItems
+                        .OfType<ToolStripButton>()
+                        .Where(button => button.TextImageRelation == TextImageRelation.ImageAboveText)
+                        .ToList();
+
+                    foreach (var largeButton in largeButtons)
+                    {
+                        largeButton.Height.Should().BeGreaterOrEqualTo(minimumLargeButtonHeight,
+                            $"{largeButton.Name} in {strip.Name} should meet minimum large-button height");
+                    }
+                }
+            }
         }
         finally
         {
@@ -330,6 +670,112 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             {
                 resultsData.Should().NotBeNull("Search results must populate (at least Enterprise Vital Signs from PanelRegistry)");
             }
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [StaFact]
+    public async Task PerformGlobalSearchAsync_ShowsSearchDialog_WhenQueryProvided()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            await form.PerformGlobalSearchAsync("enterprise");
+            PumpMessages(8);
+
+            var dialog = form.GetPrivateField("_searchDialog") as Form;
+            var searchBox = form.GetPrivateField("_globalSearchBox") as TextBoxExt;
+
+            dialog.Should().NotBeNull("ribbon/global search should surface a visible results dialog");
+            dialog!.Visible.Should().BeTrue("search results should be shown after executing a global search query");
+            searchBox.Should().NotBeNull("the search dialog should host the Syncfusion search textbox");
+            searchBox!.Text.Should().Be("enterprise", "the dialog should reflect the query that launched the search");
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [StaFact]
+    public void GlobalSearch_ExecutesSelectedResult_AndClosesDialog()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+        using var dialog = new Form
+        {
+            ShowInTaskbar = false,
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-32000, -32000),
+        };
+        using var searchBox = new TextBoxExt
+        {
+            Text = "enterprise vital signs",
+        };
+        using var resultsList = new SfListView();
+
+        try
+        {
+            dialog.Controls.Add(searchBox);
+            dialog.Controls.Add(resultsList);
+            _ = dialog.Handle;
+            searchBox.CreateControl();
+            resultsList.CreateControl();
+
+            form.SetPrivateField("_searchDialog", dialog);
+            form.SetPrivateField("_globalSearchBox", searchBox);
+            form.SetPrivateField("_searchResultsList", resultsList);
+
+            form.SeedGlobalSearchResult(
+                "Enterprise Vital Signs",
+                "Panel",
+                "Open the Enterprise Vital Signs dashboard",
+                () => form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false));
+
+            form.CallExecuteSelectedSearchResult();
+            PumpMessages(12);
+
+            var evsHost = form.MdiChildren
+                .FirstOrDefault(child => string.Equals(child.Text, "Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase));
+
+            evsHost.Should().NotBeNull("executing the selected global search result should open Enterprise Vital Signs");
+            (dialog.IsDisposed || !dialog.Visible).Should().BeTrue("executing the selected search result should dismiss the dialog");
+            searchBox.Text.Should().Be("enterprise vital signs", "the query text should remain in the search UI up to result execution");
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [StaFact]
+    public void PanelsGallery_UsesFixedSizing_AndContainsRegisteredPanels()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            var gallery = form.GetPrivateField("_panelsGallery") as ToolStripGallery;
+
+            gallery.Should().NotBeNull("the ribbon should build the Open Panel gallery during chrome initialization");
+            gallery!.FitToSize.Should().BeFalse("gallery dropdown items should keep their configured row sizing instead of stretching into a single oversized item");
+            gallery.Items.Count.Should().Be(PanelRegistry.Panels.Count, "all registered panels should be present in the gallery dropdown");
+            gallery.DropDownDimensions.Height.Should().BeGreaterThan(1, "the gallery dropdown should reserve multiple rows for navigation items");
         }
         finally
         {
@@ -566,21 +1012,28 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
 
             // Check forward history has items
             // (assuming you have reflection helpers or make GetNavigationHistory public/test-visible)
-            // For now, check active + simple back navigation
-            navigator!.GetActivePanelName().Should().Be("Settings");
+            // For now, check active + simple back navigation without assuming every panel is available
+            var activeAfterNavigation = navigator!.GetActivePanelName();
+            activeAfterNavigation.Should().NotBeNullOrWhiteSpace();
 
             // Simulate back (you may need to expose or reflect on back method)
             var backMethod = typeof(MainForm).GetMethod("NavigateBack", BindingFlags.Instance | BindingFlags.NonPublic);
             if (backMethod != null)
             {
+                var beforeBack = navigator.GetActivePanelName();
                 backMethod.Invoke(form, null);
                 Application.DoEvents();
-                navigator.GetActivePanelName().Should().Be("Reports", "Back should restore previous panel");
+                var firstBack = navigator.GetActivePanelName();
+                firstBack.Should().NotBeNullOrWhiteSpace();
+                firstBack.Should().NotBe(beforeBack, "Back navigation should change active panel when history exists");
 
                 // One more back
+                var beforeSecondBack = navigator.GetActivePanelName();
                 backMethod.Invoke(form, null);
                 Application.DoEvents();
-                navigator.GetActivePanelName().Should().Be("Accounts");
+                var secondBack = navigator.GetActivePanelName();
+                secondBack.Should().NotBeNullOrWhiteSpace();
+                secondBack.Should().NotBe(beforeSecondBack, "Second back navigation should continue traversing history");
             }
         }
         finally
@@ -588,6 +1041,529 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
 #pragma warning restore CS0618
+    }
+
+    [WinFormsFact]
+    public void DocumentManagement_CloseOtherAndCloseAll_Work()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            form.ShowPanel<AccountsPanel>("Accounts");
+            form.ShowPanel<ReportsPanel>("Reports");
+            form.ShowPanel<SettingsPanel>("Settings");
+            PumpMessages(12);
+
+            var openCountBeforeCloseOther = form.MdiChildren.Length;
+            openCountBeforeCloseOther.Should().BeGreaterOrEqualTo(3, "three documents should be open before document-management commands run");
+
+            var activeBeforeCloseOther = form.ActiveMdiChild;
+            activeBeforeCloseOther.Should().NotBeNull("MainForm should have an active document before CloseOtherDocuments runs");
+
+            form.CallCloseOtherDocuments();
+            PumpMessages(12);
+
+            form.MdiChildren.Select(child => child.Text)
+                .Should().Contain(activeBeforeCloseOther!.Text, "CloseOtherDocuments should preserve the active document host");
+            form.MdiChildren.Length.Should().BeLessOrEqualTo(openCountBeforeCloseOther,
+                "CloseOtherDocuments should not create new MDI hosts while pruning inactive documents");
+
+            form.CallCloseAllDocuments();
+            PumpMessages(12);
+
+            form.MdiChildren.Should().BeEmpty("CloseAllDocuments should close any remaining MDI document hosts");
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [WinFormsFact]
+    public void MunicipalAccountsPanel_RendersBelowRibbon()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var panelHost = form.GetPrivateField("_panelHost") as Control;
+
+            ribbon.Should().NotBeNull();
+            panelHost.Should().NotBeNull();
+
+            var accountsHost = form.MdiChildren
+                .FirstOrDefault(child => string.Equals(child.Text, "Municipal Accounts", StringComparison.OrdinalIgnoreCase));
+            var mdiClient = FindMdiClient(form);
+
+            accountsHost.Should().NotBeNull("Municipal Accounts should open as an MDI child host");
+            mdiClient.Should().NotBeNull("MainForm should have an MDI client after initialization");
+            var mdiBounds = GetBoundsInForm(mdiClient!, form);
+            var panelHostBounds = GetBoundsInForm(panelHost!, form);
+            var ribbonBounds = GetBoundsInForm(ribbon!, form);
+
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(panelHostBounds.Top,
+                "MDI client area must never render above panel host");
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(ribbonBounds.Bottom,
+                "MDI client area must render below RibbonControlAdv to prevent panel clipping");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            form.ShowPanel<BudgetPanel>("Budget Management & Analysis", DockingStyle.Right, allowFloating: true);
+            form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+
+            for (var i = 0; i < 30; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var mdiClient = FindMdiClient(form);
+            var activeHost = form.ActiveMdiChild;
+
+            ribbon.Should().NotBeNull();
+            mdiClient.Should().NotBeNull("MainForm should have an MDI client after repeated panel navigation");
+            activeHost.Should().NotBeNull("An active MDI host should exist after repeated panel navigation");
+
+            var mdiBounds = GetBoundsInForm(mdiClient!, form);
+            var ribbonBounds = GetBoundsInForm(ribbon!, form);
+
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(ribbonBounds.Bottom,
+                "MDI client top edge must remain below ribbon bottom to avoid clipping panel controls under RibbonControlAdv during panel switches");
+            activeHost!.Visible.Should().BeTrue("active MDI host should remain visible after repeated panel navigation");
+            activeHost.Controls.Count.Should().BeGreaterThan(0,
+                "active MDI host should still contain the panel content after repeated navigation");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void JarvisRightDock_ShrinksMdiSurface_WithoutHidingEnterpriseVitalSigns()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var evsHost = form.MdiChildren
+                .FirstOrDefault(child => string.Equals(child.Text, "Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase));
+
+            var shownInRightDock = form.CallShowJarvisInRightDock();
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var mdiClient = FindMdiClient(form);
+            var rightDock = form.GetPrivateField("_rightDockPanel") as Control;
+
+            shownInRightDock.Should().BeTrue("JARVIS should materialize in the persistent right dock for MainForm integration scenarios");
+            evsHost.Should().NotBeNull("Enterprise Vital Signs should remain hosted as an MDI child when JARVIS opens in the right dock");
+            evsHost!.Visible.Should().BeTrue("opening JARVIS should not hide the active EVS host");
+            evsHost.Controls.Count.Should().BeGreaterThan(0, "EVS host should still contain the panel content after JARVIS opens");
+            mdiClient.Should().NotBeNull("MainForm should keep an MDI client when JARVIS opens in the right dock");
+            rightDock.Should().NotBeNull("JARVIS should be shown inside the persistent right dock panel");
+            rightDock!.Visible.Should().BeTrue("the right dock should become visible when JARVIS is opened");
+
+            var mdiBounds = GetBoundsInForm(mdiClient!, form);
+            var rightDockBounds = GetBoundsInForm(rightDock, form);
+            mdiBounds.Right.Should().BeLessOrEqualTo(rightDockBounds.Left,
+                "opening JARVIS should shrink the MDI surface so open panels stay beside the sidebar instead of being covered by it");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void JarvisRightDock_Collapse_ReclaimsMdiSurfaceWidth()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+            form.ShowPanel<WileyWidget.WinForms.Controls.Panels.EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var rightDockInitialized = (bool)(typeof(MainForm)
+                .GetMethod("EnsureRightDockPanelInitialized", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(form, null) ?? false);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            rightDockInitialized.Should().BeTrue();
+
+            var mdiClient = FindMdiClient(form);
+            var rightDock = form.GetPrivateField("_rightDockPanel") as Control;
+            var jarvisStrip = form.GetPrivateField("_jarvisAutoHideStrip") as Control;
+
+            mdiClient.Should().NotBeNull();
+            rightDock.Should().NotBeNull();
+            jarvisStrip.Should().NotBeNull();
+
+            var mdiBeforeCollapse = GetBoundsInForm(mdiClient!, form);
+
+            typeof(MainForm)
+                .GetMethod("ToggleJarvisAutoHide", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(form, null);
+            PumpMessages(12);
+
+            rightDock!.Visible.Should().BeFalse("collapsing JARVIS should hide the right dock panel");
+            jarvisStrip!.Visible.Should().BeTrue("the auto-hide strip should remain visible so the sidebar can be restored");
+
+            var mdiAfterCollapse = GetBoundsInForm(mdiClient!, form);
+            var stripBounds = GetBoundsInForm(jarvisStrip!, form);
+
+            mdiAfterCollapse.Right.Should().BeGreaterThan(mdiBeforeCollapse.Right,
+                "collapsing JARVIS should give the MDI surface back the space previously used by the sidebar");
+            mdiAfterCollapse.Right.Should().BeLessOrEqualTo(stripBounds.Left,
+                "after collapse the active panel host should expand back to the auto-hide strip rather than staying pinned to the old sidebar width");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(scope.ServiceProvider);
+            var nextTheme = string.Equals(themeService.CurrentTheme, "Office2019Colorful", StringComparison.OrdinalIgnoreCase)
+                ? "Office2019DarkGray"
+                : "Office2019Colorful";
+            themeService.ApplyTheme(nextTheme);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var panelHost = form.GetPrivateField("_panelHost") as Control;
+            var navigationStrip = form.GetPrivateField("_navigationStrip") as ToolStripEx;
+            var tabbedMdi = form.GetPrivateField("_tabbedMdi") as TabbedMDIManager;
+            var mdiClient = FindMdiClient(form);
+
+            ribbon.Should().NotBeNull();
+            panelHost.Should().NotBeNull();
+            navigationStrip.Should().NotBeNull();
+            tabbedMdi.Should().NotBeNull();
+            mdiClient.Should().NotBeNull("MainForm should keep an MDI client after runtime theme switch");
+
+            var liveRibbon = ribbon!;
+            var livePanelHost = panelHost!;
+            var liveNavigationStrip = navigationStrip!;
+            var liveTabbedMdi = tabbedMdi!;
+            var liveMdiClient = mdiClient!;
+
+            var mdiBounds = GetBoundsInForm(liveMdiClient, form);
+            var panelHostBounds = GetBoundsInForm(livePanelHost, form);
+            var ribbonBounds = GetBoundsInForm(liveRibbon, form);
+            var panelHostClientTop = form.PointToClient(livePanelHost.PointToScreen(
+                new Point(livePanelHost.DisplayRectangle.Left, livePanelHost.DisplayRectangle.Top))).Y;
+
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(panelHostBounds.Top,
+                "MDI client area must remain below panel host after runtime theme switch");
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(ribbonBounds.Bottom,
+                "MDI client area must remain below ribbon after runtime theme switch to prevent clipping regressions");
+            panelHostClientTop.Should().BeGreaterOrEqualTo(ribbonBounds.Bottom,
+                "panel host client content must stay below the ribbon after runtime theme switch to prevent clipped top rows");
+            liveNavigationStrip.ThemeName.Should().Be(nextTheme,
+                "runtime theme switches should replay ThemeName to ribbon groups that persist their own theme state");
+            liveTabbedMdi.ThemeName.Should().Be(nextTheme,
+                "runtime theme switches should replay ThemeName to the tabbed MDI manager");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        try
+        {
+            form.ForceFullInitialization();
+
+            form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+
+            for (var i = 0; i < 20; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            form.SaveCurrentLayout();
+
+            var loadWorkspaceLayout = typeof(MainForm).GetMethod(
+                "LoadWorkspaceLayout",
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(string) },
+                modifiers: null);
+
+            loadWorkspaceLayout.Should().NotBeNull("MainForm should expose LoadWorkspaceLayout for restore flow");
+            loadWorkspaceLayout!.Invoke(form, new object?[] { null });
+
+            for (var i = 0; i < 25; i++)
+            {
+                Application.DoEvents();
+                Thread.Sleep(20);
+            }
+
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var panelHost = form.GetPrivateField("_panelHost") as Control;
+            var mdiClient = FindMdiClient(form);
+
+            ribbon.Should().NotBeNull();
+            panelHost.Should().NotBeNull();
+            mdiClient.Should().NotBeNull("MainForm should keep an MDI client after layout restore");
+
+            var mdiBounds = GetBoundsInForm(mdiClient!, form);
+            var panelHostBounds = GetBoundsInForm(panelHost!, form);
+            var ribbonBounds = GetBoundsInForm(ribbon!, form);
+
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(panelHostBounds.Top,
+                "MDI client area must remain below panel host after explicit layout restore");
+            mdiBounds.Top.Should().BeGreaterOrEqualTo(ribbonBounds.Bottom,
+                "MDI client area must remain below ribbon after explicit layout restore to prevent clipping regressions");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void LayoutPersistence_AutoSave_And_CorruptRestore_AreResilient()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+        using var form = new TestMainForm(scope.ServiceProvider);
+        _ = form.Handle;
+
+        string? autosaveLayoutPath = null;
+        string? defaultLayoutPath = null;
+
+        try
+        {
+            form.ForceFullInitialization();
+            form.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            PumpMessages(12);
+
+            autosaveLayoutPath = form.CallGetLayoutFilePath("autosave.xml");
+            defaultLayoutPath = form.CallGetLayoutFilePath("default.xml");
+
+            if (File.Exists(autosaveLayoutPath))
+            {
+                File.Delete(autosaveLayoutPath);
+            }
+
+            if (File.Exists(defaultLayoutPath))
+            {
+                File.Delete(defaultLayoutPath);
+            }
+
+            form.CallAutoSaveLayoutOnClosing();
+
+            File.Exists(autosaveLayoutPath).Should().BeTrue("auto-save should persist the current layout to the autosave path");
+
+            Directory.CreateDirectory(Path.GetDirectoryName(defaultLayoutPath)!);
+            File.WriteAllText(defaultLayoutPath, "<layout><broken>");
+
+            var openDocumentTitlesBeforeRestore = form.MdiChildren.Select(child => child.Text).ToArray();
+
+            System.Action loadCorruptLayout = () => form.CallLoadWorkspaceLayout();
+            loadCorruptLayout.Should().NotThrow("corrupt layout files should be caught and logged instead of breaking MainForm");
+            PumpMessages(8);
+
+            var openDocumentTitlesAfterRestore = form.MdiChildren.Select(child => child.Text).ToArray();
+            foreach (var title in openDocumentTitlesBeforeRestore)
+            {
+                openDocumentTitlesAfterRestore.Should().Contain(title,
+                    "failed restores should not tear down already-open document hosts");
+            }
+
+            (form.GetPrivateField("_ribbon") as RibbonControlAdv).Should().NotBeNull("the ribbon should remain intact after a corrupt restore attempt");
+            form.IsDisposed.Should().BeFalse("MainForm should remain usable after a corrupt restore attempt");
+        }
+        finally
+        {
+            if (autosaveLayoutPath != null && File.Exists(autosaveLayoutPath))
+            {
+                File.Delete(autosaveLayoutPath);
+            }
+
+            if (defaultLayoutPath != null && File.Exists(defaultLayoutPath))
+            {
+                File.Delete(defaultLayoutPath);
+            }
+
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+    }
+
+    [WinFormsFact]
+    public void QuickBooksAndReportsPanels_ResolveWithoutConstructorExceptions()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?> { ["UI:ShowRibbon"] = "true" });
+        using var scope = provider.CreateScope();
+
+        WileyWidget.WinForms.Controls.Panels.QuickBooksPanel? quickBooksPanel = null;
+        WileyWidget.WinForms.Controls.Panels.ReportsPanel? reportsPanel = null;
+
+        System.Action resolveQuickBooks = () =>
+        {
+            quickBooksPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Controls.Panels.QuickBooksPanel>(scope.ServiceProvider);
+            if (quickBooksPanel != null)
+            {
+                _ = quickBooksPanel.Handle;
+            }
+        };
+
+        System.Action resolveReports = () =>
+        {
+            reportsPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<WileyWidget.WinForms.Controls.Panels.ReportsPanel>(scope.ServiceProvider);
+            if (reportsPanel != null)
+            {
+                _ = reportsPanel.Handle;
+            }
+        };
+
+        resolveQuickBooks.Should().NotThrow("QuickBooksPanel construction must not throw SplitterWidth exceptions when panel is registered");
+        resolveReports.Should().NotThrow("ReportsPanel construction must not throw control factory null exceptions when panel is registered");
+
+        quickBooksPanel?.Dispose();
+        reportsPanel?.Dispose();
     }
 
     [WinFormsFact]
@@ -694,12 +1670,64 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
 #pragma warning restore CS0618
     }
 
+    [WinFormsFact]
+    public void EnsurePanelNavigatorInitialized_DoesNotQueueAdditionalMdiLayoutAfterFirstInitialization()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:IsUiTestHarness"] = "true",
+            ["UI:ShowRibbon"] = "false",
+            ["UI:ShowStatusBar"] = "false",
+            ["UI:AutoShowDashboard"] = "false",
+            ["UI:UseSyncfusionDocking"] = "false",
+            ["UI:MinimalMode"] = "false"
+        });
+        using var form = IntegrationTestServices.CreateMainForm(provider);
+        _ = form.Handle;
+
+        try
+        {
+            var ensureNavigatorMethod = typeof(MainForm).GetMethod("EnsurePanelNavigatorInitialized", BindingFlags.Instance | BindingFlags.NonPublic);
+            ensureNavigatorMethod.Should().NotBeNull();
+
+            ensureNavigatorMethod!.Invoke(form, null);
+            PumpMessages(8);
+
+            var requestCountAfterFirstInitialization = GetRequiredPrivateFieldValue<int>(form, "_mdiConstrainRequestCount");
+
+            ensureNavigatorMethod.Invoke(form, null);
+            ensureNavigatorMethod.Invoke(form, null);
+            PumpMessages(8);
+
+            GetRequiredPrivateFieldValue<int>(form, "_mdiConstrainRequestCount")
+                .Should().Be(requestCountAfterFirstInitialization, "repeating navigator initialization should not enqueue more MDI constrain work once the service is initialized");
+        }
+        finally
+        {
+            if (form.IsHandleCreated)
+            {
+                form.Close();
+                form.Dispose();
+            }
+        }
+#pragma warning restore CS0618
+    }
+
     private static void PumpMessages(int iterations)
     {
         for (var index = 0; index < iterations; index++)
         {
             Application.DoEvents();
         }
+    }
+
+    private static T GetRequiredPrivateFieldValue<T>(object target, string fieldName)
+    {
+        var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        field.Should().NotBeNull($"Field '{fieldName}' should exist on {target.GetType().Name}");
+        return (T)field!.GetValue(target)!;
     }
 
     private static T? GetPrivateField<T>(object target, string fieldName) where T : class

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using DI = Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Data;
 using WileyWidget.Models;
+using WileyWidget.Models.Entities;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Excel;
@@ -128,6 +130,8 @@ namespace WileyWidget.WinForms.Configuration
 
             // Register Microsoft health checks to provide HealthCheckService for custom wrapper
             services.AddHealthChecks();
+
+            services.AddDataProtection();
 
             // HTTP Client Factory (Singleton factory, Transient clients)
             services.AddHttpClient();
@@ -271,6 +275,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddOptions<StartupOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("Startup").Bind(opts));
 
+            services.AddOptions<AuthenticationOptions>()
+                .Configure<IConfiguration>((opts, cfg) => cfg.GetSection("Authentication").Bind(opts));
+            services.AddSingleton<IPostConfigureOptions<AuthenticationOptions>, AuthenticationOptionsPostConfigure>();
+
             services.AddOptions<WileyWidget.Models.AppOptions>()
                 .Configure<IConfiguration>((opts, cfg) => cfg.Bind(opts));
 
@@ -292,6 +300,8 @@ namespace WileyWidget.WinForms.Configuration
 
             var providerLabel = useInMemory ? "InMemory" : "SqlServer";
             var connectionForLog = useInMemory ? "Data Source=:memory:" : resolvedConnection;
+            var localIdentityOptions = effectiveConfig?.GetSection("Authentication:LocalIdentity").Get<LocalIdentityAuthenticationOptions>()
+                ?? new LocalIdentityAuthenticationOptions();
             Log.Information("DI: AppDbContext provider={Provider} TestHarness={IsUiTestHarness} Connection={ConnectionString}",
                 providerLabel, isUiTestHarness, connectionForLog);
 
@@ -333,6 +343,35 @@ namespace WileyWidget.WinForms.Configuration
                         }), ServiceLifetime.Scoped);
                 }
             }
+
+            services
+                .AddAuthentication();
+
+            services.AddHttpContextAccessor();
+
+            services
+                .AddIdentityCore<AppIdentityUser>(options =>
+                {
+                    options.Password.RequireDigit = true;
+                    options.Password.RequireLowercase = true;
+                    options.Password.RequireUppercase = true;
+                    options.Password.RequireNonAlphanumeric = false;
+                    options.Password.RequiredLength = 12;
+                    options.Password.RequiredUniqueChars = 4;
+
+                    options.User.RequireUniqueEmail = true;
+
+                    options.Lockout.AllowedForNewUsers = true;
+                    options.Lockout.MaxFailedAccessAttempts = 5;
+                    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+
+                    options.SignIn.RequireConfirmedAccount = localIdentityOptions.RequireConfirmedAccount;
+                    options.SignIn.RequireConfirmedEmail = localIdentityOptions.RequireConfirmedEmail;
+                    options.SignIn.RequireConfirmedPhoneNumber = localIdentityOptions.RequireConfirmedPhoneNumber;
+                })
+                .AddSignInManager<SignInManager<AppIdentityUser>>()
+                .AddEntityFrameworkStores<AppDbContext>()
+                .AddDefaultTokenProviders();
 
             // =====================================================================
             // DATABASE REPOSITORIES (Scoped - one per request/scope)
@@ -446,12 +485,13 @@ namespace WileyWidget.WinForms.Configuration
 
             // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
             services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
+            services.AddScoped<AuthenticationBootstrapper>();
+            services.AddScoped<IAuthenticationBootstrapper>(sp => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AuthenticationBootstrapper>(sp));
 
             // AI Services (Singleton - heavy initialization, shared across application)
             // ✅ CRITICAL FIX: GrokAgentService is Singleton to prevent duplicate initialization
             // Previous Scoped lifetime caused multiple instances across different scopes,
             // resulting in duplicate plugin discovery (10 plugins × 2 scopes = performance waste)
-            services.AddSingleton<IAIService, GrokAgentService>();
             services.AddScoped<JarvisGrokBridgeHandler>();
 
             // Model discovery service for xAI: discovers available models and picks a best-fit based on aliases/families
@@ -493,6 +533,8 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<WileyWidget.Services.Abstractions.ISemanticSearchService, WileyWidget.Services.SemanticSearchService>();
             services.AddSingleton<WileyWidget.Services.Abstractions.IAnomalyDetectionService, WileyWidget.Services.AnomalyDetectionService>();
             services.AddSingleton<IConversationRepository, EfConversationRepository>();
+            services.AddSingleton<IUserMemoryRepository, EfUserMemoryRepository>();
+            services.AddSingleton<IUserOnboardingProfileService, UserOnboardingProfileService>();
 
             // JARVIS Personality Service (Singleton - pure transformation service with no per-request state)
             // ✅ OPTIMIZATION: Changed from Scoped to Singleton - no request-specific data, only transforms AI responses
@@ -554,9 +596,9 @@ namespace WileyWidget.WinForms.Configuration
             // =====================================================================
 
             // Panel Navigation Service
-            // NOTE: NOT registered in DI because it requires both MainForm and DockingManager,
-            // which are UI components not created until the form is shown.
-            // MainForm creates this directly in OnShown() after docking manager is initialized.
+            // NOTE: NOT registered in DI because it requires MainForm,
+            // which is a UI component not created until the form is shown.
+            // MainForm creates this directly in OnShown().
             // See: MainForm.OnShown() - line 378
 
             // UI Configuration (Singleton)
@@ -628,6 +670,7 @@ namespace WileyWidget.WinForms.Configuration
                 var httpClientFactory = DI.ServiceProviderServiceExtensions.GetRequiredService<IHttpClientFactory>(sp);
                 var modelDiscovery = DI.ServiceProviderServiceExtensions.GetService<IXaiModelDiscoveryService>(sp);
                 var chatBridge = DI.ServiceProviderServiceExtensions.GetService<IChatBridgeService>(sp);
+                var aiLoggingService = DI.ServiceProviderServiceExtensions.GetService<IAILoggingService>(sp);
                 var jarvisPersonality = DI.ServiceProviderServiceExtensions.GetService<IJARVISPersonalityService>(sp);
                 var memoryCache = DI.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(sp);
 
@@ -640,8 +683,14 @@ namespace WileyWidget.WinForms.Configuration
                     chatBridge: chatBridge,
                     serviceProvider: sp,
                     jarvisPersonality: jarvisPersonality,
-                    memoryCache: memoryCache);
+                        memoryCache: memoryCache,
+                        aiLoggingService: aiLoggingService);
             });
+
+            // Map interface to the same concrete singleton instance to avoid duplicate
+            // GrokAgentService construction when resolving by interface vs concrete type.
+            services.AddSingleton<IAIService>(sp =>
+                DI.ServiceProviderServiceExtensions.GetRequiredService<GrokAgentService>(sp));
 
             // ✅ CRITICAL FIX: Register GrokAgentService as IAsyncInitializable so it gets initialized during startup
             // This ensures the Semantic Kernel is built and plugins (including CSharpEvaluationPlugin) are registered
@@ -687,10 +736,10 @@ namespace WileyWidget.WinForms.Configuration
             services.AddSingleton<AdvancedSearchService>();
 
             // FloatingPanelManager and similar UI-scoped helpers depend
-            // on runtime UI objects (MainForm, Syncfusion DockingManager). Registering them at
+            // on runtime UI objects (MainForm). Registering them at
             // the root DI container causes ValidateOnBuild to attempt resolution of framework
             // UI types and fail during host build. Instantiate these classes at runtime after
-            // the MainForm and DockingManager are created (for example, in MainForm.OnShown
+            // the MainForm is created (for example, in MainForm.OnShown
             // or PanelNavigationService). Do NOT register them here to avoid build-time DI validation.
 
             // =====================================================================
@@ -785,6 +834,7 @@ namespace WileyWidget.WinForms.Configuration
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.InsightFeedPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>();
+            services.AddScoped<WileyWidget.WinForms.Controls.Panels.LocalIdentityHostPanel>();
             services.AddScoped<EnterpriseVitalSignsPanel>();
             services.AddScoped<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>();
 

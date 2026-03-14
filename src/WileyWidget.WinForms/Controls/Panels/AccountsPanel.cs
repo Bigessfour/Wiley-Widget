@@ -22,8 +22,10 @@ using WileyWidget.WinForms.Factories;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -77,10 +79,9 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
 
         AutoScaleMode = AutoScaleMode.Dpi;
-        Padding = new Padding(12);
-        MinimumSize = new Size(
-            RecommendedDockedPanelMinimumLogicalWidth,
-            RecommendedDockedPanelMinimumLogicalHeight);
+        Padding = LayoutTokens.GetScaled(LayoutTokens.SectionPanelPadding);
+        AutoScroll = false;
+        MinimumSize = ScaleLogicalToDevice(RecommendedDockedPanelMinimumLogicalSize);
 
         SafeSuspendAndLayout(InitializeLayout);
         BindViewModel();
@@ -90,7 +91,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = RecommendedDockedPanelMinimumLogicalSize;
+        MinimumSize = ScaleLogicalToDevice(RecommendedDockedPanelMinimumLogicalSize);
         PerformLayout();
     }
 
@@ -145,6 +146,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
     {
         Logger?.LogDebug("[ACCOUNTS_PANEL] InitializeLayout START");
 
+        ApplyCurrentTheme();
+
         // root fill container (Sacred Panel Skeleton)
         _content = new TableLayoutPanel
         {
@@ -157,13 +160,13 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // body
 
         // Panel header (docked to top)
-        _header = new PanelHeader(_factory)
+        _header = _factory.CreatePanelHeader(header =>
         {
-            Dock = DockStyle.Top,
-            Title = "Chart of Accounts",
-            MinimumSize = new Size(0, 52),
-            Height = 52
-        };
+            header.Dock = DockStyle.Fill;
+            header.Title = "Municipal Accounts";
+            header.MinimumSize = new Size(0, LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge));
+            header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+        });
         _header.AccessibleName = "Chart of Accounts Panel Header";
         _header.AccessibleDescription = "Municipal Chart of Accounts management panel with CRUD operations and filtering";
         _header.RefreshClicked += (s, e) => _vm.RefreshCommand.Execute(null);
@@ -174,8 +177,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         _loader = _factory.CreateLoadingOverlay();
 
         Controls.Add(_content);
-        Controls.Add(_header);
-        _header.BringToFront();
+        _content.Controls.Add(_header, 0, 0);
 
         // Main content layout (toolbar + grid)
         _layout = new TableLayoutPanel
@@ -186,7 +188,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             AutoSize = false
         };
         _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88F)); // Increased height for toolbar row (allows 2 rows of controls)
+        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(96))); // Allows wrapped toolbar controls without clipping
         _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         // Toolbar panel - use explicit Height instead of Dock.Fill for proper sizing in TableLayoutPanel
@@ -194,11 +196,12 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         {
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = 84,
-            Padding = new Padding(4),
+            Height = LayoutTokens.GetScaled(92),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.ToolbarPadding),
             WrapContents = true,
             AutoScroll = false
         };
+        ApplyCurrentTheme(_content, _layout, _toolbarPanel, _header);
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar panel configured: Height={Height}", _toolbarPanel.Height);
 
         // Toolbar buttons — created via factory (no manual ThemeName)
@@ -208,8 +211,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             btn.AccessibilityEnabled = true;
             btn.AutoEllipsis = true;
             btn.FocusRectangleVisible = true;
-            btn.Padding = new Padding(8, 4, 8, 4);
-            btn.TextMargin = new Padding(2);
+            btn.Padding = LayoutTokens.GetScaled(LayoutTokens.ButtonCompactPadding);
+            btn.TextMargin = LayoutTokens.GetScaled(LayoutTokens.CompactTextMargin);
             btn.Name = "btnNewAccount";
             btn.AccessibleName = "New Account";
             btn.AccessibleDescription = "Create a new municipal account";
@@ -222,8 +225,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             btn.AccessibilityEnabled = true;
             btn.AutoEllipsis = true;
             btn.FocusRectangleVisible = true;
-            btn.Padding = new Padding(8, 4, 8, 4);
-            btn.TextMargin = new Padding(2);
+            btn.Padding = LayoutTokens.GetScaled(LayoutTokens.ButtonCompactPadding);
+            btn.TextMargin = LayoutTokens.GetScaled(LayoutTokens.CompactTextMargin);
             btn.Name = "btnEdit";
             btn.AccessibleName = "Edit";
             btn.AccessibleDescription = "Edit the selected account";
@@ -236,8 +239,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             btn.AccessibilityEnabled = true;
             btn.AutoEllipsis = true;
             btn.FocusRectangleVisible = true;
-            btn.Padding = new Padding(8, 4, 8, 4);
-            btn.TextMargin = new Padding(2);
+            btn.Padding = LayoutTokens.GetScaled(LayoutTokens.ButtonCompactPadding);
+            btn.TextMargin = LayoutTokens.GetScaled(LayoutTokens.CompactTextMargin);
             btn.Name = "btnDelete";
             btn.AccessibleName = "Delete";
             btn.AccessibleDescription = "Delete the selected account";
@@ -249,8 +252,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             btn.AccessibilityEnabled = true;
             btn.AutoEllipsis = true;
             btn.FocusRectangleVisible = true;
-            btn.Padding = new Padding(8, 4, 8, 4);
-            btn.TextMargin = new Padding(2);
+            btn.Padding = LayoutTokens.GetScaled(LayoutTokens.ButtonCompactPadding);
+            btn.TextMargin = LayoutTokens.GetScaled(LayoutTokens.CompactTextMargin);
             btn.Name = "btnRefresh";
             btn.AccessibleName = "Refresh";
             btn.AccessibleDescription = "Refresh account list from database";
@@ -262,8 +265,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             btn.AccessibilityEnabled = true;
             btn.AutoEllipsis = true;
             btn.FocusRectangleVisible = true;
-            btn.Padding = new Padding(8, 4, 8, 4);
-            btn.TextMargin = new Padding(2);
+            btn.Padding = LayoutTokens.GetScaled(LayoutTokens.ButtonCompactPadding);
+            btn.TextMargin = LayoutTokens.GetScaled(LayoutTokens.CompactTextMargin);
             btn.Name = "btnExportExcel";
             btn.AccessibleName = "Export to Excel";
             btn.AccessibleDescription = "Export the account list to Excel spreadsheet";
@@ -282,8 +285,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
         _fundFilterComboBox = _factory.CreateSfComboBox(c =>
         {
-            c.Width = 120;
-            c.Height = 28;
+            c.Width = 144;
+            c.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeight);
             c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             c.Name = "cmbFundFilter";
             c.AccessibleName = "Fund Filter";
@@ -308,8 +311,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
         _accountTypeFilterComboBox = _factory.CreateSfComboBox(c =>
         {
-            c.Width = 100;
-            c.Height = 28;
+            c.Width = 136;
+            c.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeight);
             c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             c.Name = "cmbAccountTypeFilter";
             c.AccessibleName = "Account Type Filter";
@@ -334,8 +337,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
         _departmentFilterComboBox = _factory.CreateSfComboBox(c =>
         {
-            c.Width = 120;
-            c.Height = 28;
+            c.Width = 152;
+            c.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeight);
             c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             c.Name = "cmbDepartmentFilter";
             c.AccessibleName = "Department Filter";
@@ -361,8 +364,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         _searchBox = _factory.CreateTextBoxExt(t =>
         {
             t.Width = 300;
-            t.Height = 30;
-            t.MinimumSize = new Size(200, 30);
+            t.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightExpanded);
+            t.MinimumSize = ScaleLogicalToDevice(new Size(200, 30));
             t.Name = "txtSearch";
             t.AccessibleName = "Search";
             t.AccessibleDescription = "Type to search accounts by account number, name, description, fund, or department";
@@ -372,15 +375,15 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         _searchBox.TextChanged += SearchBox_TextChanged;
 
         // Configure tooltips for buttons (accessibility enhancement)
-        _buttonToolTips = new ToolTip
+        _buttonToolTips = _factory.CreateToolTip(toolTip =>
         {
-            AutoPopDelay = 8000,     // Longer display for busy mayors
-            InitialDelay = 300,      // Faster appearance
-            ReshowDelay = 100,
-            ShowAlways = true,       // CRITICAL - ensures tooltips always display
-            UseAnimation = true,
-            UseFading = true
-        };
+            toolTip.AutoPopDelay = 8000;     // Longer display for busy mayors
+            toolTip.InitialDelay = 300;      // Faster appearance
+            toolTip.ReshowDelay = 100;
+            toolTip.ShowAlways = true;       // CRITICAL - ensures tooltips always display
+            toolTip.UseAnimation = true;
+            toolTip.UseFading = true;
+        });
 
         // Add tooltip to the header itself for context
         _buttonToolTips.SetToolTip(_header, "Chart of Accounts — Manage municipal funds, departments, and balances (Press F1 for full help)");
@@ -406,7 +409,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         });
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar has {Count} buttons and search box", _toolbarPanel.Controls.Count);
 
-        _content.Controls.Add(_toolbarPanel, 0, 0);
+        _layout.Controls.Add(_toolbarPanel, 0, 0);
         _toolbarPanel.BringToFront();
 
         // Accounts data grid
@@ -423,13 +426,15 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             grid.EnableDataVirtualization = true;
             grid.SelectionMode = GridSelectionMode.Single;
             grid.SelectionUnit = SelectionUnit.Row;
-            grid.RowHeight = 36;
+            grid.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightTall);
             grid.ShowToolTip = true;
             grid.ShowHeaderToolTip = true;
             grid.ShowValidationErrorToolTip = true;
             grid.Name = "dataGridAccounts";
             grid.AccessibleName = "Accounts Grid";
         });
+        // Apply active theme so SfSkinManager cascade reaches the grid (Syncfusion API rule)
+        SfSkinManager.SetVisualStyle(_accountsGrid, SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme);
         _accountsGrid.AccessibleDescription = "Data grid showing municipal funds, account balances, budgets, and departments. Use arrow keys to navigate, Enter or F2 to edit, Delete to remove";
         _accountsGrid.SelectionChanged += _gridSelectionChangedHandler = Grid_SelectionChanged;
 
@@ -451,10 +456,10 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         _accountsGrid.BeginInit();
 
         // Configure grid columns
-        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountNumber", HeaderText = "Account #", MinimumWidth = 90, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells });
+        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountNumber", HeaderText = "Account #", Width = 160, MinimumWidth = 140, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.None });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountName", HeaderText = "Account Name", MinimumWidth = 160, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.AllCells });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "FundName", HeaderText = "Fund", MinimumWidth = 80 });
-        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountType", HeaderText = "Type", MinimumWidth = 80 });
+        _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "AccountType", HeaderText = "Type", MinimumWidth = 96, Width = 104, AutoSizeColumnsMode = Syncfusion.WinForms.DataGrid.Enums.AutoSizeColumnsMode.None });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "CurrentBalance", HeaderText = "Balance", FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency, MinimumWidth = 100 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridNumericColumn { MappingName = "BudgetAmount", HeaderText = "Budget", FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Currency, MinimumWidth = 100 });
         _accountsGrid.Columns.Add(new Syncfusion.WinForms.DataGrid.GridTextColumn { MappingName = "Department", HeaderText = "Department", MinimumWidth = 100 });
@@ -485,17 +490,41 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
         _accountsGrid.EndInit();
 
-        _errorProvider = new ErrorProvider(this);
+        _errorProvider = _factory.CreateErrorProvider(errorProvider =>
+        {
+            errorProvider.ContainerControl = this;
+        });
 
-        _content.Controls.Add(_toolbarPanel, 0, 0);
-        _toolbarPanel.BringToFront();
-        _content.Controls.Add(_accountsGrid, 0, 1);
+        _layout.Controls.Add(_accountsGrid, 0, 1);
+        _content.Controls.Add(_layout, 0, 1);
 
         Controls.Add(_loader);
         _loader.BringToFront();
 
         Logger?.LogInformation("[ACCOUNTS_PANEL] InitializeLayout COMPLETE — header={HeaderVisible} toolbar={ToolbarVisible} grid={GridVisible}",
             _header?.Visible ?? false, _toolbarPanel?.Visible ?? false, _accountsGrid?.Visible ?? false);
+    }
+
+    private void ApplyCurrentTheme(params Control?[] controls)
+    {
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
+
+        try
+        {
+            SfSkinManager.SetVisualStyle(this, themeName);
+
+            foreach (var control in controls)
+            {
+                if (control != null)
+                {
+                    SfSkinManager.SetVisualStyle(control, themeName);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "AccountsPanel failed to apply theme {ThemeName}", themeName);
+        }
     }
 
     /// <summary>
@@ -738,7 +767,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         {
             if (_accountsBinding == null)
             {
-                _accountsBinding = new BindingSource { DataSource = _vm };
+                _accountsBinding = _factory.CreateBindingSource(_vm);
             }
             else
             {
@@ -1013,6 +1042,14 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             }
 
             await _vm.DeleteAccountCommand.ExecuteAsync(selectedDisplay);
+
+            _ = _factory.ShowSemanticMessageBox(
+                this,
+                $"Account {selectedDisplay.AccountNumber} deleted successfully.",
+                "Delete Successful",
+                SyncfusionControlFactory.MessageSemanticKind.Success,
+                MessageBoxButtons.OK,
+                playNotificationSound: true);
         }
         catch (Exception ex)
         {

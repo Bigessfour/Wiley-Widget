@@ -214,17 +214,33 @@ The API key is not set correctly or is still the placeholder value.
 2. Create a new app in the Developer Portal
 3. Enable QuickBooks Online accounting API
 4. Configure OAuth 2.0 settings:
-   - **Redirect URIs:** Add `http://localhost:5000/callback` for local development
-   - **Scopes:** Select "com.intuit.quickbooks.accounting"
+
+- **Redirect URIs:** Add `http://localhost:5000/callback/` for local desktop development
+- **Exact match rule:** The redirect URI in Intuit must exactly match Wiley Widget's configured redirect URI, including scheme, port, path, casing, and trailing slash.
+- **Scopes:** Select "com.intuit.quickbooks.accounting"
+
 5. In the "Keys & OAuth" section, copy:
    - **Client ID** (also called Consumer Key)
    - **Client Secret** (also called Consumer Secret)
-6. Set these credentials using user-secrets (see step 4 above)
-7. When connecting for the first time:
-   - User logs in with QuickBooks credentials
-   - Authorizes the app to access their data
-   - System automatically stores Realm ID and access token
-   - Tokens are refreshed automatically as needed
+
+### Moving From Sandbox To Production
+
+- Intuit keeps separate Development and Production credentials. Do not overwrite working sandbox credentials until production approval is complete.
+- Production credentials become visible only after the Intuit Production Key questionnaire is completed and approved.
+- Production redirect URIs must be registered in the Production section and must use HTTPS.
+- Production redirect URIs cannot use IP addresses.
+- If you keep a loopback callback for a desktop flow, move it to `https://...` and bind a trusted TLS certificate to the local port before switching `Environment` to `production`.
+- Update the matching Production app URLs in Intuit: host domain, launch URL, disconnect URL, privacy policy URL, and terms URL.
+- Reauthorize against the real company after switching to production. Sandbox tokens and sandbox realm IDs do not carry over.
+
+See [docs/QUICKBOOKS_PRODUCTION_CUTOVER_GUIDE.md](docs/QUICKBOOKS_PRODUCTION_CUTOVER_GUIDE.md) for the full cutover checklist. 6. Set these credentials using user-secrets (see step 4 above) 7. When connecting for the first time:
+
+- User logs in with QuickBooks credentials
+- Authorizes the app to access their data
+- System automatically stores Realm ID and access token
+- Tokens are refreshed automatically as needed
+
+**Important:** Do not use the Intuit OAuth playground redirect URI for the Wiley Widget desktop connection flow. The app expects a localhost callback such as `http://localhost:5000/callback/` so it can receive the sandbox authorization response itself, and the configured URI must stay aligned with the exact URI registered in Intuit.
 
 **Note:** The app uses OAuth 2.0's authorization code flow, which means users authorize once and the app stores encrypted credentials for API calls. No user passwords are stored locally.
 

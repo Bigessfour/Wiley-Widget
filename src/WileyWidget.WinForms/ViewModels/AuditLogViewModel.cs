@@ -810,10 +810,10 @@ public class AuditLogViewModel : INotifyPropertyChanged, IDisposable, ILazyLoadV
             return Task.FromResult(result);
         }
 
-        public Task<int> GetAuditEntriesCountAsync(DateTime? startDate = null, DateTime? endDate = null, string? actionType = null, string? user = null, CancellationToken cancellationToken = default)
+        public async Task<int> GetAuditEntriesCountAsync(DateTime? startDate = null, DateTime? endDate = null, string? actionType = null, string? user = null, CancellationToken cancellationToken = default)
         {
-            return GetAuditEntriesAsync(startDate, endDate, actionType, user, null, null)
-                .ContinueWith(t => t.Result.Count());
+            var entries = await GetAuditEntriesAsync(startDate, endDate, actionType, user, null, null, cancellationToken).ConfigureAwait(false);
+            return entries.Count();
         }
     }
 }

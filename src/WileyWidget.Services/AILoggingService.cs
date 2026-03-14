@@ -26,6 +26,7 @@ namespace WileyWidget.Services
         private readonly Logger _aiUsageLogger;
         private readonly ConcurrentBag<AILogEntry> _logEntries;
         private readonly object _metricsLock = new object();
+        private readonly AsyncLocal<string?> _currentCorrelationId = new();
 #if !NET10_0
         private readonly ErrorReportingService? _errorReportingService;
 #endif
@@ -89,6 +90,7 @@ namespace WileyWidget.Services
                 var entry = new AILogEntry
                 {
                     Timestamp = DateTime.UtcNow,
+                    CorrelationId = GetCurrentCorrelationId(),
                     EntryType = "Query",
                     Query = query,
                     Context = context,
@@ -98,8 +100,8 @@ namespace WileyWidget.Services
                 _logEntries.Add(entry);
 
                 _aiUsageLogger.Information(
-                    "AI Query | Model: {Model} | Query Length: {QueryLength} | Context Length: {ContextLength} | Query: {Query}",
-                    model, query?.Length ?? 0, context?.Length ?? 0, TruncateForLog(query, 200));
+                    "AI Query | CorrelationId: {CorrelationId} | Model: {Model} | Query Length: {QueryLength} | Context Length: {ContextLength} | Query: {Query}",
+                    GetCorrelationIdForLog(), model, query?.Length ?? 0, context?.Length ?? 0, TruncateForLog(query, 200));
 
                 _logger.LogInformation("AI query logged: Model={Model}, QueryLength={QueryLength}, ContextLength={ContextLength}",
                     model, query?.Length ?? 0, context?.Length ?? 0);
@@ -140,6 +142,7 @@ namespace WileyWidget.Services
                 var entry = new AILogEntry
                 {
                     Timestamp = DateTime.UtcNow,
+                    CorrelationId = GetCurrentCorrelationId(),
                     EntryType = "Response",
                     Query = query,
                     Response = response,
@@ -150,8 +153,8 @@ namespace WileyWidget.Services
                 _logEntries.Add(entry);
 
                 _aiUsageLogger.Information(
-                    "AI Response | Response Time: {ResponseTime}ms | Tokens: {Tokens} | Response Length: {ResponseLength} | Query: {Query} | Response: {Response}",
-                    responseTimeMs, tokensUsed, response?.Length ?? 0,
+                    "AI Response | CorrelationId: {CorrelationId} | Response Time: {ResponseTime}ms | Tokens: {Tokens} | Response Length: {ResponseLength} | Query: {Query} | Response: {Response}",
+                    GetCorrelationIdForLog(), responseTimeMs, tokensUsed, response?.Length ?? 0,
                     TruncateForLog(query, 100), TruncateForLog(response, 300));
 
                 _logger.LogInformation("AI response logged: ResponseTimeMs={ResponseTimeMs}, TokensUsed={TokensUsed}, ResponseLength={ResponseLength}",
@@ -188,13 +191,14 @@ namespace WileyWidget.Services
                 var entry = new AILogEntry
                 {
                     Timestamp = DateTime.UtcNow,
+                    CorrelationId = GetCurrentCorrelationId(),
                     EntryType = "Information",
                     Query = message
                 };
 
                 _logEntries.Add(entry);
 
-                _aiUsageLogger.Information("AI Info | Message: {Message}", TruncateForLog(message, 500));
+                _aiUsageLogger.Information("AI Info | CorrelationId: {CorrelationId} | Message: {Message}", GetCorrelationIdForLog(), TruncateForLog(message, 500));
 
                 _logger.LogInformation("Logged AI information: {Message}", message);
             }
@@ -219,6 +223,7 @@ namespace WileyWidget.Services
                 var entry = new AILogEntry
                 {
                     Timestamp = DateTime.UtcNow,
+                    CorrelationId = GetCurrentCorrelationId(),
                     EntryType = "Error",
                     Query = query,
                     ErrorMessage = error,
@@ -228,8 +233,8 @@ namespace WileyWidget.Services
                 _logEntries.Add(entry);
 
                 _aiUsageLogger.Error(
-                    "AI Error | Type: {ErrorType} | Query: {Query} | Error: {Error}",
-                    errorType, TruncateForLog(query, 200), error);
+                    "AI Error | CorrelationId: {CorrelationId} | Type: {ErrorType} | Query: {Query} | Error: {Error}",
+                    GetCorrelationIdForLog(), errorType, TruncateForLog(query, 200), error);
 
                 _logger.LogError("AI error logged: Type={ErrorType}, QueryLength={QueryLength}, Message={Message}",
                     errorType, query?.Length ?? 0, error);
@@ -267,8 +272,8 @@ namespace WileyWidget.Services
                 LogError(query, errorMessage, errorType);
 
                 _aiUsageLogger.Error(exception,
-                    "AI Exception | Query: {Query} | Exception Type: {ExceptionType}",
-                    TruncateForLog(query, 200), errorType);
+                    "AI Exception | CorrelationId: {CorrelationId} | Query: {Query} | Exception Type: {ExceptionType}",
+                    GetCorrelationIdForLog(), TruncateForLog(query, 200), errorType);
             }
             catch (Exception ex)
             {
@@ -286,6 +291,7 @@ namespace WileyWidget.Services
                 var entry = new AILogEntry
                 {
                     Timestamp = DateTime.UtcNow,
+                    CorrelationId = GetCurrentCorrelationId(),
                     EntryType = "Metric",
                     MetricName = metricName,
                     MetricValue = metricValue,
@@ -297,8 +303,8 @@ namespace WileyWidget.Services
                 var metadataJson = metadata != null ? JsonSerializer.Serialize(metadata) : "{}";
 
                 _aiUsageLogger.Information(
-                    "AI Metric | Name: {MetricName} | Value: {MetricValue} | Metadata: {Metadata}",
-                    metricName, metricValue, metadataJson);
+                    "AI Metric | CorrelationId: {CorrelationId} | Name: {MetricName} | Value: {MetricValue} | Metadata: {Metadata}",
+                    GetCorrelationIdForLog(), metricName, metricValue, metadataJson);
 
                 _logger.LogDebug("Logged AI metric: {MetricName}={MetricValue}", metricName, metricValue);
             }
@@ -306,6 +312,68 @@ namespace WileyWidget.Services
             {
                 _logger.LogError(ex, "Error logging AI metric");
             }
+        }
+
+        /// <summary>
+        /// Logs the specific tools or functions used while fulfilling a query.
+        /// </summary>
+        public void LogToolExecution(string query, string source, IReadOnlyCollection<string> tools)
+        {
+            try
+            {
+                var normalizedTools = tools?
+                    .Where(static tool => !string.IsNullOrWhiteSpace(tool))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray() ?? Array.Empty<string>();
+
+                if (normalizedTools.Length == 0)
+                {
+                    return;
+                }
+
+                var entry = new AILogEntry
+                {
+                    Timestamp = DateTime.UtcNow,
+                    CorrelationId = GetCurrentCorrelationId(),
+                    EntryType = "ToolCall",
+                    Query = query,
+                    Context = source,
+                    Metadata = new Dictionary<string, object>
+                    {
+                        ["Source"] = source,
+                        ["Tools"] = normalizedTools
+                    }
+                };
+
+                _logEntries.Add(entry);
+
+                _aiUsageLogger.Information(
+                    "AI Tool Call | CorrelationId: {CorrelationId} | Source: {Source} | ToolCount: {ToolCount} | Query: {Query} | Tools: {Tools}",
+                    GetCorrelationIdForLog(),
+                    source,
+                    normalizedTools.Length,
+                    TruncateForLog(query, 100),
+                    string.Join(", ", normalizedTools));
+
+                _logger.LogInformation("AI tool execution logged: Source={Source}, ToolCount={ToolCount}, QueryLength={QueryLength}",
+                    source,
+                    normalizedTools.Length,
+                    query?.Length ?? 0);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error logging AI tool execution");
+            }
+        }
+
+        /// <summary>
+        /// Begins a correlation scope so all AI logs emitted on the current async flow share the same request identifier.
+        /// </summary>
+        public IDisposable BeginCorrelationScope(string correlationId)
+        {
+            var previousCorrelationId = _currentCorrelationId.Value;
+            _currentCorrelationId.Value = string.IsNullOrWhiteSpace(correlationId) ? null : correlationId;
+            return new CorrelationScope(this, previousCorrelationId);
         }
 
         /// <summary>
@@ -445,12 +513,23 @@ namespace WileyWidget.Services
             return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
         }
 
+        private string? GetCurrentCorrelationId()
+        {
+            return _currentCorrelationId.Value;
+        }
+
+        private string GetCorrelationIdForLog()
+        {
+            return _currentCorrelationId.Value ?? "n/a";
+        }
+
         /// <summary>
         /// Internal class representing an AI log entry.
         /// </summary>
         private class AILogEntry
         {
             public DateTime Timestamp { get; set; }
+            public string CorrelationId { get; set; }
             public string EntryType { get; set; }
             public string Query { get; set; }
             public string Context { get; set; }
@@ -463,6 +542,30 @@ namespace WileyWidget.Services
             public string MetricName { get; set; }
             public double MetricValue { get; set; }
             public Dictionary<string, object> Metadata { get; set; }
+        }
+
+        private sealed class CorrelationScope : IDisposable
+        {
+            private readonly AILoggingService _owner;
+            private readonly string? _previousCorrelationId;
+            private bool _disposed;
+
+            public CorrelationScope(AILoggingService owner, string? previousCorrelationId)
+            {
+                _owner = owner;
+                _previousCorrelationId = previousCorrelationId;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _owner._currentCorrelationId.Value = _previousCorrelationId;
+                _disposed = true;
+            }
         }
     }
 }

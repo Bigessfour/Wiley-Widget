@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BudgetComparison.frx - source-controlled template
+
+  This is the canonical in-repo report template used by the WinForms Reports panel.
+  It binds to the BudgetComparison DataSet built by ReportsViewModel.
+-->
+<Report ScriptLanguage="CSharp" ReportInfo.Created="2026-01-13T00:00:00" ReportInfo.Name="BudgetComparison"
+  ReportInfo.Author="WileyWidget">
+  <Dictionary>
+    <Parameter Name="FiscalYear" DataType="System.Int32" Value="2025" />
+    <Parameter Name="Entity" DataType="System.String" Value="Town of Wiley" />
+    <Parameter Name="FromDate" DataType="System.DateTime" Value="2025-01-01" />
+    <Parameter Name="ToDate" DataType="System.DateTime" Value="2025-11-30" />
+    <TableDataSource Name="Revenues" Enabled="true">
+      <Column Name="Account" DataType="System.String" />
+      <Column Name="Description" DataType="System.String" />
+      <Column Name="ProposedBudget" DataType="System.Decimal" />
+      <Column Name="Actual_11_2025" DataType="System.Decimal" />
+      <Column Name="Remaining" DataType="System.Decimal" />
+      <Column Name="PercentOfBudget" DataType="System.Decimal" />
+    </TableDataSource>
+    <TableDataSource Name="Expenses" Enabled="true">
+      <Column Name="Account" DataType="System.String" />
+      <Column Name="Description" DataType="System.String" />
+      <Column Name="ProposedBudget" DataType="System.Decimal" />
+      <Column Name="Actual_11_2025" DataType="System.Decimal" />
+      <Column Name="Remaining" DataType="System.Decimal" />
+      <Column Name="PercentOfBudget" DataType="System.Decimal" />
+    </TableDataSource>
+  </Dictionary>
+
+  <ReportPage Name="Page1">
+    <ReportTitleBand Name="ReportTitle1" Height="94.5">
+      <TextObject Name="TitleText" Left="0" Top="0" Width="718.2" Height="37.8" Text="BUDGET COMPARISON"
+        HorzAlign="Center" VertAlign="Center" Font="Arial, 18pt, style=Bold" TextFill.Color="Navy" />
+      <TextObject Name="SubtitleText" Left="0" Top="42.5" Width="718.2" Height="18.9"
+        Text="Town of Wiley budget comparison" HorzAlign="Center" Font="Arial, 11pt, style=Bold" />
+      <TextObject Name="DateRange" Left="0" Top="66.15" Width="718.2" Height="18.9" Text="As of [ToDate]"
+        HorzAlign="Center" Font="Arial, 10pt" />
+    </ReportTitleBand>
+
+    <PageHeaderBand Name="PageHeader1" Top="98.5" Width="718.2" Height="28.35">
+      <TextObject Name="Hdr1" Left="0" Top="0" Width="94.5" Height="18.9" Text="Account" Font="Arial, 9pt, style=Bold" />
+      <TextObject Name="Hdr2" Left="103.95" Top="0" Width="264.6" Height="18.9" Text="Description"
+        Font="Arial, 9pt, style=Bold" />
+      <TextObject Name="Hdr3" Left="378" Top="0" Width="94.5" Height="18.9" Text="Budget" HorzAlign="Right"
+        Font="Arial, 9pt, style=Bold" />
+      <TextObject Name="Hdr4" Left="481.95" Top="0" Width="94.5" Height="18.9" Text="Actual" HorzAlign="Right"
+        Font="Arial, 9pt, style=Bold" />
+      <TextObject Name="Hdr5" Left="585.9" Top="0" Width="94.5" Height="18.9" Text="Remaining" HorzAlign="Right"
+        Font="Arial, 9pt, style=Bold" />
+      <TextObject Name="Hdr6" Left="689.85" Top="0" Width="28.35" Height="18.9" Text="%" HorzAlign="Right"
+        Font="Arial, 9pt, style=Bold" />
+      <ShapeObject Name="HeaderRule" Left="0" Top="18.9" Width="718.2" Height="1.89" Border.Color="LightGray" />
+    </PageHeaderBand>
+
+    <DataBand Name="RevenuesBand" Top="130.85" Width="718.2" Height="18.9" DataSource="Revenues">
+      <TextObject Name="RevAccount" Left="0" Top="0" Width="94.5" Height="18.9" Text="[Revenues.Account]"
+        Font="Arial, 8pt" />
+      <TextObject Name="RevDescription" Left="103.95" Top="0" Width="264.6" Height="18.9" Text="[Revenues.Description]"
+        Font="Arial, 8pt" />
+      <TextObject Name="RevBudget" Left="378" Top="0" Width="94.5" Height="18.9" Text="[Revenues.ProposedBudget]"
+        Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 8pt" />
+      <TextObject Name="RevActual" Left="481.95" Top="0" Width="94.5" Height="18.9" Text="[Revenues.Actual_11_2025]"
+        Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 8pt" />
+      <TextObject Name="RevRemaining" Left="585.9" Top="0" Width="94.5" Height="18.9" Text="[Revenues.Remaining]"
+        Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 8pt" />
+      <TextObject Name="RevPercent" Left="689.85" Top="0" Width="28.35" Height="18.9" Text="[Revenues.PercentOfBudget]"
+        Format="Percent" Format.UseLocale="true" Format.DecimalDigits="0" HorzAlign="Right" Font="Arial, 8pt" />
+    </DataBand>
+
+    <DataBand Name="ExpensesBand" Top="153.75" Width="718.2" Height="18.9" DataSource="Expenses">
+      <TextObject Name="ExpAccount" Left="0" Top="0" Width="94.5" Height="18.9" Text="[Expenses.Account]"
+        Font="Arial, 8pt" />
+      <TextObject Name="ExpDescription" Left="103.95" Top="0" Width="264.6" Height="18.9" Text="[Expenses.Description]"
+        Font="Arial, 8pt" />
+      <TextObject Name="ExpBudget" Left="378" Top="0" Width="94.5" Height="18.9" Text="[Expenses.ProposedBudget]"
+        Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 8pt" />
+      <TextObject Name="ExpActual" Left="481.95" Top="0" Width="94.5" Height="18.9" Text="[Expenses.Actual_11_2025]"
+        Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 8pt" />
+      <TextObject Name="ExpRemaining" Left="585.9" Top="0" Width="94.5" Height="18.9" Text="[Expenses.Remaining]"
+        Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 8pt" />
+      <TextObject Name="ExpPercent" Left="689.85" Top="0" Width="28.35" Height="18.9" Text="[Expenses.PercentOfBudget]"
+        Format="Percent" Format.UseLocale="true" Format.DecimalDigits="0" HorzAlign="Right" Font="Arial, 8pt" />
+    </DataBand>
+
+    <ReportSummaryBand Name="SummaryBand" Top="176.65" Width="718.2" Height="37.8">
+      <ShapeObject Name="SummaryRule" Left="0" Top="0" Width="718.2" Height="1.89" Border.Color="Navy" />
+      <TextObject Name="SummaryText" Left="0" Top="9.45" Width="718.2" Height="18.9"
+        Text="Budget comparison report generated by Wiley Widget" HorzAlign="Center" Font="Arial, 8pt, style=Italic" />
+    </ReportSummaryBand>
+  </ReportPage>
+</Report>

@@ -11,6 +11,8 @@ using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utilities;
 
@@ -24,6 +26,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 public partial class TrendsTabControl : UserControl
 {
     private readonly TrendsTabViewModel? _viewModel;
+    private readonly SyncfusionControlFactory _controlFactory;
     private readonly ILogger _logger;
 
     private ChartControl? _trendsChart;
@@ -37,14 +40,15 @@ public partial class TrendsTabControl : UserControl
 
     public bool IsLoaded { get; private set; }
 
-    public TrendsTabControl(TrendsTabViewModel? viewModel, ILogger? logger = null)
+    public TrendsTabControl(TrendsTabViewModel? viewModel, SyncfusionControlFactory controlFactory, ILogger? logger = null)
     {
         _viewModel = viewModel;
+        _controlFactory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
         _logger = logger ?? NullLogger.Instance;
 
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+            var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(this, theme);
         }
         catch { /* best-effort */ }
@@ -58,16 +62,15 @@ public partial class TrendsTabControl : UserControl
         this.Dock = DockStyle.Fill;
         this.AutoScaleMode = AutoScaleMode.Dpi;
         this.AutoScroll = true;
-        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
-        this.Padding = new Padding(8);
+        this.MinimumSize = Size.Empty;
+        this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact);
         _toolTip = new ToolTip();
 
-        var mainSplit = new SplitContainer
+        var mainSplit = _controlFactory.CreateSplitContainerAdv(splitter =>
         {
-            Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 60
-        };
+            splitter.Orientation = Orientation.Vertical;
+            splitter.SplitterDistance = 60;
+        });
 
         InitializeControlsPanel();
         mainSplit.Panel1.Controls.Add(_controlsPanel);
@@ -89,7 +92,7 @@ public partial class TrendsTabControl : UserControl
     private void InitializeControlsPanel()
     {
         _controlsPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
-        SfSkinManager.SetVisualStyle(_controlsPanel, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_controlsPanel, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
         var layout = new TableLayoutPanel
         {
@@ -108,15 +111,15 @@ public partial class TrendsTabControl : UserControl
             Dock = DockStyle.Fill
         };
 
-        _projectionYearsSpinner = new NumericUpDownExt
+        _projectionYearsSpinner = _controlFactory.CreateNumericUpDownExt(spinner =>
         {
-            Minimum = 1,
-            Maximum = 10,
-            Value = 3,
-            Dock = DockStyle.Fill,
-            AccessibleName = "Projection years",
-            AccessibleDescription = "Number of years included in the trend projection"
-        };
+            spinner.Minimum = 1;
+            spinner.Maximum = 10;
+            spinner.Value = 3;
+            spinner.Dock = DockStyle.Fill;
+            spinner.AccessibleName = "Projection years";
+            spinner.AccessibleDescription = "Number of years included in the trend projection";
+        });
         _toolTip?.SetToolTip(_projectionYearsSpinner, "Choose how many years to project.");
         _projectionYearsSpinner.ValueChanged += (s, e) =>
         {
@@ -145,7 +148,7 @@ public partial class TrendsTabControl : UserControl
             Dock = DockStyle.Fill,
             ColumnCount = 2,
             RowCount = 2,
-            Padding = new Padding(5)
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingTight)
         };
 
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -166,13 +169,11 @@ public partial class TrendsTabControl : UserControl
 
     private void InitializeTrendsChart()
     {
-        _trendsChart = new ChartControl
+        _trendsChart = _controlFactory.CreateChartControl("Budget Trends (Budgeted vs Actual)", chart =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Budget trends chart",
-            AccessibleDescription = "Chart showing historical budget and actual trends",
-            Title = { Text = "Budget Trends (Budgeted vs Actual)" }
-        };
+            chart.AccessibleName = "Budget trends chart";
+            chart.AccessibleDescription = "Chart showing historical budget and actual trends";
+        });
         _toolTip?.SetToolTip(_trendsChart, "Budgeted versus actual trends over time.");
         _trendsChart.PrimaryXAxis.Title = "Period";
         _trendsChart.PrimaryYAxis.Title = "Amount ($)";
@@ -183,13 +184,11 @@ public partial class TrendsTabControl : UserControl
 
     private void InitializeForecastChart()
     {
-        _forecastChart = new ChartControl
+        _forecastChart = _controlFactory.CreateChartControl("Reserve Forecast", chart =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Reserve forecast chart",
-            AccessibleDescription = "Chart showing projected reserve balances",
-            Title = { Text = "Reserve Forecast" }
-        };
+            chart.AccessibleName = "Reserve forecast chart";
+            chart.AccessibleDescription = "Chart showing projected reserve balances";
+        });
         _toolTip?.SetToolTip(_forecastChart, "Projected reserve balance over time.");
         _forecastChart.PrimaryXAxis.Title = "Date";
         _forecastChart.PrimaryYAxis.Title = "Predicted Reserves ($)";
@@ -200,13 +199,11 @@ public partial class TrendsTabControl : UserControl
 
     private void InitializeDepartmentChart()
     {
-        _departmentChart = new ChartControl
+        _departmentChart = _controlFactory.CreateChartControl("Department Variance Analysis", chart =>
         {
-            Dock = DockStyle.Fill,
-            AccessibleName = "Department variance chart",
-            AccessibleDescription = "Chart showing average variance by department",
-            Title = { Text = "Department Variance Analysis" }
-        };
+            chart.AccessibleName = "Department variance chart";
+            chart.AccessibleDescription = "Chart showing average variance by department";
+        });
         _toolTip?.SetToolTip(_departmentChart, "Average variance percentage by department.");
         _departmentChart.PrimaryXAxis.Title = "Department";
         _departmentChart.PrimaryYAxis.Title = "Average Variance %";

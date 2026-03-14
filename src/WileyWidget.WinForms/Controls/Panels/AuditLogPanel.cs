@@ -24,6 +24,7 @@ using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.UI.Helpers;
+using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -94,6 +95,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         MinimumSize = new Size(RecommendedDockedPanelMinimumLogicalWidth,
                                RecommendedDockedPanelMinimumLogicalHeight);
         Dock = DockStyle.Fill;
+        AutoScroll = true;
         AutoScaleMode = AutoScaleMode.Dpi;
         SafeSuspendAndLayout(InitializeLayout);
         BindViewModel();
@@ -152,8 +154,9 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _filterPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 120,
-            Padding = new Padding(8),
+            Height = LayoutTokens.GetScaled(170),
+            MinimumSize = new Size(0, LayoutTokens.GetScaled(170)),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
             BorderStyle = BorderStyle.None,
             AccessibleName = "Audit log filters"
         };
@@ -163,13 +166,17 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             Dock = DockStyle.Fill,
             ColumnCount = 6,
             RowCount = 2,
-            AutoSize = true
+            AutoSize = false,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
-        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
-        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
-        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
-        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+        filterTable.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(52)));
+        filterTable.RowStyles.Add(new RowStyle(SizeType.Absolute, LayoutTokens.GetScaled(52)));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(130)));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(190)));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(110)));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(190)));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, LayoutTokens.GetScaled(130)));
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         // Row 0: date range
@@ -183,7 +190,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _dtpStartDate = _factory.CreateSfDateTimeEdit(d =>
         {
-            d.Width = 140;
+            d.Width = LayoutTokens.GetScaled(180);
             d.DateTimePattern = DateTimePattern.ShortDate;
             d.AccessibleName = "Start date filter";
             d.AccessibleDescription = "Filter audit entries from this date";
@@ -202,7 +209,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _dtpEndDate = _factory.CreateSfDateTimeEdit(d =>
         {
-            d.Width = 140;
+            d.Width = LayoutTokens.GetScaled(180);
             d.DateTimePattern = DateTimePattern.ShortDate;
             d.AccessibleName = "End date filter";
             d.AccessibleDescription = "Filter audit entries until this date";
@@ -222,7 +229,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _cmbActionType = _factory.CreateSfComboBox(c =>
         {
-            c.Width = 140;
+            c.Width = LayoutTokens.GetScaled(180);
             c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             c.MaxDropDownItems = 10;
             c.AllowNull = true;
@@ -244,7 +251,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _cmbUser = _factory.CreateSfComboBox(c =>
         {
-            c.Width = 140;
+            c.Width = LayoutTokens.GetScaled(180);
             c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             c.MaxDropDownItems = 10;
             c.AllowNull = true;
@@ -259,8 +266,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         // Buttons
         _btnRefresh = _factory.CreateSfButton("Refresh", b =>
         {
-            b.Width = 100;
-            b.Height = 32;
+            b.Width = LayoutTokens.GetScaled(116);
+            b.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
             b.AccessibleName = "Refresh audit log";
             b.AccessibleDescription = "Reload audit entries from database";
         });
@@ -284,8 +291,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _btnExportCsv = _factory.CreateSfButton("Export CSV", b =>
         {
-            b.Width = 100;
-            b.Height = 32;
+            b.Width = LayoutTokens.GetScaled(126);
+            b.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
             b.AccessibleName = "Export to CSV";
             b.AccessibleDescription = "Export filtered audit entries to CSV file";
         });
@@ -299,9 +306,10 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         var chartOptionsFlow = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 36,
+            Height = LayoutTokens.GetScaled(46),
             AutoSize = true,
             FlowDirection = FlowDirection.LeftToRight,
+            Padding = new Padding(0, LayoutTokens.GetScaled(4), 0, 0),
             AccessibleName = "Chart options flow"
         };
 
@@ -316,7 +324,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _cmbChartGroupBy = _factory.CreateSfComboBox(c =>
         {
-            c.Width = 120;
+            c.Width = LayoutTokens.GetScaled(180);
             c.DropDownStyle = Syncfusion.WinForms.ListView.Enums.DropDownStyle.DropDownList;
             c.AllowNull = false;
             c.Watermark = "Group";
@@ -330,8 +338,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
 
         _btnUpdateChart = _factory.CreateSfButton("Update Chart", b =>
         {
-            b.Width = 100;
-            b.Height = 28;
+            b.Width = LayoutTokens.GetScaled(128);
+            b.Height = LayoutTokens.GetScaled(LayoutTokens.StandardControlHeightLarge);
             b.AccessibleName = "Update chart";
             b.AccessibleDescription = "Refresh chart with current filters";
         });
@@ -363,8 +371,8 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
             g.SelectionMode = GridSelectionMode.Single;
             g.AutoSizeColumnsMode = AutoSizeColumnsMode.AllCells;
             g.EnableDataVirtualization = true;
-            g.RowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(28.0f);
-            g.HeaderRowHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(32.0f);
+            g.RowHeight = LayoutTokens.GetScaled(LayoutTokens.GridRowHeightMedium);
+            g.HeaderRowHeight = LayoutTokens.GetScaled(LayoutTokens.GridHeaderRowHeightMedium);
             g.AllowResizingColumns = true;
             g.AllowTriStateSorting = true;
             g.AccessibleName = "Audit log entries grid";
@@ -378,7 +386,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         _chartHostPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(8),
+            Padding = LayoutTokens.GetScaled(LayoutTokens.PanelPaddingCompact),
             AccessibleName = "Chart host panel",
             AccessibleDescription = "Displays chart of audit events"
         };
@@ -583,7 +591,7 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
         {
             _chartControl.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             _chartControl.BorderAppearance.SkinStyle = ChartBorderSkinStyle.None;
-            _chartControl.ElementsSpacing = 5;
+            _chartControl.ElementsSpacing = LayoutTokens.GetScaled(10);
 
             _chartControl.PrimaryXAxis.ValueType = ChartValueType.DateTime;
             _chartControl.PrimaryXAxis.Title = "Date";

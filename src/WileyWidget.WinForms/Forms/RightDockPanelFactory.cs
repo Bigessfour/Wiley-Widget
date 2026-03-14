@@ -20,6 +20,10 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public static class RightDockPanelFactory
 {
+    public const string ActivityLogTabName = "RightDockTab_ActivityLog";
+    public const string JarvisTabName = "RightDockTab_JARVIS";
+    public const int ActivityLogPreferredWidth = 420;
+    public const int JarvisPreferredWidth = 500;
 
     /// <summary>
     /// Creates the right-docked panel container with persistent Syncfusion tabs.
@@ -37,7 +41,7 @@ public static class RightDockPanelFactory
         Panel rightDockPanel,
         TabControlAdv rightDockTabs,
         ActivityLogPanel activityLogPanel,
-        JARVISChatUserControl jarvisChatPanel
+        TabPageAdv jarvisTab
     ) CreateRightDockPanel(
         MainForm mainForm,
         IServiceProvider serviceProvider,
@@ -55,12 +59,15 @@ public static class RightDockPanelFactory
         try
         {
             // Create container panel
+            // Padding(left, top, right, bottom): 8 px right inset prevents the tab content
+            // from touching the window chrome, giving visual breathing room on the right edge.
             var rightDockPanel = new Panel
             {
                 Dock = DockStyle.Right,
-                Width = 420,
-                MinimumSize = new Size(360, 0),
+                Width = ActivityLogPreferredWidth,
+                MinimumSize = new Size(350, 0),
                 BorderStyle = BorderStyle.None,
+                Padding = new Padding(0, 0, 8, 0),
                 Name = "RightDockPanel"
             };
 
@@ -85,27 +92,40 @@ public static class RightDockPanelFactory
             };
             logger?.LogDebug("ActivityLogPanel created successfully");
 
-            var jarvisChatPanel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<JARVISChatUserControl>(serviceProvider);
-            jarvisChatPanel.Dock = DockStyle.Fill;
-            jarvisChatPanel.Name = "JARVISDockPanel";
-
             var activityTab = new TabPageAdv
             {
-                Name = "RightDockTab_ActivityLog",
+                Name = ActivityLogTabName,
                 Text = "Activity Log"
             };
+            activityTab.Tag = ActivityLogPreferredWidth;
             activityTab.Controls.Add(activityLogPanel);
 
             var jarvisTab = new TabPageAdv
             {
-                Name = "RightDockTab_JARVIS",
+                Name = JarvisTabName,
                 Text = "JARVIS Chat"
             };
-            jarvisTab.Controls.Add(jarvisChatPanel);
+            jarvisTab.Tag = JarvisPreferredWidth;
+            var jarvisPlaceholder = new Panel
+            {
+                Name = "RightDockJarvisPlaceholder",
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12)
+            };
+            var jarvisPlaceholderLabel = new Label
+            {
+                Name = "RightDockJarvisPlaceholderLabel",
+                Dock = DockStyle.Fill,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Text = "JARVIS loads on first open."
+            };
+            jarvisPlaceholder.Controls.Add(jarvisPlaceholderLabel);
+            jarvisTab.Controls.Add(jarvisPlaceholder);
 
             rightDockTabs.TabPages.Add(activityTab);
             rightDockTabs.TabPages.Add(jarvisTab);
-            rightDockTabs.SelectedTab = activityTab;
+            rightDockTabs.SelectedTab = activityTab; // Keep startup responsive; JARVIS opens on explicit navigation
 
             rightDockPanel.Controls.Add(rightDockTabs);
             SfSkinManager.SetVisualStyle(rightDockPanel, themeName);
@@ -118,7 +138,7 @@ public static class RightDockPanelFactory
                 "RightDockPanelFactory: Right panel created successfully in {ElapsedMs}ms (persistent Activity Log + JARVIS tabs)",
                 sw.ElapsedMilliseconds);
 
-            return (rightDockPanel, rightDockTabs, activityLogPanel, jarvisChatPanel);
+            return (rightDockPanel, rightDockTabs, activityLogPanel, jarvisTab);
         }
         catch (Exception ex)
         {

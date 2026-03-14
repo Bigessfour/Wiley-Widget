@@ -212,6 +212,13 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
 
             // Parse query string
             var queryParams = ParseQueryString(request.Url?.Query ?? "");
+            _logger.LogInformation(
+                "[QBO-PROOF] OAuth callback received. ListenUrl: {ListenUrl}, HasCode: {HasCode}, HasRealmId: {HasRealmId}, HasState: {HasState}, HasError: {HasError}",
+                _listenUrl,
+                queryParams.ContainsKey("code"),
+                queryParams.ContainsKey("realmId"),
+                queryParams.ContainsKey("state"),
+                queryParams.ContainsKey("error"));
 
             // Check for error response from Intuit
             if (queryParams.TryGetValue("error", out var error))
@@ -260,6 +267,8 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
                         await SendErrorResponseAsync(response, "invalid_state", "CSRF state parameter mismatch. Please restart the authorization flow.", cancellationToken);
                         return;
                     }
+
+                    _logger.LogInformation("[QBO-PROOF] OAuth callback state accepted by auth service.");
                 }
                 else
                 {
@@ -285,13 +294,17 @@ public sealed class QuickBooksOAuthCallbackHandler : IDisposable
                     // Also store the realm ID if provided
                     if (!string.IsNullOrEmpty(realmId))
                     {
-                        tokenStore.SetRealmId(realmId);
+                        await authService.SetRealmIdAsync(realmId, cancellationToken).ConfigureAwait(false);
                     }
                 }
 
                 // Send success response
                 await SendSuccessResponseAsync(response, realmId, cancellationToken);
                 _logger.LogInformation("OAuth authorization completed successfully");
+                _logger.LogInformation(
+                    "[QBO-PROOF] OAuth callback completed successfully. RealmId: {RealmId}, TokenCaptured: {TokenCaptured}",
+                    string.IsNullOrWhiteSpace(realmId) ? "<missing>" : realmId,
+                    result.Token != null);
             }
         }
         catch (Exception ex)

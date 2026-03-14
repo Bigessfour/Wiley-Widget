@@ -1,13 +1,15 @@
 #nullable enable
 
 using System;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WileyWidget.Models;
 using WileyWidget.Models.Entities;
 
 namespace WileyWidget.Data
 {
-    public class AppDbContext : DbContext, IAppDbContext
+    public class AppDbContext : IdentityDbContext<AppIdentityUser, IdentityRole<Guid>, Guid>, IAppDbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -50,7 +52,9 @@ namespace WileyWidget.Data
         public DbSet<DepartmentGoal> DepartmentGoals { get; set; } = null!;
         public DbSet<TelemetryLog> TelemetryLogs { get; set; } = null!;
         public DbSet<SavedScenarioSnapshot> SavedScenarioSnapshots { get; set; } = null!;
+        public DbSet<AppIdentityUser> AppUsers { get; set; } = null!;
         public DbSet<global::WileyWidget.Services.Abstractions.ConversationHistory> ConversationHistories { get; set; } = null!;
+        public DbSet<global::WileyWidget.Services.Abstractions.UserMemoryFact> UserMemoryFacts { get; set; } = null!;
         public DbSet<TownOfWileyBudget2026> TownOfWileyBudgetData { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -70,6 +74,23 @@ namespace WileyWidget.Data
             // EF Core 10: Enable named default constraints for better migration control
             // modelBuilder.UseNamedDefaultConstraints(); // Commented out - requires EF Core 10+
 
+            modelBuilder.Entity<AppIdentityUser>(entity =>
+            {
+                entity.Property(e => e.DisplayName)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(e => e.IsEnabled)
+                    .HasDefaultValue(true);
+
+                entity.Property(e => e.CreatedAtUtc)
+                    .HasColumnType("datetime2")
+                    .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                entity.Property(e => e.LastSignedInAtUtc)
+                    .HasColumnType("datetime2");
+            });
+
             // BudgetEntry (updated)
             modelBuilder.Entity<BudgetEntry>(entity =>
             {
@@ -82,7 +103,7 @@ namespace WileyWidget.Data
                     .HasForeignKey(e => e.MunicipalAccountId)
                     .OnDelete(DeleteBehavior.Restrict);
                 entity.HasIndex(e => e.ParentId);
-                entity.HasIndex(e => new { e.AccountNumber, e.FiscalYear }).IsUnique();
+                entity.HasIndex(e => new { e.AccountNumber, e.FiscalYear, e.FundId }).IsUnique();
                 entity.HasIndex(e => e.FiscalYear);
                 entity.HasIndex(e => e.DepartmentId);
                 entity.HasIndex(e => e.FundId);
@@ -94,7 +115,7 @@ namespace WileyWidget.Data
                 entity.Property(e => e.EncumbranceAmount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.SourceFilePath).HasMaxLength(500);
                 entity.Property(e => e.ActivityCode).HasMaxLength(10);
-                entity.ToTable(t => t.HasCheckConstraint("CK_Budget_Positive", "[BudgetedAmount] > 0"));
+                entity.ToTable(t => t.HasCheckConstraint("CK_Budget_Positive", "[BudgetedAmount] >= 0"));
             });
 
             // Department hierarchy
@@ -285,6 +306,34 @@ namespace WileyWidget.Data
 
                 // Legacy/unused property - ConversationId is the canonical key
                 entity.Ignore(e => e.Id);
+            });
+
+            modelBuilder.Entity<global::WileyWidget.Services.Abstractions.UserMemoryFact>(entity =>
+            {
+                entity.ToTable("UserMemoryFacts");
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Id)
+                    .HasMaxLength(32)
+                    .IsRequired();
+
+                entity.Property(e => e.UserId)
+                    .HasMaxLength(128)
+                    .IsRequired();
+
+                entity.Property(e => e.FactKey)
+                    .HasMaxLength(64)
+                    .IsRequired();
+
+                entity.Property(e => e.FactValue)
+                    .HasMaxLength(512)
+                    .IsRequired();
+
+                entity.Property(e => e.SourceConversationId)
+                    .HasMaxLength(128);
+
+                entity.HasIndex(e => new { e.UserId, e.FactKey }).IsUnique();
+                entity.HasIndex(e => e.LastObservedAtUtc);
             });
 
             // New: Vendor configuration

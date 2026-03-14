@@ -35,7 +35,6 @@ public partial class MainForm
     {
         if (_tabbedMdi != null)
         {
-            _logger?.LogDebug("MDI Manager already initialized");
             return;
         }
 
@@ -76,13 +75,16 @@ public partial class MainForm
             // Apply theme
             SfSkinManager.SetVisualStyle(_tabbedMdi, currentTheme);
 
-            BeginInvoke((MethodInvoker)(() =>
+            // For tests, call synchronously to avoid hanging
+            if (!IsDisposed)
             {
-                if (!IsDisposed)
-                {
-                    ConstrainMdiClientToContentHost();
-                }
-            }));
+                RefreshPanelHostLayout("InitializeMDIManager", force: true);
+            }
+
+            if (!ReferenceEquals(_tabbedMdi.AttachedTo, this))
+            {
+                _tabbedMdi.AttachedTo = this;
+            }
 
             _logger?.LogInformation("TabbedMDI Manager initialized successfully with theme {Theme}", currentTheme);
         }
@@ -116,28 +118,35 @@ public partial class MainForm
                     return;
                 }
 
-                ConstrainMdiClientToContentHost();
+                RefreshPanelHostLayout("MdiChildActivate");
             }));
         };
 
-        if (_contentHostPanel != null)
+        if (_panelHost != null)
         {
-            _contentHostPanel.Layout += (_, _) =>
+            _panelHost.SizeChanged += (_, _) =>
             {
                 if (!IsDisposed && !Disposing)
                 {
-                    ConstrainMdiClientToContentHost();
-                }
-            };
-
-            _contentHostPanel.SizeChanged += (_, _) =>
-            {
-                if (!IsDisposed && !Disposing)
-                {
-                    ConstrainMdiClientToContentHost();
+                    RefreshPanelHostLayout("PanelHost.SizeChanged");
                 }
             };
         }
+
+        // Re-constrain the MdiClient whenever the FORM itself resizes.
+        // Windows MDI management can silently restore the MdiClient to Dock=Fill
+        // during WM_SIZE / WM_MDIRESTORE messages.
+        this.Resize += (_, _) =>
+        {
+            if (!IsDisposed && !Disposing)
+            {
+                BeginInvoke((MethodInvoker)(() =>
+                {
+                    if (!IsDisposed && !Disposing)
+                        RefreshPanelHostLayout("Form.Resize");
+                }));
+            }
+        };
     }
 
     /// <summary>
@@ -162,7 +171,7 @@ public partial class MainForm
                     return;
                 }
 
-                ConstrainMdiClientToContentHost();
+                RefreshPanelHostLayout("TabControlAdded");
             }));
         }
         catch (Exception ex)
@@ -186,7 +195,7 @@ public partial class MainForm
             {
                 if (!IsDisposed && !Disposing)
                 {
-                    ConstrainMdiClientToContentHost();
+                    RefreshPanelHostLayout("TabControlRemoved");
                 }
             }));
         }
@@ -314,7 +323,7 @@ public partial class MainForm
         if (string.IsNullOrWhiteSpace(themeName))
             return typeof(TabRendererOffice2016Colorful);
 
-        // Normalise: "Office2019Dark" → "office2019dark"
+        // Normalise: "Office2019Colorful" → "office2019colorful"
         var key = themeName.Replace(" ", string.Empty, StringComparison.Ordinal)
                            .ToLowerInvariant();
 

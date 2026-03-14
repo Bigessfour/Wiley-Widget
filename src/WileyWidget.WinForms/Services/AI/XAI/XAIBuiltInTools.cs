@@ -12,13 +12,13 @@ namespace WileyWidget.WinForms.Services.AI.XAI
     /// <summary>
     /// Provides xAI built-in tool definitions and helper methods for Semantic Kernel integration.
     /// These tools execute on xAI's servers when invoked by Grok.
-    /// 
+    ///
     /// xAI Built-in Tools (Server-side):
     /// - web_search: Real-time web search and page browsing
     /// - x_search: Search X (Twitter) posts, users, threads
     /// - code_execution (aka code_interpreter): Python sandbox with pandas, numpy, matplotlib, scipy
     /// - collections_search: Query uploaded knowledge base documents
-    /// 
+    ///
     /// Reference: https://docs.x.ai/developers/tools/overview
     /// </summary>
     public static class XAIBuiltInTools
@@ -302,6 +302,86 @@ namespace WileyWidget.WinForms.Services.AI.XAI
                 }
 
                 tools.Add(collectionsTool);
+            }
+
+            return tools;
+        }
+
+        /// <summary>
+        /// Creates tool definitions formatted for xAI /v1/responses endpoint.
+        /// Built-in server-side tools should use their native type values so xAI executes them automatically.
+        /// Using type=function for built-ins turns them into client-side tool calls and pauses execution.
+        /// </summary>
+        public static List<object> CreateToolDefinitionsForResponses(XAIToolConfiguration config)
+        {
+            var tools = new List<object>();
+
+            if (!config.Enabled)
+            {
+                return tools;
+            }
+
+            if (config.WebSearch?.Enabled == true)
+            {
+                var webSearchTool = new Dictionary<string, object>
+                {
+                    ["type"] = "web_search"
+                };
+
+                if (config.WebSearch.AllowedDomains?.Count > 0)
+                {
+                    webSearchTool["allowed_domains"] = config.WebSearch.AllowedDomains;
+                }
+
+                if (config.WebSearch.ExcludedDomains?.Count > 0)
+                {
+                    webSearchTool["excluded_domains"] = config.WebSearch.ExcludedDomains;
+                }
+
+                if (config.WebSearch.EnableImageUnderstanding)
+                {
+                    webSearchTool["enable_image_understanding"] = true;
+                }
+
+                tools.Add(webSearchTool);
+            }
+
+            if (config.XSearch?.Enabled == true)
+            {
+                var xSearchTool = new Dictionary<string, object>
+                {
+                    ["type"] = "x_search"
+                };
+
+                if (config.XSearch.EnableImageUnderstanding)
+                {
+                    xSearchTool["enable_image_understanding"] = true;
+                }
+
+                tools.Add(xSearchTool);
+            }
+
+            if (config.CodeExecution?.Enabled == true)
+            {
+                tools.Add(new Dictionary<string, object>
+                {
+                    ["type"] = "code_interpreter"
+                });
+            }
+
+            if (config.CollectionsSearch?.Enabled == true)
+            {
+                var collectionsSearchTool = new Dictionary<string, object>
+                {
+                    ["type"] = "file_search"
+                };
+
+                if (config.CollectionsSearch.CollectionIds?.Count > 0)
+                {
+                    collectionsSearchTool["collection_ids"] = config.CollectionsSearch.CollectionIds;
+                }
+
+                tools.Add(collectionsSearchTool);
             }
 
             return tools;

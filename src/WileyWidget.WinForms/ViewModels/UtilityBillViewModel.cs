@@ -478,7 +478,6 @@ namespace WileyWidget.WinForms.ViewModels
                 // Simulate report generation
                 await Task.Delay(500);
 
-                // Placeholder for future ExportService integration
                 var billCount = FilteredBills.Count;
                 var totalAmount = FilteredBills.Sum(b => b.TotalAmount);
                 var totalDue = FilteredBills.Sum(b => b.AmountDue);
@@ -488,7 +487,7 @@ namespace WileyWidget.WinForms.ViewModels
                                   $"Total Amount: {totalAmount:C}\n" +
                                   $"Total Outstanding: {totalDue:C}\n" +
                                   $"Overdue Count: {OverdueCount}\n\n" +
-                                  $"Export functionality coming soon!";
+                                  $"Use Reports panel export actions to save this data.";
 
                 MessageBox.Show(
                     reportMessage,

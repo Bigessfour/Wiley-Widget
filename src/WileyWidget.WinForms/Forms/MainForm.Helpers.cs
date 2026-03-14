@@ -583,15 +583,7 @@ namespace WileyWidget.WinForms.Forms
 
                 void updateStatus()
                 {
-                    if (_statusTextPanel != null && !_statusTextPanel.IsDisposed)
-                    {
-                        _statusTextPanel.Text = statusText;
-                    }
-
-                    if (_statusLabel != null && !_statusLabel.IsDisposed)
-                    {
-                        _statusLabel.Text = string.IsNullOrWhiteSpace(statusText) ? "Ready" : statusText;
-                    }
+                    UpdatePrimaryStatusLabel(statusText);
 
                     if (_statusBar != null && !_statusBar.IsDisposed)
                     {
@@ -606,12 +598,45 @@ namespace WileyWidget.WinForms.Forms
                 }
                 else
                 {
+                    RefreshProfessionalStatusBarSnapshot();
                     updateStatus();
                 }
             }
             catch (Exception ex)
             {
                 _logger?.LogDebug(ex, "ApplyStatus failed");
+            }
+        }
+        private async Task RefreshCurrentWorkspaceAsync()
+        {
+            try
+            {
+                InvalidateActiveGridCache();
+
+                var grid = GetActiveGrid();
+                if (grid != null && !grid.IsDisposed)
+                {
+                    RefreshActiveGrid();
+                    ApplyStatus("Active grid refreshed.");
+                    return;
+                }
+
+                if (MainViewModel?.RefreshCommand != null && MainViewModel.RefreshCommand.CanExecute(null))
+                {
+                    await MainViewModel.RefreshCommand.ExecuteAsync(null).ConfigureAwait(true);
+                    RefreshProfessionalStatusBarSnapshot();
+                    ApplyStatus("Workspace refreshed.");
+                    return;
+                }
+
+                RefreshPanelHostLayout("ManualRefresh");
+                RefreshProfessionalStatusBarSnapshot();
+                ApplyStatus("Shell layout refreshed.");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "RefreshCurrentWorkspaceAsync failed");
+                ShowErrorDialog("Refresh", "Unable to refresh the current workspace.", ex);
             }
         }
 
@@ -643,13 +668,13 @@ namespace WileyWidget.WinForms.Forms
                         ApplyStatus(update.Message);
                     }
 
-                    if (_statePanel != null && !_statePanel.IsDisposed)
+                    if (string.IsNullOrWhiteSpace(update.Message))
                     {
-                        _statePanel.Text = update.IsActive
+                        UpdatePrimaryStatusLabel(update.IsActive
                             ? update.IsIndeterminate
                                 ? "Working..."
-                                : $"{Math.Round(update.Percent ?? 0d):0}%"
-                            : "Ready";
+                                : $"{Math.Round(update.Percent ?? 0d):0}% complete"
+                            : "Ready");
                     }
 
                     if (_progressBar != null && !_progressBar.IsDisposed)

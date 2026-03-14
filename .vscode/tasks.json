@@ -3,11 +3,14 @@
 	"tasks": [
 		{
 			"label": "build",
-			"command": "dotnet build WileyWidget.sln -m:2",
+			"command": "dotnet build WileyWidget.sln -m:1 -nr:false",
 			"type": "shell",
 			"group": {
 				"kind": "build",
 				"isDefault": true
+			},
+			"runOptions": {
+				"instanceLimit": 1
 			},
 			"problemMatcher": "$msCompile",
 			"presentation": {
@@ -20,11 +23,14 @@
 		},
 		{
 			"label": "build: fast",
-			"command": "dotnet build WileyWidget.sln -m:2 -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false",
+			"command": "dotnet build WileyWidget.sln -m:1 -nr:false -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false",
 			"type": "shell",
 			"group": {
 				"kind": "build",
 				"isDefault": false
+			},
+			"runOptions": {
+				"instanceLimit": 1
 			},
 			"problemMatcher": "$msCompile",
 			"presentation": {
@@ -32,6 +38,204 @@
 				"reveal": "always",
 				"focus": false,
 				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: no-restore",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"-c",
+				"Debug",
+				"--no-restore",
+				"-m:1",
+				"-nr:false",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: winforms only",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+				"-c",
+				"Debug",
+				"--no-restore",
+				"-m:1",
+				"-nr:false",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: winforms only (fast)",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+				"-c",
+				"Debug",
+				"--no-restore",
+				"-m:1",
+				"-nr:false",
+				"-p:RunAnalyzers=false",
+				"-p:RunAnalyzersDuringBuild=false",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: current project",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$dir='${fileDirname}'; $project=$null; while ($dir) { $project = Get-ChildItem -Path $dir -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1; if ($project) { break }; $parent = Split-Path -Path $dir -Parent; if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $dir) { $dir = $null } else { $dir = $parent } }; if (-not $project) { throw 'No .csproj found for the active file.' }; dotnet build $project.FullName -c Debug --no-restore -m:1 -nr:false /consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: current project (fast)",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$dir='${fileDirname}'; $project=$null; while ($dir) { $project = Get-ChildItem -Path $dir -Filter *.csproj -File -ErrorAction SilentlyContinue | Select-Object -First 1; if ($project) { break }; $parent = Split-Path -Path $dir -Parent; if ([string]::IsNullOrWhiteSpace($parent) -or $parent -eq $dir) { $dir = $null } else { $dir = $parent } }; if (-not $project) { throw 'No .csproj found for the active file.' }; dotnet build $project.FullName -c Debug --no-restore -m:1 -nr:false -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false /consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: winforms filter",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.WinForms.dev.slnf",
+				"-c",
+				"Debug",
+				"--no-restore",
+				"-m:1",
+				"-nr:false",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: winforms filter (fast)",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"${workspaceFolder}/WileyWidget.WinForms.dev.slnf",
+				"-c",
+				"Debug",
+				"--no-restore",
+				"-m:1",
+				"-nr:false",
+				"-p:RunAnalyzers=false",
+				"-p:RunAnalyzersDuringBuild=false",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "build: binlog",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"-c",
+				"Debug",
+				"-m:2",
+				"-bl:${workspaceFolder}/logs/build.binlog",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"type": "shell",
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
 			}
 		},
 		{
@@ -125,6 +329,74 @@
 			}
 		},
 		{
+			"label": "run: release visual assessment",
+			"dependsOn": [
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--configuration",
+				"Release",
+				"--project",
+				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
+			],
+			"type": "shell",
+			"group": "build",
+			"options": {
+				"env": {
+					"DOTNET_ENVIRONMENT": "Production",
+					"WILEYWIDGET_AUTH_FORCE_DEVELOPMENT_BYPASS": "true"
+				}
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": true,
+				"clear": false
+			}
+		},
+		{
+			"label": "test: budget panel behavior diagnostics",
+			"dependsOn": [
+				"build: fast"
+			],
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--no-build",
+				"--project",
+				"${workspaceFolder}/src/WileyWidget.WinForms/WileyWidget.WinForms.csproj"
+			],
+			"type": "shell",
+			"group": "test",
+			"options": {
+				"env": {
+					"WILEYWIDGET_FORCE_BUDGET_SEEDED": "1",
+					"WILEYWIDGET_RUN_BUDGET_TEST": "1",
+					"WILEYWIDGET_RUN_BUDGET_TEST_VERBOSE": "1",
+					"WILEYWIDGET_RUN_BUDGET_TEST_SCOPE": "full",
+					"WILEYWIDGET_RUN_BUDGET_TEST_EXIT": "1",
+					"WILEYWIDGET_AUTO_OPEN_BUDGET": "1",
+					"WILEYWIDGET_DISABLE_STARTUP_JARVIS": "1"
+				}
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": true,
+				"clear": false
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "build:debug",
 			"command": "dotnet",
 			"args": [
@@ -216,6 +488,344 @@
 			"problemMatcher": "$msCompile"
 		},
 		{
+			"label": "ci-local: build-release",
+			"dependsOn": [
+				"restore"
+			],
+			"dependsOrder": "sequence",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"--configuration",
+				"Release",
+				"--no-restore",
+				"-m:2"
+			],
+			"type": "shell",
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: startup-smoke",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--configuration",
+				"Release",
+				"--no-build",
+				"--filter",
+				"FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"--blame-hang-timeout",
+				"3m"
+			],
+			"options": {
+				"env": {
+					"WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD": "true",
+					"WILEYWIDGET_TEST_DISABLE_DOCKING": "false",
+					"WILEYWIDGET_TEST_DISABLE_RIBBON": "false",
+					"WILEYWIDGET_TEST_ARTIFACTS_DIR": "${workspaceFolder}\\artifacts",
+					"WILEYWIDGET_TEST_SCREENSHOT_ON_FAILURE": "true"
+				}
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: startup-smoke (no-docking)",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--configuration",
+				"Release",
+				"--no-build",
+				"--filter",
+				"FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"--blame-hang-timeout",
+				"3m"
+			],
+			"options": {
+				"env": {
+					"WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD": "true",
+					"WILEYWIDGET_TEST_DISABLE_DOCKING": "true",
+					"WILEYWIDGET_TEST_DISABLE_RIBBON": "false",
+					"WILEYWIDGET_TEST_ARTIFACTS_DIR": "${workspaceFolder}\\artifacts",
+					"WILEYWIDGET_TEST_SCREENSHOT_ON_FAILURE": "true"
+				}
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: startup-smoke (no-dashboard)",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--configuration",
+				"Release",
+				"--no-build",
+				"--filter",
+				"FullyQualifiedName=WileyWidget.WinForms.Tests.Startup.MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"--blame-hang-timeout",
+				"3m"
+			],
+			"options": {
+				"env": {
+					"WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD": "false",
+					"WILEYWIDGET_TEST_DISABLE_DOCKING": "false",
+					"WILEYWIDGET_TEST_DISABLE_RIBBON": "false",
+					"WILEYWIDGET_TEST_ARTIFACTS_DIR": "${workspaceFolder}\\artifacts",
+					"WILEYWIDGET_TEST_SCREENSHOT_ON_FAILURE": "true"
+				}
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "test: current file",
+			"dependsOn": [
+				"maintenance: Kill Test Processes"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tests/run-active-dotnet-test.ps1",
+				"-TargetPath",
+				"${file}",
+				"-Configuration",
+				"Debug",
+				"-NoRestore"
+			],
+			"group": "test",
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "test: current project",
+			"dependsOn": [
+				"maintenance: Kill Test Processes"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tests/run-active-dotnet-test.ps1",
+				"-TargetPath",
+				"${fileDirname}",
+				"-Configuration",
+				"Debug",
+				"-NoRestore",
+				"-RunAll"
+			],
+			"group": "test",
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: startup-smoke matrix",
+			"dependsOn": [
+				"ci-local: startup-smoke",
+				"ci-local: startup-smoke (no-docking)",
+				"ci-local: startup-smoke (no-dashboard)"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "ci-local: test-release",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"WileyWidget.sln",
+				"--configuration",
+				"Release",
+				"--no-build",
+				"--logger",
+				"trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: test-release-coverage",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tests/run-coverage.ps1",
+				"-Configuration",
+				"Release",
+				"-NoRestore"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: publish-release-candidate",
+			"dependsOn": [
+				"ci-local: build-release"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"publish",
+				"src/WileyWidget.WinForms/WileyWidget.WinForms.csproj",
+				"--configuration",
+				"Release",
+				"--runtime",
+				"win-x64",
+				"--self-contained",
+				"true",
+				"-p:PublishSingleFile=true",
+				"-p:IncludeNativeLibrariesForSelfExtract=true",
+				"--output",
+				"${workspaceFolder}/publish/release-candidate"
+			],
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			}
+		},
+		{
+			"label": "ci-local: release-proof",
+			"dependsOn": [
+				"ci-local: build-release",
+				"ci-local: startup-smoke matrix"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
 			"label": "watch",
 			"command": "dotnet",
 			"args": [
@@ -266,11 +876,14 @@
 			"dependsOn": [
 				"maintenance: Kill Test Processes"
 			],
-			"command": "dotnet",
+			"command": "pwsh",
 			"args": [
-				"test",
-				"WileyWidget.sln",
-				"--collect:XPlat Code Coverage"
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tests/run-coverage.ps1"
 			],
 			"type": "shell",
 			"group": "test",
@@ -440,6 +1053,26 @@
 			"problemMatcher": []
 		},
 		{
+			"label": "🚦 Startup Budget Gate (Logs)",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/verify-startup-budget.ps1"
+			],
+			"type": "shell",
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated"
+			},
+			"problemMatcher": []
+		},
+		{
 			"label": "🔍 Profile DI Validation (Full)",
 			"command": "powershell",
 			"args": [
@@ -528,11 +1161,11 @@
 			"command": "dotnet",
 			"args": [
 				"test",
-				"--no-build",
 				"--logger",
 				"trx",
 				"--results-directory",
 				"${workspaceFolder}/TestResults",
+				"-p:RunFlaUiTests=true",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
 				"tests/WileyWidget.WinForms.E2ETests/WileyWidget.WinForms.E2ETests.csproj"
 			],
@@ -616,7 +1249,6 @@
 			"command": "dotnet",
 			"args": [
 				"test",
-				"--no-build",
 				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj"
 			],
 			"isBackground": false,
@@ -660,7 +1292,6 @@
 			"command": "dotnet",
 			"args": [
 				"test",
-				"--no-build",
 				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer.Tests/WileyWidgetMcpServer.Tests.csproj"
 			],
 			"isBackground": false,
@@ -687,6 +1318,81 @@
 				"$msCompile"
 			],
 			"group": "test"
+		},
+		{
+			"label": "mcp: capture panel screenshot",
+			"dependsOn": [
+				"build: fast"
+			],
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--no-build",
+				"--",
+				"--capture-screenshot",
+				"${input:panelTypeName}",
+				"--width",
+				"1440",
+				"--height",
+				"900",
+				"--output-dir",
+				"tmp/mcp-screenshots",
+				"--direct",
+				"--json"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "audit: syncfusion factory completeness",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/audit-syncfusion-factory-completeness.ps1"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "audit: layout tokens (official docs)",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"${workspaceFolder}/scripts/audit-layout-tokens.py",
+				"--root",
+				"${workspaceFolder}",
+				"--scope",
+				"full-ui",
+				"--fail-on",
+				"none"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
 		},
 		{
 			"label": "🔌 Setup MSSQL MCP (Windows Auth)",
@@ -1149,6 +1855,7 @@
 				"--results-directory",
 				"${workspaceFolder}/TestResults",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-p:RunFlaUiTests=true",
 				"-v",
 				"normal",
 				"--filter",
@@ -1168,6 +1875,7 @@
 				"--results-directory",
 				"${workspaceFolder}/TestResults",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-p:RunFlaUiTests=true",
 				"-v",
 				"minimal",
 				"--filter",
@@ -1187,6 +1895,7 @@
 				"--results-directory",
 				"${workspaceFolder}/TestResults",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-p:RunFlaUiTests=true",
 				"-v",
 				"quiet",
 				"--filter",
@@ -1206,6 +1915,7 @@
 				"--results-directory",
 				"${workspaceFolder}/TestResults",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-p:RunFlaUiTests=true",
 				"-v",
 				"quiet",
 				"--filter",
@@ -1226,6 +1936,7 @@
 				"--results-directory",
 				"c:\\\\Users\\\\biges\\\\Desktop\\\\Wiley-Widget\\\\TestResults",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-p:RunFlaUiTests=true",
 				"-v",
 				"minimal",
 				"--filter",
@@ -1246,6 +1957,7 @@
 				"trx",
 				"--results-directory",
 				"c:\\\\Users\\\\biges\\\\Desktop\\\\Wiley-Widget\\\\TestResults",
+				"-p:RunFlaUiTests=true",
 				"-v",
 				"normal",
 				"--filter",
@@ -1383,7 +2095,7 @@
 				"-File",
 				"${workspaceFolder}/tools/Analyze-Panel.ps1",
 				"-FilePath",
-				"${file}"
+				"${input:panelFilePath}"
 			],
 			"problemMatcher": [],
 			"presentation": {
@@ -1438,6 +2150,76 @@
 				"minimal"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "build: winforms tests only (fast)",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-c",
+				"Debug",
+				"--no-restore",
+				"-m:1",
+				"-p:RunAnalyzers=false",
+				"-p:RunAnalyzersDuringBuild=false",
+				"/consoleloggerparameters:NoSummary"
+			],
+			"group": "build",
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "test: panel navigation proof (best path)",
+			"dependsOrder": "sequence",
+			"runOptions": {
+				"instanceLimit": 1
+			},
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"build: winforms tests only (fast)"
+			],
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"--no-build",
+				"--no-restore",
+				"-m:1",
+				"--logger",
+				"trx;LogFileName=mainform-panel-navigation-internal-proof.trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"--diag",
+				"${workspaceFolder}/TestResults/mainform-panel-navigation-internal-proof.diag.log",
+				"--blame-hang",
+				"--blame-hang-timeout",
+				"5m",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~CreatePanelNavigationCommand_ActivatesEveryTownReleasePanel_ThroughShowPanelTypePath",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "dedicated",
+				"showReuseMessage": true,
+				"clear": false
+			}
 		},
 		{
 			"label": "test: DI integration (final)",
@@ -1517,7 +2299,17 @@
 		{
 			"label": "Run Jarvis FlaUI test",
 			"type": "shell",
-			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter FullyQualifiedName~JarvisChat --logger \"trx;LogFileName=jarvis.trx\" -v minimal",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~JarvisChat",
+				"--logger",
+				"trx;LogFileName=jarvis.trx",
+				"-v",
+				"minimal"
+			],
 			"isBackground": false
 		},
 		{
@@ -1549,6 +2341,490 @@
 			],
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "temp: scoped panel skeleton gate",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~ScopedPanelLayoutIntegrationTests.PanelRegistry_ScopedPanels_UseProfessionalSkeletonContract",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: clipping regression tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~MunicipalAccountsPanel_RendersBelowRibbon|FullyQualifiedName~PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches|FullyQualifiedName~ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange|FullyQualifiedName~LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: clipping regression tests escaped",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~MunicipalAccountsPanel_RendersBelowRibbon`|FullyQualifiedName~PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches`|FullyQualifiedName~ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange`|FullyQualifiedName~LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks constructor regression",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~QuickBooksAndReportsPanels_ResolveWithoutConstructorExceptions",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks unit regressions",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"${workspaceFolder}/scripts/tests/run-filtered-dotnet-test.ps1",
+				"-Project",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-Filter",
+				"FullyQualifiedName~QuickBooksCompanyInfoServiceTests|FullyQualifiedName~QuickBooksViewModelTests",
+				"-Configuration",
+				"Debug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: jarvis conversation context tests",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~JarvisGrokBridgeHandlerConversationTests",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test report export service",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--configuration",
+				"Release",
+				"--no-restore",
+				"--filter",
+				"ReportExportServiceTests"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test ribbon panel navigation",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--configuration",
+				"Debug",
+				"--no-restore",
+				"--filter",
+				"RibbonBudgetButton_Click_ShowsInitializedBudgetPanel|MunicipalAccountsPanel_RendersBelowRibbon|PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test startup proof enabled",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~MainFormProofIntegrationTests.StartupDeferredPhase_LoadsEnterpriseVitalSigns_WhenAutoShowDashboardEnabled",
+				"--no-restore",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "temp: build winforms tests after proof cleanup",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "temp: build winforms tests after proof cleanup retry",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"--verbosity",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"WileyWidget.sln",
+				"-c",
+				"Debug"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build"
+		},
+		{
+			"label": "mcp-pdf-proof",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--",
+				"--run-script",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/Tests/SyncfusionPdfLibrary_ConfigurationProof.csx"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "shell: test: auth mcp bootstrapper",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/WileyWidgetMcpServer.csproj",
+				"--",
+				"--run-script",
+				"tests/syncfusion-winforms-mcp/tools/WileyWidgetMcpServer/Tests/AuthenticationBootstrapper_RememberMe.csx"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks unit regressions",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~QuickBooksCompanyInfoServiceTests|FullyQualifiedName~QuickBooksViewModelTests",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks runtime regressions",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts/tests/run-filtered-dotnet-test.ps1",
+				"-Project",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-Filter",
+				"FullyQualifiedName~QuickBooksCompanyInfoServiceTests|FullyQualifiedName~QuickBooksViewModelTests|FullyQualifiedName~SettingsServiceTests|FullyQualifiedName~QuickBooksAuthServiceTests",
+				"-Configuration",
+				"Debug"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: test enterprise vital signs rate-study upgrade",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~DashboardServiceTests|FullyQualifiedName~EnterpriseVitalSignsPanelIntegrationTests"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test enterprise vital signs rate-study upgrade quoted",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"\"FullyQualifiedName~DashboardServiceTests|FullyQualifiedName~EnterpriseVitalSignsPanelIntegrationTests\""
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test dashboard service rate-study",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~DashboardServiceTests"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test enterprise vital signs integration",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~EnterpriseVitalSignsPanelIntegrationTests"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: test dashboard service rate-study clean",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~DashboardServiceTests"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks service tests",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NoLogo",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				"scripts/tests/run-filtered-dotnet-test.ps1",
+				"-Project",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"-Filter",
+				"FullyQualifiedName~QuickBooksServiceTests",
+				"-Configuration",
+				"Debug"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: verify evs-payments-jarvis regressions",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"--filter",
+				"FullyQualifiedName~CreateEnterpriseFinancialCard_KeepsBottomMetricsAndSummaryVisible_WhenDocked|FullyQualifiedName~JarvisRightDock_Collapse_ReclaimsMdiSurfaceWidth|FullyQualifiedName~PanelRegistry_TownReleaseSurface_ContainsPaymentsWorkflow"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: verify evs-payments-jarvis regressions quoted",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"--filter",
+				"\"FullyQualifiedName~CreateEnterpriseFinancialCard_KeepsBottomMetricsAndSummaryVisible_WhenDocked|FullyQualifiedName~JarvisRightDock_Collapse_ReclaimsMdiSurfaceWidth|FullyQualifiedName~PanelRegistry_TownReleaseSurface_ContainsPaymentsWorkflow\""
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks null status unit",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"-m:1",
+				"--filter",
+				"FullyQualifiedName~CheckConnectionCommand_WhenServiceReturnsNullStatus_FallsBackToNotConnectedState",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: reports panel layout regression",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"-m:1",
+				"--filter",
+				"FullyQualifiedName~ReportsPanel_EmptyState_StaysInsidePreviewSurface_AndBodyRendersBelowHeader",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: panel clipping integration validation",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"(FullyQualifiedName~MunicipalAccountsPanel_RendersBelowRibbon|FullyQualifiedName~PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches|FullyQualifiedName~ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange|FullyQualifiedName~LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad)",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "temp: panel clipping integration validation quoted",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter 'FullyQualifiedName~MunicipalAccountsPanel_RendersBelowRibbon|FullyQualifiedName~PanelNavigation_MaintainsMdiBelowRibbon_AcrossPanelSwitches|FullyQualifiedName~ThemeSwitch_MaintainsMdiBelowRibbon_AfterRuntimeThemeChange|FullyQualifiedName~LayoutRestore_MaintainsMdiBelowRibbon_AfterExplicitLoad' -v minimal",
+			"isBackground": false
+		}
+	],
+	"inputs": [
+		{
+			"id": "panelTypeName",
+			"type": "promptString",
+			"description": "Enter panel/form type (example: WarRoomPanel, MainForm, SettingsPanel)",
+			"default": "WarRoomPanel"
+		},
+		{
+			"id": "panelFilePath",
+			"type": "promptString",
+			"description": "Enter workspace-relative panel path (example: src/WileyWidget.WinForms/Controls/Panels/WarRoomPanel.cs)",
+			"default": "src/WileyWidget.WinForms/Controls/Panels/WarRoomPanel.cs"
 		}
 	]
 }

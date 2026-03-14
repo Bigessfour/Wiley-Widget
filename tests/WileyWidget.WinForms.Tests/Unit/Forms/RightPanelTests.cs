@@ -58,7 +58,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
             themeMock.Setup(t => t.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
             {
-                 TestThemeHelper.EnsureOffice2019Colorful();
+                TestThemeHelper.EnsureOffice2019Colorful();
             });
             services.AddSingleton<IThemeService>(themeMock.Object);
             services.AddSingleton<IWindowStateService>(Mock.Of<IWindowStateService>());
@@ -101,7 +101,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void CreateRightDockPanel_HasActivityLogAndJarvisTabs_AndDefaultMode()
         {
             // Arrange
-                TestThemeHelper.EnsureOffice2019Colorful();
+            TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerForForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
@@ -115,7 +115,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var factoryLogger = new Mock<ILogger>();
 
             // Act
-            var (rightDockPanel, activityLogPanel) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
+            var (rightDockPanel, _, activityLogPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
 
             // Assert
             rightDockPanel.Should().NotBeNull();
@@ -137,7 +137,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void GetSetMode_TracksTagCorrectly()
         {
             // Arrange
-                TestThemeHelper.EnsureOffice2019Colorful();
+            TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerForForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
@@ -149,7 +149,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
-            var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
+            var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
 
             // Act
             // RightDockPanelFactory.SetMode(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat);
@@ -165,7 +165,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void SwitchRightPanelContent_SelectsTabAndLogs()
         {
             // Arrange
-                TestThemeHelper.EnsureOffice2019Colorful();
+            TestThemeHelper.EnsureOffice2019Colorful();
             var provider = BuildProvider();
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerForForm = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
@@ -177,7 +177,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 Mock.Of<SyncfusionControlFactory>());
 
             var factoryLogger = new Mock<ILogger>();
-            var (rightDockPanel, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
+            var (rightDockPanel, _, _, _) = RightDockPanelFactory.CreateRightDockPanel(form, provider, factoryLogger.Object);
 
             // Act
             // RightDockPanelFactory.SwitchRightPanelContent(rightDockPanel, RightDockPanelFactory.RightPanelMode.JarvisChat, factoryLogger.Object);

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -16,6 +17,8 @@ using System.Diagnostics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Utilities;
+using WileyWidget.WinForms.Controls.Supporting;
 
 namespace WileyWidget.WinForms.Controls.Base
 {
@@ -64,9 +67,15 @@ namespace WileyWidget.WinForms.Controls.Base
             new(RecommendedEmbeddedPanelMinimumLogicalWidth, RecommendedEmbeddedPanelMinimumLogicalHeight);
 
         private bool _initialLayoutSuspended;
+        private bool _applyingProfessionalLayout;
+        protected bool _initialLoadStabilizationQueued;
+        private const string ProfessionalContentHostName = "ScopedPanelContentHost";
 
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
         public virtual object? UntypedViewModel => null;
+
+        /// <summary>Content host panel for consistent layout. Created by ApplyProfessionalPanelLayout.</summary>
+        protected Panel? ContentHost { get; private set; }
 
         protected ScopedPanelBase()
         {
@@ -77,6 +86,16 @@ namespace WileyWidget.WinForms.Controls.Base
                 true);
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.AutoScaleDimensions = new SizeF(96F, 96F);
+
+            if (this.AccessibleRole == AccessibleRole.Default)
+            {
+                this.AccessibleRole = AccessibleRole.Pane;
+            }
+
+            if (string.IsNullOrWhiteSpace(this.AccessibleName))
+            {
+                this.AccessibleName = GetType().Name;
+            }
 
             SuspendLayout();
             _initialLayoutSuspended = true;
@@ -94,6 +113,222 @@ namespace WileyWidget.WinForms.Controls.Base
             }
         }
 
+        /// <summary>
+        /// Applies professional panel layout: header, padding, content host, and theme.
+        /// Called automatically from OnHandleCreated. Can be called manually for dynamic updates.
+        /// </summary>
+        protected virtual void ApplyProfessionalPanelLayout()
+        {
+            this.SuspendLayout();
+            try
+            {
+                var controlFactory = GetControlFactory();
+                var themeName = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+
+                // Apply consistent padding using LayoutTokens
+                this.Padding = LayoutTokens.GetScaled(LayoutTokens.PanelOuterPadding);
+                this.Margin = Padding.Empty;
+                this.AutoScroll = false;
+                this.Dock = DockStyle.Fill;
+                SfSkinManager.SetVisualStyle(this, themeName);
+
+                // Create or normalize header
+                var header = Controls.OfType<PanelHeader>().FirstOrDefault();
+                if (header == null)
+                {
+                    header = FindNestedPanelHeader(this);
+                    if (header != null)
+                    {
+                        PromoteNestedHeaderToShell(header);
+                    }
+                }
+
+                if (header == null)
+                {
+                    header = controlFactory?.CreatePanelHeader(h =>
+                    {
+                        h.Title = this.Text ?? this.Name;
+                        h.ShowRefreshButton = false;
+                        h.ShowHelpButton = false;
+                        h.ShowPinButton = false;
+                        h.ShowCloseButton = true;
+                    }) ?? new PanelHeader
+                    {
+                        Title = this.Text ?? this.Name,
+                        ShowRefreshButton = false,
+                        ShowHelpButton = false,
+                        ShowPinButton = false,
+                        ShowCloseButton = true,
+                    };
+
+                    header.CloseClicked += (s, e) =>
+                    {
+                        var navigationService = GetNavigationService();
+                        navigationService?.HidePanel(this.GetType().Name);
+                    };
+
+                    this.Controls.Add(header);
+                }
+
+                header.Height = LayoutTokens.GetScaled(LayoutTokens.HeaderHeightLarge);
+                header.Dock = DockStyle.Top;
+                SfSkinManager.SetVisualStyle(header, themeName);
+                if (string.IsNullOrWhiteSpace(header.Title))
+                {
+                    header.Title = this.Text ?? this.Name;
+                }
+
+                // Create or normalize content host for consistent layout
+                var contentHost = ContentHost;
+                if (contentHost == null || contentHost.IsDisposed || !Controls.Contains(contentHost))
+                {
+                    contentHost = Controls
+                        .OfType<Panel>()
+                        .FirstOrDefault(panel => string.Equals(panel.Name, ProfessionalContentHostName, StringComparison.Ordinal));
+                }
+
+                if (contentHost == null || contentHost.IsDisposed)
+                {
+                    contentHost = controlFactory?.CreatePanel() ?? new Panel();
+                }
+
+                contentHost.Name = ProfessionalContentHostName;
+                contentHost.Dock = DockStyle.Fill;
+                contentHost.AutoScroll = false;
+                contentHost.Padding = LayoutTokens.GetScaled(LayoutTokens.ContentInnerPadding);
+                contentHost.Margin = Padding.Empty;
+                SfSkinManager.SetVisualStyle(contentHost, themeName);
+
+                if (!this.Controls.Contains(contentHost))
+                {
+                    this.Controls.Add(contentHost);
+                }
+
+                ContentHost = contentHost;
+
+                // Move existing controls into contentHost (migration aid)
+                var controlsToMove = Controls.Cast<Control>()
+                    .Where(c => c != header && c != contentHost)
+                    .ToList();
+
+                foreach (var ctrl in controlsToMove)
+                {
+                    Controls.Remove(ctrl);
+                    contentHost.Controls.Add(ctrl);
+                }
+
+                header.BringToFront();
+            }
+            finally
+            {
+                this.ResumeLayout(true);
+                this.PerformLayout();
+            }
+        }
+
+        private static PanelHeader? FindNestedPanelHeader(Control root)
+        {
+            foreach (Control child in root.Controls)
+            {
+                if (child is PanelHeader panelHeader)
+                {
+                    return panelHeader;
+                }
+
+                var nestedHeader = FindNestedPanelHeader(child);
+                if (nestedHeader != null)
+                {
+                    return nestedHeader;
+                }
+            }
+
+            return null;
+        }
+
+        private void PromoteNestedHeaderToShell(PanelHeader header)
+        {
+            var parent = header.Parent;
+            if (parent == null || parent == this)
+            {
+                return;
+            }
+
+            if (parent is TableLayoutPanel tableLayout)
+            {
+                var position = tableLayout.GetPositionFromControl(header);
+                tableLayout.Controls.Remove(header);
+
+                if (position.Row >= 0 && position.Row < tableLayout.RowStyles.Count)
+                {
+                    tableLayout.RowStyles[position.Row].SizeType = SizeType.Absolute;
+                    tableLayout.RowStyles[position.Row].Height = 0;
+                }
+            }
+            else
+            {
+                parent.Controls.Remove(header);
+            }
+
+            header.Dock = DockStyle.Top;
+            header.Margin = Padding.Empty;
+            Controls.Add(header);
+            header.BringToFront();
+        }
+
+        /// <summary>Attempts to resolve SyncfusionControlFactory from DI container.</summary>
+        protected virtual SyncfusionControlFactory? GetControlFactory()
+        {
+            try
+            {
+                var provider = GetServiceProvider();
+                if (provider == null)
+                {
+                    return null;
+                }
+
+                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(provider);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Attempts to resolve IPanelNavigationService from DI container.</summary>
+        protected virtual IPanelNavigationService? GetNavigationService()
+        {
+            try
+            {
+                var provider = GetServiceProvider();
+                if (provider == null)
+                {
+                    return null;
+                }
+
+                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(provider);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Attempts to get IServiceProvider from the current context.</summary>
+        protected virtual IServiceProvider? GetServiceProvider()
+        {
+            // Try to get from parent form if it's MainForm
+            var mainForm = FindForm() as MainForm;
+            if (mainForm != null)
+            {
+                return mainForm.ServiceProvider;
+            }
+
+            // Fallback: try to get from application context
+            var mainFormFromApp = Application.OpenForms.Cast<Form>()
+                .FirstOrDefault(f => f is MainForm) as MainForm;
+            return mainFormFromApp?.ServiceProvider;
+        }
+
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
@@ -108,14 +343,46 @@ namespace WileyWidget.WinForms.Controls.Base
                 MinimumSize = GetRecommendedMinimumSize();
             }
 
-            EnsureMinimumTopInset();
+            // Apply theme first
+            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            ApplyTheme(activeTheme);
+            SyncfusionControlFactory.ApplyThemeToAllControls(this, activeTheme);
+
+            EnforceProfessionalLayoutContract();
             ResetAutoScrollOffsets(this);
 
             PerformLayout();
             Invalidate(true);
+        }
 
-            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
-            ApplyTheme(activeTheme);
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+            EnforceProfessionalLayoutContract();
+        }
+
+        private void EnforceProfessionalLayoutContract()
+        {
+            if (IsDisposed || Disposing || _applyingProfessionalLayout)
+            {
+                return;
+            }
+
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+            {
+                return;
+            }
+
+            try
+            {
+                _applyingProfessionalLayout = true;
+                ApplyProfessionalPanelLayout();
+                EnsureMinimumTopInset();
+            }
+            finally
+            {
+                _applyingProfessionalLayout = false;
+            }
         }
 
         /// <inheritdoc/>
@@ -131,7 +398,7 @@ namespace WileyWidget.WinForms.Controls.Base
                 try
                 {
                     ThemeColors.EnsureThemeAssemblyLoadedForTheme(themeName);
-                    SfSkinManager.SetVisualStyle(this, themeName);
+                    SyncfusionControlFactory.ApplyThemeToAllControls(this, themeName);
                     Invalidate(true);
                     Update();
                 }
@@ -248,7 +515,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
         /// <summary>
         /// Public entry point for external callers (e.g.
-        /// <c>MainForm.DockingManager_DockStateChanged</c>) to trigger a post-dock layout
+        /// main form docking/layout callbacks) to trigger a post-dock layout
         /// refresh on this panel (Standards Req 3).
         /// Derived generic panels override this to call the richer <c>ForceFullLayout()</c>.
         /// </summary>
@@ -292,14 +559,45 @@ namespace WileyWidget.WinForms.Controls.Base
         protected bool HasUnsavedChanges { get; private set; }
 
         /// <summary>Provides access to the DI service provider from the panel's scope.</summary>
-        protected IServiceProvider ServiceProvider => _scope!.ServiceProvider;
+        protected IServiceProvider ServiceProvider => _scope?.ServiceProvider
+            ?? WileyWidget.WinForms.Program.ServicesOrNull
+            ?? throw new InvalidOperationException($"No service provider is available for {GetType().Name}.");
 
         /// <summary>Factory for creating Syncfusion controls with mandatory properties pre-set.</summary>
         protected SyncfusionControlFactory ControlFactory =>
-            ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(_scope!.ServiceProvider);
+            ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(ServiceProvider);
 
         /// <summary>Accumulated validation errors — cleared and repopulated by ValidateAsync overrides.</summary>
         protected List<ValidationItem> ValidationErrors { get; } = new();
+
+        /// <inheritdoc/>
+        protected override SyncfusionControlFactory? GetControlFactory()
+        {
+            try
+            {
+                var provider = GetServiceProvider();
+                return provider == null
+                    ? null
+                    : ServiceProviderServiceExtensions.GetService<SyncfusionControlFactory>(provider);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <inheritdoc/>
+        protected override IPanelNavigationService? GetNavigationService()
+        {
+            var provider = GetServiceProvider();
+            return provider == null
+                ? null
+                : ServiceProviderServiceExtensions.GetService<IPanelNavigationService>(provider);
+        }
+
+        /// <inheritdoc/>
+        protected override IServiceProvider? GetServiceProvider() =>
+            _scope?.ServiceProvider ?? WileyWidget.WinForms.Program.ServicesOrNull;
 
         private CancellationTokenSource? _operationCts;
         private System.Windows.Forms.Timer? _finalLayoutTimer;
@@ -351,10 +649,60 @@ namespace WileyWidget.WinForms.Controls.Base
             base.OnLoad(e);
             AttachHostFormClosingHandler();
             OnPanelLoaded(e);
+            QueueInitialLoadAndLayoutStabilization();
         }
 
         protected virtual void OnPanelLoaded(EventArgs e)
         {
+        }
+
+        private void QueueInitialLoadAndLayoutStabilization()
+        {
+            if (_initialLoadStabilizationQueued || IsDisposed || Disposing || DesignMode || ViewModel == null)
+            {
+                return;
+            }
+
+            _initialLoadStabilizationQueued = true;
+
+            try
+            {
+                BeginInvoke((MethodInvoker)(() => _ = StabilizeInitialLoadAndLayoutAsync()));
+            }
+            catch (Exception ex)
+            {
+                _initialLoadStabilizationQueued = false;
+                _logger?.LogDebug(ex, "[{Panel}] Failed to queue initial load/layout stabilization", GetType().Name);
+            }
+        }
+
+        private async Task StabilizeInitialLoadAndLayoutAsync()
+        {
+            try
+            {
+                if (!IsLoaded && !IsBusy)
+                {
+                    await Task.Delay(50);
+                    await LoadAsync(CancellationToken.None);
+                }
+
+                await Task.Delay(150);
+
+                if (IsDisposed || Disposing)
+                {
+                    return;
+                }
+
+                ApplyProfessionalPanelLayout();
+                ForceFullLayout();
+                PerformLayout();
+                Invalidate(true);
+                Update();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "[{Panel}] Initial load/layout stabilization failed", GetType().Name);
+            }
         }
 
         protected virtual void OnViewModelResolved(TViewModel? vm) { }
@@ -523,9 +871,9 @@ namespace WileyWidget.WinForms.Controls.Base
 
         /// <summary>
         /// Public bridge that allows external callers — such as
-        /// <c>MainForm.DockingManager_DockStateChanged</c> — to invoke
-        /// <see cref="ForceFullLayout"/> after the Syncfusion DockingManager
-        /// completes a dock or undock pass (Standards Req 3).
+        /// main form docking/layout callbacks — to invoke
+        /// <see cref="ForceFullLayout"/> after docking/resize operations
+        /// complete (Standards Req 3).
         /// </summary>
         /// <inheritdoc/>
         public override void TriggerForceFullLayout() => ForceFullLayout();
@@ -604,9 +952,9 @@ namespace WileyWidget.WinForms.Controls.Base
         protected void SetHasUnsavedChanges(bool value) => HasUnsavedChanges = value;
 
         /// <summary>
-        /// Called the first time this panel becomes visible inside the DockingManager.
+        /// Called the first time this panel becomes visible inside the docking host.
         /// Starts a one-shot 180ms timer that fires <see cref="ForceFullLayout"/> after
-        /// DockingManager finishes its resize pass.  Override in derived panels to add
+        /// the host finishes its resize pass.  Override in derived panels to add
         /// panel-specific splitter configuration inside a <c>BeginInvoke</c> callback
         /// — always call <c>base.OnShown(e)</c> first to start the timer.
         /// </summary>
@@ -651,7 +999,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
         private void QueueDeferredLayoutPass(EventArgs e)
         {
-            // Queue a deferred layout pass so DockingManager has already finished resizing
+            // Queue a deferred layout pass so the docking host has already finished resizing
             // this UserControl before we force children to lay out at the correct dimensions.
             if (!Visible || IsDisposed || !IsHandleCreated || Width <= 0 || Height <= 0)
             {
