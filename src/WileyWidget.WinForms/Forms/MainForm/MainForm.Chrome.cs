@@ -1829,6 +1829,7 @@ public partial class MainForm
                     ApplyThemeToBackStageAndQAT(newTheme);
                     UpdateGlobalSearchTheme(newTheme);
                     RefreshThemeSensitiveControls(newTheme);
+                    ApplyThemeToRightDockArtifacts(newTheme);
 
                     // Update the theme toggle button text to reflect the new active theme
                     try
@@ -1916,6 +1917,8 @@ public partial class MainForm
             }
         }
 
+        RefreshOpenApplicationForms(themeName);
+
         RefreshDockingThemeState(themeName);
 
         _ribbon?.Invalidate(true);
@@ -1925,6 +1928,42 @@ public partial class MainForm
 
         Invalidate(true);
         Update();
+    }
+
+    private void RefreshOpenApplicationForms(string themeName)
+    {
+        try
+        {
+            var refreshedForms = 0;
+
+            foreach (Form openForm in Application.OpenForms)
+            {
+                if (openForm.IsDisposed || ReferenceEquals(openForm, this))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    SfSkinManager.SetVisualStyle(openForm, themeName);
+                    ApplyThemeToControlTree(openForm, themeName);
+                    TryForceLayoutOnScopedPanelChildren(openForm);
+                    openForm.Invalidate(true);
+                    openForm.Update();
+                    refreshedForms++;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "[THEME] Failed to refresh open form '{FormName}' for {Theme}", openForm.Name, themeName);
+                }
+            }
+
+            _logger?.LogInformation("[THEME] Refreshed {OpenFormCount} open application forms for {Theme}", refreshedForms, themeName);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "[THEME] RefreshOpenApplicationForms failed for {Theme}", themeName);
+        }
     }
 
     private void RefreshThemeDrivenChromeSurfaces(string themeName)
@@ -2529,14 +2568,20 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Determines if FlaUI automation is currently active by checking if FlaUI assemblies are loaded.
-    /// Used to conditionally attach ribbon controls for UI automation testing.
+    /// Determines if explicit UI automation is active for the current app process.
+    /// FlaUI runs launch the WinForms app as a separate process, so assembly-based detection alone
+    /// is insufficient; honor the explicit environment flag first and fall back to assembly probing.
     /// </summary>
     private bool IsFlaUiAutomationTest()
     {
         try
         {
-            return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName.Contains("FlaUI"));
+            if (IsUiAutomationMode())
+            {
+                return true;
+            }
+
+            return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName.Contains("FlaUI", StringComparison.OrdinalIgnoreCase));
         }
         catch
         {

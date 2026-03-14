@@ -19,6 +19,7 @@ namespace WileyWidget.UiTests
         protected static Window? SharedMainWindow;
         protected static UIA2Automation? SharedAutomation;
         private static readonly object Lock = new();
+        private bool _disposed;
 
         static FlaUiTestBase()
         {
@@ -58,6 +59,7 @@ namespace WileyWidget.UiTests
             startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
             startInfo.Environment["WILEYWIDGET_UI_AUTOMATION"] = "true";
             startInfo.Environment["WILEY_TESTMODE"] = "true";
+            startInfo.Environment["WILEYWIDGET_AUTH_FORCE_DEVELOPMENT_BYPASS"] = "true";
 
             var process = Process.Start(startInfo)
                 ?? throw new InvalidOperationException($"Failed to launch WinForms app for UI automation: {exePath}");
@@ -110,12 +112,30 @@ namespace WileyWidget.UiTests
 
         public void Dispose()
         {
+            Dispose(true);
+
             // The shared app instance (SharedApp) lives for the entire xUnit
             // [Collection("FlaUI Tests")] collection — one app for all serialised tests.
             // Cleanup happens in the ProcessExit handler above once per test-runner run.
             // Tests that launch their own private instances must clean them up in
             // their own try/finally blocks (see AccountsPanelFlaUiTests, etc.).
             GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
+            // The shared app instance (SharedApp) lives for the entire xUnit
+            // [Collection("FlaUI Tests")] collection — one app for all serialised tests.
+            // Cleanup happens in the ProcessExit handler above once per test-runner run.
+            // Tests that launch their own private instances must clean them up in
+            // their own try/finally blocks (see AccountsPanelFlaUiTests, etc.).
         }
 
         protected static void TryWaitForInputIdle(FlaUIApp app, TimeSpan timeout)
@@ -126,12 +146,21 @@ namespace WileyWidget.UiTests
         protected static Dictionary<string, string?> SetTestEnvironment()
         {
             var previous = new Dictionary<string, string?>();
-            var testVars = new[] { "WILEYWIDGET_UI_AUTOMATION", "WILEY_TESTMODE", "DOTNET_ENVIRONMENT", "ASPNETCORE_ENVIRONMENT" };
-            foreach (var key in testVars)
+            var testEnvironmentValues = new Dictionary<string, string?>
             {
-                previous[key] = Environment.GetEnvironmentVariable(key);
-                Environment.SetEnvironmentVariable(key, "true");
+                ["WILEYWIDGET_UI_AUTOMATION"] = "true",
+                ["WILEY_TESTMODE"] = "true",
+                ["DOTNET_ENVIRONMENT"] = "Production",
+                ["ASPNETCORE_ENVIRONMENT"] = "Production",
+                ["WILEYWIDGET_AUTH_FORCE_DEVELOPMENT_BYPASS"] = "true",
+            };
+
+            foreach (var pair in testEnvironmentValues)
+            {
+                previous[pair.Key] = Environment.GetEnvironmentVariable(pair.Key);
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
+
             return previous;
         }
 

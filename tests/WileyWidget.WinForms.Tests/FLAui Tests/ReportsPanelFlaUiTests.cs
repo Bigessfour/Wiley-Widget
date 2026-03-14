@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using FlaUI.Core.AutomationElements;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Integration.Ui

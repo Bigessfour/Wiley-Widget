@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
@@ -8,6 +9,7 @@ using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Forms
@@ -202,10 +204,9 @@ namespace WileyWidget.WinForms.Forms
                         }
 
                         SetJarvisAutoHideButtonState(isSidebarVisible: true);
-                        _rightDockPanel.BringToFront();
                     }
 
-                    _rightDockTabs?.BringToFront();
+                    EnsureRightDockArtifactsDockOrder(ResolveRightDockHost());
 
                     // Showing the sidebar changes the usable MDI width immediately.
                     // Force a fresh constrain pass so the active panel shrinks instead
@@ -331,7 +332,7 @@ namespace WileyWidget.WinForms.Forms
                 _rightDockPanel.Dock, _rightDockPanel.Width,
                 host.Name, host.Controls.Count);
 
-            _rightDockPanel.BringToFront();
+            EnsureRightDockArtifactsDockOrder(host);
             RefreshPanelHostLayout("EnsureRightDockPanelInitialized");
 
             _logger?.LogInformation(
@@ -419,11 +420,60 @@ namespace WileyWidget.WinForms.Forms
                     _pendingRightDockJarvisParameters = null;
                 }
 
+                var jarvisHost = new Panel
+                {
+                    Name = "JARVISDockHost",
+                    Dock = DockStyle.Fill,
+                    Padding = Padding.Empty,
+                    Margin = Padding.Empty,
+                };
+
+                var jarvisSplitContainer = new SplitContainer
+                {
+                    Name = "JARVISDockVerticalResizeHost",
+                    Dock = DockStyle.Fill,
+                    Orientation = Orientation.Horizontal,
+                    FixedPanel = FixedPanel.None,
+                    IsSplitterFixed = false,
+                    Panel1MinSize = 30,
+                    Panel2MinSize = 0,
+                    SplitterWidth = 10,
+                    Cursor = Cursors.HSplit,
+                    BorderStyle = BorderStyle.None,
+                    BackColor = SystemColors.ControlDark,
+                };
+
+                jarvisSplitContainer.SplitterMoved += (_, _) =>
+                {
+                    _jarvisTopInset = jarvisSplitContainer.SplitterDistance;
+                    _logger?.LogInformation(
+                        "[NAV-RESIZE] JARVIS top splitter moved - SplitterDistance={SplitterDistance}, Panel1Height={Panel1Height}, Panel2Height={Panel2Height}, StoredInset={StoredInset}",
+                        jarvisSplitContainer.SplitterDistance,
+                        jarvisSplitContainer.Panel1.ClientSize.Height,
+                        jarvisSplitContainer.Panel2.ClientSize.Height,
+                        _jarvisTopInset);
+                };
+                jarvisSplitContainer.SplitterMoving += (_, e) =>
+                {
+                    _logger?.LogDebug(
+                        "[NAV-RESIZE] JARVIS top splitter moving - SplitX={SplitX}, SplitY={SplitY}, CurrentDistance={CurrentDistance}, HostHeight={HostHeight}",
+                        e.SplitX,
+                        e.SplitY,
+                        jarvisSplitContainer.SplitterDistance,
+                        jarvisSplitContainer.ClientSize.Height);
+                };
+                jarvisSplitContainer.SizeChanged += (_, _) => ApplyJarvisTopInset(jarvisSplitContainer, jarvisChatPanel.MinimumSize.Height, preserveStoredInset: true);
+                jarvisSplitContainer.HandleCreated += (_, _) => ApplyJarvisTopInset(jarvisSplitContainer, jarvisChatPanel.MinimumSize.Height, preserveStoredInset: true);
+                jarvisSplitContainer.Panel1.BackColor = SystemColors.ControlLight;
+                jarvisSplitContainer.Panel1.Controls.Add(CreateJarvisTopResizeGrip(jarvisSplitContainer));
+                jarvisSplitContainer.Panel2.Controls.Add(jarvisChatPanel);
+                jarvisHost.Controls.Add(jarvisSplitContainer);
+
                 jarvisTab.SuspendLayout();
                 try
                 {
                     jarvisTab.Controls.Clear();
-                    jarvisTab.Controls.Add(jarvisChatPanel);
+                    jarvisTab.Controls.Add(jarvisHost);
                 }
                 finally
                 {
@@ -431,6 +481,9 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 _rightDockJarvisPanel = jarvisChatPanel;
+                _rightDockJarvisSplitContainer = jarvisSplitContainer;
+                ApplyThemeToRightDockArtifacts(_themeService?.CurrentTheme ?? SfSkinManager.ApplicationVisualTheme ?? Themes.ThemeColors.DefaultTheme);
+                BeginInvoke(new System.Action(() => ApplyJarvisTopInset(jarvisSplitContainer, jarvisChatPanel.MinimumSize.Height, preserveStoredInset: true)));
                 _logger?.LogInformation("[NAV] JARVIS right dock panel materialized on demand");
             }
             catch (Exception ex)
@@ -455,18 +508,482 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 _rightDockSplitter.Dock = DockStyle.Right;
+                EnsureRightDockArtifactsDockOrder(host);
+                EnsureJarvisResizeToolTip();
+                _jarvisResizeToolTip?.SetToolTip(_rightDockSplitter, "Drag left or right to resize the JARVIS sidebar.");
                 return;
             }
 
             _rightDockSplitter = new Splitter
             {
                 Dock = DockStyle.Right,
-                Width = 5,
+                Width = 8,
                 Cursor = Cursors.VSplit,
                 Name = "RightDockSplitter",
                 MinSize = 350,
+                AccessibleName = "JARVIS sidebar resize handle",
+                AccessibleDescription = "Drag left or right to resize the JARVIS sidebar.",
+                BackColor = SystemColors.ControlDark,
             };
+            _rightDockSplitter.Paint += (_, e) => PaintRightDockSplitter(e.Graphics, _rightDockSplitter.ClientRectangle, _rightDockSplitter.BackColor);
+            _rightDockSplitter.MouseEnter += (_, _) => _rightDockSplitter.BackColor = SystemColors.ControlDarkDark;
+            _rightDockSplitter.MouseLeave += (_, _) => _rightDockSplitter.BackColor = SystemColors.ControlDark;
+            _rightDockSplitter.MouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Left)
+                {
+                    return;
+                }
+
+                _logger?.LogInformation(
+                    "[NAV-RESIZE] Right dock splitter drag start - PanelWidth={PanelWidth}, HostWidth={HostWidth}, SelectedTab={SelectedTab}",
+                    _rightDockPanel?.Width,
+                    host.ClientSize.Width,
+                    _rightDockTabs?.SelectedTab?.Name ?? "<none>");
+            };
+            _rightDockSplitter.MouseUp += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Left)
+                {
+                    return;
+                }
+
+                _logger?.LogInformation(
+                    "[NAV-RESIZE] Right dock splitter drag end - PanelWidth={PanelWidth}, StoredJarvisWidth={StoredJarvisWidth}, StoredActivityWidth={StoredActivityWidth}",
+                    _rightDockPanel?.Width,
+                    _jarvisExpandedWidth,
+                    _activityLogExpandedWidth);
+                LogRightDockResizeState("RightDockSplitter.MouseUp");
+            };
+            _rightDockSplitter.SplitterMoving += (_, e) =>
+            {
+                _logger?.LogDebug(
+                    "[NAV-RESIZE] Right dock splitter moving - SplitX={SplitX}, SplitY={SplitY}, PanelWidth={PanelWidth}, HostWidth={HostWidth}",
+                    e.SplitX,
+                    e.SplitY,
+                    _rightDockPanel?.Width,
+                    host.ClientSize.Width);
+            };
+            _rightDockSplitter.SplitterMoved += (_, e) =>
+            {
+                _logger?.LogInformation(
+                    "[NAV-RESIZE] Right dock splitter moved - SplitX={SplitX}, SplitY={SplitY}, PanelWidth={PanelWidth}, SelectedTab={SelectedTab}",
+                    e.SplitX,
+                    e.SplitY,
+                    _rightDockPanel?.Width,
+                    _rightDockTabs?.SelectedTab?.Name ?? "<none>");
+                LogRightDockResizeState("RightDockSplitter.SplitterMoved");
+            };
+            EnsureJarvisResizeToolTip();
+            _jarvisResizeToolTip?.SetToolTip(_rightDockSplitter, "Drag left or right to resize the JARVIS sidebar.");
             host.Controls.Add(_rightDockSplitter);
+            EnsureRightDockArtifactsDockOrder(host);
+            _logger?.LogInformation(
+                "[NAV-RESIZE] Right dock splitter ready - Host={Host}, Width={Width}, MinPanelWidth={MinPanelWidth}",
+                host.Name,
+                _rightDockSplitter.Width,
+                _rightDockSplitter.MinSize);
+        }
+
+        private void EnsureJarvisResizeToolTip()
+        {
+            _jarvisResizeToolTip ??= new ToolTip
+            {
+                InitialDelay = 200,
+                ReshowDelay = 100,
+                AutoPopDelay = 5000,
+                ShowAlways = true,
+            };
+        }
+
+        private Control CreateJarvisTopResizeGrip(SplitContainer jarvisSplitContainer)
+        {
+            var gripPanel = new Panel
+            {
+                Name = "JarvisTopResizeGrip",
+                Dock = DockStyle.Fill,
+                Cursor = Cursors.HSplit,
+                AccessibleName = "JARVIS top resize handle",
+                AccessibleDescription = "Drag up or down to resize the JARVIS panel height. Double-click to reset.",
+                Padding = new Padding(12, 4, 12, 4),
+                BackColor = SystemColors.ControlLight,
+                Margin = Padding.Empty,
+            };
+
+            var gripIconLabel = new Label
+            {
+                Name = "JarvisTopResizeGripIcon",
+                Dock = DockStyle.Left,
+                Width = 32,
+                Text = "====",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                ForeColor = SystemColors.ControlDarkDark,
+                Cursor = Cursors.HSplit,
+            };
+
+            var gripCaptionLabel = new Label
+            {
+                Name = "JarvisTopResizeGripCaption",
+                Dock = DockStyle.Fill,
+                Text = "Drag to resize JARVIS height. Double-click to reset.",
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 8f, FontStyle.Regular),
+                ForeColor = SystemColors.ControlDarkDark,
+                Cursor = Cursors.HSplit,
+            };
+
+            gripPanel.Controls.Add(gripCaptionLabel);
+            gripPanel.Controls.Add(gripIconLabel);
+
+            AttachJarvisTopGripHandlers(gripPanel, jarvisSplitContainer);
+            AttachJarvisTopGripHandlers(gripCaptionLabel, jarvisSplitContainer);
+            AttachJarvisTopGripHandlers(gripIconLabel, jarvisSplitContainer);
+
+            EnsureJarvisResizeToolTip();
+            _jarvisResizeToolTip?.SetToolTip(gripPanel, "Drag up or down to resize the JARVIS panel height. Double-click to reset.");
+            _jarvisResizeToolTip?.SetToolTip(gripCaptionLabel, "Drag up or down to resize the JARVIS panel height. Double-click to reset.");
+            _jarvisResizeToolTip?.SetToolTip(gripIconLabel, "Drag up or down to resize the JARVIS panel height. Double-click to reset.");
+
+            gripPanel.Paint += (_, e) => PaintJarvisTopGrip(e.Graphics, gripPanel.ClientRectangle);
+            gripPanel.MouseEnter += (_, _) => gripPanel.BackColor = SystemColors.ControlLightLight;
+            gripPanel.MouseLeave += (_, _) =>
+            {
+                if (!_isDraggingJarvisTopGrip)
+                {
+                    gripPanel.BackColor = SystemColors.ControlLight;
+                }
+            };
+
+            _logger?.LogInformation(
+                "[NAV-RESIZE] JARVIS top grip ready - SplitterWidth={SplitterWidth}, Panel1MinSize={Panel1MinSize}",
+                jarvisSplitContainer.SplitterWidth,
+                jarvisSplitContainer.Panel1MinSize);
+
+            return gripPanel;
+        }
+
+        private void AttachJarvisTopGripHandlers(Control control, SplitContainer jarvisSplitContainer)
+        {
+            control.MouseDown += (_, e) =>
+            {
+                if (e.Button != MouseButtons.Left)
+                {
+                    return;
+                }
+
+                _isDraggingJarvisTopGrip = true;
+                _jarvisTopGripStartInset = ResolveJarvisTopInset(jarvisSplitContainer, preserveStoredInset: true);
+                _jarvisTopGripStartScreenY = Control.MousePosition.Y;
+                control.Capture = true;
+                _logger?.LogInformation(
+                    "[NAV-RESIZE] JARVIS top grip drag start - StartInset={StartInset}, ScreenY={ScreenY}, HostHeight={HostHeight}, Panel2MinSize={Panel2MinSize}",
+                    _jarvisTopGripStartInset,
+                    _jarvisTopGripStartScreenY,
+                    jarvisSplitContainer.ClientSize.Height,
+                    jarvisSplitContainer.Panel2MinSize);
+            };
+
+            control.MouseMove += (_, _) =>
+            {
+                if (!_isDraggingJarvisTopGrip)
+                {
+                    return;
+                }
+
+                var deltaY = Control.MousePosition.Y - _jarvisTopGripStartScreenY;
+                _logger?.LogDebug(
+                    "[NAV-RESIZE] JARVIS top grip moving - StartInset={StartInset}, DeltaY={DeltaY}, RequestedInset={RequestedInset}, CurrentDistance={CurrentDistance}",
+                    _jarvisTopGripStartInset,
+                    deltaY,
+                    _jarvisTopGripStartInset + deltaY,
+                    jarvisSplitContainer.SplitterDistance);
+                ApplyJarvisTopInset(jarvisSplitContainer, jarvisSplitContainer.Panel2MinSize, preserveStoredInset: false, requestedInset: _jarvisTopGripStartInset + deltaY);
+            };
+
+            control.MouseUp += (_, _) =>
+            {
+                _isDraggingJarvisTopGrip = false;
+                control.Capture = false;
+                _logger?.LogInformation(
+                    "[NAV-RESIZE] JARVIS top grip drag end - SplitterDistance={SplitterDistance}, StoredInset={StoredInset}, Panel2Height={Panel2Height}",
+                    jarvisSplitContainer.SplitterDistance,
+                    _jarvisTopInset,
+                    jarvisSplitContainer.Panel2.ClientSize.Height);
+            };
+
+            control.DoubleClick += (_, _) =>
+            {
+                _logger?.LogInformation(
+                    "[NAV-RESIZE] JARVIS top grip reset requested - ResetInset={ResetInset}",
+                    jarvisSplitContainer.Panel1MinSize);
+                ApplyJarvisTopInset(jarvisSplitContainer, jarvisSplitContainer.Panel2MinSize, preserveStoredInset: false, requestedInset: jarvisSplitContainer.Panel1MinSize);
+            };
+        }
+
+        private int ResolveJarvisTopInset(SplitContainer jarvisSplitContainer, bool preserveStoredInset)
+        {
+            var availableHeight = jarvisSplitContainer.ClientSize.Height;
+            var panel1Min = Math.Max(0, jarvisSplitContainer.Panel1MinSize);
+            var splitterWidth = Math.Max(0, jarvisSplitContainer.SplitterWidth);
+            var requestedInset = preserveStoredInset && _jarvisTopInset > 0
+                ? _jarvisTopInset
+                : panel1Min;
+
+            if (availableHeight <= 0)
+            {
+                _logger?.LogDebug(
+                    "[NAV-RESIZE] ResolveJarvisTopInset deferred - AvailableHeight={AvailableHeight}, Panel1Min={Panel1Min}, RequestedInset={RequestedInset}",
+                    availableHeight,
+                    panel1Min,
+                    requestedInset);
+                return Math.Max(panel1Min, requestedInset);
+            }
+
+            var maxInset = Math.Max(panel1Min, availableHeight - jarvisSplitContainer.Panel2MinSize - splitterWidth);
+            return Math.Max(panel1Min, Math.Min(maxInset, requestedInset));
+        }
+
+        private void ApplyJarvisTopInset(
+            SplitContainer jarvisSplitContainer,
+            int desiredPanel2MinSize,
+            bool preserveStoredInset,
+            int? requestedInset = null)
+        {
+            if (jarvisSplitContainer.IsDisposed)
+            {
+                return;
+            }
+
+            var availableHeight = jarvisSplitContainer.ClientSize.Height;
+            var panel1Min = Math.Max(0, jarvisSplitContainer.Panel1MinSize);
+            var splitterWidth = Math.Max(0, jarvisSplitContainer.SplitterWidth);
+            if (availableHeight <= 0 || availableHeight <= panel1Min + splitterWidth)
+            {
+                _logger?.LogDebug(
+                    "[NAV-RESIZE] ApplyJarvisTopInset skipped - AvailableHeight={AvailableHeight}, Panel1Min={Panel1Min}, SplitterWidth={SplitterWidth}",
+                    availableHeight,
+                    panel1Min,
+                    splitterWidth);
+                return;
+            }
+
+            var maxPanel2MinSize = Math.Max(0, availableHeight - panel1Min - splitterWidth);
+            var effectivePanel2MinSize = Math.Max(0, Math.Min(desiredPanel2MinSize, maxPanel2MinSize));
+            if (jarvisSplitContainer.Panel2MinSize != effectivePanel2MinSize)
+            {
+                jarvisSplitContainer.Panel2MinSize = effectivePanel2MinSize;
+            }
+
+            var targetInset = requestedInset ?? (preserveStoredInset && _jarvisTopInset > 0 ? _jarvisTopInset : panel1Min);
+            var maxInset = Math.Max(panel1Min, availableHeight - effectivePanel2MinSize - splitterWidth);
+            var unclampedInset = targetInset;
+            targetInset = Math.Max(panel1Min, Math.Min(maxInset, targetInset));
+
+            if (jarvisSplitContainer.SplitterDistance != targetInset)
+            {
+                jarvisSplitContainer.SplitterDistance = targetInset;
+            }
+
+            _jarvisTopInset = targetInset;
+            _logger?.LogDebug(
+                "[NAV-RESIZE] ApplyJarvisTopInset applied - RequestedInset={RequestedInset}, ClampedInset={ClampedInset}, MaxInset={MaxInset}, Panel2MinSize={Panel2MinSize}, Panel2Height={Panel2Height}",
+                unclampedInset,
+                targetInset,
+                maxInset,
+                effectivePanel2MinSize,
+                jarvisSplitContainer.Panel2.ClientSize.Height);
+        }
+
+        private void EnsureRightDockArtifactsDockOrder(Control host)
+        {
+            if (host.IsDisposed)
+            {
+                return;
+            }
+
+            var orderedRightDockArtifacts = new List<Control>(3);
+
+            if (_rightDockPanel != null && !_rightDockPanel.IsDisposed && ReferenceEquals(_rightDockPanel.Parent, host))
+            {
+                orderedRightDockArtifacts.Add(_rightDockPanel);
+            }
+
+            if (_rightDockSplitter != null && !_rightDockSplitter.IsDisposed && ReferenceEquals(_rightDockSplitter.Parent, host))
+            {
+                orderedRightDockArtifacts.Add(_rightDockSplitter);
+            }
+
+            if (_jarvisAutoHideStrip != null && !_jarvisAutoHideStrip.IsDisposed && ReferenceEquals(_jarvisAutoHideStrip.Parent, host))
+            {
+                orderedRightDockArtifacts.Add(_jarvisAutoHideStrip);
+            }
+
+            // DockStyle.Right controls are laid out in reverse z-order. Make the visual order
+            // explicit so the right-dock panel stays on the outer edge, the splitter stays just
+            // to its left, and the auto-hide strip remains accessible beside them.
+            for (var index = 0; index < orderedRightDockArtifacts.Count; index++)
+            {
+                var control = orderedRightDockArtifacts[index];
+                host.Controls.SetChildIndex(control, orderedRightDockArtifacts.Count - 1 - index);
+            }
+
+            _logger?.LogDebug(
+                "[NAV-RESIZE] Right dock artifact order enforced on host '{Host}' - PanelIndex={PanelIndex}, SplitterIndex={SplitterIndex}, StripIndex={StripIndex}",
+                host.Name,
+                _rightDockPanel != null && !_rightDockPanel.IsDisposed && ReferenceEquals(_rightDockPanel.Parent, host) ? host.Controls.GetChildIndex(_rightDockPanel) : -1,
+                _rightDockSplitter != null && !_rightDockSplitter.IsDisposed && ReferenceEquals(_rightDockSplitter.Parent, host) ? host.Controls.GetChildIndex(_rightDockSplitter) : -1,
+                _jarvisAutoHideStrip != null && !_jarvisAutoHideStrip.IsDisposed && ReferenceEquals(_jarvisAutoHideStrip.Parent, host) ? host.Controls.GetChildIndex(_jarvisAutoHideStrip) : -1);
+        }
+
+        private void ApplyThemeToRightDockArtifacts(string themeName)
+        {
+            if (string.IsNullOrWhiteSpace(themeName))
+            {
+                return;
+            }
+
+            try
+            {
+                if (_rightDockPanel != null && !_rightDockPanel.IsDisposed)
+                {
+                    SfSkinManager.SetVisualStyle(_rightDockPanel, themeName);
+                    _rightDockPanel.Invalidate(true);
+                }
+
+                if (_rightDockTabs != null && !_rightDockTabs.IsDisposed)
+                {
+                    _rightDockTabs.ThemeName = themeName;
+                    SfSkinManager.SetVisualStyle(_rightDockTabs, themeName);
+                    _rightDockTabs.Invalidate(true);
+                }
+
+                if (_rightDockJarvisPanel != null && !_rightDockJarvisPanel.IsDisposed)
+                {
+                    SyncfusionControlFactory.ApplyThemeToAllControls(_rightDockJarvisPanel, themeName, _logger);
+                }
+
+                if (_jarvisAutoHideStrip != null && !_jarvisAutoHideStrip.IsDisposed)
+                {
+                    SfSkinManager.SetVisualStyle(_jarvisAutoHideStrip, themeName);
+                }
+
+                if (_jarvisAutoHideButton != null && !_jarvisAutoHideButton.IsDisposed)
+                {
+                    SfSkinManager.SetVisualStyle(_jarvisAutoHideButton, themeName);
+                }
+
+                ApplyThemeToJarvisResizeSurfaces(themeName);
+
+                _logger?.LogInformation(
+                    "[THEME] Refreshed right-dock/JARVIS theme surfaces for {Theme} - RightDockVisible={RightDockVisible}, JarvisMaterialized={JarvisMaterialized}",
+                    themeName,
+                    _rightDockPanel?.Visible,
+                    _rightDockJarvisPanel != null && !_rightDockJarvisPanel.IsDisposed);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[THEME] Failed to refresh right-dock/JARVIS theme surfaces for {Theme}", themeName);
+            }
+        }
+
+        private void ApplyThemeToJarvisResizeSurfaces(string themeName)
+        {
+            var isDarkTheme = themeName.Contains("Dark", StringComparison.OrdinalIgnoreCase)
+                || themeName.Contains("Black", StringComparison.OrdinalIgnoreCase);
+            var baseSurface = _rightDockTabs?.BackColor
+                ?? _rightDockPanel?.BackColor
+                ?? SystemColors.Control;
+            var accentSurface = isDarkTheme ? ControlPaint.Light(baseSurface) : ControlPaint.Dark(baseSurface);
+            var hoverSurface = isDarkTheme ? ControlPaint.LightLight(baseSurface) : ControlPaint.Light(baseSurface);
+            var textColor = _rightDockTabs?.ForeColor
+                ?? _rightDockPanel?.ForeColor
+                ?? SystemColors.ControlText;
+
+            if (_rightDockSplitter != null && !_rightDockSplitter.IsDisposed)
+            {
+                _rightDockSplitter.BackColor = accentSurface;
+                _rightDockSplitter.Invalidate();
+            }
+
+            if (_rightDockJarvisSplitContainer != null && !_rightDockJarvisSplitContainer.IsDisposed)
+            {
+                _rightDockJarvisSplitContainer.BackColor = accentSurface;
+                _rightDockJarvisSplitContainer.Panel1.BackColor = hoverSurface;
+
+                var gripPanel = _rightDockJarvisSplitContainer.Panel1.Controls["JarvisTopResizeGrip"];
+                if (gripPanel != null)
+                {
+                    gripPanel.BackColor = hoverSurface;
+                    gripPanel.ForeColor = textColor;
+                    gripPanel.Invalidate();
+                }
+
+                var gripIconLabel = _rightDockJarvisSplitContainer.Panel1.Controls.Find("JarvisTopResizeGripIcon", true);
+                foreach (var control in gripIconLabel)
+                {
+                    control.ForeColor = textColor;
+                    control.BackColor = hoverSurface;
+                    control.Invalidate();
+                }
+
+                var gripCaptionLabel = _rightDockJarvisSplitContainer.Panel1.Controls.Find("JarvisTopResizeGripCaption", true);
+                foreach (var control in gripCaptionLabel)
+                {
+                    control.ForeColor = textColor;
+                    control.BackColor = hoverSurface;
+                    control.Invalidate();
+                }
+
+                _rightDockJarvisSplitContainer.Invalidate(true);
+            }
+        }
+
+        private void LogRightDockResizeState(string reason)
+        {
+            _logger?.LogInformation(
+                "[NAV-RESIZE] {Reason} - PanelWidth={PanelWidth}, PanelVisible={PanelVisible}, SplitterVisible={SplitterVisible}, SelectedTab={SelectedTab}, StoredJarvisWidth={StoredJarvisWidth}, StoredActivityWidth={StoredActivityWidth}, JarvisTopInset={JarvisTopInset}",
+                reason,
+                _rightDockPanel?.Width,
+                _rightDockPanel?.Visible,
+                _rightDockSplitter?.Visible,
+                _rightDockTabs?.SelectedTab?.Name ?? "<none>",
+                _jarvisExpandedWidth,
+                _activityLogExpandedWidth,
+                _jarvisTopInset);
+        }
+
+        private static void PaintJarvisTopGrip(Graphics graphics, Rectangle bounds)
+        {
+            using var borderPen = new Pen(SystemColors.ControlDark);
+            graphics.DrawLine(borderPen, bounds.Left, bounds.Bottom - 1, bounds.Right, bounds.Bottom - 1);
+
+            var gripY = Math.Max(6, bounds.Height / 2 - 2);
+            var startX = bounds.Right - 44;
+            for (var row = 0; row < 2; row++)
+            {
+                for (var column = 0; column < 4; column++)
+                {
+                    graphics.FillEllipse(SystemBrushes.ControlDarkDark, startX + (column * 6), gripY + (row * 6), 2, 2);
+                }
+            }
+        }
+
+        private static void PaintRightDockSplitter(Graphics graphics, Rectangle bounds, Color backColor)
+        {
+            using var backgroundBrush = new SolidBrush(backColor);
+            graphics.FillRectangle(backgroundBrush, bounds);
+
+            using var centerLinePen = new Pen(SystemColors.ControlLightLight);
+            var centerX = bounds.Width / 2;
+            graphics.DrawLine(centerLinePen, centerX, 0, centerX, bounds.Height);
+
+            var startY = Math.Max(24, bounds.Height / 2 - 20);
+            for (var index = 0; index < 6; index++)
+            {
+                var y = startY + (index * 8);
+                graphics.FillEllipse(SystemBrushes.ControlLightLight, centerX - 1, y, 2, 2);
+            }
         }
 
         /// <summary>
@@ -486,6 +1003,7 @@ namespace WileyWidget.WinForms.Forms
                 }
 
                 _jarvisAutoHideStrip.Dock = DockStyle.Right;
+                EnsureRightDockArtifactsDockOrder(host);
                 SetJarvisAutoHideButtonState(isSidebarVisible: _rightDockPanel?.Visible ?? true);
                 return;
             }
@@ -523,6 +1041,7 @@ namespace WileyWidget.WinForms.Forms
 
             _jarvisAutoHideStrip.Controls.Add(_jarvisAutoHideButton);
             host.Controls.Add(_jarvisAutoHideStrip);
+            EnsureRightDockArtifactsDockOrder(host);
             SetJarvisAutoHideButtonState(isSidebarVisible: _rightDockPanel?.Visible ?? true);
 
             _logger?.LogDebug("[NAV] JARVIS auto-hide strip created");
@@ -584,7 +1103,7 @@ namespace WileyWidget.WinForms.Forms
                         _rightDockSplitter.Visible = true;
                     SetJarvisAutoHideButtonState(isSidebarVisible: true);
 
-                    _rightDockPanel.BringToFront();
+                    EnsureRightDockArtifactsDockOrder(ResolveRightDockHost());
                     _logger?.LogDebug("[NAV] JARVIS sidebar expanded — width: {Width}px", _rightDockPanel.Width);
                 }
 
@@ -642,6 +1161,18 @@ namespace WileyWidget.WinForms.Forms
             {
                 RememberRightDockWidth(_rightDockPanel.Width);
             }
+
+            _logger?.LogDebug(
+                "[NAV-RESIZE] RightDockPanel_SizeChanged - Width={Width}, Height={Height}, SelectedTab={SelectedTab}, ApplyingWidthGuard={ApplyingWidthGuard}",
+                _rightDockPanel.Width,
+                _rightDockPanel.Height,
+                _rightDockTabs?.SelectedTab?.Name ?? "<none>",
+                _isApplyingRightDockWidth);
+
+            if (_rightDockJarvisSplitContainer != null && !_rightDockJarvisSplitContainer.IsDisposed)
+            {
+                ApplyJarvisTopInset(_rightDockJarvisSplitContainer, _rightDockJarvisPanel?.MinimumSize.Height ?? _rightDockJarvisSplitContainer.Panel2MinSize, preserveStoredInset: true);
+            }
         }
 
         private void ApplyRightDockWidthForSelectedTab(bool force)
@@ -661,6 +1192,12 @@ namespace WileyWidget.WinForms.Forms
             try
             {
                 _rightDockPanel.Width = Math.Max(_rightDockPanel.MinimumSize.Width, targetWidth);
+                _logger?.LogDebug(
+                    "[NAV-RESIZE] ApplyRightDockWidthForSelectedTab - Force={Force}, TargetWidth={TargetWidth}, AppliedWidth={AppliedWidth}, SelectedTab={SelectedTab}",
+                    force,
+                    targetWidth,
+                    _rightDockPanel.Width,
+                    _rightDockTabs.SelectedTab.Name);
             }
             finally
             {
@@ -674,12 +1211,12 @@ namespace WileyWidget.WinForms.Forms
 
             if (string.Equals(selectedTab.Name, RightDockPanelFactory.ActivityLogTabName, StringComparison.OrdinalIgnoreCase))
             {
-                return Math.Max(_activityLogExpandedWidth, taggedWidth);
+                return _activityLogExpandedWidth > 0 ? _activityLogExpandedWidth : taggedWidth;
             }
 
             if (string.Equals(selectedTab.Name, RightDockPanelFactory.JarvisTabName, StringComparison.OrdinalIgnoreCase))
             {
-                return Math.Max(_jarvisExpandedWidth, taggedWidth);
+                return _jarvisExpandedWidth > 0 ? _jarvisExpandedWidth : taggedWidth;
             }
 
             return taggedWidth;
@@ -786,6 +1323,8 @@ namespace WileyWidget.WinForms.Forms
 
                 _jarvisAutoHideStrip.Dock = DockStyle.Right;
             }
+
+            EnsureRightDockArtifactsDockOrder(newHost);
         }
     }
 }

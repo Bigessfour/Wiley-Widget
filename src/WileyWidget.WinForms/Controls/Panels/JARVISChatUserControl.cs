@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -35,7 +36,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         private static readonly TimeSpan StandardInitializationDelay = TimeSpan.FromMilliseconds(150);
         private const int DefaultPanelWidth = 1280;
         private const int DefaultPanelHeight = 900;
-        private const int MinimumPanelWidth = 1280;
+        private const int MinimumPanelWidth = 420;
+        private const int MinimumPanelHeight = 480;
 
         private BlazorWebView? _blazorWebView;
         private readonly IServiceProvider _serviceProvider;
@@ -54,6 +56,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         private readonly DateTime _createdUtc = DateTime.UtcNow;
         private int _initializationTriggered;
         private bool _isAiWarmupCompleted;
+        private JarvisAutomationState? _automationState;
+        private EventHandler<JarvisAutomationStateChangedEventArgs>? _automationStateChangedHandler;
 
         /// <summary>
         /// Gets or sets the initial prompt to be sent to JARVIS.
@@ -211,13 +215,34 @@ namespace WileyWidget.WinForms.Controls.Panels
                 if (automationState != null && AutomationStatusBox != null)
                 {
                     AutomationStatusBox.Text = automationState.Snapshot.ToStatusString();
-                    automationState.Changed += (s, e) =>
+
+                    if (!ReferenceEquals(_automationState, automationState))
                     {
-                        if (InvokeRequired)
-                            BeginInvoke(() => AutomationStatusBox.Text = e.Snapshot.ToStatusString());
-                        else
-                            AutomationStatusBox.Text = e.Snapshot.ToStatusString();
-                    };
+                        UnsubscribeAutomationState();
+                        _automationState = automationState;
+                    }
+
+                    if (_automationStateChangedHandler == null)
+                    {
+                        _automationStateChangedHandler = (s, e) =>
+                        {
+                            if (AutomationStatusBox == null || AutomationStatusBox.IsDisposed)
+                            {
+                                return;
+                            }
+
+                            if (InvokeRequired)
+                            {
+                                BeginInvoke(() => AutomationStatusBox.Text = e.Snapshot.ToStatusString());
+                            }
+                            else
+                            {
+                                AutomationStatusBox.Text = e.Snapshot.ToStatusString();
+                            }
+                        };
+
+                        _automationState.Changed += _automationStateChangedHandler;
+                    }
                 }
 
                 _isInitialized = true;
@@ -437,7 +462,31 @@ namespace WileyWidget.WinForms.Controls.Panels
                     return;
                 }
 
-                Logger?.LogInformation("[JARVIS-THEME] Synced theme {Theme} (IsDark: {IsDark}) to Blazor", themeName, isDark);
+                WileyWidget.WinForms.Factories.SyncfusionControlFactory.ApplyThemeToAllControls(this, themeName, Logger);
+                if (_panelHeader != null && !_panelHeader.IsDisposed)
+                {
+                    WileyWidget.WinForms.Factories.SyncfusionControlFactory.ApplyThemeToAllControls(_panelHeader, themeName, Logger);
+                }
+
+                if (_contentHost != null && !_contentHost.IsDisposed)
+                {
+                    WileyWidget.WinForms.Factories.SyncfusionControlFactory.ApplyThemeToAllControls(_contentHost, themeName, Logger);
+                }
+
+                if (_loadingOverlay != null && !_loadingOverlay.IsDisposed)
+                {
+                    WileyWidget.WinForms.Factories.SyncfusionControlFactory.ApplyThemeToAllControls(_loadingOverlay, themeName, Logger);
+                }
+
+                _contentHost?.Invalidate(true);
+                Invalidate(true);
+
+                Logger?.LogInformation(
+                    "[JARVIS-THEME] Synced theme {Theme} (IsDark: {IsDark}) to JARVIS host; Bounds={Bounds}; HostBackColor={BackColor}",
+                    themeName,
+                    isDark,
+                    Bounds,
+                    _contentHost?.BackColor);
             }
             catch (Exception ex)
             {
@@ -552,7 +601,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.SuspendLayout();
             this.Name = "JARVISChatUserControl";
             this.Size = LayoutTokens.GetScaled(new Size(DefaultPanelWidth, DefaultPanelHeight));
-            this.MinimumSize = LayoutTokens.GetScaled(new Size(MinimumPanelWidth, DefaultPanelHeight));
+            this.MinimumSize = LayoutTokens.GetScaled(new Size(MinimumPanelWidth, MinimumPanelHeight));
             this.AutoScroll = false;
             try
             {
@@ -621,20 +670,142 @@ namespace WileyWidget.WinForms.Controls.Panels
             QueueDeferredInitialization();
         }
 
+        private void UnsubscribeAutomationState()
+        {
+            if (_automationState != null && _automationStateChangedHandler != null)
+            {
+                _automationState.Changed -= _automationStateChangedHandler;
+            }
+
+            _automationStateChangedHandler = null;
+            _automationState = null;
+        }
+
+        private void DisposeBlazorWebViewSafely()
+        {
+            var blazorWebView = Interlocked.Exchange(ref _blazorWebView, null);
+            if (blazorWebView == null)
+            {
+                return;
+            }
+
+            _isBlazorReady = false;
+
+            if (IsHandleCreated && InvokeRequired)
+            {
+                try
+                {
+                    Invoke(new MethodInvoker(() => DisposeBlazorWebViewCore(blazorWebView)));
+                    return;
+                }
+                catch (Exception ex) when (IsExpectedBlazorTeardownException(ex))
+                {
+                    Logger?.LogDebug(ex, "[JARVIS-LIFECYCLE] Suppressed expected BlazorWebView teardown exception during marshaling");
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Control handle is already going away; fall back to direct disposal.
+                }
+            }
+
+            DisposeBlazorWebViewCore(blazorWebView);
+        }
+
+        private void DisposeBlazorWebViewCore(BlazorWebView blazorWebView)
+        {
+            try
+            {
+                blazorWebView.RootComponents.Clear();
+            }
+            catch (Exception ex) when (IsExpectedBlazorTeardownException(ex))
+            {
+                Logger?.LogDebug(ex, "[JARVIS-LIFECYCLE] Suppressed expected Blazor root teardown exception");
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "[JARVIS-LIFECYCLE] Failed to clear Blazor root components during teardown");
+            }
+
+            try
+            {
+                if (_contentHost != null && !_contentHost.IsDisposed && _contentHost.Controls.Contains(blazorWebView))
+                {
+                    _contentHost.Controls.Remove(blazorWebView);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogDebug(ex, "[JARVIS-LIFECYCLE] Failed to detach BlazorWebView from host during teardown");
+            }
+
+            try
+            {
+                blazorWebView.Dispose();
+            }
+            catch (Exception ex) when (IsExpectedBlazorTeardownException(ex))
+            {
+                Logger?.LogDebug(ex, "[JARVIS-LIFECYCLE] Suppressed expected BlazorWebView disposal exception");
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "[JARVIS-LIFECYCLE] Failed to dispose BlazorWebView cleanly");
+            }
+        }
+
+        private static bool IsExpectedBlazorTeardownException(Exception exception)
+        {
+            for (var current = exception; current != null; current = current.InnerException)
+            {
+                if (current is COMException comException && (uint)comException.HResult == 0x80004004)
+                {
+                    return true;
+                }
+
+                var typeName = current.GetType().FullName ?? string.Empty;
+                if (string.Equals(typeName, "Microsoft.JSInterop.JSDisconnectedException", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+
+                var message = current.Message ?? string.Empty;
+                var stackTrace = current.StackTrace ?? string.Empty;
+                if (stackTrace.Contains("Syncfusion.Blazor", StringComparison.OrdinalIgnoreCase)
+                    && (message.Contains("destroy", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("dispose", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("interop", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+
+                if ((stackTrace.Contains("WebView2", StringComparison.OrdinalIgnoreCase)
+                        || stackTrace.Contains("BlazorWebView", StringComparison.OrdinalIgnoreCase))
+                    && (message.Contains("disposed", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("abort", StringComparison.OrdinalIgnoreCase)
+                        || message.Contains("controller", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 _deferredInitializationTimer?.Stop();
                 _deferredInitializationTimer?.Dispose();
+                UnsubscribeAutomationState();
                 if (_themeService != null && _themeChangedHandler != null)
                 {
                     _themeService.ThemeChanged -= _themeChangedHandler;
                     _themeChangedHandler = null;
                 }
 
+                DisposeBlazorWebViewSafely();
                 _loadingOverlay?.Dispose();
-                _blazorWebView?.Dispose();
                 _initLock?.Dispose();
             }
             base.Dispose(disposing);

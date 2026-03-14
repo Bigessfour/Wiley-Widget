@@ -28,7 +28,7 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Ribbon_Main", "Ribbon_Main", TimeSpan.FromSeconds(20));
                 Assert.NotNull(ribbon);
 
                 // Home tab should be visible and active by default
@@ -64,20 +64,30 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Ribbon_Main", "Ribbon_Main", TimeSpan.FromSeconds(20));
                 Assert.NotNull(ribbon);
 
-                // Simulate theme switch (if ribbon has theme button)
-                var themeButton = ribbon.FindFirstDescendant(cf => cf.ByName("Theme"));
+                // Simulate theme switch using the current shell theme controls.
+                var themeButton = ribbon!.FindFirstDescendant(cf =>
+                    cf.ByAutomationId("ThemeToggle")
+                        .Or(cf.ByName("Theme Toggle"))
+                        .Or(cf.ByAutomationId("ThemeCombo"))
+                        .Or(cf.ByName("Theme")));
                 if (themeButton != null)
                 {
                     themeButton.Click();
-                    // Select a theme (e.g., HighContrast)
-                    var highContrast = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("High Contrast"));
-                    highContrast?.Click();
 
-                    // Assert ribbon visuals updated (indirect via UIA properties or re-find)
-                    Assert.True(ribbon.IsOffscreen == false); // Still visible
+                    // Assert the ribbon and theme surface remain available after the switch.
+                    var refreshedRibbon = FlaUiHelpers.FindElementByNameOrId(window, "Ribbon_Main", "Ribbon_Main", TimeSpan.FromSeconds(10));
+                    Assert.NotNull(refreshedRibbon);
+
+                    var refreshedThemeControl = refreshedRibbon!.FindFirstDescendant(cf =>
+                        cf.ByAutomationId("ThemeToggle")
+                            .Or(cf.ByName("Theme Toggle"))
+                            .Or(cf.ByAutomationId("ThemeCombo"))
+                            .Or(cf.ByName("Theme")));
+                    Assert.NotNull(refreshedThemeControl);
+                    Assert.False(refreshedRibbon.IsOffscreen);
                 }
                 else
                 {
