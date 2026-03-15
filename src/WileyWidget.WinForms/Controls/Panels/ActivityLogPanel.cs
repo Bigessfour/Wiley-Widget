@@ -29,6 +29,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.UI.Helpers;
 using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -147,7 +148,13 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Wire PanelHeader events
             _panelHeader.RefreshClicked += (s, e) => { Logger?.LogDebug("Refresh clicked on ActivityLogPanel"); /* Refresh logic if needed */ };
             _panelHeader.CloseClicked += (s, e) => ClosePanel();
-            _panelHeader.HelpClicked += (s, e) => { MessageBox.Show("Activity Log Help: This panel shows recent navigation and system activities.", "Help", MessageBoxButtons.OK, MessageBoxIcon.Information); };
+            _panelHeader.HelpClicked += (s, e) =>
+            {
+                SfDialogHelper.ShowInfoDialog(this,
+                    "Activity Log Help",
+                    "This panel shows recent navigation and system activities. Use Export for a CSV snapshot and Clear when you want to reset the visible audit trail.",
+                    Logger);
+            };
             _panelHeader.PinToggled += (s, e) => { Logger?.LogDebug("Pin toggled on ActivityLogPanel"); /* Pin logic */ };
             _toolTip = new ToolTip();
             _toolTip.SetToolTip(_panelHeader, "Refresh, pin, or close the activity log.");
@@ -406,11 +413,11 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void ClearActivityLog()
         {
-            if (MessageBox.Show(
-                "Clear all activity log entries?",
+            if (SfDialogHelper.ShowConfirmationDialog(
+                this,
                 "Clear Activity Log",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question) == DialogResult.Yes)
+                "Clear all activity log entries? This removes the current in-app audit trail view.",
+                Logger))
             {
                 try
                 {
@@ -419,7 +426,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 catch (Exception ex)
                 {
                     Logger?.LogError(ex, "Failed to clear activity log");
-                    MessageBox.Show($"Failed to clear log: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    SfDialogHelper.ShowErrorDialog(this, "Clear Activity Log", "Failed to clear the activity log.", ex, Logger);
                 }
             }
         }
@@ -450,7 +457,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 if (ViewModel?.ActivityEntries == null || ViewModel.ActivityEntries.Count == 0)
                 {
-                    MessageBox.Show("No activity entries to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SfDialogHelper.ShowInfoDialog(this, "Export Activity Log", "No activity entries are available to export.", Logger);
                     return;
                 }
 
@@ -471,7 +478,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 if (result.IsSkipped)
                 {
-                    MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SfDialogHelper.ShowInfoDialog(this, "Export Activity Log", result.ErrorMessage ?? "An export is already in progress.", Logger);
                     return;
                 }
 
@@ -482,16 +489,16 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 if (!result.IsSuccess)
                 {
-                    MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    SfDialogHelper.ShowErrorDialog(this, "Export Activity Log", result.ErrorMessage ?? "Export failed.", null, Logger);
                     return;
                 }
 
-                MessageBox.Show($"Activity log exported to {Path.GetFileName(result.FilePath)}.", "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SfDialogHelper.ShowInfoDialog(this, "Export Complete", $"Activity log exported to {Path.GetFileName(result.FilePath)}.", Logger);
             }
             catch (Exception ex)
             {
                 Logger?.LogError(ex, "Failed to export activity log");
-                MessageBox.Show($"Failed to export log: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SfDialogHelper.ShowErrorDialog(this, "Export Activity Log", "Failed to export the activity log.", ex, Logger);
             }
         }
 
@@ -499,7 +506,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             if (ViewModel?.ActivityEntries == null || ViewModel.ActivityEntries.Count == 0)
             {
-                MessageBox.Show("No activity entries to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SfDialogHelper.ShowInfoDialog(this, "Export Activity Log", "No activity entries are available to export.", Logger);
                 return;
             }
 

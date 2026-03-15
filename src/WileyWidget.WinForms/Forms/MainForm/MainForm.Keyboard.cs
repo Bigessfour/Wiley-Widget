@@ -11,6 +11,7 @@ using Panels = WileyWidget.WinForms.Controls.Panels;
 
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Helpers;
+using WileyWidget.WinForms.UI.Helpers;
 
 namespace WileyWidget.WinForms.Forms;
 
@@ -115,11 +116,11 @@ public partial class MainForm
             catch (InvalidOperationException invEx)
             {
                 _logger?.LogWarning(invEx, "Find-in-grid prompt failed due to invalid operation");
-                MessageBox.Show(
-                    "Search prompt could not be displayed. The grid may not be ready.",
+                SfDialogHelper.ShowWarningDialog(
+                    this,
                     "Search Unavailable",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                    "Search prompt could not be displayed. The grid may not be ready.",
+                    _logger);
             }
             catch (Exception ex)
             {
@@ -147,11 +148,11 @@ public partial class MainForm
             catch (InvalidOperationException invEx)
             {
                 _logger?.LogWarning(invEx, "Error toggling theme - operation invalid");
-                MessageBox.Show(
-                    "Theme toggle is not available right now. Please try again.",
+                SfDialogHelper.ShowInfoDialog(
+                    this,
                     "Theme Toggle Unavailable",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    "Theme toggle is not available right now. Please try again.",
+                    _logger);
             }
         }
 

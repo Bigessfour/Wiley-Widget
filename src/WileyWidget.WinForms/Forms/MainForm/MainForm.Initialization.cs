@@ -795,6 +795,36 @@ public partial class MainForm
         _startupUiPhasesTimer.Start();
     }
 
+    private void QueueDeferredChromeInitialization()
+    {
+        if (IsDisposed || Disposing)
+        {
+            return;
+        }
+
+        BeginInvoke((MethodInvoker)(() =>
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            try
+            {
+                _ribbon?.PerformLayout();
+                _ribbon?.Refresh();
+                _statusBar?.PerformLayout();
+                _statusBar?.Refresh();
+                _contentHostPanel?.PerformLayout();
+                _contentHostPanel?.Refresh();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Deferred chrome initialization refresh failed");
+            }
+        }));
+    }
+
     private void HandleDeferredStartupUiPhase(object? sender, EventArgs e)
     {
         if (IsDisposed || Disposing)

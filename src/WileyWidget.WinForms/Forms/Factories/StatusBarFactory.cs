@@ -216,8 +216,10 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                var panels = statusBar.Controls.OfType<StatusBarAdvPanel>().ToArray();
-                var labelPanel = panels.FirstOrDefault(p => p.Name == "StatusLabelPanel");
+                var panels = statusBar.Panels?.Length > 0
+                    ? statusBar.Panels
+                    : statusBar.Controls.OfType<StatusBarAdvPanel>().ToArray();
+                var labelPanel = panels.FirstOrDefault(p => p.Name == "StatusLabel");
                 var textPanel = panels.FirstOrDefault(p => p.Name == "StatusTextPanel");
 
                 if (labelPanel != null)

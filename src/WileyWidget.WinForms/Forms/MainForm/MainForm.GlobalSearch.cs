@@ -21,11 +21,29 @@ namespace WileyWidget.WinForms.Forms;
 public partial class MainForm
 {
     private Form? _searchDialog;
+    private Label? _searchResultsSummaryLabel;
+    private Label? _searchDialogHintLabel;
     private TextBoxExt? _globalSearchBox;
     private SfListView? _searchResultsList;
     private AutoComplete? _globalSearchAutoComplete;
     private readonly HashSet<string> _globalSearchSuggestions = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<SearchResult> _searchDialogResults = new();
+    private readonly List<int> _searchResultIndexMap = new();
+    private readonly List<SearchResult> _recentSearchResults = new();
+    private const int MaxRecentSearchResults = 8;
+    private static readonly Dictionary<string, string> PanelShortcutHints = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Settings"] = "Alt+F, T",
+        ["Activity Log"] = "Ctrl+Shift+A",
+        ["Analytics Hub"] = "Ctrl+2",
+        ["War Room"] = "Ctrl+3",
+        ["Reports"] = "Ctrl+R",
+        ["Dashboard"] = "Ctrl+1",
+        ["Customers"] = "Ctrl+Shift+C",
+        ["Accounts"] = "Ctrl+Shift+L",
+        ["Payments"] = "Ctrl+Shift+P",
+        ["QuickBooks"] = "Ctrl+Shift+Q"
+    };
 
     /// <summary>
     /// Shows the global search dialog (Ctrl+K).
@@ -48,15 +66,40 @@ public partial class MainForm
             {
                 Text = "Search Everything (Ctrl+K)",
                 StartPosition = FormStartPosition.CenterParent,
-                Size = new Size(600, 400),
-                FormBorderStyle = FormBorderStyle.SizableToolWindow,
+                Size = new Size(720, 460),
+                FormBorderStyle = FormBorderStyle.Sizable,
                 ShowIcon = false,
                 ShowInTaskbar = false,
-                MinimumSize = new Size(400, 300)
+                MinimumSize = new Size(520, 340),
+                Padding = new Padding(16, 16, 16, 12),
+                KeyPreview = true
             };
 
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
             SfSkinManager.SetVisualStyle(_searchDialog, currentTheme);
+
+            var searchLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 4,
+                Padding = Padding.Empty,
+                Margin = Padding.Empty,
+            };
+            searchLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            searchLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            searchLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            searchLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            _searchResultsSummaryLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                Text = "Search panels, commands, and recent activity",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Padding = new Padding(0, 0, 0, 8)
+            };
+            searchLayout.Controls.Add(_searchResultsSummaryLabel, 0, 0);
 
             // Search box (created via SyncfusionControlFactory)
             _globalSearchBox = _controlFactory?.CreateTextBoxExt(textBox =>
@@ -74,7 +117,7 @@ public partial class MainForm
             _globalSearchBox.TextChanged += async (s, e) => await PerformGlobalSearchDialogAsync(_globalSearchBox.Text);
             _globalSearchBox.KeyDown += OnSearchBoxKeyDown;
 
-            _searchDialog.Controls.Add(_globalSearchBox);
+            searchLayout.Controls.Add(_globalSearchBox, 0, 1);
             InitializeGlobalSearchAutoComplete();
 
             // Results list (created via SyncfusionControlFactory)
@@ -89,7 +132,19 @@ public partial class MainForm
                 throw new InvalidOperationException("SyncfusionControlFactory is not available for global search");
             }
 
-            _searchDialog.Controls.Add(_searchResultsList);
+            searchLayout.Controls.Add(_searchResultsList, 0, 2);
+
+            _searchDialogHintLabel = new Label
+            {
+                Dock = DockStyle.Bottom,
+                AutoSize = true,
+                Text = "Enter to open  •  Up/Down to navigate  •  Esc to close",
+                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+                Padding = new Padding(0, 8, 0, 0)
+            };
+            searchLayout.Controls.Add(_searchDialogHintLabel, 0, 3);
+
+            _searchDialog.Controls.Add(searchLayout);
 
             _searchResultsList.DoubleClick += OnSearchResultDoubleClick;
             _searchResultsList.KeyDown += OnSearchResultsKeyDown;
@@ -100,12 +155,16 @@ public partial class MainForm
                 _globalSearchAutoComplete = null;
                 _searchDialog = null;
                 _globalSearchBox = null;
+                _searchResultsSummaryLabel = null;
+                _searchDialogHintLabel = null;
                 _searchResultsList = null;
                 _globalSearchSuggestions.Clear();
                 _searchDialogResults.Clear();
+                _searchResultIndexMap.Clear();
             };
 
             _searchDialog.Show(this);
+            ShowPaletteHome();
             _globalSearchBox.Focus();
         }
         catch (Exception ex)
@@ -129,8 +188,7 @@ public partial class MainForm
             var normalizedQuery = query?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(normalizedQuery))
             {
-                _searchDialogResults.Clear();
-                _searchResultsList.DataSource = Array.Empty<string>();
+                ShowPaletteHome();
                 return;
             }
 
@@ -150,6 +208,8 @@ public partial class MainForm
                         Name = match.Title,
                         Type = match.Category,
                         Description = match.Description,
+                        Source = string.IsNullOrWhiteSpace(match.TargetPanelName) ? match.Category : match.TargetPanelName,
+                        ShortcutHint = ResolveShortcutHint(match.TargetPanelName ?? match.Title),
                         Action = BuildSearchAction(match)
                     })
                     .OrderBy(result => result.Type)
@@ -164,16 +224,10 @@ public partial class MainForm
             _searchDialogResults.Clear();
             _searchDialogResults.AddRange(results);
             RefreshGlobalSearchSuggestions(results, normalizedQuery);
-
-            var displayRows = results.Count == 0
-                ? new List<string> { "No matches found." }
-                : results.Select(result => result.DisplayText).ToList();
-
-            _searchResultsList.DataSource = displayRows;
-            if (results.Count == 1)
-            {
-                _searchResultsList.SelectedIndex = 0;
-            }
+            BindSearchResults(results, normalizedQuery);
+            UpdateSearchSummary(results.Count == 0
+                ? $"No results for '{normalizedQuery}'"
+                : $"{results.Count} result{(results.Count == 1 ? string.Empty : "s")} for '{normalizedQuery}'");
             _logger?.LogDebug("Global search dialog rendered {Count} results for query: {Query}", results.Count, normalizedQuery);
         }
         catch (Exception ex)
@@ -245,6 +299,115 @@ public partial class MainForm
         _globalSearchAutoComplete.DataSource = _globalSearchSuggestions.OrderBy(value => value).ToList();
     }
 
+    private void ShowPaletteHome()
+    {
+        var homeResults = BuildPaletteHomeResults();
+        _searchDialogResults.Clear();
+        _searchDialogResults.AddRange(homeResults);
+        BindSearchResults(homeResults, null);
+        UpdateSearchSummary(_recentSearchResults.Count == 0
+            ? "Search panels, commands, and recent activity"
+            : $"{_recentSearchResults.Count} recent item{(_recentSearchResults.Count == 1 ? string.Empty : "s")} and quick actions");
+    }
+
+    private List<SearchResult> BuildPaletteHomeResults()
+    {
+        var quickActions = BuildQuickActionResults();
+        var results = new List<SearchResult>();
+
+        results.AddRange(_recentSearchResults.Select(result => result.CloneAsRecent()));
+        results.AddRange(quickActions.Where(action => !_recentSearchResults.Any(recent => recent.Matches(action))));
+
+        return results;
+    }
+
+    private List<SearchResult> BuildQuickActionResults()
+    {
+        return new List<SearchResult>
+        {
+            new()
+            {
+                Name = "Open Settings",
+                Type = "Quick Action",
+                Description = "Review application configuration and credentials",
+                Source = "Navigation",
+                ShortcutHint = ResolveShortcutHint("Settings"),
+                Action = () => ShowPanel<Controls.Panels.SettingsPanel>("Settings", DockingStyle.Fill, allowFloating: true)
+            },
+            new()
+            {
+                Name = "Open Activity Log",
+                Type = "Quick Action",
+                Description = "Review recent navigation and system events",
+                Source = "Navigation",
+                ShortcutHint = ResolveShortcutHint("Activity Log"),
+                Action = () => ShowPanel<Controls.Panels.ActivityLogPanel>("Activity Log", DockingStyle.Bottom, allowFloating: true)
+            },
+            new()
+            {
+                Name = "Open Analytics Hub",
+                Type = "Quick Action",
+                Description = "Jump to analytics and scenario exploration",
+                Source = "Navigation",
+                ShortcutHint = ResolveShortcutHint("Analytics Hub"),
+                Action = () => ShowPanel<Controls.Panels.AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true)
+            },
+            new()
+            {
+                Name = "Open War Room",
+                Type = "Quick Action",
+                Description = "Run scenario analysis and export forecasts",
+                Source = "Navigation",
+                ShortcutHint = ResolveShortcutHint("War Room"),
+                Action = () => ShowPanel<Controls.Panels.WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true)
+            },
+            new()
+            {
+                Name = "Open Reports",
+                Type = "Quick Action",
+                Description = "View and export reporting outputs",
+                Source = "Navigation",
+                ShortcutHint = ResolveShortcutHint("Reports"),
+                Action = () => ShowPanel<Controls.Panels.ReportsPanel>("Reports", DockingStyle.Right, allowFloating: true)
+            }
+        };
+    }
+
+    private void BindSearchResults(IEnumerable<SearchResult> results, string? query)
+    {
+        if (_searchResultsList == null)
+        {
+            return;
+        }
+
+        var orderedResults = results.ToList();
+        _searchResultIndexMap.Clear();
+        var displayRows = new List<string>();
+
+        if (orderedResults.Count == 0)
+        {
+            displayRows.Add($"No results{(string.IsNullOrWhiteSpace(query) ? string.Empty : $" for '{query}'")}");
+            _searchResultIndexMap.Add(-1);
+        }
+        else
+        {
+            foreach (var group in orderedResults.GroupBy(result => result.Type, StringComparer.OrdinalIgnoreCase))
+            {
+                displayRows.Add(group.Key.ToUpperInvariant());
+                _searchResultIndexMap.Add(-1);
+
+                foreach (var result in group)
+                {
+                    displayRows.Add(result.DisplayText);
+                    _searchResultIndexMap.Add(_searchDialogResults.IndexOf(result));
+                }
+            }
+        }
+
+        _searchResultsList.DataSource = displayRows;
+        SelectFirstSearchResult();
+    }
+
     private IEnumerable<string> BuildInitialGlobalSearchSuggestions()
     {
         var panelSuggestions = PanelRegistry.Panels
@@ -276,6 +439,14 @@ public partial class MainForm
         if (e.KeyCode == Keys.Enter)
         {
             ExecuteSelectedSearchResult();
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            return;
+        }
+
+        if (e.KeyCode == Keys.Down)
+        {
+            FocusNextSearchResult();
             e.Handled = true;
             e.SuppressKeyPress = true;
             return;
@@ -332,6 +503,7 @@ public partial class MainForm
         try
         {
             selected.Action?.Invoke();
+            RegisterRecentSearchResult(selected);
             _logger?.LogDebug("Executed global search result {Type}:{Name}", selected.Type, selected.Name);
             _searchDialog?.Close();
         }
@@ -351,9 +523,9 @@ public partial class MainForm
         try
         {
             var selectedIndex = _searchResultsList.SelectedIndex;
-            if (selectedIndex >= 0 && selectedIndex < _searchDialogResults.Count)
+            if (selectedIndex >= 0 && selectedIndex < _searchResultIndexMap.Count)
             {
-                return selectedIndex;
+                return _searchResultIndexMap[selectedIndex];
             }
         }
         catch (Exception ex)
@@ -419,6 +591,77 @@ public partial class MainForm
         return null;
     }
 
+    private void UpdateSearchSummary(string text)
+    {
+        if (_searchResultsSummaryLabel == null || _searchResultsSummaryLabel.IsDisposed)
+        {
+            return;
+        }
+
+        _searchResultsSummaryLabel.Text = text;
+    }
+
+    private void SelectFirstSearchResult()
+    {
+        if (_searchResultsList == null)
+        {
+            return;
+        }
+
+        for (var index = 0; index < _searchResultIndexMap.Count; index++)
+        {
+            if (_searchResultIndexMap[index] >= 0)
+            {
+                _searchResultsList.SelectedIndex = index;
+                return;
+            }
+        }
+    }
+
+    private void FocusNextSearchResult()
+    {
+        if (_searchResultsList == null)
+        {
+            return;
+        }
+
+        var startIndex = Math.Max(_searchResultsList.SelectedIndex, -1);
+        for (var index = startIndex + 1; index < _searchResultIndexMap.Count; index++)
+        {
+            if (_searchResultIndexMap[index] >= 0)
+            {
+                _searchResultsList.Focus();
+                _searchResultsList.SelectedIndex = index;
+                return;
+            }
+        }
+
+        SelectFirstSearchResult();
+    }
+
+    private void RegisterRecentSearchResult(SearchResult result)
+    {
+        _recentSearchResults.RemoveAll(existing => existing.Matches(result));
+        _recentSearchResults.Insert(0, result.CloneAsRecent(DateTime.Now));
+
+        if (_recentSearchResults.Count > MaxRecentSearchResults)
+        {
+            _recentSearchResults.RemoveRange(MaxRecentSearchResults, _recentSearchResults.Count - MaxRecentSearchResults);
+        }
+    }
+
+    private static string? ResolveShortcutHint(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return null;
+        }
+
+        return PanelShortcutHints.TryGetValue(key.Trim(), out var shortcut)
+            ? shortcut
+            : null;
+    }
+
     /// <summary>
     /// Represents a search result item.
     /// </summary>
@@ -427,7 +670,52 @@ public partial class MainForm
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string? ShortcutHint { get; set; }
+        public DateTime? LastUsedAt { get; set; }
         public System.Action? Action { get; set; }
-        public string DisplayText => $"[{Type}] {Name} — {Description}";
+        public bool IsRecent { get; set; }
+
+        public string DisplayText => string.IsNullOrWhiteSpace(Description)
+            ? $"{Name}{BuildMetadataSuffix()}"
+            : $"{Name}   •   {Description}{BuildMetadataSuffix()}";
+
+        public SearchResult CloneAsRecent(DateTime? usedAt = null) => new()
+        {
+            Name = Name,
+            Type = "Recent",
+            Description = Description,
+            Source = Source,
+            ShortcutHint = ShortcutHint,
+            LastUsedAt = usedAt ?? LastUsedAt ?? DateTime.Now,
+            Action = Action,
+            IsRecent = true
+        };
+
+        public bool Matches(SearchResult other) =>
+            string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Description, other.Description, StringComparison.OrdinalIgnoreCase);
+
+        private string BuildMetadataSuffix()
+        {
+            var metadata = new List<string>();
+
+            if (IsRecent)
+            {
+                metadata.Add(LastUsedAt.HasValue ? $"Recent {LastUsedAt.Value:t}" : "Recent");
+            }
+
+            if (!string.IsNullOrWhiteSpace(Source))
+            {
+                metadata.Add(Source);
+            }
+
+            if (!string.IsNullOrWhiteSpace(ShortcutHint))
+            {
+                metadata.Add(ShortcutHint);
+            }
+
+            return metadata.Count == 0 ? string.Empty : $"   •   {string.Join("   •   ", metadata)}";
+        }
     }
 }

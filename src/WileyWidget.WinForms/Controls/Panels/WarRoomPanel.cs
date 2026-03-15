@@ -59,15 +59,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Apply theme for cascade to all child controls
             SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
-            // Panel header
-            _panelHeader = new PanelHeader
-            {
-                Dock = DockStyle.Top,
-                Title = "War Room",
-                Height = LayoutTokens.HeaderHeight
-            };
-            Controls.Add(_panelHeader);
-
             // Canonical _content root
             _content = new TableLayoutPanel
             {
@@ -93,7 +84,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader = new PanelHeader
             {
                 Dock = DockStyle.Top,
-                Title = "War Room"
+                Title = "War Room",
+                Height = LayoutTokens.HeaderHeight
             };
             _topPanel.Controls.Add(_panelHeader);
 

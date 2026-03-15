@@ -73,6 +73,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private readonly string _themeName = ThemeColors.CurrentTheme;
         private SettingsSecretsPersistenceService? _settingsSecretsPersistenceService;
+        private bool _controlsInitialized;
         public new object? DataContext { get; private set; }
 
         #region UI Control Fields
@@ -169,7 +170,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Size = new Size(1100, 760);
             MinimumSize = new Size(1024, 720);
-            SafeSuspendAndLayout(InitializeComponent);
+            EnsureControlsInitialized();
         }
 
         /// <summary>
@@ -244,7 +245,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             SafeSuspendAndLayout(() =>
             {
-                InitializeComponent();
+                EnsureControlsInitialized();
                 SetupBindings();
                 SetupEventHandlers();
                 ApplyCurrentTheme();
@@ -275,6 +276,20 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             // Start async load - fire-and-forget with error handling
             LoadAsyncSafe();
+        }
+
+        private void EnsureControlsInitialized()
+        {
+            if (_controlsInitialized)
+            {
+                return;
+            }
+
+            SafeSuspendAndLayout(() =>
+            {
+                InitializeComponent();
+                _controlsInitialized = true;
+            });
         }
 
         public override async Task LoadAsync(CancellationToken ct = default)

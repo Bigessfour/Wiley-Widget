@@ -105,6 +105,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         SuspendLayout();
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
+        _toolTip = new ToolTip();
 
         _panelHeader = new PanelHeader { Title = "Analytics Hub", Dock = DockStyle.Top };
         _refreshClicked = async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
@@ -119,7 +120,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         InitializeOverlays();
 
         _errorProvider = new ErrorProvider { BlinkStyle = ErrorBlinkStyle.NeverBlink, BlinkRate = 0 };
-        _toolTip = new ToolTip();
 
         ApplyThemeToControls(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 

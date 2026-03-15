@@ -18,6 +18,7 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Panels;
 
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.UI.Helpers;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Helpers;
@@ -963,7 +964,13 @@ public partial class MainForm
 
             var aboutMenuItem = new ToolStripMenuItem("&About", null, (s, e) =>
             {
-                MessageBox.Show($"{MainFormResources.FormTitle}\n\nVersion 1.0.0\nBuilt with .NET 9\n\n© {DateTime.Now.Year} Wiley Widget", "About", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                var version = Application.ProductVersion;
+                var runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+                var environmentName = _serviceProvider != null
+                    ? Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<Microsoft.Extensions.Hosting.IHostEnvironment>(_serviceProvider)?.EnvironmentName ?? "Production"
+                    : "Production";
+                var message = $"{MainFormResources.FormTitle}\n\nVersion {version}\nRuntime {runtime}\nEnvironment {environmentName}\n\n© {DateTime.Now.Year} Wiley Widget";
+                SfDialogHelper.ShowInfoDialog(this, "About Wiley Widget", message, _logger);
             })
             { Name = "Menu_Help_About" };
 
@@ -1573,7 +1580,7 @@ public partial class MainForm
     {
         try
         {
-            if (_dockingManager?.HostControl is not Control hostControl || hostControl.IsDisposed)
+            if (_contentHostPanel is not Control hostControl || hostControl.IsDisposed)
             {
                 return;
             }

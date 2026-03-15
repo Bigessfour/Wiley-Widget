@@ -48,19 +48,7 @@ namespace WileyWidget.WinForms.UI.Helpers
                     ? $"{message}\n\n{GetExceptionSummary(exception)}"
                     : message;
 
-                // Attempt to use SfMessageBox for theming; fallback to standard MessageBox if unavailable
-                if (TrySfMessageBox(owner, messageText, title, exception))
-                {
-                    return;
-                }
-
-                // Fallback to standard MessageBox wrapped with theme inheritance
-                MessageBox.Show(
-                    owner,
-                    messageText,
-                    title,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                ShowDialog(owner, title, messageText, MessageBoxButtons.OK, MessageBoxIcon.Error);
 
                 logger?.LogDebug("Error dialog displayed: {Title}", title);
             }
@@ -87,17 +75,7 @@ namespace WileyWidget.WinForms.UI.Helpers
                     return;
                 }
 
-                if (TrySfMessageBox(owner, message, title, null, MessageBoxIcon.Warning))
-                {
-                    return;
-                }
-
-                MessageBox.Show(
-                    owner,
-                    message,
-                    title,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                ShowDialog(owner, title, message, MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                 logger?.LogDebug("Warning dialog displayed: {Title}", title);
             }
@@ -124,17 +102,7 @@ namespace WileyWidget.WinForms.UI.Helpers
                     return;
                 }
 
-                if (TrySfMessageBox(owner, message, title, null, MessageBoxIcon.Information))
-                {
-                    return;
-                }
-
-                MessageBox.Show(
-                    owner,
-                    message,
-                    title,
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                ShowDialog(owner, title, message, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 logger?.LogDebug("Info dialog displayed: {Title}", title);
             }
@@ -145,15 +113,75 @@ namespace WileyWidget.WinForms.UI.Helpers
         }
 
         /// <summary>
-        /// Attempts to display message using SfMessageBox if available.
-        /// Returns true if SfMessageBox was successfully used; false to fallback.
+        /// Shows a themed yes/no confirmation dialog and returns true when the affirmative action is selected.
         /// </summary>
-        private static bool TrySfMessageBox(
+        public static bool ShowConfirmationDialog(
+            IWin32Window? owner,
+            string title,
+            string message,
+            ILogger? logger = null,
+            bool defaultResult = false)
+        {
+            try
+            {
+                if (IsUiTestMode())
+                {
+                    logger?.LogDebug("UI test mode: suppressed confirmation dialog {Title}", title);
+                    return defaultResult;
+                }
+
+                var result = ShowDialog(owner, title, message, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                logger?.LogDebug("Confirmation dialog displayed: {Title} => {Result}", title, result);
+                return result == DialogResult.Yes;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to display confirmation dialog {Title}", title);
+                return defaultResult;
+            }
+        }
+
+        /// <summary>
+        /// Shows a themed dialog and returns the selected dialog result.
+        /// </summary>
+        public static DialogResult ShowDialogResult(
+            IWin32Window? owner,
+            string title,
+            string message,
+            MessageBoxButtons buttons,
+            MessageBoxIcon icon,
+            MessageBoxDefaultButton defaultButton = MessageBoxDefaultButton.Button1)
+        {
+            var sfResult = TrySfMessageBox(owner, message, title, buttons, icon, defaultButton);
+            if (sfResult.HasValue)
+            {
+                return sfResult.Value;
+            }
+
+            return System.Windows.Forms.MessageBox.Show(owner, message, title, buttons, icon, defaultButton);
+        }
+
+        private static DialogResult ShowDialog(
+            IWin32Window? owner,
+            string title,
+            string message,
+            MessageBoxButtons buttons,
+            MessageBoxIcon icon)
+        {
+            return ShowDialogResult(owner, title, message, buttons, icon);
+        }
+
+        /// <summary>
+        /// Attempts to display message using SfMessageBox if available.
+        /// Returns the result if SfMessageBox was successfully used; null to fallback.
+        /// </summary>
+        private static DialogResult? TrySfMessageBox(
             IWin32Window? owner,
             string message,
             string title,
-            Exception? exception,
-            MessageBoxIcon icon = MessageBoxIcon.Error)
+            MessageBoxButtons buttons,
+            MessageBoxIcon icon,
+            MessageBoxDefaultButton defaultButton)
         {
             try
             {
@@ -162,7 +190,7 @@ namespace WileyWidget.WinForms.UI.Helpers
                 var sfMessageBoxType = Type.GetType("Syncfusion.Windows.Forms.SfMessageBox, Syncfusion.Shared.Base");
                 if (sfMessageBoxType == null)
                 {
-                    return false;
+                    return null;
                 }
 
                 // SfMessageBox inherits theme from SfSkinManager automatically
@@ -176,18 +204,33 @@ namespace WileyWidget.WinForms.UI.Helpers
 
                 if (showMethod != null)
                 {
-                    showMethod.Invoke(
+                    var result = showMethod.Invoke(
                         null,
-                        new object?[] { owner, message, title, MessageBoxButtons.OK, icon });
-                    return true;
+                        new object?[] { owner, message, title, buttons, icon });
+                    return result is DialogResult dialogResult ? dialogResult : DialogResult.OK;
                 }
 
-                return false;
+                showMethod = sfMessageBoxType.GetMethod(
+                    "Show",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                    null,
+                    new[] { typeof(IWin32Window), typeof(string), typeof(string), typeof(MessageBoxButtons), typeof(MessageBoxIcon), typeof(MessageBoxDefaultButton) },
+                    null);
+
+                if (showMethod != null)
+                {
+                    var result = showMethod.Invoke(
+                        null,
+                        new object?[] { owner, message, title, buttons, icon, defaultButton });
+                    return result is DialogResult dialogResult ? dialogResult : DialogResult.OK;
+                }
+
+                return null;
             }
             catch
             {
                 // If reflection fails or SfMessageBox is unavailable, return false to trigger fallback
-                return false;
+                return null;
             }
         }
 
