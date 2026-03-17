@@ -265,6 +265,7 @@ public partial class MainForm
                 r.Name = "Ribbon_Main";
                 r.AccessibleName = "SfRibbon";
                 r.LauncherStyle = LauncherStyle.Metro;
+                r.ShowLauncher = !isUiTestRuntime;
                 r.RibbonStyle = RibbonStyle.Office2016;
                 r.ShowRibbonDisplayOptionButton = !isUiTestRuntime;
                 r.EnableSimplifiedLayoutMode = true;
@@ -282,6 +283,20 @@ public partial class MainForm
                     r.MenuButtonVisible = false;
                 }
             });
+
+            ribbon.HandleCreated += (_, _) => ApplyRibbonLauncherVisibility(ribbon, !isUiTestRuntime, _logger);
+            ribbon.VisibleChanged += (_, _) =>
+            {
+                if (ribbon.IsDisposed)
+                {
+                    return;
+                }
+
+                if (ribbon.Visible || isUiTestRuntime)
+                {
+                    ApplyRibbonLauncherVisibility(ribbon, !isUiTestRuntime, _logger);
+                }
+            };
 
             ribbon.BeginInit();
             ribbon.SuspendLayout();
@@ -346,6 +361,14 @@ public partial class MainForm
             ribbon.ThemeName = currentThemeString;
             SfSkinManager.SetVisualStyle(ribbon, currentThemeString);
 
+            var showUnifiedNavigationDropdown = _uiConfig.ShowUnifiedNavigationDropdown || _uiConfig.HideLegacyRibbonNavigation;
+            var hideLegacyRibbonNavigation = _uiConfig.HideLegacyRibbonNavigation;
+
+            if (hideLegacyRibbonNavigation)
+            {
+                _logger?.LogInformation("InitializeRibbon: legacy ribbon navigation hidden; unified dropdown is the canonical navigation surface");
+            }
+
             var homeTab = new ToolStripTabItem { Text = "Home", Name = "HomeTab" };
             CompleteToolStripTabItemAPI(homeTab, _logger);
 
@@ -373,32 +396,72 @@ public partial class MainForm
             }
 
             // ── Home tab groups ──────────────────────────────────────────────
-            var (dashboardStrip, _) = CreateCoreNavigationGroup(this, currentThemeString, _logger);
+            ToolStripEx? unifiedNavigationStrip = null;
+            if (showUnifiedNavigationDropdown)
+            {
+                unifiedNavigationStrip = CreateUnifiedNavigationGroup(this, currentThemeString, _logger);
+            }
+
+            ToolStripEx? dashboardStrip = null;
+            if (!hideLegacyRibbonNavigation)
+            {
+                (dashboardStrip, _) = CreateCoreNavigationGroup(this, currentThemeString, _logger);
+            }
+
             var (layoutStrip, _, _, lockLayoutBtn) = CreateLayoutGroup(this, currentThemeString, _logger);
             var searchAndGridStrip = CreateSearchAndGridGroup(this, currentThemeString, _logger);
 
             // ── Financials tab groups ────────────────────────────────────────
-            var (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
-            var paymentsStrip = CreatePaymentsGroup(this, currentThemeString, _logger);
-            var integrationStrip = CreateIntegrationGroup(this, currentThemeString, _logger);
+            ToolStripEx? financialsStrip = null;
+            ToolStripEx? paymentsStrip = null;
+            ToolStripEx? integrationStrip = null;
+            if (!hideLegacyRibbonNavigation)
+            {
+                (financialsStrip, _) = CreateFinancialsGroup(this, currentThemeString, _logger);
+                paymentsStrip = CreatePaymentsGroup(this, currentThemeString, _logger);
+                integrationStrip = CreateIntegrationGroup(this, currentThemeString, _logger);
+            }
 
             // ── Analytics & Reports tab groups ───────────────────────────────
-            var analyticsStrip = CreateAnalyticsGroup(this, currentThemeString, _logger);
-            var reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
-            var operationsStrip = CreateOperationsGroup(this, currentThemeString, _logger);
+            ToolStripEx? analyticsStrip = null;
+            ToolStripEx? reportingStrip = null;
+            ToolStripEx? operationsStrip = null;
+            if (!hideLegacyRibbonNavigation)
+            {
+                analyticsStrip = CreateAnalyticsGroup(this, currentThemeString, _logger);
+                reportingStrip = CreateReportingGroup(this, currentThemeString, _logger);
+                operationsStrip = CreateOperationsGroup(this, currentThemeString, _logger);
+            }
 
             // ── Utilities tab groups ─────────────────────────────────────────
-            var utilitiesStrip = CreateUtilitiesGroup(this, currentThemeString, _logger);
+            ToolStripEx? utilitiesStrip = null;
+            if (!hideLegacyRibbonNavigation)
+            {
+                utilitiesStrip = CreateUtilitiesGroup(this, currentThemeString, _logger);
+            }
 
             // ── Administration tab groups ────────────────────────────────────
-            var administrationStrip = CreateAdministrationGroup(this, currentThemeString, _logger);
-            var auditLogsStrip = CreateAuditLogsGroup(this, currentThemeString, _logger);
+            ToolStripEx? administrationStrip = null;
+            ToolStripEx? auditLogsStrip = null;
+            if (!hideLegacyRibbonNavigation)
+            {
+                administrationStrip = CreateAdministrationGroup(this, currentThemeString, _logger);
+                auditLogsStrip = CreateAuditLogsGroup(this, currentThemeString, _logger);
+            }
 
-            ribbon.Header.AddMainItem(homeTab);
-            ribbon.Header.AddMainItem(financialsTab);
-            ribbon.Header.AddMainItem(analyticsTab);
-            ribbon.Header.AddMainItem(utilitiesTab);
-            ribbon.Header.AddMainItem(administrationTab);
+            var visibleTabs = new List<ToolStripTabItem> { homeTab };
+            if (!hideLegacyRibbonNavigation)
+            {
+                visibleTabs.Add(financialsTab);
+                visibleTabs.Add(analyticsTab);
+                visibleTabs.Add(utilitiesTab);
+                visibleTabs.Add(administrationTab);
+            }
+
+            foreach (var tab in visibleTabs)
+            {
+                ribbon.Header.AddMainItem(tab);
+            }
 
             ToolStripTabItem? layoutContextTab = null;
             ToolStripTabGroup? layoutTabGroup = null;
@@ -421,31 +484,72 @@ public partial class MainForm
             }
 
             // Home
-            AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
+            if (unifiedNavigationStrip != null)
+            {
+                AddToolStripToTabPanel(homeTab, unifiedNavigationStrip, currentThemeString, _logger);
+            }
+
+            if (dashboardStrip != null)
+            {
+                AddToolStripToTabPanel(homeTab, dashboardStrip, currentThemeString, _logger);
+            }
+
             AddToolStripToTabPanel(homeTab, layoutStrip, currentThemeString, _logger);
             AddToolStripToTabPanel(homeTab, searchAndGridStrip, currentThemeString, _logger);
 
             // Financials
-            AddToolStripToTabPanel(financialsTab, financialsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(financialsTab, paymentsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(financialsTab, integrationStrip, currentThemeString, _logger);
+            if (financialsStrip != null)
+            {
+                AddToolStripToTabPanel(financialsTab, financialsStrip, currentThemeString, _logger);
+            }
+
+            if (paymentsStrip != null)
+            {
+                AddToolStripToTabPanel(financialsTab, paymentsStrip, currentThemeString, _logger);
+            }
+
+            if (integrationStrip != null)
+            {
+                AddToolStripToTabPanel(financialsTab, integrationStrip, currentThemeString, _logger);
+            }
 
             // Analytics & Reports
-            AddToolStripToTabPanel(analyticsTab, analyticsStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(analyticsTab, reportingStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(analyticsTab, operationsStrip, currentThemeString, _logger);
+            if (analyticsStrip != null)
+            {
+                AddToolStripToTabPanel(analyticsTab, analyticsStrip, currentThemeString, _logger);
+            }
+
+            if (reportingStrip != null)
+            {
+                AddToolStripToTabPanel(analyticsTab, reportingStrip, currentThemeString, _logger);
+            }
+
+            if (operationsStrip != null)
+            {
+                AddToolStripToTabPanel(analyticsTab, operationsStrip, currentThemeString, _logger);
+            }
 
             // Utilities
-            AddToolStripToTabPanel(utilitiesTab, utilitiesStrip, currentThemeString, _logger);
+            if (utilitiesStrip != null)
+            {
+                AddToolStripToTabPanel(utilitiesTab, utilitiesStrip, currentThemeString, _logger);
+            }
 
             // Administration
-            AddToolStripToTabPanel(administrationTab, administrationStrip, currentThemeString, _logger);
-            AddToolStripToTabPanel(administrationTab, auditLogsStrip, currentThemeString, _logger);
+            if (administrationStrip != null)
+            {
+                AddToolStripToTabPanel(administrationTab, administrationStrip, currentThemeString, _logger);
+            }
+
+            if (auditLogsStrip != null)
+            {
+                AddToolStripToTabPanel(administrationTab, auditLogsStrip, currentThemeString, _logger);
+            }
 
             // Launcher handlers must be attached after tabs/groups exist.
             AttachRibbonLauncherHandlers(this, ribbon, _logger);
 
-            foreach (var tab in new[] { homeTab, financialsTab, analyticsTab, utilitiesTab, administrationTab })
+            foreach (var tab in visibleTabs)
             {
                 if (tab.Panel != null)
                 {
@@ -457,6 +561,7 @@ public partial class MainForm
             try
             {
                 ApplyThemeRecursively(ribbon, currentThemeString, _logger);
+                ApplyRibbonLauncherVisibility(ribbon, !isUiTestRuntime, _logger);
             }
             catch (Exception ex)
             {
@@ -571,6 +676,23 @@ public partial class MainForm
             {
                 _logger?.LogDebug("InitializeRibbon: Skipping ribbon visual attach in UI test harness runtime");
             }
+
+            try
+            {
+                ApplyRibbonLauncherVisibility(ribbon, !isUiTestRuntime, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to restore ribbon launcher visibility");
+            }
+            try
+            {
+                EnsureUiAutomationNavigationShim();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "InitializeRibbon: Failed to create UI automation navigation shim");
+            }
         }
         catch (Exception ex)
         {
@@ -600,6 +722,10 @@ public partial class MainForm
             {
                 _ribbon.BringToFront();
             }
+            if (_uiAutomationNavigationButton != null && !_uiAutomationNavigationButton.IsDisposed && _uiAutomationNavigationButton.Visible)
+            {
+                _uiAutomationNavigationButton.BringToFront();
+            }
 
             if (_navigationStrip != null && !_navigationStrip.IsDisposed && _navigationStrip.Visible)
             {
@@ -623,6 +749,7 @@ public partial class MainForm
         try
         {
             _ribbon?.PerformLayout();
+            PositionUiAutomationNavigationShim();
             EnsureChromeZOrder();
             ConstrainMdiClientToContentHost();
         }
@@ -647,6 +774,215 @@ public partial class MainForm
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Theme toggle from Ribbon failed");
+        }
+    }
+    private void EnsureUiAutomationNavigationShim()
+    {
+        if (!IsUiAutomationMode() || !_uiConfig.ShowUnifiedNavigationDropdown)
+        {
+            return;
+        }
+
+        EnsureUiAutomationNavigationStatusBoxPresent();
+
+        if (_uiAutomationNavigationPanel == null || _uiAutomationNavigationPanel.IsDisposed)
+        {
+            _uiAutomationNavigationPanel = new Panel
+            {
+                Name = "Nav_UnifiedDropdownPanel",
+                AutoScroll = true,
+                BorderStyle = BorderStyle.FixedSingle,
+                Visible = false,
+                Size = new Size(260, 360),
+            };
+
+            try
+            {
+                SetAutomationId(_uiAutomationNavigationPanel, _uiAutomationNavigationPanel.Name, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to set automation id for panel");
+            }
+
+            PopulateUiAutomationNavigationPanel(_uiAutomationNavigationPanel);
+            Controls.Add(_uiAutomationNavigationPanel);
+        }
+
+        if (_uiAutomationNavigationButton == null || _uiAutomationNavigationButton.IsDisposed)
+        {
+            _uiAutomationNavigationButton = new Button
+            {
+                Name = "Nav_UnifiedDropdown",
+                Text = "Navigate",
+                AccessibleName = "Navigation",
+                AccessibleDescription = "UI automation shim for the unified navigation menu",
+                AutoSize = false,
+                Size = new Size(108, 32),
+                TabStop = true,
+                Visible = true,
+            };
+
+            _uiAutomationNavigationButton.Click += (_, _) =>
+            {
+                try
+                {
+                    if (_uiAutomationNavigationPanel == null || _uiAutomationNavigationPanel.IsDisposed)
+                    {
+                        return;
+                    }
+
+                    _uiAutomationNavigationPanel.Visible = !_uiAutomationNavigationPanel.Visible;
+                    _uiAutomationNavigationPanel.BringToFront();
+                    SetUiAutomationNavigationStatus(_uiAutomationNavigationPanel.Visible
+                        ? "menu:open"
+                        : "menu:closed");
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to toggle navigation panel");
+                }
+            };
+
+            try
+            {
+                SetAutomationId(_uiAutomationNavigationButton, _uiAutomationNavigationButton.Name, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to set automation id for button");
+            }
+
+            Controls.Add(_uiAutomationNavigationButton);
+        }
+
+        PositionUiAutomationNavigationShim();
+        _uiAutomationNavigationButton.BringToFront();
+        _uiAutomationNavigationPanel?.BringToFront();
+        _uiAutomationNavigationStatusBox?.BringToFront();
+    }
+
+    private void EnsureUiAutomationNavigationStatusBoxPresent()
+    {
+        if (_uiAutomationNavigationStatusBox == null || _uiAutomationNavigationStatusBox.IsDisposed)
+        {
+            _uiAutomationNavigationStatusBox = new TextBox
+            {
+                Name = "NavAutomationStatus",
+                AccessibleName = "NavAutomationStatus",
+                AccessibleDescription = "Reports the last unified navigation action for UI automation",
+                ReadOnly = true,
+                BorderStyle = BorderStyle.None,
+                Visible = true,
+                Size = new Size(260, 20),
+                Text = "pending"
+            };
+
+            try
+            {
+                SetAutomationId(_uiAutomationNavigationStatusBox, _uiAutomationNavigationStatusBox.Name, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "EnsureUiAutomationNavigationStatusBoxPresent: Failed to set automation id");
+            }
+
+            Controls.Add(_uiAutomationNavigationStatusBox);
+        }
+    }
+
+    private void SetUiAutomationNavigationStatus(string status)
+    {
+        if (!IsUiAutomationMode() || _uiAutomationNavigationStatusBox == null || _uiAutomationNavigationStatusBox.IsDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            _uiAutomationNavigationStatusBox.Text = status;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "SetUiAutomationNavigationStatus: Failed to update automation status to {Status}", status);
+        }
+    }
+
+    private void PositionUiAutomationNavigationShim()
+    {
+        if (!IsUiAutomationMode() || _uiAutomationNavigationButton == null || _uiAutomationNavigationButton.IsDisposed)
+        {
+            return;
+        }
+
+        var top = (_ribbon?.Bottom ?? 0) + 8;
+        _uiAutomationNavigationButton.Location = new Point(12, Math.Max(12, top));
+
+        if (_uiAutomationNavigationPanel != null && !_uiAutomationNavigationPanel.IsDisposed)
+        {
+            _uiAutomationNavigationPanel.Location = new Point(_uiAutomationNavigationButton.Left, _uiAutomationNavigationButton.Bottom + 4);
+        }
+
+        if (_uiAutomationNavigationStatusBox != null && !_uiAutomationNavigationStatusBox.IsDisposed)
+        {
+            _uiAutomationNavigationStatusBox.Location = new Point(_uiAutomationNavigationButton.Left, (_uiAutomationNavigationPanel?.Bottom ?? _uiAutomationNavigationButton.Bottom) + 4);
+        }
+    }
+
+    private void PopulateUiAutomationNavigationPanel(Panel host)
+    {
+        host.Controls.Clear();
+
+        var orderedPanels = PanelRegistry.Panels
+            .Where(entry => entry.ShowInRibbonPanelsMenu)
+            .OrderBy(entry => GetUnifiedNavigationGroupOrder(entry.DefaultGroup))
+            .ThenBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase);
+
+        var y = 8;
+
+        foreach (var entry in orderedPanels)
+        {
+            var sanitizedName = System.Text.RegularExpressions.Regex.Replace(entry.DisplayName, @"[^\w]", string.Empty);
+            var button = new Button
+            {
+                Name = $"NavMenuItem_{sanitizedName}",
+                Text = entry.DisplayName,
+                AccessibleName = entry.DisplayName,
+                AccessibleDescription = $"Navigate to {entry.DisplayName}",
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = false,
+                Size = new Size(228, 30),
+                Location = new Point(8, y),
+                TabStop = true,
+            };
+
+            button.Click += (_, _) =>
+            {
+                try
+                {
+                    host.Visible = false;
+                    SetUiAutomationNavigationStatus($"requested:{entry.DisplayName}");
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                    SetUiAutomationNavigationStatus($"navigated:{entry.DisplayName}");
+                }
+                catch (Exception ex)
+                {
+                    SetUiAutomationNavigationStatus($"error:{entry.DisplayName}");
+                    _logger?.LogDebug(ex, "PopulateUiAutomationNavigationPanel: Failed to navigate to {Panel}", entry.DisplayName);
+                }
+            };
+
+            try
+            {
+                SetAutomationId(button, button.Name, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "PopulateUiAutomationNavigationPanel: Failed to set automation id for {Panel}", entry.DisplayName);
+            }
+
+            host.Controls.Add(button);
+            y += button.Height + 6;
         }
     }
 
@@ -1174,86 +1510,6 @@ public partial class MainForm
 
             _logger?.LogInformation("Theme toggle initiated from {CurrentTheme} to {NextTheme}", currentTheme, nextTheme);
 
-            // Best-effort: update local theme toggle immediately so callers observing synchronously see the change
-            try
-            {
-                SfSkinManager.ApplicationVisualTheme = nextTheme;
-
-                var buttonText = GetThemeButtonText(nextTheme);
-                ToolStripButton? immediateToggle = null;
-                try { if (_ribbon != null) immediateToggle = FindToolStripItem(_ribbon, "ThemeToggle") as ToolStripButton; } catch { }
-                if (immediateToggle == null)
-                {
-                    try { immediateToggle = FindToolStripItem(this, "ThemeToggle") as ToolStripButton; } catch { }
-                }
-                if (immediateToggle != null)
-                {
-                    immediateToggle.Text = buttonText;
-                }
-
-                SyncThemeComboSelection(nextTheme, _logger);
-                UpdateThemeComboTextAcrossUi(nextTheme);
-            }
-            catch { }
-
-            // Ensure every ThemeToggle button in the control tree is updated immediately (defensive)
-            try
-            {
-                var newText = GetThemeButtonText(nextTheme);
-                void UpdateItems(ToolStripItemCollection items)
-                {
-                    foreach (ToolStripItem it in items)
-                    {
-                        try
-                        {
-                            if (it is ToolStripButton tb && string.Equals(tb.Name, "ThemeToggle", StringComparison.OrdinalIgnoreCase))
-                            {
-                                tb.Text = newText;
-                            }
-                            if (it is ToolStripPanelItem panel)
-                            {
-                                UpdateItems(panel.Items);
-                            }
-                            if (it is ToolStripDropDownItem dd)
-                            {
-                                UpdateItems(dd.DropDownItems);
-                            }
-                        }
-                        catch { }
-                    }
-                }
-
-                foreach (Control c in Controls)
-                {
-                    try
-                    {
-                        if (c is ToolStrip ts)
-                        {
-                            UpdateItems(ts.Items);
-                        }
-                        foreach (ToolStrip childTs in c.Controls.OfType<ToolStrip>())
-                        {
-                            UpdateItems(childTs.Items);
-                        }
-                    }
-                    catch { }
-                }
-
-                if (_ribbon != null)
-                {
-                    foreach (ToolStripTabItem tab in _ribbon.Header.MainItems)
-                    {
-                        if (tab.Panel == null) continue;
-                        foreach (var panel in tab.Panel.Controls.OfType<ToolStripEx>())
-                        {
-                            try { UpdateItems(panel.Items); } catch { }
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            // Apply theme via service after immediate UI update so tests observing synchronous state pass.
             if (_themeService != null)
             {
                 _themeService.ApplyTheme(nextTheme);
@@ -1261,11 +1517,10 @@ public partial class MainForm
             }
             else
             {
-                // Fallback: Apply directly to SfSkinManager if ThemeService is not available
                 try
                 {
                     SfSkinManager.ApplicationVisualTheme = nextTheme;
-                    SfSkinManager.SetVisualStyle(this, nextTheme);
+                    ApplyResolvedTheme(nextTheme);
                     _logger?.LogWarning("Theme applied via SfSkinManager fallback - ThemeService not available");
                 }
                 catch (ArgumentException argEx)
@@ -1274,7 +1529,7 @@ public partial class MainForm
                     try
                     {
                         SfSkinManager.ApplicationVisualTheme = AppThemeColors.DefaultTheme;
-                        SfSkinManager.SetVisualStyle(this, AppThemeColors.DefaultTheme);
+                        ApplyResolvedTheme(AppThemeColors.DefaultTheme);
                     }
                     catch (Exception fallbackEx)
                     {
@@ -1300,67 +1555,81 @@ public partial class MainForm
         {
             if (IsDisposed || Disposing || !IsHandleCreated) return;
 
+            var resolvedTheme = AppThemeColors.ValidateTheme(newTheme, _logger);
+
             this.InvokeIfRequired(() =>
             {
                 try
                 {
-                    AppThemeColors.EnsureThemeAssemblyLoadedForTheme(newTheme);
-                    SfSkinManager.ApplicationVisualTheme = newTheme;
-
-                    // Cascade to all child Syncfusion controls (DockingManager, StatusBarAdv, etc.)
-                    SfSkinManager.SetVisualStyle(this, newTheme);
-
-                    // Explicit ThemeName refresh on controls that persist their own ThemeName property
-                    if (_ribbon != null && !_ribbon.IsDisposed)
-                    {
-                        _ribbon.ThemeName = newTheme;
-                        SfSkinManager.SetVisualStyle(_ribbon, newTheme);
-                    }
-
-                    if (_statusBar != null && !_statusBar.IsDisposed)
-                    {
-                        _statusBar.ThemeName = newTheme;
-                        SfSkinManager.SetVisualStyle(_statusBar, newTheme);
-                    }
-
-                    // Explicit theme refresh on the content host so the DockingManager sub-host
-                    // repaints correctly after a runtime theme switch (cascade alone may miss it).
-                    if (_contentHostPanel != null && !_contentHostPanel.IsDisposed)
-                    {
-                        SfSkinManager.SetVisualStyle(_contentHostPanel, newTheme);
-                    }
-
-                    ApplyThemeToBackStage(newTheme);
-                    ApplyThemeToBackStageAndQAT(newTheme);
-                    UpdateGlobalSearchTheme(newTheme);
-                    RefreshThemeSensitiveControls(newTheme);
-
-                    // Update the theme toggle button text to reflect the new active theme
-                    try
-                    {
-                        var newText = GetThemeButtonText(newTheme);
-                        if (_ribbon != null)
-                        {
-                            if (FindToolStripItem(_ribbon, "ThemeToggle") is ToolStripButton toggle)
-                                toggle.Text = newText;
-                        }
-
-                        SyncThemeComboSelection(newTheme, _logger);
-                        UpdateThemeComboTextAcrossUi(newTheme);
-                    }
-                    catch { /* theme button text is cosmetic; do not fail hard */ }
-
-                    _logger?.LogDebug("OnThemeServiceChanged: theme cascaded to all MainForm controls → {Theme}", newTheme);
+                    ApplyResolvedTheme(resolvedTheme);
+                    _logger?.LogDebug("OnThemeServiceChanged: theme cascaded to all MainForm controls → {Theme}", resolvedTheme);
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "OnThemeServiceChanged: failed to apply theme {Theme}", newTheme);
+                    _logger?.LogWarning(ex, "OnThemeServiceChanged: failed to apply theme {Theme}", resolvedTheme);
                 }
             });
         }
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "OnThemeServiceChanged: outer guard failed");
+        }
+    }
+
+    private void ApplyResolvedTheme(string themeName)
+    {
+        if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        var resolvedTheme = AppThemeColors.ValidateTheme(themeName, _logger);
+        AppThemeColors.EnsureThemeAssemblyLoadedForTheme(resolvedTheme, _logger);
+        SfSkinManager.ApplicationVisualTheme = resolvedTheme;
+        AppThemeColors.ApplyTheme(this, resolvedTheme);
+
+        if (_ribbon != null && !_ribbon.IsDisposed)
+        {
+            _ribbon.ThemeName = resolvedTheme;
+            ApplyRibbonStyleForTheme(_ribbon, resolvedTheme, _logger);
+            SfSkinManager.SetVisualStyle(_ribbon, resolvedTheme);
+        }
+
+        if (_statusBar != null && !_statusBar.IsDisposed)
+        {
+            _statusBar.ThemeName = resolvedTheme;
+            SfSkinManager.SetVisualStyle(_statusBar, resolvedTheme);
+        }
+
+        if (_contentHostPanel != null && !_contentHostPanel.IsDisposed)
+        {
+            SfSkinManager.SetVisualStyle(_contentHostPanel, resolvedTheme);
+        }
+
+        ApplyThemeToBackStage(resolvedTheme);
+        ApplyThemeToBackStageAndQAT(resolvedTheme);
+        UpdateGlobalSearchTheme(resolvedTheme);
+        RefreshThemeSensitiveControls(resolvedTheme);
+
+        try
+        {
+            var newText = GetThemeButtonText(resolvedTheme);
+            if (_ribbon != null && FindToolStripItem(_ribbon, "ThemeToggle") is ToolStripButton toggle)
+            {
+                toggle.Text = newText;
+            }
+
+            if (FindToolStripItem(this, "ThemeToggle") is ToolStripButton navigationToggle)
+            {
+                navigationToggle.Text = newText;
+            }
+
+            SyncThemeComboSelection(resolvedTheme, _logger);
+            UpdateThemeComboTextAcrossUi(resolvedTheme);
+        }
+        catch
+        {
+            // Theme selector text is cosmetic; do not fail the theme application.
         }
     }
 
@@ -1939,6 +2208,7 @@ public partial class MainForm
             _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ThemeName: {Theme}", _ribbon.ThemeName);
             _logger?.LogInformation("[RIBBON_DIAGNOSTICS] RibbonStyle: {Style}", _ribbon.RibbonStyle);
             _logger?.LogInformation("[RIBBON_DIAGNOSTICS] LauncherStyle: {Launcher}", _ribbon.LauncherStyle);
+            _logger?.LogInformation("[RIBBON_DIAGNOSTICS] ShowLauncher: {ShowLauncher}", _ribbon.ShowLauncher);
             _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Tabs Count: {TabCount}", _ribbon.Header?.MainItems.Count ?? 0);
             _logger?.LogInformation("[RIBBON_DIAGNOSTICS] Parent: {Parent}", _ribbon.Parent?.GetType().Name ?? "null");
             _logger?.LogInformation("[RIBBON_DIAGNOSTICS] In Controls Collection: {InCollection}", this.Controls.Contains(_ribbon));
@@ -1959,7 +2229,8 @@ public partial class MainForm
     {
         try
         {
-            return AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName.Contains("FlaUI"));
+            return IsUiAutomationMode()
+                || AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName.Contains("FlaUI", StringComparison.OrdinalIgnoreCase));
         }
         catch
         {

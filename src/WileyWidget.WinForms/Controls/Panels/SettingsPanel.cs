@@ -164,13 +164,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// </summary>
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public SettingsPanel(SettingsViewModel viewModel, SyncfusionControlFactory controlFactory)
-            : base(viewModel)
+            : base(viewModel, controlFactory)
         {
             _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Size = new Size(1100, 760);
             MinimumSize = new Size(1024, 720);
             EnsureControlsInitialized();
+            CompleteDirectInitialization();
         }
 
         /// <summary>

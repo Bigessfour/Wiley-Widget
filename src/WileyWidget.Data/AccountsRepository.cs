@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -161,7 +160,8 @@ public class AccountsRepository : IAccountsRepository
 
         _logger.LogDebug("Searching accounts for term: {SearchTerm}", searchTerm);
 
-        var normalizedSearch = searchTerm.ToLowerInvariant();
+        var normalizedSearch = searchTerm.Trim();
+        var searchPattern = $"%{normalizedSearch}%";
 
         using var scope = _scopeFactory.CreateScope();
 
@@ -169,9 +169,9 @@ public class AccountsRepository : IAccountsRepository
         return await context.Set<MunicipalAccount>()
             .AsNoTracking()
             .Where(a =>
-                a.Name.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch) ||
-                (a.AccountNumber_Value != null && a.AccountNumber_Value.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)) ||
-                (a.FundDescription != null && a.FundDescription.ToLower(CultureInfo.InvariantCulture).Contains(normalizedSearch)))
+                EF.Functions.Like(a.Name, searchPattern) ||
+                (a.AccountNumber_Value != null && EF.Functions.Like(a.AccountNumber_Value, searchPattern)) ||
+                (a.FundDescription != null && EF.Functions.Like(a.FundDescription, searchPattern)))
             .OrderBy(a => a.AccountNumber_Value)
             .ToListAsync(cancellationToken);
     }
@@ -199,17 +199,29 @@ public class AccountsRepository : IAccountsRepository
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
             // Aggregate transactions by month for revenue (assuming positive amounts are revenue)
-            var aggregates = await context.Set<Models.Transaction>()
+            var monthlyRows = await context.Set<Models.Transaction>()
+                .AsNoTracking()
                 .Where(t => t.TransactionDate >= startDate && t.TransactionDate <= endDate && t.Amount > 0)
                 .GroupBy(t => new { t.TransactionDate.Year, t.TransactionDate.Month })
-                .Select(g => new MonthlyRevenueAggregate
+                .Select(g => new
                 {
-                    Month = new DateTime(g.Key.Year, g.Key.Month, 1),
+                    g.Key.Year,
+                    g.Key.Month,
                     Amount = g.Sum(t => t.Amount),
                     TransactionCount = g.Count()
                 })
-                .OrderBy(a => a.Month)
+                .OrderBy(a => a.Year)
+                .ThenBy(a => a.Month)
                 .ToListAsync(cancellationToken);
+
+            var aggregates = monthlyRows
+                .Select(row => new MonthlyRevenueAggregate
+                {
+                    Month = new DateTime(row.Year, row.Month, 1),
+                    Amount = row.Amount,
+                    TransactionCount = row.TransactionCount
+                })
+                .ToList();
 
             activity?.SetTag("result.count", aggregates.Count);
             activity?.SetStatus(ActivityStatusCode.Ok);

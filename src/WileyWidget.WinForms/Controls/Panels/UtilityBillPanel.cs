@@ -101,9 +101,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
     public UtilityBillPanel(UtilityBillViewModel viewModel, SyncfusionControlFactory controlFactory)
-        : base(viewModel)
+        : base(viewModel, controlFactory, ResolveLogger())
     {
         _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
+        CompleteDirectInitialization();
     }
 
     private static ILogger ResolveLogger()
@@ -375,11 +376,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         _toolTip.SetToolTip(_markPaidButton, "Record payment for the selected bill (Ctrl+P)");
 
         _generateReportButton = CreateButton("&Report", buttonSize, 5);
-        _generateReportButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel.GenerateReportCommand);
+        _generateReportButton.Text = "Export &PDF";
+        _generateReportButtonClickHandler = ExportPdfButton_Click;
         _generateReportButton.Click += _generateReportButtonClickHandler;
-        _toolTip.SetToolTip(_generateReportButton, "Generate utility bill report (Ctrl+R)");
+        _toolTip.SetToolTip(_generateReportButton, "Export the filtered utility bills to PDF (Ctrl+R)");
 
-        _exportExcelButton = CreateButton("E&xport", buttonSize, 6);
+        _exportExcelButton = CreateButton("Export E&xcel", buttonSize, 6);
         _exportExcelButton.Enabled = false;
         _exportExcelButtonClickHandler = ExportExcelButton_Click;
         _exportExcelButton.Click += _exportExcelButtonClickHandler;
@@ -570,13 +572,13 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         });
         _markPaidButton.Click += async (s, e) => await ViewModel.MarkAsPaidCommand.ExecuteAsync(null);
 
-        _generateReportButton = Factory.CreateSfButton("&Generate Report", button =>
+        _generateReportButton = Factory.CreateSfButton("Export &PDF", button =>
         {
             button.TabIndex = 6;
-            button.AccessibleName = "Generate Report";
-            button.AccessibleDescription = "Generate a report of utility bills";
+            button.AccessibleName = "Export PDF";
+            button.AccessibleDescription = "Export the filtered utility bills to PDF";
         });
-        _generateReportButton.Click += async (s, e) => await ViewModel.GenerateReportCommand.ExecuteAsync(null);
+        _generateReportButton.Click += ExportPdfButton_Click;
 
         _refreshButton = Factory.CreateSfButton("&Refresh", button =>
         {
@@ -1221,6 +1223,79 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 UpdateStatus("Export failed.");
                 MessageBox.Show(
                     $"Error exporting to Excel: {ex.Message}",
+                    "Export Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }));
+    }
+
+    private void ExportPdfButton_Click(object? sender, EventArgs e)
+    {
+        BeginInvoke(new Func<Task>(async () =>
+        {
+            try
+            {
+                if (_billsGrid == null) return;
+
+                var view = _billsGrid.View;
+                if (view == null)
+                {
+                    MessageBox.Show("Grid is still loading. Please try again once data is ready.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (view.Records?.Count == 0)
+                {
+                    MessageBox.Show("No data to export.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    UpdateStatus("No bills available to export.");
+                    return;
+                }
+
+                var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+                    owner: this,
+                    operationKey: $"{nameof(UtilityBillPanel)}.Pdf",
+                    dialogTitle: "Export Utility Bills to PDF",
+                    filter: "PDF Files (*.pdf)|*.pdf",
+                    defaultExtension: "pdf",
+                    defaultFileName: $"UtilityBills_{DateTime.Now:yyyyMMdd}.pdf",
+                    exportAction: (filePath, cancellationToken) => ExportService.ExportGridToPdfAsync(_billsGrid, filePath, cancellationToken),
+                    statusCallback: UpdateStatus,
+                    logger: Logger,
+                    cancellationToken: CancellationToken.None);
+
+                if (result.IsSkipped)
+                {
+                    MessageBox.Show(result.ErrorMessage ?? "An export is already in progress.", "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (result.IsCancelled)
+                {
+                    UpdateStatus("PDF export cancelled.");
+                    return;
+                }
+
+                if (!result.IsSuccess)
+                {
+                    UpdateStatus("PDF export failed.");
+                    MessageBox.Show(result.ErrorMessage ?? "Export failed.", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                UpdateStatus("PDF export completed successfully");
+                MessageBox.Show(
+                    $"Bills exported successfully to:\n{result.FilePath}",
+                    "Export Successful",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to export utility bills to PDF");
+                UpdateStatus("PDF export failed.");
+                MessageBox.Show(
+                    $"Failed to export bills to PDF:\n{ex.Message}",
                     "Export Error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);

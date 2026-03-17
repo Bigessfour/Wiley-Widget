@@ -14,6 +14,7 @@ using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Configuration;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -152,8 +153,10 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             _content.Controls.Add(_contentPanel, 0, 0);
 
-            // Add content root to controls
+            // Add top chrome and content root to the control tree.
             Controls.Add(_content);
+            Controls.Add(_topPanel);
+            _topPanel.BringToFront();
 
             // Loading overlay
             _loader = _factory!.CreateLoadingOverlay(overlay =>
@@ -211,20 +214,40 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// </summary>
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public WarRoomPanel(WarRoomViewModel viewModel, SyncfusionControlFactory controlFactory)
-            : base(viewModel)
+            : base(viewModel, controlFactory)
         {
             _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             SafeSuspendAndLayout(InitializeControls);
+            CompleteDirectInitialization();
         }
 
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
 
-            if (Visible && !_dataLoaded)
+            if (Visible && !_dataLoaded && !ShouldSkipAutoLoadForTestHarness())
             {
                 _dataLoaded = true;
                 LoadAsyncSafe();
+            }
+        }
+
+        private bool ShouldSkipAutoLoadForTestHarness()
+        {
+            if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            try
+            {
+                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<UIConfiguration>(ServiceProvider)?.IsUiTestHarness == true;
+            }
+            catch
+            {
+                return false;
             }
         }
 

@@ -29,6 +29,7 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Utilities;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.UI.Helpers;
 using SplitContainerAdv = Syncfusion.Windows.Forms.Tools.SplitContainerAdv;
 
@@ -70,7 +71,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public ActivityLogPanel(ActivityLogViewModel viewModel, SyncfusionControlFactory controlFactory)
-            : base(viewModel)
+            : base(viewModel, controlFactory, ResolveLogger())
         {
             _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             // Set AutoScaleMode for proper DPI scaling
@@ -85,6 +86,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             // SetupUI() moved to OnShown after _activityGrid is created
             InitializeAutoRefresh();
             // LoadInitialData() moved to OnViewModelResolved to ensure ViewModel is available
+            CompleteDirectInitialization();
         }
 
         private static ILogger ResolveLogger()
@@ -95,14 +97,37 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private SyncfusionControlFactory Factory => _factory ?? ControlFactory;
 
-        protected override void OnViewModelResolved(object? viewModel)
+        protected override void OnViewModelResolved(ActivityLogViewModel? viewModel)
         {
             base.OnViewModelResolved(viewModel);
-            if (viewModel is not ActivityLogViewModel typedViewModel)
+            if (viewModel is null)
             {
                 return;
             }
-            LoadInitialData();
+
+            if (!ShouldSkipAutoLoadForTestHarness())
+            {
+                LoadInitialData();
+            }
+        }
+
+        private bool ShouldSkipAutoLoadForTestHarness()
+        {
+            if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            try
+            {
+                return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                    .GetService<UIConfiguration>(ServiceProvider)?.IsUiTestHarness == true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         protected async void LoadInitialData()

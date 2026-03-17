@@ -24,6 +24,7 @@ using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Themes;
 // using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
@@ -210,13 +211,14 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     /// <summary>
     /// Called when the ViewModel is resolved from the scoped provider.
     /// </summary>
-    protected override void OnViewModelResolved(object? viewModel)
+    protected override void OnViewModelResolved(RecommendedMonthlyChargeViewModel? viewModel)
     {
         base.OnViewModelResolved(viewModel);
-        if (viewModel is not RecommendedMonthlyChargeViewModel)
+        if (viewModel is null)
         {
             return;
         }
+
         SafeSuspendAndLayout(InitializeControls);
         BindViewModel();
         ApplyCurrentTheme();
@@ -1077,6 +1079,12 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     {
         if (ViewModel != null && !DesignMode)
         {
+            if (ShouldSkipAutoLoadForTestHarness())
+            {
+                Logger?.LogDebug("Skipping RecommendedMonthlyChargePanel auto-load in test harness mode");
+                return;
+            }
+
             // Queue async loading on the UI thread
             BeginInvoke(new Func<Task>(async () =>
             {
@@ -1089,6 +1097,25 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
                     Logger?.LogError(ex, "Error loading panel data");
                 }
             }));
+        }
+    }
+
+    private bool ShouldSkipAutoLoadForTestHarness()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<UIConfiguration>(ServiceProvider)?.IsUiTestHarness == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 

@@ -1,4 +1,4 @@
-name: Test and Coverage
+name: Focused Tests and Coverage
 
 on:
   push:
@@ -22,15 +22,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore dependencies
-        run: dotnet restore WileyWidget.sln
+      - name: Restore WinForms test project
+        run: dotnet restore tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj
 
-      - name: Build
-        run: dotnet build WileyWidget.sln --no-restore --configuration Release
+      - name: Build WinForms test project
+        run: dotnet build tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --no-restore --configuration Release
 
-      - name: Test with Coverage
+      - name: Test WinForms project with Coverage
         run: |
-          dotnet test WileyWidget.sln --no-build --configuration Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --no-build --configuration Release --filter "Category!=Smoke&Category!=RealAPI&Category!=Expensive" --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

@@ -70,6 +70,7 @@ namespace WileyWidget.UiTests
 
                 // Assert no errors in status (indirect DI validation)
                 var statusBar = window.FindFirstDescendant(cf => cf.ByAutomationId("ProfessionalStatusBar"));
+                Assert.NotNull(statusBar);
                 var errorLabel = statusBar.FindFirstDescendant(cf => cf.ByName("Error"));
                 Assert.Null(errorLabel);
             }

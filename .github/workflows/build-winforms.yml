@@ -183,7 +183,7 @@ jobs:
           # Exit 0 even when no tests match the filter (discovery is informational)
           exit 0
 
-      - name: Run WinForms startup test (capture log)
+      - name: Run WinForms startup smoke (capture log)
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
@@ -196,6 +196,28 @@ jobs:
             --results-directory ${{ github.workspace }}\TestResults `
             --blame-hang-timeout 3m *>&1 | Tee-Object -FilePath test.log
           Set-Content -Path test-exitcode.txt -Value $LASTEXITCODE
+        env:
+          SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
+          WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD: ${{ matrix.config.dashboardAutoLoad }}
+          WILEYWIDGET_TEST_DISABLE_DOCKING: ${{ matrix.config.disableDocking }}
+          WILEYWIDGET_TEST_DISABLE_RIBBON: ${{ matrix.config.disableRibbon }}
+          WILEYWIDGET_TEST_ARTIFACTS_DIR: ${{ github.workspace }}\artifacts
+          WILEYWIDGET_TEST_SCREENSHOT_ON_FAILURE: "true"
+
+      - name: Run WinForms proof smoke suite (default config)
+        if: matrix.config.name == 'default'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --filter "Category=Smoke" `
+            --logger "console;verbosity=detailed" `
+            --logger "trx;LogFileName=proof-smoke.trx" `
+            --results-directory ${{ github.workspace }}\TestResults `
+            --blame-hang-timeout 5m *>&1 | Tee-Object -FilePath smoke.log
+          Set-Content -Path smoke-exitcode.txt -Value $LASTEXITCODE
         env:
           SYNCFUSION_LICENSE_KEY: ${{ secrets.SYNCFUSION_LICENSE_KEY }}
           WILEYWIDGET_TEST_DASHBOARD_AUTOLOAD: ${{ matrix.config.dashboardAutoLoad }}
@@ -249,8 +271,10 @@ jobs:
             build.log
             build-tests.log
             test.log
+            smoke.log
             test-discovery.log
             test-exitcode.txt
+            smoke-exitcode.txt
             trx-files.txt
             log-files.txt
             artifacts/control-tree.txt

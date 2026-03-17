@@ -40,6 +40,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Helpers;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.Configuration;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -501,30 +502,59 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     /// Called after ViewModel is resolved from scoped service provider.
     /// Binds ViewModel data and initiates data load.
     /// </summary>
-    protected override void OnViewModelResolved(object? viewModel)
+    protected override void OnViewModelResolved(RevenueTrendsViewModel? viewModel)
     {
         base.OnViewModelResolved(viewModel);
-        if (viewModel is not RevenueTrendsViewModel typedViewModel)
+        if (viewModel is null)
         {
             return;
         }
 
         // Subscribe to ViewModel property changes
         _viewModelPropertyChangedHandler = ViewModel_PropertyChanged;
-        typedViewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+        viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
 
         // Subscribe to MonthlyData collection changes
         _monthlyDataCollectionChangedHandler = (s, e) => UpdateUI();
-        typedViewModel.MonthlyData.CollectionChanged += _monthlyDataCollectionChangedHandler;
+        viewModel.MonthlyData.CollectionChanged += _monthlyDataCollectionChangedHandler;
 
         // Initial UI update
         UpdateUI();
 
-        // Defer sizing validation until layout is complete
-        this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+        // Defer sizing validation until layout is complete when a handle exists.
+        if (IsHandleCreated)
+        {
+            BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+        }
+        else
+        {
+            SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _);
+        }
 
         // Load data asynchronously
-        _ = LoadDataSafeAsync();
+        if (!ShouldSkipAutoLoadForTestHarness())
+        {
+            _ = LoadDataSafeAsync();
+        }
+    }
+
+    private bool ShouldSkipAutoLoadForTestHarness()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<UIConfiguration>(ServiceProvider)?.IsUiTestHarness == true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task LoadDataSafeAsync(CancellationToken cancellationToken = default)

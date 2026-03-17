@@ -29,14 +29,16 @@ namespace WileyWidget.WinForms.Factories;
 public class SyncfusionControlFactory
 {
     private readonly ILogger<SyncfusionControlFactory> _logger;
-    private readonly string _currentTheme;
+    private readonly IThemeService? _themeService;
+
+    private string CurrentTheme => _themeService?.CurrentTheme
+        ?? SfSkinManager.ApplicationVisualTheme
+        ?? "Office2019Colorful";
 
     public SyncfusionControlFactory(ILogger<SyncfusionControlFactory> logger, IThemeService? themeService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _currentTheme = themeService?.CurrentTheme
-            ?? SfSkinManager.ApplicationVisualTheme
-            ?? "Office2019Colorful";
+        _themeService = themeService;
     }
 
     #region SfDataGrid
@@ -69,7 +71,7 @@ public class SyncfusionControlFactory
             ShowToolTip = true,
         };
 
-        grid.ApplySyncfusionTheme(_currentTheme, _logger);
+        grid.ApplySyncfusionTheme(CurrentTheme, _logger);
         grid.PreventStringRelationalFilters(_logger);
         configure?.Invoke(grid);
 
@@ -94,7 +96,7 @@ public class SyncfusionControlFactory
             TextImageRelation = TextImageRelation.ImageBeforeText,
         };
 
-        button.ApplySyncfusionTheme(_currentTheme, _logger);
+        button.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(button);
         return button;
     }
@@ -120,7 +122,7 @@ public class SyncfusionControlFactory
         chart.PrimaryXAxis.Title = "X Axis";
         chart.PrimaryYAxis.Title = "Y Axis";
 
-        chart.ApplySyncfusionTheme(_currentTheme, _logger);
+        chart.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(chart);
         return chart;
     }
@@ -143,7 +145,7 @@ public class SyncfusionControlFactory
         chart.PrimaryXAxis.Title = "Fiscal Year";
         chart.PrimaryYAxis.Title = "Projected Reserves";
 
-        chart.ApplySyncfusionTheme(_currentTheme, _logger);
+        chart.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(chart);
         return chart;
     }
@@ -165,7 +167,7 @@ public class SyncfusionControlFactory
             ItemSize = new Size(120, 32),
         };
 
-        tabControl.ApplySyncfusionTheme(_currentTheme, _logger);
+        tabControl.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(tabControl);
         return tabControl;
     }
@@ -185,11 +187,11 @@ public class SyncfusionControlFactory
             TitleAlignment = TextAlignment.Left,
             RibbonStyle = RibbonStyle.Office2016,
             OfficeColorScheme = ToolStripEx.ColorScheme.Managed,
-            ThemeName = _currentTheme,
+            ThemeName = CurrentTheme,
         };
         ribbon.Dock = DockStyleEx.Top;
 
-        ribbon.ApplySyncfusionTheme(_currentTheme, _logger);
+        ribbon.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(ribbon);
         return ribbon;
     }
@@ -208,11 +210,11 @@ public class SyncfusionControlFactory
             SelectionMode = SelectionMode.One,
             HotTracking = true,
             ItemHeight = 28,
-            ThemeName = _currentTheme,
+            ThemeName = CurrentTheme,
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         };
 
-        listView.ApplySyncfusionTheme(_currentTheme, _logger);
+        listView.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(listView);
         return listView;
     }
@@ -237,7 +239,7 @@ public class SyncfusionControlFactory
             MaxNumberofSuggestion = 12,
             ShowColumnHeader = true,
             BorderType = AutoCompleteBorderTypes.Sizable,
-            ThemeName = _currentTheme,
+            ThemeName = CurrentTheme,
         };
 
         configure?.Invoke(autoComplete);
@@ -259,7 +261,7 @@ public class SyncfusionControlFactory
             CursorMode = PdfViewerCursorMode.SelectTool,
         };
 
-        pdfViewer.ApplySyncfusionTheme(_currentTheme, _logger);
+        pdfViewer.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(pdfViewer);
         return pdfViewer;
     }
@@ -280,7 +282,7 @@ public class SyncfusionControlFactory
             CanOverrideStyle = false,
         };
 
-        textBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        textBox.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(textBox);
         return textBox;
     }
@@ -303,7 +305,7 @@ public class SyncfusionControlFactory
             AllowDropDownResize = false,
         };
 
-        comboBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        comboBox.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(comboBox);
         return comboBox;
     }
@@ -322,7 +324,7 @@ public class SyncfusionControlFactory
             DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate,
         };
 
-        dateTimeEdit.ApplySyncfusionTheme(_currentTheme, _logger);
+        dateTimeEdit.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(dateTimeEdit);
         return dateTimeEdit;
     }
@@ -343,7 +345,7 @@ public class SyncfusionControlFactory
             Value = 0D,
         };
 
-        numericTextBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        numericTextBox.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(numericTextBox);
         return numericTextBox;
     }
@@ -363,7 +365,7 @@ public class SyncfusionControlFactory
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
         };
 
-        checkBox.ApplySyncfusionTheme(_currentTheme, _logger);
+        checkBox.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(checkBox);
         return checkBox;
     }
@@ -381,10 +383,10 @@ public class SyncfusionControlFactory
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
             SplitterWidth = 6,
-            ThemeName = _currentTheme,
+            ThemeName = CurrentTheme,
         };
 
-        splitContainer.ApplySyncfusionTheme(_currentTheme, _logger);
+        splitContainer.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(splitContainer);
         return splitContainer;
     }
@@ -406,7 +408,7 @@ public class SyncfusionControlFactory
             Value = 0,
         };
 
-        progressBar.ApplySyncfusionTheme(_currentTheme, _logger);
+        progressBar.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(progressBar);
         return progressBar;
     }
@@ -436,7 +438,7 @@ public class SyncfusionControlFactory
 
         dockingManager.HostForm = hostForm;
         dockingManager.HostControl = hostContainer;
-        dockingManager.ThemeName = _currentTheme;
+        dockingManager.ThemeName = CurrentTheme;
         dockingManager.EnableDocumentMode = false;
         dockingManager.ShowCaption = false;
         dockingManager.DockToFill = false;
@@ -467,7 +469,7 @@ public class SyncfusionControlFactory
             WordWrap = true,
         };
 
-        rtb.ApplySyncfusionTheme(_currentTheme, _logger);
+        rtb.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(rtb);
         return rtb;
     }
@@ -517,7 +519,7 @@ public class SyncfusionControlFactory
             ReadOnly = true,
             VisualStyle = ThemeStyle.Silver,
             GaugeLableColor = Color.Black,
-            ThemeName = _currentTheme,
+            ThemeName = CurrentTheme,
             GaugeLabel = $"{currentRatio:F1}%",
         };
 
@@ -538,7 +540,7 @@ public class SyncfusionControlFactory
             Height = 10,
         });
 
-        gauge.ApplySyncfusionTheme(_currentTheme, _logger);
+        gauge.ApplySyncfusionTheme(CurrentTheme, _logger);
 
         _logger.LogInformation("CircularGauge created for {Enterprise}", enterpriseName);
         return gauge;
@@ -579,7 +581,7 @@ public class SyncfusionControlFactory
         container.Controls.Add(gauge);
         container.Controls.Add(valueLabel);
         container.Controls.Add(titleLabel);
-        container.ApplySyncfusionTheme(_currentTheme, _logger);
+        container.ApplySyncfusionTheme(CurrentTheme, _logger);
 
         _logger.LogDebug("Created enterprise gauge container for {Enterprise}", enterpriseName);
         return container;
@@ -623,7 +625,7 @@ public class SyncfusionControlFactory
         breakEvenSeries.Style.Border.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
         chart.Series.Add(breakEvenSeries);
 
-        chart.ApplySyncfusionTheme(_currentTheme, _logger);
+        chart.ApplySyncfusionTheme(CurrentTheme, _logger);
 
         _logger.LogInformation("EnterpriseChart created for {Enterprise}", snapshot.Name);
         return chart;

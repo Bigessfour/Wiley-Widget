@@ -55,6 +55,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly SemaphoreSlim _cloudflaredSemaphore = new(1, 1);
     private Process? _cloudflaredProcess;
     private string? _cloudflaredPublicUrl;
+    private int _reauthorizationWarningLogged;
 
     // Intuit sandbox base URL documented at https://developer.intuit.com/app/developer/qbo/docs/develop/sandboxes
     private static readonly IReadOnlyList<string> DefaultScopes = new[] { "com.intuit.quickbooks.accounting" };
@@ -307,7 +308,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
             return;
         }
 
-        await _authService.RefreshTokenIfNeededAsync();
+        await _authService.RefreshTokenIfNeededAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async System.Threading.Tasks.Task RefreshTokenAsync(CancellationToken cancellationToken = default) => await _authService.RefreshTokenIfNeededAsync(cancellationToken);
@@ -695,9 +696,37 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "QBO expenses query failed");
+            if (RequiresQuickBooksReauthorization(ex))
+            {
+                if (Interlocked.Exchange(ref _reauthorizationWarningLogged, 1) == 0)
+                {
+                    _logger.LogWarning(ex, "QBO expenses query skipped because QuickBooks authorization requires re-authorization");
+                }
+                else
+                {
+                    _logger.LogDebug(ex, "QBO expenses query skipped because QuickBooks authorization remains invalid");
+                }
+            }
+            else
+            {
+                _logger.LogError(ex, "QBO expenses query failed");
+            }
+
             throw;
         }
+    }
+
+    private static bool RequiresQuickBooksReauthorization(Exception ex)
+    {
+        if (ex is QuickBooksAuthException)
+        {
+            return true;
+        }
+
+        var message = ex.Message;
+        return message.Contains("re-authorize", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("reauthorize", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("invalid or expired", StringComparison.OrdinalIgnoreCase);
     }
 
     public async System.Threading.Tasks.Task<List<Account>> GetChartOfAccountsAsync(CancellationToken cancellationToken = default)

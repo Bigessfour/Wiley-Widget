@@ -1,9 +1,13 @@
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Threading;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Input;
+using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA2;
+using FormsCursor = System.Windows.Forms.Cursor;
 
 using FlaUIApp = FlaUI.Core.Application;
 
@@ -124,18 +128,31 @@ namespace WileyWidget.UiTests
             // ribbon label (newline-separated text is normalised to space by some AT bridges).
             TryActivatePanel(window,
                 new[] { "Municipal Accounts", "Chart of Accounts", "Accounts", "Municipal\nAccounts" },
-                TimeSpan.FromSeconds(3));
+                TimeSpan.FromSeconds(3),
+                automation);
 
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
+                    if (navigationStatus != null && navigationStatus.Contains("navigated:Municipal Accounts", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
                     foreach (var title in UiTestConstants.AccountsPanelTitles)
                     {
                         var el = window.FindFirstDescendant(cf => cf.ByName(title));
                         if (el != null) return true;
                     }
+
+                    var accountsGrid = window.FindFirstDescendant(cf =>
+                        cf.ByAutomationId("dataGridAccounts")
+                            .Or(cf.ByName("Accounts Grid"))
+                            .Or(cf.ByName("Chart of Accounts Panel Header")));
+                    if (accountsGrid != null) return true;
                 }
                 catch { }
 
@@ -260,6 +277,11 @@ namespace WileyWidget.UiTests
                 }
                 catch { }
 
+                if (TryActivatePanelFromUnifiedNavigation(window, automation, new[] { "JARVIS Chat", "JARVIS", "Jarvis Chat" }))
+                {
+                    return;
+                }
+
                 Thread.Sleep(250);
             }
 
@@ -274,7 +296,7 @@ namespace WileyWidget.UiTests
         /// click so the caller can proceed to its poll loop without waiting out the full timeout.
         /// Swallows all exceptions — a navigation failure is not itself a test failure.
         /// </summary>
-        private static void TryActivatePanel(Window window, string[] buttonCandidates, TimeSpan clickTimeout)
+        private static void TryActivatePanel(Window window, string[] buttonCandidates, TimeSpan clickTimeout, UIA2Automation? automation = null)
         {
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < clickTimeout)
@@ -295,11 +317,320 @@ namespace WileyWidget.UiTests
                             return;
                         }
                     }
+
+                    if (TryActivatePanelFromUnifiedNavigation(window, automation, buttonCandidates))
+                    {
+                        Thread.Sleep(300);
+                        return;
+                    }
                 }
                 catch { /* element may not exist yet — retry */ }
 
                 Thread.Sleep(150);
             }
+        }
+
+        private static bool TryActivatePanelFromUnifiedNavigation(Window window, UIA2Automation? automation, string[] buttonCandidates)
+        {
+            AutomationElement? dropDown = null;
+
+            try
+            {
+                dropDown = window.FindFirstDescendant(cf => cf.ByAutomationId("Nav_UnifiedDropdown"))
+                    ?? window.FindFirstDescendant(cf => cf.ByName("Navigation"))
+                    ?? window.FindFirstDescendant(cf => cf.ByName("Navigate"));
+            }
+            catch
+            {
+            }
+
+            if (dropDown == null && automation != null)
+            {
+                try
+                {
+                    dropDown = automation.GetDesktop().FindFirstDescendant(cf =>
+                        cf.ByAutomationId("Nav_UnifiedDropdown")
+                            .Or(cf.ByName("Navigation"))
+                            .Or(cf.ByName("Navigate")));
+                }
+                catch
+                {
+                }
+            }
+
+            if (dropDown == null)
+            {
+                return TryActivatePanelFromUnifiedNavigationByKeyboard(window, buttonCandidates);
+            }
+
+            try
+            {
+                dropDown.Click();
+                Thread.Sleep(250);
+            }
+            catch
+            {
+                return false;
+            }
+
+            foreach (var candidate in buttonCandidates)
+            {
+                var automationId = $"NavMenuItem_{SanitizeAutomationName(candidate)}";
+                AutomationElement? menuItem = null;
+
+                var lookupStopwatch = Stopwatch.StartNew();
+                while (menuItem == null && lookupStopwatch.Elapsed < TimeSpan.FromSeconds(2))
+                {
+                    try
+                    {
+                        menuItem = window.FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
+                    }
+                    catch
+                    {
+                    }
+
+                    if (menuItem == null && automation != null)
+                    {
+                        try
+                        {
+                            menuItem = automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    if (menuItem == null)
+                    {
+                        Thread.Sleep(100);
+                    }
+                }
+
+                if (menuItem == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    menuItem.Click();
+                    return true;
+                }
+                catch
+                {
+                }
+            }
+
+            if (TrySelectFlatAutomationNavigationMenuItem(buttonCandidates))
+            {
+                return true;
+            }
+
+            return TryActivatePanelFromUnifiedNavigationByKeyboard(window, buttonCandidates);
+        }
+
+        private static bool TrySelectFlatAutomationNavigationMenuItem(string[] buttonCandidates)
+        {
+            try
+            {
+                foreach (var key in GetFlatAutomationNavigationKeyboardSequence(buttonCandidates))
+                {
+                    Keyboard.Type(key);
+                    Thread.Sleep(120);
+                }
+
+                return true;
+            }
+            catch
+            {
+                try
+                {
+                    Keyboard.Press(VirtualKeyShort.ESCAPE);
+                }
+                catch
+                {
+                }
+
+                return false;
+            }
+        }
+
+        private static bool TryActivatePanelFromUnifiedNavigationByKeyboard(Window window, string[] buttonCandidates)
+        {
+            try
+            {
+                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("Ribbon_Main"));
+                if (ribbon == null)
+                {
+                    return false;
+                }
+
+                window.Focus();
+
+                var bounds = ribbon.BoundingRectangle;
+                var clickPoint = new Point(Convert.ToInt32(bounds.Left + 72), Convert.ToInt32(bounds.Top + 132));
+                FormsCursor.Position = clickPoint;
+                Mouse.Click();
+                Thread.Sleep(250);
+
+                foreach (var key in GetUnifiedNavigationKeyboardSequence(buttonCandidates))
+                {
+                    Keyboard.Type(key);
+                    Thread.Sleep(120);
+                }
+
+                return true;
+            }
+            catch
+            {
+                try
+                {
+                    Keyboard.Press(VirtualKeyShort.ESCAPE);
+                }
+                catch
+                {
+                }
+
+                return false;
+            }
+        }
+
+        private static VirtualKeyShort[] GetUnifiedNavigationKeyboardSequence(string[] buttonCandidates)
+        {
+            if (buttonCandidates.Any(candidate => candidate.Contains("JARVIS", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[]
+                {
+                    VirtualKeyShort.KEY_H,
+                    VirtualKeyShort.RIGHT,
+                    VirtualKeyShort.KEY_J,
+                    VirtualKeyShort.ENTER,
+                };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[]
+                {
+                    VirtualKeyShort.KEY_F,
+                    VirtualKeyShort.RIGHT,
+                    VirtualKeyShort.KEY_B,
+                    VirtualKeyShort.ENTER,
+                };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[]
+                {
+                    VirtualKeyShort.KEY_F,
+                    VirtualKeyShort.RIGHT,
+                    VirtualKeyShort.KEY_M,
+                    VirtualKeyShort.ENTER,
+                };
+            }
+
+            return new[]
+            {
+                VirtualKeyShort.DOWN,
+                VirtualKeyShort.RIGHT,
+                VirtualKeyShort.ENTER,
+            };
+        }
+
+        private static VirtualKeyShort[] GetFlatAutomationNavigationKeyboardSequence(string[] buttonCandidates)
+        {
+            if (buttonCandidates.Any(candidate => candidate.Contains("JARVIS", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_J, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_B, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_M, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_E, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_C, VirtualKeyShort.ENTER };
+            }
+
+            return new[] { VirtualKeyShort.DOWN, VirtualKeyShort.ENTER };
+        }
+
+        private static string SanitizeAutomationName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return new string(value.Where(char.IsLetterOrDigit).ToArray());
+        }
+
+        private static string? TryGetNavigationAutomationStatus(Window window, UIA2Automation? automation)
+        {
+            AutomationElement? statusElement = null;
+
+            try
+            {
+                statusElement = window.FindFirstDescendant(cf => cf.ByAutomationId("NavAutomationStatus").Or(cf.ByName("NavAutomationStatus")));
+            }
+            catch
+            {
+            }
+
+            if (statusElement == null && automation != null)
+            {
+                try
+                {
+                    statusElement = automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId("NavAutomationStatus").Or(cf.ByName("NavAutomationStatus")));
+                }
+                catch
+                {
+                }
+            }
+
+            if (statusElement == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return statusElement.Properties.Name.ValueOrDefault;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                var valuePattern = statusElement.Patterns.Value;
+                if (valuePattern.IsSupported)
+                {
+                    return valuePattern.Pattern.Value.Value;
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -334,7 +665,7 @@ namespace WileyWidget.UiTests
         public static void ActivatePanel<T>(Window window, UIA2Automation automation, TimeSpan timeout) where T : class
         {
             var panelName = typeof(T).Name.Replace("Panel", ""); // e.g., BudgetPanel -> Budget
-            TryActivatePanel(window, new[] { panelName }, timeout);
+            TryActivatePanel(window, new[] { panelName }, timeout, automation);
         }
     }
 }

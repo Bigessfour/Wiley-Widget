@@ -278,6 +278,9 @@ namespace WileyWidget.WinForms.Controls.Base
     {
         protected readonly IServiceScope? _scope;
         protected readonly ILogger _logger;
+        private readonly IServiceProvider? _fallbackServiceProvider;
+        private readonly SyncfusionControlFactory? _directControlFactory;
+        private bool _directInitializationCompleted;
 
         /// <summary>Logger property alias for backward compatibility with panels using PascalCase Logger.</summary>
         protected ILogger Logger => _logger;
@@ -292,11 +295,16 @@ namespace WileyWidget.WinForms.Controls.Base
         protected bool HasUnsavedChanges { get; private set; }
 
         /// <summary>Provides access to the DI service provider from the panel's scope.</summary>
-        protected IServiceProvider ServiceProvider => _scope!.ServiceProvider;
+        protected IServiceProvider ServiceProvider =>
+            _scope?.ServiceProvider
+            ?? _fallbackServiceProvider
+            ?? WileyWidget.WinForms.Program.ServicesOrNull
+            ?? throw new InvalidOperationException($"No service provider is available for panel '{GetType().Name}'.");
 
         /// <summary>Factory for creating Syncfusion controls with mandatory properties pre-set.</summary>
         protected SyncfusionControlFactory ControlFactory =>
-            ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(_scope!.ServiceProvider);
+            _directControlFactory
+            ?? ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(ServiceProvider);
 
         /// <summary>Accumulated validation errors — cleared and repopulated by ValidateAsync overrides.</summary>
         protected List<ValidationItem> ValidationErrors { get; } = new();
@@ -312,6 +320,7 @@ namespace WileyWidget.WinForms.Controls.Base
         {
             _scope = scopeFactory.CreateScope();
             _logger = logger;
+            _fallbackServiceProvider = _scope.ServiceProvider;
 
             // Resolve ViewModel once from scope
             ViewModel = ServiceProviderServiceExtensions.GetService<TViewModel>(_scope.ServiceProvider);
@@ -334,16 +343,44 @@ namespace WileyWidget.WinForms.Controls.Base
         /// <param name="vm">Pre-built ViewModel instance supplied by the DI container.</param>
         /// <param name="logger">Optional logger; defaults to <see cref="Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance"/>.</param>
         protected ScopedPanelBase(TViewModel vm, ILogger? logger = null)
+            : this(vm, controlFactory: null, logger)
+        {
+        }
+
+        /// <summary>
+        /// Direct-injection constructor that also captures a pre-built Syncfusion control factory.
+        /// Panels using direct injection can call <see cref="CompleteDirectInitialization"/> after
+        /// their own fields are assigned so <see cref="OnViewModelResolved(TViewModel?)"/> can safely
+        /// use <see cref="ServiceProvider"/> and <see cref="ControlFactory"/>.
+        /// </summary>
+        protected ScopedPanelBase(TViewModel vm, SyncfusionControlFactory? controlFactory, ILogger? logger = null)
         {
             _scope = null;
+            _fallbackServiceProvider = WileyWidget.WinForms.Program.ServicesOrNull;
+            _directControlFactory = controlFactory;
             _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
 
             ViewModel = vm ?? throw new ArgumentNullException(nameof(vm));
+
+            AttachThemeService(_fallbackServiceProvider);
+        }
+
+        /// <summary>
+        /// Completes direct-injection initialization after the derived panel assigns its own fields.
+        /// This avoids invoking <see cref="OnViewModelResolved(TViewModel?)"/> before panel-local
+        /// dependencies such as injected factories are available.
+        /// </summary>
+        protected void CompleteDirectInitialization()
+        {
+            if (_directInitializationCompleted)
+            {
+                return;
+            }
+
+            _directInitializationCompleted = true;
             OnViewModelResolved(ViewModel);
             _logger.LogDebug("[{Panel}] Initialized (direct-injection) — ViewModel: {VmType}",
-                GetType().Name, ViewModel.GetType().Name);
-
-            AttachThemeService(WileyWidget.WinForms.Program.ServicesOrNull);
+                GetType().Name, ViewModel?.GetType().Name ?? typeof(TViewModel).Name);
         }
 
         protected sealed override void OnLoad(EventArgs e)

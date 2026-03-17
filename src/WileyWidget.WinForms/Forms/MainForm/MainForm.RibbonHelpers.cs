@@ -37,6 +37,7 @@ namespace WileyWidget.WinForms.Forms;
 /// APPEARANCE PROPERTIES:
 /// - RibbonStyle                       : Office2007/2010/2013/2016/2019 (dynamically set based on theme)
 /// - LauncherStyle                     : Metro (group launcher icon style)
+/// - ShowLauncher                      : true (show ribbon group launcher affordances)
 /// - BorderStyle                       : None (frameless appearance)
 /// - ShowCaption                       : true (show title bar)
 /// - CaptionHeight                     : DPI-aware height for title bar
@@ -183,6 +184,9 @@ public partial class MainForm
     {
         // Administration tab
         ["Account Editor"] = "\uE70F",      // Edit/pen — account editor panel
+
+        // Unified navigation
+        ["Navigate"] = "\uE8A9",            // Bulleted list / navigation menu
 
         // Home — Core Navigation
         ["Enterprise Vital Signs"] = "\uE80F",  // Enterprise vital signs (replaces Dashboard)
@@ -464,6 +468,7 @@ public partial class MainForm
             // === LAYOUT AND DISPLAY OPTIONS ===
             ribbon.ShowRibbonDisplayOptionButton = !isUiTestRuntime;
             ribbon.AutoLayoutToolStrip = true;
+            ribbon.ShowLauncher = !isUiTestRuntime;
 
             // === BEHAVIOR ===
             ribbon.AllowCollapse = true;
@@ -530,8 +535,20 @@ public partial class MainForm
                         continue;
                     }
 
+                    EnforceRibbonGroupDropdownState(strip, logger, "AttachLauncherHandlers");
                     strip.LauncherClick -= form.OnRibbonGroupLauncherClick;
                     strip.LauncherClick += form.OnRibbonGroupLauncherClick;
+                    strip.MouseUp -= form.OnRibbonGroupMouseUp;
+                    strip.MouseUp += form.OnRibbonGroupMouseUp;
+
+                    logger?.LogDebug(
+                        "[RIBBON_GROUP_DROPDOWN] Attached launcher handler: Strip={StripName} Tab={TabName} ShowLauncher={ShowLauncher} CanOverflow={CanOverflow} LayoutStyle={LayoutStyle} ItemCount={ItemCount}",
+                        strip.Name,
+                        tab.Name,
+                        strip.ShowLauncher,
+                        strip.CanOverflow,
+                        strip.LayoutStyle,
+                        strip.Items.Count);
                 }
             }
         }
@@ -541,15 +558,52 @@ public partial class MainForm
         }
     }
 
+    private void OnRibbonGroupMouseUp(object? sender, MouseEventArgs e)
+    {
+        if (sender is not ToolStripEx strip || e.Button != MouseButtons.Left)
+        {
+            return;
+        }
+
+        if (!IsRibbonLauncherHit(strip, e.Location))
+        {
+            return;
+        }
+
+        try
+        {
+            OnRibbonGroupLauncherClick(strip, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "[RIBBON_GROUP_DROPDOWN] MouseUp fallback failed for strip {StripName}", strip.Name);
+        }
+    }
+
     private void OnRibbonGroupLauncherClick(object? sender, EventArgs e)
     {
         try
         {
             if (sender is ToolStripEx strip)
             {
-                _logger?.LogInformation("Ribbon launcher clicked for group {GroupName}", strip.Name);
-                ApplyStatus($"Opening settings for {strip.Text}.");
-                ShowPanel<Controls.Panels.SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+                EnforceRibbonGroupDropdownState(strip, _logger, "LauncherClick");
+                _logger?.LogInformation(
+                    "[RIBBON_GROUP_DROPDOWN] Launcher clicked: Strip={StripName} Text={StripText} ShowLauncher={ShowLauncher} CanOverflow={CanOverflow} LayoutStyle={LayoutStyle} ItemCount={ItemCount}",
+                    strip.Name,
+                    strip.Text,
+                    strip.ShowLauncher,
+                    strip.CanOverflow,
+                    strip.LayoutStyle,
+                    strip.Items.Count);
+
+                if (ShowRibbonGroupDropdownMenu(strip))
+                {
+                    ApplyStatus($"Opened {strip.Text} actions.");
+                }
+                else
+                {
+                    _logger?.LogDebug("[RIBBON_GROUP_DROPDOWN] No actionable items found for strip {StripName}", strip.Name);
+                }
             }
             else
             {
@@ -560,6 +614,133 @@ public partial class MainForm
         {
             _logger?.LogDebug(ex, "Ribbon launcher action failed");
         }
+    }
+
+    private bool ShowRibbonGroupDropdownMenu(ToolStripEx strip)
+    {
+        if (strip == null || strip.IsDisposed)
+        {
+            return false;
+        }
+
+        var menu = new ContextMenuStrip
+        {
+            ShowImageMargin = true,
+            ShowCheckMargin = false,
+        };
+
+        var addedItems = 0;
+
+        foreach (ToolStripItem item in strip.Items)
+        {
+            if (item is ToolStripSeparator)
+            {
+                if (menu.Items.Count > 0 && menu.Items[^1] is not ToolStripSeparator)
+                {
+                    menu.Items.Add(new ToolStripSeparator());
+                }
+
+                continue;
+            }
+
+            if (item is not ToolStripButton button)
+            {
+                continue;
+            }
+
+            if (!button.Available || !button.Enabled)
+            {
+                continue;
+            }
+
+            var menuItem = new ToolStripMenuItem
+            {
+                Name = $"{button.Name}_LauncherMenuItem",
+                Text = button.AccessibleName ?? button.Text.Replace("\n", " "),
+                ToolTipText = button.ToolTipText,
+                Image = button.Image,
+                Enabled = button.Enabled,
+                Tag = button,
+            };
+
+            menuItem.Click += (_, _) =>
+            {
+                try
+                {
+                    button.PerformClick();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Ribbon launcher menu item failed for {ButtonName}", button.Name);
+                }
+            };
+
+            menu.Items.Add(menuItem);
+            addedItems++;
+        }
+
+        while (menu.Items.Count > 0 && menu.Items[^1] is ToolStripSeparator)
+        {
+            menu.Items.RemoveAt(menu.Items.Count - 1);
+        }
+
+        if (addedItems == 0)
+        {
+            menu.Dispose();
+            return false;
+        }
+
+        menu.Closed += (_, _) => menu.Dispose();
+
+        var showLocation = GetRibbonLauncherScreenLocation(strip);
+        void ShowMenu()
+        {
+            if (strip.IsDisposed || menu.IsDisposed)
+            {
+                return;
+            }
+
+            menu.Show(showLocation, ToolStripDropDownDirection.BelowLeft);
+        }
+
+        if (strip.IsHandleCreated)
+        {
+            strip.BeginInvoke((MethodInvoker)ShowMenu);
+        }
+        else
+        {
+            ShowMenu();
+        }
+
+        return true;
+    }
+
+    private static bool IsRibbonLauncherHit(ToolStripEx strip, Point location)
+    {
+        if (strip == null)
+        {
+            return false;
+        }
+
+        const int launcherWidth = 22;
+        const int launcherHeight = 20;
+
+        var launcherBounds = new Rectangle(
+            Math.Max(0, strip.Width - launcherWidth),
+            Math.Max(0, strip.Height - launcherHeight),
+            launcherWidth,
+            launcherHeight);
+
+        return launcherBounds.Contains(location);
+    }
+
+    private static Point GetRibbonLauncherScreenLocation(ToolStripEx strip)
+    {
+        var launcherClientPoint = new Point(
+            Math.Max(0, strip.Width - 8),
+            Math.Max(0, strip.Height - 2));
+
+        return strip.PointToScreen(launcherClientPoint);
     }
 
     /// <summary>
@@ -781,9 +962,10 @@ public partial class MainForm
             Height = (int)DpiAware.LogicalToDeviceUnits(110f),
             LauncherStyle = LauncherStyle.Metro,
             ShowLauncher = true,
+            CollapsedDropDownButtonText = title,
             ImageScalingSize = new Size(40, 40),
             ThemeName = ResolveRibbonThemeName(theme, logger),
-            CanOverflow = false,
+            CanOverflow = true,
             Dock = DockStyle.None,
             LayoutStyle = ToolStripLayoutStyle.StackWithOverflow,
             Padding = new Padding(6, 4, 6, 4),
@@ -812,6 +994,8 @@ public partial class MainForm
         {
             logger?.LogDebug(ex, "Failed to set AutomationId for strip {Name}", name);
         }
+
+        EnforceRibbonGroupDropdownState(strip, logger, "CreateRibbonGroup");
 
         return strip;
     }
@@ -921,6 +1105,7 @@ public partial class MainForm
     {
         ["Budget Management & Analysis"] = "Budget\nMgmt",
         ["Municipal Accounts"] = "Municipal\nAccounts",
+        ["Navigate"] = "Navigate",
         ["Recommended Monthly Charge"] = "Recommended\nMonthly\nCharge",
         ["Proactive AI Insights"] = "Proactive\nAI Insights",
         ["Revenue Trends"] = "Revenue\nTrends",
@@ -970,6 +1155,36 @@ public partial class MainForm
         return string.Join("\n", lines);
     }
 
+    private static readonly string[] UnifiedNavigationGroupOrder =
+    {
+        "Core Navigation",
+        "Financials",
+        "Payments",
+        "Integration",
+        "Analytics",
+        "Reporting",
+        "Operations",
+        "Utilities",
+        "Administration",
+        "AuditLogs"
+    };
+
+    private static int GetUnifiedNavigationGroupOrder(string groupName)
+    {
+        var index = Array.FindIndex(UnifiedNavigationGroupOrder, group => string.Equals(group, groupName, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 ? index : int.MaxValue;
+    }
+
+    private static string GetUnifiedNavigationGroupDisplayName(string groupName)
+    {
+        return groupName switch
+        {
+            "Core Navigation" => "Home",
+            "AuditLogs" => "Audit Logs",
+            _ => groupName
+        };
+    }
+
     /// <summary>
     /// Creates a large ribbon navigation button with icon, tooltip, and keyboard shortcut support.
     /// </summary>
@@ -1008,14 +1223,13 @@ public partial class MainForm
             Margin = new Padding(3, 2, 3, 2),
             ImageScaling = ToolStripItemImageScaling.None,
             AutoToolTip = true,
-            Overflow = ToolStripItemOverflow.Never,
+            Overflow = ToolStripItemOverflow.AsNeeded,
             Font = new Font("Segoe UI", isMultiLine ? 9F : 10.5F, FontStyle.Bold),
             AccessibleName = text,
             AccessibleRole = AccessibleRole.PushButton
         };
 
         // Create icon from Syncfusion resources or Segoe MDL2 Assets glyph
-        if (!string.IsNullOrWhiteSpace(iconGlyph))
         {
             button.Image = LoadRibbonIcon(text, 40, iconGlyph);
         }
@@ -1216,6 +1430,115 @@ public partial class MainForm
         }
 
         return (strip, firstButton ?? CreateLargeNavButton("Nav_Empty", "No Panels", () => { }, logger));
+    }
+
+    private static ToolStripEx CreateUnifiedNavigationGroup(MainForm form, string theme, ILogger? logger)
+    {
+        var strip = CreateRibbonGroup("Navigate", "UnifiedNavigationGroup", theme, logger);
+        RibbonIconGlyphs.TryGetValue("Navigate", out var iconGlyph);
+
+        var dropDown = new ToolStripDropDownButton(WrapRibbonText("Navigate"))
+        {
+            Name = "Nav_UnifiedDropdown",
+            AutoSize = false,
+            DisplayStyle = ToolStripItemDisplayStyle.ImageAndText,
+            TextImageRelation = TextImageRelation.ImageAboveText,
+            Padding = new Padding(6, 4, 6, 4),
+            Size = new Size((int)DpiAware.LogicalToDeviceUnits(108f), (int)DpiAware.LogicalToDeviceUnits(96f)),
+            TextAlign = ContentAlignment.BottomCenter,
+            ImageAlign = ContentAlignment.TopCenter,
+            Margin = new Padding(3, 2, 3, 2),
+            ImageScaling = ToolStripItemImageScaling.None,
+            AutoToolTip = true,
+            Overflow = ToolStripItemOverflow.AsNeeded,
+            Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
+            AccessibleName = "Navigation",
+            AccessibleRole = AccessibleRole.PushButton,
+            AccessibleDescription = "Open the unified navigation menu to switch between application panels",
+            ToolTipText = "Open navigation menu"
+        };
+
+        dropDown.Image = LoadRibbonIcon("Navigate", 40, iconGlyph);
+        PopulateUnifiedNavigationMenu(form, dropDown.DropDownItems, logger);
+
+        try
+        {
+            SetAutomationId(dropDown, dropDown.Name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for unified navigation dropdown");
+        }
+
+        strip.Items.Add(dropDown);
+        return strip;
+    }
+
+    private static void PopulateUnifiedNavigationMenu(MainForm form, ToolStripItemCollection items, ILogger? logger)
+    {
+        var groupedPanels = PanelRegistry.Panels
+            .Where(entry => entry.ShowInRibbonPanelsMenu)
+            .GroupBy(entry => entry.DefaultGroup)
+            .OrderBy(group => GetUnifiedNavigationGroupOrder(group.Key))
+            .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in groupedPanels)
+        {
+            var displayName = GetUnifiedNavigationGroupDisplayName(group.Key);
+            var groupName = System.Text.RegularExpressions.Regex.Replace(group.Key, @"[^\w]", string.Empty);
+            var groupMenu = new ToolStripMenuItem(displayName)
+            {
+                Name = $"NavMenuGroup_{groupName}",
+                AccessibleName = displayName,
+                AccessibleDescription = $"Navigation items for {displayName}",
+                ToolTipText = $"Open {displayName} navigation items"
+            };
+
+            try
+            {
+                SetAutomationId(groupMenu, groupMenu.Name, logger);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "Failed to set AutomationId for unified navigation group {Group}", displayName);
+            }
+
+            foreach (var entry in group.OrderBy(panel => panel.DisplayName, StringComparer.OrdinalIgnoreCase))
+            {
+                groupMenu.DropDownItems.Add(CreateUnifiedNavigationMenuItem(form, entry, logger));
+            }
+
+            items.Add(groupMenu);
+        }
+    }
+
+    private static ToolStripMenuItem CreateUnifiedNavigationMenuItem(MainForm form, PanelRegistry.PanelEntry entry, ILogger? logger)
+    {
+        var sanitizedName = System.Text.RegularExpressions.Regex.Replace(entry.DisplayName, @"[^\w]", string.Empty);
+        RibbonIconGlyphs.TryGetValue(entry.DisplayName, out var iconGlyph);
+
+        var menuItem = new ToolStripMenuItem(entry.DisplayName)
+        {
+            Name = $"NavMenuItem_{sanitizedName}",
+            AccessibleName = entry.DisplayName,
+            AccessibleDescription = $"Navigate to {entry.DisplayName}",
+            ToolTipText = $"Open {entry.DisplayName}",
+            Tag = $"Nav:{entry.DisplayName}"
+        };
+
+        menuItem.Image = LoadRibbonIcon(entry.DisplayName, 16, iconGlyph);
+        menuItem.Click += (_, _) => SafeNavigate(form, entry.DisplayName, CreatePanelNavigationCommand(form, entry, logger), logger);
+
+        try
+        {
+            SetAutomationId(menuItem, menuItem.Name, logger);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "Failed to set AutomationId for unified navigation item {Item}", entry.DisplayName);
+        }
+
+        return menuItem;
     }
 
     private static (ToolStripEx Strip, ToolStripButton AccountsBtn) CreateFinancialsGroup(MainForm form, string theme, ILogger? logger)
@@ -1500,14 +1823,38 @@ public partial class MainForm
         {
             Name = "ThemeCombo",
             AccessibleName = "Theme Selector",
+            AccessibleDescription = "Choose the application theme. Changes apply immediately across the interface.",
             AutoSize = false,
             Width = (int)DpiAware.LogicalToDeviceUnits(170f),
-            DropDownStyle = ComboBoxStyle.DropDownList
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            ToolTipText = "Choose the application theme. The selected theme is applied immediately."
         };
 
         themeCombo.ComboBox.DisplayMember = nameof(ThemeComboItem.DisplayName);
         themeCombo.ComboBox.ValueMember = nameof(ThemeComboItem.ThemeName);
         themeCombo.ComboBox.DataSource = ThemeComboItems.ToList();
+        themeCombo.ComboBox.AccessibleName = "Application Theme Selector";
+        themeCombo.ComboBox.AccessibleDescription = themeCombo.AccessibleDescription;
+        themeCombo.ComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+
+        var themeStack = new ToolStripPanelItem
+        {
+            Name = "ActionGroup_ThemeStack",
+            RowCount = 2,
+            AutoSize = true,
+            Transparent = true
+        };
+
+        var themeLabel = new ToolStripLabel("App\r\nTheme:")
+        {
+            Name = "ActionGroup_ThemeLabel",
+            AutoSize = true,
+            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+            ToolTipText = "Select the application theme for the ribbon, panels, and documents."
+        };
+
+        themeStack.Items.Add(themeLabel);
+        themeStack.Items.Add(themeCombo);
 
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
         form.SyncThemeComboSelection(currentTheme, logger);
@@ -1565,11 +1912,7 @@ public partial class MainForm
                 form._themeService?.ApplyTheme(selectedTheme);
                 if (form._themeService == null)
                 {
-                    AppThemeColors.EnsureThemeAssemblyLoadedForTheme(selectedTheme, logger);
-                    SfSkinManager.ApplicationVisualTheme = selectedTheme;
-                    SfSkinManager.SetVisualStyle(form, selectedTheme);
-                    ApplyThemeRecursively(form, selectedTheme, logger);
-                    form.PerformLayout();
+                    form.ApplyResolvedTheme(selectedTheme);
                     if (!IsUiTestEnvironment())
                     {
                         form.Refresh();
@@ -1587,11 +1930,13 @@ public partial class MainForm
         themeCombo.SelectedIndexChanged += (_, _) => ApplySelectedThemeFromCombo();
 
         try { SetAutomationId(themeCombo, themeCombo.Name, logger); } catch (Exception ex) { logger?.LogDebug(ex, "Failed to set AutomationId for theme combo {Name}", themeCombo.Name); }
+        try { SetAutomationId(themeLabel, themeLabel.Name, logger); } catch (Exception ex) { logger?.LogDebug(ex, "Failed to set AutomationId for theme label {Name}", themeLabel.Name); }
 
         strip.Items.Add(searchStack);
         strip.Items.Add(CreateRibbonSeparator());
         strip.Items.Add(gridStack);
-        strip.Items.Add(themeCombo);
+        strip.Items.Add(CreateRibbonSeparator());
+        strip.Items.Add(themeStack);
 
         return strip;
     }
@@ -1999,14 +2344,23 @@ public partial class MainForm
 
             // Ensure items are visible/enabled before adding
             EnsureToolStripItemsVisibleAndEnabled(strip, logger);
+            EnforceRibbonGroupDropdownState(strip, logger, "BeforeAddToolStrip");
 
             // ONLY use Syncfusion's managed API — no manual Controls.Add!
             // Using tab.Panel.AddToolStrip() ensures proper parent-child hierarchy
             // and prevents event routing issues from control reparenting.
             tab.Panel.AddToolStrip(strip);
 
-            logger?.LogDebug("Successfully added ToolStrip '{StripName}' to tab '{TabText}' using AddToolStrip",
-                strip.Name ?? "<unnamed>", tab.Text);
+            EnforceRibbonGroupDropdownState(strip, logger, "AfterAddToolStrip");
+
+            logger?.LogInformation(
+                "[RIBBON_GROUP_DROPDOWN] Added strip: Strip={StripName} Tab={TabText} ShowLauncher={ShowLauncher} CanOverflow={CanOverflow} LayoutStyle={LayoutStyle} ItemCount={ItemCount}",
+                strip.Name ?? "<unnamed>",
+                tab.Text,
+                strip.ShowLauncher,
+                strip.CanOverflow,
+                strip.LayoutStyle,
+                strip.Items.Count);
         }
         catch (Exception ex)
         {
@@ -2060,10 +2414,119 @@ public partial class MainForm
             logger?.LogDebug(ex, "Failed to enable strip {StripName}", strip.Name);
         }
 
+        EnforceRibbonGroupDropdownState(strip, logger, "EnsureToolStripItemsVisibleAndEnabled");
+
         foreach (ToolStripItem item in strip.Items)
         {
             EnsureToolStripItemVisibleAndEnabledRecursive(item, logger);
         }
+    }
+
+    private static void ApplyRibbonLauncherVisibility(RibbonControlAdv ribbon, bool showLauncher, ILogger? logger)
+    {
+        if (ribbon == null)
+        {
+            return;
+        }
+
+        try
+        {
+            ribbon.ShowLauncher = showLauncher;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_GROUP_DROPDOWN] Failed to set ribbon ShowLauncher state");
+        }
+
+        if (ribbon.Header?.MainItems == null)
+        {
+            return;
+        }
+
+        foreach (ToolStripTabItem tab in ribbon.Header.MainItems.OfType<ToolStripTabItem>())
+        {
+            if (tab?.Panel == null)
+            {
+                continue;
+            }
+
+            foreach (ToolStripEx strip in tab.Panel.Controls.OfType<ToolStripEx>())
+            {
+                try
+                {
+                    strip.ShowLauncher = showLauncher;
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogDebug(ex, "[RIBBON_GROUP_DROPDOWN] Failed to set strip launcher state for {StripName}", strip.Name);
+                }
+
+                if (showLauncher)
+                {
+                    EnforceRibbonGroupDropdownState(strip, logger, "ApplyRibbonLauncherVisibility");
+                }
+            }
+        }
+    }
+
+    private static void EnforceRibbonGroupDropdownState(ToolStripEx strip, ILogger? logger, string stage)
+    {
+        if (strip == null)
+        {
+            return;
+        }
+
+        var adjustedItems = 0;
+
+        try
+        {
+            strip.ShowLauncher = true;
+            strip.CanOverflow = true;
+            strip.LayoutStyle = ToolStripLayoutStyle.StackWithOverflow;
+            strip.Visible = true;
+            strip.Enabled = true;
+
+            if (string.IsNullOrWhiteSpace(strip.CollapsedDropDownButtonText))
+            {
+                strip.CollapsedDropDownButtonText = strip.Text?.Replace("\n", " ") ?? string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug(ex, "[RIBBON_GROUP_DROPDOWN] Failed to enforce strip state for {StripName}", strip.Name);
+        }
+
+        foreach (ToolStripItem item in strip.Items)
+        {
+            try
+            {
+                item.Visible = true;
+                item.Enabled = true;
+
+                if (item is ToolStripButton && item.Overflow != ToolStripItemOverflow.AsNeeded)
+                {
+                    item.Overflow = ToolStripItemOverflow.AsNeeded;
+                    adjustedItems++;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, "[RIBBON_GROUP_DROPDOWN] Failed to enforce item state for {ItemName}", item.Name);
+            }
+        }
+
+        logger?.LogDebug(
+            "[RIBBON_GROUP_DROPDOWN] Stage={Stage} Strip={StripName} Text={StripText} ShowLauncher={ShowLauncher} CanOverflow={CanOverflow} LayoutStyle={LayoutStyle} Visible={Visible} Enabled={Enabled} ItemCount={ItemCount} AdjustedItems={AdjustedItems}",
+            stage,
+            strip.Name,
+            strip.Text,
+            strip.ShowLauncher,
+            strip.CanOverflow,
+            strip.LayoutStyle,
+            strip.Visible,
+            strip.Enabled,
+            strip.Items.Count,
+            adjustedItems);
     }
 
     private static void EnsureToolStripItemVisibleAndEnabledRecursive(ToolStripItem item, ILogger? logger)

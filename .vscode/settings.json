@@ -1,10 +1,6 @@
 {
   "github.copilot.chat.localeOverride": "en",
   "chat.useAgentSkills": true,
-  "chat.agentSkillsLocations": [
-    ".agents/skills",
-    ".vscode/skills"
-  ],
   "github.copilot.advanced": {
     "debug.useNodeFetcher": true,
     "inlineSuggest.enable": true
@@ -25,7 +21,6 @@
   // ============================================================================
   // Custom Copilot Agents Configuration
   // ============================================================================
-  "github.copilot.chat.agent.autoStartMcpServers": true,
   "github.copilot.chat.agentDirectory": "${workspaceFolder}/.vscode/agents",
 
   // ============================================================================
@@ -83,7 +78,7 @@
       "command": "npx",
       "args": ["-y", "@syncfusion/winforms-assistant@latest"],
       "env": {
-        "Syncfusion_API_Key": "${env:SYNCFUSION_MCP_API_KEY}"
+        "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
       }
     },
     "mcp-debugger": {
@@ -190,7 +185,7 @@
   "dotnet.enablePackageRestore": true,
   "dotnet.defaultSolution": "WileyWidget.sln",
   "dotnet.server.searchSubdirectoriesForSolution": true,
-  "dotnet.unitTests.runTestsInParallel": true,
+  "dotnet.unitTests.runTestsInParallel": false,
   "dotnet.unitTests.showCodeLens": true,
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
@@ -199,7 +194,10 @@
   "omnisharp.sdkIncludePrereleases": false,
   "omnisharp.enableMsBuildLoadProjectWithMsBuild": true,
   "omnisharp.excludePaths": [
-    "**/tests/**"
+    "**/tests/.archive/**",
+    "**/CoverageReport/**",
+    "**/coverage/**",
+    "**/TestResults/**"
   ],
   "omnisharp.enableAsyncCompletion": true,
   "omnisharp.analyzeOpenDocumentsOnly": false,
@@ -246,10 +244,26 @@
   // Testing Configuration
   // ============================================================================
   "testExplorer.useNativeTesting": true,
-  "dotnet-test-explorer.testProjectPath": "tools/SyncfusionMcpServer/tools/WileyWidgetMcpServer.Tests/WileyWidgetMcpServer.Tests.csproj",
+  "dotnet-test-explorer.testProjectPath": "tests/**/*Tests.csproj",
   "dotnet-test-explorer.autoWatch": false,
+  "dotnet-test-explorer.testArguments": "--no-restore --blame-hang --blame-hang-timeout 3m",
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
+
+  // ============================================================================
+  // Extension Configuration
+  // ============================================================================
+  "github-actions.use-enterprise": false,
+  "codeReview.customPrompt": "Prioritize behavioral regressions, Syncfusion WinForms UI issues, threading/UI responsiveness, DI wiring problems, and missing or weak tests. Keep findings concise and ordered by severity.",
+  "codeReview.exclude": [
+    "**/bin/**",
+    "**/obj/**",
+    "**/coverage/**",
+    "**/CoverageReport/**",
+    "**/TestResults/**",
+    "**/*.trx"
+  ],
+  "codeReview.enableDebugOutput": false,
 
   // Disable Python Test Adapter (primarily a .NET project)
   "pythonTestExplorer.testFramework": null,
@@ -397,7 +411,13 @@
     }
   },
   "terminal.integrated.defaultProfile.windows": "PowerShell 7.5.4",
-  "terminal.integrated.automationProfile.windows": "PowerShell 7.5.4",
+  "terminal.integrated.automationProfile.windows": {
+    "path": "C:/Program Files/PowerShell/7/pwsh.exe",
+    "args": [
+      "-NoLogo"
+    ],
+    "icon": "terminal-powershell"
+  },
   "terminal.integrated.profiles.windows": {
     "PowerShell 7.5.4": {
       "path": [

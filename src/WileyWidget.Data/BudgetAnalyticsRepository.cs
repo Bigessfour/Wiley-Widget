@@ -131,15 +131,22 @@ public sealed class BudgetAnalyticsRepository : IBudgetAnalyticsRepository
             ct.ThrowIfCancellationRequested();
 
             await using var context = await _contextFactory.CreateDbContextAsync(ct);
+            var normalizedEntityName = entityName?.Trim();
+            var parsedFundType = Enum.TryParse<FundType>(normalizedEntityName, ignoreCase: true, out var fundType)
+                ? fundType
+                : (FundType?)null;
 
             // Group by account number prefix (first digit) as category proxy
             var query = context.BudgetEntries
                 .AsNoTracking()
                 .Where(b => b.StartPeriod >= start && b.EndPeriod <= end);
 
-            if (!string.IsNullOrWhiteSpace(entityName))
+            if (!string.IsNullOrWhiteSpace(normalizedEntityName))
             {
-                query = query.Where(b => b.EntityName == entityName);
+                query = query.Where(b =>
+                    (b.Fund != null && b.Fund.Name == normalizedEntityName) ||
+                    (b.MunicipalAccount != null && b.MunicipalAccount.Name == normalizedEntityName) ||
+                    (b.FundId == null && b.MunicipalAccountId == null && parsedFundType.HasValue && b.FundType == parsedFundType.Value));
             }
 
             var breakdown = await query
@@ -170,20 +177,32 @@ public sealed class BudgetAnalyticsRepository : IBudgetAnalyticsRepository
 
             await using var context = await _contextFactory.CreateDbContextAsync(ct);
 
-            // Group by month for trend analysis
-            var monthlyData = await context.BudgetEntries
+            // Keep grouping and aggregation on the server; format the month label after materialization.
+            var monthlyRows = await context.BudgetEntries
                 .AsNoTracking()
                 .Where(b => b.StartPeriod >= start && b.EndPeriod <= end)
                 .GroupBy(b => new { b.StartPeriod.Year, b.StartPeriod.Month })
-                .Select(g => new MonthlyTrend
+                .Select(g => new
                 {
-                    Month = $"{g.Key.Year}-{g.Key.Month:D2}",
+                    g.Key.Year,
+                    g.Key.Month,
                     Budgeted = g.Sum(e => e.BudgetedAmount),
                     Actual = g.Sum(e => e.ActualAmount),
                     Variance = g.Sum(e => e.Variance)
                 })
-                .OrderBy(m => m.Month)
+                .OrderBy(m => m.Year)
+                .ThenBy(m => m.Month)
                 .ToListAsync(ct);
+
+            var monthlyData = monthlyRows
+                .Select(row => new MonthlyTrend
+                {
+                    Month = $"{row.Year}-{row.Month:D2}",
+                    Budgeted = row.Budgeted,
+                    Actual = row.Actual,
+                    Variance = row.Variance
+                })
+                .ToList();
 
             // Calculate growth rate
             var growthRate = 0m;

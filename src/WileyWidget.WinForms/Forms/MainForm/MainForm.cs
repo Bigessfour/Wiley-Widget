@@ -43,6 +43,9 @@ namespace WileyWidget.WinForms.Forms
 
     public partial class MainForm : RibbonForm, IAsyncInitializable
     {
+        private static readonly TimeSpan UiProbeStartupWarmup = TimeSpan.FromSeconds(30);
+        private const double UiProbeElevatedLatencyDebugThresholdMs = 500;
+        private const double UiProbeHighLatencyWarningThresholdMs = 1250;
         private const int WS_EX_COMPOSITED = 0x02000000;
         private const int WM_SETREDRAW = 0x000B;
         private const uint RDW_INVALIDATE = 0x0001;
@@ -99,6 +102,9 @@ namespace WileyWidget.WinForms.Forms
 
         // Keyboard helpers (used by MainForm.Keyboard.cs)
         private Button? _defaultCancelButton;
+        private Button? _uiAutomationNavigationButton;
+        private Panel? _uiAutomationNavigationPanel;
+        private TextBox? _uiAutomationNavigationStatusBox;
 
         // Document management (used by MainForm.DocumentManagement.cs)
         private TabbedMDIManager? _tabbedMdi;
@@ -892,16 +898,28 @@ namespace WileyWidget.WinForms.Forms
                 {
                     var latencyMs = Stopwatch.GetElapsedTime(queuedAt).TotalMilliseconds;
                     Interlocked.Exchange(ref _uiProbeAckSequence, sequence);
+                    var inStartupWarmup = DateTime.UtcNow - _uiProbeStartUtc < UiProbeStartupWarmup;
 
-                    if (latencyMs >= 750)
+                    if (latencyMs >= UiProbeHighLatencyWarningThresholdMs)
                     {
-                        _logger?.LogWarning(
-                            "[UI-PROBE] High UI callback latency {LatencyMs:F0}ms (seq={Sequence}, ack={Ack})",
-                            latencyMs,
-                            sequence,
-                            _uiProbeAckSequence);
+                        if (inStartupWarmup)
+                        {
+                            _logger?.LogDebug(
+                                "[UI-PROBE] Startup warm-up callback latency {LatencyMs:F0}ms (seq={Sequence}, ack={Ack})",
+                                latencyMs,
+                                sequence,
+                                _uiProbeAckSequence);
+                        }
+                        else
+                        {
+                            _logger?.LogWarning(
+                                "[UI-PROBE] High UI callback latency {LatencyMs:F0}ms (seq={Sequence}, ack={Ack})",
+                                latencyMs,
+                                sequence,
+                                _uiProbeAckSequence);
+                        }
                     }
-                    else if (latencyMs >= 250)
+                    else if (latencyMs >= UiProbeElevatedLatencyDebugThresholdMs)
                     {
                         _logger?.LogDebug("[UI-PROBE] Elevated callback latency {LatencyMs:F0}ms (seq={Sequence})", latencyMs, sequence);
                     }

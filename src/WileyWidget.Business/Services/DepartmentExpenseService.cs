@@ -21,6 +21,7 @@ public class DepartmentExpenseService : IDepartmentExpenseService
     private readonly IConfiguration _configuration;
     private readonly IQuickBooksService _quickBooksService;
     private readonly bool _useQuickBooksApi;
+    private int _reauthorizationFallbackWarningLogged;
 
     // Known departments (case-insensitive)
     private static readonly HashSet<string> _knownDepartments = new(StringComparer.OrdinalIgnoreCase)
@@ -113,7 +114,21 @@ public class DepartmentExpenseService : IDepartmentExpenseService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "QuickBooks query failed for department {Department}; falling back to sample data", canonicalDepartment);
+                if (RequiresQuickBooksReauthorization(ex))
+                {
+                    if (Interlocked.Exchange(ref _reauthorizationFallbackWarningLogged, 1) == 0)
+                    {
+                        _logger.LogWarning("QuickBooks authorization is no longer valid; using sample data until the application is re-authorized.");
+                    }
+                    else
+                    {
+                        _logger.LogDebug("QuickBooks authorization remains invalid for department {Department}; using sample data", canonicalDepartment);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning(ex, "QuickBooks query failed for department {Department}; falling back to sample data", canonicalDepartment);
+                }
             }
         }
 
@@ -137,6 +152,14 @@ public class DepartmentExpenseService : IDepartmentExpenseService
             source, canonicalDepartment, totalExpense, monthsDiff, startDate, endDate);
 
         return totalExpense;
+    }
+
+    private static bool RequiresQuickBooksReauthorization(Exception ex)
+    {
+        var message = ex.Message;
+        return message.Contains("re-authorize", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("reauthorize", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("invalid or expired", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

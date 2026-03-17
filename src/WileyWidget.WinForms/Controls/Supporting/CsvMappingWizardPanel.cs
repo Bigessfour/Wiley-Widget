@@ -16,6 +16,7 @@ using CsvHelper.Configuration;
 
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Extensions;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -35,7 +36,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         }
     }
 
-    public partial class CsvMappingWizardPanel : UserControl, ICompletablePanel
+    public partial class CsvMappingWizardPanel : UserControl, ICompletablePanel, IThemable
     {
         // ICompletablePanel backing fields
         private ErrorProvider? _errorProvider;
@@ -57,8 +58,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             // Apply Syncfusion theme to panel
             try
             {
-                var theme = Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-                Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme);
+                ApplyTheme(Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
             }
             catch { /* Theme application is best-effort */ }
         }
@@ -139,8 +139,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             // Apply theme via SfSkinManager
             try
             {
-                var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-                SfSkinManager.SetVisualStyle(this, theme);
+                ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
             }
             catch { }
 
@@ -148,6 +147,40 @@ namespace WileyWidget.WinForms.Controls.Supporting
             this.PerformLayout();
 
             _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+        }
+
+        public void ApplyTheme(string themeName)
+        {
+            if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+            {
+                return;
+            }
+
+            this.ApplySyncfusionTheme(themeName, _logger);
+
+            if (_previewGrid != null)
+            {
+                _previewGrid.ThemeName = themeName;
+                _previewGrid.ApplySyncfusionTheme(themeName, _logger);
+            }
+
+            if (_btnApply != null)
+            {
+                _btnApply.ThemeName = themeName;
+                _btnApply.ApplySyncfusionTheme(themeName, _logger);
+            }
+
+            if (_btnCancel != null)
+            {
+                _btnCancel.ThemeName = themeName;
+                _btnCancel.ApplySyncfusionTheme(themeName, _logger);
+            }
+
+            if (_chkHasHeader != null)
+            {
+                _chkHasHeader.ThemeName = themeName;
+                _chkHasHeader.ApplySyncfusionTheme(themeName, _logger);
+            }
         }
 
         private void SetupMappingPanel(FlowLayoutPanel parent)

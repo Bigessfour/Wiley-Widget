@@ -17,6 +17,7 @@ using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utilities;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -25,7 +26,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// Control for the Scenarios tab in Analytics Hub.
 /// Allows users to run what-if scenarios with parameter inputs.
 /// </summary>
-public partial class ScenariosTabControl : UserControl
+public partial class ScenariosTabControl : UserControl, IThemable
 {
     private readonly ScenariosTabViewModel? _viewModel;
     private readonly ILogger _logger;
@@ -55,8 +56,7 @@ public partial class ScenariosTabControl : UserControl
         // Apply Syncfusion theme
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-            SfSkinManager.SetVisualStyle(this, theme);
+            ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
         }
         catch { /* Theme application is best-effort */ }
 
@@ -107,7 +107,7 @@ public partial class ScenariosTabControl : UserControl
 
     private void InitializeInputPanel()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
         _inputPanel = new Panel
         {
@@ -218,7 +218,7 @@ public partial class ScenariosTabControl : UserControl
 
     private void InitializeResultsGrid()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
         _resultsGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -422,6 +422,36 @@ public partial class ScenariosTabControl : UserControl
             // Handle error
             System.Diagnostics.Debug.WriteLine($"Failed to load scenarios tab: {ex.Message}");
             _logger.LogError(ex, "[ScenariosTabControl] LoadAsync failed");
+        }
+    }
+
+    public void ApplyTheme(string themeName)
+    {
+        if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        this.ApplySyncfusionTheme(themeName, _logger);
+        _inputPanel?.ApplySyncfusionTheme(themeName, _logger);
+        _loadingOverlay?.ApplySyncfusionTheme(themeName, _logger);
+
+        if (_resultsGrid != null)
+        {
+            _resultsGrid.ThemeName = themeName;
+            _resultsGrid.ApplySyncfusionTheme(themeName, _logger);
+        }
+
+        if (_runScenarioButton != null)
+        {
+            _runScenarioButton.ThemeName = themeName;
+            _runScenarioButton.ApplySyncfusionTheme(themeName, _logger);
+        }
+
+        if (_saveScenarioButton != null)
+        {
+            _saveScenarioButton.ThemeName = themeName;
+            _saveScenarioButton.ApplySyncfusionTheme(themeName, _logger);
         }
     }
 

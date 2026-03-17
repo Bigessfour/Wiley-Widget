@@ -23,6 +23,8 @@ namespace WileyWidget.WinForms.Tests.Startup;
 public sealed class MainFormStartupIntegrationTests
 {
     [WinFormsFact]
+    [Trait("Category", "Smoke")]
+    [Trait("Area", "Startup")]
     public async Task FullStartup_NormalConfig_SucceedsWithoutExceptions()
     {
         var previousJarvisAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS");

@@ -453,6 +453,9 @@ public class StartupTimelineReport
 /// </summary>
 public class StartupTimelineService : IStartupTimelineService
 {
+    private const double SlowPhaseWarningThresholdMs = 2500;
+    private const double ChromeInitializationSlowPhaseWarningThresholdMs = 4000;
+
     private static readonly Meter StartupMeter = new("WileyWidget.Startup", "1.0.0");
     private static readonly Histogram<double> PhaseDurationHistogram = StartupMeter.CreateHistogram<double>("startup.phase.duration", "ms", "Duration of startup phases in milliseconds");
     private static readonly Histogram<double> OperationDurationHistogram = StartupMeter.CreateHistogram<double>("startup.operation.duration", "ms", "Duration of startup operations in milliseconds");
@@ -586,9 +589,10 @@ public class StartupTimelineService : IStartupTimelineService
         {
             evt.EndTime = DateTime.Now;
             var duration = evt.Duration?.TotalMilliseconds ?? 0;
+            var slowPhaseThresholdMs = GetSlowPhaseWarningThresholdMs(phaseName);
 
-            // Log if slow (>2000ms) to Trace for diagnostic tracking (from trace requirement)
-            if (duration > 2000)
+            // Log if slow to Trace for diagnostic tracking.
+            if (duration > slowPhaseThresholdMs)
             {
                 System.Diagnostics.Trace.WriteLine($"[PERF] Slow Startup Phase: {phaseName} took {duration:F0}ms");
             }
@@ -602,19 +606,18 @@ public class StartupTimelineService : IStartupTimelineService
                 threadMarker, phaseName, duration);
 
             // Warn about long-running phases (perf counter threshold)
-            if (duration > 2000)
+            if (duration > slowPhaseThresholdMs)
             {
                 SlowPhaseCounter.Add(1, new KeyValuePair<string, object?>("phase.name", phaseName));
-                _logger.LogWarning("[TIMELINE] ⚠ SLOW PHASE: '{PhaseName}' took {Duration}ms (>2000ms threshold) - performance counter 'startup.phase.slow' incremented",
-                    phaseName, duration);
+                _logger.LogWarning("[TIMELINE] ⚠ SLOW PHASE: '{PhaseName}' took {Duration}ms (>{Threshold}ms threshold) - performance counter 'startup.phase.slow' incremented",
+                    phaseName, duration, slowPhaseThresholdMs);
             }
 
-            // Warn about long-running phases on UI thread (>2500ms = potential freeze)
-            // Chrome/Ribbon initialization (~1.7s) is synchronous and normal; only warn if significantly exceeds that
-            if (evt.ThreadId == _uiThreadId && duration > 2500)
+            // Warn about long-running phases on UI thread once they exceed the phase-specific threshold.
+            if (evt.ThreadId == _uiThreadId && duration > slowPhaseThresholdMs)
             {
-                _logger.LogWarning("[TIMELINE] ⚠ BLOCKING PHASE: '{PhaseName}' took {Duration}ms on UI thread (>2500ms threshold)",
-                    phaseName, duration);
+                _logger.LogWarning("[TIMELINE] ⚠ BLOCKING PHASE: '{PhaseName}' took {Duration}ms on UI thread (>{Threshold}ms threshold)",
+                    phaseName, duration, slowPhaseThresholdMs);
             }
 
             // Special warning for Syncfusion theme if too late (must be order ≤4)
@@ -630,6 +633,13 @@ public class StartupTimelineService : IStartupTimelineService
         }
 
         _currentPhase = null;
+    }
+
+    private static double GetSlowPhaseWarningThresholdMs(string phaseName)
+    {
+        return string.Equals(phaseName, "Chrome Initialization", StringComparison.Ordinal)
+            ? ChromeInitializationSlowPhaseWarningThresholdMs
+            : SlowPhaseWarningThresholdMs;
     }
 
     public void RecordOperation(string operationName, string phaseName, double? durationMs = null)

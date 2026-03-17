@@ -29,7 +29,7 @@ $canonicalVars = @(
     'GITHUB_PERSONAL_ACCESS_TOKEN',
     'MSSQL_CONNECTION_STRING',
     'DATABASE_CONNECTION_STRING',
-    'SYNCFUSION_MCP_API_KEY',
+    'SYNCFUSION_API_KEY',
     'SYNCFUSION_LICENSE_KEY',
     'XAI__ApiKey',
     'XAI_BASE_URL',
@@ -47,7 +47,6 @@ $canonicalVars = @(
 
 $aliasMap = @{
     'GITHUB_PERSONAL_ACCESS_TOKEN' = @('GITHUB_TOKEN', 'GITHUB_PAT')
-    'SYNCFUSION_MCP_API_KEY'       = @('SYNCFUSION_API_KEY')
     'XAI__ApiKey'                  = @('XAI_API_KEY', 'WILEYWIDGET_XAI_API_KEY')
     'QBO_CLIENT_ID'                = @('QUICKBOOKS_CLIENT_ID')
     'QBO_CLIENT_SECRET'            = @('QUICKBOOKS_CLIENT_SECRET')

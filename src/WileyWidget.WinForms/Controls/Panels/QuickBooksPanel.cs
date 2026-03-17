@@ -43,6 +43,7 @@ using Syncfusion.WinForms.DataGrid.Enums;
 using WileyWidget.WinForms.Services;
 // using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
+using WileyWidget.WinForms.Configuration;
 
 using WileyWidget.WinForms.Helpers;
 
@@ -408,6 +409,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // but InitializeControls() (dead code) was the only prior attachment site.
         if (_panelHeader != null)
         {
+            _panelHeader.Title = "QuickBooks Integration";
+            _panelHeader.AccessibleName = "QuickBooks Panel Header";
+            _panelHeader.AccessibleDescription = "Header for QuickBooks integration panel";
             _panelHeaderRefreshClickedHandler = async (s, e) => await RefreshAsync();
             _panelHeaderCloseClickedHandler = (s, e) => ClosePanel();
             _panelHeader.RefreshClicked += _panelHeaderRefreshClickedHandler;
@@ -440,10 +444,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _splitContainerMain.BorderStyle = BorderStyle.FixedSingle;
         _splitContainerTop.BorderStyle = BorderStyle.FixedSingle;
         _splitContainerBottom.BorderStyle = BorderStyle.FixedSingle;
-
-        _splitContainerMain.SplitterWidth = Math.Max(_splitContainerMain.SplitterWidth, DpiHeight(8f));
-        _splitContainerTop.SplitterWidth = Math.Max(_splitContainerTop.SplitterWidth, DpiHeight(6f));
-        _splitContainerBottom.SplitterWidth = Math.Max(_splitContainerBottom.SplitterWidth, DpiHeight(8f));
     }
 
     /// <summary>
@@ -489,7 +489,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     protected override void OnPanelLoaded(EventArgs e)
     {
-        if (ViewModel != null && !DesignMode)
+        if (ViewModel != null && !DesignMode && !ShouldSkipAutoLoadForTestHarness())
         {
             // Queue async initialization on the UI thread
             BeginInvoke(new Func<Task>(async () =>
@@ -501,9 +501,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                     UpdateNoDataOverlay();
 
                     // Force immediate UI refresh and minimum sizing after data is retrieved
-                    EnforceMinimumContentHeight();
-                    _mainPanel?.PerformLayout();
-                    _splitContainerMain?.PerformLayout();
+                    _splitContainerMain.SplitterWidth = Math.Max(_splitContainerMain.SplitterWidth, DpiHeight(8f));
+                    _splitContainerTop.SplitterWidth = Math.Max(_splitContainerTop.SplitterWidth, DpiHeight(6f));
+                    _splitContainerBottom.SplitterWidth = Math.Max(_splitContainerBottom.SplitterWidth, DpiHeight(8f));
                     _splitContainerTop?.PerformLayout();
                     _splitContainerBottom?.PerformLayout();
                     _syncHistoryGrid?.Refresh();
@@ -516,6 +516,31 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                     Logger.LogError(ex, "Failed to initialize QuickBooksPanel");
                 }
             }));
+        }
+    }
+
+    private bool ShouldSkipAutoLoadForTestHarness()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            var provider = ResolveServiceProvider();
+            if (provider is null)
+            {
+                return false;
+            }
+
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<UIConfiguration>(provider)?.IsUiTestHarness == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -3179,28 +3204,42 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     /// <summary>
-    /// Applies Office2016Colorful style to all splitters for modern appearance.
-    /// Synchronizes with SfSkinManager theme when available.
-    /// Per Syncfusion documentation: Style property controls visual appearance.
+    /// Applies a splitter style aligned with the active application theme.
+    /// Synchronizes with SfSkinManager theme so splitters do not remain pinned to a colorful style.
     /// </summary>
     public void ApplySplitterStyleToAllContainers()
     {
         try
         {
+            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            var splitterStyle = activeTheme.Contains("Dark", StringComparison.OrdinalIgnoreCase)
+                || activeTheme.Contains("Black", StringComparison.OrdinalIgnoreCase)
+                || activeTheme.Contains("DarkGray", StringComparison.OrdinalIgnoreCase)
+                    ? Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Black
+                    : activeTheme.Contains("White", StringComparison.OrdinalIgnoreCase)
+                        ? Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016White
+                        : Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+
             if (_splitContainerMain != null)
             {
-                _splitContainerMain.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+                _splitContainerMain.Style = splitterStyle;
+                _splitContainerMain.ThemeName = activeTheme;
+                SfSkinManager.SetVisualStyle(_splitContainerMain, activeTheme);
             }
             if (_splitContainerTop != null)
             {
-                _splitContainerTop.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+                _splitContainerTop.Style = splitterStyle;
+                _splitContainerTop.ThemeName = activeTheme;
+                SfSkinManager.SetVisualStyle(_splitContainerTop, activeTheme);
             }
             if (_splitContainerBottom != null)
             {
-                _splitContainerBottom.Style = Syncfusion.Windows.Forms.Tools.Enums.Style.Office2016Colorful;
+                _splitContainerBottom.Style = splitterStyle;
+                _splitContainerBottom.ThemeName = activeTheme;
+                SfSkinManager.SetVisualStyle(_splitContainerBottom, activeTheme);
             }
 
-            Logger.LogDebug("Office2016Colorful style applied to all splitters");
+            Logger.LogDebug("Splitter style {SplitterStyle} applied to all splitters for theme {Theme}", splitterStyle, activeTheme);
         }
         catch (Exception ex)
         {
@@ -3220,25 +3259,34 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         try
         {
-            // Office2019Colorful palette
-            const int blueAccent = 0x007ACC;      // RGB(0, 122, 204)
-            const int lightBlue = 0xE8F4F8;       // Light background
+            var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
+            var isDarkTheme = activeTheme.Contains("Dark", StringComparison.OrdinalIgnoreCase)
+                || activeTheme.Contains("Black", StringComparison.OrdinalIgnoreCase)
+                || activeTheme.Contains("DarkGray", StringComparison.OrdinalIgnoreCase);
+
+            var accent = isDarkTheme ? Color.FromArgb(96, 164, 255) : SystemColors.Highlight;
+            var hoverFill = isDarkTheme ? Color.FromArgb(56, 72, 96) : Color.FromArgb(232, 244, 248);
+            var gripDark = isDarkTheme ? Color.FromArgb(140, 140, 140) : Color.FromArgb(117, 117, 117);
+            var gripLight = isDarkTheme ? Color.FromArgb(82, 82, 82) : Color.FromArgb(200, 200, 200);
+
+            splitter.ThemeName = activeTheme;
+            SfSkinManager.SetVisualStyle(splitter, activeTheme);
 
             // Normal grip colors (subtle)
-            splitter.GripDark = new BrushInfo(Color.FromArgb(117, 117, 117));
-            splitter.GripLight = new BrushInfo(Color.FromArgb(200, 200, 200));
+            splitter.GripDark = new BrushInfo(gripDark);
+            splitter.GripLight = new BrushInfo(gripLight);
 
             // Expand arrow colors (normal)
-            splitter.ExpandFill = new BrushInfo(Color.FromArgb(blueAccent));
+            splitter.ExpandFill = new BrushInfo(accent);
             splitter.ExpandLine = Color.White;
 
-            // Hover colors (more pronounced)
-            splitter.HotGripDark = new BrushInfo(Color.FromArgb(blueAccent));
-            splitter.HotGripLight = new BrushInfo(Color.FromArgb(lightBlue));
-            splitter.HotExpandFill = new BrushInfo(Color.FromArgb(0, 122, 204)); // Blue highlight
+            // Hover colors derived from the active theme instead of a fixed colorful palette.
+            splitter.HotGripDark = new BrushInfo(accent);
+            splitter.HotGripLight = new BrushInfo(hoverFill);
+            splitter.HotExpandFill = new BrushInfo(accent);
             splitter.HotExpandLine = Color.White;
 
-            Logger.LogDebug("Splitter grip appearance customized with Office2019 colors");
+            Logger.LogDebug("Splitter grip appearance customized for theme {Theme}", activeTheme);
         }
         catch (Exception ex)
         {

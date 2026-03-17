@@ -270,11 +270,7 @@ namespace WileyWidget.WinForms.Services.AI
                 var testPayload = new
                 {
                     model = _configuration["XAI:Model"] ?? "grok-4-1-fast-reasoning",
-                    input = new[]
-                    {
-                        new { role = "system", content = "You are a test assistant." },
-                        new { role = "user", content = "Say 'Test successful!' briefly." }
-                    },
+                    input = "Return OK.",
                     stream = false
                 };
 
@@ -317,6 +313,18 @@ namespace WileyWidget.WinForms.Services.AI
                 }
 
                 var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                var looksLikeSafetyFilteredValidation = response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                    && (body.Contains("Content violates usage guidelines", StringComparison.OrdinalIgnoreCase)
+                        || body.Contains("SAFETY_CHECK_", StringComparison.OrdinalIgnoreCase));
+
+                if (looksLikeSafetyFilteredValidation)
+                {
+                    _isValidated = true;
+                    var msg = $"✅ API key authenticated successfully ({MaskedApiKey}). Validation probe was blocked by remote safety filtering, so the key is being treated as valid.";
+                    _logger?.LogInformation("[Grok] Validation accepted after safety-filtered probe: {Message}", msg);
+                    return (true, msg);
+                }
+
                 var errorMsg = response.StatusCode switch
                 {
                     System.Net.HttpStatusCode.Unauthorized => $"❌ API key is invalid or expired. Update user.secrets with a valid key. Response: {body}",

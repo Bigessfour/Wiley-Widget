@@ -32,6 +32,11 @@ namespace WileyWidget.Services.Abstractions
         Task<IEnumerable<string>> GetAvailableEntitiesAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gets the weighted portfolio current rate baseline used for rate scenario modeling.
+        /// </summary>
+        Task<decimal?> GetPortfolioCurrentRateAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets trend data for forecasting
         /// </summary>
         Task<List<TrendSeries>> GetTrendDataAsync(int projectionYears = 3, CancellationToken cancellationToken = default);

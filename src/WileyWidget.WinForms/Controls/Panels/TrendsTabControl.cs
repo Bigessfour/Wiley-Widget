@@ -13,6 +13,7 @@ using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Utilities;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -21,7 +22,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// Control for the Trends and Forecasts tab in Analytics Hub.
 /// Thin view: no local refresh button; refresh is driven by AnalyticsHubPanel.
 /// </summary>
-public partial class TrendsTabControl : UserControl
+public partial class TrendsTabControl : UserControl, IThemable
 {
     private readonly TrendsTabViewModel? _viewModel;
     private readonly ILogger _logger;
@@ -44,8 +45,7 @@ public partial class TrendsTabControl : UserControl
 
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-            SfSkinManager.SetVisualStyle(this, theme);
+            ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
         }
         catch { /* best-effort */ }
 
@@ -89,7 +89,7 @@ public partial class TrendsTabControl : UserControl
     private void InitializeControlsPanel()
     {
         _controlsPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
-        SfSkinManager.SetVisualStyle(_controlsPanel, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_controlsPanel, SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
 
         var layout = new TableLayoutPanel
         {
@@ -304,6 +304,22 @@ public partial class TrendsTabControl : UserControl
             System.Diagnostics.Debug.WriteLine($"Trends LoadAsync error: {ex.Message}");
             _logger.LogError(ex, "[TrendsTabControl] LoadAsync failed");
         }
+    }
+
+    public void ApplyTheme(string themeName)
+    {
+        if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        this.ApplySyncfusionTheme(themeName, _logger);
+        _controlsPanel?.ApplySyncfusionTheme(themeName, _logger);
+        _trendsChart?.ApplySyncfusionTheme(themeName, _logger);
+        _forecastChart?.ApplySyncfusionTheme(themeName, _logger);
+        _departmentChart?.ApplySyncfusionTheme(themeName, _logger);
+        _loadingOverlay?.ApplySyncfusionTheme(themeName, _logger);
+        _projectionYearsSpinner?.ApplySyncfusionTheme(themeName, _logger);
     }
 
     protected override void Dispose(bool disposing)

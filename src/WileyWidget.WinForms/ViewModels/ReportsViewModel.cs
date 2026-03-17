@@ -22,914 +22,1026 @@ namespace WileyWidget.WinForms.ViewModels;
 /// </summary>
 public partial class ReportsViewModel : ObservableObject, IDisposable
 {
-    private readonly IReportService _reportService;
-    private readonly ILogger<ReportsViewModel> _logger;
-    private readonly IAuditService _auditService;
-    private readonly IReportExportService? _exportService;
-    private readonly IBudgetRepository _budgetRepository;
+  private readonly IReportService _reportService;
+  private readonly ILogger<ReportsViewModel> _logger;
+  private readonly IAuditService _auditService;
+  private readonly IReportExportService? _exportService;
+  private readonly IBudgetRepository _budgetRepository;
 
-    /// <summary>
-    /// Available report types for the dropdown.
-    /// </summary>
-    public static readonly string[] AvailableReportTypes =
+  /// <summary>
+  /// Available report types for the dropdown.
+  /// </summary>
+  public static readonly string[] AvailableReportTypes =
+  [
+      "Budget Comparison",
+        "Budget Forecast Summary",
+        "Budget Forecast Line Items"
+  ];
+
+  [ObservableProperty]
+  private string selectedReportType = "Budget Comparison";
+
+  [ObservableProperty]
+  private DateTime fromDate = new(DateTime.Now.Year, 1, 1);
+
+  [ObservableProperty]
+  private DateTime toDate = DateTime.Now;
+
+  [ObservableProperty]
+  private bool isBusy;
+
+  [ObservableProperty]
+  private string? errorMessage;
+
+  [ObservableProperty]
+  private string? statusMessage;
+
+  [ObservableProperty]
+  private bool isLoading;
+
+  [ObservableProperty]
+  private bool hasReportLoaded;
+
+  [ObservableProperty]
+  private string statusText = "Ready";
+
+  [ObservableProperty]
+  private ObservableCollection<ReportDataItem> previewData = [];
+
+  [ObservableProperty]
+  private Dictionary<string, object> parameters = new();
+
+  [ObservableProperty]
+  private ObservableCollection<string> reportTemplates = new();
+
+  /// <summary>
+  /// Display names for templates (friendly names shown in the UI). Keys map to actual file names.
+  /// </summary>
+  [ObservableProperty]
+  private ObservableCollection<string> reportTemplateDisplayNames = new();
+
+  // Map from display name -> file name (with extension)
+  private readonly Dictionary<string, string> _displayNameToFile = new();
+
+  [ObservableProperty]
+  private int pageSize = 25;
+
+  [ObservableProperty]
+  private int currentPage = 1;
+
+  [ObservableProperty]
+  private int zoomPercent = 100;
+
+  [ObservableProperty]
+  private string? searchText;
+
+  [ObservableProperty]
+  private bool showParametersPanel = false;
+
+  /// <summary>
+  /// Reference to the ReportViewer control (set by the Form).
+  /// </summary>
+  /// Reference to the ReportViewer control (set by the Form).
+  /// Use object here to avoid tight coupling to WinForms control in the view model and ease unit testing.
+  public object? ReportViewer { get; set; }
+
+  /// <summary>
+  /// Reference to the PreviewControl (set by the Form).
+  /// </summary>
+  public object? PreviewControl { get; set; }
+
+  /// <summary>
+  /// Path to the reports folder.
+  /// </summary>
+  [ObservableProperty]
+  private string reportsFolder = string.Empty;
+
+  /// <summary>
+  /// List of supported export formats provided by IReportExportService when available.
+  /// </summary>
+  public IEnumerable<string> SupportedExportFormats => new[] { "PDF" };
+
+  /// <summary>
+  /// Initializes a new instance of the <see cref="ReportsViewModel"/> class.
+  /// </summary>
+  /// <param name="reportService">Service for report operations.</param>
+  /// <param name="logger">Logger instance for the ViewModel.</param>
+  /// <param name="auditService">Service for audit logging.</param>
+  /// <param name="exportService">Optional service for report export operations.</param>
+  /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
+  public ReportsViewModel(IReportService reportService, ILogger<ReportsViewModel> logger, IAuditService auditService, IBudgetRepository budgetRepository, IReportExportService? exportService = null)
+  {
+    ArgumentNullException.ThrowIfNull(reportService);
+    ArgumentNullException.ThrowIfNull(logger);
+    ArgumentNullException.ThrowIfNull(auditService);
+    ArgumentNullException.ThrowIfNull(budgetRepository);
+
+    _reportService = reportService;
+    _logger = logger;
+    _auditService = auditService;
+    _exportService = exportService;
+    _budgetRepository = budgetRepository;
+
+    // Set reports folder path relative to application
+    ReportsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+
+    // Populate available templates from disk if present
+    try
+    {
+      if (Directory.Exists(ReportsFolder))
+      {
+        // Build a normalized map of available friendly names for matching
+        var normalizedFriendly = AvailableReportTypes.ToDictionary(x => Normalize(x), x => x);
+
+        foreach (var file in Directory.EnumerateFiles(ReportsFolder, "*.frx", SearchOption.TopDirectoryOnly))
+        {
+          var fileName = Path.GetFileName(file); // with extension
+          var nameNoExt = Path.GetFileNameWithoutExtension(file);
+
+          if (!ReportTemplates.Contains(nameNoExt)) ReportTemplates.Add(nameNoExt);
+
+          // Determine a friendly display name if possible
+          var normalized = Normalize(nameNoExt);
+          string displayName;
+          if (normalizedFriendly.TryGetValue(normalized, out var friendly))
+          {
+            displayName = friendly; // use known friendly name (e.g., 'Budget Summary')
+          }
+          else
+          {
+            // Fallback: insert spaces in PascalCase or use the raw name
+            displayName = SplitCamelCase(nameNoExt);
+          }
+
+          if (!ReportTemplateDisplayNames.Contains(displayName))
+          {
+            ReportTemplateDisplayNames.Add(displayName);
+            _displayNameToFile[displayName] = fileName;
+          }
+        }
+
+        // If we found templates and SelectedReportType is empty, pick the first friendly name
+        if (ReportTemplateDisplayNames.Count > 0 && string.IsNullOrWhiteSpace(SelectedReportType))
+        {
+          SelectedReportType = ReportTemplateDisplayNames.First();
+        }
+      }
+      else
+      {
+        _logger.LogWarning("Reports folder does not exist: {ReportsFolder}", ReportsFolder);
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex, "Error enumerating report templates in {ReportsFolder}", ReportsFolder);
+    }
+
+    _logger.LogInformation("ReportsViewModel initialized. Reports folder: {ReportsFolder}", ReportsFolder);
+  }
+
+  private static string Normalize(string input)
+  {
+    if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+    var chars = input.Where(c => char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray();
+    return new string(chars);
+  }
+
+  private static string SplitCamelCase(string input)
+  {
+    if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+    var sb = new System.Text.StringBuilder();
+    for (int i = 0; i < input.Length; i++)
+    {
+      var c = input[i];
+      if (i > 0 && char.IsUpper(c) && !char.IsUpper(input[i - 1])) sb.Append(' ');
+      sb.Append(c);
+    }
+    return sb.ToString();
+  }
+
+  [RelayCommand]
+  public async Task SetZoomAsync(int percent, CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null)
+    {
+      ErrorMessage = "Report viewer not initialized.";
+      return;
+    }
+
+    try
+    {
+      ZoomPercent = percent;
+      // ConfigureViewerAsync not available in FastReport.OpenSource
+      // Zoom configuration may need to be handled differently
+      await Task.Yield(); // Ensure async execution for UI thread safety
+      StatusMessage = $"Zoom set to {percent}%";
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to set zoom: {ex.Message}";
+      _logger.LogError(ex, "Failed to set zoom to {Percent}%", percent);
+    }
+  }
+
+  [RelayCommand]
+  public async Task PrintAsync(CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null)
+    {
+      ErrorMessage = "Report viewer not initialized.";
+      return;
+    }
+
+    try
+    {
+      IsBusy = true;
+      StatusMessage = "Printing report...";
+
+      await _reportService.PrintAsync(ReportViewer, cancellationToken);
+
+      StatusMessage = "Report sent to printer.";
+      _logger.LogDebug("Report printed");
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to print report: {ex.Message}";
+      _logger.LogError(ex, "Failed to print report");
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  [RelayCommand]
+  public async Task FindAsync(CancellationToken cancellationToken = default)
+  {
+    // NOTE: BoldReports WPF does not expose find/search API
+    // Search is available through the control's built-in toolbar
+    StatusMessage = "Search is available through the viewer toolbar";
+    await Task.CompletedTask;
+  }
+
+  [RelayCommand]
+  public async Task ToggleParametersPanelAsync(CancellationToken cancellationToken = default)
+  {
+    // NOTE: BoldReports WPF parameters panel is controlled by the control itself
+    StatusMessage = "Parameters panel is controlled by the viewer";
+    await Task.CompletedTask;
+  }
+
+  /// <summary>
+  /// Gets the FRX file path for the selected report type.
+  /// </summary>
+  private string GetReportPath()
+  {
+    // If a display name maps to an actual file, use that
+    if (!string.IsNullOrWhiteSpace(SelectedReportType) && _displayNameToFile.TryGetValue(SelectedReportType, out var mappedFile))
+    {
+      return Path.Combine(ReportsFolder, mappedFile);
+    }
+
+    // If the SelectedReportType maps directly to a template filename (no spaces), prefer that.
+    if (!string.IsNullOrWhiteSpace(SelectedReportType) && ReportTemplates.Contains(SelectedReportType))
+    {
+      return Path.Combine(ReportsFolder, SelectedReportType + ".frx");
+    }
+
+    var reportFileName = Normalize(SelectedReportType) switch
+    {
+      "budgetcomparison" => "BudgetComparison.frx",
+      "budgetforecastsummary" => "BudgetForecastSummary.frx",
+      "budgetforecastlineitems" => "BudgetForecastLineItems.frx",
+      _ => "BudgetComparison.frx"
+    };
+
+    return Path.Combine(ReportsFolder, reportFileName);
+  }
+
+  /// <summary>
+  /// Public helper: return the report path if the file exists, otherwise null.
+  /// Used by the WinForms layer to provide a clearer error message when templates are missing.
+  /// </summary>
+  public string? GetReportPathIfExists()
+  {
+    var path = GetReportPath();
+    return File.Exists(path) ? path : null;
+  }
+
+  /// <summary>
+  /// Generate and load the selected report into the viewer.
+  /// </summary>
+  [RelayCommand]
+  public async Task GenerateReportAsync(CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null)
+    {
+      ErrorMessage = "Report viewer not initialized.";
+      _logger.LogWarning("GenerateReportAsync called but ReportViewer is null");
+      return;
+    }
+
+    // Validate incoming parameters first
+    if (!ValidateParameters())
+    {
+      _logger.LogWarning("Report parameters failed validation: {Error}", ErrorMessage);
+      return;
+    }
+
+    try
+    {
+      IsBusy = true;
+      ErrorMessage = null;
+      StatusMessage = "Generating report...";
+
+      var reportPath = GetReportPath();
+      _logger.LogInformation("Generating report: {ReportType} from {ReportPath}", SelectedReportType, reportPath);
+
+      // Prepare data sources based on report type
+      StatusMessage = "Preparing data sources...";
+      var dataSources = await PrepareDataSourcesAsync(cancellationToken);
+
+      // Honor cancellation after heavy work
+      cancellationToken.ThrowIfCancellationRequested();
+
+      // Load report into viewer
+      StatusMessage = "Loading report into viewer...";
+
+      var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
+      await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
+
+      // Honor cancellation again
+      cancellationToken.ThrowIfCancellationRequested();
+
+      // NOTE: BoldReports WPF does not expose SetReportParametersAsync API
+      // Parameters are configured in the RDL file or through the control's UI
+      // await _reportService.SetReportParametersAsync(ReportViewer, new Dictionary<string, object>(Parameters), cancellationToken);
+
+      StatusMessage = $"Report generated: {SelectedReportType}";
+      _logger.LogInformation("Report generated successfully: {ReportType}", SelectedReportType);
+    }
+    catch (OperationCanceledException)
+    {
+      StatusMessage = "Report generation cancelled.";
+      _logger.LogDebug("Report generation cancelled");
+    }
+    catch (FileNotFoundException ex)
+    {
+      ErrorMessage = $"Report template not found: {ex.FileName}";
+      _logger.LogError(ex, "Report template not found");
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to generate report: {ex.Message}";
+      _logger.LogError(ex, "Failed to generate report: {ReportType}", SelectedReportType);
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  /// <summary>
+  /// Load a specific report file into the viewer.
+  /// </summary>
+  public async Task LoadReportAsync(string reportPath, CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null)
+    {
+      ErrorMessage = "Report viewer not initialized.";
+      _logger.LogWarning("LoadReportAsync called but ReportViewer is null");
+      return;
+    }
+
+    if (string.IsNullOrWhiteSpace(reportPath))
+    {
+      ErrorMessage = "Report path is required.";
+      return;
+    }
+
+    try
+    {
+      IsBusy = true;
+      ErrorMessage = null;
+      StatusMessage = "Loading report...";
+
+      _logger.LogInformation("Loading report from path: {ReportPath}", reportPath);
+
+      // Prepare data sources (use default for now)
+      var dataSources = await PrepareDataSourcesAsync(cancellationToken);
+
+      // Honor cancellation after heavy work
+      cancellationToken.ThrowIfCancellationRequested();
+
+      // Load report into viewer
+      var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
+      await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
+
+      // Show the prepared report in the preview control
+      if (ReportViewer is FastReport.Report report)
+      {
+        // PreviewControl not available in Open Source
+        // previewControl.Report = report;
+        _logger.LogDebug("Report loaded (preview not available in Open Source)");
+      }
+      else
+      {
+        _logger.LogWarning("ReportViewer is not of expected type. ReportViewer: {ReportViewerType}",
+            ReportViewer?.GetType().Name);
+      }
+
+      // Honor cancellation again
+      cancellationToken.ThrowIfCancellationRequested();
+
+      StatusMessage = $"Report loaded: {Path.GetFileName(reportPath)}";
+      HasReportLoaded = true;
+      _logger.LogInformation("Report loaded successfully from: {ReportPath}", reportPath);
+    }
+    catch (OperationCanceledException)
+    {
+      StatusMessage = "Report loading cancelled.";
+      _logger.LogDebug("Report loading cancelled");
+    }
+    catch (FileNotFoundException ex)
+    {
+      ErrorMessage = $"Report file not found: {ex.FileName}";
+      _logger.LogError(ex, "Report file not found: {FileName}", ex.FileName);
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to load report: {ex.Message}";
+      _logger.LogError(ex, "Failed to load report from {ReportPath}: {Message}", reportPath, ex.Message);
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  /// <summary>
+  /// Export the current report to PDF.
+  /// </summary>
+  [RelayCommand]
+  public async Task ExportToPdfAsync(CancellationToken cancellationToken = default)
+  {
+    var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+    var filePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "WileyWidget",
+        "Reports",
+        fileName
+    );
+
+    await ExportToPdfFileAsync(filePath, cancellationToken);
+  }
+
+  /// <summary>
+  /// Export the current report to PDF at the specified file path.
+  /// </summary>
+  public async Task ExportToPdfFileAsync(string filePath, CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null)
+    {
+      ErrorMessage = "Report viewer not initialized.";
+      return;
+    }
+
+    if (string.IsNullOrWhiteSpace(filePath))
+    {
+      ErrorMessage = "Export path cannot be empty.";
+      return;
+    }
+
+    try
+    {
+      IsBusy = true;
+      ErrorMessage = null;
+      StatusMessage = "Exporting to PDF...";
+
+      Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+
+      var progress = new Progress<double>(p => StatusMessage = $"Exporting PDF... {p:P0}");
+      await _reportService.ExportToPdfAsync(ReportViewer, filePath, progress, cancellationToken);
+
+      StatusMessage = $"Exported to: {filePath}";
+      _logger.LogInformation("Report exported to PDF: {FilePath}", filePath);
+
+      try
+      {
+        await _auditService.AuditAsync("ReportGenerated", new { Report = SelectedReportType, Path = filePath, Format = "PDF", Timestamp = DateTime.UtcNow });
+      }
+      catch (Exception ax)
+      {
+        _logger.LogWarning(ax, "Failed to write audit event for report export (PDF)");
+      }
+
+      System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to export PDF: {ex.Message}";
+      _logger.LogError(ex, "Failed to export report to PDF");
+
+      try
+      {
+        await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = filePath, Format = "PDF", Error = ex.Message, Timestamp = DateTime.UtcNow });
+      }
+      catch (Exception ax)
+      {
+        _logger.LogWarning(ax, "Failed to write audit event for failed PDF export");
+      }
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  /// <summary>
+  /// Export the current report to Excel.
+  /// </summary>
+  [RelayCommand]
+  public async Task ExportToExcelAsync(CancellationToken cancellationToken = default)
+  {
+    var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+    var filePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        "WileyWidget",
+        "Reports",
+        fileName
+    );
+
+    await ExportToExcelFileAsync(filePath, cancellationToken);
+  }
+
+  /// <summary>
+  /// Export the current report to Excel at the specified file path.
+  /// </summary>
+  public async Task ExportToExcelFileAsync(string filePath, CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null)
+    {
+      ErrorMessage = "Report viewer not initialized.";
+      return;
+    }
+
+    if (string.IsNullOrWhiteSpace(filePath))
+    {
+      ErrorMessage = "Export path cannot be empty.";
+      return;
+    }
+
+    try
+    {
+      IsBusy = true;
+      ErrorMessage = null;
+      StatusMessage = "Exporting to Excel...";
+
+      Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+
+      var progress = new Progress<double>(p => StatusMessage = $"Exporting Excel... {p:P0}");
+      await _reportService.ExportToExcelAsync(ReportViewer, filePath, progress, cancellationToken);
+
+      StatusMessage = $"Exported to: {filePath}";
+      _logger.LogInformation("Report exported to Excel: {FilePath}", filePath);
+
+      try
+      {
+        await _auditService.AuditAsync("ReportGenerated", new { Report = SelectedReportType, Path = filePath, Format = "Excel", Timestamp = DateTime.UtcNow });
+      }
+      catch (Exception ax)
+      {
+        _logger.LogWarning(ax, "Failed to write audit event for report export (Excel)");
+      }
+
+      System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to export Excel: {ex.Message}";
+      _logger.LogError(ex, "Failed to export report to Excel");
+
+      try
+      {
+        await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = filePath, Format = "Excel", Error = ex.Message, Timestamp = DateTime.UtcNow });
+      }
+      catch (Exception ax)
+      {
+        _logger.LogWarning(ax, "Failed to write audit event for failed Excel export");
+      }
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  /// <summary>
+  /// Refresh the current report.
+  /// </summary>
+  [RelayCommand]
+  public async Task RefreshReportAsync(CancellationToken cancellationToken = default)
+  {
+    if (ReportViewer == null) return;
+
+    try
+    {
+      IsBusy = true;
+      StatusMessage = "Refreshing report...";
+
+      await _reportService.RefreshReportAsync(ReportViewer);
+
+      StatusMessage = "Report refreshed.";
+      _logger.LogDebug("Report refreshed");
+    }
+    catch (Exception ex)
+    {
+      ErrorMessage = $"Failed to refresh report: {ex.Message}";
+      _logger.LogError(ex, "Failed to refresh report");
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  /// <summary>
+  /// Validate selected parameters prior to running or exporting a report.
+  /// </summary>
+  private bool ValidateParameters()
+  {
+    ErrorMessage = null;
+
+    if (string.IsNullOrWhiteSpace(SelectedReportType))
+    {
+      ErrorMessage = "Please select a report type.";
+      return false;
+    }
+
+    if (FromDate > ToDate)
+    {
+      ErrorMessage = "From date must be earlier than or equal to To date.";
+      return false;
+    }
+
+    // Merge into parameters dictionary for downstream services
+    Parameters["FromDate"] = FromDate;
+    Parameters["ToDate"] = ToDate;
+    Parameters["ReportTitle"] = SelectedReportType;
+
+    return true;
+  }
+
+  /// <summary>
+  /// Prepare data sources for the selected report type.
+  /// </summary>
+  private async Task<Dictionary<string, object>> PrepareDataSourcesAsync(CancellationToken cancellationToken)
+  {
+    var dataSources = new Dictionary<string, object>();
+    var selectedReportKey = Normalize(SelectedReportType);
+
+    // Prepare report data based on report type
+    List<ReportDataItem> previewTx = new();
+    if (selectedReportKey == "budgetcomparison")
+    {
+      try
+      {
+        var entries = (await _budgetRepository.GetByDateRangeAsync(FromDate, ToDate, cancellationToken)).ToList();
+        var bcDs = BuildBudgetComparisonDataSet(entries);
+        dataSources["BudgetComparison"] = bcDs;
+
+        // populate light preview rows
+        previewTx.AddRange(entries.Take(PageSize).Select(e => new ReportDataItem(e.AccountNumber ?? string.Empty, e.Description ?? string.Empty, e.FundType.ToString())).ToList());
+      }
+      catch (Exception ex)
+      {
+        _logger.LogWarning(ex, "Failed to prepare Budget Comparison data sources");
+      }
+    }
+    else if (selectedReportKey == "budgetforecastsummary")
+    {
+      var entries = (await _budgetRepository.GetByDateRangeAsync(FromDate, ToDate, cancellationToken)).ToList();
+      var forecastSummary = BuildForecastSummaryData(entries);
+      dataSources["ForecastData"] = forecastSummary;
+
+      foreach (var item in forecastSummary)
+      {
+        previewTx.Add(new ReportDataItem(
+            item.EnterpriseName,
+            $"{item.TotalProposedBudget:C} proposed / {item.TotalCurrentBudget:C} current",
+            $"FY {item.CurrentFiscalYear} -> {item.ProposedFiscalYear}"));
+      }
+    }
+    else if (selectedReportKey == "budgetforecastlineitems")
+    {
+      var entries = (await _budgetRepository.GetByDateRangeAsync(FromDate, ToDate, cancellationToken)).ToList();
+      var lineItems = BuildForecastLineItems(entries);
+      dataSources["LineItems"] = lineItems;
+      dataSources["ForecastHeader"] = BuildForecastHeaderData(entries);
+
+      previewTx.AddRange(lineItems.Take(PageSize)
+          .Select(item => new ReportDataItem(item.Description, item.ProposedAmount.ToString("C", System.Globalization.CultureInfo.CurrentCulture), item.Category)));
+    }
+    else
+    {
+      await Task.Run(() =>
+      {
+        switch (selectedReportKey)
+        {
+          case "budgetcomparison":
+            dataSources["BudgetComparison"] = BuildBudgetComparisonDataSet(Array.Empty<BudgetEntry>());
+            break;
+          case "budgetforecastsummary":
+            dataSources["ForecastData"] = Array.Empty<ForecastSummaryItem>();
+            break;
+          case "budgetforecastlineitems":
+            dataSources["LineItems"] = Array.Empty<ForecastLineItem>();
+            dataSources["ForecastHeader"] = Array.Empty<ForecastHeaderItem>();
+            break;
+        }
+      }, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Apply preview data to UI-bound collection on the calling context (UI thread)
+    // Note: ConfigureAwait(false) means we may not be on UI thread, so don't touch PreviewData here
+    // Instead, only update previewTx list in the Task.Run above and clear it now
+    try
+    {
+      PreviewData.Clear();
+      foreach (var p in previewTx) PreviewData.Add(p);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to apply preview data to UI-bound collection");
+    }
+
+    _logger.LogDebug("Prepared {Count} data sources for {ReportType}", dataSources.Count, SelectedReportType);
+    return dataSources;
+  }
+
+  [RelayCommand]
+  private async Task LoadPreviewAsync(CancellationToken cancellationToken = default)
+  {
+    // A lightweight preview load that prepares data sources and populates PreviewData
+    try
+    {
+      IsBusy = true;
+      StatusMessage = "Preparing preview...";
+
+      await PrepareDataSourcesAsync(cancellationToken);
+
+      StatusMessage = "Preview ready";
+    }
+    catch (OperationCanceledException)
+    {
+      StatusMessage = "Preview cancelled";
+    }
+    finally
+    {
+      IsBusy = false;
+    }
+  }
+
+  [RelayCommand]
+  private void NextPage()
+  {
+    CurrentPage++;
+    // fire-and-forget preview reload; callers (UI) may await if they use ExecuteAsync
+    _ = LoadPreviewAsync();
+  }
+
+  [RelayCommand]
+  private void PreviousPage()
+  {
+    if (CurrentPage > 1)
+    {
+      CurrentPage--;
+      _ = LoadPreviewAsync();
+    }
+  }
+
+  #region Empty Data Helpers
+
+  private IReadOnlyList<ForecastSummaryItem> BuildForecastSummaryData(IEnumerable<BudgetEntry> entries)
+  {
+    var entryList = entries?.ToList() ?? [];
+    var proposedFiscalYear = ResolveProposedFiscalYear(entryList);
+    var currentFiscalYear = proposedFiscalYear - 1;
+    var totalCurrentBudget = entryList.Sum(entry => entry.ActualAmount);
+    var totalProposedBudget = entryList.Sum(entry => entry.BudgetedAmount);
+    var totalIncrease = totalProposedBudget - totalCurrentBudget;
+    var totalIncreasePercent = totalCurrentBudget == 0m
+        ? 0m
+        : Math.Round((totalIncrease / totalCurrentBudget) * 100m, 2);
+
+    var summary = entryList.Count == 0
+        ? "No budget entries were available for the selected date range."
+        : $"Generated from {entryList.Count} budget entries between {FromDate:d} and {ToDate:d}. Current values reflect actual amounts and proposed values reflect budgeted amounts.";
+
+    return
     [
-        "Budget Summary",
-        "Budget Comparison",
-        "Account List",
-        "Monthly Transactions",
-        "Category Breakdown",
-        "Variance Analysis"
+        new ForecastSummaryItem(
+                ResolveForecastEntityName(entryList),
+                currentFiscalYear,
+                proposedFiscalYear,
+                totalCurrentBudget,
+                totalProposedBudget,
+                totalIncrease,
+                totalIncreasePercent,
+                3.2m,
+                summary,
+                DateTime.Now)
     ];
+  }
 
-    [ObservableProperty]
-    private string selectedReportType = "Budget Summary";
+  private IReadOnlyList<ForecastHeaderItem> BuildForecastHeaderData(IEnumerable<BudgetEntry> entries)
+  {
+    var entryList = entries?.ToList() ?? [];
+    var proposedFiscalYear = ResolveProposedFiscalYear(entryList);
+    return
+    [
+        new ForecastHeaderItem(
+                ResolveForecastEntityName(entryList),
+                proposedFiscalYear - 1,
+                proposedFiscalYear)
+    ];
+  }
 
-    [ObservableProperty]
-    private DateTime fromDate = new(DateTime.Now.Year, 1, 1);
+  private IReadOnlyList<ForecastLineItem> BuildForecastLineItems(IEnumerable<BudgetEntry> entries)
+  {
+    return (entries ?? Enumerable.Empty<BudgetEntry>())
+        .OrderBy(entry => string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.FundTypeDescription : entry.DepartmentName)
+        .ThenBy(entry => entry.AccountNumber)
+        .Select(entry =>
+        {
+          var currentAmount = entry.ActualAmount;
+          var proposedAmount = entry.BudgetedAmount;
+          var increase = proposedAmount - currentAmount;
+          var increasePercent = currentAmount == 0m ? 0m : Math.Round((increase / currentAmount) * 100m, 2);
+          var category = !string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.DepartmentName : entry.FundTypeDescription;
+          var justification = BuildForecastJustification(entry);
 
-    [ObservableProperty]
-    private DateTime toDate = DateTime.Now;
+          return new ForecastLineItem(
+                  category,
+                  entry.Description,
+                  currentAmount,
+                  proposedAmount,
+                  increase,
+                  increasePercent,
+                  justification,
+                  !string.IsNullOrWhiteSpace(entry.ActivityCode));
+        })
+        .ToList();
+  }
 
-    [ObservableProperty]
-    private bool isBusy;
+  private static int ResolveProposedFiscalYear(IReadOnlyCollection<BudgetEntry> entries)
+  {
+    return entries.Count == 0
+        ? DateTime.Now.Year
+        : entries.GroupBy(entry => entry.FiscalYear)
+            .OrderByDescending(group => group.Count())
+            .ThenByDescending(group => group.Key)
+            .Select(group => group.Key)
+            .First();
+  }
 
-    [ObservableProperty]
-    private string? errorMessage;
+  private static string ResolveForecastEntityName(IReadOnlyCollection<BudgetEntry> entries)
+  {
+    return entries.Select(entry => entry.EntityName)
+        .Where(name => !string.IsNullOrWhiteSpace(name))
+        .GroupBy(name => name)
+        .OrderByDescending(group => group.Count())
+        .ThenBy(group => group.Key)
+        .Select(group => group.Key)
+        .FirstOrDefault()
+        ?? "Wiley Widget";
+  }
 
-    [ObservableProperty]
-    private string? statusMessage;
-
-    [ObservableProperty]
-    private bool isLoading;
-
-    [ObservableProperty]
-    private bool hasReportLoaded;
-
-    [ObservableProperty]
-    private string statusText = "Ready";
-
-    [ObservableProperty]
-    private ObservableCollection<ReportDataItem> previewData = [];
-
-    [ObservableProperty]
-    private Dictionary<string, object> parameters = new();
-
-    [ObservableProperty]
-    private ObservableCollection<string> reportTemplates = new();
-
-    /// <summary>
-    /// Display names for templates (friendly names shown in the UI). Keys map to actual file names.
-    /// </summary>
-    [ObservableProperty]
-    private ObservableCollection<string> reportTemplateDisplayNames = new();
-
-    // Map from display name -> file name (with extension)
-    private readonly Dictionary<string, string> _displayNameToFile = new();
-
-    [ObservableProperty]
-    private int pageSize = 25;
-
-    [ObservableProperty]
-    private int currentPage = 1;
-
-    [ObservableProperty]
-    private int zoomPercent = 100;
-
-    [ObservableProperty]
-    private string? searchText;
-
-    [ObservableProperty]
-    private bool showParametersPanel = false;
-
-    /// <summary>
-    /// Reference to the ReportViewer control (set by the Form).
-    /// </summary>
-    /// Reference to the ReportViewer control (set by the Form).
-    /// Use object here to avoid tight coupling to WinForms control in the view model and ease unit testing.
-    public object? ReportViewer { get; set; }
-
-    /// <summary>
-    /// Reference to the PreviewControl (set by the Form).
-    /// </summary>
-    public object? PreviewControl { get; set; }
-
-    /// <summary>
-    /// Path to the reports folder.
-    /// </summary>
-    [ObservableProperty]
-    private string reportsFolder = string.Empty;
-
-    /// <summary>
-    /// List of supported export formats provided by IReportExportService when available.
-    /// </summary>
-    public IEnumerable<string> SupportedExportFormats => _exportService?.GetSupportedFormats() ?? new[] { "PDF", "Excel", "CSV" };
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ReportsViewModel"/> class.
-    /// </summary>
-    /// <param name="reportService">Service for report operations.</param>
-    /// <param name="logger">Logger instance for the ViewModel.</param>
-    /// <param name="auditService">Service for audit logging.</param>
-    /// <param name="exportService">Optional service for report export operations.</param>
-    /// <exception cref="ArgumentNullException">Thrown when required parameters are null.</exception>
-    public ReportsViewModel(IReportService reportService, ILogger<ReportsViewModel> logger, IAuditService auditService, IBudgetRepository budgetRepository, IReportExportService? exportService = null)
+  private static string BuildForecastJustification(BudgetEntry entry)
+  {
+    var scope = !string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.DepartmentName : entry.FundTypeDescription;
+    if (!string.IsNullOrWhiteSpace(entry.ActivityCode))
     {
-        ArgumentNullException.ThrowIfNull(reportService);
-        ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(auditService);
-        ArgumentNullException.ThrowIfNull(budgetRepository);
-
-        _reportService = reportService;
-        _logger = logger;
-        _auditService = auditService;
-        _exportService = exportService;
-        _budgetRepository = budgetRepository;
-
-        // Set reports folder path relative to application
-        ReportsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
-
-        // Populate available templates from disk if present
-        try
-        {
-            if (Directory.Exists(ReportsFolder))
-            {
-                // Build a normalized map of available friendly names for matching
-                var normalizedFriendly = AvailableReportTypes.ToDictionary(x => Normalize(x), x => x);
-
-                foreach (var file in Directory.EnumerateFiles(ReportsFolder, "*.frx", SearchOption.TopDirectoryOnly))
-                {
-                    var fileName = Path.GetFileName(file); // with extension
-                    var nameNoExt = Path.GetFileNameWithoutExtension(file);
-
-                    if (!ReportTemplates.Contains(nameNoExt)) ReportTemplates.Add(nameNoExt);
-
-                    // Determine a friendly display name if possible
-                    var normalized = Normalize(nameNoExt);
-                    string displayName;
-                    if (normalizedFriendly.TryGetValue(normalized, out var friendly))
-                    {
-                        displayName = friendly; // use known friendly name (e.g., 'Budget Summary')
-                    }
-                    else
-                    {
-                        // Fallback: insert spaces in PascalCase or use the raw name
-                        displayName = SplitCamelCase(nameNoExt);
-                    }
-
-                    if (!ReportTemplateDisplayNames.Contains(displayName))
-                    {
-                        ReportTemplateDisplayNames.Add(displayName);
-                        _displayNameToFile[displayName] = fileName;
-                    }
-                }
-
-                // If we found templates and SelectedReportType is empty, pick the first friendly name
-                if (ReportTemplateDisplayNames.Count > 0 && string.IsNullOrWhiteSpace(SelectedReportType))
-                {
-                    SelectedReportType = ReportTemplateDisplayNames.First();
-                }
-            }
-            else
-            {
-                _logger.LogWarning("Reports folder does not exist: {ReportsFolder}", ReportsFolder);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error enumerating report templates in {ReportsFolder}", ReportsFolder);
-        }
-
-        _logger.LogInformation("ReportsViewModel initialized. Reports folder: {ReportsFolder}", ReportsFolder);
+      return $"{scope} account {entry.AccountNumber} ({entry.ActivityCode}) based on current budget data.";
     }
 
-    private static string Normalize(string input)
+    return $"{scope} account {entry.AccountNumber} based on current budget data.";
+  }
+
+  private DataSet BuildBudgetComparisonDataSet(IEnumerable<BudgetEntry> entries)
+  {
+    var revenues = new DataTable("Revenues");
+    var expenses = new DataTable("Expenses");
+
+    // Columns required by the FRX template
+    Action<DataTable> addColumns = dt =>
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-        var chars = input.Where(c => char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray();
-        return new string(chars);
-    }
+      dt.Columns.Add("Account", typeof(string));
+      dt.Columns.Add("Description", typeof(string));
+      dt.Columns.Add("ProposedBudget", typeof(decimal));
+      dt.Columns.Add("Actual_11_2025", typeof(decimal));
+      dt.Columns.Add("Remaining", typeof(decimal));
+      dt.Columns.Add("PercentOfBudget", typeof(decimal)); // fractional 0..1
+    };
 
-    private static string SplitCamelCase(string input)
+    addColumns(revenues);
+    addColumns(expenses);
+
+    foreach (var e in entries ?? Enumerable.Empty<BudgetEntry>())
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-        var sb = new System.Text.StringBuilder();
-        for (int i = 0; i < input.Length; i++)
+      try
+      {
+        var account = e.AccountNumber ?? string.Empty;
+        var description = e.Description ?? string.Empty;
+        var proposed = e.BudgetedAmount;
+        var actual = e.ActualAmount;
+        var remaining = e.Remaining;
+        var percent = e.PercentOfBudgetFraction; // 0..1
+
+        // Classify revenue vs expense
+        var acctType = e.MunicipalAccount?.Type;
+        var isRevenue = acctType.HasValue
+            ? acctType.Value == AccountType.Revenue
+            : (!string.IsNullOrWhiteSpace(account) && account.TrimStart().StartsWith("4"));
+
+        if (isRevenue)
         {
-            var c = input[i];
-            if (i > 0 && char.IsUpper(c) && !char.IsUpper(input[i - 1])) sb.Append(' ');
-            sb.Append(c);
-        }
-        return sb.ToString();
-    }
-
-    [RelayCommand]
-    public async Task SetZoomAsync(int percent, CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null)
-        {
-            ErrorMessage = "Report viewer not initialized.";
-            return;
-        }
-
-        try
-        {
-            ZoomPercent = percent;
-            // ConfigureViewerAsync not available in FastReport.OpenSource
-            // Zoom configuration may need to be handled differently
-            await Task.Yield(); // Ensure async execution for UI thread safety
-            StatusMessage = $"Zoom set to {percent}%";
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to set zoom: {ex.Message}";
-            _logger.LogError(ex, "Failed to set zoom to {Percent}%", percent);
-        }
-    }
-
-    [RelayCommand]
-    public async Task PrintAsync(CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null)
-        {
-            ErrorMessage = "Report viewer not initialized.";
-            return;
-        }
-
-        try
-        {
-            IsBusy = true;
-            StatusMessage = "Printing report...";
-
-            await _reportService.PrintAsync(ReportViewer, cancellationToken);
-
-            StatusMessage = "Report sent to printer.";
-            _logger.LogDebug("Report printed");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to print report: {ex.Message}";
-            _logger.LogError(ex, "Failed to print report");
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    public async Task FindAsync(CancellationToken cancellationToken = default)
-    {
-        // NOTE: BoldReports WPF does not expose find/search API
-        // Search is available through the control's built-in toolbar
-        StatusMessage = "Search is available through the viewer toolbar";
-        await Task.CompletedTask;
-    }
-
-    [RelayCommand]
-    public async Task ToggleParametersPanelAsync(CancellationToken cancellationToken = default)
-    {
-        // NOTE: BoldReports WPF parameters panel is controlled by the control itself
-        StatusMessage = "Parameters panel is controlled by the viewer";
-        await Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Gets the RDL file path for the selected report type.
-    /// </summary>
-    private string GetReportPath()
-    {
-        // If a display name maps to an actual file, use that
-        if (!string.IsNullOrWhiteSpace(SelectedReportType) && _displayNameToFile.TryGetValue(SelectedReportType, out var mappedFile))
-        {
-            return Path.Combine(ReportsFolder, mappedFile);
-        }
-
-        // If the SelectedReportType maps directly to a template filename (no spaces), prefer that.
-        if (!string.IsNullOrWhiteSpace(SelectedReportType) && ReportTemplates.Contains(SelectedReportType))
-        {
-            return Path.Combine(ReportsFolder, SelectedReportType + ".frx");
-        }
-
-        var reportFileName = SelectedReportType switch
-        {
-            "Budget Summary" => "BudgetSummary.frx",
-            "Budget Comparison" => "BudgetComparison.frx",
-            "Account List" => "AccountList.frx",
-            "Monthly Transactions" => "MonthlyTransactions.frx",
-            "Category Breakdown" => "CategoryBreakdown.frx",
-            "Variance Analysis" => "VarianceAnalysis.frx",
-            _ => "BudgetSummary.frx"
-        };
-
-        return Path.Combine(ReportsFolder, reportFileName);
-    }
-
-    /// <summary>
-    /// Public helper: return the report path if the file exists, otherwise null.
-    /// Used by the WinForms layer to provide a clearer error message when templates are missing.
-    /// </summary>
-    public string? GetReportPathIfExists()
-    {
-        var path = GetReportPath();
-        return File.Exists(path) ? path : null;
-    }
-
-    /// <summary>
-    /// Generate and load the selected report into the viewer.
-    /// </summary>
-    [RelayCommand]
-    public async Task GenerateReportAsync(CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null)
-        {
-            ErrorMessage = "Report viewer not initialized.";
-            _logger.LogWarning("GenerateReportAsync called but ReportViewer is null");
-            return;
-        }
-
-        // Validate incoming parameters first
-        if (!ValidateParameters())
-        {
-            _logger.LogWarning("Report parameters failed validation: {Error}", ErrorMessage);
-            return;
-        }
-
-        try
-        {
-            IsBusy = true;
-            ErrorMessage = null;
-            StatusMessage = "Generating report...";
-
-            var reportPath = GetReportPath();
-            _logger.LogInformation("Generating report: {ReportType} from {ReportPath}", SelectedReportType, reportPath);
-
-            // Prepare data sources based on report type
-            StatusMessage = "Preparing data sources...";
-            var dataSources = await PrepareDataSourcesAsync(cancellationToken);
-
-            // Honor cancellation after heavy work
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Load report into viewer
-            StatusMessage = "Loading report into viewer...";
-
-            var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
-            await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
-
-            // Honor cancellation again
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // NOTE: BoldReports WPF does not expose SetReportParametersAsync API
-            // Parameters are configured in the RDL file or through the control's UI
-            // await _reportService.SetReportParametersAsync(ReportViewer, new Dictionary<string, object>(Parameters), cancellationToken);
-
-            StatusMessage = $"Report generated: {SelectedReportType}";
-            _logger.LogInformation("Report generated successfully: {ReportType}", SelectedReportType);
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Report generation cancelled.";
-            _logger.LogDebug("Report generation cancelled");
-        }
-        catch (FileNotFoundException ex)
-        {
-            ErrorMessage = $"Report template not found: {ex.FileName}";
-            _logger.LogError(ex, "Report template not found");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to generate report: {ex.Message}";
-            _logger.LogError(ex, "Failed to generate report: {ReportType}", SelectedReportType);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Load a specific report file into the viewer.
-    /// </summary>
-    public async Task LoadReportAsync(string reportPath, CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null)
-        {
-            ErrorMessage = "Report viewer not initialized.";
-            _logger.LogWarning("LoadReportAsync called but ReportViewer is null");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(reportPath))
-        {
-            ErrorMessage = "Report path is required.";
-            return;
-        }
-
-        try
-        {
-            IsBusy = true;
-            ErrorMessage = null;
-            StatusMessage = "Loading report...";
-
-            _logger.LogInformation("Loading report from path: {ReportPath}", reportPath);
-
-            // Prepare data sources (use default for now)
-            var dataSources = await PrepareDataSourcesAsync(cancellationToken);
-
-            // Honor cancellation after heavy work
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Load report into viewer
-            var progress = new Progress<double>(p => StatusMessage = $"Loading report... {p:P0}");
-            await _reportService.LoadReportAsync(ReportViewer, reportPath, dataSources, progress, cancellationToken);
-
-            // Show the prepared report in the preview control
-            if (ReportViewer is FastReport.Report report)
-            {
-                // PreviewControl not available in Open Source
-                // previewControl.Report = report;
-                _logger.LogDebug("Report loaded (preview not available in Open Source)");
-            }
-            else
-            {
-                _logger.LogWarning("ReportViewer is not of expected type. ReportViewer: {ReportViewerType}",
-                    ReportViewer?.GetType().Name);
-            }
-
-            // Honor cancellation again
-            cancellationToken.ThrowIfCancellationRequested();
-
-            StatusMessage = $"Report loaded: {Path.GetFileName(reportPath)}";
-            HasReportLoaded = true;
-            _logger.LogInformation("Report loaded successfully from: {ReportPath}", reportPath);
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Report loading cancelled.";
-            _logger.LogDebug("Report loading cancelled");
-        }
-        catch (FileNotFoundException ex)
-        {
-            ErrorMessage = $"Report file not found: {ex.FileName}";
-            _logger.LogError(ex, "Report file not found: {FileName}", ex.FileName);
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to load report: {ex.Message}";
-            _logger.LogError(ex, "Failed to load report from {ReportPath}: {Message}", reportPath, ex.Message);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Export the current report to PDF.
-    /// </summary>
-    [RelayCommand]
-    public async Task ExportToPdfAsync(CancellationToken cancellationToken = default)
-    {
-        var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
-        var filePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "WileyWidget",
-            "Reports",
-            fileName
-        );
-
-        await ExportToPdfFileAsync(filePath, cancellationToken);
-    }
-
-    /// <summary>
-    /// Export the current report to PDF at the specified file path.
-    /// </summary>
-    public async Task ExportToPdfFileAsync(string filePath, CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null)
-        {
-            ErrorMessage = "Report viewer not initialized.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            ErrorMessage = "Export path cannot be empty.";
-            return;
-        }
-
-        try
-        {
-            IsBusy = true;
-            ErrorMessage = null;
-            StatusMessage = "Exporting to PDF...";
-
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-
-            var progress = new Progress<double>(p => StatusMessage = $"Exporting PDF... {p:P0}");
-            await _reportService.ExportToPdfAsync(ReportViewer, filePath, progress, cancellationToken);
-
-            StatusMessage = $"Exported to: {filePath}";
-            _logger.LogInformation("Report exported to PDF: {FilePath}", filePath);
-
-            try
-            {
-                await _auditService.AuditAsync("ReportGenerated", new { Report = SelectedReportType, Path = filePath, Format = "PDF", Timestamp = DateTime.UtcNow });
-            }
-            catch (Exception ax)
-            {
-                _logger.LogWarning(ax, "Failed to write audit event for report export (PDF)");
-            }
-
-            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to export PDF: {ex.Message}";
-            _logger.LogError(ex, "Failed to export report to PDF");
-
-            try
-            {
-                await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = filePath, Format = "PDF", Error = ex.Message, Timestamp = DateTime.UtcNow });
-            }
-            catch (Exception ax)
-            {
-                _logger.LogWarning(ax, "Failed to write audit event for failed PDF export");
-            }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Export the current report to Excel.
-    /// </summary>
-    [RelayCommand]
-    public async Task ExportToExcelAsync(CancellationToken cancellationToken = default)
-    {
-        var fileName = $"{SelectedReportType.Replace(" ", "", StringComparison.Ordinal)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-        var filePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "WileyWidget",
-            "Reports",
-            fileName
-        );
-
-        await ExportToExcelFileAsync(filePath, cancellationToken);
-    }
-
-    /// <summary>
-    /// Export the current report to Excel at the specified file path.
-    /// </summary>
-    public async Task ExportToExcelFileAsync(string filePath, CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null)
-        {
-            ErrorMessage = "Report viewer not initialized.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            ErrorMessage = "Export path cannot be empty.";
-            return;
-        }
-
-        try
-        {
-            IsBusy = true;
-            ErrorMessage = null;
-            StatusMessage = "Exporting to Excel...";
-
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-
-            var progress = new Progress<double>(p => StatusMessage = $"Exporting Excel... {p:P0}");
-            await _reportService.ExportToExcelAsync(ReportViewer, filePath, progress, cancellationToken);
-
-            StatusMessage = $"Exported to: {filePath}";
-            _logger.LogInformation("Report exported to Excel: {FilePath}", filePath);
-
-            try
-            {
-                await _auditService.AuditAsync("ReportGenerated", new { Report = SelectedReportType, Path = filePath, Format = "Excel", Timestamp = DateTime.UtcNow });
-            }
-            catch (Exception ax)
-            {
-                _logger.LogWarning(ax, "Failed to write audit event for report export (Excel)");
-            }
-
-            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to export Excel: {ex.Message}";
-            _logger.LogError(ex, "Failed to export report to Excel");
-
-            try
-            {
-                await _auditService.AuditAsync("ReportExportFailed", new { Report = SelectedReportType, FilePath = filePath, Format = "Excel", Error = ex.Message, Timestamp = DateTime.UtcNow });
-            }
-            catch (Exception ax)
-            {
-                _logger.LogWarning(ax, "Failed to write audit event for failed Excel export");
-            }
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Refresh the current report.
-    /// </summary>
-    [RelayCommand]
-    public async Task RefreshReportAsync(CancellationToken cancellationToken = default)
-    {
-        if (ReportViewer == null) return;
-
-        try
-        {
-            IsBusy = true;
-            StatusMessage = "Refreshing report...";
-
-            await _reportService.RefreshReportAsync(ReportViewer);
-
-            StatusMessage = "Report refreshed.";
-            _logger.LogDebug("Report refreshed");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Failed to refresh report: {ex.Message}";
-            _logger.LogError(ex, "Failed to refresh report");
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    /// <summary>
-    /// Validate selected parameters prior to running or exporting a report.
-    /// </summary>
-    private bool ValidateParameters()
-    {
-        ErrorMessage = null;
-
-        if (string.IsNullOrWhiteSpace(SelectedReportType))
-        {
-            ErrorMessage = "Please select a report type.";
-            return false;
-        }
-
-        if (FromDate > ToDate)
-        {
-            ErrorMessage = "From date must be earlier than or equal to To date.";
-            return false;
-        }
-
-        // Merge into parameters dictionary for downstream services
-        Parameters["FromDate"] = FromDate;
-        Parameters["ToDate"] = ToDate;
-        Parameters["ReportTitle"] = SelectedReportType;
-
-        return true;
-    }
-
-    /// <summary>
-    /// Prepare data sources for the selected report type.
-    /// </summary>
-    private async Task<Dictionary<string, object>> PrepareDataSourcesAsync(CancellationToken cancellationToken)
-    {
-        var dataSources = new Dictionary<string, object>();
-
-        // Prepare report data based on report type
-        List<ReportDataItem> previewTx = new();
-        if (SelectedReportType == "Budget Comparison")
-        {
-            try
-            {
-                var entries = (await _budgetRepository.GetByDateRangeAsync(FromDate, ToDate, cancellationToken)).ToList();
-                var bcDs = BuildBudgetComparisonDataSet(entries);
-                dataSources["BudgetComparison"] = bcDs;
-
-                // populate light preview rows
-                previewTx.AddRange(entries.Take(PageSize).Select(e => new ReportDataItem(e.AccountNumber ?? string.Empty, e.Description ?? string.Empty, e.FundType.ToString())).ToList());
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to prepare Budget Comparison data sources");
-            }
+          revenues.Rows.Add(account, description, proposed, actual, remaining, percent);
         }
         else
         {
-            await Task.Run(() =>
-            {
-                switch (SelectedReportType)
-                {
-                    case "Budget Summary":
-                        dataSources["BudgetData"] = CreateEmptyBudgetData();
-                        break;
-                    case "Account List":
-                        dataSources["AccountData"] = CreateEmptyAccountData();
-                        break;
-                    case "Monthly Transactions":
-                        var allTx = CreateEmptyTransactionData();
-                        dataSources["TransactionData"] = allTx;
-
-                        // set preview page
-                        var start = (CurrentPage - 1) * PageSize;
-                        previewTx.AddRange(allTx.Skip(start).Take(PageSize)
-                                .Select(t => new ReportDataItem(t.Date.ToShortDateString(), t.TransactionId, t.Category))
-                                .ToList());
-
-                        break;
-                    case "Category Breakdown":
-                        dataSources["CategoryData"] = CreateEmptyCategoryData();
-                        break;
-                    case "Variance Analysis":
-                        dataSources["VarianceData"] = CreateEmptyVarianceData();
-                        break;
-                }
-            }, cancellationToken).ConfigureAwait(false);
+          expenses.Rows.Add(account, description, proposed, actual, remaining, percent);
         }
-
-        // Apply preview data to UI-bound collection on the calling context (UI thread)
-        // Note: ConfigureAwait(false) means we may not be on UI thread, so don't touch PreviewData here
-        // Instead, only update previewTx list in the Task.Run above and clear it now
-        try
-        {
-            PreviewData.Clear();
-            foreach (var p in previewTx) PreviewData.Add(p);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to apply preview data to UI-bound collection");
-        }
-
-        _logger.LogDebug("Prepared {Count} data sources for {ReportType}", dataSources.Count, SelectedReportType);
-        return dataSources;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogWarning(ex, "Skipping budget entry while building BudgetComparison dataset");
+      }
     }
 
-    [RelayCommand]
-    private async Task LoadPreviewAsync(CancellationToken cancellationToken = default)
+    var ds = new DataSet("BudgetComparison");
+    ds.Tables.Add(revenues);
+    ds.Tables.Add(expenses);
+    return ds;
+  }
+
+  private List<BudgetSummaryItem> CreateEmptyBudgetData()
+  {
+    return new List<BudgetSummaryItem>();
+  }
+
+  private List<AccountItem> CreateEmptyAccountData()
+  {
+    return new List<AccountItem>();
+  }
+
+  private List<TransactionItem> CreateEmptyTransactionData()
+  {
+    return new List<TransactionItem>();
+  }
+
+  private List<CategoryBreakdownItem> CreateEmptyCategoryData()
+  {
+    return new List<CategoryBreakdownItem>();
+  }
+
+  private List<VarianceItem> CreateEmptyVarianceData()
+  {
+    return new List<VarianceItem>();
+  }
+
+  /// <summary>
+  /// Alias for PrintAsync to match panel expectations
+  /// </summary>
+  public async Task PrintReportAsync(CancellationToken cancellationToken = default)
+  {
+    await PrintAsync(cancellationToken);
+  }
+
+  /// <summary>
+  /// Disposes of resources used by the ViewModel.
+  /// </summary>
+  public void Dispose()
+  {
+    Dispose(true);
+    GC.SuppressFinalize(this);
+  }
+
+  /// <summary>
+  /// Disposes of resources used by the ViewModel.
+  /// </summary>
+  /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
+  protected virtual void Dispose(bool disposing)
+  {
+    if (disposing)
     {
-        // A lightweight preview load that prepares data sources and populates PreviewData
-        try
-        {
-            IsBusy = true;
-            StatusMessage = "Preparing preview...";
-
-            await PrepareDataSourcesAsync(cancellationToken);
-
-            StatusMessage = "Preview ready";
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Preview cancelled";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+      // Clean up managed resources if needed
     }
+    // Clean up unmanaged resources if any
+    _logger.LogDebug("ReportsViewModel disposed");
+  }
 
-    [RelayCommand]
-    private void NextPage()
-    {
-        CurrentPage++;
-        // fire-and-forget preview reload; callers (UI) may await if they use ExecuteAsync
-        _ = LoadPreviewAsync();
-    }
-
-    [RelayCommand]
-    private void PreviousPage()
-    {
-        if (CurrentPage > 1)
-        {
-            CurrentPage--;
-            _ = LoadPreviewAsync();
-        }
-    }
-
-    #region Empty Data Helpers
-
-    private DataSet BuildBudgetComparisonDataSet(IEnumerable<BudgetEntry> entries)
-    {
-        var revenues = new DataTable("Revenues");
-        var expenses = new DataTable("Expenses");
-
-        // Columns required by the FRX template
-        Action<DataTable> addColumns = dt =>
-        {
-            dt.Columns.Add("Account", typeof(string));
-            dt.Columns.Add("Description", typeof(string));
-            dt.Columns.Add("ProposedBudget", typeof(decimal));
-            dt.Columns.Add("Actual_11_2025", typeof(decimal));
-            dt.Columns.Add("Remaining", typeof(decimal));
-            dt.Columns.Add("PercentOfBudget", typeof(decimal)); // fractional 0..1
-        };
-
-        addColumns(revenues);
-        addColumns(expenses);
-
-        foreach (var e in entries ?? Enumerable.Empty<BudgetEntry>())
-        {
-            try
-            {
-                var account = e.AccountNumber ?? string.Empty;
-                var description = e.Description ?? string.Empty;
-                var proposed = e.BudgetedAmount;
-                var actual = e.ActualAmount;
-                var remaining = e.Remaining;
-                var percent = e.PercentOfBudgetFraction; // 0..1
-
-                // Classify revenue vs expense
-                var acctType = e.MunicipalAccount?.Type;
-                var isRevenue = acctType.HasValue
-                    ? acctType.Value == AccountType.Revenue
-                    : (!string.IsNullOrWhiteSpace(account) && account.TrimStart().StartsWith("4"));
-
-                if (isRevenue)
-                {
-                    revenues.Rows.Add(account, description, proposed, actual, remaining, percent);
-                }
-                else
-                {
-                    expenses.Rows.Add(account, description, proposed, actual, remaining, percent);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Skipping budget entry while building BudgetComparison dataset");
-            }
-        }
-
-        var ds = new DataSet("BudgetComparison");
-        ds.Tables.Add(revenues);
-        ds.Tables.Add(expenses);
-        return ds;
-    }
-
-    private List<BudgetSummaryItem> CreateEmptyBudgetData()
-    {
-        return new List<BudgetSummaryItem>();
-    }
-
-    private List<AccountItem> CreateEmptyAccountData()
-    {
-        return new List<AccountItem>();
-    }
-
-    private List<TransactionItem> CreateEmptyTransactionData()
-    {
-        return new List<TransactionItem>();
-    }
-
-    private List<CategoryBreakdownItem> CreateEmptyCategoryData()
-    {
-        return new List<CategoryBreakdownItem>();
-    }
-
-    private List<VarianceItem> CreateEmptyVarianceData()
-    {
-        return new List<VarianceItem>();
-    }
-
-    /// <summary>
-    /// Alias for PrintAsync to match panel expectations
-    /// </summary>
-    public async Task PrintReportAsync(CancellationToken cancellationToken = default)
-    {
-        await PrintAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// Disposes of resources used by the ViewModel.
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Disposes of resources used by the ViewModel.
-    /// </summary>
-    /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            // Clean up managed resources if needed
-        }
-        // Clean up unmanaged resources if any
-        _logger.LogDebug("ReportsViewModel disposed");
-    }
-
-    #endregion
+  #endregion
 }
 
 #region Report Data Models
@@ -944,9 +1056,36 @@ public record ReportDataItem(string Name, string Value, string Category);
 /// </summary>
 public record BudgetSummaryItem(string FundName, decimal BudgetAmount, decimal ActualAmount)
 {
-    public decimal Variance => BudgetAmount - ActualAmount;
-    public decimal PercentUsed => BudgetAmount > 0 ? (ActualAmount / BudgetAmount) * 100 : 0;
+  public decimal Variance => BudgetAmount - ActualAmount;
+  public decimal PercentUsed => BudgetAmount > 0 ? (ActualAmount / BudgetAmount) * 100 : 0;
 }
+
+public record ForecastSummaryItem(
+    string EnterpriseName,
+    int CurrentFiscalYear,
+    int ProposedFiscalYear,
+    decimal TotalCurrentBudget,
+    decimal TotalProposedBudget,
+    decimal TotalIncrease,
+    decimal TotalIncreasePercent,
+    decimal InflationRate,
+    string Summary,
+    DateTime GeneratedDate);
+
+public record ForecastHeaderItem(
+    string EnterpriseName,
+    int CurrentFiscalYear,
+    int ProposedFiscalYear);
+
+public record ForecastLineItem(
+    string Category,
+    string Description,
+    decimal CurrentAmount,
+    decimal ProposedAmount,
+    decimal Increase,
+    decimal IncreasePercent,
+    string Justification,
+    bool IsGoalDriven);
 
 /// <summary>
 /// Account list report data.

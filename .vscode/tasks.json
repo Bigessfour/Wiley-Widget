@@ -35,6 +35,40 @@
 			}
 		},
 		{
+			"label": "build: winforms tests incremental",
+			"dependsOn": [
+				"maintenance: Kill Test Processes"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--no-restore",
+				"--disable-build-servers",
+				"-p:RunAnalyzers=false",
+				"-p:RunAnalyzersDuringBuild=false",
+				"-p:UseSharedCompilation=false",
+				"-nr:false",
+				"-v",
+				"minimal"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": "$msCompile",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"clear": false
+			},
+			"isBackground": false
+		},
+		{
 			"label": "🔨 Debug Build",
 			"command": "dotnet",
 			"args": [
@@ -298,10 +332,11 @@
 		},
 		{
 			"label": "🛑 Kill All Dotnet Processes",
-			"command": "powershell",
+			"command": "pwsh",
 			"args": [
+				"-NoProfile",
 				"-Command",
-				"Get-Process -Name dotnet -ErrorAction SilentlyContinue | Stop-Process -Force"
+				"Get-Process -Name dotnet,msbuild,vbcscompiler -ErrorAction SilentlyContinue | Stop-Process -Force"
 			],
 			"type": "shell",
 			"presentation": {
@@ -975,17 +1010,111 @@
 		{
 			"label": "test: winforms tests (build)",
 			"dependsOn": [
-				"maintenance: Kill Test Processes"
+				"maintenance: Kill Test Processes",
+				"build: winforms tests incremental"
 			],
+			"dependsOrder": "sequence",
 			"type": "shell",
 			"command": "dotnet",
 			"args": [
 				"test",
+				"--no-build",
+				"--no-restore",
 				"--logger",
 				"trx",
 				"--results-directory",
 				"${workspaceFolder}/TestResults",
 				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "test: panel registry proof (incremental)",
+			"detail": "Incremental WinForms test-project build, then no-build panel registry proof run.",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"build: winforms tests incremental"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~PanelRegistryNavigationProofTests",
+				"--no-build",
+				"--no-restore",
+				"--logger",
+				"trx;LogFileName=panel-registry-proof.trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "test: panel registry proof - recommended monthly charge (incremental)",
+			"detail": "Incremental WinForms test-project build, then no-build run of the dedicated Recommended Monthly Charge proof test.",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"build: winforms tests incremental"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~RecommendedMonthlyChargePanel_CanBeCreatedAndDisplayed",
+				"--no-build",
+				"--no-restore",
+				"--logger",
+				"trx;LogFileName=panel-registry-proof-recommended-monthly-charge.trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"-v",
+				"minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "test: panel registry shell smoke (incremental)",
+			"detail": "Incremental WinForms test-project build, then no-build shell smoke run.",
+			"dependsOn": [
+				"maintenance: Kill Test Processes",
+				"build: winforms tests incremental"
+			],
+			"dependsOrder": "sequence",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~PanelRegistrySmokeTests",
+				"--no-build",
+				"--no-restore",
+				"--logger",
+				"trx;LogFileName=panel-registry-smoke.trx",
+				"--results-directory",
+				"${workspaceFolder}/TestResults",
+				"-v",
+				"minimal"
 			],
 			"isBackground": false,
 			"problemMatcher": [
@@ -1546,6 +1675,77 @@
 				"trx",
 				"--results-directory",
 				"TestResults"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: sql repository proof",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~SqlRepositoryProofTests",
+				"--no-restore",
+				"--logger",
+				"console;verbosity=minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "temp: sql repository proof quoted",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter \"FullyQualifiedName~SqlRepositoryProofTests\" --no-build --no-restore --logger \"console;verbosity=minimal\"",
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: ribbon mainform focused",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~MainFormTests|FullyQualifiedName~MainFormIntegrationTests",
+				"--no-restore",
+				"--logger",
+				"console;verbosity=minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: ribbon mainform focused quoted",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~MainFormTests|FullyQualifiedName~MainFormIntegrationTests",
+				"--no-restore",
+				"--logger",
+				"console;verbosity=minimal"
+			],
+			"isBackground": false,
+			"group": "test"
+		},
+		{
+			"label": "test: ribbon mainform unit focused",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~MainFormTests",
+				"--no-restore",
+				"--logger",
+				"console;verbosity=minimal"
 			],
 			"isBackground": false,
 			"group": "test"

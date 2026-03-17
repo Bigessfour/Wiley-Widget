@@ -262,7 +262,7 @@ public partial class MainForm
 
         if (keyData == (Keys.Alt | Keys.J))
         {
-            return TryShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Right, allowFloating: false);
+            return ShowJarvisInRightDock();
         }
 
         return base.ProcessCmdKey(ref msg, keyData);
@@ -275,6 +275,11 @@ public partial class MainForm
     {
         try
         {
+            if (typeof(TPanel) == typeof(JARVISChatUserControl))
+            {
+                return ShowJarvisInRightDock();
+            }
+
             _panelNavigator?.ShowPanel<TPanel>(panelName, style, allowFloating);
             return true;
         }

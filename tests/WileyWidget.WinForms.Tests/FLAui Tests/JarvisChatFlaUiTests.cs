@@ -14,6 +14,8 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
     public class JarvisChatFlaUiTests : FlaUiTestBase
     {
         [StaFact]
+        [Trait("Category", "Smoke")]
+        [Trait("Area", "Jarvis")]
         public void JarvisChat_RendersBlazorWebView_WhenTabSelected()
         {
             var previousEnv = SetJarvisAutomationEnvironment();

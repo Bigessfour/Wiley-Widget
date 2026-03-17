@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -99,6 +100,8 @@ internal static class IntegrationTestServices
         services.AddScoped<BusinessInterfaces.IUtilityCustomerRepository>(_ => Mock.Of<BusinessInterfaces.IUtilityCustomerRepository>());
         services.AddScoped<BusinessInterfaces.IDepartmentRepository>(_ => Mock.Of<BusinessInterfaces.IDepartmentRepository>());
         services.AddScoped<BusinessInterfaces.IActivityLogRepository>(_ => Mock.Of<BusinessInterfaces.IActivityLogRepository>());
+        services.AddScoped<BusinessInterfaces.IPaymentRepository>(_ => Mock.Of<BusinessInterfaces.IPaymentRepository>());
+        services.AddScoped<BusinessInterfaces.IVendorRepository>(_ => Mock.Of<BusinessInterfaces.IVendorRepository>());
 
         // ViewModels needed by ribbon/nav panel activation in integration tests
         services.AddScoped<EnterpriseVitalSignsViewModel>();
@@ -110,6 +113,8 @@ internal static class IntegrationTestServices
         services.AddScoped<BudgetViewModel>();
         services.AddScoped<CustomersViewModel>();
         services.AddScoped<DepartmentSummaryViewModel>();
+        services.AddScoped<InsightFeedViewModel>();
+        services.AddScoped<PaymentsViewModel>();
         services.AddScoped<QuickBooksViewModel>();
         services.AddScoped<RecommendedMonthlyChargeViewModel>();
         services.AddScoped<ReportsViewModel>();
@@ -125,7 +130,9 @@ internal static class IntegrationTestServices
         // absent from the .NET 10 WindowsDesktop runtime) during BuildServiceProvider(ValidateOnBuild=true),
         // caching a process-wide CLR assembly load failure that poisons every subsequent test.
 
-        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        SeedProgramServices(provider);
+        return provider;
     }
 
     /// <summary>
@@ -171,7 +178,15 @@ internal static class IntegrationTestServices
         // Allow custom service configuration
         configureServices?.Invoke(services);
 
-        return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        SeedProgramServices(provider);
+        return provider;
+    }
+
+    private static void SeedProgramServices(IServiceProvider provider)
+    {
+        var servicesField = typeof(WileyWidget.WinForms.Program).GetField("_services", BindingFlags.NonPublic | BindingFlags.Static);
+        servicesField?.SetValue(null, provider);
     }
 
     public static MainForm CreateMainForm(IServiceProvider provider)

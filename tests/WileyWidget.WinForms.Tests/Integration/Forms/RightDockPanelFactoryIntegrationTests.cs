@@ -21,7 +21,7 @@ public sealed class RightDockPanelFactoryIntegrationTests(IntegrationTestFixture
         using var form = IntegrationTestServices.CreateMainForm(provider);
         var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
-        var (rightDockPanel, activityLogPanel) =
+        var (rightDockPanel, _, activityLogPanel, _) =
             RightDockPanelFactory.CreateRightDockPanel(form, provider, logger);
 
         // initialMode.Should().Be(RightDockPanelFactory.RightPanelMode.ActivityLog);

@@ -74,8 +74,8 @@ namespace WileyWidget.WinForms.Services
         }
 
         /// <summary>
-        /// Sets the TabbedMDIManager for pure tabbed layout navigation.
-        /// Called during MainTabbedLayoutFactory initialization.
+        /// Sets the active MainForm TabbedMDIManager used for document-host tab navigation.
+        /// Called after MainForm document-management initialization completes.
         /// </summary>
         public void SetTabbedManager(Syncfusion.Windows.Forms.Tools.TabbedMDIManager tabbedMdi)
         {

@@ -137,6 +137,66 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
         }
 
+        private static TItem? FindToolStripItem<TItem>(Syncfusion.Windows.Forms.Tools.RibbonControlAdv? ribbon, string name)
+            where TItem : ToolStripItem
+        {
+            if (ribbon?.Header?.MainItems == null)
+            {
+                return null;
+            }
+
+            foreach (var tab in ribbon.Header.MainItems.OfType<Syncfusion.Windows.Forms.Tools.ToolStripTabItem>())
+            {
+                if (tab.Panel == null)
+                {
+                    continue;
+                }
+
+                foreach (var strip in tab.Panel.Controls.OfType<Syncfusion.Windows.Forms.Tools.ToolStripEx>())
+                {
+                    var found = FindToolStripItem<TItem>(strip.Items, name);
+                    if (found != null)
+                    {
+                        return found;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static TItem? FindToolStripItem<TItem>(ToolStripItemCollection items, string name)
+            where TItem : ToolStripItem
+        {
+            foreach (ToolStripItem item in items)
+            {
+                if (string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase) && item is TItem typedItem)
+                {
+                    return typedItem;
+                }
+
+                if (item is ToolStripDropDownItem dropDown)
+                {
+                    var found = FindToolStripItem<TItem>(dropDown.DropDownItems, name);
+                    if (found != null)
+                    {
+                        return found;
+                    }
+                }
+
+                if (item is Syncfusion.Windows.Forms.Tools.ToolStripPanelItem panelItem)
+                {
+                    var found = FindToolStripItem<TItem>(panelItem.Items, name);
+                    if (found != null)
+                    {
+                        return found;
+                    }
+                }
+            }
+
+            return null;
+        }
+
         private sealed class ProbeThemableControl : UserControl, WileyWidget.WinForms.Controls.Base.IThemable
         {
             public string? AppliedTheme { get; private set; }
@@ -215,6 +275,16 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             if (ribbonControl != null)
             {
                 ribbonControl.Dock.ToString().Should().MatchRegex("Top|Fill");
+
+                var strips = ribbonControl.Header?.MainItems
+                    .OfType<Syncfusion.Windows.Forms.Tools.ToolStripTabItem>()
+                    .SelectMany(tab => tab.Panel?.Controls.OfType<Syncfusion.Windows.Forms.Tools.ToolStripEx>() ?? Enumerable.Empty<Syncfusion.Windows.Forms.Tools.ToolStripEx>())
+                    .ToList();
+
+                strips.Should().NotBeNull();
+                strips.Should().NotBeEmpty();
+                strips!.Where(strip => strip.Items.Count > 0)
+                    .Should().OnlyContain(strip => !string.IsNullOrWhiteSpace(strip.CollapsedDropDownButtonText));
             }
 
             form.Dispose();
@@ -254,6 +324,73 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             ribbon.MenuButtonEnabled.Should().BeFalse();
 
             form.Dispose();
+        }
+
+        [StaFact]
+        public void InitializeChrome_DefaultRuntime_CreatesUnifiedNavigationDropdown()
+        {
+            TestThemeHelper.EnsureOffice2019Colorful();
+
+            var provider = BuildProvider();
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+
+            var themeMock = new Mock<IThemeService>();
+            themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
+
+            using var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
+
+            _ = form.Handle;
+            form.CallInitializeChrome();
+
+            var ribbon = form.GetPrivateField("_ribbon") as Syncfusion.Windows.Forms.Tools.RibbonControlAdv;
+            var unifiedDropDown = FindToolStripItem<ToolStripDropDownButton>(ribbon, "Nav_UnifiedDropdown");
+            var accountsMenuItem = FindToolStripItem<ToolStripMenuItem>(ribbon, "NavMenuItem_MunicipalAccounts");
+            var jarvisMenuItem = FindToolStripItem<ToolStripMenuItem>(ribbon, "NavMenuItem_JARVISChat");
+
+            ribbon.Should().NotBeNull();
+            unifiedDropDown.Should().NotBeNull();
+            accountsMenuItem.Should().NotBeNull();
+            jarvisMenuItem.Should().NotBeNull();
+        }
+
+        [StaFact]
+        public void InitializeChrome_HideLegacyRibbonNavigation_ShowsOnlyHomeTabWithUnifiedDropdown()
+        {
+            TestThemeHelper.EnsureOffice2019Colorful();
+
+            var provider = BuildProvider(new Dictionary<string, string?>
+            {
+                ["UI:HideLegacyRibbonNavigation"] = "true",
+                ["UI:ShowUnifiedNavigationDropdown"] = "true"
+            });
+
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+
+            var themeMock = new Mock<IThemeService>();
+            themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
+
+            using var form = new TestMainForm(provider, configuration, logger, ReportViewerLaunchOptions.Disabled, themeMock.Object, Mock.Of<IWindowStateService>(), Mock.Of<IFileImportService>(), new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
+
+            _ = form.Handle;
+            form.CallInitializeChrome();
+
+            var ribbon = form.GetPrivateField("_ribbon") as Syncfusion.Windows.Forms.Tools.RibbonControlAdv;
+            var tabNames = ribbon!.Header.MainItems.OfType<Syncfusion.Windows.Forms.Tools.ToolStripTabItem>().Select(tab => tab.Name).ToList();
+            var unifiedDropDown = FindToolStripItem<ToolStripDropDownButton>(ribbon, "Nav_UnifiedDropdown");
+            var legacyHomeButton = FindToolStripItem<ToolStripButton>(ribbon, "Nav_EnterpriseVitalSigns");
+            var legacyFinancialsButton = FindToolStripItem<ToolStripButton>(ribbon, "Nav_MunicipalAccounts");
+
+            tabNames.Should().Contain("HomeTab");
+            tabNames.Should().Contain("LayoutTab");
+            tabNames.Should().NotContain("FinancialsTab");
+            tabNames.Should().NotContain("AnalyticsTab");
+            tabNames.Should().NotContain("UtilitiesTab");
+            tabNames.Should().NotContain("AdministrationTab");
+            unifiedDropDown.Should().NotBeNull();
+            legacyHomeButton.Should().BeNull();
+            legacyFinancialsButton.Should().BeNull();
         }
 
         [StaFact]
@@ -457,6 +594,8 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             form.ToggleTheme();
             Application.DoEvents();
 
+            themeMock.Verify(t => t.ApplyTheme("Office2019Dark"), Times.Once);
+
             var activeThemeControl = findMethod.Invoke(form, new object[] { form, "ThemeToggle" }) as ToolStripItem
                 ?? findMethod.Invoke(form, new object[] { form, "ThemeCombo" }) as ToolStripItem
                 ?? themeControl;
@@ -468,7 +607,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
             else if (string.Equals(activeThemeControl.Name, "ThemeCombo", StringComparison.OrdinalIgnoreCase))
             {
-                activeThemeControl.Text.Should().Be("Office2019Colorful", "Theme combo selection should reflect new theme state");
+                activeThemeControl.Text.Should().Be("Office2019Dark", "Theme combo selection should reflect the active theme after a toggle");
             }
             else
             {

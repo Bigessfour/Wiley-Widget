@@ -42,6 +42,16 @@ public sealed record UIConfiguration
     public bool ShowStatusBar { get; init; } = true;
 
     /// <summary>
+    /// Whether to show the unified ribbon navigation dropdown on the Home tab.
+    /// </summary>
+    public bool ShowUnifiedNavigationDropdown { get; init; } = true;
+
+    /// <summary>
+    /// Whether to hide the legacy ribbon navigation groups and tabs after the unified dropdown is enabled.
+    /// </summary>
+    public bool HideLegacyRibbonNavigation { get; init; } = false;
+
+    /// <summary>
     /// Default form size for MainForm.
     /// </summary>
     public Size DefaultFormSize { get; init; } = new(1400, 900);
@@ -139,6 +149,9 @@ public sealed record UIConfiguration
         int minWidth = GetInteger(configuration, "UI:MinimumFormSize:Width", 1024);
         int minHeight = GetInteger(configuration, "UI:MinimumFormSize:Height", 768);
 
+        var showUnifiedNavigationDropdown = GetBoolean(configuration, "UI:ShowUnifiedNavigationDropdown", true);
+        var hideLegacyRibbonNavigation = GetBoolean(configuration, "UI:HideLegacyRibbonNavigation", false);
+
         return new UIConfiguration
         {
             UseSyncfusionDocking = GetBooleanWithAliases(configuration, true, "UI:UseSyncfusionDocking", "UI:UseDockingManager"),
@@ -147,6 +160,8 @@ public sealed record UIConfiguration
             ShowRibbon = GetBoolean(configuration, "UI:ShowRibbon", !isTestHarness),
             ShowMenuBar = GetBoolean(configuration, "UI:ShowMenuBar", true),
             ShowStatusBar = GetBoolean(configuration, "UI:ShowStatusBar", true),
+            ShowUnifiedNavigationDropdown = showUnifiedNavigationDropdown || hideLegacyRibbonNavigation,
+            HideLegacyRibbonNavigation = hideLegacyRibbonNavigation,
             DefaultFormSize = new Size(defaultWidth, defaultHeight),
             MinimumFormSize = new Size(minWidth, minHeight),
             AutoShowDashboard = GetBoolean(configuration, "UI:AutoShowDashboard", true),  // FIX: Match property default

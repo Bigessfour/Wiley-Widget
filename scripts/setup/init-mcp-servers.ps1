@@ -107,6 +107,27 @@ function ConvertFrom-JsonC {
     return $sanitized | ConvertFrom-Json -Depth 64
 }
 
+function Get-EnvironmentVariableValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [string[]]$Aliases = @()
+    )
+
+    $candidateNames = @($Name) + @($Aliases)
+    $scopes = @('Process', 'User', 'Machine')
+
+    foreach ($candidateName in $candidateNames) {
+        foreach ($scope in $scopes) {
+            $value = [Environment]::GetEnvironmentVariable($candidateName, $scope)
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return $value
+            }
+        }
+    }
+
+    return $null
+}
+
 function Resolve-EnvTemplate {
     param([AllowNull()][string]$Value)
 
@@ -115,7 +136,7 @@ function Resolve-EnvTemplate {
     }
 
     if ($Value -match '^\$\{env:([^}]+)\}$') {
-        return [Environment]::GetEnvironmentVariable($Matches[1])
+        return Get-EnvironmentVariableValue -Name $Matches[1]
     }
 
     return $Value
@@ -640,11 +661,9 @@ class McpServerManager {
             return $false
         } elseif ($server.Name -in @("github-mcp", "github")) {
             try {
-                $token = $env:GITHUB_PERSONAL_ACCESS_TOKEN
-                if (-not $token) { $token = $env:GITHUB_TOKEN }
-                if (-not $token) { $token = $env:GITHUB_PAT }
+                $token = Get-EnvironmentVariableValue -Name 'GITHUB_PERSONAL_ACCESS_TOKEN' -Aliases @('GITHUB_TOKEN', 'GITHUB_PAT', 'GH_TOKEN')
                 if (-not $token) {
-                    $health.ErrorMessage = "Missing GitHub token (GITHUB_PERSONAL_ACCESS_TOKEN/GITHUB_TOKEN/GITHUB_PAT)"
+                    $health.ErrorMessage = "Missing GitHub token (GITHUB_PERSONAL_ACCESS_TOKEN/GITHUB_TOKEN/GITHUB_PAT/GH_TOKEN)"
                     return $false
                 }
 
@@ -666,7 +685,7 @@ class McpServerManager {
                 return $false
             }
         } elseif ($server.Name -eq "mssql") {
-            $connectionString = $env:MSSQL_CONNECTION_STRING
+            $connectionString = Get-EnvironmentVariableValue -Name 'MSSQL_CONNECTION_STRING'
             if ([string]::IsNullOrWhiteSpace($connectionString)) {
                 $health.ErrorMessage = "Missing MSSQL_CONNECTION_STRING"
                 return $false
@@ -690,12 +709,7 @@ class McpServerManager {
         } elseif ($server.Name -eq "syncfusion-winforms-assistant") {
             # Deep test: Verify API key and connectivity to Syncfusion
             try {
-                $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_MCP_API_KEY", "Machine")
-                if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_MCP_API_KEY", "User") }
-                if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_MCP_API_KEY") }
-                if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_API_KEY", "Machine") }
-                if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_API_KEY", "User") }
-                if (-not $apiKey) { $apiKey = [Environment]::GetEnvironmentVariable("SYNCFUSION_API_KEY") }
+                $apiKey = Get-EnvironmentVariableValue -Name 'SYNCFUSION_API_KEY'
                 if (-not $apiKey) {
                     $health.ErrorMessage = "Missing Syncfusion API key"
                     return $false

@@ -3,6 +3,9 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms;
+using WileyWidget.WinForms.Controls.Base;
+using WileyWidget.WinForms.Extensions;
+using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using SfSkinManager = Syncfusion.WinForms.Controls.SfSkinManager;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -12,7 +15,7 @@ namespace WileyWidget.WinForms.Controls.Panels
     /// that displays a title, large value, and optional subtitle. DPI-aware
     /// sizing is applied using Syncfusion's DpiAware helper to match the app.
     /// </summary>
-    public partial class KpiCardControl : UserControl
+    public partial class KpiCardControl : UserControl, IThemable
     {
         private Label _lblTitle;
         private Label _lblValue;
@@ -143,10 +146,19 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             try
             {
-                // Apply current app theme; swallow failures to avoid breaking designers
-                SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+                ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
             }
             catch { }
+        }
+
+        public void ApplyTheme(string themeName)
+        {
+            if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+            {
+                return;
+            }
+
+            this.ApplySyncfusionTheme(themeName);
         }
 
         /// <summary>

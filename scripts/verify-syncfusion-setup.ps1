@@ -61,12 +61,12 @@ Write-Host ""
 # --- Check 2: Syncfusion API Key ---
 Write-Host "🔐 Checking Syncfusion API Key..." -ForegroundColor Yellow
 
-$apiKey = [System.Environment]::GetEnvironmentVariable("SYNCFUSION_MCP_API_KEY", "User")
+$apiKey = [System.Environment]::GetEnvironmentVariable("SYNCFUSION_API_KEY", "User")
 if ($apiKey) {
-    Write-Host "   ✅ SYNCFUSION_MCP_API_KEY environment variable is set" -ForegroundColor Green
+    Write-Host "   ✅ SYNCFUSION_API_KEY environment variable is set" -ForegroundColor Green
     $checks += "API Key: Set (length: $($apiKey.Length) chars)"
 } else {
-    Write-Host "   ❌ SYNCFUSION_MCP_API_KEY environment variable NOT SET" -ForegroundColor Red
+    Write-Host "   ❌ SYNCFUSION_API_KEY environment variable NOT SET" -ForegroundColor Red
     $errors += "Syncfusion API key not set - get from https://syncfusion.com/account/api-key"
 }
 
@@ -78,9 +78,9 @@ Write-Host "📦 Checking Project Configuration..." -ForegroundColor Yellow
 $projectPath = "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj"
 if (Test-Path $projectPath) {
     Write-Host "   ✅ Project file exists" -ForegroundColor Green
-    
+
     $projectContent = Get-Content $projectPath -Raw
-    
+
     # Check target framework
     if ($projectContent -match '<TargetFramework>net10.0-windows</TargetFramework>') {
         Write-Host "   ✅ Project targets .NET 10 (net10.0-windows)" -ForegroundColor Green
@@ -89,7 +89,7 @@ if (Test-Path $projectPath) {
         Write-Host "   ❌ Project does NOT target .NET 10" -ForegroundColor Red
         $errors += "Project must target net10.0-windows"
     }
-    
+
     # Check UseWindowsForms
     if ($projectContent -match '<UseWindowsForms>true</UseWindowsForms>') {
         Write-Host "   ✅ UseWindowsForms is enabled" -ForegroundColor Green
@@ -119,7 +119,7 @@ $requiredPackages = @(
 
 try {
     $installedPackages = dotnet list "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" package 2>&1 | Select-String "Syncfusion"
-    
+
     foreach ($pkg in $requiredPackages) {
         $found = $installedPackages | Where-Object { $_ -match $pkg }
         if ($found) {
@@ -240,17 +240,17 @@ if ($errors.Count -eq 0 -and $warnings.Count -eq 0) {
 } else {
     if (-not $apiKey) {
         Write-Host "1. Set Syncfusion API Key:" -ForegroundColor Yellow
-        Write-Host "   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_MCP_API_KEY', 'your-key', 'User')" -ForegroundColor Gray
+        Write-Host "   [System.Environment]::SetEnvironmentVariable('SYNCFUSION_API_KEY', 'your-key', 'User')" -ForegroundColor Gray
         Write-Host "   Get key from: https://syncfusion.com/account/api-key" -ForegroundColor Gray
         Write-Host ""
     }
-    
+
     if (-not (Test-Path ".vs\mcp.json")) {
         Write-Host "2. Generate Visual Studio MCP config:" -ForegroundColor Yellow
         Write-Host "   .\scripts\generate-vs-mcp-config.ps1" -ForegroundColor Gray
         Write-Host ""
     }
-    
+
     if ($errors -match "build") {
         Write-Host "3. Fix build errors:" -ForegroundColor Yellow
         Write-Host "   dotnet clean" -ForegroundColor Gray
@@ -258,7 +258,7 @@ if ($errors.Count -eq 0 -and $warnings.Count -eq 0) {
         Write-Host "   dotnet build" -ForegroundColor Gray
         Write-Host ""
     }
-    
+
     Write-Host "4. Follow the complete guide:" -ForegroundColor Yellow
     Write-Host "   Read: SYNCFUSION_SETUP_COMPLETE.md" -ForegroundColor Gray
 }

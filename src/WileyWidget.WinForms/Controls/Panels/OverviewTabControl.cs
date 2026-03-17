@@ -14,6 +14,7 @@ using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -22,7 +23,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// Control for the Overview tab in Analytics Hub.
 /// Thin view: fiscal year managed by AnalyticsHubPanel. No toolbar, no local export.
 /// </summary>
-public partial class OverviewTabControl : UserControl
+public partial class OverviewTabControl : UserControl, IThemable
 {
     private readonly OverviewTabViewModel? _viewModel;
     private readonly ILogger _logger;
@@ -48,8 +49,7 @@ public partial class OverviewTabControl : UserControl
 
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-            SfSkinManager.SetVisualStyle(this, theme);
+            ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
         }
         catch { /* best-effort */ }
 
@@ -90,7 +90,7 @@ public partial class OverviewTabControl : UserControl
     private void InitializeSummaryTiles(Control parent)
     {
         _summaryPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
-        SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful");
+        SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
 
         var flow = new FlowLayoutPanel
         {
@@ -128,7 +128,7 @@ public partial class OverviewTabControl : UserControl
 
     private void InitializeMetricsGrid(Control parent)
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
         _metricsGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -156,7 +156,7 @@ public partial class OverviewTabControl : UserControl
 
     private Label CreateSummaryTile(FlowLayoutPanel parent, string title, string value, Color accentColor)
     {
-        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
         var tile = new Panel
         {
             Width = 150,
@@ -284,6 +284,25 @@ public partial class OverviewTabControl : UserControl
             IsLoaded = true;
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Overview LoadAsync error: {ex.Message}"); _logger.LogError(ex, "[OverviewTabControl] LoadAsync failed"); }
+    }
+
+    public void ApplyTheme(string themeName)
+    {
+        if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        this.ApplySyncfusionTheme(themeName, _logger);
+        _summaryPanel?.ApplySyncfusionTheme(themeName, _logger);
+        _varianceChart?.ApplySyncfusionTheme(themeName, _logger);
+        _loadingOverlay?.ApplySyncfusionTheme(themeName, _logger);
+
+        if (_metricsGrid != null)
+        {
+            _metricsGrid.ThemeName = themeName;
+            _metricsGrid.ApplySyncfusionTheme(themeName, _logger);
+        }
     }
 
     protected override void Dispose(bool disposing)

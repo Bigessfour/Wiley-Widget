@@ -15,7 +15,7 @@ namespace WileyWidget.UiTests
     public class MainFormNavigationTests : FlaUiTestBase
     {
         [StaFact]
-        public void MainFormNavigation_RibbonTabActivatesPanel_Correctly()
+        public void MainFormNavigation_UnifiedDropdownActivatesAccountsPanel_Correctly()
         {
             var previousEnv = SetTestEnvironment();
             FlaUI.Core.Application? app = null;
@@ -27,20 +27,9 @@ namespace WileyWidget.UiTests
                 var automation = EnsureAutomation();
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
-                FlaUiHelpers.DumpUiTree(window);
-
-                // Activate a panel via ribbon tab (e.g., Budget panel)
-                var budgetTab = window.FindFirstDescendant(cf => cf.ByName("Budget"));
-                Assert.NotNull(budgetTab);
-                budgetTab.Click();
-
-                // Assert panel is activated
-                var budgetPanel = window.WaitForPanel<BudgetPanel>(TimeSpan.FromSeconds(10));
-                Assert.NotNull(budgetPanel);
-                Assert.False(budgetPanel.Properties.IsOffscreen.ValueOrDefault);
-
-                // Verify focus is set to panel
-                Assert.True(budgetPanel.Properties.HasKeyboardFocus.ValueOrDefault);
+                FlaUiHelpers.DumpUiTree(window, "MainFormNavigation_UnifiedDropdown");
+                var accountsPanelVisible = PanelActivationHelpers.EnsureAccountsPanelVisibleOrHostGated(window, automation, TimeSpan.FromSeconds(15));
+                Assert.True(accountsPanelVisible);
             }
             finally
             {

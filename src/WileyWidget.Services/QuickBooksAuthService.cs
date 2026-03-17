@@ -56,6 +56,8 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
     private volatile bool _initialized;
     private readonly SemaphoreSlim _initSemaphore = new(1, 1);
+    private readonly SemaphoreSlim _refreshSemaphore = new(1, 1);
+    private volatile string? _reauthorizationRequiredMessage;
 
     // Intuit OAuth 2.0 endpoints (per official docs)
     private const string AuthorizationEndpoint = "https://appcenter.intuit.com/connect/oauth2";
@@ -85,6 +87,7 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     public void Dispose()
     {
         _initSemaphore.Dispose();
+        _refreshSemaphore.Dispose();
         _activitySource.Dispose();
     }
 
@@ -646,35 +649,68 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
     public async Task RefreshTokenIfNeededAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureInitializedAsync().ConfigureAwait(false);
+        await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
         var s = _settings.Current;
         if (HasValidAccessToken()) return;
 
         if (string.IsNullOrWhiteSpace(s.QboRefreshToken))
         {
-            throw new InvalidOperationException(
+            throw new QuickBooksAuthException(
                 "No refresh token available. Please re-authorize the application.");
         }
 
-        var refreshResult = await RefreshTokenAsync(s.QboRefreshToken, cancellationToken).ConfigureAwait(false);
-        if (refreshResult.IsSuccess && refreshResult.Token != null)
+        if (!string.IsNullOrWhiteSpace(_reauthorizationRequiredMessage))
         {
-            // Persist to token store (primary path)
-            if (_tokenStore != null)
-                await _tokenStore.SaveTokenAsync(refreshResult.Token).ConfigureAwait(false);
-
-            // Persist to settings (fallback path used by HasValidAccessToken)
-            s.QboAccessToken = refreshResult.Token.AccessToken;
-            s.QboRefreshToken = refreshResult.Token.RefreshToken;
-            s.QboTokenExpiry = refreshResult.Token.AccessTokenExpiresAtUtc;
-            _settings.Save();
-
-            _logger.LogInformation("Proactive token refresh succeeded — token persisted");
+            throw new QuickBooksAuthException(_reauthorizationRequiredMessage);
         }
-        else
+
+        await _refreshSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            throw new InvalidOperationException(
-                $"Token refresh failed: {refreshResult.ErrorMessage ?? "unknown error"}. Please re-authorize the application.");
+            if (HasValidAccessToken())
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_reauthorizationRequiredMessage))
+            {
+                throw new QuickBooksAuthException(_reauthorizationRequiredMessage);
+            }
+
+            var refreshResult = await RefreshTokenAsync(s.QboRefreshToken, cancellationToken).ConfigureAwait(false);
+            if (refreshResult.IsSuccess && refreshResult.Token != null)
+            {
+                // Persist to token store (primary path)
+                if (_tokenStore != null)
+                {
+                    await _tokenStore.SaveTokenAsync(refreshResult.Token).ConfigureAwait(false);
+                }
+
+                // Persist to settings (fallback path used by HasValidAccessToken)
+                s.QboAccessToken = refreshResult.Token.AccessToken;
+                s.QboRefreshToken = refreshResult.Token.RefreshToken;
+                s.QboTokenExpiry = refreshResult.Token.AccessTokenExpiresAtUtc;
+                _settings.Save();
+
+                _reauthorizationRequiredMessage = null;
+                _logger.LogInformation("Proactive token refresh succeeded — token persisted");
+                return;
+            }
+
+            var failureMessage = BuildRefreshFailureMessage(refreshResult.ErrorMessage);
+            if (RequiresReauthorization(refreshResult.ErrorMessage))
+            {
+                await ClearCachedTokensAsync().ConfigureAwait(false);
+                _reauthorizationRequiredMessage = failureMessage;
+                _logger.LogWarning("QuickBooks refresh token is invalid or expired; re-authorization is required.");
+                throw new QuickBooksAuthException(failureMessage);
+            }
+
+            throw new InvalidOperationException(failureMessage);
+        }
+        finally
+        {
+            _refreshSemaphore.Release();
         }
     }
 
@@ -748,6 +784,36 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                             x.TryGetInt32(out var xVal) ? xVal : 0;
 
         return Abstractions.TokenResult.Success(access, refresh, expires);
+    }
+
+    private async Task ClearCachedTokensAsync()
+    {
+        if (_tokenStore != null)
+        {
+            await _tokenStore.ClearTokenAsync().ConfigureAwait(false);
+        }
+
+        _settings.Current.QboAccessToken = null;
+        _settings.Current.QboTokenExpiry = default;
+        _settings.Save();
+    }
+
+    private static string BuildRefreshFailureMessage(string? errorMessage)
+    {
+        var detail = string.IsNullOrWhiteSpace(errorMessage) ? "unknown error" : errorMessage;
+        return $"Token refresh failed: {detail}. Please re-authorize the application.";
+    }
+
+    private static bool RequiresReauthorization(string? errorMessage)
+    {
+        if (string.IsNullOrWhiteSpace(errorMessage))
+        {
+            return false;
+        }
+
+        return errorMessage.Contains("invalid or expired", StringComparison.OrdinalIgnoreCase)
+            || errorMessage.Contains("re-authorize", StringComparison.OrdinalIgnoreCase)
+            || errorMessage.Contains("reauthorize", StringComparison.OrdinalIgnoreCase);
     }
 
     public string GetAccessToken()

@@ -49,7 +49,7 @@ namespace WileyWidget.Services
 
             if (!reserveTransactions.Any())
             {
-                _logger.LogWarning("No reserve transactions found for period {Start} to {End}", startDate, endDate);
+                _logger.LogInformation("No reserve transactions found for period {Start} to {End}", startDate, endDate);
                 return Array.Empty<ReserveDataPoint>();
             }
 
@@ -92,7 +92,7 @@ namespace WileyWidget.Services
 
             if (!latestTransactions.Any())
             {
-                _logger.LogWarning("No reserve transactions found for current balance calculation");
+                _logger.LogInformation("No reserve transactions found for current balance calculation");
                 return 0;
             }
 
@@ -133,7 +133,7 @@ namespace WileyWidget.Services
 
             return await context.MunicipalAccounts
                 .AsNoTracking()
-                .OrderBy(ma => ma.AccountNumber)
+                .OrderBy(ma => ma.AccountNumber!.Value)
                 .ToListAsync(cancellationToken);
         }
 
@@ -146,13 +146,66 @@ namespace WileyWidget.Services
 
             await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
 
-            return await context.BudgetEntries
+            var entityRows = await context.BudgetEntries
                 .AsNoTracking()
-                .Where(be => !string.IsNullOrWhiteSpace(be.EntityName))
-                .Select(be => be.EntityName!)
+                .Select(be => new
+                {
+                    FundName = be.Fund != null ? be.Fund.Name : null,
+                    MunicipalAccountName = be.MunicipalAccount != null ? be.MunicipalAccount.Name : null,
+                    be.FundType
+                })
+                .ToListAsync(cancellationToken);
+
+            return entityRows
+                .Select(be => !string.IsNullOrWhiteSpace(be.FundName)
+                    ? be.FundName!
+                    : !string.IsNullOrWhiteSpace(be.MunicipalAccountName)
+                        ? be.MunicipalAccountName!
+                        : be.FundType.ToString())
+                .Where(entity => !string.IsNullOrWhiteSpace(entity))
                 .Distinct()
                 .OrderBy(entity => entity)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gets the weighted current-rate baseline across enterprises.
+        /// </summary>
+        public async Task<decimal?> GetPortfolioCurrentRateAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+            var enterpriseRates = await context.Enterprises
+                .AsNoTracking()
+                .Where(e => e.CurrentRate > 0)
+                .Select(e => new
+                {
+                    e.CurrentRate,
+                    e.CitizenCount
+                })
                 .ToListAsync(cancellationToken);
+
+            if (enterpriseRates.Count == 0)
+            {
+                _logger.LogWarning("No enterprise current-rate data found for scenario analysis");
+                return null;
+            }
+
+            var weightedCitizenCount = enterpriseRates.Where(e => e.CitizenCount > 0).Sum(e => e.CitizenCount);
+            var baselineRate = weightedCitizenCount > 0
+                ? enterpriseRates.Sum(e => e.CurrentRate * e.CitizenCount) / weightedCitizenCount
+                : enterpriseRates.Average(e => e.CurrentRate);
+
+            baselineRate = Math.Round(baselineRate, 2, MidpointRounding.AwayFromZero);
+
+            _logger.LogInformation(
+                "Calculated portfolio current-rate baseline {CurrentRate} across {EnterpriseCount} enterprise(s)",
+                baselineRate,
+                enterpriseRates.Count);
+
+            return baselineRate;
         }
 
         /// <summary>

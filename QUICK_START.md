@@ -8,7 +8,7 @@
 
 ```powershell
 # 1. Set API key (get from https://syncfusion.com/account/api-key)
-[System.Environment]::SetEnvironmentVariable("SYNCFUSION_MCP_API_KEY", "YOUR_KEY", "User")
+[System.Environment]::SetEnvironmentVariable("SYNCFUSION_API_KEY", "YOUR_KEY", "User")
 
 # 2. Clear VS cache
 Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Microsoft\VisualStudio\17.0_*\ComponentModelCache"

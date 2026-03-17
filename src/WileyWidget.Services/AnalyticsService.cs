@@ -105,11 +105,22 @@ namespace WileyWidget.Services
                 var totalActual = budgetEntries.Sum(be => be.ActualAmount);
                 var totalBudgeted = budgetEntries.Sum(be => be.BudgetedAmount);
                 var variance = totalBudgeted - totalActual;
+                var currentRate = await _analyticsRepository.GetPortfolioCurrentRateAsync(cancellationToken);
+
+                if (!currentRate.HasValue || currentRate.Value <= 0)
+                {
+                    throw new InvalidOperationException("No enterprise rate data available for scenario analysis");
+                }
+
+                var projectedRate = Math.Round(
+                    currentRate.Value * (1 + parameters.RateIncreasePercentage),
+                    2,
+                    MidpointRounding.AwayFromZero);
 
                 var result = new RateScenarioResult
                 {
-                    CurrentRate = 0, // Placeholder until rate source is available
-                    ProjectedRate = 0,
+                    CurrentRate = currentRate.Value,
+                    ProjectedRate = projectedRate,
                     RevenueImpact = totalActual * parameters.RateIncreasePercentage,
                     ReserveImpact = variance * (1 + parameters.ExpenseIncreasePercentage)
                 };
@@ -186,7 +197,7 @@ namespace WileyWidget.Services
                 }
                 else
                 {
-                    _logger.LogWarning("Insufficient historical data for reserve forecasting");
+                    _logger.LogInformation("Insufficient historical data for reserve forecasting");
                     result.RiskAssessment = "Insufficient Data";
                 }
 

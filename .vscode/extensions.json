@@ -31,6 +31,8 @@
     "eamodio.gitlens",
     "mhutchie.git-graph",
     "donjayamanne.githistory",
+    "github.vscode-github-actions",
+    "jakubkozera.github-copilot-code-reviewer",
 
     // === AI & Productivity ===
     "github.copilot",

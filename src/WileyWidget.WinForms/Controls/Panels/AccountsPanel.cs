@@ -24,6 +24,7 @@ using WileyWidget.WinForms.Models;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
+using WileyWidget.WinForms.Configuration;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -101,6 +102,12 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
     /// </summary>
     private async void AccountsPanel_Load(object? sender, EventArgs e)
     {
+        if (ShouldSkipAutoLoadForTestHarness())
+        {
+            Logger?.LogDebug("[ACCOUNTS_LOAD] Skipping lazy load for UI test harness");
+            return;
+        }
+
         Logger?.LogInformation("[ACCOUNTS_LOAD] Load event fired — IsLazy: {IsLazy}", _vm is ILazyLoadViewModel);
 
         if (_vm is ILazyLoadViewModel lazyLoad)
@@ -124,6 +131,25 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
             {
                 Logger?.LogError(ex, "AccountsPanel: Error during lazy load");
             }
+        }
+    }
+
+    private bool ShouldSkipAutoLoadForTestHarness()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<UIConfiguration>(ServiceProvider)?.IsUiTestHarness == true;
+        }
+        catch
+        {
+            return false;
         }
     }
 

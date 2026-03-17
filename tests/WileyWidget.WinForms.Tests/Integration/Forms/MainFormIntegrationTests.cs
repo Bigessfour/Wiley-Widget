@@ -5,12 +5,14 @@ using System.Windows.Forms;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.Services.Abstractions;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
@@ -38,7 +40,7 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(provider))
+                new SyncfusionControlFactory(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<SyncfusionControlFactory>>(provider) ?? NullLogger<SyncfusionControlFactory>.Instance))
         {
         }
 
@@ -114,6 +116,162 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
         public new void ResetLayout() => base.ResetLayout();
     }
 
+    private sealed class FakePanelNavigationService : IPanelNavigationService
+    {
+        public string? ActivePanelName { get; private set; }
+        public Type? LastPanelType { get; private set; }
+
+        public event EventHandler<PanelActivatedEventArgs>? PanelActivated;
+
+        public void ShowPanel<TPanel>(string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+            where TPanel : UserControl
+        {
+            ActivePanelName = panelName;
+            LastPanelType = typeof(TPanel);
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, typeof(TPanel)));
+        }
+
+        public void ShowPanel(Type panelType, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+        {
+            ActivePanelName = panelName;
+            LastPanelType = panelType;
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panelType));
+        }
+
+        public void ShowPanel<TPanel>(string panelName, object? parameters, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+            where TPanel : UserControl
+        {
+            ShowPanel<TPanel>(panelName, preferredStyle, allowFloating);
+        }
+
+        public void ShowForm<TForm>(string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form
+        {
+            ActivePanelName = panelName;
+            LastPanelType = typeof(TForm);
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, typeof(TForm)));
+        }
+
+        public void ShowForm<TForm>(string panelName, object? parameters, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+            where TForm : Form
+        {
+            ShowForm<TForm>(panelName, preferredStyle, allowFloating);
+        }
+
+        public bool HidePanel(string panelName)
+        {
+            if (!string.Equals(ActivePanelName, panelName, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            ActivePanelName = null;
+            LastPanelType = null;
+            return true;
+        }
+
+        public Task AddPanelAsync(UserControl panel, string panelName, DockingStyle preferredStyle = DockingStyle.Right, bool allowFloating = true)
+        {
+            ActivePanelName = panelName;
+            LastPanelType = panel.GetType();
+            PanelActivated?.Invoke(this, new PanelActivatedEventArgs(panelName, panel.GetType()));
+            return Task.CompletedTask;
+        }
+
+        public string? GetActivePanelName() => ActivePanelName;
+
+        public void SetTabbedManager(TabbedMDIManager tabbedMdi)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private static TItem? FindToolStripItem<TItem>(RibbonControlAdv? ribbon, string name)
+        where TItem : ToolStripItem
+    {
+        if (ribbon?.Header?.MainItems == null)
+        {
+            return null;
+        }
+
+        foreach (var tab in ribbon.Header.MainItems.OfType<ToolStripTabItem>())
+        {
+            if (tab.Panel == null)
+            {
+                continue;
+            }
+
+            foreach (var strip in tab.Panel.Controls.OfType<ToolStripEx>())
+            {
+                var found = FindToolStripItem<TItem>(strip.Items, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static TItem? FindToolStripItem<TItem>(ToolStripItemCollection items, string name)
+        where TItem : ToolStripItem
+    {
+        foreach (ToolStripItem item in items)
+        {
+            if (string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase) && item is TItem typedItem)
+            {
+                return typedItem;
+            }
+
+            if (item is ToolStripDropDownItem dropDown)
+            {
+                var found = FindToolStripItem<TItem>(dropDown.DropDownItems, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            if (item is ToolStripPanelItem panelItem)
+            {
+                var found = FindToolStripItem<TItem>(panelItem.Items, name);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static void PumpUntil(Func<bool> condition, int timeoutMilliseconds = 2000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMilliseconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            Application.DoEvents();
+            if (condition())
+            {
+                return;
+            }
+
+            Thread.Sleep(25);
+        }
+
+        Application.DoEvents();
+    }
+
+    private static void InvokeToolStripClick(ToolStripItem item)
+    {
+        var onClick = typeof(ToolStripItem).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic);
+        onClick?.Invoke(item, new object[] { EventArgs.Empty });
+    }
+
     [WinFormsFact]
     public void InitializeChrome_CreatesRibbonStatusBarAndNavigation()
     {
@@ -145,8 +303,11 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             form.GetQATItemCount().Should().BeGreaterThan(0, "QAT must contain default buttons");
 
             ribbon!.Header.MainItems.OfType<ToolStripTabItem>().Should().NotBeEmpty();
+            FindToolStripItem<ToolStripDropDownButton>(ribbon, "Nav_UnifiedDropdown").Should().NotBeNull("the unified navigation dropdown should be available on the Home tab");
 
-            homeTab!.Panel!.Controls.OfType<ToolStripEx>().Count().Should().BeGreaterOrEqualTo(4);
+            var homeStrips = homeTab!.Panel!.Controls.OfType<ToolStripEx>().ToList();
+            homeStrips.Count.Should().BeGreaterOrEqualTo(4);
+            homeStrips.Should().OnlyContain(strip => !string.IsNullOrWhiteSpace(strip.CollapsedDropDownButtonText), "simplified ribbon navigation needs collapsed dropdown labels for every group");
 
             form.Text.Should().Contain("Wiley Widget");
             form.WindowState.Should().NotBe(System.Windows.Forms.FormWindowState.Minimized);
@@ -158,6 +319,111 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
                 form.Close();
                 form.Dispose();
             }
+        }
+    }
+
+    [WinFormsFact]
+    public void UnifiedNavigationDropdown_SelectingMunicipalAccounts_ActivatesPanel()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true",
+            ["UI:ShowUnifiedNavigationDropdown"] = "true",
+            ["UI:HideLegacyRibbonNavigation"] = "true"
+        });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var navigationItem = FindToolStripItem<ToolStripMenuItem>(ribbon, "NavMenuItem_MunicipalAccounts");
+            var panelNavigator = new FakePanelNavigationService();
+
+            navigationItem.Should().NotBeNull();
+            var tabNames = ribbon!.Header.MainItems.OfType<ToolStripTabItem>().Select(tab => tab.Name).ToList();
+            tabNames.Should().Contain("HomeTab");
+            tabNames.Should().Contain("LayoutTab");
+            tabNames.Should().NotContain("FinancialsTab");
+            tabNames.Should().NotContain("AnalyticsTab");
+            tabNames.Should().NotContain("UtilitiesTab");
+            tabNames.Should().NotContain("AdministrationTab");
+
+            form.SetPrivateField("_panelNavigator", panelNavigator);
+
+            InvokeToolStripClick(navigationItem!);
+            PumpUntil(() => string.Equals(panelNavigator.GetActivePanelName(), "Municipal Accounts", StringComparison.Ordinal));
+
+            panelNavigator.GetActivePanelName().Should().Be("Municipal Accounts");
+            panelNavigator.LastPanelType.Should().Be(typeof(AccountsPanel));
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
+        }
+    }
+
+    [WinFormsFact]
+    public void UnifiedNavigationDropdown_SelectingJarvis_ActivatesRightDockTab()
+    {
+        TestThemeHelper.EnsureOffice2019Colorful();
+        using var provider = IntegrationTestServices.BuildProvider(new Dictionary<string, string?>
+        {
+            ["UI:ShowRibbon"] = "true",
+            ["UI:ShowUnifiedNavigationDropdown"] = "true",
+            ["UI:HideLegacyRibbonNavigation"] = "true"
+        });
+        using var form = new TestMainForm(provider);
+        _ = form.Handle;
+        form.ForceFullInitialization();
+
+        try
+        {
+            var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
+            var navigationItem = FindToolStripItem<ToolStripMenuItem>(ribbon, "NavMenuItem_JARVISChat");
+            var rightDockPanel = new Panel { Name = "RightDockPanel" };
+            var rightDockTabs = new TabControlAdv { Name = "RightDockTabs" };
+            var jarvisTab = new TabPageAdv { Name = "RightDockTab_JARVIS", Text = "JARVIS Chat" };
+            var jarvisPanel = new JARVISChatUserControl(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(provider),
+                provider,
+                NullLogger<JARVISChatUserControl>.Instance);
+
+            rightDockTabs.TabPages.Add(jarvisTab);
+            rightDockPanel.Controls.Add(rightDockTabs);
+            form.SetPrivateField("_rightDockPanel", rightDockPanel);
+            form.SetPrivateField("_rightDockTabs", rightDockTabs);
+            form.SetPrivateField("_rightDockJarvisPanel", jarvisPanel);
+
+            navigationItem.Should().NotBeNull();
+            var tabNames = ribbon!.Header.MainItems.OfType<ToolStripTabItem>().Select(tab => tab.Name).ToList();
+            tabNames.Should().Contain("HomeTab");
+            tabNames.Should().Contain("LayoutTab");
+            tabNames.Should().NotContain("FinancialsTab");
+            tabNames.Should().NotContain("AnalyticsTab");
+            tabNames.Should().NotContain("UtilitiesTab");
+            tabNames.Should().NotContain("AdministrationTab");
+            InvokeToolStripClick(navigationItem!);
+
+            var resolvedRightDockTabs = form.GetPrivateField("_rightDockTabs") as TabControlAdv;
+            PumpUntil(() => string.Equals(resolvedRightDockTabs?.SelectedTab?.Name, "RightDockTab_JARVIS", StringComparison.Ordinal));
+
+            var resolvedRightDockPanel = form.GetPrivateField("_rightDockPanel") as Panel;
+            resolvedRightDockPanel.Should().NotBeNull();
+            resolvedRightDockPanel!.Visible.Should().BeTrue();
+            resolvedRightDockTabs.Should().NotBeNull();
+            resolvedRightDockTabs!.SelectedTab.Should().NotBeNull();
+            resolvedRightDockTabs.SelectedTab!.Name.Should().Be("RightDockTab_JARVIS");
+
+            jarvisPanel.Dispose();
+            rightDockTabs.Dispose();
+            rightDockPanel.Dispose();
+        }
+        finally
+        {
+            if (form.IsHandleCreated) { form.Close(); form.Dispose(); }
         }
     }
 

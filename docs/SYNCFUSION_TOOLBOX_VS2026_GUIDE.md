@@ -1,8 +1,8 @@
 # Syncfusion WinForms Toolbox Integration Guide for Visual Studio 2026 (.NET 10)
 
-**Last Updated:** 2025-01-15  
-**Target Framework:** .NET 10 (net10.0-windows)  
-**Syncfusion Version:** 32.1.19  
+**Last Updated:** 2025-01-15
+**Target Framework:** .NET 10 (net10.0-windows)
+**Syncfusion Version:** 32.1.19
 **Visual Studio:** 2026 (Preview/Latest)
 
 ---
@@ -184,7 +184,7 @@ The repository includes a **Syncfusion WinForms MCP Server** that can query offi
    - Set environment variable:
 
 ```powershell
-$env:SYNCFUSION_MCP_API_KEY = "your-api-key-here"
+$env:SYNCFUSION_API_KEY = "your-api-key-here"
 ```
 
 2. **In VS Code/Copilot Chat, invoke:**

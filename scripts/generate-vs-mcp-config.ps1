@@ -75,8 +75,8 @@ foreach ($serverName in $configObj.servers.PSObject.Properties.Name) {
     # Replace ${workspaceFolder} in args array
     if ($server.args) {
         $server.args = @($server.args | ForEach-Object {
-            $_ -replace '\$\{workspaceFolder\}', $workspaceRoot
-        })
+                $_ -replace '\$\{workspaceFolder\}', $workspaceRoot
+            })
     }
 
     Write-Host "   ✓ Processed: $serverName" -ForegroundColor Gray
@@ -101,7 +101,7 @@ Write-Host "✅ Successfully generated .vs/mcp.json" -ForegroundColor Green
 Write-Host ""
 Write-Host "📋 Next Steps:" -ForegroundColor Yellow
 Write-Host "   1. Set Syncfusion API key environment variable:" -ForegroundColor Gray
-Write-Host "      [System.Environment]::SetEnvironmentVariable('SYNCFUSION_MCP_API_KEY', 'your-key', 'User')" -ForegroundColor DarkGray
+Write-Host "      [System.Environment]::SetEnvironmentVariable('SYNCFUSION_API_KEY', 'your-key', 'User')" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "   2. Restart Visual Studio 2026" -ForegroundColor Gray
 Write-Host ""

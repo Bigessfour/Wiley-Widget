@@ -16,6 +16,7 @@ using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Utilities;
+using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -24,7 +25,7 @@ namespace WileyWidget.WinForms.Controls.Panels;
 /// Control for the Variances tab in Analytics Hub.
 /// Thin view: export is handled by the parent AnalyticsHubPanel. No local CSV writer.
 /// </summary>
-public partial class VariancesTabControl : UserControl
+public partial class VariancesTabControl : UserControl, IThemable
 {
     private readonly VariancesTabViewModel? _viewModel;
     private readonly ILogger _logger;
@@ -48,8 +49,7 @@ public partial class VariancesTabControl : UserControl
 
         try
         {
-            var theme = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
-            SfSkinManager.SetVisualStyle(this, theme);
+            ApplyTheme(SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
         }
         catch { /* best-effort */ }
 
@@ -92,7 +92,7 @@ public partial class VariancesTabControl : UserControl
 
     private void InitializeFilterPanel()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
 
         _filterPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
         SfSkinManager.SetVisualStyle(_filterPanel, themeName);
@@ -140,7 +140,7 @@ public partial class VariancesTabControl : UserControl
 
     private void InitializeVariancesGrid()
     {
-        var themeName = SfSkinManager.ApplicationVisualTheme ?? "Office2019Colorful";
+        var themeName = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
         _variancesGrid = new SfDataGrid
         {
             Dock = DockStyle.Fill,
@@ -261,6 +261,24 @@ public partial class VariancesTabControl : UserControl
         {
             System.Diagnostics.Debug.WriteLine($"Variances LoadAsync error: {ex.Message}");
             _logger.LogError(ex, "[VariancesTabControl] LoadAsync failed");
+        }
+    }
+
+    public void ApplyTheme(string themeName)
+    {
+        if (IsDisposed || Disposing || string.IsNullOrWhiteSpace(themeName))
+        {
+            return;
+        }
+
+        this.ApplySyncfusionTheme(themeName, _logger);
+        _filterPanel?.ApplySyncfusionTheme(themeName, _logger);
+        _loadingOverlay?.ApplySyncfusionTheme(themeName, _logger);
+
+        if (_variancesGrid != null)
+        {
+            _variancesGrid.ThemeName = themeName;
+            _variancesGrid.ApplySyncfusionTheme(themeName, _logger);
         }
     }
 

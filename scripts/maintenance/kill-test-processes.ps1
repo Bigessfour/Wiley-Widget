@@ -10,7 +10,7 @@
 [CmdletBinding()]
 param()
 
-Write-Host "🔍 Checking for hanging test processes..." -ForegroundColor Cyan
+Write-Host "🔍 Checking for hanging test and build processes..." -ForegroundColor Cyan
 
 # Get testhost processes
 $testhostProcesses = Get-Process -Name "testhost" -ErrorAction SilentlyContinue
@@ -26,22 +26,22 @@ if ($testhostProcesses) {
     Write-Host "✅ No testhost processes found" -ForegroundColor Green
 }
 
-# Get dotnet processes older than 2 minutes (likely hung)
-$dotnetProcesses = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue |
-    Where-Object {
-        $_.StartTime -and ((Get-Date) - $_.StartTime).TotalMinutes -gt 2
-    }
+# Get dotnet/MSBuild/compiler server processes older than 1 minute (likely stale locks)
+$buildProcesses = Get-Process -Name "dotnet", "MSBuild", "VBCSCompiler" -ErrorAction SilentlyContinue |
+Where-Object {
+    $_.StartTime -and ((Get-Date) - $_.StartTime).TotalMinutes -gt 1
+}
 
-if ($dotnetProcesses) {
-    Write-Host "⚠️  Found $($dotnetProcesses.Count) long-running dotnet process(es)" -ForegroundColor Yellow
-    foreach ($process in $dotnetProcesses) {
+if ($buildProcesses) {
+    Write-Host "⚠️  Found $($buildProcesses.Count) long-running build/test process(es)" -ForegroundColor Yellow
+    foreach ($process in $buildProcesses) {
         $runtime = [math]::Round(((Get-Date) - $process.StartTime).TotalMinutes, 1)
-        Write-Host "   Killing dotnet PID: $($process.Id) (running for $runtime minutes)" -ForegroundColor Yellow
+        Write-Host "   Killing $($process.ProcessName) PID: $($process.Id) (running for $runtime minutes)" -ForegroundColor Yellow
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
-    Write-Host "✅ Killed long-running dotnet processes" -ForegroundColor Green
+    Write-Host "✅ Killed long-running build/test processes" -ForegroundColor Green
 } else {
-    Write-Host "✅ No long-running dotnet processes found" -ForegroundColor Green
+    Write-Host "✅ No long-running build/test processes found" -ForegroundColor Green
 }
 
 Write-Host "🎯 Ready to run tests" -ForegroundColor Green

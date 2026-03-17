@@ -96,9 +96,6 @@ namespace WileyWidget.WinForms.ViewModels
         /// <summary>Gets the command to mark a bill as paid.</summary>
         public IAsyncRelayCommand MarkAsPaidCommand { get; }
 
-        /// <summary>Gets the command to generate a bill report.</summary>
-        public IAsyncRelayCommand GenerateReportCommand { get; }
-
         #endregion
 
         #region Constructor
@@ -118,8 +115,6 @@ namespace WileyWidget.WinForms.ViewModels
             SaveBillCommand = new AsyncRelayCommand(SaveBillAsync, () => SelectedBill != null);
             DeleteBillCommand = new AsyncRelayCommand(DeleteBillAsync, () => SelectedBill != null);
             MarkAsPaidCommand = new AsyncRelayCommand(MarkAsPaidAsync, () => SelectedBill != null && !SelectedBill.IsPaid);
-            GenerateReportCommand = new AsyncRelayCommand(GenerateReportAsync);
-
             _logger.LogDebug("UtilityBillViewModel initialized");
         }
 
@@ -459,51 +454,6 @@ namespace WileyWidget.WinForms.ViewModels
                 ErrorMessage = $"Error recording payment: {ex.Message}";
                 StatusText = "Error recording payment";
                 _logger.LogError(ex, "Error recording payment for utility bill {BillNumber}", SelectedBill?.BillNumber);
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        private async Task GenerateReportAsync(CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                IsLoading = true;
-                StatusText = "Generating report...";
-
-                _logger.LogInformation("Generating utility bill report");
-
-                // Simulate report generation
-                await Task.Delay(500);
-
-                // Placeholder for future ExportService integration
-                var billCount = FilteredBills.Count;
-                var totalAmount = FilteredBills.Sum(b => b.TotalAmount);
-                var totalDue = FilteredBills.Sum(b => b.AmountDue);
-
-                var reportMessage = $"Utility Bill Report\n\n" +
-                                  $"Total Bills: {billCount}\n" +
-                                  $"Total Amount: {totalAmount:C}\n" +
-                                  $"Total Outstanding: {totalDue:C}\n" +
-                                  $"Overdue Count: {OverdueCount}\n\n" +
-                                  $"Export functionality coming soon!";
-
-                MessageBox.Show(
-                    reportMessage,
-                    "Report Generated",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
-                StatusText = "Report generated";
-                _logger.LogInformation("Report generated successfully with {Count} bills", billCount);
-            }
-            catch (Exception ex)
-            {
-                ErrorMessage = $"Error generating report: {ex.Message}";
-                StatusText = "Error generating report";
-                _logger.LogError(ex, "Error generating utility bill report");
             }
             finally
             {

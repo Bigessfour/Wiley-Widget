@@ -46,6 +46,12 @@ namespace WileyWidget.WinForms.Forms
         public void ShowPanel<TPanel>(string panelName, DockingStyle style = DockingStyle.Right, bool allowFloating = true)
             where TPanel : UserControl
         {
+            if (typeof(TPanel) == typeof(JARVISChatUserControl))
+            {
+                ShowJarvisInRightDock();
+                return;
+            }
+
             EnsurePanelNavigatorInitialized();
             _panelNavigator?.ShowPanel<TPanel>(panelName, style, allowFloating);
         }
@@ -83,6 +89,11 @@ namespace WileyWidget.WinForms.Forms
                         ShowForm<RatesPage>(panelName, style, allowFloating: true);
                         return true;
                     }
+                }
+
+                if (panelType == typeof(JARVISChatUserControl))
+                {
+                    return ShowJarvisInRightDock();
                 }
 
                 if (_panelNavigator == null)
