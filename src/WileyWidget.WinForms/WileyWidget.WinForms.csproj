@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,7 +11,7 @@
     <UserSecretsId>WileyWidget.WinForms-12345678-1234-1234-1234-123456789012</UserSecretsId>
     <NoWarn>$(NoWarn);WFO5001;NU1701;CS8618;NU1902;NU1903;CS8602;CS8600;MSB3277</NoWarn>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <!-- CI pipeline smoke test marker - 2026-02-28 v32.2.3-Syncfusion-Ready -->
+    <!-- CI pipeline smoke test marker - 2026-02-28 Syncfusion-ready -->
     <!-- Disable default SDK Content auto-includes to avoid NETSDK1022 duplicates with Razor SDK -->
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <!-- .NET 10 Runtime Performance Optimizations -->
@@ -23,12 +23,6 @@
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
   </PropertyGroup>
-
-  <!-- Binding redirect for WindowsBase: WebView2 (net5.0) expects v5.0.0.0 but .NET 10 provides v4.0.0.0 -->
-  <ItemGroup>
-    <RuntimeHostConfigurationOption Include="System.Runtime.Versioning.RuntimeConfiguration.AppContext.TryGetSwitch"
-      Value="false" />
-  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="WileyWidget.WinForms.Tests" />
@@ -92,11 +86,12 @@
 
     <PackageReference Include="IppDotNetSdkForQuickBooksApiV3" />
     <!-- Syncfusion WinForms UI controls -->
-    <!-- Versions are centrally pinned to 32.2.3 in Directory.Packages.props -->
+    <!-- Versions are centrally pinned in Directory.Packages.props -->
     <PackageReference Include="Syncfusion.Core.WinForms" />
     <PackageReference Include="Syncfusion.Licensing" />
     <PackageReference Include="Syncfusion.Shared.Base" />
     <PackageReference Include="Syncfusion.Tools.Windows" />
+    <PackageReference Include="Syncfusion.SfAIAssistView.WinForms" />
     <PackageReference Include="Syncfusion.SfDataGrid.WinForms" />
     <PackageReference Include="Syncfusion.DataGridExport.WinForms" />
     <PackageReference Include="Syncfusion.Chart.Windows" />
@@ -116,27 +111,6 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Common" />
     <!-- Roslyn scripting for C# evaluation plugin (JARVIS) -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
-    <!-- Blazor WebView for Windows Forms -->
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" />
-    <PackageReference Include="Microsoft.Web.WebView2" />
-    <!-- Syncfusion Blazor Interactive Chat -->
-    <PackageReference Include="Syncfusion.Blazor.InteractiveChat" />
-    <PackageReference Include="Syncfusion.Blazor.Core" />
-    <PackageReference Include="Syncfusion.Blazor.Themes" />
-    <PackageReference Include="Syncfusion.Blazor.SmartComponents" />
-    <PackageReference Include="Syncfusion.Blazor.Inputs" />
-    <PackageReference Include="Syncfusion.Blazor.Buttons" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Remove WPF WebView2 assembly to avoid WindowsBase version conflict -->
-    <Reference Remove="Microsoft.Web.WebView2.Wpf" />
-  </ItemGroup>
-
-  <!-- Explicitly include Blazor component files as RazorComponent items.
-       Required because EnableDefaultContentItems=false suppresses SDK auto-includes. -->
-  <ItemGroup>
-    <RazorComponent Include="BlazorComponents\**\*.razor" />
   </ItemGroup>
 
   <!-- .NET 10 SDK automatically includes wwwroot and appsettings.json as Content items -->
@@ -156,10 +130,6 @@
     <Content Include="appsettings*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <!-- Blazor wwwroot static assets -->
-    <Content Include="wwwroot\\**\\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <!-- Embed FlatIcons as resources for reliable icon loading -->
@@ -167,14 +137,6 @@
     <EmbeddedResource Include="Resources\\FlatIcons\\*.png">
       <LogicalName>WileyWidget.WinForms.Resources.FlatIcons.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <!-- Bundle Fixed-Version WebView2 Runtime (eliminates HWND invalidation during Blazor init) -->
-  <Target Name="CopyWebView2Runtime" AfterTargets="Build">
-    <Copy SourceFiles="@(WebView2Files)" DestinationFolder="$(OutDir)WebView2Runtime\%(RecursiveDir)" />
-  </Target>
-  <ItemGroup>
-    <WebView2Files Include="..\..\WebView2Runtime\**\*.*" />
   </ItemGroup>
 
   <ItemGroup>

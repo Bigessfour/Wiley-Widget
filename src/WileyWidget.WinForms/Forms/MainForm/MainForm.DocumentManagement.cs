@@ -20,6 +20,17 @@ namespace WileyWidget.WinForms.Forms;
 /// </summary>
 public partial class MainForm
 {
+    private Form[] GetDocumentChildren()
+    {
+        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
+        if (children == null || children.Length == 0)
+        {
+            return Array.Empty<Form>();
+        }
+
+        return children.Where(child => child is { IsDisposed: false }).ToArray();
+    }
+
     /// <summary>
     /// Initialize TabbedMDIManager for professional tabbed document interface.
     /// Replaces floating forms with Office-style tabs.
@@ -241,7 +252,7 @@ public partial class MainForm
     /// </summary>
     private void CloseAllDocuments()
     {
-        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
+        var children = GetDocumentChildren();
         foreach (var child in children.ToArray())
         {
             child.Close();
@@ -256,7 +267,7 @@ public partial class MainForm
         var activeChild = this.ActiveMdiChild;
         if (activeChild == null) return;
 
-        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
+        var children = GetDocumentChildren();
         foreach (var child in children.Where(c => c != activeChild).ToArray())
         {
             child.Close();
@@ -266,14 +277,14 @@ public partial class MainForm
     /// <summary>
     /// Gets the count of open MDI documents.
     /// </summary>
-    private int GetOpenDocumentCount() => _tabbedMdi?.MdiChildren?.Length ?? this.MdiChildren?.Length ?? 0;
+    private int GetOpenDocumentCount() => GetDocumentChildren().Length;
 
     /// <summary>
     /// Gets all open document names.
     /// </summary>
     private IEnumerable<string> GetOpenDocumentNames()
     {
-        return _tabbedMdi?.MdiChildren?.Select(c => c.Text) ?? this.MdiChildren?.Select(c => c.Text) ?? Enumerable.Empty<string>();
+        return GetDocumentChildren().Select(c => c.Text);
     }
 
     /// <summary>
@@ -281,8 +292,8 @@ public partial class MainForm
     /// </summary>
     private void ActivateNextDocument()
     {
-        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
-        if (children == null || children.Length == 0) return;
+        var children = GetDocumentChildren();
+        if (children.Length == 0) return;
 
         var activeIndex = Array.IndexOf(children, this.ActiveMdiChild);
         var nextIndex = (activeIndex + 1) % children.Length;
@@ -294,8 +305,8 @@ public partial class MainForm
     /// </summary>
     private void ActivatePreviousDocument()
     {
-        var children = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
-        if (children == null || children.Length == 0) return;
+        var children = GetDocumentChildren();
+        if (children.Length == 0) return;
 
         var activeIndex = Array.IndexOf(children, this.ActiveMdiChild);
         var prevIndex = activeIndex <= 0 ? children.Length - 1 : activeIndex - 1;

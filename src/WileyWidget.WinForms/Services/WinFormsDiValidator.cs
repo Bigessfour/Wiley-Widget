@@ -302,11 +302,8 @@ namespace WileyWidget.WinForms.Services
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             // Find all types inheriting from ScopedPanelBase<T>.
-            // Use ReflectionTypeLoadException-safe enumeration: some types in WileyWidget.WinForms.dll
-            // (e.g. JARVISChatUserControl) reference Microsoft.AspNetCore.Components.WebView.WindowsForms
-            // which in turn depends on Microsoft.WinForms.Utilities.Shared v1.6.0.0 — absent from the
-            // .NET 10 WindowsDesktop shared runtime. GetTypes() throws ReflectionTypeLoadException for
-            // those types; we fall back to the subset that did load successfully.
+            // Use ReflectionTypeLoadException-safe enumeration so partial type-load failures
+            // do not block panel validation.
             IEnumerable<Type> allAssemblyTypes;
             try
             {

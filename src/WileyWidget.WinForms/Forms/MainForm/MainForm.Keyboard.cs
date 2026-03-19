@@ -22,6 +22,7 @@ namespace WileyWidget.WinForms.Forms;
 /// Shortcut Summary:
 /// - Ctrl+F: Focus global search box
 /// - Ctrl+Shift+F: Find in active grid
+/// - Ctrl+Shift+P: Show Payments panel
 /// - Ctrl+Shift+T: Toggle theme
 /// - Ctrl+Shift+S: Save current layout
 /// - Ctrl+Shift+R: Reset layout to default
@@ -225,9 +226,14 @@ public partial class MainForm
         }
 
         // [PERF] Panel Navigation Shortcuts (Alt+key)
+        if (keyData == (Keys.Control | Keys.Shift | Keys.P))
+        {
+            return TryShowPanel<Panels.PaymentsPanel>("Payments", DockingStyle.Right);
+        }
+
         if (keyData == (Keys.Alt | Keys.A))
         {
-            return TryShowPanel<Panels.AccountsPanel>("Accounts", DockingStyle.Right);
+            return TryShowPanel<Panels.AccountsPanel>("Municipal Accounts", DockingStyle.Right);
         }
 
         if (keyData == (Keys.Alt | Keys.C))
@@ -280,11 +286,23 @@ public partial class MainForm
                 return ShowJarvisInRightDock();
             }
 
+            EnsurePanelNavigatorInitialized();
+
+            if (_panelNavigator == null)
+            {
+                SetUiAutomationNavigationStatus($"error:{panelName}");
+                _logger?.LogWarning("Error showing {PanelName} panel because PanelNavigator is null", panelName);
+                return false;
+            }
+
+            SetUiAutomationNavigationStatus($"requested:{panelName}");
             _panelNavigator?.ShowPanel<TPanel>(panelName, style, allowFloating);
+            SetUiAutomationNavigationStatus($"navigated:{panelName}");
             return true;
         }
         catch (Exception ex)
         {
+            SetUiAutomationNavigationStatus($"error:{panelName}");
             _logger?.LogWarning(ex, "Error showing {PanelName} panel", panelName);
             return false;
         }
@@ -329,6 +347,12 @@ public partial class MainForm
     /// </summary>
     private bool HandleEscapeShortcut()
     {
+        if (_searchDialog != null && !_searchDialog.IsDisposed && _searchDialog.Visible)
+        {
+            _searchDialog.Close();
+            return true;
+        }
+
         if (TryClearSearchText())
         {
             return true;

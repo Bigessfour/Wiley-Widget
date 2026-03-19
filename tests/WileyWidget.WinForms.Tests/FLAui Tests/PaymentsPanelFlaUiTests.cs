@@ -10,7 +10,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         public void PaymentsPanel_HasGridAndAddButton_WhenPanelLoaded()
         {
             EnsureAppLaunched();
-            if (!PanelActivationHelpers.EnsurePanelVisibleOrHostGated(SharedMainWindow!, "Payments", TimeSpan.FromSeconds(30)))
+            if (!PanelActivationHelpers.EnsurePaymentsPanelVisibleOrHostGated(SharedMainWindow!, TimeSpan.FromSeconds(30)))
             {
                 return;
             }

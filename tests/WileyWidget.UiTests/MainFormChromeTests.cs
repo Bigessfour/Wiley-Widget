@@ -51,6 +51,7 @@ namespace WileyWidget.UiTests
                 var chromePanel = window.FindFirstDescendant(cf => cf.ByAutomationId("MainFormChrome"));
                 Assert.NotNull(chromePanel);
                 // Assert theme-specific properties if accessible via UIA
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {
@@ -87,6 +88,7 @@ namespace WileyWidget.UiTests
                 Assert.NotNull(closeButton);
                 // Don't actually close, just verify existence and enabled state
                 Assert.True(closeButton.IsEnabled);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {

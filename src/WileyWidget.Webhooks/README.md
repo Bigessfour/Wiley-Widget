@@ -1,6 +1,6 @@
 # WileyWidget.Webhooks (QuickBooks Online)
 
-Production-ready receiver for Intuit QuickBooks Online Webhooks.
+Webhook receiver and local integration surface for Intuit QuickBooks Online webhooks.
 
 ## Quick Start
 
@@ -16,9 +16,9 @@ Listens on:
 - HTTPS: <https://localhost:7207>
 - HTTP: <http://localhost:5207>
 
-### Production
+### Deployment Notes
 
-See `docs/PRODUCTION_QUICKBOOKS_SETUP.md` for complete deployment guide.
+Use the root `docs/PRE_RELEASE_CHECKLIST.md` and local environment guidance in `docs/USER-SECRETS.md` when preparing this component for deployment.
 
 ---
 
@@ -134,7 +134,7 @@ net start WileyWidgetWebhooks
 
 ### 4. Configure Cloudflare Tunnel
 
-See `docs/PRODUCTION_QUICKBOOKS_SETUP.md` for complete tunnel setup.
+Treat the commands below as environment-specific examples rather than a canonical deployment guide.
 
 **Quick reference:**
 
@@ -179,7 +179,7 @@ Invoke-WebRequest -Uri https://localhost:7207/qbo/webhooks -Method POST -Body $b
 Invoke-WebRequest -Uri https://app.townofwiley.gov/health
 
 # Test webhook with valid signature
-# (Signature generation script - see docs/PRODUCTION_QUICKBOOKS_SETUP.md)
+# Generate the signature using the same verifier token configured for the target environment.
 ```
 
 ### Manual Signature Validation Test
@@ -268,7 +268,7 @@ dotnet user-secrets set "Services:QuickBooks:Webhooks:VerifierToken" "YOUR_TOKEN
 2. Tunnel is active: `sc query cloudflared`
 3. config.yml has correct port and noTLSVerify setting
 
-**Fix:** See `docs/PRODUCTION_QUICKBOOKS_SETUP.md` Section "Troubleshooting"
+**Fix:** Re-check the service, tunnel, and local secret configuration for the current environment before treating the issue as an application bug.
 
 ---
 
@@ -305,12 +305,11 @@ Select-String -Path "logs\*.log" -Pattern "Signature mismatch" |Select-Object -L
 ## References
 
 - **Intuit Webhooks Docs:** https://developer.intuit.com/app/developer/qbo/docs/develop/webhooks
-- **Full Production Setup:** `docs/PRODUCTION_QUICKBOOKS_SETUP.md`
-- **Deployment Checklist:** `docs/QUICKBOOKS_DEPLOYMENT_CHECKLIST.md`
-- **Architecture:** `docs/ARCHITECTURE_PATTERNS.md`
+- **Root Quick Start:** `QUICK_START.md`
+- **Release Checklist:** `docs/PRE_RELEASE_CHECKLIST.md`
+- **Environment And Secret Guidance:** `docs/USER-SECRETS.md`
 
 ---
 
-**Status:** ✅ Production Ready
-**Last Updated:** 2026-02-09
-**Version:** 2.0
+**Status:** Active repository documentation. Validate against the current release checklist before treating this component as production-ready.
+**Last Updated:** 2026-03-18

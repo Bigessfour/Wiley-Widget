@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using System.Windows.Forms;
 using FluentAssertions;
-using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.AIAssistView;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.WinForms.Controls;
@@ -26,7 +26,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]
     public void RightDockPanel_ContainsJarvisChatControl()
     {
-        // Force headless mode to prevent BlazorWebView initialization hangs
+        // Force headless mode for deterministic automation behavior
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
@@ -44,7 +44,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
         }
         else
         {
-            jarvisControl!.Controls.OfType<BlazorWebView>().Any(view => view.Name == "JARVISChatBlazorView").Should().BeTrue();
+            jarvisControl!.Controls.OfType<SfAIAssistView>().Any(view => view.Name == "JarvisAssistView").Should().BeTrue();
         }
     }
 

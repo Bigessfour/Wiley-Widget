@@ -1,148 +1,51 @@
-# Wiley Widget Development Scripts (PowerShell Local)
+# Wiley Widget Scripts
 
-This directory contains **PowerShell-based development scripts** for local desktop development. All scripts are designed for Windows environments with .NET/SQL Express, no cloud dependencies.
+This directory contains local development, diagnostics, validation, and setup scripts for the current repository.
 
-## 🪟 PowerShell Script Ecosystem
+## What This Folder Is For
 
-### Core Development Workflow
+- local setup helpers
+- validation and diagnostics
+- environment and MCP configuration
+- targeted data seeding and integration setup
+- one-off repair and migration utilities
 
-The PowerShell scripts handle local development tasks:
+This folder is not a promise that every development workflow is wrapped in a single canonical script. In practice, the VS Code task list and focused test strategy are the most reliable entry points for day-to-day work.
 
-#### `build.ps1` - Build Script
+## Current High-Value Scripts
 
-**Purpose**: Compile and package the application
+### Setup
 
-- **Clean Build**: `dotnet clean` then `dotnet build`
-- **Release Mode**: Supports debug/release configurations
-- **Self-Contained**: Packages as single EXE for distribution
+- `setup-license.ps1`: configure Syncfusion licensing for local UI execution
+- `setup-env.ps1`: bootstrap local environment values
+- `generate-vs-mcp-config.ps1`: regenerate local MCP-related configuration
+- `setup-mssql-mcp.ps1`: local MSSQL MCP setup
 
-#### `test.ps1` - Test Runner
+### Verification And Diagnostics
 
-**Purpose**: Execute unit and integration tests
+- `verify-startup.ps1`: startup-focused verification
+- `verify-syncfusion-setup.ps1`: Syncfusion setup checks
+- `verify-xai-api-key.ps1`: xAI key validation
+- `analyze-startup-timeline.ps1`: startup timing analysis
+- `profile-di-validation.ps1`: DI validation profiling
+- `monitor-timeouts.ps1`: timeout and cancellation monitoring
 
-- **xUnit Execution**: Runs all test projects
-- **Coverage**: Optional coverage reporting
-- **Filter Support**: Run specific test categories
+### Maintenance
 
-#### `setup-database.ps1` - Database Setup
+- `maintenance/kill-test-processes.ps1`: stop stuck test processes before reruns
+- `clear-ribbon-cache.ps1`: clear ribbon-related cache state
 
-**Purpose**: Initialize local SQL Express database
+### QuickBooks
 
-- **DB Creation**: Creates WileyWidget database
-- **Migrations**: Applies EF Core migrations
-- **Seed Data**: Populates initial data
+- `quickbooks/setup-oauth.ps1`: local QuickBooks OAuth setup
+- `seed-sandbox-qbo.ps1`: sandbox QuickBooks data seeding helper
 
-#### `quickbooks/setup-oauth.ps1` - QuickBooks OAuth Setup
+## Important Notes
 
-**Purpose**: Configure desktop OAuth2 for QuickBooks sync
+- Some older script names that appeared in previous docs no longer exist. Do not rely on historical references such as `build.ps1`, `test.ps1`, or `setup-database.ps1` unless they are restored to the repository.
+- Prefer the current VS Code tasks in `.vscode/tasks.json` for build, run, and many validation flows.
+- Use `docs/TESTING_STRATEGY.md` to decide which test lane actually provides meaningful proof.
 
-- **Browser Auth**: Launches OAuth flow in default browser
-- **Token Storage**: Saves encrypted tokens to %APPDATA%
-- **DPAPI Encryption**: Uses Windows Data Protection API
+## Updating This Folder
 
-#### `cleanup.ps1` - Process Cleanup
-
-**Purpose**: Clean up development artifacts
-
-- **Orphan Processes**: Kills hanging .NET processes
-- **Temp Files**: Removes build artifacts
-- **Logs**: Clears old log files
-
-## 📊 PowerShell Best Practices
-
-### ✅ Windows Standards Compliance
-
-- **Native Windows**: Uses PowerShell 7+ idioms and cmdlets
-- **Maintainable**: Functions with param blocks and validation
-- **Error Handling**: Try/catch with proper error actions
-- **Documented**: Comment-based help and examples
-- **PSScriptAnalyzer**: Passes linting rules
-
-### ✅ Local Desktop Alignment
-
-- **PowerShell Usage**: Local automation (dotnet, sqlcmd, browser launch)
-- **Security**: DPAPI for secrets, no cloud exposure
-- **Resource Management**: Process cleanup and file management
-- **Performance**: Efficient .NET CLI calls
-- **Monitoring**: Write-Host for status, structured logging
-
-### ✅ Desktop Focus Benefits
-
-**Approach**: PowerShell-first for Windows desktop development
-- No cross-platform needs (desktop-only app)
-- Direct .NET/SQL integration
-- Simple, maintainable scripts
-- VS Code tasks integration
-
-## 🧹 Script Organization
-
-### Active Scripts
-
-- `build.ps1` - Build and package
-- `test.ps1` - Run tests
-- `setup-database.ps1` - DB initialization
-- `quickbooks/setup-oauth.ps1` - OAuth setup
-- `cleanup.ps1` - Maintenance
-
-### VS Code Integration
-
-Scripts integrate with VS Code tasks (see .vscode/tasks.json):
-
-- `WileyWidget: Build` → `build.ps1`
-- `test` → `test.ps1`
-- Custom tasks for DB setup and cleanup
-
-## 🧪 Testing Scripts
-
-Scripts include basic validation but rely on xUnit for app testing.
-
-### Validation Examples
-
-```powershell
-# build.ps1 validation
-if (-not (Test-Path "src/WileyWidget.WinForms/WileyWidget.WinForms.csproj")) {
-    throw "Project file not found"
-}
-```
-
-### Running Scripts
-
-```powershell
-# Build release
-.\scripts\build.ps1 -Configuration Release
-
-# Run tests
-.\scripts\test.ps1 -Filter "QuickBooks*"
-
-# Setup DB
-.\scripts\setup-database.ps1
-```
-
-## 📈 PowerShell Benefits
-
-| Aspect           | PowerShell Scripts  | Benefits              |
-| ---------------- | ------------------- | --------------------- |
-| Platform Support | Windows-native      | Optimized for desktop |
-| Maintainability  | PSScriptAnalyzer    | Linting and standards |
-| Testing          | Pester framework    | PowerShell testing    |
-| Error Handling   | Try/catch           | Structured exceptions |
-| Documentation    | Comment-based help  | Get-Help integration  |
-| Performance      | Direct .NET calls   | No overhead           |
-| Security         | DPAPI integration   | Windows security      |
-| Monitoring       | Write-Host/Verbose  | Console output        |
-
-## 🔧 Development Guidelines
-
-- **PowerShell First**: All scripts use PowerShell 7+ idioms
-- **Modular Design**: Functions with param validation
-- **Error Handling**: Use try/catch with proper exit codes
-- **Logging**: Write-Verbose for debug, Write-Host for status
-- **Testing**: Manual validation; app tests via xUnit
-- **Documentation**: Update this README for any new scripts
-
-## 📚 Related Documentation
-
-- [.NET CLI Docs](https://learn.microsoft.com/dotnet/core/tools/)
-- [PowerShell Docs](https://learn.microsoft.com/powershell/)
-- [Syncfusion Licensing](https://help.syncfusion.com/windowsforms/licensing/)
-
+When a script is added, removed, or becomes the preferred entry point for an important workflow, update this file in the same change.

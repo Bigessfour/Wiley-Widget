@@ -65,13 +65,14 @@ namespace WileyWidget.WinForms.Forms
         private IStatusProgressService? _statusProgressService;
         private EventHandler<StatusProgressUpdate>? _statusProgressChangedHandler;
         private SyncfusionControlFactory? _controlFactory;
-        private ContainerControl? _contentHostPanel;   // Sub-container below ribbon, above status bar — houses right-dock panel and MDI client area
+        private ContainerControl? _contentHostPanel = null;   // Logical docking host; maps to the form client area when native WinForms MDI owns layout
         private bool _mdiLayoutSyncHooksAttached;
         private bool _dashboardAutoShown;
         private bool _reportViewerLaunched;
         private IServiceScope? _mainViewModelScope;
         private System.Windows.Forms.Timer? _startupFadeTimer;
         private bool _startupFadePrepared;
+        private Task? _deferredInitializationTask;
 
         // MDI constraint coalescing + diagnostics
         private int _mdiConstrainPending;
@@ -80,6 +81,7 @@ namespace WileyWidget.WinForms.Forms
         private int _mdiConstrainRequestCount;
         private int _mdiConstrainExecutionCount;
         private int _mdiConstrainSkipCount;
+        private Task? _rightDockJarvisInitializationTask;
 
         // UI responsiveness probe diagnostics
         private System.Threading.Timer? _uiResponsivenessProbeTimer;
@@ -102,8 +104,7 @@ namespace WileyWidget.WinForms.Forms
 
         // Keyboard helpers (used by MainForm.Keyboard.cs)
         private Button? _defaultCancelButton;
-        private Button? _uiAutomationNavigationButton;
-        private Panel? _uiAutomationNavigationPanel;
+        private Panel? _uiAutomationNavigationSpacer;
         private TextBox? _uiAutomationNavigationStatusBox;
 
         // Document management (used by MainForm.DocumentManagement.cs)
@@ -130,7 +131,7 @@ namespace WileyWidget.WinForms.Forms
 
         public MainViewModel? MainViewModel { get; private set; }
 
-        /// <summary>Sub-container positioned below ribbon and above status bar. Houses the right-dock panel and MDI client area.</summary>
+        /// <summary>Logical docking host for layout helpers. When native WinForms MDI is active this maps to the form client area.</summary>
         public ContainerControl? ContentHostPanel => _contentHostPanel;
 
         [System.ComponentModel.Browsable(false)]
@@ -223,6 +224,64 @@ namespace WileyWidget.WinForms.Forms
             RequestMdiConstrain("RightDockPanel.LayoutChanged");
         }
 
+        private void EnsureRightDockChromeZOrder()
+        {
+            var host = (Control)this;
+            if (!RightDockChromeNeedsFronting(host))
+            {
+                return;
+            }
+
+            if (_rightDockPanel != null && !_rightDockPanel.IsDisposed && _rightDockPanel.Visible && ReferenceEquals(_rightDockPanel.Parent, host))
+            {
+                _rightDockPanel.BringToFront();
+            }
+
+            if (_rightDockSplitter != null && !_rightDockSplitter.IsDisposed && _rightDockSplitter.Visible && ReferenceEquals(_rightDockSplitter.Parent, host))
+            {
+                _rightDockSplitter.BringToFront();
+            }
+
+            if (_jarvisAutoHideStrip != null && !_jarvisAutoHideStrip.IsDisposed && _jarvisAutoHideStrip.Visible && ReferenceEquals(_jarvisAutoHideStrip.Parent, host))
+            {
+                _jarvisAutoHideStrip.BringToFront();
+            }
+        }
+
+        private bool RightDockChromeNeedsFronting(Control host)
+        {
+            var panelIndex = GetVisibleChildIndex(host, _rightDockPanel);
+            var splitterIndex = GetVisibleChildIndex(host, _rightDockSplitter);
+            var autoHideIndex = GetVisibleChildIndex(host, _jarvisAutoHideStrip);
+
+            if (splitterIndex != int.MaxValue && panelIndex != int.MaxValue && splitterIndex >= panelIndex)
+            {
+                return true;
+            }
+
+            if (autoHideIndex != int.MaxValue && panelIndex != int.MaxValue && autoHideIndex >= panelIndex)
+            {
+                return true;
+            }
+
+            if (autoHideIndex != int.MaxValue && splitterIndex != int.MaxValue && autoHideIndex >= splitterIndex)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static int GetVisibleChildIndex(Control host, Control? control)
+        {
+            if (control == null || control.IsDisposed || !control.Visible || !ReferenceEquals(control.Parent, host))
+            {
+                return int.MaxValue;
+            }
+
+            return host.Controls.GetChildIndex(control);
+        }
+
         private void ConfigureStartupRenderingStyles()
         {
             try
@@ -261,24 +320,12 @@ namespace WileyWidget.WinForms.Forms
             _uiConfig = UIConfiguration.FromConfiguration(configuration);
             ConfigureStartupRenderingStyles();
 
-            // Create ContentHostPanel early for isolated docking host (prevents empty Controls during init)
             var themeName = _themeService?.CurrentTheme ?? Themes.ThemeColors.DefaultTheme;
-            _contentHostPanel = new UserControl
-            {
-                Name = "ContentHostPanel",
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0),  // Match AppLayoutConstants if defined
-                TabStop = false,
-                Visible = true
-            };
-            SfSkinManager.SetVisualStyle(_contentHostPanel, themeName);
-            Controls.Add(_contentHostPanel);
-            _contentHostPanel.Resize -= ContentHostPanel_Resize;
-            _contentHostPanel.Resize += ContentHostPanel_Resize;
-            _logger?.LogDebug("ContentHostPanel created early in constructor, theme={Theme}", themeName);
+            _contentHostPanel = this;
 
             AutoScaleMode = AutoScaleMode.Dpi;
             KeyPreview = true;
+            Text = MainFormResources.FormTitle;
             Size = new Size(1400, 900);
             MinimumSize = new Size(1280, 800);
             StartPosition = FormStartPosition.Manual;
@@ -296,16 +343,10 @@ namespace WileyWidget.WinForms.Forms
             DragEnter += MainForm_DragEnter;
             DragDrop += MainForm_DragDrop;
 
-            // Safety net for UI thread exceptions (e.g., Syncfusion paint crashes)
-            Application.ThreadException += (sender, e) =>
+            if (_uiConfig.VerboseFirstChanceExceptions)
             {
-                _logger?.LogError(e.Exception, "Unhandled UI thread exception caught: {Message}", e.Exception.Message);
-                // Optional: Show non-fatal dialog or continue
-                // MessageBox.Show(this, $"UI Error: {e.Exception.Message}\nApp continues.", "Wiley Widget", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            };
-            _logger?.LogDebug("Global ThreadException handler wired for UI crashes");
-
-            AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
+                AppDomain.CurrentDomain.FirstChanceException += MainForm_FirstChanceException;
+            }
 
             Services.FontService.Instance.FontChanged += OnApplicationFontChanged;
 
@@ -351,41 +392,33 @@ namespace WileyWidget.WinForms.Forms
                 if (_themeService != null)
                     _themeService.ThemeChanged -= OnThemeServiceChanged;
 
+                if (_uiConfig.VerboseFirstChanceExceptions)
+                {
+                    AppDomain.CurrentDomain.FirstChanceException -= MainForm_FirstChanceException;
+                }
+
                 if (_statusProgressService != null && _statusProgressChangedHandler != null)
                 {
                     _statusProgressService.ProgressChanged -= _statusProgressChangedHandler;
                     _statusProgressChangedHandler = null;
                 }
 
-                // === FIX: Prevent Dispose race with CreateHandle (Syncfusion v32.2.3 stability) ===
-                // If handle creation is in progress, don't dispose yet; let base.Dispose() handle it safely
-                if (this.IsHandleCreated && !this.IsDisposed && !this.Disposing)
+                try
                 {
-                    try
-                    {
-                        // Safe to dispose components now that handle is stable
-                        components?.Dispose();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger?.LogDebug(ex, "Dispose: components cleanup raised exception (expected in race scenarios)");
-                    }
+                    components?.Dispose();
                 }
-                else if (!this.IsHandleCreated)
+                catch (Exception ex)
                 {
-                    // Handle not created yet — defer component cleanup to base.Dispose
-                    try { components?.Dispose(); } catch { }
+                    _logger?.LogDebug(ex, "Dispose: components cleanup raised exception");
                 }
             }
 
-            // Let Syncfusion RibbonForm do its dispose LAST (critical for avoiding WndProc race)
             try
             {
                 base.Dispose(disposing);
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("CreateHandle"))
             {
-                // Expected in race condition scenarios; log but don't crash
                 _logger?.LogDebug(ex, "Dispose: Syncfusion RibbonForm disposal caught expected CreateHandle race");
             }
         }
@@ -579,7 +612,94 @@ namespace WileyWidget.WinForms.Forms
                 ShowErrorDialog("Drag & Drop Error", "An error occurred while processing dropped files.", ex);
             }
         }
-        private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e) { }
+        private void MainForm_FirstChanceException(object? sender, FirstChanceExceptionEventArgs e)
+        {
+            if (!_uiConfig.VerboseFirstChanceExceptions)
+            {
+                return;
+            }
+
+            var exception = e.Exception;
+            if (exception == null)
+            {
+                return;
+            }
+
+            if (IsThemeInfrastructureException(exception))
+            {
+                _logger?.LogDebug(exception, "Ignored theme infrastructure first-chance exception");
+                return;
+            }
+
+            if (IsExpectedBackgroundTransportException(exception))
+            {
+                _logger?.LogDebug(exception, "Ignored expected HTTP resilience first-chance exception");
+                return;
+            }
+
+            _logger?.LogError(exception, "Unhandled first-chance exception observed on UI path");
+        }
+
+        private static bool IsThemeInfrastructureException(Exception exception)
+        {
+            static bool MatchesThemeMarker(string? value)
+            {
+                return !string.IsNullOrWhiteSpace(value)
+                    && (value.Contains("theme", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("SfSkinManager", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("Syncfusion", StringComparison.OrdinalIgnoreCase));
+            }
+
+            for (var current = exception; current != null; current = current.InnerException)
+            {
+                if (MatchesThemeMarker(current.Message)
+                    || MatchesThemeMarker(current.Source)
+                    || MatchesThemeMarker(current.StackTrace)
+                    || MatchesThemeMarker(current.GetType().FullName))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsExpectedBackgroundTransportException(Exception exception)
+        {
+            static bool MatchesTransportMarker(string? value)
+            {
+                return !string.IsNullOrWhiteSpace(value)
+                    && (value.Contains("System.Net.Http", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("SslStream", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("HttpConnection", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("Polly", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("Resilience", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("Grok", StringComparison.OrdinalIgnoreCase)
+                        || value.Contains("Socket", StringComparison.OrdinalIgnoreCase));
+            }
+
+            for (var current = exception; current != null; current = current.InnerException)
+            {
+                var expectedType = current is System.Threading.Tasks.TaskCanceledException
+                    || current is OperationCanceledException
+                    || current is HttpRequestException
+                    || current is IOException
+                    || current is System.Net.Sockets.SocketException
+                    || string.Equals(current.GetType().FullName, "Polly.Timeout.TimeoutRejectedException", StringComparison.Ordinal);
+
+                if (expectedType
+                    && (MatchesTransportMarker(current.Message)
+                        || MatchesTransportMarker(current.Source)
+                        || MatchesTransportMarker(current.StackTrace)
+                        || MatchesTransportMarker(current.GetType().FullName)))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private void OnApplicationFontChanged(object? sender, Services.FontChangedEventArgs e) { this.Font = e.NewFont; }
 
         // ---------------------------------------------------------------------------
@@ -969,7 +1089,7 @@ namespace WileyWidget.WinForms.Forms
             var constrainStopwatch = Stopwatch.StartNew();
             try
             {
-                if (!IsMdiContainer || _contentHostPanel == null || _contentHostPanel.IsDisposed)
+                if (!IsMdiContainer)
                 {
                     return;
                 }
@@ -980,142 +1100,35 @@ namespace WileyWidget.WinForms.Forms
                     return;
                 }
 
-                // Track whether WinForms MDI reset MdiClient.Dock to Fill (diagnostic).
-                bool dockWasReset = mdiClient.Dock != DockStyle.None;
-
-                // ── TOP EDGE ────────────────────────────────────────────────────────────────────
-                // Use PointToScreen/PointToClient for all measurements to stay immune to
-                // coordinate-space differences introduced by DockStyleEx.Top (Syncfusion) vs the
-                // standard DockStyle.Top that feeds WinForms dock layout.
-                //
-                // Strategy: walk every direct form child that is DockStyle.Top and take the
-                // maximum bottom edge in form-client coordinates.  This automatically captures the
-                // ribbon AND any TabbedMDI tab strip control that Syncfusion inserts at DockStyle.Top
-                // above the MDI area — no separate tab-strip measurement is required.
-                int topY = 0;
-                int ribbonBottom = 0;
-
                 if (!IsHandleCreated)
-                {
-                    return; // Cannot use PointToScreen/PointToClient without a live HWND.
-                }
-
-                // Snapshot Controls to avoid collection-modified exceptions during iteration.
-                var formControls = this.Controls.Cast<Control>().ToArray();
-
-                foreach (Control child in formControls)
-                {
-                    if (child == mdiClient || child.IsDisposed || !child.Visible) continue;
-                    if (child.Dock != DockStyle.Top) continue;
-
-                    try
-                    {
-                        var screenPt = child.PointToScreen(new Point(0, child.Height));
-                        var childBottomInForm = this.PointToClient(screenPt).Y;
-                        topY = Math.Max(topY, childBottomInForm);
-
-                        if (child == _ribbon)
-                            ribbonBottom = childBottomInForm;
-                    }
-                    catch
-                    {
-                        // Non-critical — control may not have a live HWND yet; skip.
-                    }
-                }
-
-                // Fallback: if we found no DockStyle.Top controls (e.g. DockStyleEx.Top used for
-                // ribbon and not caught above), use direct PointToScreen on _ribbon.
-                if (topY == 0 && _ribbon != null && !_ribbon.IsDisposed && _ribbon.Visible)
-                {
-                    try
-                    {
-                        var screenPt = _ribbon.PointToScreen(new Point(0, _ribbon.Height));
-                        ribbonBottom = this.PointToClient(screenPt).Y;
-                        topY = ribbonBottom;
-                    }
-                    catch
-                    {
-                        // Swallow — fall through with topY = 0 which is safe (MdiClient kept at top).
-                    }
-                }
-
-                // ── BOTTOM / LEFT / RIGHT EDGES ─────────────────────────────────────────────────
-                // Bottom is driven by ContentHostPanel (status bar docks below it on the form).
-                var hostBottom = _contentHostPanel.Bottom;
-                var hostLeft = _contentHostPanel.Left;
-                var hostRight = _contentHostPanel.Right;
-
-                if (_rightDockPanel != null
-                    && !_rightDockPanel.IsDisposed
-                    && _rightDockPanel.Visible
-                    && (_rightDockPanel.Parent == _contentHostPanel || _rightDockPanel.Parent == this))
-                {
-                    var rightDockBounds = this.RectangleToClient(_rightDockPanel.RectangleToScreen(_rightDockPanel.ClientRectangle));
-                    if (rightDockBounds.Width > 0)
-                    {
-                        hostRight = Math.Min(hostRight, rightDockBounds.Left);
-                    }
-                }
-                else if (_jarvisAutoHideStrip != null
-                         && !_jarvisAutoHideStrip.IsDisposed
-                         && _jarvisAutoHideStrip.Visible
-                         && (_jarvisAutoHideStrip.Parent == _contentHostPanel || _jarvisAutoHideStrip.Parent == this))
-                {
-                    // Sidebar is collapsed — reserve the 22 px toggle strip on the right.
-                    var stripBounds = this.RectangleToClient(_jarvisAutoHideStrip.RectangleToScreen(_jarvisAutoHideStrip.ClientRectangle));
-                    if (stripBounds.Width > 0)
-                    {
-                        hostRight = Math.Min(hostRight, stripBounds.Left);
-                    }
-                }
-
-                var targetBounds = new Rectangle(
-                    hostLeft,
-                    topY,
-                    Math.Max(0, hostRight - hostLeft),
-                    Math.Max(0, hostBottom - topY));
-
-                if (targetBounds.Width <= 0 || targetBounds.Height <= 0)
                 {
                     return;
                 }
 
-                if (mdiClient.Dock != DockStyle.None)
+                var dockWasReset = mdiClient.Dock != DockStyle.Fill;
+                if (dockWasReset)
                 {
-                    mdiClient.Dock = DockStyle.None;
+                    mdiClient.Dock = DockStyle.Fill;
                 }
 
-                if (mdiClient.Bounds != targetBounds)
-                {
-                    mdiClient.Bounds = targetBounds;
-                }
-
-                // Ensure MdiClient is in front of ContentHostPanel (which has Dock=Fill and paints
-                // over the MDI area when behind MdiClient).  Then immediately re-assert the ribbon
-                // on top so its z-order is not displaced on every constrain call.
                 try
                 {
-                    mdiClient.BringToFront();
-                    if (_ribbon != null && !_ribbon.IsDisposed)
-                        _ribbon.BringToFront();
+                    EnsureChromeZOrder();
+                    EnsureRightDockChromeZOrder();
                 }
                 catch
                 {
-                    // Non-critical — ignore z-order failures during form close / layout races.
+                    // Non-critical during layout/dispose races.
                 }
 
-                // Diagnostic — log on bounds change or whenever a Dock reset was detected.
-                if (targetBounds != _lastLoggedMdiClientBounds || dockWasReset)
+                if (dockWasReset || mdiClient.Bounds != _lastLoggedMdiClientBounds)
                 {
-                    _lastLoggedMdiClientBounds = targetBounds;
+                    _lastLoggedMdiClientBounds = mdiClient.Bounds;
                     _logger?.LogDebug(
-                        "[MDI-CONSTRAIN] ribbon.Bottom={RibbonBottom} topY={TopY} " +
-                        "contentHost.Top={ContentTop} dockReset={DockReset} " +
-                        "MdiClient.Bounds={Bounds} DPI={Dpi}",
-                        ribbonBottom, topY,
-                        _contentHostPanel?.Top ?? -1,
+                        "[MDI-CONSTRAIN] dockReset={DockReset} MdiClient.Dock={Dock} MdiClient.Bounds={Bounds} DPI={Dpi}",
                         dockWasReset,
-                        targetBounds,
+                        mdiClient.Dock,
+                        mdiClient.Bounds,
                         DeviceDpi);
                 }
 

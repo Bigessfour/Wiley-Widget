@@ -1086,7 +1086,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             }
 
             // Queue async loading on the UI thread
-            BeginInvoke(new Func<Task>(async () =>
+            this.QueueAsyncOnUIThread(async () =>
             {
                 try
                 {
@@ -1096,7 +1096,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
                 {
                     Logger?.LogError(ex, "Error loading panel data");
                 }
-            }));
+            }, Logger, nameof(OnPanelLoaded));
         }
     }
 

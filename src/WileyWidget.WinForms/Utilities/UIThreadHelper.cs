@@ -250,6 +250,67 @@ public static class UIThreadHelper
     }
 
     /// <summary>
+    /// Queues an async operation on the control's UI thread using a documented Action callback.
+    /// This avoids BeginInvoke(Func&lt;Task&gt;) while still preserving fire-and-forget UI semantics.
+    /// </summary>
+    public static void QueueAsyncOnUIThread(
+        this Control control,
+        Func<System.Threading.Tasks.Task> asyncAction,
+        ILogger? logger = null,
+        string? operationName = null)
+    {
+        if (control == null) throw new ArgumentNullException(nameof(control));
+        if (asyncAction == null) throw new ArgumentNullException(nameof(asyncAction));
+
+        async System.Threading.Tasks.Task ExecuteAndObserveAsync()
+        {
+            try
+            {
+                await asyncAction().ConfigureAwait(true);
+            }
+            catch (ObjectDisposedException ex)
+            {
+                logger?.LogDebug(ex, "Skipped queued UI async operation {OperationName} because {ControlName} was disposed", operationName ?? "<unnamed>", control.Name);
+            }
+            catch (OperationCanceledException ex)
+            {
+                logger?.LogDebug(ex, "Queued UI async operation {OperationName} was canceled for {ControlName}", operationName ?? "<unnamed>", control.Name);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Queued UI async operation {OperationName} failed for {ControlName}", operationName ?? "<unnamed>", control.Name);
+            }
+        }
+
+        try
+        {
+            if (control.IsDisposed || control.Disposing)
+            {
+                return;
+            }
+
+            if (control.IsHandleCreated)
+            {
+                control.BeginInvoke((Action)(() => _ = ExecuteAndObserveAsync()));
+                return;
+            }
+
+            if (!control.InvokeRequired)
+            {
+                _ = ExecuteAndObserveAsync();
+            }
+        }
+        catch (ObjectDisposedException ex)
+        {
+            logger?.LogDebug(ex, "Skipped queuing UI async operation {OperationName} because {ControlName} was disposed", operationName ?? "<unnamed>", control.Name);
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger?.LogDebug(ex, "Skipped queuing UI async operation {OperationName} because {ControlName} has no active UI handle", operationName ?? "<unnamed>", control.Name);
+        }
+    }
+
+    /// <summary>
     /// Checks if a control is ready for UI operations (exists and is accessible).
     /// Per Microsoft docs: must check both InvokeRequired AND IsHandleCreated.
     /// </summary>

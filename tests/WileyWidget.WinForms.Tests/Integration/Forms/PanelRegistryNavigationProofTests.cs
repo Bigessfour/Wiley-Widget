@@ -82,6 +82,7 @@ public sealed class PanelRegistryNavigationProofTests
             Assert.True(quickBooksPanel.Controls.Count > 0);
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "QuickBooks Panel Header"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Connect to QuickBooks"));
+            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Import QuickBooks Desktop Export"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Sync History Grid"));
         }
         finally
@@ -367,7 +368,14 @@ public sealed class PanelRegistryNavigationProofTests
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<CustomersViewModel>>>(scopedProvider));
 
             Assert.NotNull(customersPanel.ViewModel);
-            Assert.False(customersPanel.IsDisposed, "CustomersPanel should remain alive after proof construction.");
+            Assert.False(customersPanel.IsDisposed, "CustomersPanel should remain alive before hosted proof rendering.");
+            AssertControlContainsAccessibleNames(
+                customersPanel,
+                displayName,
+                "Customer search",
+                "Add Customer",
+                "Sync QuickBooks",
+                "Export Customers");
             return;
         }
 
@@ -412,7 +420,13 @@ public sealed class PanelRegistryNavigationProofTests
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<BudgetViewModel>>>(scopedProvider));
 
             Assert.True(budgetPanel.Controls.Count > 0, "BudgetPanel should initialize its root control tree during proof construction.");
-            Assert.False(budgetPanel.IsDisposed, "BudgetPanel should remain alive after proof construction.");
+            AssertControlContainsAccessibleNames(
+                budgetPanel,
+                displayName,
+                "Search Budget Entries",
+                "Fiscal Year Filter",
+                "Load Budgets",
+                "Budget Entries Grid");
             return;
         }
 
@@ -472,7 +486,15 @@ public sealed class PanelRegistryNavigationProofTests
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<UtilityBillViewModel>(scopedProvider),
                 Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
 
-            Assert.False(utilityBillPanel.IsDisposed, "UtilityBillPanel should remain alive after proof construction.");
+            Assert.False(utilityBillPanel.IsDisposed, "UtilityBillPanel should remain alive before hosted proof rendering.");
+            AssertControlContainsAccessibleNames(
+                utilityBillPanel,
+                displayName,
+                "Search",
+                "Status Filter",
+                "Utility Bills Grid",
+                "Create Bill",
+                "Customers Grid");
             return;
         }
 
@@ -498,6 +520,7 @@ public sealed class PanelRegistryNavigationProofTests
             Assert.True(quickBooksPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "QuickBooks Panel Header"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Connect to QuickBooks"));
+            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Import QuickBooks Desktop Export"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Sync History Grid"));
             return;
         }
@@ -698,6 +721,24 @@ public sealed class PanelRegistryNavigationProofTests
         }
 
         host.Close();
+    }
+
+    private static void AssertControlContainsAccessibleNames(
+        Control control,
+        string displayName,
+        params string[] accessibleNames)
+    {
+        _ = control.Handle;
+        control.CreateControl();
+        control.PerformLayout();
+
+        foreach (var accessibleName in accessibleNames)
+        {
+            var matchedControl = FindDescendantByAccessibleName(control, accessibleName);
+            Assert.True(
+                matchedControl != null,
+                $"Panel '{displayName}' did not expose expected accessible control '{accessibleName}'.");
+        }
     }
 
     private static async Task WaitForAccessibleNamesAsync(Control control, IReadOnlyCollection<string> accessibleNames, int timeoutMs)

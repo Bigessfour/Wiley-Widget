@@ -37,6 +37,7 @@ public partial class MainForm
     private int _startupUiPhasesIndex;
     private CancellationTokenSource? _onShownStartupCts;
     private System.Windows.Forms.Timer? _startupUiPhasesTimer;
+    private TaskCompletionSource<object?>? _deferredInitializationCompletionSource;
 
     /// <summary>
     /// Implements IAsyncInitializable.InitializeAsync.
@@ -743,6 +744,12 @@ public partial class MainForm
             ApplyStatus("Ready — loading workspace...");
             Update();
 
+            _onShownStartupCts?.Cancel();
+            _onShownStartupCts?.Dispose();
+            _onShownStartupCts = new CancellationTokenSource();
+            _deferredInitializationCompletionSource = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _deferredInitializationTask = _deferredInitializationCompletionSource.Task;
+
             var startupTimer = new System.Windows.Forms.Timer { Interval = 35 };
             startupTimer.Tick += (_, _) =>
             {
@@ -862,7 +869,33 @@ public partial class MainForm
                         TryOpenJarvisStartupPanel();
                     }
 
-                    _ = InitializeAsync(CancellationToken.None);
+                    var initializationTask = RunOnShownDeferredStartupAsync(_onShownStartupCts?.Token ?? CancellationToken.None);
+                    _deferredInitializationTask = initializationTask;
+                    if (_deferredInitializationCompletionSource != null)
+                    {
+                        initializationTask.ContinueWith(static (task, state) =>
+                        {
+                            var completionSource = (TaskCompletionSource<object?>)state!;
+
+                            if (task.IsCanceled)
+                            {
+                                completionSource.TrySetCanceled();
+                                return;
+                            }
+
+                            if (task.IsFaulted)
+                            {
+                                completionSource.TrySetException(task.Exception!.InnerExceptions);
+                                return;
+                            }
+
+                            completionSource.TrySetResult(null);
+                        },
+                        _deferredInitializationCompletionSource,
+                        CancellationToken.None,
+                        TaskContinuationOptions.ExecuteSynchronously,
+                        TaskScheduler.Default);
+                    }
                     ApplyStatus("Ready");
                     CompleteDeferredStartupUiPhases();
                     return;
@@ -892,7 +925,18 @@ public partial class MainForm
             _startupUiPhasesTimer = null;
         }
 
+        if (_startupUiPhasesIndex < 2)
+        {
+            _deferredInitializationCompletionSource?.TrySetResult(null);
+        }
+
         Interlocked.Exchange(ref _startupUiPhasesQueued, 0);
+    }
+
+    private async Task RunOnShownDeferredStartupAsync(CancellationToken cancellationToken)
+    {
+        await InitializeAsync(cancellationToken).ConfigureAwait(true);
+        await RunDeferredInitializationAsync(cancellationToken).ConfigureAwait(true);
     }
 
     private void InitializeStartupNavigation()
@@ -1309,21 +1353,6 @@ public partial class MainForm
             return false;
         }
 
-        // Microsoft.WinForms.Utilities.Shared.dll is a transitive dependency of BlazorWebView
-        // It's part of Visual Studio IDE tooling and not guaranteed to be present in all
-        // .NET 10 WindowsDesktop runtime installations. If missing, JARVIS may fail, but
-        // the application should still function. Log at Debug level to avoid alarming users.
-        var winFormsUtilitiesSharedPath = Path.Combine(AppContext.BaseDirectory, "Microsoft.WinForms.Utilities.Shared.dll");
-        if (!File.Exists(winFormsUtilitiesSharedPath))
-        {
-            _logger?.LogDebug(
-                "Optional JARVIS dependency not found: {DependencyPath}. " +
-                "JARVIS Assistant may not function correctly if BlazorWebView is unavailable. " +
-                "Ensure Visual Studio with .NET Desktop workload is installed for full functionality.",
-                winFormsUtilitiesSharedPath);
-            // Don't block startup - allow JARVIS to attempt initialization and fail gracefully if needed
-        }
-
         return true;
     }
 
@@ -1471,7 +1500,7 @@ public partial class MainForm
                 MaximumSize = new Size(0, 0),   // 0,0 = no maximum constraint
             };
             _rightDockPanel = jarvisPanel;
-            var host = (_contentHostPanel as Control) ?? (Control)this;
+            var host = (Control)this;
             host.Controls.Add(jarvisPanel);
             _logger?.LogDebug("InitializeLayoutComponents: temporary right dock panel added to {Host} (factory unavailable or failed)", host.Name);
         }

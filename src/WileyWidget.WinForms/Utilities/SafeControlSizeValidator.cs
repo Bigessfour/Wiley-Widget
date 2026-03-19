@@ -280,15 +280,37 @@ namespace WileyWidget.WinForms.Helpers
             if (control == null || control.IsDisposed)
                 return;
 
-            // Schedule resize on UI thread after delay
-            control.BeginInvoke(new Action(() =>
+            void QueueResize()
             {
-                System.Threading.Thread.Sleep(delayMs); // Simple delay; use Timer for non-blocking if needed
-                if (!control.IsDisposed)
+                var timer = new System.Windows.Forms.Timer
                 {
-                    TrySetSize(control, width, height);
-                }
-            }));
+                    Interval = Math.Max(1, delayMs)
+                };
+
+                timer.Tick += (_, _) =>
+                {
+                    timer.Stop();
+                    timer.Dispose();
+
+                    if (!control.IsDisposed)
+                    {
+                        TrySetSize(control, width, height);
+                    }
+                };
+
+                timer.Start();
+            }
+
+            if (control.IsHandleCreated)
+            {
+                control.BeginInvoke((Action)QueueResize);
+                return;
+            }
+
+            if (!control.InvokeRequired)
+            {
+                QueueResize();
+            }
         }
 
         /// <summary>
@@ -437,7 +459,7 @@ namespace WileyWidget.WinForms.Helpers
             var sizeValidation = ValidateControlSize(control);
             var autoSizeValidation = ValidateAutoSizeConflicts(control);
 
-            float dpiScale = control.CreateGraphics()?.DpiX / 96f ?? 1f;
+            float dpiScale = control.DeviceDpi > 0 ? control.DeviceDpi / 96f : 1f;
 
             return $"\n{label} SIZING DIAGNOSTICS:\n" +
                    $"  Name: {control.Name}\n" +

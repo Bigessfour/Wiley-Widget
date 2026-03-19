@@ -129,8 +129,8 @@ public static class SyncfusionExtensions
 
         try
         {
-            // Syncfusion v32.1.19 workaround for ImageAnimator disposal issues.
-            // We iterate through items and ensure images are compatible.
+            // Validate ribbon images before paint/use so incompatible images can be detected
+            // before they trigger control-level rendering issues.
             logger?.LogDebug("Validating ribbon images...");
         }
         catch (Exception ex)

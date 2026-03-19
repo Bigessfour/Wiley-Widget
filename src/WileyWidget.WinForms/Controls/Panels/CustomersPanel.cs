@@ -1290,7 +1290,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         if (ViewModel?.SelectedCustomer == null) return;
 
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             try
             {
@@ -1310,7 +1310,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
                 MessageBox.Show($"Failed to edit customer: {ex.Message}", "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }));
+        }, _logger, nameof(EditSelectedCustomer));
     }
 
     /// <summary>

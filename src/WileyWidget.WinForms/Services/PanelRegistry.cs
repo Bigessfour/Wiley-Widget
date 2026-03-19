@@ -39,7 +39,7 @@ namespace WileyWidget.WinForms.Services
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.ActivityLogPanel),  "Activity Log",            "AuditLogs",      DockingStyle.Bottom, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AuditLogPanel),     "Audit Log & Activity",    "AuditLogs",      DockingStyle.Bottom, false),
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel), "Data Mapper",     "Administration", DockingStyle.Right,  false),
-            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.SettingsPanel),     "Settings",                "Administration", DockingStyle.Right,  false),
+            new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.SettingsPanel),     "Settings",                "Administration", DockingStyle.Right,  true),
 
             // ── Analytics & Reports tab ─────────────────────────────────────────
             new PanelEntry(typeof(WileyWidget.WinForms.Controls.Panels.AnalyticsHubPanel),          "Analytics Hub",             "Analytics",  DockingStyle.Right),

@@ -37,6 +37,7 @@ namespace WileyWidget.UiTests
                 // Verify default panel is loaded (EnterpriseVitalSignsPanel)
                 var defaultPanel = window.WaitForPanel<EnterpriseVitalSignsPanel>(TimeSpan.FromSeconds(10));
                 Assert.NotNull(defaultPanel);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {
@@ -73,6 +74,7 @@ namespace WileyWidget.UiTests
                 Assert.NotNull(statusBar);
                 var errorLabel = statusBar.FindFirstDescendant(cf => cf.ByName("Error"));
                 Assert.Null(errorLabel);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {

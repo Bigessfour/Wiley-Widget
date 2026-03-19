@@ -29,8 +29,6 @@ using Microsoft.Extensions.Options;
 using Polly;
 using System.Net.Http;
 using System.Linq;
-using Microsoft.AspNetCore.Components.WebView.WindowsForms;
-using Syncfusion.Blazor;
 using Serilog;
 using Serilog.Extensions.Logging;
 using WileyWidget.WinForms.Controls;
@@ -246,20 +244,6 @@ namespace WileyWidget.WinForms.Configuration
                 return new Microsoft.Extensions.Caching.Memory.MemoryCache(options);
             });
 
-            // Blazor WebView + Syncfusion Blazor Components
-            // ISOLATION: calls are wrapped in a [NoInlining] helper so the JIT defers
-            // loading Microsoft.AspNetCore.Components.WebView.WindowsForms.dll (and its
-            // transitive dependency Microsoft.WinForms.Utilities.Shared v1.6.0.0, shipped
-            // exclusively by microsoft.winforms.designer.sdk with PrivateAssets=all and
-            // therefore absent from the test runner output directory). Without this
-            // isolation the JIT-time assembly load is triggered even when the call is
-            // behind a dead-branch 'if', poisoning the entire test process.
-            // See IntegrationTestServices.cs and RegisterBlazorServices() below.
-            if (!(effectiveConfig?.GetValue<bool>("UI:IsUiTestHarness", false) ?? false))
-            {
-                RegisterBlazorServices(services);
-            }
-
             // Automation hooks for JARVIS UI validation
             services.AddSingleton<WileyWidget.WinForms.Automation.JarvisAutomationState>();
 
@@ -418,6 +402,8 @@ namespace WileyWidget.WinForms.Configuration
             // QuickBooks Integration Services (with resilience & proper lifecycle)
             // HttpClient factory already registered above with resilience for QB
             services.TryAddSingleton<IQuickBooksApiClient, QuickBooksApiClient>();
+            services.TryAddSingleton<QuickBooksDesktopIifParser>();
+            services.TryAddSingleton<IQuickBooksDesktopImportService, QuickBooksDesktopImportService>();
             services.TryAddSingleton<IQuickBooksService, QuickBooksService>();
 
             // QuickBooks Account Data Services (Company Info & Chart of Accounts)
@@ -444,7 +430,7 @@ namespace WileyWidget.WinForms.Configuration
             // Context Service (Scoped - per-request context)
             services.AddScoped<IWileyWidgetContextService, WileyWidgetContextService>();
 
-            // User Context (Scoped - for Blazor components and user-specific context in BlazorWebView)
+            // User Context (Scoped - user-specific context for WinForms flows)
             services.AddScoped<IUserContext, WileyWidget.Services.UserContext>();
 
             // AI Services (Singleton - heavy initialization, shared across application)
@@ -824,40 +810,6 @@ namespace WileyWidget.WinForms.Configuration
             // - DbContext: Registered in Program.cs to avoid dual provider conflict
         }
 
-        /// <summary>
-        /// Registers BlazorWebView and Syncfusion Blazor services.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// ISOLATION REQUIREMENT: This method MUST stay in a dedicated
-        /// <see langword="static"/> method decorated with
-        /// <see cref="System.Runtime.CompilerServices.MethodImplOptions.NoInlining"/>.
-        /// </para>
-        /// <para>
-        /// <c>AddWindowsFormsBlazorWebView()</c> causes the CLR to load
-        /// <c>Microsoft.AspNetCore.Components.WebView.WindowsForms.dll</c> at JIT-compile
-        /// time (including via its module initialiser). That DLL has a transitive
-        /// dependency on <c>Microsoft.WinForms.Utilities.Shared v1.6.0.0</c>, which is
-        /// shipped only by <c>microsoft.winforms.designer.sdk</c>
-        /// (<c>PrivateAssets=all</c>) and is therefore absent from the test runner output
-        /// directory. Because a <see langword="if"/>-branch guard inside the same method
-        /// does <em>not</em> prevent JIT-level assembly resolution, the call must live in
-        /// its own method so the JIT defers loading until the method is actually invoked —
-        /// which only happens when <c>UI:IsUiTestHarness</c> is <see langword="false"/>.
-        /// </para>
-        /// </remarks>
-        [System.Runtime.CompilerServices.MethodImpl(
-            System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
-        private static void RegisterBlazorServices(IServiceCollection services)
-        {
-            services.AddWindowsFormsBlazorWebView();
-
-            // Syncfusion Blazor Components (for InteractiveChat and other Blazor components)
-            // NOTE: Smart Components (AI-powered textarea, etc.) are not yet available in
-            // Syncfusion.Blazor.SmartComponents — the package exists but the components/
-            // APIs are not yet released.
-            services.AddSyncfusionBlazor();
-        }
     }
 
     internal sealed class GrokAsyncInitializableProxy(WileyWidget.WinForms.Services.AI.GrokAgentService grokAgentService)

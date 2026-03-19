@@ -16,6 +16,7 @@ using CsvHelper.Configuration;
 
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Helpers;
 using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
 namespace WileyWidget.WinForms.Controls.Supporting
@@ -377,7 +378,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private void BtnApply_Click(object? sender, EventArgs e)
         {
             // Queue async validation and save on the UI thread
-            BeginInvoke(new Func<Task>(async () =>
+            this.QueueAsyncOnUIThread(async () =>
             {
                 var validation = await ValidateAsync(CancellationToken.None);
                 if (!validation.IsValid)
@@ -387,7 +388,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 }
 
                 await SaveAsync(CancellationToken.None);
-            }));
+            }, _logger, nameof(BtnApply_Click));
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)

@@ -33,6 +33,7 @@ using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using Syncfusion.Windows.Forms.Chart;
 using Syncfusion.Windows.Forms.Gauge;
+using WileyWidget.WinForms.Helpers;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.ListView;
 using Syncfusion.WinForms.Input;
@@ -44,8 +45,6 @@ using WileyWidget.WinForms.Services;
 // using WileyWidget.WinForms.Utils; // Consolidated
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Configuration;
-
-using WileyWidget.WinForms.Helpers;
 
 namespace WileyWidget.WinForms.Controls.Panels;
 
@@ -95,6 +94,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     // Operations Panel Controls (Dock-based layout)
     private SfButton? _syncDataButton;
     private SfButton? _importAccountsButton;
+    private SfButton? _importDesktopFileButton;
     private SfButton? _refreshHistoryButton;
     private SfButton? _clearHistoryButton;
     private SfButton? _exportHistoryButton;
@@ -121,6 +121,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private EventHandler? _diagnosticsButtonClickHandler;
     private EventHandler? _syncDataButtonClickHandler;
     private EventHandler? _importAccountsButtonClickHandler;
+    private EventHandler? _importDesktopFileButtonClickHandler;
     private EventHandler? _refreshHistoryButtonClickHandler;
     private EventHandler? _clearHistoryButtonClickHandler;
     private EventHandler? _exportHistoryButtonClickHandler;
@@ -492,7 +493,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (ViewModel != null && !DesignMode && !ShouldSkipAutoLoadForTestHarness())
         {
             // Queue async initialization on the UI thread
-            BeginInvoke(new Func<Task>(async () =>
+            this.QueueAsyncOnUIThread(async () =>
             {
                 try
                 {
@@ -515,7 +516,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 {
                     Logger.LogError(ex, "Failed to initialize QuickBooksPanel");
                 }
-            }));
+            }, Logger, nameof(OnPanelLoaded));
         }
     }
 
@@ -1369,13 +1370,13 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _accountsImportedLabel = new KpiCardControl
         {
-            Title = "Accounts",
+            Title = "Imported",
             Value = "0",
             Dock = DockStyle.Fill,
             MinimumSize = new Size(DpiHeight(100f), cardHeight),
             Margin = new Padding(DpiHeight(6f))
         };
-        _sharedTooltip?.SetToolTip(_accountsImportedLabel, "Number of accounts imported from QuickBooks");
+        _sharedTooltip?.SetToolTip(_accountsImportedLabel, "Number of QuickBooks records imported or updated through the current session");
         tableLayout.Controls.Add(_accountsImportedLabel, 1, 1);
 
         _avgDurationLabel = new KpiCardControl
@@ -1803,6 +1804,20 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _importAccountsButtonClickHandler = async (s, e) => await ExecuteCommandAsync(ViewModel?.ImportAccountsCommand);
         _importAccountsButton.Click += _importAccountsButtonClickHandler;
         buttonPanel.Controls.Add(_importAccountsButton);
+
+        _importDesktopFileButton = Factory.CreateSfButton("Import Desktop File", button =>
+        {
+            button.Size = new Size(DpiHeight(150f), DpiHeight(30f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Import QuickBooks Desktop Export";
+            button.AccessibleDescription = "Imports a local QuickBooks Desktop chart of accounts export without requiring a cloud connection";
+            button.TabIndex = 6;
+            button.TabStop = true;
+        });
+        _sharedTooltip?.SetToolTip(_importDesktopFileButton, "Import a local QuickBooks Desktop CSV, IIF, or Excel export file");
+        _importDesktopFileButtonClickHandler = async (s, e) => await ImportDesktopFileAsync();
+        _importDesktopFileButton.Click += _importDesktopFileButtonClickHandler;
+        buttonPanel.Controls.Add(_importDesktopFileButton);
 
         tableLayout.Controls.Add(buttonPanel, 0, 0);
 
@@ -2408,6 +2423,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         if (_importAccountsButton != null)
             _importAccountsButton.Enabled = isConnected && !ViewModel.IsLoading;
+
+        if (_importDesktopFileButton != null)
+            _importDesktopFileButton.Enabled = !ViewModel.IsLoading;
     }
 
     private void UpdateSyncingState()
@@ -2898,27 +2916,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         if (InvokeRequired)
         {
-            // Use BeginInvoke + TaskCompletionSource to marshal to the UI thread without blocking it.
-            // Calling .Wait() inside Invoke() would deadlock: Invoke blocks until the UI thread
-            // finishes, but the async continuation also needs the UI thread to complete.
-            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            BeginInvoke(new Func<Task>(async () =>
-            {
-                try
-                {
-                    await ShowConnectionPromptAsync(cancellationToken).ConfigureAwait(false);
-                    tcs.SetResult(true);
-                }
-                catch (OperationCanceledException)
-                {
-                    tcs.SetCanceled(cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            }));
-            await tcs.Task.ConfigureAwait(false);
+            await this.ExecuteOnUIThreadAsync(() => ShowConnectionPromptAsync(cancellationToken), Logger).ConfigureAwait(false);
             return;
         }
 
@@ -2926,8 +2924,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             var result = MessageBox.Show(
                 "QuickBooks is not connected.\n\n" +
-                "To sync data and access QuickBooks features, you need to authorize this application.\n\n" +
-                "Would you like to connect to QuickBooks now?",
+                "Cloud sync features require authorization, but you can still import a local QuickBooks Desktop export file without connecting.\n\n" +
+                "Would you like to connect to QuickBooks Online now?",
                 "QuickBooks Connection Required",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -2949,6 +2947,29 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     }
 
     #endregion
+
+    private async Task ImportDesktopFileAsync()
+    {
+        if (ViewModel is null)
+        {
+            return;
+        }
+
+        using var openFileDialog = new OpenFileDialog
+        {
+            Filter = "QuickBooks Desktop exports (*.csv;*.iif;*.xlsx;*.xls)|*.csv;*.iif;*.xlsx;*.xls|CSV files (*.csv)|*.csv|IIF files (*.iif)|*.iif|Excel files (*.xlsx;*.xls)|*.xlsx;*.xls|All files (*.*)|*.*",
+            Title = "Import QuickBooks Desktop Export"
+        };
+
+        if (openFileDialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        await ViewModel.ImportDesktopFileAsync(openFileDialog.FileName).ConfigureAwait(true);
+        UpdateConnectionStatus();
+        UpdateSummaryPanel();
+    }
 
     #region SplitContainerAdv Configuration Methods
 
@@ -3682,6 +3703,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 _syncDataButton.Click -= _syncDataButtonClickHandler;
             if (_importAccountsButton != null && _importAccountsButtonClickHandler != null)
                 _importAccountsButton.Click -= _importAccountsButtonClickHandler;
+
+            if (_importDesktopFileButton != null && _importDesktopFileButtonClickHandler != null)
+                _importDesktopFileButton.Click -= _importDesktopFileButtonClickHandler;
             if (_refreshHistoryButton != null && _refreshHistoryButtonClickHandler != null)
                 _refreshHistoryButton.Click -= _refreshHistoryButtonClickHandler;
             if (_clearHistoryButton != null && _clearHistoryButtonClickHandler != null)
@@ -3721,6 +3745,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             try { _testConnectionButton?.Dispose(); } catch { }
             try { _syncDataButton?.Dispose(); } catch { }
             try { _importAccountsButton?.Dispose(); } catch { }
+            try { _importDesktopFileButton?.Dispose(); } catch { }
             try { _refreshHistoryButton?.Dispose(); } catch { }
             try { _clearHistoryButton?.Dispose(); } catch { }
             try { _exportHistoryButton?.Dispose(); } catch { }

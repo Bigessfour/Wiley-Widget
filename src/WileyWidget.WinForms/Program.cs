@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.AspNetCore.Components.WebView.WindowsForms;  // Add this using
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -21,7 +20,6 @@ using WileyWidget.WinForms.Themes;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
-using Syncfusion.Blazor;  // Add this for Syncfusion Blazor services
 using Serilog;
 using WileyWidget.Services.Logging;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
@@ -34,7 +32,10 @@ namespace WileyWidget.WinForms
         private static MainForm? _mainFormInstance;
         private static SplashForm? _splashForm;
         private static int _syncfusionLicenseRegistrationAttempted;
+        private static int _syncfusionLicenseRegistered;
         private static int _syncfusionUserSecretsGuidanceLogged;
+
+        private static bool IsSyncfusionLicenseRegistered => Volatile.Read(ref _syncfusionLicenseRegistered) == 1;
 
         public static IServiceProvider Services => _services ?? CreateFallbackServiceProvider();
 
@@ -152,6 +153,11 @@ namespace WileyWidget.WinForms
                 Console.WriteLine("[TEST MODE] Enabled - using test database and UI automation settings");
             }
 
+            // Syncfusion guidance requires license registration before any Syncfusion control is initiated.
+            // Run a preflight attempt immediately at process startup using sources that do not depend on the
+            // repo-relative appsettings path. Program.Main retries again after configuration is built.
+            RegisterSyncfusionLicense(configuration: null);
+
             // Set working directory to repo root for consistent logging paths
             var currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
             var repoRoot = FindRepoRoot(currentDir) ?? FindRepoRoot(new DirectoryInfo(AppContext.BaseDirectory));
@@ -189,12 +195,20 @@ namespace WileyWidget.WinForms
             RegisterSyncfusionLicense(configuration);
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Syncfusion license registration attempted (early)");
 
+            if (!IsSyncfusionLicenseRegistered && !IsTestRuntime())
+            {
+                Console.Error.WriteLine("Syncfusion license registration did not succeed before UI startup. Per Syncfusion guidance, Wiley Widget will stop before creating any Syncfusion controls. Configure the license key via user-secrets, environment variables, or the encrypted vault, then retry.");
+                Environment.ExitCode = 1;
+                return;
+            }
+
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(configuration)
                 .CreateLogger();
 
             Log.Information("Program.Main: Starting WileyWidget application");
             Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
+            Log.Information("Program.Main: Syncfusion license registration confirmed before UI/bootstrap initialization: {Registered}", IsSyncfusionLicenseRegistered);
 
             // DEBUG: Log masked API key to verify configuration loading chain
             var apiKeyFromConfig = configuration["xAI:ApiKey"] ?? configuration["XAI:ApiKey"];
@@ -232,6 +246,7 @@ namespace WileyWidget.WinForms
             System.Windows.Forms.Application.SetHighDpiMode(System.Windows.Forms.HighDpiMode.SystemAware);
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+            System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
 
             // Wire global exception handlers for unobserved async tasks and UI thread errors
             TaskScheduler.UnobservedTaskException += (s, e) =>
@@ -243,18 +258,6 @@ namespace WileyWidget.WinForms
                     ex.StackTrace?.Contains("BlockingCollection", StringComparison.OrdinalIgnoreCase) == true)
                 {
                     Log.Debug("Background task cancelled during shutdown (expected): {Message}", ex.Message);
-                    e.SetObserved();
-                    return;
-                }
-
-                // WebView2 can surface E_ABORT during disposal/shutdown when controller creation is interrupted.
-                // This is expected in teardown races and should not be treated as a runtime fault.
-                if (ex is COMException comException
-                    && (uint)comException.HResult == 0x80004004
-                    && (ex.StackTrace?.Contains("WebView2", StringComparison.OrdinalIgnoreCase) == true
-                        || ex.StackTrace?.Contains("BlazorWebView", StringComparison.OrdinalIgnoreCase) == true))
-                {
-                    Log.Debug("Suppressed expected WebView2 shutdown abort (E_ABORT): {Message}", ex.Message);
                     e.SetObserved();
                     return;
                 }
@@ -549,24 +552,6 @@ namespace WileyWidget.WinForms
 
                     // Register WinForms-specific services
                     services.AddWinFormsServices(hostContext.Configuration);
-
-                    /// <summary>
-                    /// NEW: Register Blazor WebView services (required for BlazorWebView to initialize)
-                    /// Enables Windows Forms applications to host Blazor components and WebView controls.
-                    /// </summary>
-                    services.AddWindowsFormsBlazorWebView();
-#if DEBUG
-                    /// <summary>
-                    /// Optional: Enable developer tools for debugging Blazor components in Debug builds.
-                    /// Provides browser console access and component inspection capabilities.
-                    /// </summary>
-                    // Developer tools are available via AddBlazorWebViewDeveloperTools() if WebView2 supports it
-#endif
-                    /// <summary>
-                    /// NEW: Required for Syncfusion Blazor components (e.g., SfAIAssistView).
-                    /// Registers Syncfusion Blazor services and component infrastructure.
-                    /// </summary>
-                    services.AddSyncfusionBlazor();  // NEW: Required for Syncfusion Blazor components (e.g., SfAIAssistView)
                 })
                 .UseSerilog();
 
@@ -605,20 +590,32 @@ namespace WileyWidget.WinForms
         /// Registers Syncfusion license from runtime configuration sources.
         /// MUST be called BEFORE any Syncfusion controls are instantiated or theme assemblies are loaded.
         /// </summary>
-        static void RegisterSyncfusionLicense(IConfiguration? configuration)
+        internal static void RegisterSyncfusionLicense(IConfiguration? configuration)
         {
-            if (Interlocked.Exchange(ref _syncfusionLicenseRegistrationAttempted, 1) == 1)
+            if (Volatile.Read(ref _syncfusionLicenseRegistered) == 1)
             {
-                Log.Debug("Syncfusion license registration was already attempted earlier; skipping duplicate attempt.");
+                Log.Debug("Syncfusion license is already registered; skipping duplicate attempt.");
                 return;
             }
+
+            var hasConfiguration = configuration is not null;
+            var attemptNumber = Interlocked.Increment(ref _syncfusionLicenseRegistrationAttempted);
 
             var (licenseKey, source) = ResolveSyncfusionLicenseKey(configuration);
             if (string.IsNullOrWhiteSpace(licenseKey))
             {
-                Log.Warning("⚠️ Syncfusion license key not found. Checked user-secrets, configuration aliases, environment aliases, and encrypted vault. Application will show trial/evaluation popup.");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Syncfusion license key missing - running in evaluation mode");
-                // Do not throw - missing license just shows trial popup, not a fatal error
+                if (hasConfiguration)
+                {
+                    Log.Warning("⚠️ Syncfusion license key not found after configuration load. Checked user-secrets, configuration aliases, environment aliases, and encrypted vault. Application will show trial/evaluation popup.");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ⚠️ Syncfusion license key missing after configuration load - running in evaluation mode");
+                }
+                else
+                {
+                    Log.Debug("Syncfusion license preflight attempt {AttemptNumber} found no key before configuration load. Will retry when configuration is available.", attemptNumber);
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ℹ️ Syncfusion license preflight found no key - retrying after configuration load");
+                }
+
+                // Missing a key before configuration load is not fatal and must not block a later retry.
                 return;
             }
 
@@ -633,26 +630,39 @@ namespace WileyWidget.WinForms
                 LogUserSecretsGuidanceIfNeeded(source);
 
                 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(licenseKey);
+                Interlocked.Exchange(ref _syncfusionLicenseRegistered, 1);
                 Log.Information("✅ Syncfusion license registered successfully (source: {LicenseSource})", source ?? "unknown");
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ✅ Syncfusion license registered");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "❌ Failed to register Syncfusion license - application will show trial popup");
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ❌ License registration failed: {ex.Message}");
-                // Do not throw - license failure is non-fatal, just shows trial watermark/popup
+                if (hasConfiguration)
+                {
+                    Log.Error(ex, "❌ Failed to register Syncfusion license after configuration load - application will show trial popup");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ❌ License registration failed: {ex.Message}");
+                }
+                else
+                {
+                    Log.Debug(ex, "Syncfusion license preflight registration failed before configuration load. Will retry when configuration is available.");
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] ℹ️ Syncfusion license preflight failed - retrying after configuration load");
+                }
             }
         }
 
         private static readonly string[] SyncfusionLicenseKeyAliases =
         {
-            "WILEY_SYNC_LIC_KEY",
             "SYNCFUSION_LICENSE_KEY",
+            "WILEY_SYNC_LIC_KEY",
             "Syncfusion:LicenseKey",
             "Syncfusion__LicenseKey",
             "Syncfusion-LicenseKey",
             "SyncfusionLicenseKey",
             "syncfusion-license-key"
+        };
+
+        private static readonly string[] SyncfusionCanonicalEnvironmentAliases =
+        {
+            "SYNCFUSION_LICENSE_KEY"
         };
 
         private static (string? LicenseKey, string? Source) ResolveSyncfusionLicenseKey(IConfiguration? configuration)
@@ -670,6 +680,14 @@ namespace WileyWidget.WinForms
             }
 
             var candidates = new List<(string Source, string? Value)>();
+
+            // 0) Canonical runtime path: machine-scope environment variable first.
+            // This follows docs/ENVIRONMENT_SCOPE_POLICY.md and prevents stale user/process
+            // legacy aliases from overriding the installed runtime key.
+            foreach (var alias in SyncfusionCanonicalEnvironmentAliases)
+            {
+                candidates.Add(($"Environment:Machine:{alias}", Environment.GetEnvironmentVariable(alias, EnvironmentVariableTarget.Machine)));
+            }
 
             // 1) Prefer user-secrets first (explicit requirement)
             foreach (var alias in SyncfusionLicenseKeyAliases)

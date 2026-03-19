@@ -35,7 +35,7 @@ namespace WileyWidget.UiTests
                 // Open a panel that isn't open by default
                 var budgetTab = window.FindFirstDescendant(cf => cf.ByName("Budget"));
                 budgetTab?.Click();
-                
+
                 var budgetPanel = window.WaitForPanel<BudgetPanel>(TimeSpan.FromSeconds(10));
                 Assert.NotNull(budgetPanel);
 
@@ -51,6 +51,7 @@ namespace WileyWidget.UiTests
                 var restoredPanel = window.WaitForPanel<BudgetPanel>(TimeSpan.FromSeconds(10));
                 Assert.NotNull(restoredPanel);
                 Assert.False(restoredPanel.Properties.IsOffscreen.ValueOrDefault);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {

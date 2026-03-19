@@ -97,6 +97,8 @@ public sealed class IntegrationTestFixture : IAsyncLifetime
         {
             try
             {
+                Program.RegisterSyncfusionLicense(configuration: null);
+
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 Syncfusion.WinForms.Controls.SfSkinManager.ApplicationVisualTheme =

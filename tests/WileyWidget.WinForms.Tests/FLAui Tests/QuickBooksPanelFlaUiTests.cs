@@ -17,11 +17,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 return;
             }
 
-            var connectBtn = FlaUiHelpers.FindElementByNameOrId(window, "Connect", "btnQuickBooksConnect", TimeSpan.FromSeconds(10));
+            var connectBtn = FlaUiHelpers.FindElementByName(window, "Connect to QuickBooks", TimeSpan.FromSeconds(10));
             if (connectBtn == null) return;
             Assert.NotNull(connectBtn);
 
-            var grid = window.FindFirstDescendant(cf => cf.ByAutomationId("QuickBooksHistoryGrid"));
+            var grid = FlaUiHelpers.FindElementByName(window, "Sync History Grid", TimeSpan.FromSeconds(10));
             if (grid == null) return;
             Assert.NotNull(grid);
         }

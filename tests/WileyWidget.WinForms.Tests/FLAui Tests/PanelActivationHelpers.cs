@@ -3,7 +3,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Input;
+using FlaUI.Core.Tools;
+using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA2;
+using FormsCursor = System.Windows.Forms.Cursor;
 
 using FlaUIApp = FlaUI.Core.Application;
 
@@ -15,6 +19,26 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
     /// </summary>
     public static class PanelActivationHelpers
     {
+        private static readonly (string PanelName, string[] Markers)[] ShellVisibilityMarkers =
+        {
+            ("Analytics Hub", new[] { "Analytics search", "Analytics sections", "Analytics fiscal year selector" }),
+            ("Budget Management & Analysis", new[] { "Budget Entries Grid", "Load Budgets", "BudgetManagementPanel" }),
+            ("Customers", new[] { "Customer search", "Add Customer", "Sync QuickBooks" }),
+            ("Department Summary", new[] { "Department metrics grid", "Department Summary header", "Summary cards" }),
+            ("Enterprise Vital Signs", new[] { "Enterprise vital signs header", "Enterprise gauges", "Enterprise chart table", "Enterprise vital signs status" }),
+            ("Insight Feed", new[] { "Insights Data Grid", "Refresh Insights", "Insights Header" }),
+            ("Payments", new[] { "Payments Grid", "Add Payment", "Refresh Payments", "Payments Status", "PaymentsPanel" }),
+            ("Proactive AI Insights", new[] { "Insights Data Grid", "Proactive Insights Header", "Refresh Insights Button" }),
+            ("QuickBooks", new[] { "QuickBooks Panel Header", "Connect to QuickBooks", "Import QuickBooks Desktop Export", "Sync History Grid" }),
+            ("Rates", new[] { "Form host panel", "Department Rates Grid" }),
+            ("Recommended Monthly Charge", new[] { "Department Rates Grid", "Benchmarks Grid" }),
+            ("Reports", new[] { "Report Selector", "Generate" }),
+            ("Revenue Trends", new[] { "Revenue Trends panel header", "Monthly revenue breakdown data grid" }),
+            ("Settings", new[] { "Theme", "Save Changes" }),
+            ("Utility Bills", new[] { "Utility Bills Grid", "Create Bill" }),
+            ("War Room", new[] { "Run Scenario", "Export Forecast", "Scenario Input" }),
+        };
+
         // ─── Main-window discovery ────────────────────────────────────────────────
 
         /// <summary>
@@ -83,16 +107,42 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             // spin for the full timeout on a panel that simply hasn't been activated yet.
             TryActivatePanel(window, new[] { panelName }, TimeSpan.FromSeconds(3));
 
+            var visibilityCandidates = GetVisibilityCandidates(panelName);
+
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation: null);
+                    if (navigationStatus != null && navigationStatus.Contains($"navigated:{panelName}", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
                     var byName = window.FindFirstDescendant(cf => cf.ByName(panelName));
                     if (byName != null) return true;
 
                     var byId = window.FindFirstDescendant(cf => cf.ByAutomationId(panelName));
                     if (byId != null) return true;
+
+                    foreach (var candidate in visibilityCandidates)
+                    {
+                        var marker = window.FindFirstDescendant(cf => cf.ByName(candidate).Or(cf.ByAutomationId(candidate)));
+                        if (marker != null)
+                        {
+                            return true;
+                        }
+                    }
+
+                    if (string.Equals(panelName, "Analytics Hub", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var analyticsElement = window.FindFirstDescendant(cf =>
+                            cf.ByName("Analytics search")
+                                .Or(cf.ByName("Analytics sections"))
+                                .Or(cf.ByName("Analytics fiscal year selector")));
+                        if (analyticsElement != null) return true;
+                    }
                 }
                 catch
                 {
@@ -124,18 +174,31 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             // ribbon label (newline-separated text is normalised to space by some AT bridges).
             TryActivatePanel(window,
                 new[] { "Municipal Accounts", "Chart of Accounts", "Accounts", "Municipal\nAccounts" },
-                TimeSpan.FromSeconds(3));
+                TimeSpan.FromSeconds(3),
+                automation);
 
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
+                    if (navigationStatus != null && navigationStatus.Contains("navigated:Municipal Accounts", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
                     foreach (var title in UiTestConstants.AccountsPanelTitles)
                     {
                         var el = window.FindFirstDescendant(cf => cf.ByName(title));
                         if (el != null) return true;
                     }
+
+                    var accountsGrid = window.FindFirstDescendant(cf =>
+                        cf.ByAutomationId("dataGridAccounts")
+                            .Or(cf.ByName("Accounts Grid"))
+                            .Or(cf.ByName("Chart of Accounts Panel Header")));
+                    if (accountsGrid != null) return true;
                 }
                 catch { }
 
@@ -210,8 +273,21 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             {
                 try
                 {
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation: null);
+                    if (navigationStatus != null && navigationStatus.Contains("navigated:QuickBooks", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
                     var exact = window.FindFirstDescendant(cf => cf.ByName(UiTestConstants.QuickBooksPanelTitle));
                     if (exact != null) return true;
+
+                    var quickBooksPanel = window.FindFirstDescendant(cf =>
+                        cf.ByName("QuickBooks Panel Header")
+                            .Or(cf.ByName("Connect to QuickBooks"))
+                            .Or(cf.ByName("Import QuickBooks Desktop Export"))
+                            .Or(cf.ByName("Sync History Grid")));
+                    if (quickBooksPanel != null) return true;
 
                     foreach (var hint in UiTestConstants.QuickBooksNavigationHints)
                     {
@@ -220,6 +296,50 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     }
                 }
                 catch { }
+
+                Thread.Sleep(250);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Ensures the Payments panel is visible.
+        /// Uses explicit shell automation targets because the generic "Payments" candidate can
+        /// collide with the ribbon group label and miss the actual navigation command.
+        /// </summary>
+        public static bool EnsurePaymentsPanelVisibleOrHostGated(Window window, TimeSpan timeout)
+        {
+            if (window == null) return false;
+
+            SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
+
+            TryActivatePanel(window,
+                new[] { "Nav_Payments", "Menu_View_Payments", "Payments" },
+                TimeSpan.FromSeconds(3));
+
+            var sw = Stopwatch.StartNew();
+            while (sw.Elapsed < timeout)
+            {
+                try
+                {
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation: null);
+                    if (navigationStatus != null && navigationStatus.Contains("navigated:Payments", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+
+                    var paymentsPanel = window.FindFirstDescendant(cf =>
+                        cf.ByName("Payments Grid")
+                            .Or(cf.ByName("Add Payment"))
+                            .Or(cf.ByName("Refresh Payments"))
+                            .Or(cf.ByName("Payments Status"))
+                            .Or(cf.ByAutomationId("PaymentsPanel")));
+                    if (paymentsPanel != null) return true;
+                }
+                catch
+                {
+                }
 
                 Thread.Sleep(250);
             }
@@ -274,13 +394,19 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         /// click so the caller can proceed to its poll loop without waiting out the full timeout.
         /// Swallows all exceptions — a navigation failure is not itself a test failure.
         /// </summary>
-        private static void TryActivatePanel(Window window, string[] buttonCandidates, TimeSpan clickTimeout)
+        private static void TryActivatePanel(Window window, string[] buttonCandidates, TimeSpan clickTimeout, UIA2Automation? automation = null)
         {
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < clickTimeout)
             {
                 try
                 {
+                    if (ShouldPreferShellShortcut(buttonCandidates) && TryActivatePanelByShellShortcut(window, buttonCandidates))
+                    {
+                        Wait.UntilInputIsProcessed();
+                        return;
+                    }
+
                     foreach (var candidate in buttonCandidates)
                     {
                         // Try by Name first, then by AutomationId.
@@ -288,18 +414,596 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                                   ?? window.FindFirstDescendant(cf => cf.ByAutomationId(candidate));
                         if (btn != null)
                         {
-                            btn.Click();
-                            // Brief pause so the panel host has a chance to create its handle
-                            // before the polling loop starts querying descendants.
-                            Thread.Sleep(300);
-                            return;
+                            if (TryActivateElement(btn))
+                            {
+                                Wait.UntilInputIsProcessed();
+                                return;
+                            }
                         }
+
+                        var automationMenuButton = window.FindFirstDescendant(cf => cf.ByAutomationId($"NavMenuItem_{SanitizeAutomationName(candidate)}"));
+                        if (automationMenuButton != null)
+                        {
+                            if (TryActivateElement(automationMenuButton))
+                            {
+                                Wait.UntilInputIsProcessed();
+                                return;
+                            }
+                        }
+
+                        foreach (var automationAlias in GetShellAutomationAliases(candidate))
+                        {
+                            var aliasedButton = window.FindFirstDescendant(cf => cf.ByAutomationId(automationAlias))
+                                ?? window.FindFirstDescendant(cf => cf.ByName(automationAlias));
+                            if (aliasedButton == null)
+                            {
+                                continue;
+                            }
+
+                            if (TryActivateElement(aliasedButton))
+                            {
+                                Wait.UntilInputIsProcessed();
+                                return;
+                            }
+                        }
+                    }
+
+                    if (!ShouldPreferShellShortcut(buttonCandidates) && TryActivatePanelByShellShortcut(window, buttonCandidates))
+                    {
+                        Wait.UntilInputIsProcessed();
+                        return;
+                    }
+
+                    if (TryActivatePanelFromUnifiedNavigation(window, automation, buttonCandidates))
+                    {
+                        Wait.UntilInputIsProcessed();
+                        return;
                     }
                 }
                 catch { /* element may not exist yet — retry */ }
 
                 Thread.Sleep(150);
             }
+        }
+
+        private static bool TryActivateElement(AutomationElement element)
+        {
+            try
+            {
+                if (element.Patterns.Invoke.IsSupported)
+                {
+                    element.Patterns.Invoke.Pattern.Invoke();
+                    return true;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                element.AsButton().Invoke();
+                return true;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                element.Click();
+                return true;
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        private static bool ShouldPreferShellShortcut(string[] buttonCandidates)
+        {
+            return buttonCandidates.Any(candidate => candidate.Contains("QuickBooks", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Analytics Hub", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool TryActivatePanelByShellShortcut(Window window, string[] buttonCandidates)
+        {
+            try
+            {
+                window.Focus();
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Payments", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlShiftChord(VirtualKeyShort.KEY_P);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("QuickBooks", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(candidate, "QBO", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlChord(VirtualKeyShort.KEY_Q);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Analytics Hub", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlChord(VirtualKeyShort.KEY_H);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlChord(VirtualKeyShort.KEY_B);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                    || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlChord(VirtualKeyShort.KEY_A);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlChord(VirtualKeyShort.KEY_D);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendCtrlChord(VirtualKeyShort.KEY_U);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Reports", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendAltChord(VirtualKeyShort.KEY_R);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("Settings", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendAltChord(VirtualKeyShort.KEY_S);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("War Room", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendAltChord(VirtualKeyShort.KEY_W);
+                    return true;
+                }
+
+                if (buttonCandidates.Any(candidate => candidate.Contains("JARVIS", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SendAltChord(VirtualKeyShort.KEY_J);
+                    return true;
+                }
+            }
+            catch
+            {
+                try
+                {
+                    Keyboard.Press(VirtualKeyShort.ESCAPE);
+                }
+                catch
+                {
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
+        private static void SendAltChord(VirtualKeyShort key)
+        {
+            Keyboard.Press(VirtualKeyShort.LMENU);
+            try
+            {
+                Keyboard.Type(key);
+                Wait.UntilInputIsProcessed();
+            }
+            finally
+            {
+                Keyboard.Release(VirtualKeyShort.LMENU);
+            }
+        }
+
+        private static void SendCtrlChord(VirtualKeyShort key)
+        {
+            Keyboard.Press(VirtualKeyShort.CONTROL);
+            try
+            {
+                Keyboard.Type(key);
+                Wait.UntilInputIsProcessed();
+            }
+            finally
+            {
+                Keyboard.Release(VirtualKeyShort.CONTROL);
+            }
+        }
+
+        private static void SendCtrlShiftChord(VirtualKeyShort key)
+        {
+            Keyboard.Press(VirtualKeyShort.CONTROL);
+            Keyboard.Press(VirtualKeyShort.SHIFT);
+            try
+            {
+                Keyboard.Type(key);
+                Wait.UntilInputIsProcessed();
+            }
+            finally
+            {
+                Keyboard.Release(VirtualKeyShort.SHIFT);
+                Keyboard.Release(VirtualKeyShort.CONTROL);
+            }
+        }
+
+        private static bool TryActivatePanelFromUnifiedNavigation(Window window, UIA2Automation? automation, string[] buttonCandidates)
+        {
+            AutomationElement? dropDown = null;
+
+            try
+            {
+                dropDown = window.FindFirstDescendant(cf => cf.ByAutomationId("Nav_UnifiedDropdown"))
+                    ?? window.FindFirstDescendant(cf => cf.ByName("Navigation"))
+                    ?? window.FindFirstDescendant(cf => cf.ByName("Navigate"));
+            }
+            catch
+            {
+            }
+
+            if (dropDown == null && automation != null)
+            {
+                try
+                {
+                    dropDown = automation.GetDesktop().FindFirstDescendant(cf =>
+                        cf.ByAutomationId("Nav_UnifiedDropdown")
+                            .Or(cf.ByName("Navigation"))
+                            .Or(cf.ByName("Navigate")));
+                }
+                catch
+                {
+                }
+            }
+
+            if (dropDown == null)
+            {
+                return TryActivatePanelFromUnifiedNavigationByKeyboard(window, buttonCandidates);
+            }
+
+            try
+            {
+                dropDown.Click();
+                Wait.UntilInputIsProcessed();
+            }
+            catch
+            {
+                return false;
+            }
+
+            foreach (var candidate in buttonCandidates)
+            {
+                var automationId = $"NavMenuItem_{SanitizeAutomationName(candidate)}";
+                AutomationElement? menuItem = null;
+
+                var sw = Stopwatch.StartNew();
+                while (sw.Elapsed < TimeSpan.FromSeconds(2) && menuItem == null)
+                {
+                    try
+                    {
+                        menuItem = window.FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
+                    }
+                    catch
+                    {
+                    }
+
+                    if (menuItem == null && automation != null)
+                    {
+                        try
+                        {
+                            menuItem = automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    if (menuItem == null)
+                    {
+                        Thread.Sleep(100);
+                    }
+                }
+
+                if (menuItem == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    menuItem.Click();
+                    Wait.UntilInputIsProcessed();
+                    return true;
+                }
+                catch
+                {
+                }
+            }
+
+            if (TrySelectFlatAutomationNavigationMenuItem(buttonCandidates))
+            {
+                return true;
+            }
+
+            return TryActivatePanelFromUnifiedNavigationByKeyboard(window, buttonCandidates);
+        }
+
+        private static bool TrySelectFlatAutomationNavigationMenuItem(string[] buttonCandidates)
+        {
+            try
+            {
+                foreach (var key in GetFlatAutomationNavigationKeyboardSequence(buttonCandidates))
+                {
+                    Keyboard.Type(key);
+                    Wait.UntilInputIsProcessed();
+                }
+
+                return true;
+            }
+            catch
+            {
+                try
+                {
+                    Keyboard.Press(VirtualKeyShort.ESCAPE);
+                }
+                catch
+                {
+                }
+
+                return false;
+            }
+        }
+
+        private static bool TryActivatePanelFromUnifiedNavigationByKeyboard(Window window, string[] buttonCandidates)
+        {
+            try
+            {
+                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("Ribbon_Main"));
+                if (ribbon == null)
+                {
+                    return false;
+                }
+
+                window.Focus();
+
+                var bounds = ribbon.BoundingRectangle;
+                var clickPoint = new System.Drawing.Point(Convert.ToInt32(bounds.Left + 72), Convert.ToInt32(bounds.Top + 132));
+                FormsCursor.Position = clickPoint;
+                Mouse.Click();
+                Wait.UntilInputIsProcessed();
+
+                foreach (var key in GetUnifiedNavigationKeyboardSequence(buttonCandidates))
+                {
+                    Keyboard.Type(key);
+                    Wait.UntilInputIsProcessed();
+                }
+
+                return true;
+            }
+            catch
+            {
+                try
+                {
+                    Keyboard.Press(VirtualKeyShort.ESCAPE);
+                }
+                catch
+                {
+                }
+
+                return false;
+            }
+        }
+
+        private static VirtualKeyShort[] GetUnifiedNavigationKeyboardSequence(string[] buttonCandidates)
+        {
+            if (buttonCandidates.Any(candidate => candidate.Contains("JARVIS", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_H, VirtualKeyShort.RIGHT, VirtualKeyShort.KEY_J, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_F, VirtualKeyShort.RIGHT, VirtualKeyShort.KEY_B, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_F, VirtualKeyShort.RIGHT, VirtualKeyShort.KEY_M, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Payments", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_F, VirtualKeyShort.RIGHT, VirtualKeyShort.KEY_P, VirtualKeyShort.ENTER };
+            }
+
+            return new[] { VirtualKeyShort.DOWN, VirtualKeyShort.RIGHT, VirtualKeyShort.ENTER };
+        }
+
+        private static VirtualKeyShort[] GetFlatAutomationNavigationKeyboardSequence(string[] buttonCandidates)
+        {
+            if (buttonCandidates.Any(candidate => candidate.Contains("JARVIS", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_J, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_B, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_M, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_E, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_C, VirtualKeyShort.ENTER };
+            }
+
+            if (buttonCandidates.Any(candidate => candidate.Contains("Payments", StringComparison.OrdinalIgnoreCase)))
+            {
+                return new[] { VirtualKeyShort.KEY_P, VirtualKeyShort.ENTER };
+            }
+
+            return new[] { VirtualKeyShort.DOWN, VirtualKeyShort.ENTER };
+        }
+
+        private static string SanitizeAutomationName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return new string(value.Where(char.IsLetterOrDigit).ToArray());
+        }
+
+        private static string[] GetVisibilityCandidates(string panelName)
+        {
+            if (string.IsNullOrWhiteSpace(panelName))
+            {
+                return Array.Empty<string>();
+            }
+
+            foreach (var (knownPanelName, markers) in ShellVisibilityMarkers)
+            {
+                if (string.Equals(knownPanelName, panelName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return markers;
+                }
+            }
+
+            return Array.Empty<string>();
+        }
+
+        private static string[] GetShellAutomationAliases(string candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return Array.Empty<string>();
+            }
+
+            if (candidate.Contains("QuickBooks", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "QBO", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_QuickBooks", "Menu_View_QuickBooks" };
+            }
+
+            if (candidate.Contains("Analytics Hub", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_Analytics", "Nav_Charts", "Menu_View_AnalyticsHub" };
+            }
+
+            if (candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
+                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_Accounts" };
+            }
+
+            if (candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_Budget" };
+            }
+
+            if (candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_Customers" };
+            }
+
+            if (candidate.Contains("Payments", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_Payments", "Menu_View_Payments" };
+            }
+
+            return Array.Empty<string>();
+        }
+
+        private static string? TryGetNavigationAutomationStatus(Window window, UIA2Automation? automation)
+        {
+            AutomationElement? statusElement = null;
+
+            try
+            {
+                statusElement = window.FindFirstDescendant(cf => cf.ByAutomationId("NavAutomationStatus").Or(cf.ByName("NavAutomationStatus")));
+            }
+            catch
+            {
+            }
+
+            if (statusElement == null && automation != null)
+            {
+                try
+                {
+                    statusElement = automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId("NavAutomationStatus").Or(cf.ByName("NavAutomationStatus")));
+                }
+                catch
+                {
+                }
+            }
+
+            if (statusElement == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return statusElement.Properties.Name.ValueOrDefault;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                var valuePattern = statusElement.Patterns.Value;
+                if (valuePattern.IsSupported)
+                {
+                    return valuePattern.Pattern.Value.Value;
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
         }
 
         /// <summary>

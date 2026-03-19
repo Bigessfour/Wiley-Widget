@@ -330,52 +330,13 @@ namespace WileyWidget.WinForms.Services.AI
                     throw new InvalidOperationException("[XAI] Endpoint configuration not properly initialized");
                 }
 
-                // Add API key validation before Semantic Kernel setup (with timeout)
-                try
+                if (string.IsNullOrWhiteSpace(_apiKey))
                 {
-                    using var validationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                    validationCts.CancelAfter(TimeSpan.FromSeconds(10)); // 10-second timeout for validation
-
-                    _logger?.LogDebug("[XAI] 🔑 Starting API key validation with 10s timeout");
-                    var validationStart = System.Diagnostics.Stopwatch.StartNew();
-
-                    var (success, message) = await _apiKeyProvider.ValidateAsync().ConfigureAwait(false);
-
-                    validationStart.Stop();
-                    _logger?.LogDebug("[XAI] 🔑 API key validation completed in {ElapsedMs}ms", validationStart.ElapsedMilliseconds);
-
-                    if (!success)
-                    {
-                        _logger?.LogWarning("[XAI] ❌ API key validation failed: {Message}", message);
-                        _initializationFailed = true;
-                        // Don't throw - allow service to operate in degraded mode
-                        return;
-                    }
-                    _logger?.LogInformation("[XAI] ✅ API key validated successfully");
+                    _logger?.LogWarning("[XAI] No API key configured during startup initialization; continuing in degraded mode until a key is supplied.");
                 }
-                catch (HttpRequestException hex) when (hex.InnerException is System.IO.IOException ioex)
+                else
                 {
-                    _logger?.LogWarning(hex, "[XAI] 🔌❌ Socket error during API key validation - likely debugger interference. Inner: {InnerMsg}. Service will operate in degraded mode.", ioex.Message);
-                    _initializationFailed = true;
-                    return;
-                }
-                catch (TaskCanceledException tcex) when (!ct.IsCancellationRequested)
-                {
-                    _logger?.LogWarning(tcex, "[XAI] ⏱️ API key validation timed out (10s) - check network connectivity");
-                    _initializationFailed = true;
-                    return;
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger?.LogWarning("[XAI] 🛑 API key validation cancelled");
-                    _initializationFailed = true;
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "[XAI] ❌ Unexpected error during API key validation: {ExceptionType}", ex.GetType().Name);
-                    _initializationFailed = true;
-                    return;
+                    _logger?.LogDebug("[XAI] Skipping blocking startup API validation; the service will validate on demand or via the optional startup probe.");
                 }
 
                 // Optionally auto-select a model (short timeout) before building the kernel so the kernel uses the selected model
@@ -569,19 +530,19 @@ namespace WileyWidget.WinForms.Services.AI
                     {
                         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                         cts.CancelAfter(TimeSpan.FromSeconds(5)); // 5-second timeout for startup validation
-                        var (success, msg) = await ValidateApiKeyAsync(cts.Token).ConfigureAwait(false);
+                        var (success, msg) = await _apiKeyProvider.ValidateAsync().ConfigureAwait(false);
                         if (success)
                             _logger?.LogInformation("[XAI] Async initialization validation: API key OK");
                         else
-                            _logger?.LogWarning("[XAI] Async initialization validation: API key check failed: {Msg}", msg);
+                            _logger?.LogInformation("[XAI] Async initialization validation probe could not confirm availability: {Msg}", msg);
                     }
                     catch (OperationCanceledException)
                     {
-                        _logger?.LogWarning("[XAI] Async initialization validation timed out (5s)");
+                        _logger?.LogInformation("[XAI] Async initialization validation probe timed out (5s)");
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex, "[XAI] Async initialization validation failed unexpectedly");
+                        _logger?.LogInformation(ex, "[XAI] Async initialization validation probe failed unexpectedly");
                     }
                 }
             }

@@ -49,8 +49,6 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
 
             services.AddSingleton<IConfiguration>(configuration);
             services.AddLogging(builder => builder.AddDebug());
-            // Register Blazor WebView services required by BlazorWebView and root components
-            services.AddWindowsFormsBlazorWebView();
 
             // Minimal services required by controls created by the factory
             services.AddSingleton(ReportViewerLaunchOptions.Disabled);

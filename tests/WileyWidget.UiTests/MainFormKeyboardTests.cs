@@ -42,6 +42,7 @@ namespace WileyWidget.UiTests
                 var budgetTab = ribbon.FindFirstDescendant(cf => cf.ByName("Budget"));
                 Assert.NotNull(budgetTab);
                 Assert.True(budgetTab.Properties.HasKeyboardFocus.ValueOrDefault);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {
@@ -82,6 +83,7 @@ namespace WileyWidget.UiTests
                 Keyboard.Type(VirtualKeyShort.TAB); // Tab navigation
                 budgetContent = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanelContent"));
                 Assert.NotNull(budgetContent);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {

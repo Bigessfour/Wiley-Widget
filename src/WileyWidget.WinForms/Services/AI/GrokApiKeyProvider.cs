@@ -263,7 +263,10 @@ namespace WileyWidget.WinForms.Services.AI
             {
                 _logger?.LogInformation("[Grok] Validating API key via minimal test request to /v1/responses endpoint...");
 
-                var httpClient = _httpClientFactory?.CreateClient("GrokClient") ?? new HttpClient();
+                // Validation is a one-shot probe, not a production request path.
+                // Avoid the retry-heavy GrokClient resilience pipeline here so transient 503s
+                // don't flood the error log during startup checks.
+                var httpClient = _httpClientFactory?.CreateClient() ?? new HttpClient();
                 var endpoint = new Uri(GetBaseEndpoint(), "responses");
 
                 // Create minimal test request payload using x.ai /v1/responses API format
@@ -333,19 +336,37 @@ namespace WileyWidget.WinForms.Services.AI
                     _ => $"❌ API validation failed: HTTP {(int)response.StatusCode} - Response: {body}"
                 };
 
-                _logger?.LogWarning("[Grok] Validation failed: {ErrorMsg}", errorMsg);
+                var isTransientAvailabilityIssue = response.StatusCode == (System.Net.HttpStatusCode)429
+                    || response.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable
+                    || (int)response.StatusCode >= 500;
+
+                if (isTransientAvailabilityIssue)
+                {
+                    _logger?.LogInformation("[Grok] Validation probe could not confirm API availability: {ErrorMsg}", errorMsg);
+                }
+                else
+                {
+                    _logger?.LogWarning("[Grok] Validation failed: {ErrorMsg}", errorMsg);
+                }
+
                 return (false, errorMsg);
+            }
+            catch (Polly.Timeout.TimeoutRejectedException ex)
+            {
+                var msg = "Grok validation probe timed out in the HTTP resilience pipeline. Startup will continue and the service can retry on demand.";
+                _logger?.LogInformation(ex, "[Grok] {Message}", msg);
+                return (false, msg);
             }
             catch (System.Threading.Tasks.TaskCanceledException)
             {
-                var msg = "❌ API key validation timed out (30s). Check network connectivity or try again later. JARVIS Chat will work once connection is restored.";
-                _logger?.LogWarning("[Grok] {Message}", msg);
+                var msg = "Grok validation probe timed out (30s). Startup will continue and the service can retry on demand.";
+                _logger?.LogInformation("[Grok] {Message}", msg);
                 return (false, msg);
             }
             catch (HttpRequestException ex)
             {
-                var msg = $"❌ API key validation failed: Network error - {ex.Message}";
-                _logger?.LogWarning(ex, "[Grok] {Message}", msg);
+                var msg = $"Grok validation probe failed because the network was unavailable: {ex.Message}";
+                _logger?.LogInformation(ex, "[Grok] {Message}", msg);
                 return (false, msg);
             }
             catch (Exception ex)

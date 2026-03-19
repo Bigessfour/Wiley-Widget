@@ -25,7 +25,7 @@ namespace WileyWidget.WinForms.Themes
     /// </summary>
     internal static class ThemeColors
     {
-        // Theme name for Syncfusion v32.1.19+ (configurable via appsettings.json UI:Theme)
+        // Theme name for the installed Syncfusion theme packages (configurable via appsettings.json UI:Theme)
         // Available themes: Office2019, Office2016, and HighContrast families
         // Note: "Fluent" and "Material" themes require additional NuGet packages which are not currently installed.
         // To change theme: Edit appsettings.json UI:Theme property OR set via IThemeService at runtime

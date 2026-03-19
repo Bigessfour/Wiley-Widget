@@ -1,6 +1,6 @@
 # WileyWidget — AI Briefing
 
-> Generated: 2026-02-28 21:57 | Branch: `feature/ci-next-element-1` | Commit: `ff357aa8c1`
+> Generated: 2026-03-18 08:33 | Branch: `main` | Commit: `c3bb154b0b`
 
 ## Project Purpose
 
@@ -73,13 +73,13 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 | Component    | Count |
 | ------------ | ----- |
-| Views        | 20    |
+| Views        | 19    |
 | Viewmodels   | 48    |
 | Panels       | 35    |
-| Services     | 119   |
+| Services     | 121   |
 | Controls     | 14    |
 | Repositories | 31    |
-| Factories    | 6     |
+| Factories    | 5     |
 
 ## ViewModels
 
@@ -201,10 +201,65 @@ WileyWidget is a Windows Forms (.NET) application built with the Syncfusion comp
 
 ## Manifest Stats
 
-- Total files indexed: **7729**
+- Total files indexed: **8374**
 - Files with embedded content: **400**
-- Total source size: **188,478 KB**
+- Total source size: **466,768 KB**
 - Manifest mode: **full-context**
+
+## QuickBooks Desktop Import (Local File)
+
+### Why This Exists
+
+- The production clerk workflow uses a local QuickBooks Desktop company file rather than QuickBooks Online cloud APIs.
+- The cloud OAuth path in `src/WileyWidget.Services/QuickBooksService.cs` remains valid for online tenants, but Wiley Widget now also needs a local file import path for desktop exports.
+
+### Official Intuit References
+
+- CSV export/import overview: https://quickbooks.intuit.com/learn-support/en-us/help-article/manage-lists/import-export-csv-files/L9AiGRdT9_US_en_US
+- IIF export/import overview: https://quickbooks.intuit.com/learn-support/en-us/help-article/import-export-data-files/export-import-edit-iif-files/L56LT9Z0Q_US_en_US
+- IIF format, headers, and sample kit: https://quickbooks.intuit.com/learn-support/en-us/help-article/list-management/iif-overview-import-kit-sample-files-headers/L5CZIpJne_US_en_US
+- Excel export/import overview: https://quickbooks.intuit.com/learn-support/en-us/help-article/list-management/import-export-ms-excel-files/L9BDPsTTX_US_en_US
+
+### Export Steps Summary
+
+- CSV: QuickBooks Desktop can export customer/vendor lists, item lists, and reports to `.csv` from the built-in Excel/export menus.
+- IIF: QuickBooks Desktop can export lists and transactions as tab-delimited `.iif` files; Intuit treats IIF as an advanced format with limited validation.
+- Excel: QuickBooks Desktop can export lists, reports, and certain transaction sets to Excel workbooks; Wiley Widget treats Excel as a clerk-friendly fallback when CSV is unavailable.
+- For exact wording, current menu labels, and screenshots, use the linked Intuit articles instead of this summary.
+
+### Supported Formats
+
+| Format                 | Priority  | Clerk Use                                                   | Wiley Widget Path                                        |
+| ---------------------- | --------- | ----------------------------------------------------------- | -------------------------------------------------------- |
+| CSV                    | Primary   | Lists and report exports saved from QuickBooks Desktop      | `CsvMappingWizardPanel` + `CsvExcelImportService`        |
+| IIF                    | Secondary | Lists or transactions exported in Intuit Interchange Format | New parser feeding the same `DataTable`/mapping pipeline |
+| Excel (`.xlsx`/`.xls`) | Fallback  | Clerk exports when Excel is the easiest available route     | Existing `CsvExcelImportService` / `ExcelReaderService`  |
+
+### Wiley Widget Component Mapping
+
+| Need                                   | Existing Surface                                                                                                      | Planned Use                                                                                             |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Clerk file selection and import action | `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs`                                                         | Desktop import runs from the existing QuickBooks panel even when the cloud connection is unavailable    |
+| Auto-detection and routing             | `src/WileyWidget.Services/QuickBooksDesktopImportService.cs`                                                          | Detect chart-of-accounts, customer, vendor, and payment exports and route them to existing repositories |
+| CSV and Excel ingestion                | `src/WileyWidget.Services/CsvExcelImportService.cs`                                                                   | Reuse for local desktop files                                                                           |
+| IIF ingestion                          | `src/WileyWidget.Services/QuickBooksDesktopIifParser.cs`                                                              | Normalize QuickBooks Desktop IIF rows into the same table-driven import path                            |
+| Import routing into app data           | `src/WileyWidget.Business.Interfaces/*Repository.cs` and `src/WileyWidget.Services/QuickBooksDesktopImportService.cs` | Persist normalized records into existing municipal account, customer, vendor, and payment targets       |
+| Progress and status                    | `src/WileyWidget.WinForms/Services/StatusProgressService.cs`                                                          | Surface import progress without blocking the shell                                                      |
+
+### Current Support Boundary
+
+- Implemented local targets: chart of accounts, customers, vendors, payments/check exports.
+- Explicitly deferred: QuickBooks item-list imports, because the current codebase does not expose an item repository or item panel target.
+
+### Reading Order Addendum
+
+1. `docs/QuickBooksDesktopImportSpecification.md`
+2. `docs/QuickBooksDesktopImport-UserGuide.md`
+3. `src/WileyWidget.WinForms/Controls/Panels/QuickBooksPanel.cs`
+4. `src/WileyWidget.WinForms/ViewModels/QuickBooksViewModel.cs`
+5. `src/WileyWidget.Services/QuickBooksService.cs`
+6. `src/WileyWidget.WinForms/Controls/Supporting/CsvMappingWizardPanel.cs`
+7. `src/WileyWidget.Services/CsvExcelImportService.cs`
 
 ---
 

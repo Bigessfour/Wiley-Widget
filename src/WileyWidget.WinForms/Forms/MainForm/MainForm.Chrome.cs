@@ -149,49 +149,12 @@ public partial class MainForm
             _logger?.LogInformation("StatusBar init in {Ms}ms", statusBarStopwatch.ElapsedMilliseconds);
             _logger?.LogInformation("Status bar initialized");
 
-            // === CONTENT HOST PANEL (Syncfusion Ribbon + DockingManager clipping fix) ===
-            // DockingManager.HostControl is typed as ContainerControl (v32.2.3, verified via reflection).
-            // UserControl extends ContainerControl and is the correct host type.
-            // Setting HostControl to this sub-panel (instead of the form) means docked panels fill only
-            // the area BELOW the ribbon and ABOVE the status bar — eliminating the top-clipping issue.
-            // SfSkinManager theme cascades from the form to this control automatically.
-            if (_contentHostPanel == null)
-            {
-                var contentHostTheme = SfSkinManager.ApplicationVisualTheme ?? Themes.ThemeColors.DefaultTheme;
-                _contentHostPanel = new UserControl
-                {
-                    Name = "ContentHostPanel",
-                    Dock = DockStyle.Fill,
-                    Padding = new Padding(AppLayoutConstants.ContentHostPadding),
-                    TabStop = false,
-                };
-                SfSkinManager.SetVisualStyle(_contentHostPanel, contentHostTheme);
-                this.Controls.Add(_contentHostPanel);
-                _logger?.LogDebug("ContentHostPanel created (UserControl/ContainerControl), theme={Theme}", contentHostTheme);
-            }
-
             if (_ribbon != null && !_ribbon.IsDisposed && this.Controls.Contains(_ribbon))
             {
                 this.Controls.SetChildIndex(_ribbon, 0);
                 _ribbon.BringToFront();
             }
-
-            if (!_contentHostPanel!.IsDisposed && this.Controls.Contains(_contentHostPanel))
-            {
-                var contentHostIndex = (_ribbon != null && !_ribbon.IsDisposed && this.Controls.Contains(_ribbon)) ? 1 : 0;
-                this.Controls.SetChildIndex(_contentHostPanel, contentHostIndex);
-                _contentHostPanel.SendToBack();
-            }
-
-            if (_ribbon != null
-                && !_ribbon.IsDisposed && !_contentHostPanel!.IsDisposed
-                && this.Controls.Contains(_ribbon) && this.Controls.Contains(_contentHostPanel))
-            {
-                System.Diagnostics.Debug.WriteLine($"[ZOrder] Ribbon index: {this.Controls.GetChildIndex(_ribbon)}");
-                System.Diagnostics.Debug.WriteLine($"[ZOrder] ContentHost index: {this.Controls.GetChildIndex(_contentHostPanel)}");
-            }
-
-            // Tabbed MDI layout is already constrained beneath the ribbon; no extra docking host initialization needed.
+            _logger?.LogDebug("MainForm uses the native WinForms client area as the docking host");
 
             // ── PERF FIX: Make Ribbon and Navigation Strip mutually exclusive (saves ~40ms in test mode)
             // Initialize Navigation Strip ONLY when Ribbon is disabled (alternative to Ribbon for test harness)
@@ -722,9 +685,9 @@ public partial class MainForm
             {
                 _ribbon.BringToFront();
             }
-            if (_uiAutomationNavigationButton != null && !_uiAutomationNavigationButton.IsDisposed && _uiAutomationNavigationButton.Visible)
+            if (_uiAutomationNavigationSpacer != null && !_uiAutomationNavigationSpacer.IsDisposed && _uiAutomationNavigationSpacer.Visible)
             {
-                _uiAutomationNavigationButton.BringToFront();
+                _uiAutomationNavigationSpacer.BringToFront();
             }
 
             if (_navigationStrip != null && !_navigationStrip.IsDisposed && _navigationStrip.Visible)
@@ -785,80 +748,42 @@ public partial class MainForm
 
         EnsureUiAutomationNavigationStatusBoxPresent();
 
-        if (_uiAutomationNavigationPanel == null || _uiAutomationNavigationPanel.IsDisposed)
+        if (_uiAutomationNavigationSpacer == null || _uiAutomationNavigationSpacer.IsDisposed)
         {
-            _uiAutomationNavigationPanel = new Panel
+            _uiAutomationNavigationSpacer = new Panel
             {
-                Name = "Nav_UnifiedDropdownPanel",
-                AutoScroll = true,
-                BorderStyle = BorderStyle.FixedSingle,
-                Visible = false,
-                Size = new Size(260, 360),
-            };
-
-            try
-            {
-                SetAutomationId(_uiAutomationNavigationPanel, _uiAutomationNavigationPanel.Name, _logger);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to set automation id for panel");
-            }
-
-            PopulateUiAutomationNavigationPanel(_uiAutomationNavigationPanel);
-            Controls.Add(_uiAutomationNavigationPanel);
-        }
-
-        if (_uiAutomationNavigationButton == null || _uiAutomationNavigationButton.IsDisposed)
-        {
-            _uiAutomationNavigationButton = new Button
-            {
-                Name = "Nav_UnifiedDropdown",
-                Text = "Navigate",
-                AccessibleName = "Navigation",
-                AccessibleDescription = "UI automation shim for the unified navigation menu",
+                Name = "Nav_UnifiedDropdownSpacer",
+                AccessibleName = "NavigationSpacer",
+                AccessibleDescription = "Automation-only navigation host for UI automation mode",
                 AutoSize = false,
-                Size = new Size(108, 32),
-                TabStop = true,
+                Dock = DockStyle.Top,
+                Height = 1,
+                Margin = Padding.Empty,
+                TabStop = false,
+                Enabled = true,
                 Visible = true,
             };
 
-            _uiAutomationNavigationButton.Click += (_, _) =>
-            {
-                try
-                {
-                    if (_uiAutomationNavigationPanel == null || _uiAutomationNavigationPanel.IsDisposed)
-                    {
-                        return;
-                    }
-
-                    _uiAutomationNavigationPanel.Visible = !_uiAutomationNavigationPanel.Visible;
-                    _uiAutomationNavigationPanel.BringToFront();
-                    SetUiAutomationNavigationStatus(_uiAutomationNavigationPanel.Visible
-                        ? "menu:open"
-                        : "menu:closed");
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to toggle navigation panel");
-                }
-            };
-
             try
             {
-                SetAutomationId(_uiAutomationNavigationButton, _uiAutomationNavigationButton.Name, _logger);
+                Controls.Add(_uiAutomationNavigationSpacer);
+
+                if (_ribbon != null && !_ribbon.IsDisposed && Controls.Contains(_ribbon))
+                {
+                    Controls.SetChildIndex(_ribbon, 0);
+                    Controls.SetChildIndex(_uiAutomationNavigationSpacer, 1);
+                }
             }
             catch (Exception ex)
             {
-                _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to set automation id for button");
+                _logger?.LogDebug(ex, "EnsureUiAutomationNavigationShim: Failed to add navigation spacer");
             }
-
-            Controls.Add(_uiAutomationNavigationButton);
         }
 
+        PopulateUiAutomationNavigationPanel(_uiAutomationNavigationSpacer);
+
         PositionUiAutomationNavigationShim();
-        _uiAutomationNavigationButton.BringToFront();
-        _uiAutomationNavigationPanel?.BringToFront();
+        _uiAutomationNavigationSpacer.BringToFront();
         _uiAutomationNavigationStatusBox?.BringToFront();
     }
 
@@ -874,7 +799,8 @@ public partial class MainForm
                 ReadOnly = true,
                 BorderStyle = BorderStyle.None,
                 Visible = true,
-                Size = new Size(260, 20),
+                Size = new Size(1, 1),
+                TabStop = false,
                 Text = "pending"
             };
 
@@ -910,22 +836,17 @@ public partial class MainForm
 
     private void PositionUiAutomationNavigationShim()
     {
-        if (!IsUiAutomationMode() || _uiAutomationNavigationButton == null || _uiAutomationNavigationButton.IsDisposed)
+        if (!IsUiAutomationMode() || _uiAutomationNavigationSpacer == null || _uiAutomationNavigationSpacer.IsDisposed)
         {
             return;
         }
 
-        var top = (_ribbon?.Bottom ?? 0) + 8;
-        _uiAutomationNavigationButton.Location = new Point(12, Math.Max(12, top));
-
-        if (_uiAutomationNavigationPanel != null && !_uiAutomationNavigationPanel.IsDisposed)
-        {
-            _uiAutomationNavigationPanel.Location = new Point(_uiAutomationNavigationButton.Left, _uiAutomationNavigationButton.Bottom + 4);
-        }
+        _uiAutomationNavigationSpacer.Height = 1;
 
         if (_uiAutomationNavigationStatusBox != null && !_uiAutomationNavigationStatusBox.IsDisposed)
         {
-            _uiAutomationNavigationStatusBox.Location = new Point(_uiAutomationNavigationButton.Left, (_uiAutomationNavigationPanel?.Bottom ?? _uiAutomationNavigationButton.Bottom) + 4);
+            var statusTop = (_ribbon?.Bottom ?? 0) + _uiAutomationNavigationSpacer.Height + 8;
+            _uiAutomationNavigationStatusBox.Location = new Point(Math.Max(0, ClientSize.Width - 2), Math.Max(12, statusTop));
         }
     }
 
@@ -934,7 +855,8 @@ public partial class MainForm
         host.Controls.Clear();
 
         var orderedPanels = PanelRegistry.Panels
-            .Where(entry => entry.ShowInRibbonPanelsMenu)
+            .Where(entry => entry.ShowInRibbonPanelsMenu
+                || string.Equals(entry.DisplayName, "QuickBooks", StringComparison.OrdinalIgnoreCase))
             .OrderBy(entry => GetUnifiedNavigationGroupOrder(entry.DefaultGroup))
             .ThenBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase);
 
@@ -951,9 +873,10 @@ public partial class MainForm
                 AccessibleDescription = $"Navigate to {entry.DisplayName}",
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoSize = false,
-                Size = new Size(228, 30),
-                Location = new Point(8, y),
-                TabStop = true,
+                Size = new Size(1, 1),
+                Location = new Point(0, 0),
+                TabStop = false,
+                FlatStyle = FlatStyle.Flat,
             };
 
             button.Click += (_, _) =>
@@ -982,7 +905,7 @@ public partial class MainForm
             }
 
             host.Controls.Add(button);
-            y += button.Height + 6;
+            y += 1;
         }
     }
 
@@ -1109,53 +1032,68 @@ public partial class MainForm
             // Helpers for button creation to save space?
             // Just pasting the logic from UI.cs
 
+            void WireNavigationButton(ToolStripButton button, string displayName)
+            {
+                button.Click += (s, e) =>
+                {
+                    var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, displayName, StringComparison.OrdinalIgnoreCase));
+                    if (entry == null)
+                    {
+                        _logger?.LogWarning("Navigation entry not found for {PanelName}", displayName);
+                        return;
+                    }
+
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                };
+            }
+
             var dashboardBtn = new ToolStripButton("Enterprise Vital Signs") { Name = "Nav_VitalSigns", AccessibleName = "Enterprise Vital Signs", Enabled = true };
             try { SetAutomationId(dashboardBtn, dashboardBtn.Name, _logger); } catch { }
-            dashboardBtn.Click += (s, e) => this.ShowPanel<EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false);
+            WireNavigationButton(dashboardBtn, "Enterprise Vital Signs");
 
             var accountsBtn = new ToolStripButton("Accounts") { Name = "Nav_Accounts", AccessibleName = "Accounts", Enabled = true };
             try { SetAutomationId(accountsBtn, accountsBtn.Name, _logger); } catch { }
-            accountsBtn.Click += (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true);
+            WireNavigationButton(accountsBtn, "Municipal Accounts");
 
             var budgetBtn = new ToolStripButton("Budget") { Name = "Nav_Budget", AccessibleName = "Budget", Enabled = true };
             try { SetAutomationId(budgetBtn, budgetBtn.Name, _logger); } catch { }
-            budgetBtn.Click += (s, e) => this.ShowPanel<BudgetPanel>("Budget Management & Analysis", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(budgetBtn, "Budget Management & Analysis");
 
             var chartsBtn = new ToolStripButton("Charts") { Name = "Nav_Charts", AccessibleName = "Charts", Enabled = true };
             try { SetAutomationId(chartsBtn, chartsBtn.Name, _logger); } catch { }
-            chartsBtn.Click += (s, e) => this.ShowPanel<AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(chartsBtn, "Analytics Hub");
 
             var analyticsBtn = new ToolStripButton("&Analytics") { Name = "Nav_Analytics", AccessibleName = "Analytics" };
             try { SetAutomationId(analyticsBtn, analyticsBtn.Name, _logger); } catch { }
-            analyticsBtn.Click += (s, e) => this.ShowPanel<AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(analyticsBtn, "Analytics Hub");
 
             var auditLogBtn = new ToolStripButton("&Audit Log") { Name = "Nav_AuditLog", AccessibleName = "Audit Log" };
             try { SetAutomationId(auditLogBtn, auditLogBtn.Name, _logger); } catch { }
-            auditLogBtn.Click += (s, e) => this.ShowPanel<AuditLogPanel>("Audit Log & Activity", DockingStyle.Bottom, allowFloating: true);
+            WireNavigationButton(auditLogBtn, "Audit Log & Activity");
 
             var customersBtn = new ToolStripButton("Customers") { Name = "Nav_Customers", AccessibleName = "Nav_Customers" };
             try { SetAutomationId(customersBtn, customersBtn.Name, _logger); } catch { }
-            customersBtn.Click += (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(customersBtn, "Customers");
 
             var quickBooksBtn = new ToolStripButton("QuickBooks") { Name = "Nav_QuickBooks", AccessibleName = "QuickBooks" };
             try { SetAutomationId(quickBooksBtn, quickBooksBtn.Name, _logger); } catch { }
-            quickBooksBtn.Click += (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(quickBooksBtn, "QuickBooks");
 
             var aiChatBtn = new ToolStripButton("AI Chat") { Name = "Nav_AIChat", AccessibleName = "AI Chat" };
             try { SetAutomationId(aiChatBtn, aiChatBtn.Name, _logger); } catch { }
-            aiChatBtn.Click += (s, e) => this.ShowPanel<JARVISChatUserControl>("JARVIS Chat", DockingStyle.Right, allowFloating: false);
+            WireNavigationButton(aiChatBtn, "JARVIS Chat");
 
             var proactiveInsightsBtn = new ToolStripButton("Proactive Insights") { Name = "Nav_ProactiveInsights", AccessibleName = "Proactive Insights" };
             try { SetAutomationId(proactiveInsightsBtn, proactiveInsightsBtn.Name, _logger); } catch { }
-            proactiveInsightsBtn.Click += (s, e) => this.ShowPanel<ProactiveInsightsPanel>("Proactive AI Insights", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(proactiveInsightsBtn, "Proactive AI Insights");
 
             var warRoomBtn = new ToolStripButton("War Room") { Name = "Nav_WarRoom", AccessibleName = "War Room" };
             try { SetAutomationId(warRoomBtn, warRoomBtn.Name, _logger); } catch { }
-            warRoomBtn.Click += (s, e) => this.ShowPanel<WarRoomPanel>("War Room", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(warRoomBtn, "War Room");
 
             var settingsBtn = new ToolStripButton("Settings") { Name = "Nav_Settings", AccessibleName = "Settings" };
             try { SetAutomationId(settingsBtn, settingsBtn.Name, _logger); } catch { }
-            settingsBtn.Click += (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true);
+            WireNavigationButton(settingsBtn, "Settings");
 
             var themeToggleBtn = new ToolStripButton
             {
@@ -1264,22 +1202,70 @@ public partial class MainForm
             // View Menu
             var viewMenu = new ToolStripMenuItem("&View") { Name = "Menu_View", Image = CreateIconFromText("\uE8A7", 16) };
             // View > Dashboard
-            var dashboardMenuItem = new ToolStripMenuItem("&Enterprise Vital Signs", null, (s, e) => this.ShowPanel<EnterpriseVitalSignsPanel>("Enterprise Vital Signs", DockingStyle.Fill, allowFloating: false)) { Name = "Menu_View_VitalSigns", ShortcutKeys = Keys.Control | Keys.D };
+            var dashboardMenuItem = new ToolStripMenuItem("&Enterprise Vital Signs", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_View_VitalSigns", ShortcutKeys = Keys.Control | Keys.D };
 
             // View > Accounts
-            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) => this.ShowPanel<AccountsPanel>("Municipal Accounts", DockingStyle.Left, allowFloating: true)) { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
+            var accountsMenuItem = new ToolStripMenuItem("&Accounts", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "Municipal Accounts", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_View_Accounts", ShortcutKeys = Keys.Control | Keys.A };
 
             // View > Budget
-            var budgetMenuItem = new ToolStripMenuItem("&Budget", null, (s, e) => this.ShowPanel<BudgetPanel>("Budget Management & Analysis", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_Budget", ShortcutKeys = Keys.Control | Keys.B };
+            var budgetMenuItem = new ToolStripMenuItem("&Budget", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "Budget Management & Analysis", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_View_Budget", ShortcutKeys = Keys.Control | Keys.B };
 
             // View > Charts
-            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) => this.ShowPanel<AnalyticsHubPanel>("Analytics Hub", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
+            var chartsMenuItem = new ToolStripMenuItem("&Analytics Hub", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "Analytics Hub", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_View_AnalyticsHub", ShortcutKeys = Keys.Control | Keys.H };
 
             // View > QuickBooks
-            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) => this.ShowPanel<QuickBooksPanel>("QuickBooks", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
+            var quickBooksMenuItem = new ToolStripMenuItem("&QuickBooks", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "QuickBooks", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_View_QuickBooks", ShortcutKeys = Keys.Control | Keys.Q };
 
             // View > Customers
-            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) => this.ShowPanel<CustomersPanel>("Customers", DockingStyle.Right, allowFloating: true)) { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
+            var customersMenuItem = new ToolStripMenuItem("C&ustomers", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "Customers", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_View_Customers", ShortcutKeys = Keys.Control | Keys.U };
 
             var refreshMenuItem = new ToolStripMenuItem("&Refresh", null, (s, e) => this.Refresh()) { Name = "Menu_View_Refresh", ShortcutKeys = Keys.F5 };
 
@@ -1287,7 +1273,15 @@ public partial class MainForm
 
             // Tools Menu
             var toolsMenu = new ToolStripMenuItem("&Tools") { Name = "Menu_Tools", Image = CreateIconFromText("\uE90F", 16) };
-            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) => this.ShowPanel<SettingsPanel>("Settings", DockingStyle.Right, allowFloating: true)) { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
+            var settingsMenuItem = new ToolStripMenuItem("&Settings", null, (s, e) =>
+            {
+                var entry = PanelRegistry.Panels.FirstOrDefault(panel => string.Equals(panel.DisplayName, "Settings", StringComparison.OrdinalIgnoreCase));
+                if (entry != null)
+                {
+                    SafeNavigate(this, entry.DisplayName, CreatePanelNavigationCommand(this, entry, _logger), _logger);
+                }
+            })
+            { Name = "Menu_Tools_Settings", ShortcutKeys = Keys.Control | Keys.Oemcomma };
             toolsMenu.DropDownItems.Add(settingsMenuItem);
 
             // Help Menu
@@ -1512,7 +1506,9 @@ public partial class MainForm
 
             if (_themeService != null)
             {
+                SfSkinManager.ApplicationVisualTheme = nextTheme;
                 _themeService.ApplyTheme(nextTheme);
+                ApplyResolvedTheme(nextTheme);
                 _logger?.LogDebug("Theme applied via ThemeService - OnThemeChanged event will broadcast to all subscribers");
             }
             else
@@ -1584,26 +1580,42 @@ public partial class MainForm
         }
 
         var resolvedTheme = AppThemeColors.ValidateTheme(themeName, _logger);
-        AppThemeColors.EnsureThemeAssemblyLoadedForTheme(resolvedTheme, _logger);
-        SfSkinManager.ApplicationVisualTheme = resolvedTheme;
-        AppThemeColors.ApplyTheme(this, resolvedTheme);
+        try
+        {
+            AppThemeColors.EnsureThemeAssemblyLoadedForTheme(resolvedTheme, _logger);
+            SfSkinManager.ApplicationVisualTheme = resolvedTheme;
+            AppThemeColors.ApplyTheme(this, resolvedTheme);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "ApplyResolvedTheme: failed to apply Syncfusion theme shell for {Theme}; continuing with themable control replay", resolvedTheme);
+        }
 
         if (_ribbon != null && !_ribbon.IsDisposed)
         {
-            _ribbon.ThemeName = resolvedTheme;
-            ApplyRibbonStyleForTheme(_ribbon, resolvedTheme, _logger);
-            SfSkinManager.SetVisualStyle(_ribbon, resolvedTheme);
+            try
+            {
+                _ribbon.ThemeName = resolvedTheme;
+                ApplyRibbonStyleForTheme(_ribbon, resolvedTheme, _logger);
+                SfSkinManager.SetVisualStyle(_ribbon, resolvedTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "ApplyResolvedTheme: ribbon theme refresh failed for {Theme}", resolvedTheme);
+            }
         }
 
         if (_statusBar != null && !_statusBar.IsDisposed)
         {
-            _statusBar.ThemeName = resolvedTheme;
-            SfSkinManager.SetVisualStyle(_statusBar, resolvedTheme);
-        }
-
-        if (_contentHostPanel != null && !_contentHostPanel.IsDisposed)
-        {
-            SfSkinManager.SetVisualStyle(_contentHostPanel, resolvedTheme);
+            try
+            {
+                _statusBar.ThemeName = resolvedTheme;
+                SfSkinManager.SetVisualStyle(_statusBar, resolvedTheme);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "ApplyResolvedTheme: status bar theme refresh failed for {Theme}", resolvedTheme);
+            }
         }
 
         ApplyThemeToBackStage(resolvedTheme);
@@ -1637,11 +1649,19 @@ public partial class MainForm
     {
         ApplyThemeToControlTree(this, themeName);
 
-        foreach (var mdiChild in MdiChildren)
+        foreach (var mdiChild in GetDocumentChildren())
         {
             if (mdiChild is { IsDisposed: false })
             {
-                SfSkinManager.SetVisualStyle(mdiChild, themeName);
+                try
+                {
+                    SfSkinManager.SetVisualStyle(mdiChild, themeName);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "ApplyResolvedTheme: failed to apply theme to MDI child {ChildName}", mdiChild.Name);
+                }
+
                 ApplyThemeToControlTree(mdiChild, themeName);
             }
         }
@@ -1650,7 +1670,15 @@ public partial class MainForm
         {
             if (ownedForm is { IsDisposed: false })
             {
-                SfSkinManager.SetVisualStyle(ownedForm, themeName);
+                try
+                {
+                    SfSkinManager.SetVisualStyle(ownedForm, themeName);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, "ApplyResolvedTheme: failed to apply theme to owned form {OwnedFormName}", ownedForm.Name);
+                }
+
                 ApplyThemeToControlTree(ownedForm, themeName);
                 TryForceLayoutOnScopedPanelChildren(ownedForm);
             }
@@ -1849,7 +1877,8 @@ public partial class MainForm
     {
         try
         {
-            if (_contentHostPanel is not Control hostControl || hostControl.IsDisposed)
+            var hostControl = _rightDockPanel?.Parent ?? (Control)this;
+            if (hostControl.IsDisposed)
             {
                 return;
             }

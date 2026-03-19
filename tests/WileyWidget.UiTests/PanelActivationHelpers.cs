@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Input;
+using FlaUI.Core.Tools;
 using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA2;
 using FormsCursor = System.Windows.Forms.Cursor;
@@ -29,9 +30,7 @@ namespace WileyWidget.UiTests
         /// </summary>
         public static Window WaitForMainWindow(FlaUIApp app, UIA2Automation automation, TimeSpan timeout)
         {
-            var sw = Stopwatch.StartNew();
-
-            while (sw.Elapsed < timeout)
+            var result = Retry.WhileNull(() =>
             {
                 try
                 {
@@ -58,10 +57,16 @@ namespace WileyWidget.UiTests
                 }
                 catch
                 {
-                    // App may have no top-level window yet; retry.
+                    return null;
                 }
 
-                Thread.Sleep(250);
+                return null;
+
+            }, timeout, TimeSpan.FromMilliseconds(250));
+
+            if (result.Result != null)
+            {
+                return result.Result;
             }
 
             throw new TimeoutException(
@@ -87,8 +92,7 @@ namespace WileyWidget.UiTests
             // spin for the full timeout on a panel that simply hasn't been activated yet.
             TryActivatePanel(window, new[] { panelName }, TimeSpan.FromSeconds(3));
 
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
+            var result = Retry.WhileFalse(() =>
             {
                 try
                 {
@@ -100,13 +104,14 @@ namespace WileyWidget.UiTests
                 }
                 catch
                 {
-                    // FindFirstDescendant may throw transiently while the UI is still settling.
+                    return false;
                 }
 
-                Thread.Sleep(250);
-            }
+                return false;
 
-            return false;
+            }, timeout, TimeSpan.FromMilliseconds(250));
+
+            return result.Success;
         }
 
         // ─── Accounts panel ──────────────────────────────────────────────────────
@@ -131,8 +136,7 @@ namespace WileyWidget.UiTests
                 TimeSpan.FromSeconds(3),
                 automation);
 
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
+            var result = Retry.WhileFalse(() =>
             {
                 try
                 {
@@ -154,12 +158,13 @@ namespace WileyWidget.UiTests
                             .Or(cf.ByName("Chart of Accounts Panel Header")));
                     if (accountsGrid != null) return true;
                 }
-                catch { }
+                catch { return false; }
 
-                Thread.Sleep(250);
-            }
+                return false;
 
-            return false;
+            }, timeout, TimeSpan.FromMilliseconds(250));
+
+            return result.Success;
         }
 
         // ─── Budget panel ────────────────────────────────────────────────────────
@@ -179,8 +184,7 @@ namespace WileyWidget.UiTests
                 new[] { "Budget Management & Analysis", "Budget\nMgmt", "Budget Mgmt", "Budget" },
                 TimeSpan.FromSeconds(3));
 
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
+            var result = Retry.WhileFalse(() =>
             {
                 try
                 {
@@ -196,12 +200,13 @@ namespace WileyWidget.UiTests
                           .Or(cf.ByAutomationId("BudgetManagementPanel")));
                     if (budgetEl != null) return true;
                 }
-                catch { }
+                catch { return false; }
 
-                Thread.Sleep(250);
-            }
+                return false;
 
-            return false;
+            }, timeout, TimeSpan.FromMilliseconds(250));
+
+            return result.Success;
         }
 
         // ─── QuickBooks panel ─────────────────────────────────────────────────────
@@ -222,8 +227,7 @@ namespace WileyWidget.UiTests
                 new[] { UiTestConstants.QuickBooksPanelTitle, "QuickBooks", "QBO", "Connect to QuickBooks" },
                 TimeSpan.FromSeconds(3));
 
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
+            var result = Retry.WhileFalse(() =>
             {
                 try
                 {
@@ -236,12 +240,13 @@ namespace WileyWidget.UiTests
                         if (el != null) return true;
                     }
                 }
-                catch { }
+                catch { return false; }
 
-                Thread.Sleep(250);
-            }
+                return false;
 
-            return false;
+            }, timeout, TimeSpan.FromMilliseconds(250));
+
+            return result.Success;
         }
 
         // ─── JARVIS panel activation ──────────────────────────────────────────────
@@ -257,8 +262,7 @@ namespace WileyWidget.UiTests
 
             SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
 
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
+            Retry.WhileFalse(() =>
             {
                 try
                 {
@@ -272,18 +276,20 @@ namespace WileyWidget.UiTests
                     {
                         try { jarvisTab.Click(); }
                         catch { /* Panel may already be active — not an error. */ }
-                        return;
+                        Wait.UntilInputIsProcessed();
+                        return true;
                     }
                 }
-                catch { }
+                catch { return false; }
 
                 if (TryActivatePanelFromUnifiedNavigation(window, automation, new[] { "JARVIS Chat", "JARVIS", "Jarvis Chat" }))
                 {
-                    return;
+                    return true;
                 }
 
-                Thread.Sleep(250);
-            }
+                return false;
+
+            }, timeout, TimeSpan.FromMilliseconds(250));
 
             // Timeout without finding the tab.  Caller logs / skips as appropriate.
         }
@@ -298,8 +304,7 @@ namespace WileyWidget.UiTests
         /// </summary>
         private static void TryActivatePanel(Window window, string[] buttonCandidates, TimeSpan clickTimeout, UIA2Automation? automation = null)
         {
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < clickTimeout)
+            Retry.WhileFalse(() =>
             {
                 try
                 {
@@ -311,23 +316,22 @@ namespace WileyWidget.UiTests
                         if (btn != null)
                         {
                             btn.Click();
-                            // Brief pause so the panel host has a chance to create its handle
-                            // before the polling loop starts querying descendants.
-                            Thread.Sleep(300);
-                            return;
+                            Wait.UntilInputIsProcessed();
+                            return true;
                         }
                     }
 
                     if (TryActivatePanelFromUnifiedNavigation(window, automation, buttonCandidates))
                     {
-                        Thread.Sleep(300);
-                        return;
+                        Wait.UntilInputIsProcessed();
+                        return true;
                     }
                 }
-                catch { /* element may not exist yet — retry */ }
+                catch { return false; }
 
-                Thread.Sleep(150);
-            }
+                return false;
+
+            }, clickTimeout, TimeSpan.FromMilliseconds(150));
         }
 
         private static bool TryActivatePanelFromUnifiedNavigation(Window window, UIA2Automation? automation, string[] buttonCandidates)
@@ -366,7 +370,7 @@ namespace WileyWidget.UiTests
             try
             {
                 dropDown.Click();
-                Thread.Sleep(250);
+                Wait.UntilInputIsProcessed();
             }
             catch
             {
@@ -376,35 +380,30 @@ namespace WileyWidget.UiTests
             foreach (var candidate in buttonCandidates)
             {
                 var automationId = $"NavMenuItem_{SanitizeAutomationName(candidate)}";
-                AutomationElement? menuItem = null;
-
-                var lookupStopwatch = Stopwatch.StartNew();
-                while (menuItem == null && lookupStopwatch.Elapsed < TimeSpan.FromSeconds(2))
+                var menuItem = Retry.WhileNull(() =>
                 {
                     try
                     {
-                        menuItem = window.FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
+                        return window.FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
                     }
                     catch
                     {
                     }
 
-                    if (menuItem == null && automation != null)
+                    if (automation != null)
                     {
                         try
                         {
-                            menuItem = automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
+                            return automation.GetDesktop().FindFirstDescendant(cf => cf.ByAutomationId(automationId).Or(cf.ByName(candidate)));
                         }
                         catch
                         {
                         }
                     }
 
-                    if (menuItem == null)
-                    {
-                        Thread.Sleep(100);
-                    }
-                }
+                    return null;
+
+                }, TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(100)).Result;
 
                 if (menuItem == null)
                 {
@@ -414,6 +413,7 @@ namespace WileyWidget.UiTests
                 try
                 {
                     menuItem.Click();
+                    Wait.UntilInputIsProcessed();
                     return true;
                 }
                 catch
@@ -436,7 +436,7 @@ namespace WileyWidget.UiTests
                 foreach (var key in GetFlatAutomationNavigationKeyboardSequence(buttonCandidates))
                 {
                     Keyboard.Type(key);
-                    Thread.Sleep(120);
+                    Wait.UntilInputIsProcessed();
                 }
 
                 return true;
@@ -471,12 +471,12 @@ namespace WileyWidget.UiTests
                 var clickPoint = new Point(Convert.ToInt32(bounds.Left + 72), Convert.ToInt32(bounds.Top + 132));
                 FormsCursor.Position = clickPoint;
                 Mouse.Click();
-                Thread.Sleep(250);
+                Wait.UntilInputIsProcessed();
 
                 foreach (var key in GetUnifiedNavigationKeyboardSequence(buttonCandidates))
                 {
                     Keyboard.Type(key);
-                    Thread.Sleep(120);
+                    Wait.UntilInputIsProcessed();
                 }
 
                 return true;
@@ -641,22 +641,20 @@ namespace WileyWidget.UiTests
         /// </summary>
         private static void SpinWaitForWindowReady(Window window, TimeSpan timeout)
         {
-            var sw = Stopwatch.StartNew();
-            while (sw.Elapsed < timeout)
+            Retry.WhileFalse(() =>
             {
                 try
                 {
                     var onScreen = !window.Properties.IsOffscreen.ValueOrDefault;
                     var enabled = window.IsEnabled;
-                    if (onScreen && enabled) return;
+                    return onScreen && enabled;
                 }
                 catch
                 {
-                    // Properties may throw while the window handle is still being finalised.
+                    return false;
                 }
 
-                Thread.Sleep(50);
-            }
+            }, timeout, TimeSpan.FromMilliseconds(50));
         }
 
         /// <summary>

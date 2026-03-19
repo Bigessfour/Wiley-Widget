@@ -35,6 +35,8 @@ namespace WileyWidget.WinForms.Forms
         private bool _disposed;
         private bool _ctsDisposed;
         private Thread? _uiThread;
+        private readonly object _pendingProgressLock = new();
+        private (double Progress, string Message, bool IsIndeterminate)? _pendingProgress;
 
         private Form? _form;
         private Label? _messageLabel;
@@ -65,10 +67,6 @@ namespace WileyWidget.WinForms.Forms
             };
             _uiThread.SetApartmentState(ApartmentState.STA);
             _uiThread.Start();
-
-            // Wait for splash UI to be ready so early progress reports can be displayed.
-            // Increased timeout to ensure splash appears before first progress report.
-            _uiReady.Wait(TimeSpan.FromSeconds(2));
         }
 
         public void InvokeOnUiThread(Action action)
@@ -139,6 +137,26 @@ namespace WileyWidget.WinForms.Forms
 
             if (_cts.IsCancellationRequested) return;
 
+            if (!_uiReady.IsSet)
+            {
+                lock (_pendingProgressLock)
+                {
+                    _pendingProgress = (progress, message ?? string.Empty, isIndeterminate);
+                }
+
+                return;
+            }
+
+            ApplyProgressToControls(progress, message, isIndeterminate);
+        }
+
+        private void ApplyProgressToControls(double progress, string message, bool isIndeterminate)
+        {
+            if (_cts.IsCancellationRequested)
+            {
+                return;
+            }
+
             InvokeOnUiThread(() =>
             {
                 var form = _form;
@@ -172,6 +190,22 @@ namespace WileyWidget.WinForms.Forms
                     Log.Warning(ex, "[SPLASH] Failed to update controls during Report");
                 }
             });
+        }
+
+        private void FlushPendingProgress()
+        {
+            (double Progress, string Message, bool IsIndeterminate)? pendingProgress;
+
+            lock (_pendingProgressLock)
+            {
+                pendingProgress = _pendingProgress;
+                _pendingProgress = null;
+            }
+
+            if (pendingProgress is { } value)
+            {
+                ApplyProgressToControls(value.Progress, value.Message, value.IsIndeterminate);
+            }
         }
 
         /// <summary>
@@ -329,6 +363,9 @@ namespace WileyWidget.WinForms.Forms
                 {
                     try { _uiReady.Set(); }
                     catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to set _uiReady event"); }
+
+                    try { FlushPendingProgress(); }
+                    catch (Exception ex) { Log.Debug(ex, "[SPLASH] Failed to flush pending progress"); }
                 };
 
                 _form.FormClosed += (_, _) =>

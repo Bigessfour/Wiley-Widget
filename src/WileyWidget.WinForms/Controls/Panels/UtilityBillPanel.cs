@@ -1159,7 +1159,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
     private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             try
             {
@@ -1227,12 +1227,12 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
-        }));
+        }, Logger, nameof(ExportExcelButton_Click));
     }
 
     private void ExportPdfButton_Click(object? sender, EventArgs e)
     {
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             try
             {
@@ -1300,7 +1300,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
-        }));
+        }, Logger, nameof(ExportPdfButton_Click));
     }
 
     #region Helper Methods

@@ -42,6 +42,7 @@ namespace WileyWidget.UiTests
                 var refreshButton = systemGroup.FindFirstDescendant(cf => cf.ByName("Refresh"));
                 Assert.NotNull(refreshButton);
                 Assert.True(refreshButton.IsEnabled);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {
@@ -84,6 +85,8 @@ namespace WileyWidget.UiTests
                     // Fallback: assert default theme applied correctly
                     // Assert.True(ribbon.Properties.ThemeName.ValueOrDefault == "Office2019Colorful"); // Not available in FlaUI
                 }
+
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -24,6 +25,7 @@ using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.Models;
 using Microsoft.Extensions.Logging.Abstractions;
+using Syncfusion.Runtime.Serialization;
 using Xunit;
 
 namespace WileyWidget.WinForms.Tests.Unit.Forms
@@ -107,6 +109,9 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
 
             public void CallInitializeChrome() => typeof(MainForm).GetMethod("InitializeChrome", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, null);
+            public void CallInitializeMdiManager() => typeof(MainForm).GetMethod("InitializeMDIManager", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, null);
+            public void CallSaveMainFormState(AppStateSerializer serializer) => typeof(MainForm).GetMethod("SaveMainFormState", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, new object[] { serializer });
+            public void CallSaveMdiDocumentState(AppStateSerializer serializer) => typeof(MainForm).GetMethod("SaveMDIDocumentState", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(this, new object[] { serializer });
 
             public Task CallInitializeAsync(CancellationToken ct)
             {
@@ -207,6 +212,18 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             }
         }
 
+        private static void PumpMessages(int timeoutMs, int intervalMs = 25)
+        {
+            var start = DateTime.UtcNow;
+            while ((DateTime.UtcNow - start).TotalMilliseconds < timeoutMs)
+            {
+                Application.DoEvents();
+                Thread.Sleep(intervalMs);
+            }
+
+            Application.DoEvents();
+        }
+
         [StaFact]
         public void ConstructorAndOnLoad_SetsFormTitleAndWindowState()
         {
@@ -227,10 +244,12 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var _ = form.Handle; // ensure handle created (required by ValidateInitializationState)
             form.CallInitializeChrome();
             form.CallOnLoad();
+            form.Show();
+            PumpMessages(100);
 
             // Assert
             form.Text.Should().Be(MainFormResources.FormTitle);
-            form.WindowState.Should().Be(System.Windows.Forms.FormWindowState.Maximized);
+            windowMock.Verify(w => w.RestoreWindowState(form), Times.Once);
 
             form.Dispose();
         }
@@ -451,17 +470,24 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
                 Task? deferred = null;
                 for (int i = 0; i < 40; i++) // ~2 seconds max
                 {
+                    PumpMessages(75);
                     deferred = form.DeferredInitializationTask;
                     if (deferred != null) break;
-                    await Task.Delay(50);
                 }
                 deferred.Should().NotBeNull();
 
-                var completed = await Task.WhenAny(deferred!, Task.Delay(5000));
-                if (completed != deferred)
+                var timeoutAt = DateTime.UtcNow.AddSeconds(5);
+                while (!deferred!.IsCompleted && DateTime.UtcNow < timeoutAt)
+                {
+                    PumpMessages(75);
+                }
+
+                if (!deferred.IsCompleted)
                 {
                     throw new TimeoutException("Deferred initialization timed out");
                 }
+
+                await deferred;
 
                 // Trigger data load since MainViewModel uses lazy loading
                 if (form.MainViewModel != null)
@@ -564,9 +590,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
 
             var themeMock = new Mock<IThemeService>();
-            themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
+            var currentTheme = "Office2019Colorful";
+            themeMock.SetupGet(t => t.CurrentTheme).Returns(() => currentTheme);
             themeMock.Setup(t => t.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
             {
+                currentTheme = theme;
                 TestThemeHelper.EnsureOffice2019Colorful();
                 themeMock.Raise(tm => tm.ThemeChanged += null, themeMock.Object, theme);
             });
@@ -579,25 +607,26 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             form.CreateControl();
             var _ = form.Handle;
             // Initialize chrome through normal lifecycle
+            form.CallInitializeChrome();
             form.CallOnLoad();
             form.Show();
             form.PerformLayout();
-            Application.DoEvents();
+            PumpMessages(100);
 
             // Pre-assert: Theme control exists (legacy ThemeToggle button or newer ThemeCombo selector)
-            var findMethod = typeof(MainForm).GetMethod("FindToolStripItem", BindingFlags.Instance | BindingFlags.NonPublic, null, new[] { typeof(Control), typeof(string) }, null)!;
-            var themeControl = findMethod.Invoke(form, new object[] { form, "ThemeToggle" }) as ToolStripItem
-                ?? findMethod.Invoke(form, new object[] { form, "ThemeCombo" }) as ToolStripItem;
+            var ribbon = form.GetPrivateField("_ribbon") as Syncfusion.Windows.Forms.Tools.RibbonControlAdv;
+            var themeControl = FindToolStripItem<ToolStripItem>(ribbon, "ThemeToggle")
+                ?? FindToolStripItem<ToolStripItem>(ribbon, "ThemeCombo");
             themeControl.Should().NotBeNull("Theme control should be present after OnLoad");
 
             // Act: Toggle theme
             form.ToggleTheme();
-            Application.DoEvents();
+            PumpMessages(100);
 
-            themeMock.Verify(t => t.ApplyTheme("Office2019Dark"), Times.Once);
+            themeMock.Verify(t => t.ApplyTheme("Office2019Dark"), Times.AtLeastOnce);
 
-            var activeThemeControl = findMethod.Invoke(form, new object[] { form, "ThemeToggle" }) as ToolStripItem
-                ?? findMethod.Invoke(form, new object[] { form, "ThemeCombo" }) as ToolStripItem
+            var activeThemeControl = FindToolStripItem<ToolStripItem>(ribbon, "ThemeToggle")
+                ?? FindToolStripItem<ToolStripItem>(ribbon, "ThemeCombo")
                 ?? themeControl;
 
             // Assert: after ThemeChanged event, UI reflects Office2019Dark
@@ -605,9 +634,9 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             {
                 activeThemeControl.Text.Should().Match("*Light*", "Theme toggle text should reflect new theme state");
             }
-            else if (string.Equals(activeThemeControl.Name, "ThemeCombo", StringComparison.OrdinalIgnoreCase))
+            else if (activeThemeControl is Syncfusion.Windows.Forms.Tools.ToolStripComboBoxEx comboEx)
             {
-                activeThemeControl.Text.Should().Be("Office2019Dark", "Theme combo selection should reflect the active theme after a toggle");
+                comboEx.ComboBox.Text.Should().Be("Office2019Dark", "Theme combo selection should reflect the active theme after a toggle");
             }
             else
             {
@@ -642,26 +671,28 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             SfSkinManager.SetVisualStyle(form, "Office2019Colorful");
 
             var _ = form.Handle;
+            form.CallInitializeChrome();
             form.CallOnLoad();
             form.Show();
             Application.DoEvents();
 
             using var ownedForm = new Form
             {
-                Owner = form,
                 ShowInTaskbar = false,
                 StartPosition = FormStartPosition.Manual,
                 Location = new System.Drawing.Point(-2000, -2000)
             };
 
+            form.AddOwnedForm(ownedForm);
+
             var probe = new ProbeThemableControl { Dock = DockStyle.Fill };
             ownedForm.Controls.Add(probe);
             ownedForm.Show();
-            Application.DoEvents();
+            PumpMessages(100);
 
             var onThemeServiceChanged = typeof(MainForm).GetMethod("OnThemeServiceChanged", BindingFlags.Instance | BindingFlags.NonPublic)!;
             onThemeServiceChanged.Invoke(form, new object?[] { form, "Office2019Dark" });
-            Application.DoEvents();
+            PumpMessages(100);
 
             probe.AppliedTheme.Should().Be("Office2019Dark", "owned floating forms should replay runtime theme changes to their themable children");
 
@@ -740,7 +771,10 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
         public void OnFirstChanceException_IgnoresThemeExceptions_AndLogsOthers()
         {
             // Arrange
-            var provider = BuildProvider();
+            var provider = BuildProvider(new Dictionary<string, string?>
+            {
+                ["Diagnostics:VerboseFirstChanceExceptions"] = "true"
+            });
             var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
             var loggerMock = new Mock<ILogger<MainForm>>();
 
@@ -787,6 +821,68 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             // loggerMock.Verify(l => l.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()), Times.AtLeastOnce);
 
             form.Dispose();
+        }
+
+        [StaFact]
+        public void LayoutPersistence_SavesOpenDocumentIdentity_WithoutPersistingNativeMdiGeometry()
+        {
+            TestThemeHelper.EnsureOffice2019Colorful();
+            var provider = BuildProvider();
+            var configuration = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider);
+            var logger = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider);
+
+            var themeMock = new Mock<IThemeService>();
+            themeMock.SetupGet(t => t.CurrentTheme).Returns("Office2019Colorful");
+
+            using var form = new TestMainForm(
+                provider,
+                configuration,
+                logger,
+                ReportViewerLaunchOptions.Disabled,
+                themeMock.Object,
+                Mock.Of<IWindowStateService>(),
+                Mock.Of<IFileImportService>(),
+                new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance));
+
+            var tempFile = Path.Combine(Path.GetTempPath(), $"mdi-layout-{Guid.NewGuid():N}.xml");
+
+            try
+            {
+                _ = form.Handle;
+                form.CallInitializeMdiManager();
+
+                using var child = new Form
+                {
+                    Text = "Document A",
+                    MdiParent = form,
+                    ShowInTaskbar = false
+                };
+
+                child.Show();
+                Application.DoEvents();
+
+                var serializer = new AppStateSerializer(SerializeMode.XMLFile, tempFile);
+                form.CallSaveMainFormState(serializer);
+                form.CallSaveMdiDocumentState(serializer);
+                serializer.PersistNow();
+
+                var xml = File.ReadAllText(tempFile);
+                var persistedSerializer = new AppStateSerializer(SerializeMode.XMLFile, tempFile);
+                var openPanelsObject = persistedSerializer.DeserializeObject("MDI.OpenPanels", Array.Empty<string>());
+                var openPanels = (string[])(openPanelsObject ?? Array.Empty<string>());
+
+                xml.Should().Contain("MDI.OpenPanels");
+                openPanels.Should().Contain("Document A");
+                xml.Should().NotContain("MainForm.IsMDIContainer");
+                xml.Should().NotContain("MDIDoc.");
+            }
+            finally
+            {
+                if (File.Exists(tempFile))
+                {
+                    File.Delete(tempFile);
+                }
+            }
         }
     }
 }

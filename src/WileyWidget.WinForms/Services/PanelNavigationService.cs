@@ -711,7 +711,8 @@ namespace WileyWidget.WinForms.Services
             {
                 if (!form.IsHandleCreated)
                 {
-                    // Defer layout until handle is created (Syncfusion v32.2.3 stability)
+                    // Defer layout until the handle is created so hosted Syncfusion surfaces
+                    // can complete their first layout pass safely.
                     form.Shown += (s, e) =>
                     {
                         if (!form.IsDisposed)
@@ -733,20 +734,13 @@ namespace WileyWidget.WinForms.Services
 
             control.Visible = true;
 
-            // BlazorWebView uses a custom BlazorWebViewControlCollection that throws
-            // NotSupportedException from SetChildIndex (called internally by BringToFront).
-            // Detect this by checking the type name to avoid a hard assembly reference.
-            var parentIsBlazorWebView = control.Parent?.GetType().Name == "BlazorWebView";
-            if (!parentIsBlazorWebView)
+            try
             {
-                try
-                {
-                    control.BringToFront();
-                }
-                catch (NotSupportedException)
-                {
-                    // Swallow: parent control collection does not support reordering (e.g. BlazorWebView).
-                }
+                control.BringToFront();
+            }
+            catch (NotSupportedException)
+            {
+                // Some custom host containers do not support child reordering.
             }
 
             control.PerformLayout();
@@ -771,13 +765,6 @@ namespace WileyWidget.WinForms.Services
 
             foreach (Control child in control.Controls)
             {
-                // Do not recurse into BlazorWebView — its internal Controls collection
-                // is managed exclusively by the Blazor host and throws on most mutations.
-                if (child.GetType().Name == "BlazorWebView")
-                {
-                    continue;
-                }
-
                 EnsureControlVisibleAndLaidOut(child, includeChildren: false);
             }
         }

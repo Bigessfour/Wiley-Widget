@@ -326,7 +326,7 @@ namespace WileyWidget.WinForms.Controls.Base
             ViewModel = ServiceProviderServiceExtensions.GetService<TViewModel>(_scope.ServiceProvider);
 
             // Notify derived panels that the ViewModel is available
-            OnViewModelResolved(ViewModel);
+            OnViewModelResolved((object?)ViewModel);
             _logger?.LogDebug("[{Panel}] Initialized — ViewModel: {VmType}",
                 GetType().Name, ViewModel?.GetType().Name ?? $"{typeof(TViewModel).Name} (null)");
 
@@ -378,7 +378,7 @@ namespace WileyWidget.WinForms.Controls.Base
             }
 
             _directInitializationCompleted = true;
-            OnViewModelResolved(ViewModel);
+            OnViewModelResolved((object?)ViewModel);
             _logger.LogDebug("[{Panel}] Initialized (direct-injection) — ViewModel: {VmType}",
                 GetType().Name, ViewModel?.GetType().Name ?? typeof(TViewModel).Name);
         }
@@ -467,7 +467,8 @@ namespace WileyWidget.WinForms.Controls.Base
             var mainForm = hostForm as MainForm
                         ?? hostForm?.Owner as MainForm;
 
-            // Walk up the parent control chain — handles DockingManager + nested hosting in 32.2.3
+            // Walk up the parent control chain so DockingManager and nested hosting wrappers
+            // still resolve the owning MainForm correctly.
             if (mainForm == null)
             {
                 Control? p = Parent;

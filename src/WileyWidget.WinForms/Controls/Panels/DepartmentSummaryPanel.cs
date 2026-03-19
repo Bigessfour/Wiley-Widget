@@ -335,11 +335,30 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Initial UI update
             UpdateUI();
 
-            // Defer sizing validation until layout is complete
-            this.BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+            // Defer sizing validation until layout is complete, but do not marshal before a handle exists.
+            if (IsHandleCreated)
+            {
+                BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
+            }
+            else
+            {
+                HandleCreated += HandleCreatedAdjustConstrainedSize;
+            }
 
             // Load data asynchronously
             _ = LoadDataSafeAsync();
+        }
+
+        private void HandleCreatedAdjustConstrainedSize(object? sender, EventArgs e)
+        {
+            HandleCreated -= HandleCreatedAdjustConstrainedSize;
+
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            BeginInvoke(new System.Action(() => SafeControlSizeValidator.TryAdjustConstrainedSize(this, out _, out _)));
         }
 
         private async Task LoadDataSafeAsync(CancellationToken cancellationToken = default)

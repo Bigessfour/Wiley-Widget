@@ -21,7 +21,7 @@ namespace WileyWidget.WinForms.Forms;
 ///
 /// SYNCFUSION API REFERENCE: RibbonControlAdv (Syncfusion.Windows.Forms.Tools)
 /// Documentation: https://help.syncfusion.com/windowsforms/ribbon/overview
-/// Local Samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Samples\Ribbon
+/// Local Samples: See the installed Essential Studio Windows samples for the current Syncfusion version.
 ///
 /// RIBBONCONTROLADV KEY PROPERTIES (configured in this file):
 /// ================================================================
@@ -247,7 +247,7 @@ public partial class MainForm
     /// Falls back to Segoe MDL2 Assets glyph if resource not found.
     ///
     /// ICON SOURCES (in priority order):
-    /// 1. Syncfusion Essential Studio icons: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19\Icons\
+    /// 1. Syncfusion Essential Studio icons from the current installed Windows package
     /// 2. Embedded project resources: WileyWidget.WinForms.Resources.Icons.*
     /// 3. Segoe MDL2 Assets font glyphs (fallback)
     /// </summary>
@@ -985,7 +985,7 @@ public partial class MainForm
             logger?.LogDebug(ex, "Failed to set visual style for strip {Name}", name);
         }
 
-        // Ensure an explicit AutomationId is available for UI automation (Syncfusion 32.2.3 stability fix)
+        // Ensure an explicit AutomationId is available for UI automation.
         try
         {
             SetAutomationId(strip, name, logger);
@@ -2606,19 +2606,23 @@ public partial class MainForm
 
                 if (form._panelNavigator == null)
                 {
+                    form.SetUiAutomationNavigationStatus($"error:{navigationTarget}");
                     logger?.LogError("[SAFENAV] Navigation blocked - PanelNavigator is null for target '{Target}'", navigationTarget);
                     return;
                 }
 
                 logger?.LogDebug("[SAFENAV] Executing navigation action for '{Target}'", navigationTarget);
+                form.SetUiAutomationNavigationStatus($"requested:{navigationTarget}");
 
                 // Execute the navigation command (opens/activates tabbed MDI panel via PanelNavigationService)
                 navigateAction();
 
+                form.SetUiAutomationNavigationStatus($"navigated:{navigationTarget}");
                 logger?.LogInformation("[SAFENAV] Navigation completed for '{Target}'", navigationTarget);
             }
             catch (Exception ex)
             {
+                form.SetUiAutomationNavigationStatus($"error:{navigationTarget}");
                 logger?.LogError(ex, "[SAFENAV] Navigation failed for '{Target}'", navigationTarget);
             }
         }

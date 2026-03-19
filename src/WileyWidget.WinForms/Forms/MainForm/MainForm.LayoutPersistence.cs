@@ -130,7 +130,6 @@ public partial class MainForm
         serializer.SerializeObject("MainForm.Size", this.Size);
         serializer.SerializeObject("MainForm.Location", this.Location);
         serializer.SerializeObject("MainForm.WindowState", this.WindowState);
-        serializer.SerializeObject("MainForm.IsMDIContainer", this.IsMdiContainer);
 
         _logger?.LogDebug("Saved main form state: Size={Size}, Location={Location}, WindowState={State}",
             this.Size, this.Location, this.WindowState);
@@ -208,34 +207,26 @@ public partial class MainForm
     }
 
     /// <summary>
-    /// Saves open MDI documents and their positions.
+    /// Saves the open tabbed-MDI document identities.
     /// </summary>
     private void SaveMDIDocumentState(AppStateSerializer serializer)
     {
-        if (!this.IsMdiContainer || this.MdiChildren == null) return;
+        if (!this.IsMdiContainer)
+        {
+            return;
+        }
 
         try
         {
-            var openPanels = new List<string>();
+            var openPanels = GetDocumentChildren()
+                .Select(child => child.Text)
+                .Where(panelName => !string.IsNullOrWhiteSpace(panelName))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
 
-            var mdiChildren = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
+            serializer.SerializeObject("MDI.OpenPanels", openPanels);
 
-            foreach (var child in mdiChildren)
-            {
-                if (child.IsDisposed) continue;
-
-                var panelName = child.Text;
-                openPanels.Add(panelName);
-
-                // Save individual document state
-                serializer.SerializeObject($"MDIDoc.{panelName}.Location", child.Location);
-                serializer.SerializeObject($"MDIDoc.{panelName}.Size", child.Size);
-                serializer.SerializeObject($"MDIDoc.{panelName}.WindowState", child.WindowState);
-            }
-
-            serializer.SerializeObject("MDI.OpenPanels", openPanels.ToArray());
-
-            _logger?.LogDebug("Saved {Count} MDI documents", openPanels.Count);
+            _logger?.LogDebug("Saved {Count} tabbed MDI document identities", openPanels.Length);
         }
         catch (Exception ex)
         {
@@ -265,31 +256,10 @@ public partial class MainForm
 
                     if (panel != null)
                     {
-                        // Reopen panel (will be handled by navigation service)
+                        // Reopen panel via the normal navigation path. TabbedMDIManager owns
+                        // child sizing and tab group state, so we intentionally do not restore
+                        // per-child Location/Size/WindowState here.
                         ShowPanel(panel.PanelType, panel.DisplayName, panel.DefaultDock);
-
-                        // Restore document state
-                        var locationObj = serializer.DeserializeObject($"MDIDoc.{panelName}.Location", Point.Empty);
-                        var sizeObj = serializer.DeserializeObject($"MDIDoc.{panelName}.Size", Size.Empty);
-                        var windowStateObj = serializer.DeserializeObject($"MDIDoc.{panelName}.WindowState", FormWindowState.Normal);
-
-                        var location = (Point)(locationObj ?? Point.Empty);
-                        var size = (Size)(sizeObj ?? Size.Empty);
-                        var windowState = (FormWindowState)(windowStateObj ?? FormWindowState.Normal);
-
-                        // Apply restored state to newly opened document
-                        var mdiChildren = _tabbedMdi?.MdiChildren ?? this.MdiChildren;
-                        var mdiChild = mdiChildren.LastOrDefault();
-                        if (mdiChild != null)
-                        {
-                            if (windowState != FormWindowState.Maximized)
-                            {
-                                mdiChild.WindowState = FormWindowState.Normal;
-                                mdiChild.Location = location;
-                                mdiChild.Size = size;
-                            }
-                            mdiChild.WindowState = windowState;
-                        }
                     }
                 }
                 catch (Exception ex)

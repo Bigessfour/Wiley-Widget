@@ -25,10 +25,10 @@ using ThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
+using WileyWidget.WinForms.Helpers;
 using Syncfusion.WinForms.DataGrid;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Extensions;
-using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 
 namespace WileyWidget.WinForms.Controls.Panels
@@ -877,12 +877,12 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void OnRefreshButtonClick(object? sender, EventArgs e)
         {
-            BeginInvoke(new Func<Task>(async () => await RefreshDataAsync()));
+            this.QueueAsyncOnUIThread(() => RefreshDataAsync(), Logger, nameof(OnRefreshButtonClick));
         }
 
         private void OnExportCsvClick(object? sender, EventArgs e)
         {
-            BeginInvoke(new Func<Task>(async () => await ExportToCsvAsync()));
+            this.QueueAsyncOnUIThread(() => ExportToCsvAsync(), Logger, nameof(OnExportCsvClick));
         }
 
         private void OnThemeChanged(object? sender, string theme)

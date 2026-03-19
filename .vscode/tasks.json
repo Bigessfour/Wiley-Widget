@@ -751,7 +751,7 @@
 		},
 		{
 			"label": "🔌 Setup MSSQL MCP (SQL Auth)",
-			"type": "shell",
+			"type": "process",
 			"command": "powershell",
 			"args": [
 				"-NoProfile",
@@ -762,10 +762,11 @@
 				"-AuthType",
 				"sql",
 				"-UserId",
-				"sa"
+				"${input:mssqlUserId}",
+				"-Password",
+				"${input:mssqlPassword}"
 			],
 			"presentation": {
-				"echo": true,
 				"reveal": "always",
 				"focus": true,
 				"panel": "new"
@@ -1040,7 +1041,7 @@
 				"build: winforms tests incremental"
 			],
 			"dependsOrder": "sequence",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1070,7 +1071,7 @@
 				"build: winforms tests incremental"
 			],
 			"dependsOrder": "sequence",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1100,7 +1101,7 @@
 				"build: winforms tests incremental"
 			],
 			"dependsOrder": "sequence",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1681,7 +1682,7 @@
 		},
 		{
 			"label": "temp: sql repository proof",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1704,7 +1705,7 @@
 		},
 		{
 			"label": "test: ribbon mainform focused",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1720,7 +1721,7 @@
 		},
 		{
 			"label": "test: ribbon mainform focused quoted",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1736,7 +1737,7 @@
 		},
 		{
 			"label": "test: ribbon mainform unit focused",
-			"type": "shell",
+			"type": "process",
 			"command": "dotnet",
 			"args": [
 				"test",
@@ -1749,6 +1750,104 @@
 			],
 			"isBackground": false,
 			"group": "test"
+		},
+		{
+			"label": "temp: panel registry smoke with hang guard",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~PanelRegistrySmokeTests",
+				"--no-restore",
+				"--blame-hang",
+				"--blame-hang-timeout",
+				"2m",
+				"--logger",
+				"console;verbosity=minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: panel registry smoke with hang guard rerun",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~PanelRegistrySmokeTests",
+				"--no-restore",
+				"--blame-hang",
+				"--blame-hang-timeout",
+				"2m",
+				"--logger",
+				"console;verbosity=minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: panel registry smoke no-build",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter \"FullyQualifiedName~PanelRegistrySmokeTests\" --no-build --no-restore --blame-hang --blame-hang-timeout 2m --logger \"console;verbosity=minimal\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks analytics shell smoke",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter \"FullyQualifiedName~PanelRegistrySmokeTests.ShellPanel_CanBeActivatedFromMainWindow&DisplayName~QuickBooks|FullyQualifiedName~PanelRegistrySmokeTests.ShellPanel_CanBeActivatedFromMainWindow&DisplayName~Analytics Hub\" --no-build --no-restore --blame-hang --blame-hang-timeout 2m --logger \"console;verbosity=minimal\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks analytics flaui",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter \"FullyQualifiedName~QuickBooksPanelFlaUiTests|FullyQualifiedName~AnalyticsHubPanelFlaUiTests\" --no-build --no-restore --blame-hang --blame-hang-timeout 2m --logger \"console;verbosity=minimal\"",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		},
+		{
+			"label": "temp: quickbooks analytics flaui quoted",
+			"type": "shell",
+			"command": "dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter 'FullyQualifiedName~QuickBooksPanelFlaUiTests|FullyQualifiedName~AnalyticsHubPanelFlaUiTests' --no-build --no-restore --blame-hang --blame-hang-timeout 2m --logger 'console;verbosity=minimal'",
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
+		}
+	],
+	"inputs": [
+		{
+			"id": "mssqlUserId",
+			"type": "promptString",
+			"description": "SQL Server user name",
+			"default": "sa"
+		},
+		{
+			"id": "mssqlPassword",
+			"type": "promptString",
+			"description": "SQL Server password",
+			"password": true
 		}
 	]
 }

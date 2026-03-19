@@ -119,10 +119,10 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
                 case "QuickBooks":
                     Assert.True(
-                        FlaUiHelpers.FindElementByNameOrId(window, "Connect", "btnQuickBooksConnect", TimeSpan.FromSeconds(10)) != null,
+                        FlaUiHelpers.FindElementByName(window, "Connect to QuickBooks", TimeSpan.FromSeconds(10)) != null,
                         "QuickBooks panel should expose the connect action.");
                     Assert.True(
-                        window.FindFirstDescendant(cf => cf.ByAutomationId("QuickBooksHistoryGrid")) != null,
+                        FlaUiHelpers.FindElementByName(window, "Sync History Grid", TimeSpan.FromSeconds(10)) != null,
                         "QuickBooks panel should expose the history grid.");
                     break;
 
@@ -137,6 +137,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             {
                 "Budget Management & Analysis" => PanelActivationHelpers.EnsureBudgetPanelVisibleOrHostGated(window, timeout),
                 "Municipal Accounts" => PanelActivationHelpers.EnsureAccountsPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
+                "Payments" => PanelActivationHelpers.EnsurePaymentsPanelVisibleOrHostGated(window, timeout),
                 "QuickBooks" => PanelActivationHelpers.EnsureQuickBooksPanelVisibleOrHostGated(window, timeout),
                 _ => PanelActivationHelpers.EnsurePanelVisibleOrHostGated(window, displayName, timeout)
             };

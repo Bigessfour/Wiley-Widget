@@ -4,19 +4,34 @@ using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using System.Windows.Forms;
+using WileyWidget.Services;
 
 namespace WileyWidget.WinForms.Tests.Infrastructure;
 
 internal static class SyncfusionTestBootstrapper
 {
+    private static readonly string[] SyncfusionLicenseKeyAliases =
+    [
+        "WILEY_SYNC_LIC_KEY",
+        "SYNCFUSION_LICENSE_KEY",
+        "Syncfusion:LicenseKey",
+        "Syncfusion__LicenseKey",
+        "Syncfusion-LicenseKey",
+        "SyncfusionLicenseKey",
+        "syncfusion-license-key"
+    ];
+
     [ModuleInitializer]
     internal static void Initialize()
     {
         Environment.SetEnvironmentVariable("WILEYWIDGET_TESTS", "true");
+        Environment.SetEnvironmentVariable("DOTNET_TEST_MODE", "true");
+        Environment.SetEnvironmentVariable("SYNCFUSION_SILENT_LICENSE_VALIDATION", "true");
         RegisterKnownWinFormsExceptionFilters();
 
         try
@@ -33,8 +48,7 @@ internal static class SyncfusionTestBootstrapper
 
             if (!string.IsNullOrWhiteSpace(licenseKey))
             {
-                Environment.SetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", licenseKey, EnvironmentVariableTarget.Process);
-                Environment.SetEnvironmentVariable("Syncfusion__LicenseKey", licenseKey, EnvironmentVariableTarget.Process);
+                PromoteLicenseToProcessEnvironment(licenseKey);
                 SyncfusionLicenseProvider.RegisterLicense(licenseKey);
             }
             else
@@ -67,19 +81,9 @@ internal static class SyncfusionTestBootstrapper
     {
         try
         {
-            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException, false);
-            Application.ThreadException += static (_, e) =>
-            {
-                LogUnhandledException("Application.ThreadException", e.Exception);
-
-                if (e.Exception is NullReferenceException && IsKnownSyncfusionPaintException(e.Exception))
-                {
-                    Console.WriteLine($"[TEST-BOOTSTRAP] Ignored known Syncfusion paint exception: {e.Exception.Message}");
-                    return;
-                }
-
-                ExceptionDispatchInfo.Capture(e.Exception).Throw();
-            };
+            // Tests must fail fast without blocking modal UI. CatchException mode can surface
+            // WinForms JIT dialogs that trap the testhost behind uncloseable popups.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException, false);
 
             AppDomain.CurrentDomain.UnhandledException += static (_, e) =>
             {
@@ -103,25 +107,15 @@ internal static class SyncfusionTestBootstrapper
 
     private static string? ResolveSyncfusionLicenseKey()
     {
-        string?[] envCandidates =
+        foreach (var alias in SyncfusionLicenseKeyAliases)
         {
-            Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.Process),
-            Environment.GetEnvironmentVariable("Syncfusion__LicenseKey", EnvironmentVariableTarget.Process),
-            Environment.GetEnvironmentVariable("Syncfusion:LicenseKey", EnvironmentVariableTarget.Process),
-            Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.User),
-            Environment.GetEnvironmentVariable("Syncfusion__LicenseKey", EnvironmentVariableTarget.User),
-            Environment.GetEnvironmentVariable("Syncfusion:LicenseKey", EnvironmentVariableTarget.User),
-            Environment.GetEnvironmentVariable("SYNCFUSION_LICENSE_KEY", EnvironmentVariableTarget.Machine),
-            Environment.GetEnvironmentVariable("Syncfusion__LicenseKey", EnvironmentVariableTarget.Machine),
-            Environment.GetEnvironmentVariable("Syncfusion:LicenseKey", EnvironmentVariableTarget.Machine)
-        };
-
-        foreach (var candidate in envCandidates)
-        {
-            var normalized = NormalizeSecret(candidate);
-            if (!string.IsNullOrWhiteSpace(normalized))
+            foreach (var scope in new[] { EnvironmentVariableTarget.Process, EnvironmentVariableTarget.User, EnvironmentVariableTarget.Machine })
             {
-                return normalized;
+                var normalized = NormalizeSecret(Environment.GetEnvironmentVariable(alias, scope));
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    return normalized;
+                }
             }
         }
 
@@ -131,13 +125,13 @@ internal static class SyncfusionTestBootstrapper
                 .AddUserSecrets<WileyWidget.WinForms.Program>(optional: true)
                 .Build();
 
-            var fromUserSecrets = NormalizeSecret(configuration["Syncfusion:LicenseKey"])
-                ?? NormalizeSecret(configuration["SYNCFUSION_LICENSE_KEY"])
-                ?? NormalizeSecret(configuration["Syncfusion__LicenseKey"]);
-
-            if (!string.IsNullOrWhiteSpace(fromUserSecrets))
+            foreach (var alias in SyncfusionLicenseKeyAliases)
             {
-                return fromUserSecrets;
+                var normalized = NormalizeSecret(configuration[alias]);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    return normalized;
+                }
             }
         }
         catch
@@ -145,7 +139,39 @@ internal static class SyncfusionTestBootstrapper
             // Best effort for environments where user-secrets is unavailable.
         }
 
+        try
+        {
+            using var vault = new EncryptedLocalSecretVaultService(NullLogger<EncryptedLocalSecretVaultService>.Instance);
+            foreach (var alias in SyncfusionLicenseKeyAliases)
+            {
+                var normalized = NormalizeSecret(vault.GetSecret(alias));
+                if (!string.IsNullOrWhiteSpace(normalized))
+                {
+                    return normalized;
+                }
+            }
+        }
+        catch
+        {
+            // Best effort for environments where the encrypted vault is unavailable.
+        }
+
         return null;
+    }
+
+    private static void PromoteLicenseToProcessEnvironment(string licenseKey)
+    {
+        foreach (var alias in SyncfusionLicenseKeyAliases)
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable(alias, licenseKey, EnvironmentVariableTarget.Process);
+            }
+            catch
+            {
+                // Best effort only. Some aliases may not be valid environment variable names on all hosts.
+            }
+        }
     }
 
     private static string? NormalizeSecret(string? rawValue)

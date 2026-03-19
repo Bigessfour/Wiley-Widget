@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace WileyWidget.WinForms.Services
 {
     /// <summary>
-    /// Lightweight no-op stub for DockingManager in TEST MODE (Syncfusion 32.2.3)
+    /// Lightweight no-op stub for DockingManager in TEST MODE.
     /// Eliminates the [CRITICAL] null warnings you saw in flaui-final-run.txt
     /// </summary>
     public class TestDockingManagerStub : DockingManager

@@ -165,6 +165,7 @@ namespace WileyWidget.WinForms.Forms
 
                 _rightDockTabs?.BringToFront();
                 _rightDockTabs?.Focus();
+                QueueRightDockJarvisInitialization();
 
                 _logger?.LogDebug(
                     "[NAV] JARVIS Chat shown — panel Visible={Visible}, Bounds={Bounds}, Parent={Parent}",
@@ -177,6 +178,34 @@ namespace WileyWidget.WinForms.Forms
             {
                 _logger?.LogWarning(ex, "[NAV] Failed to show JARVIS in right dock panel");
                 return false;
+            }
+        }
+
+        private void QueueRightDockJarvisInitialization()
+        {
+            if (_rightDockJarvisPanel is not IAsyncInitializable asyncInitializable || _rightDockJarvisPanel.IsDisposed)
+            {
+                return;
+            }
+
+            if (_rightDockJarvisInitializationTask != null && !_rightDockJarvisInitializationTask.IsCompleted)
+            {
+                return;
+            }
+
+            _rightDockJarvisInitializationTask = InitializeRightDockJarvisPanelAsync(asyncInitializable);
+        }
+
+        private async Task InitializeRightDockJarvisPanelAsync(IAsyncInitializable asyncInitializable)
+        {
+            try
+            {
+                await asyncInitializable.InitializeAsync(CancellationToken.None).ConfigureAwait(true);
+                _logger?.LogDebug("[NAV] JARVIS right dock runtime initialized");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "[NAV] Failed to initialize JARVIS right dock runtime");
             }
         }
 
@@ -222,6 +251,7 @@ namespace WileyWidget.WinForms.Forms
             _rightDockPanel = rightDockPanel;
             _rightDockTabs = rightDockTabs;
             _rightDockJarvisPanel = jarvisChatPanel;
+            _rightDockJarvisInitializationTask = null;
 
             // Remove the old temporary panel that was created by InitializeLayoutComponents.
             // If we don't do this, both the stub and the real panel sit in host.Controls with
@@ -232,8 +262,9 @@ namespace WileyWidget.WinForms.Forms
                 _logger?.LogDebug("[NAV] Removed previous right dock panel '{PanelName}' before adding real panel", oldPanel.Name);
             }
 
-            // Add the real panel to the content host (or form as fallback) with DockStyle.Right
-            var host = (_contentHostPanel as Control) ?? (Control)this;
+            // Add the real panel to the form so the native WinForms MDI client can continue to own
+            // the remaining DockStyle.Fill area.
+            var host = (Control)this;
             if (_rightDockPanel.Parent != host)
             {
                 _rightDockPanel.Parent?.Controls.Remove(_rightDockPanel);
@@ -265,8 +296,7 @@ namespace WileyWidget.WinForms.Forms
                 _rightDockPanel.Parent?.Name ?? "<no parent>",
                 _rightDockTabs?.TabPages.Count ?? 0);
 
-            // BlazorWebView init is now lazy: JARVISChatUserControl.OnVisibleChanged fires
-            // the first time the JARVIS tab is selected, saving ~400 ms at startup.
+            // JARVIS initializes its native Syncfusion assistant panel on first use.
 
             return true;
         }

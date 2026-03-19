@@ -38,6 +38,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
     private readonly ISecretVaultService? _secretVault;
     private readonly IQuickBooksApiClient _apiClient;
     private readonly QuickBooksAuthService _authService;
+    private readonly IQuickBooksDesktopImportService _desktopImportService;
 
     // Values loaded lazily from IOptions, user secrets, or environment
     private string? _clientId;
@@ -72,7 +73,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         .MinimumLevel.Fatal()
         .CreateLogger();
 
-    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IQuickBooksDataService? dataService = null)
+    public QuickBooksService(ISettingsService settings, ISecretVaultService keyVaultService, ILogger<QuickBooksService> logger, IQuickBooksApiClient apiClient, IHttpClientFactory httpClientFactory, IServiceProvider serviceProvider, IQuickBooksDesktopImportService desktopImportService, IQuickBooksDataService? dataService = null)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -85,6 +86,7 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
         // Get named QuickBooksClient with resilience handler (retry 5x, circuit breaker, 10s timeout)
         // Falls back to generic HttpClient factory if named client not available
         _httpClient = httpClientFactory.CreateClient("QuickBooksClient") ?? httpClientFactory.CreateClient();
+        _desktopImportService = desktopImportService ?? throw new ArgumentNullException(nameof(desktopImportService));
 
         // Initialize rate limiter: 10 requests per second to avoid QuickBooks API throttling
         _rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -2327,6 +2329,11 @@ public sealed class QuickBooksService : IQuickBooksService, IDisposable
                 ValidationErrors = validationErrors.Any() ? validationErrors : null
             };
         }
+    }
+
+    public async System.Threading.Tasks.Task<ImportResult> ImportDesktopFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        return await _desktopImportService.ImportDesktopFileAsync(filePath, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

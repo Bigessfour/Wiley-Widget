@@ -7,7 +7,7 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 **CRITICAL: These rules must be consulted and applied for EVERY prompt and code generation request in this repository.**
 
-**Last Updated:** 2026-01-13 11:20:00
+**Last Updated:** 2026-03-18 00:00:00
 
 ---
 
@@ -15,62 +15,27 @@ description: Consolidated Wiley Widget workspace rules for GitHub Copilot
 
 **Source:** `.vscode\approved-workflow.md`
 
-# Approved Workflow (Syncfusion Windows Forms)
+# Approved Workflow
 
-**Always read this file first before making changes. Follow MCP-only file operations.**
+Always read `.vscode/approved-workflow.md` first before making changes.
 
-## Phases
+The workflow is built around one rule: do not break working methods while fixing or polishing adjacent behavior.
 
-1. **Intake**: Confirm rules in `.vscode/*.md` are current. Review request and existing state.
-2. **Recon**: Use MCP filesystem tools only (`mcp_filesystem_list_directory`, `mcp_filesystem_read_text_file`, `mcp_filesystem_search_files`). Avoid terminal file commands and `read_file`/`grep_search`.
-3. **Plan**: Update the todo list; define minimal, testable changes. Note impacts to Syncfusion theming (SkinManager is single source of truth).
-4. **Implement**: Prefer `apply_patch` for single-file edits; keep ASCII. Follow C# best practices in `.vscode/c-best-practices.md`. Keep comments sparse and purposeful. Do not alter secrets or config unless requested. For scripts, honor scripting decision tree and Python-first guidance. When adjusting any Syncfusion control, strictly follow the Syncfusion API Rule in Tooling Rules.
-5. **Validate**: Run the smallest relevant task via VS Code tasks (e.g., `build`, `WileyWidget: Build`, `test: viewmodels`). Use `run_task`/`runTests` (no ad-hoc terminal builds/tests). Check Problems panel.
-6. **Report**: Summarize changes and tests run; flag risks/untested areas; propose next steps if needed.
+## Workflow Summary
 
-## Tooling Rules
+1. **Intake**: confirm the requested outcome and identify whether the change is a fix, polish, refactor, or documentation correction.
+2. **Recon**: inspect the affected code, callers, tests, and shell surfaces that could regress.
+3. **Plan**: define the smallest safe change and decide what must still work afterwards.
+4. **Implement**: keep the patch tight and avoid unrelated cleanup during stabilization.
+5. **Prove**: add or update meaningful proof for the changed behavior and the existing behavior at risk.
+6. **Validate**: run the smallest relevant build and validation tasks.
+7. **Report**: summarize the change, the proof, and any remaining gaps.
 
-- **Filesystem**: it is preferred to Use the appropriate `mcp_filesystem_*` method for the task (for example, `list_directory`, `list_directory_with_sizes`, `read_text_file`, `read_multiple_files`, `edit_file`, `write_file`). Allowed, use at your discretion for small changes to files. Mcp is preferred as it is more efficient, but, you as the code agent have flexibility to use whatever tool matches the job.
-- **Search**: `mcp_filesystem_search_files` for file/code discovery.
-- **Edits**: Default to `mcp_filesystem_edit_file` for precise changes and `mcp_filesystem_write_file` for new content. Reserve `apply_patch` for coordinated multi-file diffs.
-- **Build/Test**: Use provided tasks; prefer `build`/`WileyWidget: Build` for Windows Forms. Keep analyzer toggles as configured.
-- **Git**: Never reset or amend without explicit approval.
-- **Workspace Violation Rule (Hard Fail)**: The command/tool "read changed files in GitHub" (for example, `get_changed_files`) is FORBIDDEN in this workspace because it is a no-op and wastes cycles. Use `git status` / `git diff` (or GitKraken MCP status/diff tools) instead.
-- **Syncfusion API Rule**: Anytime adjusting a Syncfusion control, the Syncfusion WinForms Assistant MCP must be used to fetch the proper Syncfusion API documentation for that control. All configurations and properties must be fully implemented per the API—no winging it or partial implementations. Reference the latest Syncfusion Windows Forms documentation (e.g., via <https://help.syncfusion.com/windowsforms/overview>) to ensure accuracy. Also validate Syncfusion method usage and control configuration against local Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19`.
-- **Syncfusion Control Creation Rule**: ALL Syncfusion controls must be created via `SyncfusionControlFactory` (located at `src/WileyWidget.WinForms/Factories/SyncfusionControlFactory.cs`). Direct instantiation (e.g., `new SfDataGrid()`) without using the factory is STRICTLY FORBIDDEN unless ALL mandatory properties from the control's checklist in `.vscode/rules/syncfusion-control-enforcement.md` are explicitly set. See `docs/SYNCFUSION_CONTROL_QUICK_REFERENCE.md` for usage examples.
+## Proof Rule
 
-### MCP Filesystem Command Quick Reference
+Meaningful tests are required. Tests added only for test count, tests that assert internal implementation noise, filtered zero-test runs, and stale historical reports do not count as release evidence.
 
-Use PowerShell 7.5.4 in terminals and scripts. Each example calls the MCP CLI directly so you can validate behavior locally before invoking the JSON-RPC helpers.
-
-```powershell
-PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem list-directory --params '{"path":"."}'
-PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem list-directory-with-sizes --params '{"path":"src"}'
-PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem read-text-file --params '{"path":".vscode/copilot-instructions.md","head":120}'
-PS 7.5.4> npx --yes @modelcontextprotocol/cli call filesystem edit-file --params '{"path":"src/Example.cs","edits":[{"oldText":"foo","newText":"bar"}]}'
-```
-
-> Tip: Use single quotes around the JSON payload to avoid escaping double quotes in PowerShell.
-
-## Syncfusion Windows Forms Guardrails
-
-- SkinManager is authoritative. Always load the selected theme assembly with `SkinManager.LoadAssembly(themeAssembly)` before calling `SfSkinManager.SetVisualStyle(form, themeName)`.
-- Set `ThemeName` on every Syncfusion control or ribbon to match the active theme, including controls created after form load.
-- Do not introduce competing theme managers or per-control ad-hoc themes. One theme per form, inherited by children.
-- When adding UI: honor the current theme instead of hard-coded colors or palettes.
-- Keep docking/ribbon/status bar theme settings consistent with the active `ThemeName`; avoid mixing `VisualStyle` enums and string theme names.
-
-## Testing Expectations
-
-- Default check: `run_task` → `build` (or `WileyWidget: Build`).
-- If UI logic is touched without backend changes, build is usually sufficient; add targeted tests if available. Run UI-specific tests via xUnit or MSTest if available; for integrations like QuickBooks/xAI, validate via mocked services (e.g., in `WileyWidget.Tests`). Note any tests not run.
-
-## Safety/Housekeeping
-
-- Do not touch `secrets/`, `config/` production files, or credentials.
-- Respect .editorconfig and lint settings; remove unused usings/vars.
-- If unexpected workspace changes appear, pause and ask before proceeding.
-- For external integrations (e.g., QuickBooks API via IppDotNetSdkForQuickBooksApiV3, xAI Grok API), mock dependencies in tests and avoid hard-coding API keys (use appsettings.json with user-secrets).
+Use the source document for the full wording and release-minded guidance.
 
 ---
 
@@ -339,7 +304,7 @@ See `src/WileyWidget.WinForms/Themes/ThemeColors.cs` for correct pattern:
 
 ## Python Standards
 
-This repository prefers consistent, lint-friendly Python code. Add this block to guide Copilot suggestions and help reviewers.
+This repository prefers consistent, lint-friendly Python code and treats Python as the default choice for general automation, analysis, validation helpers, and text/data processing unless Windows-specific shell behavior is required.
 
 - Use PEP 8 style: 4 spaces indent, no tabs.
 - Prefer snake_case for variables/functions.
@@ -372,7 +337,7 @@ These guidelines train Copilot to produce analyzer-friendly code and reduce nois
 
 ## PowerShell Standards
 
-This repository prefers modern, cross-platform, PSScriptAnalyzer-friendly PowerShell scripts.
+This repository reserves PowerShell for cases where Windows-native shell behavior, existing `.ps1` scripts, VS Code task integration, process control, or machine/user/process environment management are specifically required.
 
 - Use PowerShell 7+ idioms and avoid legacy cmdlets (e.g., prefer Get-CimInstance over Get-WmiObject).
 - Functions follow Verb-Noun naming and include param blocks with types and validation attributes.
@@ -793,7 +758,7 @@ Before executing ANY code generation or file operation:
 5. [ ] Respect SfSkinManager theme authority (no manual colors except semantic status)
 6. [ ] Act autonomously (read files, search, implement - don't ask permission)
 7. [ ] For C# async: No `.Result`/`.Wait()`, use `IAsyncInitializable` for heavy init
-8. [ ] Apply language-specific standards (C#/Python/PowerShell)
+8. [ ] Apply language-specific standards (C#/Python/PowerShell) and prefer Python for general automation, analysis, validation, and text/data processing; use PowerShell only when Windows shell/build/task/environment behavior is specifically required
 9. [ ] Run validation (build/test tasks) before presenting results
 10. [ ] Check Problems panel for errors
 11. [ ] Enforce build/test serialization: run only one active build/test process at a time in this workspace
@@ -832,9 +797,10 @@ These guidelines provide guardrails without blocking progress when tools are una
 
 ## Terminal Guidance
 
-- PowerShell 7.5.4 is mandatory for interactive terminal and script execution.
-- Always use `pwsh` (PowerShell 7) rather than Windows PowerShell (`powershell`).
-- Script/tooling preflight should fail fast when `$PSVersionTable.PSVersion` is not `7.5.4`.
+- Prefer Python for general automation, analysis, validation helpers, and text/data manipulation when either Python or PowerShell would work.
+- PowerShell 7.5.4 is mandatory only when PowerShell is specifically required for the task.
+- When PowerShell is required, always use `pwsh` (PowerShell 7) rather than Windows PowerShell (`powershell`).
+- PowerShell-specific script/tooling preflight should fail fast when `$PSVersionTable.PSVersion` is not `7.5.4`.
 - If a tool executes commands or uses tasks, treat syntax guidance as best-effort.
 - Use VS Code tasks for build/test when available.
 

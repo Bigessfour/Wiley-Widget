@@ -134,7 +134,8 @@ public partial class MainForm
     /// </summary>
     private void ShowDocumentSwitcher()
     {
-        if (_switcherActive || this.MdiChildren == null || this.MdiChildren.Length == 0)
+        var children = GetDocumentChildren();
+        if (_switcherActive || children.Length == 0)
         {
             return;
         }
@@ -175,7 +176,7 @@ public partial class MainForm
                 ItemHeight = 30
             };
 
-            foreach (var child in this.MdiChildren)
+            foreach (var child in children)
             {
                 _documentSwitcherList.Items.Add(child.Text);
             }
@@ -219,8 +220,8 @@ public partial class MainForm
         {
             if (_documentSwitcherList != null && _documentSwitcherList.SelectedIndex >= 0)
             {
-                var children = this.MdiChildren;
-                if (children != null && _documentSwitcherList.SelectedIndex < children.Length)
+                var children = GetDocumentChildren();
+                if (_documentSwitcherList.SelectedIndex < children.Length)
                 {
                     children[_documentSwitcherList.SelectedIndex].Activate();
                 }
@@ -253,8 +254,8 @@ public partial class MainForm
     /// </summary>
     private void ActivateDocumentByIndex(int index)
     {
-        var children = this.MdiChildren;
-        if (children != null && index < children.Length)
+        var children = GetDocumentChildren();
+        if (index < children.Length)
         {
             children[index].Activate();
             _logger?.LogDebug("Activated document {Index}: {Name}", index + 1, children[index].Text);

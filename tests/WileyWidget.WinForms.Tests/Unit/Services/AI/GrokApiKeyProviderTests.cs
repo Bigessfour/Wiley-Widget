@@ -460,6 +460,51 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
         }
 
         /// <summary>
+        /// Test: Validation uses the default client factory path rather than the GrokClient resilience pipeline.
+        /// This keeps one-shot startup probes from generating retry storms in the error log.
+        /// </summary>
+        [Fact]
+        public async Task ValidateAsync_UsesDefaultClientFactoryPath()
+        {
+            // Arrange
+            var mockHandler = new Mock<HttpMessageHandler>();
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = System.Net.HttpStatusCode.ServiceUnavailable,
+                    Content = new StringContent("{\"error\": \"Service unavailable\"}")
+                });
+
+            var httpClient = new HttpClient(mockHandler.Object);
+            var httpClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
+            httpClientFactory
+                .Setup(x => x.CreateClient(string.Empty))
+                .Returns(httpClient);
+
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["XAI:ApiKey"] = "service-unavailable-test-key",
+                    ["XAI:Endpoint"] = "https://api.x.ai/v1/"
+                })
+                .Build();
+
+            var provider = CreateProvider(config, httpClientFactory.Object);
+
+            // Act
+            var (success, _) = await provider.ValidateAsync();
+
+            // Assert
+            Assert.False(success);
+            httpClientFactory.Verify(x => x.CreateClient(string.Empty), Times.Once);
+            httpClientFactory.VerifyNoOtherCalls();
+        }
+
+        /// <summary>
         /// Test: GetConfigurationSource returns the correct diagnostic string for environment variables.
         /// </summary>
         [Fact]

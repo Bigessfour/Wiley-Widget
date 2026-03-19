@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.AspNetCore.Components.WebView.WindowsForms;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +22,7 @@ using WileyWidget.WinForms.Tests.Integration.Mocks;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Automation;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.Abstractions;
 using WileyWidget.WinForms.Services.AI;
@@ -88,8 +88,12 @@ internal static class IntegrationTestServices
         // Harper: MVVM — simple IAIService mock; GrokAgentService/RateScenarioTools/BudgetForecastTools
         // are sealed and intentionally NOT registered — WarRoomViewModel receives null and degrades gracefully.
         services.AddScoped<IAIService>(_ => Mock.Of<IAIService>());
+        services.AddScoped<IChatBridgeService>(_ => Mock.Of<IChatBridgeService>());
+        services.AddScoped<IJARVISPersonalityService>(_ => Mock.Of<IJARVISPersonalityService>(service => service.GetSystemPrompt() == "system"));
         services.AddScoped<IQuickBooksService>(_ => Mock.Of<IQuickBooksService>());
         services.AddScoped<IGlobalSearchService>(_ => Mock.Of<IGlobalSearchService>());
+        services.AddSingleton<JarvisAutomationState>();
+        services.AddScoped<JarvisGrokBridgeHandler>();
 
         // Repository mocks required by ScopedPanelBase<TViewModel> panel activation paths in integration tests
         services.AddScoped<BusinessInterfaces.IBudgetRepository>(_ => Mock.Of<BusinessInterfaces.IBudgetRepository>());
@@ -124,11 +128,6 @@ internal static class IntegrationTestServices
         services.AddScoped<WarRoomViewModel>();
         services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatViewModel>();
         services.AddScoped<WileyWidget.WinForms.Factories.SyncfusionControlFactory>();
-        // NOTE: AddWindowsFormsBlazorWebView() is intentionally NOT called here.
-        // BlazorWebView controls are created by WinForms Designer via InitializeComponent(), not via DI.
-        // Calling it would load Microsoft.WinForms.Utilities.Shared v1.6.0.0 (a .NET 6-era assembly
-        // absent from the .NET 10 WindowsDesktop runtime) during BuildServiceProvider(ValidateOnBuild=true),
-        // caching a process-wide CLR assembly load failure that poisons every subsequent test.
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         SeedProgramServices(provider);

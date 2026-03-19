@@ -38,9 +38,9 @@ using WileyWidget.Models.Entities;
 using WileyWidget.Data;
 using WileyWidget.WinForms.Dialogs;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
-using WileyWidget.WinForms.Helpers;
 using WileyWidget.WinForms.ViewModels;
 
 namespace WileyWidget.WinForms.Controls.Panels;
@@ -185,6 +185,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Management & Analysis" };
+        _panelHeader.Name = "BudgetPanelHeader";
         _panelHeader.ShowHelpButton = true;
         _panelHeaderRefreshHandler = async (s, e) => await RefreshDataAsync();
         _panelHeader.RefreshClicked += _panelHeaderRefreshHandler;
@@ -198,6 +199,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Ensures summary+filters remain visible while preserving space for the grid
         _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(split =>
         {
+            split.Name = "BudgetMainSplitContainer";
             split.Dock = DockStyle.Fill;
             split.Orientation = Orientation.Horizontal;
             split.SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
@@ -543,6 +545,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         var topPanel = new Panel
         {
+            Name = "BudgetTopPanel",
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.None,
         };
@@ -551,8 +554,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         // Summary panel
         _summaryPanel = new Panel
         {
+            Name = "BudgetSummaryPanel",
             Dock = DockStyle.Top,
-            Height = 80,
+            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(96.0f),
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
         };
@@ -644,12 +648,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         summaryTable.Controls.Add(_entriesUnderBudgetLabel, 5, 0);
 
         _summaryPanel.Controls.Add(summaryTable);
-        topPanel.Controls.Add(_summaryPanel);
 
         // Filter panel - Fixed height (120px) to prevent unbounded growth when grid is shrunk
         // NO manual BackColor; let SfSkinManager handle it
         _filterPanel = new Panel
         {
+            Name = "BudgetFilterPanel",
             Dock = DockStyle.Top,
             Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f),
             Padding = new Padding(10),
@@ -864,8 +868,60 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         filterGroup.Controls.Add(filterTable);
         _filterPanel!.Controls.Add(filterGroup);
         topPanel.Controls.Add(_filterPanel);
+        topPanel.Controls.Add(_summaryPanel);
 
         _mainSplitContainer.Panel1.Controls.Add(topPanel);
+    }
+
+    private int GetRequiredTopPanelHeight()
+    {
+        var minimumTopPanel = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(220.0f);
+        var summaryHeight = _summaryPanel?.Height ?? (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(96.0f);
+        var filterHeight = _filterPanel?.Height ?? (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f);
+        var layoutBuffer = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(16.0f);
+
+        return Math.Max(minimumTopPanel, summaryHeight + filterHeight + layoutBuffer);
+    }
+
+    private void ConfigureMainSplitContainerLayout(bool queueFullLayoutPass)
+    {
+        if (_mainSplitContainer == null || _mainSplitContainer.IsDisposed || !_mainSplitContainer.IsHandleCreated)
+        {
+            return;
+        }
+
+        var minimumTopPanel = GetRequiredTopPanelHeight();
+        var minimumBottomPanel = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(260.0f);
+        var splitterWidth = _mainSplitContainer.SplitterWidth;
+        var availableHeight = _mainSplitContainer.Height;
+
+        if (availableHeight <= minimumTopPanel + minimumBottomPanel + splitterWidth)
+        {
+            minimumTopPanel = Math.Max(25, (availableHeight - splitterWidth) / 2);
+            minimumBottomPanel = Math.Max(25, availableHeight - splitterWidth - minimumTopPanel);
+        }
+
+        _mainSplitContainer.Panel1MinSize = minimumTopPanel;
+        _mainSplitContainer.Panel2MinSize = minimumBottomPanel;
+
+        var minDist = _mainSplitContainer.Panel1MinSize;
+        var maxDist = _mainSplitContainer.Height - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
+        var target = Math.Max(GetRequiredTopPanelHeight(), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f));
+        var safeDist = Math.Clamp(target, minDist, Math.Max(minDist, maxDist));
+
+        _mainSplitContainer.SplitterDistance = safeDist;
+        _mainSplitContainer.PerformLayout();
+        _mainSplitContainer.Panel1?.PerformLayout();
+        _mainSplitContainer.Panel2?.PerformLayout();
+
+        Logger.LogInformation(
+            "BudgetPanel SplitContainer configured: Panel1Min={P1}, Panel2Min={P2}, Distance={D}, Height={H}",
+            _mainSplitContainer.Panel1MinSize, _mainSplitContainer.Panel2MinSize, safeDist, _mainSplitContainer.Height);
+
+        if (queueFullLayoutPass)
+        {
+            BeginInvoke(new System.Action(ForceFullLayout));
+        }
     }
 
     private void InitializeBottomPanel()
@@ -1536,50 +1592,12 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     /// </summary>
     private void BudgetPanel_VisibleChanged(object? sender, EventArgs e)
     {
-        // Only configure once when becoming visible
         if (!Visible || _mainSplitContainer == null || _mainSplitContainer.IsDisposed || !_mainSplitContainer.IsHandleCreated)
             return;
 
-        // Unsubscribe to avoid repeated configuration
-        this.VisibleChanged -= BudgetPanel_VisibleChanged;
-
         try
         {
-            // Clamp mins first (Syncfusion default min 25) using HEIGHT because orientation is Horizontal.
-            var minimumTopPanel = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(220.0f);
-            var minimumBottomPanel = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(260.0f);
-            var splitterWidth = _mainSplitContainer.SplitterWidth;
-            var availableHeight = _mainSplitContainer.Height;
-
-            if (availableHeight <= minimumTopPanel + minimumBottomPanel + splitterWidth)
-            {
-                minimumTopPanel = Math.Max(25, (availableHeight - splitterWidth) / 2);
-                minimumBottomPanel = Math.Max(25, availableHeight - splitterWidth - minimumTopPanel);
-            }
-
-            _mainSplitContainer.Panel1MinSize = minimumTopPanel;
-            _mainSplitContainer.Panel2MinSize = minimumBottomPanel;
-
-            // Safe distance
-            int minDist = _mainSplitContainer.Panel1MinSize;
-            int maxDist = _mainSplitContainer.Height - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
-            int target = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
-            int safeDist = Math.Clamp(target, minDist, Math.Max(minDist, maxDist));
-
-            _mainSplitContainer.SplitterDistance = safeDist;
-
-            // Force a layout pass on the inner panels so their hosted controls render correctly
-            // instead of collapsing to 0×0 during the initial docking resize pass.
-            _mainSplitContainer.PerformLayout();
-            _mainSplitContainer.Panel1?.PerformLayout();
-            _mainSplitContainer.Panel2?.PerformLayout();
-
-            Logger.LogInformation(
-                "BudgetPanel SplitContainer configured in VisibleChanged: Panel1Min={P1}, Panel2Min={P2}, Distance={D}, Height={H}",
-                _mainSplitContainer.Panel1MinSize, _mainSplitContainer.Panel2MinSize, safeDist, _mainSplitContainer.Height);
-
-            // Queue a full recursive layout pass so any deeply nested controls also render.
-            BeginInvoke(new System.Action(ForceFullLayout));
+            ConfigureMainSplitContainerLayout(queueFullLayoutPass: true);
         }
         catch (Exception ex)
         {
@@ -1831,7 +1849,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     CreatedAt = DateTime.UtcNow
                 };
 
-                BeginInvoke(new Func<Task>(async () =>
+                this.QueueAsyncOnUIThread(async () =>
                 {
                     var operationToken = RegisterOperation();
                     IsBusy = true;
@@ -1863,7 +1881,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     {
                         IsBusy = false;
                     }
-                }));
+                }, Logger, nameof(AddEntryButton_Click));
             }
         }
         catch (Exception ex)
@@ -2068,7 +2086,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                 selectedEntry.Variance = budgeted - actual;
                 selectedEntry.UpdatedAt = DateTime.UtcNow;
 
-                BeginInvoke(new Func<Task>(async () =>
+                this.QueueAsyncOnUIThread(async () =>
                 {
                     var operationToken = RegisterOperation();
                     IsBusy = true;
@@ -2086,7 +2104,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
                     {
                         IsBusy = false;
                     }
-                }));
+                }, Logger, nameof(EditEntryButton_Click));
             }
         }
         catch (Exception ex)
@@ -2175,7 +2193,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         if (ViewModel == null) return;
 
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
                 owner: this,
@@ -2221,14 +2239,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             }
 
             UpdateStatus("CSV export completed successfully");
-        }));
+        }, Logger, nameof(ExportCsvButton_Click));
     }
 
     private void MappingWizardPanel_MappingApplied(object? sender, MappingAppliedEventArgs e)
     {
         if (ViewModel == null) return;
 
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             try
             {
@@ -2249,7 +2267,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             {
                 if (_mappingContainer != null) _mappingContainer.Visible = false;
             }
-        }));
+        }, Logger, nameof(MappingWizardPanel_MappingApplied));
     }
 
     private void MappingWizardPanel_Cancelled(object? sender, EventArgs e)
@@ -2262,7 +2280,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         if (ViewModel == null) return;
 
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
                 owner: this,
@@ -2308,14 +2326,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             }
 
             UpdateStatus("PDF export completed successfully");
-        }));
+        }, Logger, nameof(ExportPdfButton_Click));
     }
 
     private void ExportExcelButton_Click(object? sender, EventArgs e)
     {
         if (ViewModel == null) return;
 
-        BeginInvoke(new Func<Task>(async () =>
+        this.QueueAsyncOnUIThread(async () =>
         {
             var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
                 owner: this,
@@ -2361,7 +2379,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             }
 
             UpdateStatus("Excel export completed successfully");
-        }));
+        }, Logger, nameof(ExportExcelButton_Click));
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -2483,7 +2501,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     private void OnLoadBudgetsButtonClick(object? sender, EventArgs e)
     {
         if (ViewModel != null)
-            BeginInvoke(new Func<Task>(async () => await ViewModel.LoadBudgetsCommand.ExecuteAsync(null)));
+            this.QueueAsyncOnUIThread(() => ViewModel.LoadBudgetsCommand.ExecuteAsync(null), Logger, nameof(OnLoadBudgetsButtonClick));
     }
 
     /// <summary>
@@ -2687,12 +2705,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         BeginInvoke(() =>
         {
             ForceFullLayout();
-            if (_mainSplitContainer != null)
-            {
-                var target = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
-                var maxDist = _mainSplitContainer.Height - _mainSplitContainer.Panel2MinSize - _mainSplitContainer.SplitterWidth;
-                _mainSplitContainer.SplitterDistance = Math.Clamp(target, _mainSplitContainer.Panel1MinSize, Math.Max(_mainSplitContainer.Panel1MinSize, maxDist));
-            }
+            ConfigureMainSplitContainerLayout(queueFullLayoutPass: false);
             Logger.LogDebug("[{Panel}] FINAL layout pass after docking — controls now visible", GetType().Name);
         });
     }

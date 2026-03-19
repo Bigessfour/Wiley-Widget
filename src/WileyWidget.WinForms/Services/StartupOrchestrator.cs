@@ -186,24 +186,6 @@ namespace WileyWidget.WinForms.Services
                     HandleDiValidationFailure(new InvalidOperationException("DI validation completed with errors."), result);
                 }
 
-                /// <summary>
-                /// NEW: Validate Blazor-specific services
-                /// Ensures that AddWindowsFormsBlazorWebView() and AddSyncfusionBlazor() were properly registered during startup.
-                /// These services are critical for JARVIS panel rendering and AI component functionality.
-                /// </summary>
-                try
-                {
-                    var scopeFactory = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IServiceScopeFactory>(serviceProvider);
-                    if (scopeFactory == null)
-                    {
-                        _logger.LogWarning("Blazor WebView services not registered - ensure AddWindowsFormsBlazorWebView() is called in startup");
-                    }
-                }
-                catch (Exception blazorCheckEx)
-                {
-                    _logger.LogWarning(blazorCheckEx, "Error checking Blazor services during validation");
-                }
-
                 // [PERF] Initialize all IAsyncInitializable services in background to avoid UI blocking
                 _ = Task.Run(async () =>
                 {
@@ -213,7 +195,7 @@ namespace WileyWidget.WinForms.Services
                         await Task.Delay(50).ConfigureAwait(false);
                         _logger.LogInformation("Initializing IAsyncInitializable services in background...");
 
-                        // [FIX] Wait for main form handle + Shown event before starting background warmup (Syncfusion v32.2.3 stability)
+                        // [FIX] Wait for the main form handle + Shown event before starting background warmup.
                         await Task.Delay(300);
 
                         // [FIX] Use IServiceScopeFactory consistently to ensure background threads have a stable scope

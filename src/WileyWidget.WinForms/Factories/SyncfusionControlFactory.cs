@@ -1,7 +1,9 @@
 using System;
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
+using Syncfusion.WinForms.AIAssistView;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -411,6 +413,38 @@ public class SyncfusionControlFactory
         progressBar.ApplySyncfusionTheme(CurrentTheme, _logger);
         configure?.Invoke(progressBar);
         return progressBar;
+    }
+
+    #endregion
+
+    #region SfAIAssistView
+
+    public SfAIAssistView CreateSfAIAssistView(Action<SfAIAssistView>? configure = null)
+    {
+        _logger.LogDebug("Creating SfAIAssistView");
+
+        var assistView = new SfAIAssistView
+        {
+            Dock = DockStyle.Fill,
+            ThemeName = CurrentTheme,
+            ShowTypingIndicator = false,
+        };
+
+        SetOptionalAssistViewProperty(assistView, "EnableStopResponding", true);
+        SetOptionalAssistViewProperty(assistView, "IsResponseToolbarVisible", true);
+
+        assistView.ApplySyncfusionTheme(CurrentTheme, _logger);
+        configure?.Invoke(assistView);
+        return assistView;
+    }
+
+    private void SetOptionalAssistViewProperty(SfAIAssistView assistView, string propertyName, object value)
+    {
+        var property = assistView.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+        if (property?.CanWrite == true)
+        {
+            property.SetValue(assistView, value);
+        }
     }
 
     #endregion

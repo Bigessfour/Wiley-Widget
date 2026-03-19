@@ -4,8 +4,12 @@ using System.Threading;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Drawing;
+using System.Runtime.CompilerServices;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Tools;
 using FlaUI.UIA2;
+using Xunit;
 
 using FlaUIApp = FlaUI.Core.Application;
 
@@ -118,64 +122,102 @@ namespace WileyWidget.UiTests
 
         public static AutomationElement? FindElementByName(Window window, string name, TimeSpan timeout)
         {
-            var stopwatch = Stopwatch.StartNew();
-            while (stopwatch.Elapsed < timeout)
+            var result = Retry.WhileNull(() =>
             {
                 try
                 {
-                    var element = window.FindFirstDescendant(cf => cf.ByName(name));
-                    if (element != null)
-                    {
-                        return element;
-                    }
+                    return window.FindFirstDescendant(cf => cf.ByName(name));
                 }
                 catch
                 {
+                    return null;
                 }
 
-                Thread.Sleep(250);
-            }
+            }, timeout, TimeSpan.FromMilliseconds(250));
 
-            return null;
+            return result.Result;
         }
 
         public static AutomationElement? FindElementByNameOrId(Window window, string name, string automationId, TimeSpan timeout)
         {
-            var stopwatch = Stopwatch.StartNew();
-            while (stopwatch.Elapsed < timeout)
+            var result = Retry.WhileNull(() =>
             {
                 try
                 {
-                    var element = window.FindFirstDescendant(cf => cf.ByName(name).Or(cf.ByAutomationId(automationId)));
-                    if (element != null)
-                    {
-                        return element;
-                    }
+                    return window.FindFirstDescendant(cf => cf.ByName(name).Or(cf.ByAutomationId(automationId)));
                 }
                 catch
                 {
+                    return null;
                 }
 
-                Thread.Sleep(250);
-            }
+            }, timeout, TimeSpan.FromMilliseconds(250));
 
-            return null;
+            return result.Result;
         }
 
         public static void WaitForElement(Func<AutomationElement?> finder, TimeSpan timeout)
         {
-            var stopwatch = Stopwatch.StartNew();
-            while (stopwatch.Elapsed < timeout)
+            var result = Retry.WhileNull(() =>
             {
-                if (finder() != null)
+                try
                 {
-                    return;
+                    return finder();
+                }
+                catch
+                {
+                    return null;
                 }
 
-                Thread.Sleep(150);
+            }, timeout, TimeSpan.FromMilliseconds(150));
+
+            if (result.Result != null)
+            {
+                return;
             }
 
             throw new TimeoutException($"Element not found within {timeout.TotalSeconds}s");
+        }
+
+        public static string? CaptureScreenshot(Window window, string? testName = null, [CallerMemberName] string callerMemberName = "")
+        {
+            try
+            {
+                var bounds = window.BoundingRectangle;
+                var width = Convert.ToInt32(bounds.Width);
+                var height = Convert.ToInt32(bounds.Height);
+                if (width <= 0 || height <= 0)
+                {
+                    return null;
+                }
+
+                var safeName = SanitizeFileName(string.IsNullOrWhiteSpace(testName) ? callerMemberName : testName);
+                var resultsDir = Path.Combine(Directory.GetCurrentDirectory(), "TestResults", "screenshots");
+                Directory.CreateDirectory(resultsDir);
+
+                var filePath = Path.Combine(resultsDir, $"{safeName}-{DateTime.Now:yyyyMMdd-HHmmssfff}.png");
+                using var bitmap = new Bitmap(width, height);
+                using var graphics = Graphics.FromImage(bitmap);
+                graphics.CopyFromScreen(
+                    Convert.ToInt32(bounds.Left),
+                    Convert.ToInt32(bounds.Top),
+                    0,
+                    0,
+                    new Size(width, height));
+                bitmap.Save(filePath, System.Drawing.Imaging.ImageFormat.Png);
+                return filePath;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static void AssertValuePattern(this AutomationElement element, string expected)
+        {
+            var valuePattern = element.Patterns.Value;
+            Assert.True(valuePattern.IsSupported);
+            Assert.Equal(expected, valuePattern.Pattern.Value.Value);
         }
 
         public static void DumpUiTree(Window window, string? filename = null, int maxDepth = 6)
@@ -286,8 +328,7 @@ namespace WileyWidget.UiTests
 
         public static Window? WaitForDialogByTitle(FlaUIApp app, UIA2Automation automation, string title, TimeSpan timeout)
         {
-            var stopwatch = Stopwatch.StartNew();
-            while (stopwatch.Elapsed < timeout)
+            var result = Retry.WhileNull(() =>
             {
                 try
                 {
@@ -301,12 +342,20 @@ namespace WileyWidget.UiTests
                 }
                 catch
                 {
+                    return null;
                 }
 
-                Thread.Sleep(250);
-            }
+                return null;
 
-            return null;
+            }, timeout, TimeSpan.FromMilliseconds(250));
+
+            return result.Result;
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return new string(value.Select(ch => invalidChars.Contains(ch) ? '_' : ch).ToArray());
         }
     }
 }

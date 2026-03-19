@@ -60,6 +60,7 @@ namespace WileyWidget.Services.Abstractions
         System.Threading.Tasks.Task DisconnectAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<ConnectionStatus> GetConnectionStatusAsync(CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<ImportResult> ImportChartOfAccountsAsync(CancellationToken cancellationToken = default);
+        System.Threading.Tasks.Task<ImportResult> ImportDesktopFileAsync(string filePath, CancellationToken cancellationToken = default);
         System.Threading.Tasks.Task<SyncResult> SyncDataAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -117,6 +118,10 @@ namespace WileyWidget.Services.Abstractions
     public sealed class ImportResult
     {
         public bool Success { get; set; }
+        public string? ImportEntityType { get; set; }
+        public int RecordsImported { get; set; }
+        public int RecordsUpdated { get; set; }
+        public int RecordsSkipped { get; set; }
         public int AccountsImported { get; set; }
         public int AccountsUpdated { get; set; }
         public int AccountsSkipped { get; set; }

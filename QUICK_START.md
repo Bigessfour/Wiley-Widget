@@ -1,96 +1,105 @@
-# 🚀 Quick Start: Syncfusion Toolbox & MCP Servers
+# Wiley Widget Quick Start
 
-**Copy this to your desktop for quick reference!**
+This quick start is for the repository as it exists today. It is aimed at contributors who need to build, run, validate, and safely change the application during release stabilization.
 
----
+## Prerequisites
 
-## ⚡ 30-Second Setup
+- Windows 10 or Windows 11
+- .NET 10 SDK
+- PowerShell 7
+- Syncfusion license key for local UI execution
+- Optional: QuickBooks credentials if you are working on QuickBooks flows
+
+## First-Time Setup
+
+1. Restore the solution.
+
+   ```powershell
+   dotnet restore WileyWidget.sln
+   ```
+
+2. Configure the Syncfusion license.
+
+   ```powershell
+   pwsh ./scripts/setup-license.ps1
+   ```
+
+3. If you rely on local MCP-assisted tooling in Visual Studio or VS Code, regenerate the local MCP config.
+
+   ```powershell
+   pwsh ./scripts/generate-vs-mcp-config.ps1
+   ```
+
+4. Build the solution.
+
+   ```powershell
+   dotnet build WileyWidget.sln -m:2
+   ```
+
+5. Run the application.
+
+   ```powershell
+   dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
+   ```
+
+## Everyday Workflow
+
+1. Start with the smallest build that gives useful signal.
+   - VS Code: `build: fast`
+   - Full verification: `build`
+
+2. Make the smallest safe change.
+
+3. Prove the behavior you changed.
+   - Use `docs/TESTING_STRATEGY.md` to choose the right lane.
+   - Prefer targeted shell, panel, smoke, or integration tests over broad low-signal runs.
+   - If you touch a shared method, MainForm, navigation, layout, theme handling, or panel infrastructure, add or update regression proof for the existing behavior at risk.
+
+4. Only use a manual smoke path when automated proof is impractical, and document what you checked.
+
+## What Not To Count As Proof
+
+- `dotnet test WileyWidget.sln` by itself
+- stale reports under `Reports/`
+- filtered runs that discover zero tests
+- tests that only mirror implementation details without protecting real behavior
+
+## Useful Local Commands
+
+Build fast:
 
 ```powershell
-# 1. Set API key (get from https://syncfusion.com/account/api-key)
-[System.Environment]::SetEnvironmentVariable("SYNCFUSION_API_KEY", "YOUR_KEY", "User")
-
-# 2. Clear VS cache
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\Microsoft\VisualStudio\17.0_*\ComponentModelCache"
-
-# 3. Restart Visual Studio
-
-# 4. Reset Toolbox: View → Toolbox → Right-click → Reset Toolbox
+dotnet build WileyWidget.sln -m:2 -p:RunAnalyzers=false -p:RunAnalyzersDuringBuild=false
 ```
 
----
-
-## 🎯 Quick Tests
-
-### Test 1: MCP Server Working?
-
-```
-Open Copilot Chat → Ask → Agent → SyncfusionWinFormsAssistant
-Ask: "What packages do I need for SfDataGrid in .NET 10?"
-✅ Should get official Syncfusion docs
-```
-
-### Test 2: Toolbox Working?
-
-```
-View → Toolbox → Search: "SfDataGrid"
-✅ Should see Syncfusion controls
-```
-
-### Test 3: Designer Working?
-
-```
-Right-click WarRoomPanel.cs → View Designer
-✅ Should load without errors
-```
-
----
-
-## 🩺 Quick Fixes
-
-### Controls Missing from Toolbox?
+Run the app:
 
 ```powershell
-# Manual add: Toolbox → Choose Items → .NET Components → Browse to:
-C:\Users\[You]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll
+dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
 ```
 
-### MCP Server Not Found?
+Kill lingering test processes before rerunning focused WinForms tests:
 
 ```powershell
-# Regenerate config
-.\scripts\generate-vs-mcp-config.ps1
+pwsh ./scripts/maintenance/kill-test-processes.ps1
 ```
 
-### Build Errors?
+Optional QuickBooks OAuth setup:
 
 ```powershell
-dotnet clean
-dotnet restore --force
-dotnet build
+pwsh ./scripts/quickbooks/setup-oauth.ps1
 ```
 
----
+## If Something Looks Off
 
-## 📖 Full Docs
+- License or Syncfusion setup issues: `scripts/verify-syncfusion-setup.ps1`
+- MCP config drift: `scripts/generate-vs-mcp-config.ps1`
+- Startup issues: `scripts/verify-startup.ps1`
+- Layout or panel drift: start with `docs/TESTING_STRATEGY.md` and the focused WinForms test tasks in `.vscode/tasks.json`
 
-- **Toolbox Guide:** `docs/SYNCFUSION_TOOLBOX_VS2026_GUIDE.md`
-- **MCP Setup:** `docs/MCP_SERVER_SETUP_GUIDE.md`
-- **Setup Summary:** `SYNCFUSION_SETUP_COMPLETE.md`
+## Read Next
 
----
-
-## 🆘 Emergency Help
-
-**Copilot not using MCP tools?**
-Check: `logs/mcp-debugger.log`
-
-**Designer crashes?**
-Check: View → Output → "Design" pane
-
-**Still stuck?**
-Ask: `@SyncfusionWinFormsAssistant [your issue]`
-
----
-
-**🎉 Once working, you can drag/drop Syncfusion controls in Designer!**
+- `CONTRIBUTING.md`
+- `docs/TESTING_STRATEGY.md`
+- `docs/PRE_RELEASE_CHECKLIST.md`
+- `.vscode/approved-workflow.md`

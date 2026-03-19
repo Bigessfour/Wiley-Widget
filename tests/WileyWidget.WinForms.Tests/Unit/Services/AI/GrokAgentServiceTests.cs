@@ -370,6 +370,46 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
         }
 
         /// <summary>
+        /// Test: a failed optional startup validation probe must not poison service initialization.
+        /// Transient xAI availability issues should leave the service initialized and ready to retry later.
+        /// </summary>
+        [Fact]
+        public async Task InitializeAsync_WhenStartupValidationProbeFails_ServiceStillInitializes()
+        {
+            // Arrange
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["XAI:Model"] = "grok-4.1",
+                    ["XAI:Endpoint"] = "https://api.x.ai/v1",
+                    ["XAI:ValidateOnStartup"] = "true",
+                    ["XAI:DisableSemanticKernelConnector"] = "true"
+                })
+                .Build();
+
+            _httpClient = new HttpClient();
+            _mockHttpClientFactory
+                .Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(_httpClient);
+
+            _mockApiKeyProvider
+                .Setup(x => x.ValidateAsync())
+                .ReturnsAsync((false, "HTTP 503: Service unavailable"));
+
+            var service = new GrokAgentService(
+                _mockApiKeyProvider.Object,
+                config,
+                _mockLogger.Object,
+                _mockHttpClientFactory.Object);
+
+            // Act
+            await service.InitializeAsync();
+
+            // Assert
+            Assert.True(service.IsInitialized);
+        }
+
+        /// <summary>
         /// Mock HTTP message handler for testing HTTP requests without hitting real endpoints.
         /// </summary>
         private class MockHttpMessageHandler : HttpMessageHandler

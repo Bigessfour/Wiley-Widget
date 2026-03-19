@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using WileyWidget.WinForms.Services;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.WinForms.ViewModels;
@@ -23,6 +24,7 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
 {
     private readonly ILogger<QuickBooksViewModel> _logger;
     private readonly IQuickBooksService _quickBooksService;
+    private readonly IStatusProgressService? _statusProgressService;
     private System.Threading.Timer? _connectionPollingTimer;
     private bool _disposed;
     private CancellationTokenSource? _cancellationTokenSource;
@@ -152,10 +154,12 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
     /// <param name="quickBooksService">QuickBooks service for API operations.</param>
     public QuickBooksViewModel(
         ILogger<QuickBooksViewModel> logger,
-        IQuickBooksService quickBooksService)
+        IQuickBooksService quickBooksService,
+        IStatusProgressService? statusProgressService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _quickBooksService = quickBooksService ?? throw new ArgumentNullException(nameof(quickBooksService));
+        _statusProgressService = statusProgressService;
 
         // Initialize commands
         CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
@@ -735,6 +739,81 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
 
     private bool CanSyncData() => IsConnected && !IsLoading && !IsSyncing;
     private bool CanImportAccounts() => IsConnected && !IsLoading;
+
+    /// <summary>
+    /// Imports a QuickBooks Desktop export file without requiring a cloud connection.
+    /// </summary>
+    public async Task ImportDesktopFileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        const string operationName = "QuickBooks Desktop Import";
+
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            StatusText = $"Importing {Path.GetFileName(filePath)} from QuickBooks Desktop...";
+            _statusProgressService?.Start(operationName, StatusText, isIndeterminate: true);
+
+            var result = await _quickBooksService.ImportDesktopFileAsync(filePath, cancellationToken).ConfigureAwait(false);
+            var entityType = result.ImportEntityType ?? "records";
+            var importedCount = result.RecordsImported > 0 ? result.RecordsImported : result.AccountsImported;
+            var updatedCount = result.RecordsUpdated > 0 ? result.RecordsUpdated : result.AccountsUpdated;
+            var skippedCount = result.RecordsSkipped > 0 ? result.RecordsSkipped : result.AccountsSkipped;
+            var totalTouched = importedCount + updatedCount;
+
+            if (result.Success)
+            {
+                StatusText = $"Desktop import complete: {importedCount} {entityType.ToLowerInvariant()} imported, {updatedCount} updated, {skippedCount} skipped from {Path.GetFileName(filePath)}";
+                AccountsImported += totalTouched;
+                TotalRecordsSynced += totalTouched;
+                AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+                {
+                    Timestamp = DateTime.Now,
+                    Operation = "Import Desktop File",
+                    Status = "Success",
+                    RecordsProcessed = totalTouched,
+                    Duration = result.Duration,
+                    Message = $"Imported {importedCount} {entityType.ToLowerInvariant()}, updated {updatedCount}, skipped {skippedCount} from {Path.GetFileName(filePath)}"
+                });
+
+                _statusProgressService?.Complete(operationName, "QuickBooks Desktop import complete");
+                return;
+            }
+
+            StatusText = $"Desktop import failed: {result.ErrorMessage}";
+            ErrorMessage = result.ErrorMessage;
+            AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+            {
+                Timestamp = DateTime.Now,
+                Operation = "Import Desktop File",
+                Status = "Failed",
+                RecordsProcessed = 0,
+                Duration = result.Duration,
+                Message = result.ErrorMessage ?? "Desktop import failed"
+            });
+            _statusProgressService?.Complete(operationName, "QuickBooks Desktop import failed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error importing QuickBooks Desktop file {FilePath}", filePath);
+            StatusText = "Desktop import error";
+            ErrorMessage = $"Desktop import error: {ex.Message}";
+            AddSyncHistoryRecord(new QuickBooksSyncHistoryRecord
+            {
+                Timestamp = DateTime.Now,
+                Operation = "Import Desktop File",
+                Status = "Error",
+                RecordsProcessed = 0,
+                Duration = TimeSpan.Zero,
+                Message = ex.Message
+            });
+            _statusProgressService?.Complete(operationName, "QuickBooks Desktop import error");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
 
     #endregion
 

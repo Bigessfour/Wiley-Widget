@@ -30,6 +30,7 @@ namespace WileyWidget.UiTests
                 FlaUiHelpers.DumpUiTree(window, "MainFormNavigation_UnifiedDropdown");
                 var accountsPanelVisible = PanelActivationHelpers.EnsureAccountsPanelVisibleOrHostGated(window, automation, TimeSpan.FromSeconds(15));
                 Assert.True(accountsPanelVisible);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {
@@ -59,6 +60,7 @@ namespace WileyWidget.UiTests
                 var panelContent = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanelContent"));
                 Assert.NotNull(panelContent);
                 Assert.True(panelContent.IsEnabled);
+                FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
             {

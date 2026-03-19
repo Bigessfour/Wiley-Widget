@@ -10,10 +10,10 @@ This guide provides a minimal, repeatable path for creating release artifacts wi
 
 ## Baseline Release Publish
 
-Use the existing build script to produce publish output:
+Use `dotnet publish` directly to produce publish output:
 
 ```powershell
-pwsh ./scripts/build.ps1 -Publish -SelfContained -Runtime win-x64
+dotnet publish src/WileyWidget.WinForms/WileyWidget.WinForms.csproj -c Release -r win-x64 --self-contained true
 ```
 
 Output is generated under standard .NET publish folders for the WinForms project.

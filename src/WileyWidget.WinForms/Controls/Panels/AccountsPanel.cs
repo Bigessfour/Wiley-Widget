@@ -1444,7 +1444,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
     /// <summary>
     /// Binds ViewModel commands to toolbar buttons using Syncfusion MVVM Command pattern.
-    /// This is the official Syncfusion way per Essential Studio 32.1.19 MVVM samples.
+    /// This follows the Syncfusion MVVM command-binding pattern used by their WinForms samples.
     /// </summary>
     private void BindViewModelCommands()
     {
