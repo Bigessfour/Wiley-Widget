@@ -15,6 +15,7 @@ using Syncfusion.WinForms.DataGrid.Styles;
 using Syncfusion.WinForms.Input.Enums;
 using Syncfusion.Windows.Forms;
 using Syncfusion.WinForms.Controls;
+using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Extensions;
 using WileyWidget.WinForms.Themes;
 
@@ -237,6 +238,7 @@ namespace WileyWidget.WinForms.Forms
             this.MinimumSize = new Size(1024, 720);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.WindowState = FormWindowState.Normal;
+            this.Padding = new Padding(AppLayoutConstants.PanelPadding);
         }
 
         private void InitializeComponent()
@@ -244,6 +246,8 @@ namespace WileyWidget.WinForms.Forms
             // SfDataGrid
             _sfDataGrid = new SfDataGrid
             {
+                Name = "RatesGrid",
+                AccessibleName = "Rates Grid",
                 Dock = DockStyle.Fill,
                 AutoGenerateColumns = false,
                 AllowEditing = true,
@@ -283,7 +287,14 @@ namespace WileyWidget.WinForms.Forms
             };
 
             // ToolStrip with Refresh button (professional toolbar look)
-            _toolStrip = new ToolStrip { Dock = DockStyle.Top, GripStyle = ToolStripGripStyle.Hidden, RenderMode = ToolStripRenderMode.System };
+            _toolStrip = new ToolStrip
+            {
+                Name = "RatesToolbar",
+                AccessibleName = "Rates Toolbar",
+                Dock = DockStyle.Top,
+                GripStyle = ToolStripGripStyle.Hidden,
+                RenderMode = ToolStripRenderMode.System
+            };
             _refreshButton = new ToolStripButton("Refresh Colorado Rates") { Alignment = ToolStripItemAlignment.Left };
             _refreshButton.Click += (s, e) =>
             {
@@ -295,6 +306,8 @@ namespace WileyWidget.WinForms.Forms
             // Source Link
             _sourceLink = new LinkLabel
             {
+                Name = "RatesSourceLink",
+                AccessibleName = "Rates Source Link",
                 Text = "Source: Latest statewide averages from Coloradoan (Dec 2025) | Colorado Municipal League State of Our Cities & Towns",
                 Dock = DockStyle.Bottom,
                 Height = 40,

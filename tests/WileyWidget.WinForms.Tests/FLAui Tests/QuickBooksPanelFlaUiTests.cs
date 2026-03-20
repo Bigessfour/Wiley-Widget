@@ -12,7 +12,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             EnsureAppLaunched();
             var window = SharedMainWindow!;
 
-            if (!PanelActivationHelpers.EnsureQuickBooksPanelVisibleOrHostGated(window, TimeSpan.FromSeconds(45)))
+            if (!PanelActivationHelpers.EnsureQuickBooksPanelVisibleOrHostGated(window, EnsureAutomation(), TimeSpan.FromSeconds(45)))
             {
                 return;
             }

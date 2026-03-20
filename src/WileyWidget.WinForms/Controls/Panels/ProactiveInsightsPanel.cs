@@ -47,6 +47,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private EventHandler? _panelHeaderPinToggledHandler;
         private ToolTip? _buttonToolTip;
         private Label? _statusLabel;
+        private bool _childLoadRequested;
 
         /// <summary>
         /// Creates a new instance of the ProactiveInsightsPanel.
@@ -122,9 +123,14 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             base.OnHandleCreated(e);
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(1024, 720);
             PerformLayout();
             Invalidate(true);
+        }
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            EnsureChildLoaded();
         }
 
         /// <summary>
@@ -134,8 +140,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Dock = DockStyle.Fill;
-            Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
             Padding = new Padding(8);
             AccessibleName = "Proactive Insights Panel";
             AccessibleDescription = "Displays proactive AI insights with header and actions";
@@ -154,30 +158,17 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
             Controls.Add(_topPanel);
 
-            // Header layout: title (fills) + right-aligned toolbar (auto-size)
-            var headerLayout = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 1,
-                Margin = new Padding(0),
-                Padding = new Padding(0),
-                AutoSize = false
-            };
-            headerLayout.ColumnStyles.Clear();
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            _topPanel.Controls.Add(headerLayout);
-
-            // Panel header with title (fills the left column)
             _panelHeader = new PanelHeader
             {
                 Dock = DockStyle.Fill,
                 Title = "Proactive AI Insights",
+                ShowRefreshButton = false,
+                ShowHelpButton = false,
+                ShowPinButton = false,
                 AccessibleName = "Proactive Insights Title",
                 AccessibleDescription = "Title of the Proactive Insights panel"
             };
-            headerLayout.Controls.Add(_panelHeader, 0, 0);
+            _topPanel.Controls.Add(_panelHeader);
 
             // Wire PanelHeader events
             _panelHeaderRefreshHandler = (s, e) => BtnRefresh_Click(s, e);
@@ -189,30 +180,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader.HelpClicked += _panelHeaderHelpHandler;
             _panelHeader.PinToggled += _panelHeaderPinToggledHandler;
 
-            // Right-side flow to keep toolbar items right-aligned and spaced
-            var rightFlow = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.RightToLeft, // right-align contents
-                AutoSize = true,
-                WrapContents = false,
-                Margin = new Padding(0),
-                Padding = new Padding(0),
-                AccessibleName = "Proactive Actions Flow",
-                AccessibleDescription = "Container for right-aligned toolbar actions"
-            };
-
             // Button container for actions (using FlowLayoutPanel instead of ToolStrip for consistency)
             _buttonContainer = new FlowLayoutPanel
             {
+                Dock = DockStyle.Top,
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
-                WrapContents = false,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = true,
                 Margin = new Padding(0),
                 Padding = new Padding(4, 2, 4, 2),
                 Name = "ProactiveToolStrip",
                 AccessibleName = "Proactive Actions Toolbar",
-                AccessibleDescription = "Toolbar for proactive insights actions"
+                AccessibleDescription = "Toolbar for proactive insights actions",
+                MaximumSize = new Size(0, 72)
             };
 
             var currentTheme = SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme;
@@ -222,12 +203,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnRefresh = new SfButton
             {
                 Text = "&Refresh Insights",
-                AutoSize = false,
-                Size = new Size(135, 32),
+                AutoSize = true,
+                MinimumSize = new Size(120, 32),
                 Name = "ProactiveRefresh",
                 AccessibleName = "Refresh Insights Button",
                 AccessibleDescription = "Click to refresh proactive insights",
-                Margin = new Padding(4, 0, 4, 0),
+                Margin = new Padding(4, 0, 4, 6),
                 TabIndex = 1,
                 TabStop = true
             };
@@ -241,12 +222,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnClear = new SfButton
             {
                 Text = "&Clear Insights",
-                AutoSize = false,
-                Size = new Size(125, 32),
+                AutoSize = true,
+                MinimumSize = new Size(120, 32),
                 Name = "ProactiveClear",
                 AccessibleName = "Clear Insights Button",
                 AccessibleDescription = "Click to clear all proactive insights",
-                Margin = new Padding(4, 0, 4, 0),
+                Margin = new Padding(4, 0, 4, 6),
                 TabIndex = 2,
                 TabStop = true
             };
@@ -255,9 +236,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnClear.ThemeName = currentTheme;
             _buttonContainer.Controls.Add(_btnClear);
 
-            rightFlow.Controls.Add(_buttonContainer);
-
-            headerLayout.Controls.Add(rightFlow, 1, 0);
+            _topPanel.Controls.Add(_buttonContainer);
 
             // Insights feed panel (displays grid and status)
             _insightFeedPanel = CreateInsightFeedPanel();
@@ -299,6 +278,65 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnClearClickHandler = (s, e) => BtnClear_Click(s, e);
             _btnRefresh.Click += _btnRefreshClickHandler;
             _btnClear.Click += _btnClearClickHandler;
+        }
+
+        private void EnsureChildLoaded()
+        {
+            if (_childLoadRequested || _insightFeedPanel == null || IsDisposed)
+            {
+                return;
+            }
+
+            _childLoadRequested = true;
+
+            try
+            {
+                BeginInvoke(new System.Action(async () =>
+                {
+                    await RefreshChildPanelAsync(manualRequest: false);
+                }));
+            }
+            catch (Exception ex)
+            {
+                _childLoadRequested = false;
+                _panelLogger?.LogDebug(ex, "Failed to queue proactive insight feed load");
+            }
+        }
+
+        private async Task RefreshChildPanelAsync(bool manualRequest)
+        {
+            if (_insightFeedPanel == null || IsDisposed)
+            {
+                return;
+            }
+
+            try
+            {
+                if (_panelHeader != null)
+                {
+                    _panelHeader.IsLoading = true;
+                }
+
+                SetStatusMessage(manualRequest ? "Refreshing proactive insights..." : "Loading proactive insights...");
+                await _insightFeedPanel.LoadAsync();
+
+                var childStatus = _insightFeedPanel.ViewModel?.StatusMessage;
+                SetStatusMessage(string.IsNullOrWhiteSpace(childStatus)
+                    ? "Proactive insights ready."
+                    : childStatus);
+            }
+            catch (Exception ex)
+            {
+                _panelLogger?.LogError(ex, "Failed to refresh proactive insights panel");
+                SetStatusMessage($"Unable to load proactive insights: {ex.Message}");
+            }
+            finally
+            {
+                if (_panelHeader != null)
+                {
+                    _panelHeader.IsLoading = false;
+                }
+            }
         }
 
         protected override void ClosePanel()
@@ -429,30 +467,17 @@ namespace WileyWidget.WinForms.Controls.Panels
         /// <summary>
         /// Handles clicks on the Refresh toolbar button.
         /// </summary>
-        private void BtnRefresh_Click(object? sender, EventArgs e)
+        private async void BtnRefresh_Click(object? sender, EventArgs e)
         {
             try
             {
                 _panelLogger?.LogInformation("[PROACTIVE_INSIGHTS] Refresh clicked");
-                SetStatusMessage("Refreshing proactive insights…");
-                if (_panelHeader != null)
-                {
-                    _panelHeader.IsLoading = true;
-                }
-                // Intentionally do not change public API; the child panel/ViewModel handles refresh mechanics
-                SetStatusMessage("Proactive insights refresh requested.");
+                await RefreshChildPanelAsync(manualRequest: true);
             }
             catch (Exception ex)
             {
                 _panelLogger?.LogError(ex, "[PROACTIVE_INSIGHTS] Refresh action failed");
                 SetStatusMessage($"Unable to refresh insights: {ex.Message}");
-            }
-            finally
-            {
-                if (_panelHeader != null)
-                {
-                    _panelHeader.IsLoading = false;
-                }
             }
         }
 

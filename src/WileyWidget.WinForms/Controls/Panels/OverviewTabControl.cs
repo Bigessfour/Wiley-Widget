@@ -62,19 +62,40 @@ public partial class OverviewTabControl : UserControl, IThemable
         this.Dock = DockStyle.Fill;
         this.AutoScaleMode = AutoScaleMode.Dpi;
         this.AutoScroll = true;
-        this.MinimumSize = ScopedPanelBase.RecommendedEmbeddedPanelMinimumLogicalSize;
+        this.MinimumSize = Size.Empty;
         this.Padding = new Padding(8);
         _toolTip = new ToolTip();
 
-        var mainSplit = new SplitContainerAdv
+        var layoutRoot = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 100
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
+        layoutRoot.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layoutRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-        InitializeSummaryTiles(mainSplit.Panel1);
-        InitializeChartAndGrid(mainSplit.Panel2);
+        var summaryHost = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = Padding.Empty
+        };
+        layoutRoot.Controls.Add(summaryHost, 0, 0);
+
+        var contentHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 8, 0, 0)
+        };
+        layoutRoot.Controls.Add(contentHost, 0, 1);
+
+        InitializeSummaryTiles(summaryHost);
+        InitializeChartAndGrid(contentHost);
 
         _loadingOverlay = new LoadingOverlay
         {
@@ -82,19 +103,27 @@ public partial class OverviewTabControl : UserControl, IThemable
             Dock = DockStyle.Fill,
             Visible = false
         };
+        Controls.Add(layoutRoot);
         Controls.Add(_loadingOverlay);
         _loadingOverlay.BringToFront();
-        Controls.Add(mainSplit);
     }
 
     private void InitializeSummaryTiles(Control parent)
     {
-        _summaryPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10) };
+        _summaryPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(10)
+        };
         SfSkinManager.SetVisualStyle(_summaryPanel, SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
 
         var flow = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true
         };

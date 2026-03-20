@@ -1477,7 +1477,8 @@ public partial class MainForm
     private static void PopulateUnifiedNavigationMenu(MainForm form, ToolStripItemCollection items, ILogger? logger)
     {
         var groupedPanels = PanelRegistry.Panels
-            .Where(entry => entry.ShowInRibbonPanelsMenu)
+            .Where(entry => entry.ShowInRibbonPanelsMenu
+                || string.Equals(entry.DisplayName, "QuickBooks", StringComparison.OrdinalIgnoreCase))
             .GroupBy(entry => entry.DefaultGroup)
             .OrderBy(group => GetUnifiedNavigationGroupOrder(group.Key))
             .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase);

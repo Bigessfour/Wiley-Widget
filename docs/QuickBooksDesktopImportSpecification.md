@@ -109,7 +109,7 @@ Implementation consequence:
 - Keep `RibbonControlAdv` and the existing QuickBooks panel as the user entry point.
 - If a ribbon shortcut is added later, it must navigate to the same QuickBooks panel action and not create a parallel workflow.
 
-### Syncfusion 32.2.3 controls to use
+### Syncfusion 33.1.44 controls to use
 
 | Concern             | Control / service                                 |
 | ------------------- | ------------------------------------------------- |

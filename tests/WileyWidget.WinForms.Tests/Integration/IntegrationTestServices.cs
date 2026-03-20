@@ -126,6 +126,7 @@ internal static class IntegrationTestServices
         services.AddScoped<SettingsViewModel>();
         services.AddScoped<UtilityBillViewModel>();
         services.AddScoped<WarRoomViewModel>();
+        services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatUserControl>();
         services.AddScoped<WileyWidget.WinForms.Controls.Panels.JARVISChatViewModel>();
         services.AddScoped<WileyWidget.WinForms.Factories.SyncfusionControlFactory>();
 

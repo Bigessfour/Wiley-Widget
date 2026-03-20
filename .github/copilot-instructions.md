@@ -807,7 +807,7 @@ These guidelines provide guardrails without blocking progress when tools are una
 ## Syncfusion Documentation Rule (Scope)
 
 - Required when modifying Syncfusion controls or docking/ribbon behavior.
-- Recommended: Validate method/property usage against local Syncfusion Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19` in addition to MCP/docs.
+- Recommended: Validate method/property usage against local Syncfusion Essential Studio samples at `C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\33.1.44` in addition to MCP/docs.
 - Not required for unrelated business logic, configuration-only changes, or non-UI edits.
 
 ## C# Language and Framework Targets

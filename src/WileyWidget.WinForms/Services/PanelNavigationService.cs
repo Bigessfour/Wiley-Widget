@@ -389,6 +389,10 @@ namespace WileyWidget.WinForms.Services
                 host.Text = string.IsNullOrWhiteSpace(host.Text) ? panelName : host.Text;
                 host.ShowInTaskbar = false;
                 host.ShowIcon = false;
+                host.ControlBox = false;
+                host.MinimizeBox = false;
+                host.MaximizeBox = false;
+                host.FormBorderStyle = FormBorderStyle.None;
                 host.Owner = null;
                 // TabbedMDIManager requires MinimumSize=(0,0) before MdiParent is assigned
                 host.MinimumSize = Size.Empty;
@@ -903,6 +907,9 @@ namespace WileyWidget.WinForms.Services
                 // FormBorderStyle.None: TabbedMDIManager provides all chrome via the tab strip.
                 // Sizable would render a caption bar INSIDE the tabbed area — nested-window look.
                 FormBorderStyle = FormBorderStyle.None,
+                ControlBox = false,
+                MinimizeBox = false,
+                MaximizeBox = false,
                 ShowIcon = false,
                 ShowInTaskbar = false,                   // Must precede HWND creation
                 StartPosition = FormStartPosition.Manual, // Must precede Show()

@@ -162,7 +162,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         // Set up panel properties (matches PreferredDockSize extension)
         Text = "Utility Bills";
         Size = new Size(1100, 760);
-        MinimumSize = new Size(1024, 720);
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScroll = false;
         Padding = Padding.Empty;
@@ -1360,11 +1359,6 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
-        {
-            MinimumSize = new Size(1024, 720);
-        }
-
         PerformLayout();
     }
 

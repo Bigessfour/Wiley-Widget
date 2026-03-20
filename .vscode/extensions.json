@@ -5,8 +5,6 @@
     "ms-dotnettools.vscode-dotnet-runtime",
 
     // === Testing & Quality ===
-    "hbenl.vscode-test-explorer",
-    "formulahendry.dotnet-test-explorer",
     "ryanluker.vscode-coverage-gutters",
     "usernamehw.errorlens",
 
@@ -40,5 +38,8 @@
     "sonarsource.sonarlint-vscode",
     "streetsidesoftware.code-spell-checker"
   ],
-  "unwantedRecommendations": []
+  "unwantedRecommendations": [
+    "hbenl.vscode-test-explorer",
+    "formulahendry.dotnet-test-explorer"
+  ]
 }

@@ -15,7 +15,7 @@ using WileyWidget.WinForms.Controls.Base;
 namespace WileyWidget.WinForms.Tests
 {
     /// <summary>
-    /// Syncfusion 32.2.3 + FLAUI helper library (RibbonControlAdv, SfButton, TabbedMDI, panels)
+    /// Syncfusion 33.1.44 + FLAUI helper library (RibbonControlAdv, SfButton, TabbedMDI, panels)
     /// Drop this in and never write flaky waits again.
     /// </summary>
     public static class FlauiTestHelpers

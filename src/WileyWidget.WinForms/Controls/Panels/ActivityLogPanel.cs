@@ -157,13 +157,15 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(1024, 720);
 
             // Panel Header - added directly to Controls with Dock = Top
             _panelHeader = new PanelHeader
             {
-                Title = "Recent Activity (Navigation Hub Activity Log)",
-                Dock = DockStyle.Top
+                Title = "Recent Activity",
+                Dock = DockStyle.Top,
+                ShowRefreshButton = false,
+                ShowPinButton = false,
+                ShowHelpButton = false
             };
             _panelHeader.AccessibleName = "Activity Log Header";
             _panelHeader.AccessibleDescription = "Header for the activity log panel";
@@ -195,23 +197,29 @@ namespace WileyWidget.WinForms.Controls.Panels
             _content = mainTable;
 
             // Row 0: Button controls
-            mainTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
+            mainTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Button panel (Row 0)
-            var buttonPanel = new Panel
+            var buttonPanel = new FlowLayoutPanel
             {
                 Name = "ButtonPanel",
-                Dock = DockStyle.Fill,
-                Height = 36,
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                Margin = Padding.Empty,
                 Padding = new Padding(8)
             };
 
-            // Control buttons - add right-docked controls first
+            // Control buttons - flow layout allows narrow right-dock hosts to wrap instead of clipping.
             _btnExport = Factory.CreateSfButton("Export", button =>
             {
                 button.AutoSize = true;
-                button.Dock = DockStyle.Right;
+                button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                button.MinimumSize = new System.Drawing.Size(72, 0);
+                button.Margin = new Padding(0, 0, 8, 8);
                 button.Padding = new Padding(8);
             });
             _btnExport.Click += OnExportClicked;
@@ -219,12 +227,13 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnExport.AccessibleDescription = "Export activity log entries to CSV file";
             _btnExport.TabIndex = 2;
             _toolTip.SetToolTip(_btnExport, "Export activity entries to CSV.");
-            buttonPanel.Controls.Add(_btnExport);
 
             _btnClearLog = Factory.CreateSfButton("Clear", button =>
             {
                 button.AutoSize = true;
-                button.Dock = DockStyle.Right;
+                button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                button.MinimumSize = new System.Drawing.Size(72, 0);
+                button.Margin = new Padding(0, 0, 8, 8);
                 button.Padding = new Padding(8);
             });
             _btnClearLog.Click += OnClearLogClicked;
@@ -232,13 +241,12 @@ namespace WileyWidget.WinForms.Controls.Panels
             _btnClearLog.AccessibleDescription = "Clears all activity log entries";
             _btnClearLog.TabIndex = 3;
             _toolTip.SetToolTip(_btnClearLog, "Clear all entries from the activity log.");
-            buttonPanel.Controls.Add(_btnClearLog);
 
             _chkAutoRefresh = Factory.CreateCheckBoxAdv("Auto-refresh", checkBox =>
             {
                 checkBox.AutoSize = true;
                 checkBox.Checked = true;
-                checkBox.Dock = DockStyle.Right;
+                checkBox.Margin = new Padding(0, 4, 8, 8);
                 checkBox.Padding = new Padding(8);
             });
             _chkAutoRefresh.CheckedChanged += OnAutoRefreshCheckedChanged;
@@ -246,7 +254,10 @@ namespace WileyWidget.WinForms.Controls.Panels
             _chkAutoRefresh.AccessibleDescription = "Toggle auto refresh for activity log";
             _chkAutoRefresh.TabIndex = 4;
             _toolTip.SetToolTip(_chkAutoRefresh, "Automatically refresh activity entries.");
+
             buttonPanel.Controls.Add(_chkAutoRefresh);
+            buttonPanel.Controls.Add(_btnClearLog);
+            buttonPanel.Controls.Add(_btnExport);
 
             mainTable.Controls.Add(buttonPanel, 0, 0);
 
@@ -713,11 +724,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
-            {
-                MinimumSize = new Size(1024, 720);
-            }
-
             PerformLayout();
         }
 

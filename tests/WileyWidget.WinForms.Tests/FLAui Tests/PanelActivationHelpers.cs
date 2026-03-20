@@ -257,7 +257,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         /// Accepts the canonical title or any of the navigation-hint strings defined in
         /// <see cref="UiTestConstants.QuickBooksNavigationHints"/>.
         /// </summary>
-        public static bool EnsureQuickBooksPanelVisibleOrHostGated(Window window, TimeSpan timeout)
+        public static bool EnsureQuickBooksPanelVisibleOrHostGated(Window window, UIA2Automation? automation, TimeSpan timeout)
         {
             if (window == null) return false;
 
@@ -266,14 +266,15 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             // Click the navigation button first.
             TryActivatePanel(window,
                 new[] { UiTestConstants.QuickBooksPanelTitle, "QuickBooks", "QBO", "Connect to QuickBooks" },
-                TimeSpan.FromSeconds(3));
+            TimeSpan.FromSeconds(3),
+            automation);
 
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
-                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation: null);
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
                     if (navigationStatus != null && navigationStatus.Contains("navigated:QuickBooks", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
@@ -293,6 +294,12 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     {
                         var el = window.FindFirstDescendant(cf => cf.ByName(hint));
                         if (el != null) return true;
+
+                        if (el == null && automation != null)
+                        {
+                            el = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(hint));
+                            if (el != null) return true;
+                        }
                     }
                 }
                 catch { }
@@ -308,7 +315,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         /// Uses explicit shell automation targets because the generic "Payments" candidate can
         /// collide with the ribbon group label and miss the actual navigation command.
         /// </summary>
-        public static bool EnsurePaymentsPanelVisibleOrHostGated(Window window, TimeSpan timeout)
+        public static bool EnsurePaymentsPanelVisibleOrHostGated(Window window, UIA2Automation? automation, TimeSpan timeout)
         {
             if (window == null) return false;
 
@@ -316,14 +323,15 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
             TryActivatePanel(window,
                 new[] { "Nav_Payments", "Menu_View_Payments", "Payments" },
-                TimeSpan.FromSeconds(3));
+                TimeSpan.FromSeconds(3),
+                automation);
 
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
-                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation: null);
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
                     if (navigationStatus != null && navigationStatus.Contains("navigated:Payments", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
@@ -336,6 +344,17 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                             .Or(cf.ByName("Payments Status"))
                             .Or(cf.ByAutomationId("PaymentsPanel")));
                     if (paymentsPanel != null) return true;
+
+                    if (automation != null)
+                    {
+                        paymentsPanel = automation.GetDesktop().FindFirstDescendant(cf =>
+                            cf.ByName("Payments Grid")
+                                .Or(cf.ByName("Add Payment"))
+                                .Or(cf.ByName("Refresh Payments"))
+                                .Or(cf.ByName("Payments Status"))
+                                .Or(cf.ByAutomationId("PaymentsPanel")));
+                        if (paymentsPanel != null) return true;
+                    }
                 }
                 catch
                 {
@@ -401,12 +420,6 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             {
                 try
                 {
-                    if (ShouldPreferShellShortcut(buttonCandidates) && TryActivatePanelByShellShortcut(window, buttonCandidates))
-                    {
-                        Wait.UntilInputIsProcessed();
-                        return;
-                    }
-
                     foreach (var candidate in buttonCandidates)
                     {
                         // Try by Name first, then by AutomationId.
@@ -448,7 +461,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                         }
                     }
 
-                    if (!ShouldPreferShellShortcut(buttonCandidates) && TryActivatePanelByShellShortcut(window, buttonCandidates))
+                    if (TryActivatePanelByShellShortcut(window, buttonCandidates))
                     {
                         Wait.UntilInputIsProcessed();
                         return;
@@ -501,20 +514,6 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             return false;
         }
 
-        private static bool ShouldPreferShellShortcut(string[] buttonCandidates)
-        {
-            return buttonCandidates.Any(candidate => candidate.Contains("QuickBooks", StringComparison.OrdinalIgnoreCase)
-                || candidate.Contains("Analytics Hub", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase)
-                || candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)
-                || candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
-                || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)
-                || candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)
-                || candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase));
-        }
-
         private static bool TryActivatePanelByShellShortcut(Window window, string[] buttonCandidates)
         {
             try
@@ -530,6 +529,9 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 if (buttonCandidates.Any(candidate => candidate.Contains("QuickBooks", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(candidate, "QBO", StringComparison.OrdinalIgnoreCase)))
                 {
+                    // QuickBooks is exposed through the View menu shortcut (Ctrl+Q).
+                    // Sending Alt+Q first can leave the shell in menu-navigation mode
+                    // without dispatching the actual panel command during UI automation.
                     SendCtrlChord(VirtualKeyShort.KEY_Q);
                     return true;
                 }
@@ -538,12 +540,14 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase)))
                 {
+                    SendAltChord(VirtualKeyShort.KEY_C);
                     SendCtrlChord(VirtualKeyShort.KEY_H);
                     return true;
                 }
 
                 if (buttonCandidates.Any(candidate => candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase)))
                 {
+                    SendAltChord(VirtualKeyShort.KEY_B);
                     SendCtrlChord(VirtualKeyShort.KEY_B);
                     return true;
                 }
@@ -552,12 +556,14 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase)))
                 {
+                    SendAltChord(VirtualKeyShort.KEY_A);
                     SendCtrlChord(VirtualKeyShort.KEY_A);
                     return true;
                 }
 
                 if (buttonCandidates.Any(candidate => candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)))
                 {
+                    SendAltChord(VirtualKeyShort.KEY_D);
                     SendCtrlChord(VirtualKeyShort.KEY_D);
                     return true;
                 }
@@ -577,6 +583,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 if (buttonCandidates.Any(candidate => candidate.Contains("Settings", StringComparison.OrdinalIgnoreCase)))
                 {
                     SendAltChord(VirtualKeyShort.KEY_S);
+                    SendCtrlAltChord(VirtualKeyShort.KEY_S);
                     return true;
                 }
 
@@ -632,6 +639,22 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             }
             finally
             {
+                Keyboard.Release(VirtualKeyShort.CONTROL);
+            }
+        }
+
+        private static void SendCtrlAltChord(VirtualKeyShort key)
+        {
+            Keyboard.Press(VirtualKeyShort.CONTROL);
+            Keyboard.Press(VirtualKeyShort.LMENU);
+            try
+            {
+                Keyboard.Type(key);
+                Wait.UntilInputIsProcessed();
+            }
+            finally
+            {
+                Keyboard.Release(VirtualKeyShort.LMENU);
                 Keyboard.Release(VirtualKeyShort.CONTROL);
             }
         }
@@ -917,42 +940,89 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 return Array.Empty<string>();
             }
 
+            var sanitizedCandidate = SanitizeAutomationName(candidate);
+
             if (candidate.Contains("QuickBooks", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(candidate, "QBO", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "Nav_QuickBooks", "Menu_View_QuickBooks" };
+                return new[] { "Nav_QuickBooks", $"Nav_{sanitizedCandidate}", "Menu_View_QuickBooks" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
             if (candidate.Contains("Analytics Hub", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "Nav_Analytics", "Nav_Charts", "Menu_View_AnalyticsHub" };
+                return new[] { "Nav_Analytics", "Nav_Charts", "Nav_AnalyticsHub", $"Nav_{sanitizedCandidate}", "Menu_View_AnalyticsHub" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
             if (candidate.Contains("Municipal Accounts", StringComparison.OrdinalIgnoreCase)
                 || candidate.Contains("Chart of Accounts", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(candidate, "Accounts", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "Nav_Accounts" };
+                return new[] { "Nav_Accounts", $"Nav_{sanitizedCandidate}", "Menu_View_Accounts" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
             if (candidate.Contains("Budget", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "Nav_Budget" };
+                return new[] { "Nav_Budget", $"Nav_{sanitizedCandidate}", "Menu_View_Budget" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
             if (candidate.Contains("Customers", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "Nav_Customers" };
+                return new[] { "Nav_Customers", $"Nav_{sanitizedCandidate}", "Menu_View_Customers" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
             if (candidate.Contains("Payments", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "Nav_Payments", "Menu_View_Payments" };
+                return new[] { "Nav_Payments", $"Nav_{sanitizedCandidate}", "Menu_View_Payments" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
             }
 
-            return Array.Empty<string>();
+            if (candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_VitalSigns", "Nav_EnterpriseVitalSigns", $"Nav_{sanitizedCandidate}", "Menu_View_VitalSigns" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+
+            if (candidate.Contains("Revenue Trends", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_RevenueTrends", $"Nav_{sanitizedCandidate}" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+
+            if (candidate.Contains("Settings", StringComparison.OrdinalIgnoreCase))
+            {
+                return new[] { "Nav_Settings", $"Nav_{sanitizedCandidate}", "Menu_Tools_Settings" }
+                    .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+
+            return new[] { $"Nav_{sanitizedCandidate}" }
+                .Where(alias => !string.IsNullOrWhiteSpace(alias))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         private static string? TryGetNavigationAutomationStatus(Window window, UIA2Automation? automation)
@@ -985,7 +1055,15 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
             try
             {
-                return statusElement.Properties.Name.ValueOrDefault;
+                var valuePattern = statusElement.Patterns.Value;
+                if (valuePattern.IsSupported)
+                {
+                    var value = valuePattern.Pattern.Value.Value;
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        return value;
+                    }
+                }
             }
             catch
             {
@@ -993,11 +1071,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
             try
             {
-                var valuePattern = statusElement.Patterns.Value;
-                if (valuePattern.IsSupported)
-                {
-                    return valuePattern.Pattern.Value.Value;
-                }
+                return statusElement.Properties.Name.ValueOrDefault;
             }
             catch
             {

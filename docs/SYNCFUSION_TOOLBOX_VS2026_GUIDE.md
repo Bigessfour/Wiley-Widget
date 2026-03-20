@@ -2,7 +2,7 @@
 
 **Last Updated:** 2025-01-15
 **Target Framework:** .NET 10 (net10.0-windows)
-**Syncfusion Version:** 32.1.19
+**Syncfusion Version:** 33.1.44
 **Visual Studio:** 2026 (Preview/Latest)
 
 ---
@@ -34,7 +34,7 @@ Get-Content src\WileyWidget.WinForms\WileyWidget.WinForms.csproj | Select-String
 
 ```powershell
 # Check if packages have net10.0-windows support
-Get-ChildItem "$env:USERPROFILE\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\lib" -Directory
+Get-ChildItem "$env:USERPROFILE\.nuget\packages\syncfusion.sfdatagrid.winforms\33.1.44\lib" -Directory
 ```
 
 **Expected Output:**
@@ -46,7 +46,7 @@ net9.0-windows7.0
 net462
 ```
 
-✅ **Confirmed:** Syncfusion 32.1.19 fully supports .NET 10.
+✅ **Confirmed:** Syncfusion 33.1.44 fully supports .NET 10.
 
 ### 3. Verify Installed Packages
 
@@ -54,7 +54,7 @@ net462
 dotnet list "src\WileyWidget.WinForms\WileyWidget.WinForms.csproj" package | Select-String "Syncfusion"
 ```
 
-**Expected Packages (v32.1.19):**
+**Expected Packages (v33.1.44):**
 
 - ✅ Syncfusion.Core.WinForms
 - ✅ Syncfusion.Shared.Base
@@ -136,7 +136,7 @@ Get-ChildItem "$env:LOCALAPPDATA\Microsoft\VisualStudio\" -Directory | Select-Ob
 4. **Navigate to NuGet cache and select DLLs:**
 
 ```
-C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll
+C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\33.1.44\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll
 ```
 
 **Repeat for:**
@@ -241,7 +241,7 @@ dotnet list package --include-transitive | Select-String "Syncfusion" | Group-Ob
 
 ```xml
 <Reference Include="Syncfusion.SfDataGrid.WinForms">
-  <HintPath>$(NuGetPackageRoot)\syncfusion.sfdatagrid.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll</HintPath>
+   <HintPath>$(NuGetPackageRoot)\syncfusion.sfdatagrid.winforms\33.1.44\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll</HintPath>
 </Reference>
 ```
 
@@ -280,7 +280,7 @@ dotnet list package --include-transitive | Select-String "Syncfusion" | Group-Ob
 Before requesting further support, verify:
 
 - [ ] Project targets `net10.0-windows` (not `net48`)
-- [ ] All Syncfusion packages are version **32.1.19**
+- [ ] All Syncfusion packages are version **33.1.44**
 - [ ] Packages have `net10.0-windows7.0` target in NuGet cache
 - [ ] Component Model Cache cleared (`ComponentModelCache` deleted)
 - [ ] Toolbox reset performed

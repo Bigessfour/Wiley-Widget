@@ -31,17 +31,35 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
 {
     private sealed class TestMainForm : MainForm
     {
+        private readonly IServiceScope _scope;
+
         public TestMainForm(IServiceProvider provider)
-            : base(
-                provider,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider),
-                Config.ReportViewerLaunchOptions.Disabled,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(provider),
-                new SyncfusionControlFactory(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<SyncfusionControlFactory>>(provider) ?? NullLogger<SyncfusionControlFactory>.Instance))
+            : this(provider.CreateScope())
         {
+        }
+
+        private TestMainForm(IServiceScope scope)
+            : base(
+                scope.ServiceProvider,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IConfiguration>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(scope.ServiceProvider),
+                Config.ReportViewerLaunchOptions.Disabled,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IWindowStateService>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IFileImportService>(scope.ServiceProvider),
+                new SyncfusionControlFactory(Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<ILogger<SyncfusionControlFactory>>(scope.ServiceProvider) ?? NullLogger<SyncfusionControlFactory>.Instance))
+        {
+            _scope = scope;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _scope.Dispose();
+            }
         }
 
         public void CallInitializeChrome()
@@ -386,18 +404,6 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
         {
             var ribbon = form.GetPrivateField("_ribbon") as RibbonControlAdv;
             var navigationItem = FindToolStripItem<ToolStripMenuItem>(ribbon, "NavMenuItem_JARVISChat");
-            var rightDockPanel = new Panel { Name = "RightDockPanel" };
-            var rightDockTabs = new TabControlAdv { Name = "RightDockTabs" };
-            var jarvisTab = new TabPageAdv { Name = "RightDockTab_JARVIS", Text = "JARVIS Chat" };
-            var jarvisPanel = ActivatorUtilities.CreateInstance<JARVISChatUserControl>(provider);
-            jarvisPanel.Dock = DockStyle.Fill;
-
-            jarvisTab.Controls.Add(jarvisPanel);
-            rightDockTabs.TabPages.Add(jarvisTab);
-            rightDockPanel.Controls.Add(rightDockTabs);
-            form.SetPrivateField("_rightDockPanel", rightDockPanel);
-            form.SetPrivateField("_rightDockTabs", rightDockTabs);
-            form.SetPrivateField("_rightDockJarvisPanel", jarvisPanel);
 
             navigationItem.Should().NotBeNull();
             var tabNames = ribbon!.Header.MainItems.OfType<ToolStripTabItem>().Select(tab => tab.Name).ToList();
@@ -410,8 +416,9 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             InvokeToolStripClick(navigationItem!);
 
             var resolvedRightDockTabs = form.GetPrivateField("_rightDockTabs") as TabControlAdv;
+            var resolvedJarvisPanel = form.GetPrivateField("_rightDockJarvisPanel") as JARVISChatUserControl;
             PumpUntil(() => string.Equals(resolvedRightDockTabs?.SelectedTab?.Name, "RightDockTab_JARVIS", StringComparison.Ordinal));
-            PumpUntil(() => jarvisPanel.AutomationStatusBox?.Text.Contains("AssistViewReady=True", StringComparison.Ordinal) == true);
+            PumpUntil(() => resolvedJarvisPanel?.AutomationStatusBox?.Text.Contains("AssistViewReady=True", StringComparison.Ordinal) == true);
 
             var resolvedRightDockPanel = form.GetPrivateField("_rightDockPanel") as Panel;
             resolvedRightDockPanel.Should().NotBeNull();
@@ -419,12 +426,9 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             resolvedRightDockTabs.Should().NotBeNull();
             resolvedRightDockTabs!.SelectedTab.Should().NotBeNull();
             resolvedRightDockTabs.SelectedTab!.Name.Should().Be("RightDockTab_JARVIS");
-            jarvisPanel.AutomationStatusBox.Should().NotBeNull();
-            jarvisPanel.AutomationStatusBox!.Text.Should().Contain("AssistViewReady=True");
-
-            jarvisPanel.Dispose();
-            rightDockTabs.Dispose();
-            rightDockPanel.Dispose();
+            resolvedJarvisPanel.Should().NotBeNull();
+            resolvedJarvisPanel!.AutomationStatusBox.Should().NotBeNull();
+            resolvedJarvisPanel.AutomationStatusBox!.Text.Should().Contain("AssistViewReady=True");
         }
         finally
         {
@@ -843,21 +847,17 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             PumpMessages(8);
 
             var ribbon = GetPrivateField<RibbonControlAdv>(form, "_ribbon");
-            var menuStrip = GetPrivateField<MenuStrip>(form, "_menuStrip");
             var panelNavigator = new FakePanelNavigationService();
             ribbon.Should().NotBeNull("Ribbon must be initialized before Budget navigation click");
-            menuStrip.Should().NotBeNull("main menu should be available in the UI test harness path");
             typeof(MainForm).GetField("_panelNavigator", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(form, panelNavigator);
 
             var ensureNavigatorMethod = typeof(MainForm).GetMethod("EnsurePanelNavigatorInitialized", BindingFlags.Instance | BindingFlags.NonPublic);
             ensureNavigatorMethod.Should().NotBeNull();
             ensureNavigatorMethod!.Invoke(form, null);
 
-            var budgetButton = menuStrip != null
-                ? FindToolStripItem<ToolStripMenuItem>(menuStrip.Items, "Menu_View_Budget")
-                : null;
+            var budgetButton = FindToolStripItem<ToolStripButton>(ribbon, "Nav_BudgetManagementAnalysis");
 
-            budgetButton.Should().NotBeNull("Budget navigation command should exist in the View menu");
+            budgetButton.Should().NotBeNull("Budget navigation command should exist on the ribbon when the ribbon shell is enabled");
             budgetButton!.Enabled.Should().BeTrue("Budget navigation command must be enabled");
 
             budgetButton.PerformClick();

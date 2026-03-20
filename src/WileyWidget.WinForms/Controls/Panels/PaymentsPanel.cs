@@ -115,8 +115,6 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
         SfSkinManager.SetVisualStyle(this, themeName);
 
         Name = "PaymentsPanel";
-        Size = new System.Drawing.Size(1000, 600);
-        MinimumSize = new System.Drawing.Size(1024, 720);
         Dock = DockStyle.Fill;
 
         var panelPadding = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(10f);

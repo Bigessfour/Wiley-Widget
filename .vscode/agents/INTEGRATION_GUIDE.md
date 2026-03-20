@@ -92,11 +92,11 @@ Winnie will **never** create competing theme managers or use manual color assign
 public MyCustomPanel(IThemeService themeService)
 {
     InitializeComponent();
-    
+
     // Apply theme to entire panel (cascades to children)
     var themeName = themeService?.CurrentTheme ?? "Office2019Colorful";
     SfSkinManager.SetVisualStyle(this, themeName);
-    
+
     // Set ThemeName on Syncfusion-specific controls
     sfDataGrid1.ThemeName = themeName;
     sfButton1.ThemeName = themeName;
@@ -118,12 +118,12 @@ public MyCustomPanel(IThemeService themeService)
 public partial class InvoiceListPanel : UserControl
 {
     private readonly InvoiceListViewModel _viewModel;
-    
+
     public InvoiceListPanel(InvoiceListViewModel viewModel)
     {
         _viewModel = viewModel;
         InitializeComponent();
-        
+
         // DataBinding in code or Designer
         sfDataGrid1.DataSource = _viewModel.Invoices;
         addButton.Command = _viewModel.AddInvoiceCommand;
@@ -134,10 +134,10 @@ public partial class InvoiceListPanel : UserControl
 public partial class InvoiceListViewModel : ObservableObject
 {
     private readonly IInvoiceRepository _repository;
-    
+
     [ObservableProperty]
     private ObservableCollection<InvoiceDto> _invoices = new();
-    
+
     [RelayCommand]
     private async Task AddInvoice()
     {
@@ -211,7 +211,7 @@ private void EnsureProperZOrder()
    // In DI configuration
    services.AddScoped<ReportsPanel>();
    services.AddScoped<ReportsViewModel>();
-   
+
    // In MainForm initialization
    var reportsPanel = _serviceProvider.GetRequiredService<ReportsPanel>();
    _dockingManager.DockControl(reportsPanel, _leftDockPanel, DockingStyle.Docked, 250);
@@ -223,7 +223,7 @@ private void EnsureProperZOrder()
 
 **User Prompt:**
 ```
-@Winnie This DashboardPanel has business logic in code-behind. 
+@Winnie This DashboardPanel has business logic in code-behind.
 Refactor it to pure MVVM following our MainForm patterns.
 ```
 
@@ -241,7 +241,7 @@ Refactor it to pure MVVM following our MainForm patterns.
 
 **User Prompt:**
 ```
-@Winnie Some controls in SettingsPanel aren't matching the Office2019Colorful theme. 
+@Winnie Some controls in SettingsPanel aren't matching the Office2019Colorful theme.
 Why and how do I fix it?
 ```
 
@@ -254,7 +254,7 @@ Why and how do I fix it?
    ```csharp
    // Remove this (VIOLATION):
    // myPanel.BackColor = Color.White;
-   
+
    // Replace with (CORRECT):
    SfSkinManager.SetVisualStyle(settingsPanel, themeName);
    sfDataGrid1.ThemeName = themeName;
@@ -317,7 +317,7 @@ When using Winnie to add/modify panels:
 
 **Ask Winnie:**
 ```
-@Winnie This SfButton isn't showing the Office2019Colorful theme. 
+@Winnie This SfButton isn't showing the Office2019Colorful theme.
 Here's the code: [paste code]
 ```
 
@@ -330,7 +330,7 @@ Winnie will check for:
 
 **Ask Winnie:**
 ```
-@Winnie I added this panel to DockingManager but it's not visible. 
+@Winnie I added this panel to DockingManager but it's not visible.
 Here's how I docked it: [paste code]
 ```
 
@@ -374,4 +374,4 @@ Winnie will check:
 
 **Last Updated:** 2026-02-15
 **Target .NET Version:** 10.0
-**Syncfusion Version:** 32.1.19
+**Syncfusion Version:** 33.1.44

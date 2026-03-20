@@ -1,5 +1,5 @@
 **WileyWidget Panel Definition Of Done Checklist**
-**Syncfusion WinForms v32.2.3 + Sacred Panel Skeleton Standard**
+**Syncfusion WinForms v33.1.44 + Sacred Panel Skeleton Standard**
 
 Use this checklist for each in-scope panel before calling that panel complete.
 

@@ -9,7 +9,7 @@ using FlaUIApp = FlaUI.Core.Application;
 namespace WileyWidget.WinForms.Tests.Integration.Ui
 {
     /// <summary>
-    /// Base class for all FLAUI panel tests (v32.2.3 Syncfusion-ready).
+    /// Base class for all FLAUI panel tests (v33.1.44 Syncfusion-ready).
     /// Provides shared app launch, safe shutdown, and IDisposable support.
     /// </summary>
     public abstract class FlaUiTestBase : IDisposable

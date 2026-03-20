@@ -172,11 +172,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             this.SuspendLayout();
 
             Name = "BudgetOverviewPanel";
-            // Dock.Fill — let the DockingManager control size, but enforce a floor so
-            // the fixed chrome (header 52 + toolbar 48 + summary cards 80 + statusbar 24 = 204)
-            // never collapses and leaves a blank panel.
+            // Dock.Fill — let the DockingManager control the final size.
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(1024, 720);
             try { AutoScaleMode = AutoScaleMode.Dpi; } catch { }
 
             this.ResumeLayout(false);

@@ -33,8 +33,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
     public partial class PanelHeader : UserControl
     {
         private const int HEADER_HEIGHT = 52;
+        private const int HEADER_MIN_WIDTH = 320;
         private const int BUTTON_MARGIN_H = 6;
         private const int BUTTON_MARGIN_V = 6;
+        private const int FULL_BUTTON_WIDTH = 80;
+        private const int ICON_BUTTON_WIDTH = 40;
+        private const int ACTION_COLLAPSE_THRESHOLD_WIDTH = 800;
 
         private Label? _titleLabel;
         private SfButton? _btnRefresh;
@@ -51,6 +55,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private bool _isLoading;
         private bool _isRefreshing;
         private bool _refreshInProgress;
+        private bool _collapseActionButtons;
         private bool _helpButtonVisible = true;
         private bool _refreshButtonVisible = true;
         private bool _pinButtonVisible = true;
@@ -397,15 +402,15 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private void InitializeComponent()
         {
             Height = HEADER_HEIGHT;
-            MinimumSize = new Size(0, HEADER_HEIGHT); // Prevent collapse
+            MinimumSize = new Size(HEADER_MIN_WIDTH, HEADER_HEIGHT);
             AutoSize = false; // Explicit false - we control the height
             Padding = new Padding(8);
             Dock = DockStyle.Top;
 
             // Compute button sizing based on header height and padding
             var innerHeight = HEADER_HEIGHT - Padding.Vertical;
-            var buttonHeight = Math.Max(20, innerHeight - (BUTTON_MARGIN_V * 2));
-            var buttonWidth = 80; // reasonable width for text buttons
+            var buttonHeight = Math.Max(24, innerHeight - (BUTTON_MARGIN_V * 2));
+            var buttonWidth = FULL_BUTTON_WIDTH;
 
             _toolTip = new ToolTip();
 
@@ -415,42 +420,40 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 Name = "headerLabel",
                 AutoSize = false,
                 Dock = DockStyle.Fill,
+                AutoEllipsis = true,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Margin = new Padding(0),
                 AccessibleName = "Header title"
             };
 
+            var headerLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = new Padding(0),
+                Padding = new Padding(0)
+            };
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
             // Right-aligned container for actions
             var actionsPanel = new FlowLayoutPanel
             {
-                Dock = DockStyle.Right,
                 FlowDirection = FlowDirection.LeftToRight,
                 AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 WrapContents = false,
                 Padding = new Padding(0),
-                Margin = new Padding(0)
+                Margin = new Padding(0),
+                MinimumSize = new Size(160, innerHeight),
+                Anchor = AnchorStyles.Right
             };
 
             // Refresh button — created via factory when available (Syncfusion Control Creation Rule)
             _btnRefresh = CreateActionButton("Refresh", buttonWidth, buttonHeight, "Refresh");
-            if (_imageService != null)
-            {
-                try
-                {
-                    var refreshIcon = _imageService.GetImage("refresh");
-                    if (refreshIcon != null)
-                    {
-                        _btnRefresh.Image = refreshIcon;
-                        _btnRefresh.Text = string.Empty; // Icon-only for cleaner look
-                        _btnRefresh.Size = new Size(40, buttonHeight); // Compact width for icon-only
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Gracefully fall back to text if icon loading fails
-                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to load refresh icon: {ex.Message}");
-                }
-            }
+            ApplyIconIfAvailable(_btnRefresh, "refresh");
             _btnRefresh.Click += RefreshButton_Click;
             _btnRefresh.KeyDown += (s, e) =>
             {
@@ -483,23 +486,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             // Help button — created via factory when available
             _btnHelp = CreateActionButton("Help", buttonWidth, buttonHeight, "Help");
             _btnHelp.Visible = _helpButtonVisible;
-            if (_imageService != null)
-            {
-                try
-                {
-                    var helpIcon = _imageService.GetImage("help");
-                    if (helpIcon != null)
-                    {
-                        _btnHelp.Image = helpIcon;
-                        _btnHelp.Text = string.Empty; // Icon-only for cleaner look
-                        _btnHelp.Size = new Size(40, buttonHeight); // Compact width for icon-only
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to load help icon: {ex.Message}");
-                }
-            }
+            ApplyIconIfAvailable(_btnHelp, "help");
             _btnHelp.Click += (s, e) => HelpClicked?.Invoke(this, EventArgs.Empty);
             _btnHelp.KeyDown += (s, e) =>
             {
@@ -513,23 +500,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
             // Close button — created via factory when available
             _btnClose = CreateActionButton("Close", buttonWidth, buttonHeight, "Close");
-            if (_imageService != null)
-            {
-                try
-                {
-                    var closeIcon = _imageService.GetImage("close");
-                    if (closeIcon != null)
-                    {
-                        _btnClose.Image = closeIcon;
-                        _btnClose.Text = string.Empty; // Icon-only for cleaner look
-                        _btnClose.Size = new Size(40, buttonHeight); // Compact width for icon-only
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Warning: Failed to load close icon: {ex.Message}");
-                }
-            }
+            ApplyIconIfAvailable(_btnClose, "close");
             _btnClose.Click += (s, e) => CloseClicked?.Invoke(this, EventArgs.Empty);
             _btnClose.KeyDown += (s, e) =>
             {
@@ -548,13 +519,20 @@ namespace WileyWidget.WinForms.Controls.Supporting
             actionsPanel.Controls.Add(_btnHelp);
             actionsPanel.Controls.Add(_btnClose);
 
-            // Add to control hierarchy (order matters: actionsPanel on top, title label behind)
-            Controls.Add(actionsPanel);
-            Controls.Add(_titleLabel);
+            headerLayout.Controls.Add(_titleLabel, 0, 0);
+            headerLayout.Controls.Add(actionsPanel, 1, 0);
+            Controls.Add(headerLayout);
+            SizeChanged += PanelHeader_SizeChanged;
+            UpdateResponsiveButtonLayout();
 
             // Accessibility
             AccessibleName = "Panel Header";
             AccessibleDescription = "Contains the title and action buttons for the panel";
+        }
+
+        private void PanelHeader_SizeChanged(object? sender, EventArgs e)
+        {
+            UpdateResponsiveButtonLayout();
         }
 
         private void RefreshButton_Click(object? sender, EventArgs e)
@@ -592,7 +570,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
             if (_btnPin.Image == null)
             {
                 // Text-only mode (no icon service)
-                _btnPin.Text = _isPinned ? "Unpin" : "Pin";
+                _btnPin.Text = _collapseActionButtons ? string.Empty : _isPinned ? "Unpin" : "Pin";
+                _btnPin.Size = new Size(_collapseActionButtons ? ICON_BUTTON_WIDTH : FULL_BUTTON_WIDTH, _btnPin.Height);
             }
             // If using icons, keep icon; don't change text
 
@@ -611,20 +590,20 @@ namespace WileyWidget.WinForms.Controls.Supporting
         {
             if (_btnRefresh == null) return;
 
-            if (_isLoading && _isRefreshing)
-            {
-                _btnRefresh.Text = "Refreshing...";
-                _btnRefresh.Size = new Size(80, _btnRefresh.Height); // Wider for text
-            }
-            else if (_btnRefresh.Image != null)
+            if (_collapseActionButtons || _btnRefresh.Image != null)
             {
                 _btnRefresh.Text = string.Empty;
-                _btnRefresh.Size = new Size(40, _btnRefresh.Height); // Compact for icon
+                _btnRefresh.Size = new Size(ICON_BUTTON_WIDTH, _btnRefresh.Height);
+            }
+            else if (_isLoading && _isRefreshing)
+            {
+                _btnRefresh.Text = "Refreshing...";
+                _btnRefresh.Size = new Size(FULL_BUTTON_WIDTH, _btnRefresh.Height); // Wider for text
             }
             else
             {
                 _btnRefresh.Text = "Refresh";
-                _btnRefresh.Size = new Size(80, _btnRefresh.Height); // Default width
+                _btnRefresh.Size = new Size(FULL_BUTTON_WIDTH, _btnRefresh.Height); // Default width
             }
         }
 
@@ -641,13 +620,63 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _btnPin.Image = icon;
                     _btnPin.Text = string.Empty; // Icon-only
-                    _btnPin.Size = new Size(40, _btnPin.Height); // Compact width for icon-only
+                    _btnPin.Size = new Size(ICON_BUTTON_WIDTH, _btnPin.Height); // Compact width for icon-only
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Warning: Failed to load pin button icon: {ex.Message}");
             }
+        }
+
+        private void ApplyIconIfAvailable(SfButton button, string iconKey)
+        {
+            if (_imageService == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var icon = _imageService.GetImage(iconKey);
+                if (icon != null)
+                {
+                    button.Image = icon;
+                    button.Text = string.Empty;
+                    button.Size = new Size(ICON_BUTTON_WIDTH, button.Height);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Warning: Failed to load {iconKey} icon: {ex.Message}");
+            }
+        }
+
+        private void UpdateResponsiveButtonLayout()
+        {
+            _collapseActionButtons = Width < ACTION_COLLAPSE_THRESHOLD_WIDTH;
+            UpdateRefreshButtonText();
+            UpdatePinButtonAppearance();
+            UpdateButtonLayout(_btnHelp, "Help");
+            UpdateButtonLayout(_btnClose, "Close");
+        }
+
+        private void UpdateButtonLayout(SfButton? button, string text)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            if (_collapseActionButtons || button.Image != null)
+            {
+                button.Text = string.Empty;
+                button.Size = new Size(ICON_BUTTON_WIDTH, button.Height);
+                return;
+            }
+
+            button.Text = text;
+            button.Size = new Size(FULL_BUTTON_WIDTH, button.Height);
         }
 
         /// <summary>

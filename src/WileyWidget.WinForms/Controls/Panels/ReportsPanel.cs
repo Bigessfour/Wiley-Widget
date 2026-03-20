@@ -55,6 +55,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     // private FastReport.ReportViewer? _previewControl; // Removed - not available in Open Source
     private StatusStrip? _statusStrip;
     private ToolStripStatusLabel? _statusLabel;
+    private Label? _reportViewerPlaceholderLabel;
     private LoadingOverlay? _loadingOverlay;
     private NoDataOverlay? _noDataOverlay;
 
@@ -124,7 +125,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
         PerformLayout();
         Invalidate(true);
     }
@@ -261,8 +261,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
 
         Name = "ReportsPanel";
         AccessibleName = "Reports"; // Panel title for UI automation
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
+        Size = new Size(1024, 720);
         AutoScroll = false;
         Padding = Padding.Empty;
         // Apply theme for cascade to all child controls
@@ -288,7 +287,6 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _panelHeaderCloseClickedHandler = (s, e) => ClosePanel();
         _panelHeader.RefreshClicked += _panelHeaderRefreshClickedHandler;
         _panelHeader.CloseClicked += _panelHeaderCloseClickedHandler;
-        Controls.Add(_panelHeader);
 
         // Canonical _content root
         _content = new TableLayoutPanel
@@ -308,7 +306,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _parametersSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = Orientation.Horizontal;
+            splitter.Orientation = Orientation.Vertical;
             splitter.Panel1Collapsed = true; // Initially hidden
         });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_parametersSplitContainer, 200);
@@ -437,7 +435,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _mainSplitContainer = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = Orientation.Horizontal;
+            splitter.Orientation = Orientation.Vertical;
         });
         SafeSplitterDistanceHelper.TrySetSplitterDistance(_mainSplitContainer, 60);
 
@@ -447,6 +445,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Dock = DockStyle.Fill,
             Padding = new Padding(10),
             BorderStyle = BorderStyle.None,
+            AutoScroll = true,
         };
 
         // Use FlowLayoutPanel for toolbar controls
@@ -455,8 +454,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            AutoSize = false,
             Padding = new Padding(0),
             Margin = new Padding(0)
         };
@@ -595,7 +593,19 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             AccessibleName = "Report Preview Container",
             Dock = DockStyle.Fill,
             BorderStyle = BorderStyle.FixedSingle,
+            Padding = new Padding(24),
         };
+
+        _reportViewerPlaceholderLabel = new Label
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            AccessibleName = "Report Preview Instructions",
+            AccessibleDescription = "Explains how to generate, preview, and export the selected report",
+            Text = "Select a report template, click Generate, then use Preview PDF or Export PDF to review the result."
+        };
+        _reportViewerContainer.Controls.Add(_reportViewerPlaceholderLabel);
 
         // Initialize FastReport
         _fastReport = new Report();
@@ -619,6 +629,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
         _parametersSplitContainer.Panel2.Controls.Add(_mainSplitContainer);
         _content!.Controls.Add(_parametersSplitContainer, 0, 0);
         Controls.Add(_content);
+        Controls.Add(_panelHeader);
 
         // Status strip
         _statusStrip = new StatusStrip
@@ -644,7 +655,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Visible = false,
             Dock = DockStyle.Fill
         };
-        Controls.Add(_loadingOverlay);
+        _reportViewerContainer.Controls.Add(_loadingOverlay);
 
         // No data overlay
         _noDataOverlay = new NoDataOverlay
@@ -653,7 +664,7 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
             Visible = false,
             Dock = DockStyle.Fill
         };
-        Controls.Add(_noDataOverlay);
+        _reportViewerContainer.Controls.Add(_noDataOverlay);
 
         // Load available reports
         LoadAvailableReports();
@@ -720,14 +731,31 @@ public partial class ReportsPanel : ScopedPanelBase<ReportsViewModel>, IParamete
     {
         if (ViewModel == null) return;
 
+        var hasReport = ViewModel.HasReportLoaded;
+
         if (_loadingOverlay != null)
         {
             _loadingOverlay.Visible = ViewModel.IsLoading;
+            if (_loadingOverlay.Visible)
+            {
+                _loadingOverlay.BringToFront();
+            }
         }
 
         if (_noDataOverlay != null)
         {
-            _noDataOverlay.Visible = !ViewModel.IsLoading && !ViewModel.HasReportLoaded;
+            _noDataOverlay.Visible = !ViewModel.IsLoading && !hasReport;
+            if (_noDataOverlay.Visible)
+            {
+                _noDataOverlay.BringToFront();
+            }
+        }
+
+        if (_reportViewerPlaceholderLabel != null)
+        {
+            _reportViewerPlaceholderLabel.Text = hasReport
+                ? "The report template is loaded. Use Preview PDF to open the rendered report or Export PDF to save it."
+                : "Select a report template, click Generate, then use Preview PDF or Export PDF to review the result.";
         }
     }
 

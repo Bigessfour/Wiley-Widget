@@ -119,12 +119,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         SafeSuspendAndLayout(InitializeComponent);
 
-        // Apply DPI-aware minimum size before layout initialization
-        MinimumSize = new Size(
-            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1200.0f),
-            (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720.0f)
-        );
-
         // NOTE: InitializeControls() moved to OnViewModelResolved()
         // because it requires ViewModel to be non-null
         ApplySyncfusionTheme();
@@ -181,7 +175,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         // Set up form properties
         Text = "Budget Management";
-        Size = new Size(1400, 900);
 
         // Panel header with actions
         _panelHeader = new PanelHeader { Dock = DockStyle.Top, Title = "Budget Management & Analysis" };
@@ -193,7 +186,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         _panelHeader.HelpClicked += _panelHeaderHelpHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-        Controls.Add(_panelHeader);
 
         // Main split container - top/bottom layout
         // Ensures summary+filters remain visible while preserving space for the grid
@@ -201,13 +193,14 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         {
             split.Name = "BudgetMainSplitContainer";
             split.Dock = DockStyle.Fill;
-            split.Orientation = Orientation.Horizontal;
+            split.Orientation = Orientation.Vertical;
             split.SplitterDistance = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(250.0f);
         });
         // Note: SafeSplitterDistanceHelper.ConfigureSafeSplitContainer is deferred to avoid sizing exceptions
         // during initialization. The helper will configure min sizes when the container is properly sized.
 
         Controls.Add(_mainSplitContainer);
+        Controls.Add(_panelHeader);
 
         // Top panel - Summary and filters
         InitializeTopPanel();
@@ -1140,8 +1133,7 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
             Dock = DockStyle.Fill,
             ColumnCount = 9,
             RowCount = 1,
-            AutoSize = false,
-            MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(960.0f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(30.0f))
+            AutoSize = false
         };
 
         // Keep consistent button widths while preserving a stretch region to avoid clipping drift.
@@ -2821,7 +2813,6 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
         this.components = new System.ComponentModel.Container();
         this.Name = "BudgetPanel";
-        this.Size = new Size(1400, 900);
         try { this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi; } catch { }
         this.MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(800f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f));
         this.AutoScroll = false;

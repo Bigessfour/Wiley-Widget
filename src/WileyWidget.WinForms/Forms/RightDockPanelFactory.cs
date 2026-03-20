@@ -29,7 +29,7 @@ public static class RightDockPanelFactory
     /// <param name="logger">Logger instance</param>
     /// <returns>Tuple of right panel container, tab host, and hosted panels.</returns>
     /// <remarks>
-    /// The right panel is 350px wide with 320px minimum to accommodate Activity Log.
+    /// The right panel is 480px wide with 420px minimum to better accommodate Activity Log and JARVIS Chat.
     /// Panel is created with scoped lifecycles; DI registration NOT needed.
     /// Theme cascade applied via SfSkinManager.
     /// </remarks>
@@ -58,8 +58,8 @@ public static class RightDockPanelFactory
             var rightDockPanel = new Panel
             {
                 Dock = DockStyle.Right,
-                Width = 420,
-                MinimumSize = new Size(360, 0),
+                Width = 480,
+                MinimumSize = new Size(420, 0),
                 BorderStyle = BorderStyle.None,
                 Name = "RightDockPanel"
             };

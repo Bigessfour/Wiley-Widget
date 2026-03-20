@@ -107,7 +107,7 @@ jobs:
           dotnet build tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --configuration Release --no-restore --verbosity minimal *>&1 | Tee-Object -FilePath build-tests.log
           if ($LASTEXITCODE -ne 0) { Write-Error "Test project build failed; see build-tests.log" }
 
-      - name: Syncfusion 32.2.3 Architecture Compliance
+      - name: Syncfusion 33.1.44 Architecture Compliance
         shell: pwsh
         run: |
           # Baselines represent known existing violations at time of check introduction (2026-02-28).
@@ -118,15 +118,15 @@ jobs:
           $themeBaseline   = 20
           $failed = $false
 
-          # 1 — Version pin: every Syncfusion package entry must be exactly 32.2.3 (hard fail)
+          # 1 — Version pin: every Syncfusion package entry must be exactly 33.1.44 (hard fail)
           $drift = Select-String -Path 'Directory.Packages.props' -Pattern 'Include="Syncfusion\.' |
-                   Where-Object { $_.Line -notmatch 'Version="32\.2\.3"' }
+                   Where-Object { $_.Line -notmatch 'Version="33\.1\.44"' }
           if ($drift) {
-            Write-Error "❌ Syncfusion version drift detected (expected 32.2.3 — update baseline or revert package change):"
+            Write-Error "❌ Syncfusion version drift detected (expected 33.1.44 — update baseline or revert package change):"
             $drift | ForEach-Object { Write-Host "  LINE $($_.LineNumber): $($_.Line.Trim())" }
             $failed = $true
           } else {
-            Write-Host "✅ Version pin: all Syncfusion packages = 32.2.3"
+            Write-Host "✅ Version pin: all Syncfusion packages = 33.1.44"
           }
 
           # 2 — Factory enforcement: no direct Syncfusion control instantiation outside factory/designer files

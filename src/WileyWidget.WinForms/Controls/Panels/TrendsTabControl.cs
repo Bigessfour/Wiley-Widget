@@ -62,18 +62,29 @@ public partial class TrendsTabControl : UserControl, IThemable
         this.Padding = new Padding(8);
         _toolTip = new ToolTip();
 
-        var mainSplit = new SplitContainer
+        var layoutRoot = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Orientation = Orientation.Vertical,
-            SplitterDistance = 60
+            ColumnCount = 1,
+            RowCount = 2,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
+        layoutRoot.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        layoutRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layoutRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
         InitializeControlsPanel();
-        mainSplit.Panel1.Controls.Add(_controlsPanel);
+        if (_controlsPanel != null)
+        {
+            _controlsPanel.Margin = Padding.Empty;
+            layoutRoot.Controls.Add(_controlsPanel, 0, 0);
+        }
 
         InitializeChartsPanel();
-        mainSplit.Panel2.Controls.Add(CreateChartsTable());
+        var chartsTable = CreateChartsTable();
+        chartsTable.Margin = new Padding(0, 8, 0, 0);
+        layoutRoot.Controls.Add(chartsTable, 0, 1);
 
         _loadingOverlay = new LoadingOverlay
         {
@@ -81,21 +92,31 @@ public partial class TrendsTabControl : UserControl, IThemable
             Dock = DockStyle.Fill,
             Visible = false
         };
+        Controls.Add(layoutRoot);
         Controls.Add(_loadingOverlay);
         _loadingOverlay.BringToFront();
-        Controls.Add(mainSplit);
     }
 
     private void InitializeControlsPanel()
     {
-        _controlsPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(LayoutTokens.PanelPadding) };
+        _controlsPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(LayoutTokens.PanelPadding)
+        };
         SfSkinManager.SetVisualStyle(_controlsPanel, SfSkinManager.ApplicationVisualTheme ?? AppThemeColors.DefaultTheme);
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 3,
-            RowCount = 1
+            RowCount = 1,
+            Dock = DockStyle.Top,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120)); // Label
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));  // Spinner

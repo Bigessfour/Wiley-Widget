@@ -87,7 +87,6 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
         PerformLayout();
         Invalidate(true);
     }
@@ -226,12 +225,13 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
     private void InitializeControls()
     {
+        SuspendLayout();
+
         // Apply Syncfusion theme via SfSkinManager (single source of truth)
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
 
         Name = "RecommendedMonthlyChargePanel";
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
+        Size = new Size(1024, 720);
         Dock = DockStyle.Fill;
 
         // Error provider
@@ -684,7 +684,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         _chartControl.Title.Text = "Expenses vs Current vs Suggested Charges";
         _chartControl.Title.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
         _chartControl.Legend.Visible = true;
-        _chartControl.Legend.Position = ChartDock.Top;
+        _chartControl.Legend.Position = ChartDock.Right;
         _chartControl.PrimaryXAxis.Title = "Departments";
         _chartControl.PrimaryYAxis.Title = "Amount ($)";
         _chartControl.PrimaryYAxis.RangeType = ChartAxisRangeType.Auto;
@@ -731,6 +731,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
         Controls.Add(_noDataOverlay);
         _noDataOverlay.BringToFront();
 
+        ResumeLayout(false);
         this.PerformLayout();
         this.Refresh();
 
@@ -943,7 +944,7 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
             // Configure chart appearance
             _chartControl.Title.Text = "Department Expenses vs Current vs Suggested Charges";
             _chartControl.Legend.Visible = true;
-            _chartControl.Legend.Position = ChartDock.Top;
+            _chartControl.Legend.Position = ChartDock.Right;
             _chartControl.PrimaryXAxis.Title = "Departments";
             _chartControl.PrimaryXAxis.LabelRotateAngle = 45;
             _chartControl.PrimaryYAxis.Title = "Amount ($)";

@@ -91,8 +91,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     {
         _vm = vm ?? throw new ArgumentNullException(nameof(vm));
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        MinimumSize = new Size(RecommendedDockedPanelMinimumLogicalWidth,
-                               RecommendedDockedPanelMinimumLogicalHeight);
         Dock = DockStyle.Fill;
         AutoScaleMode = AutoScaleMode.Dpi;
         SafeSuspendAndLayout(InitializeLayout);
@@ -102,7 +100,6 @@ public partial class AuditLogPanel : ScopedPanelBase<AuditLogViewModel>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = RecommendedDockedPanelMinimumLogicalSize;
         PerformLayout();
     }
 

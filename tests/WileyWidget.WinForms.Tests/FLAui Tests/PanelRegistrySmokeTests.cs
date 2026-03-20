@@ -137,8 +137,8 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             {
                 "Budget Management & Analysis" => PanelActivationHelpers.EnsureBudgetPanelVisibleOrHostGated(window, timeout),
                 "Municipal Accounts" => PanelActivationHelpers.EnsureAccountsPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
-                "Payments" => PanelActivationHelpers.EnsurePaymentsPanelVisibleOrHostGated(window, timeout),
-                "QuickBooks" => PanelActivationHelpers.EnsureQuickBooksPanelVisibleOrHostGated(window, timeout),
+                "Payments" => PanelActivationHelpers.EnsurePaymentsPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
+                "QuickBooks" => PanelActivationHelpers.EnsureQuickBooksPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
                 _ => PanelActivationHelpers.EnsurePanelVisibleOrHostGated(window, displayName, timeout)
             };
         }

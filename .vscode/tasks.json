@@ -1834,6 +1834,29 @@
 				"$msCompile"
 			],
 			"group": "test"
+		},
+		{
+			"label": "temp: panel registry smoke args no-build",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"test",
+				"tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj",
+				"--filter",
+				"FullyQualifiedName~PanelRegistrySmokeTests",
+				"--no-build",
+				"--no-restore",
+				"--blame-hang",
+				"--blame-hang-timeout",
+				"2m",
+				"--logger",
+				"console;verbosity=minimal"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "test"
 		}
 	],
 	"inputs": [

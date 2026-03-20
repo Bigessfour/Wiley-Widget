@@ -103,6 +103,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private EventHandler? _syncQuickBooksClickHandler;
     private EventHandler? _exportClickHandler;
     private EventHandler? _noDataOverlayActionHandler;
+    private bool _toolbarHandlersWired;
+    private bool _viewModelBound;
 
     private ErrorProvider? _errorProvider;
     private ToolTip? _toolTip;
@@ -121,7 +123,6 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     {
         // Set preferred size for proper docking display (matches PreferredDockSize extension)
         Size = new Size(1100, 760);
-        MinimumSize = new Size(1024, 720);
 
         // NOTE: InitializeControls() moved to OnViewModelResolved()
         ApplySyncfusionTheme();
@@ -132,7 +133,6 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
         PerformLayout();
         Invalidate(true);
     }
@@ -153,6 +153,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void WireupToolbarEventHandlers()
     {
+        if (_toolbarHandlersWired)
+        {
+            return;
+        }
+
         if (_clearFiltersButton != null)
         {
             _clearFiltersClickHandler = (s, e) => ViewModel?.ClearFiltersCommand.Execute(null);
@@ -168,6 +173,8 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
             };
             _showActiveOnlyCheckBox.CheckedChanged += _showActiveOnlyChangedHandler;
         }
+
+        _toolbarHandlersWired = true;
     }
 
     public override async Task LoadAsync(CancellationToken ct = default)
@@ -832,6 +839,11 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     /// </summary>
     private void BindViewModel()
     {
+        if (_viewModelBound)
+        {
+            return;
+        }
+
         // ViewModel is guaranteed non-null at this point because OnViewModelResolved only calls this after resolution
         // ViewModel property is set in base class and never null after OnViewModelResolved
 
@@ -943,6 +955,7 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
         // Subscribe to property changes for complex UI updates (only once)
         // ViewModel is guaranteed non-null at this point
         ViewModel!.PropertyChanged += ViewModel_PropertyChanged;
+        _viewModelBound = true;
 
         _logger?.LogDebug("CustomersPanel ViewModel bound with DataBindings");
 

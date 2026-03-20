@@ -1,4 +1,4 @@
-# Syncfusion Control Quick Reference Guide (v32.2.3)
+# Syncfusion Control Quick Reference Guide (v33.1.44)
 
 **Fast lookup for creating Syncfusion controls with complete configuration.**
 
@@ -35,7 +35,7 @@ this.Controls.Add(grid);
 ```
 
 **Factory Sets:**
-✅ ThemeName (v32.2.3)
+✅ ThemeName (v33.1.44)
 ✅ SfSkinManager applied
 ✅ String filter protection
 ✅ AllowEditing/Filtering/Sorting
@@ -202,7 +202,7 @@ listView.ApplySyncfusionTheme(_currentTheme, _logger);  // Extension
 
 ❌ Assume defaults: Missing theme/size
 
-✅ Factory handles: Theme, defaults, v32.2.3 compliance
+✅ Factory handles: Theme, defaults, v33.1.44 compliance
 
 ## 📖 Reference
 
@@ -210,6 +210,6 @@ listView.ApplySyncfusionTheme(_currentTheme, _logger);  // Extension
 - Rules: .vscode/rules/syncfusion-control-enforcement.md
 - Extensions: src/WileyWidget.WinForms/Extensions/SyncfusionThemingExtensions.cs
 - Docs: @syncfusion-winforms MCP
-- Samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.2.3
+- Samples: C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\33.1.44
 
 **Tip:** Factory source has full prop lists!

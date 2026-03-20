@@ -53,7 +53,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             Name = "WarRoomPanel";
             AccessibleName = "War Room"; // Panel title for UI automation
             Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
             AutoScaleMode = AutoScaleMode.Dpi;
             Padding = Padding.Empty;
 
@@ -255,7 +254,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             base.OnHandleCreated(e);
 
-            MinimumSize = new Size(1024, 720);
             PerformLayout();
             Invalidate(true);
 

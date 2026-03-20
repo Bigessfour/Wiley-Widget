@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Syncfusion.WinForms.AIAssistView;
+using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.WinForms.Automation;
@@ -98,6 +99,44 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
         assistView.Should().NotBeNull();
         assistView!.Dock.Should().Be(System.Windows.Forms.DockStyle.Fill);
         assistView.Margin.Should().Be(System.Windows.Forms.Padding.Empty);
+        jarvisControl.MinimumSize.Height.Should().BeGreaterOrEqualTo(520);
+    }
+
+    [StaFact]
+    public void JARVISChatUserControl_ProvidesCopyExportAndResponseViewerActions()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        TestThemeHelper.EnsureOffice2019Colorful();
+
+        using var provider = IntegrationTestServices.BuildProvider();
+        using var control = CreateControl(provider);
+
+        FindNamedControl<SfButton>(control, "JarvisOpenResponseViewerButton").Should().NotBeNull();
+        FindNamedControl<SfButton>(control, "JarvisCopyLatestResponseButton").Should().NotBeNull();
+        FindNamedControl<SfButton>(control, "JarvisCopyTranscriptButton").Should().NotBeNull();
+        FindNamedControl<SfButton>(control, "JarvisExportTranscriptButton").Should().NotBeNull();
+    }
+
+    [StaFact]
+    public void JARVISChatUserControl_AssistantResponse_EnablesResponseActions()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        TestThemeHelper.EnsureOffice2019Colorful();
+
+        using var provider = IntegrationTestServices.BuildProvider();
+        using var control = CreateControl(provider);
+
+        var appendAssistantMessage = typeof(JARVISChatUserControl).GetMethod(
+            "AppendAssistantMessage",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        appendAssistantMessage.Should().NotBeNull();
+        appendAssistantMessage!.Invoke(control, new object[] { "This is a long JARVIS response that should be copyable and exportable." });
+
+        FindNamedControl<SfButton>(control, "JarvisOpenResponseViewerButton")!.Enabled.Should().BeTrue();
+        FindNamedControl<SfButton>(control, "JarvisCopyLatestResponseButton")!.Enabled.Should().BeTrue();
+        FindNamedControl<SfButton>(control, "JarvisCopyTranscriptButton")!.Enabled.Should().BeTrue();
+        FindNamedControl<SfButton>(control, "JarvisExportTranscriptButton")!.Enabled.Should().BeTrue();
     }
 
     [StaFact]
@@ -261,6 +300,26 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
         foreach (System.Windows.Forms.Control child in root.Controls)
         {
             var found = FindTextBox(child, controlName);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static TControl? FindNamedControl<TControl>(System.Windows.Forms.Control root, string controlName)
+        where TControl : System.Windows.Forms.Control
+    {
+        if (root is TControl match && root.Name == controlName)
+        {
+            return match;
+        }
+
+        foreach (System.Windows.Forms.Control child in root.Controls)
+        {
+            var found = FindNamedControl<TControl>(child, controlName);
             if (found != null)
             {
                 return found;

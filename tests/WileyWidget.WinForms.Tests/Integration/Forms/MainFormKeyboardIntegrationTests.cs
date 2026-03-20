@@ -26,17 +26,35 @@ public sealed class MainFormKeyboardIntegrationTests(IntegrationTestFixture fixt
     }
     private sealed class TestMainForm : MainForm
     {
+        private readonly IServiceScope _scope;
+
         public TestMainForm(IServiceProvider provider)
-            : base(
-                provider,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(provider),
-                WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled,
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.IThemeService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.Abstractions.IWindowStateService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IFileImportService>(provider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Factories.SyncfusionControlFactory>(provider))
+            : this(provider.CreateScope())
         {
+        }
+
+        private TestMainForm(IServiceScope scope)
+            : base(
+                scope.ServiceProvider,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ILogger<MainForm>>(scope.ServiceProvider),
+                WileyWidget.WinForms.Configuration.ReportViewerLaunchOptions.Disabled,
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.IThemeService>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Services.Abstractions.IWindowStateService>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.Services.Abstractions.IFileImportService>(scope.ServiceProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WileyWidget.WinForms.Factories.SyncfusionControlFactory>(scope.ServiceProvider))
+        {
+            _scope = scope;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+
+            if (disposing)
+            {
+                _scope.Dispose();
+            }
         }
 
         public bool ProcessTestKey(Keys keyData)

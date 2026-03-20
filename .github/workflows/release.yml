@@ -74,10 +74,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Syncfusion version pin gate (must be 32.2.3)
+      - name: Syncfusion version pin gate (must be 33.1.44)
         shell: pwsh
         run: |
-          $expected = "32.2.3"
+          $expected = "33.1.44"
           $violations = Select-String -Path "Directory.Packages.props" `
             -Pattern 'Include="Syncfusion\.' |
             Where-Object { $_.Line -notmatch $expected -and $_.Line -notmatch '<!--' }

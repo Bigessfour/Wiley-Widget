@@ -8,6 +8,7 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -43,6 +44,7 @@ namespace WileyWidget.WinForms.Controls.Panels
         private Panel _topPanel = null!;
         private PanelHeader? _panelHeader;
         private LoadingOverlay? _loadingOverlay;
+        private NoDataOverlay? _noDataOverlay;
         private Label _lblStatus = null!;
         private SfDataGrid _insightsGrid = null!;
         private ToolStrip _toolStrip = null!;
@@ -51,6 +53,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private EventHandler? _refreshButtonClickHandler;
         private PropertyChangedEventHandler ViewModelPropertyChangedHandler;
+        private NotifyCollectionChangedEventHandler? _insightCardsCollectionChangedHandler;
         private SelectionChangingEventHandler? _insightsGridSelectionChangingHandler;
         private FilterChangingEventHandler? _insightsGridFilterChangingHandler;
         private EventHandler? _panelHeaderRefreshHandler;
@@ -106,6 +109,11 @@ namespace WileyWidget.WinForms.Controls.Panels
             _insightsGrid?.Focus();
         }
 
+        protected override Size GetRecommendedMinimumSize()
+        {
+            return ScaleLogicalToDevice(RecommendedEmbeddedPanelMinimumLogicalSize);
+        }
+
         /// <summary>
         /// Initializes the UI controls and ensures all child controls are properly created and configured.
         /// </summary>
@@ -115,7 +123,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 // Provide breathing room and protect from collapsing
                 this.Padding = new Padding(8);
-                this.MinimumSize = new Size(1024, 720);
                 this.AccessibleName = "Insight Feed Panel";
                 this.AccessibleDescription = "Displays proactive insights and the data grid";
 
@@ -218,6 +225,17 @@ namespace WileyWidget.WinForms.Controls.Panels
                     AutoGenerateColumns = false
                 };
                 Controls.Add(_insightsGrid);
+
+                _noDataOverlay = new NoDataOverlay
+                {
+                    Dock = DockStyle.Fill,
+                    Name = "InsightNoDataOverlay",
+                    AccessibleName = "No Insights Indicator",
+                    AccessibleDescription = "Displayed when no proactive insights are available",
+                    Message = "No proactive insights are available yet.\r\nRefresh the feed or wait for new AI insights.",
+                    Visible = false
+                };
+                Controls.Add(_noDataOverlay);
 
                 // Loading overlay (added last so it can overlay the grid when visible)
                 _loadingOverlay = new LoadingOverlay
@@ -325,6 +343,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Subscribe to ViewModel property changes for UI updates
                 ViewModelPropertyChangedHandler = new System.ComponentModel.PropertyChangedEventHandler(ViewModel_PropertyChanged);
                 ViewModel.PropertyChanged += ViewModelPropertyChangedHandler;
+                _insightCardsCollectionChangedHandler = (s, e) => UpdateEmptyState();
+                ViewModel.InsightCards.CollectionChanged += _insightCardsCollectionChangedHandler;
 
                 // Wire up refresh command (manual refresh button in toolbar)
                 _refreshButtonClickHandler = RefreshButton_Click;
@@ -337,6 +357,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 // Prevent invalid relational filters on string columns
                 _insightsGridFilterChangingHandler = InsightsGrid_FilterChanging;
                 _insightsGrid.FilterChanging += _insightsGridFilterChangingHandler;
+
+                UpdateEmptyState();
 
                 _logger?.LogInformation("ViewModel bound successfully to InsightFeedPanel");
             }
@@ -361,6 +383,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                         {
                             _lblStatus.Text = ViewModel.StatusMessage;
                             _lblStatus.Refresh();
+                            UpdateEmptyState();
                             _logger?.LogDebug("Status updated: {Status}", ViewModel.StatusMessage);
                         }
                         break;
@@ -369,6 +392,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                         if (_loadingOverlay != null)
                         {
                             _loadingOverlay.Visible = ViewModel?.IsLoading ?? false;
+                            UpdateEmptyState();
                             _logger?.LogDebug("Loading state changed: {IsLoading}", ViewModel?.IsLoading);
                         }
                         break;
@@ -406,6 +430,30 @@ namespace WileyWidget.WinForms.Controls.Panels
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error executing refresh command");
+            }
+        }
+
+        private void UpdateEmptyState()
+        {
+            if (_noDataOverlay == null || _loadingOverlay == null || ViewModel == null)
+            {
+                return;
+            }
+
+            var hasInsights = ViewModel.InsightCards.Count > 0;
+            var isLoading = ViewModel.IsLoading;
+            _noDataOverlay.Message = string.IsNullOrWhiteSpace(ViewModel.StatusMessage)
+                ? "No proactive insights are available yet.\r\nRefresh the feed or wait for new AI insights."
+                : ViewModel.StatusMessage;
+            _noDataOverlay.Visible = !isLoading && !hasInsights;
+
+            if (_loadingOverlay.Visible)
+            {
+                _loadingOverlay.BringToFront();
+            }
+            else if (_noDataOverlay.Visible)
+            {
+                _noDataOverlay.BringToFront();
             }
         }
 
@@ -561,6 +609,11 @@ namespace WileyWidget.WinForms.Controls.Panels
                         ViewModel.PropertyChanged -= ViewModelPropertyChangedHandler;
                     }
 
+                    if (ViewModel != null && _insightCardsCollectionChangedHandler != null)
+                    {
+                        ViewModel.InsightCards.CollectionChanged -= _insightCardsCollectionChangedHandler;
+                    }
+
                     if (_btnRefresh != null && _refreshButtonClickHandler != null)
                     {
                         _btnRefresh.Click -= _refreshButtonClickHandler;
@@ -600,6 +653,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                     _topPanel?.Dispose();
                     _panelHeader?.Dispose();
                     _loadingOverlay?.Dispose();
+                    _noDataOverlay?.Dispose();
                     _lblStatus?.Dispose();
                     _insightsGrid?.Dispose();
                     _toolStrip?.Dispose();

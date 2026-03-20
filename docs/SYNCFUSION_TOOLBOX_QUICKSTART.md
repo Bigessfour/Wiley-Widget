@@ -89,13 +89,13 @@ dotnet build src\WileyWidget.WinForms\WileyWidget.WinForms.csproj
 4. **Navigate to:**
 
 ```
-C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll
+C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\33.1.44\lib\net10.0-windows7.0\Syncfusion.SfDataGrid.WinForms.dll
 ```
 
 5. **Also add:**
-   - `syncfusion.core.winforms\32.1.19\lib\net10.0-windows7.0\Syncfusion.Core.WinForms.dll`
-   - `syncfusion.tools.windows\32.1.19\lib\net10.0-windows7.0\Syncfusion.Tools.Windows.dll`
-   - `syncfusion.gauge.windows\32.1.19\lib\net10.0-windows7.0\Syncfusion.Gauge.Windows.dll`
+   - `syncfusion.core.winforms\33.1.44\lib\net10.0-windows7.0\Syncfusion.Core.WinForms.dll`
+   - `syncfusion.tools.windows\33.1.44\lib\net10.0-windows7.0\Syncfusion.Tools.Windows.dll`
+   - `syncfusion.gauge.windows\33.1.44\lib\net10.0-windows7.0\Syncfusion.Gauge.Windows.dll`
 
 6. **Click OK**
 
@@ -112,7 +112,7 @@ C:\Users\[YourUsername]\.nuget\packages\syncfusion.sfdatagrid.winforms\32.1.19\l
 **If NOT installed:**
 
 - Download from: https://www.syncfusion.com/downloads/essential-studio/winforms
-- Install version **32.1.19** (matches your project)
+- Install version **33.1.44** (matches your project)
 - Restart VS 2026
 
 ---
@@ -142,7 +142,7 @@ Run this to confirm everything is working:
 dotnet list src\WileyWidget.WinForms\WileyWidget.WinForms.csproj package | Select-String "Syncfusion"
 
 # Check local Syncfusion installation:
-Test-Path "C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\32.1.19"
+Test-Path "C:\Program Files (x86)\Syncfusion\Essential Studio\Windows\33.1.44"
 ```
 
 ---
@@ -181,7 +181,7 @@ See: `docs\SYNCFUSION_TOOLBOX_VS2026_GUIDE.md` for comprehensive troubleshooting
 
 - [ ] Diagnostic script runs without errors
 - [ ] Visual Studio 2026 installed
-- [ ] Essential Studio 32.1.19 installed
+- [ ] Essential Studio 33.1.44 installed
 - [ ] Component cache cleared
 - [ ] Packages restored successfully
 - [ ] Toolbox reset completed

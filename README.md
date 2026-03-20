@@ -2,7 +2,7 @@
 
 [![.NET](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
 [![WinForms](https://img.shields.io/badge/UI-WinForms-blue.svg)](https://learn.microsoft.com/dotnet/desktop/winforms/)
-[![Syncfusion](https://img.shields.io/badge/Syncfusion-32.2.3-orange.svg)](https://www.syncfusion.com/products/communitylicense)
+[![Syncfusion](https://img.shields.io/badge/Syncfusion-33.1.44-orange.svg)](https://www.syncfusion.com/products/communitylicense)
 [![Build](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/build-winforms.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
 [![Tests](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
 [![Security](https://github.com/Bigessfour/Wiley-Widget/actions/workflows/security-scan.yml/badge.svg)](https://github.com/Bigessfour/Wiley-Widget/actions)
@@ -13,7 +13,7 @@ Wiley Widget is a local-first Windows desktop application for municipal finance 
 
 - Status: release stabilization
 - Platform: Windows only
-- UI stack: WinForms + Syncfusion 32.2.3
+- UI stack: WinForms + Syncfusion 33.1.44
 - Architecture: layered services and repositories with MVVM-style panels
 - Release posture: a green build is necessary, but release sign-off depends on targeted proof of startup, navigation, layout, theming, and critical workflows
 

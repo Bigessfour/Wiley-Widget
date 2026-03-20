@@ -2,6 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Drawing;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -22,6 +24,7 @@ using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Themes;
+using WileyWidget.WinForms.UI.Helpers;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -30,7 +33,7 @@ namespace WileyWidget.WinForms.Controls.Panels
   /// </summary>
   public partial class JARVISChatUserControl : ScopedPanelBase<JARVISChatViewModel>, IAsyncInitializable, IParameterizedPanel
   {
-    private static readonly Size SidebarCompatibleMinimumSize = new(320, 420);
+    private static readonly Size SidebarCompatibleMinimumSize = new(320, 520);
     private readonly SyncfusionControlFactory _factory;
     private readonly IServiceProvider _serviceProvider;
     private readonly SemaphoreSlim _initLock = new(1, 1);
@@ -40,6 +43,12 @@ namespace WileyWidget.WinForms.Controls.Panels
     private readonly Author _assistantAuthor = new() { Name = "JARVIS" };
     private readonly Author _userAuthor = new() { Name = "You" };
     private SfAIAssistView? _assistView;
+    private Panel? _toolbarPanel;
+    private SfButton? _openResponseViewerButton;
+    private SfButton? _copyLatestResponseButton;
+    private SfButton? _copyTranscriptButton;
+    private SfButton? _exportTranscriptButton;
+    private ToolTip? _toolTip;
     private TextMessage? _activeResponseMessage;
     private IChatBridgeService? _chatBridge;
     private JarvisGrokBridgeHandler? _bridgeHandler;
@@ -176,6 +185,87 @@ namespace WileyWidget.WinForms.Controls.Panels
 
     private void BuildPanelUi()
     {
+      _toolTip ??= new ToolTip();
+
+      _toolbarPanel = new Panel
+      {
+        Name = "JarvisToolbarPanel",
+        AccessibleName = "JARVIS conversation actions",
+        Dock = DockStyle.Top,
+        Height = 72,
+        Padding = Padding.Empty
+      };
+
+      var toolbarLayout = new TableLayoutPanel
+      {
+        Dock = DockStyle.Fill,
+        ColumnCount = 1,
+        RowCount = 2,
+        Margin = Padding.Empty,
+        Padding = new Padding(8, 6, 8, 6)
+      };
+      toolbarLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+      toolbarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+      toolbarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+      var toolbarHintLabel = new Label
+      {
+        Name = "JarvisToolbarHintLabel",
+        AccessibleName = "JARVIS action hint",
+        Dock = DockStyle.Fill,
+        AutoEllipsis = true,
+        Margin = new Padding(0, 0, 0, 4),
+        TextAlign = ContentAlignment.MiddleLeft,
+        Text = "Open, copy, or export JARVIS responses."
+      };
+
+      var toolbarActionsPanel = new FlowLayoutPanel
+      {
+        Dock = DockStyle.Fill,
+        FlowDirection = FlowDirection.LeftToRight,
+        WrapContents = true,
+        AutoScroll = false,
+        Margin = Padding.Empty,
+        Padding = Padding.Empty
+      };
+
+      _openResponseViewerButton = CreateToolbarButton(
+        "JarvisOpenResponseViewerButton",
+        "Open Reply",
+        "Open the full JARVIS reply in a larger viewer",
+        OnOpenResponseViewerClicked);
+      _toolTip.SetToolTip(_openResponseViewerButton, "Open the most recent JARVIS reply in a larger window.");
+
+      _copyLatestResponseButton = CreateToolbarButton(
+        "JarvisCopyLatestResponseButton",
+        "Copy Reply",
+        "Copy the most recent JARVIS reply",
+        OnCopyLatestResponseClicked);
+      _toolTip.SetToolTip(_copyLatestResponseButton, "Copy the most recent JARVIS reply to the clipboard.");
+
+      _copyTranscriptButton = CreateToolbarButton(
+        "JarvisCopyTranscriptButton",
+        "Copy Chat",
+        "Copy the full JARVIS conversation transcript",
+        OnCopyTranscriptClicked);
+      _toolTip.SetToolTip(_copyTranscriptButton, "Copy the full JARVIS conversation transcript.");
+
+      _exportTranscriptButton = CreateToolbarButton(
+        "JarvisExportTranscriptButton",
+        "Export Chat",
+        "Export the full JARVIS conversation transcript",
+        OnExportTranscriptClicked);
+      _toolTip.SetToolTip(_exportTranscriptButton, "Export the conversation transcript to a text or markdown file.");
+
+      toolbarActionsPanel.Controls.Add(_openResponseViewerButton);
+      toolbarActionsPanel.Controls.Add(_copyLatestResponseButton);
+      toolbarActionsPanel.Controls.Add(_copyTranscriptButton);
+      toolbarActionsPanel.Controls.Add(_exportTranscriptButton);
+
+      toolbarLayout.Controls.Add(toolbarHintLabel, 0, 0);
+      toolbarLayout.Controls.Add(toolbarActionsPanel, 0, 1);
+      _toolbarPanel.Controls.Add(toolbarLayout);
+
       _assistView = _factory.CreateSfAIAssistView(control =>
       {
         control.Name = "JarvisAssistView";
@@ -205,7 +295,26 @@ namespace WileyWidget.WinForms.Controls.Panels
 
       Controls.Clear();
       Controls.Add(_assistView);
+      Controls.Add(_toolbarPanel);
       _assistView.BringToFront();
+      UpdateResponseActionStates();
+    }
+
+    private SfButton CreateToolbarButton(string name, string text, string accessibleDescription, EventHandler onClick)
+    {
+      var button = _factory.CreateSfButton(text, control =>
+      {
+        control.Name = name;
+        control.AutoSize = false;
+        control.MinimumSize = new Size(88, 32);
+        control.Size = new Size(88, 32);
+        control.Margin = new Padding(0, 0, 6, 6);
+      });
+
+      button.AccessibleName = text;
+      button.AccessibleDescription = accessibleDescription;
+      button.Click += onClick;
+      return button;
     }
 
     private async void OnPromptRequest(object? sender, PromptRequestEventArgs e)
@@ -296,6 +405,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       _streamingResponse.Append(e.Chunk);
       _activeResponseMessage.Text = _streamingResponse.ToString();
       _activeResponseMessage.DateTime = DateTime.Now;
+      UpdateResponseActionStates();
       TryScrollAssistViewToBottom();
     }
 
@@ -349,6 +459,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       }
 
       _messages.Add(CreateMessage(prompt.Trim(), _userAuthor));
+      UpdateResponseActionStates();
       GetAutomationStateService()?.NotifyPrompt(prompt.Trim());
       BeginResponse();
       await _chatBridge!.RequestExternalPromptAsync(prompt.Trim(), cancellationToken).ConfigureAwait(true);
@@ -391,6 +502,8 @@ namespace WileyWidget.WinForms.Controls.Panels
         _assistView.ShowTypingIndicator = false;
         TryScrollAssistViewToBottom();
       }
+
+      UpdateResponseActionStates();
     }
 
     private void AppendAssistantMessage(string content)
@@ -407,7 +520,317 @@ namespace WileyWidget.WinForms.Controls.Panels
       }
 
       _messages.Add(CreateMessage(content, _assistantAuthor));
+      UpdateResponseActionStates();
       TryScrollAssistViewToBottom();
+    }
+
+    private void OnOpenResponseViewerClicked(object? sender, EventArgs e)
+    {
+      var latestResponse = GetLatestAssistantResponseText();
+      var transcript = GetConversationTranscriptText();
+
+      var viewerText = !string.IsNullOrWhiteSpace(latestResponse)
+        ? latestResponse
+        : transcript;
+
+      if (string.IsNullOrWhiteSpace(viewerText))
+      {
+        return;
+      }
+
+      ShowResponseViewer(viewerText, !string.IsNullOrWhiteSpace(latestResponse)
+        ? "Most recent JARVIS reply"
+        : "Conversation transcript");
+    }
+
+    private void OnCopyLatestResponseClicked(object? sender, EventArgs e)
+    {
+      var latestResponse = GetLatestAssistantResponseText();
+      if (string.IsNullOrWhiteSpace(latestResponse))
+      {
+        return;
+      }
+
+      try
+      {
+        ClipboardHelper.CopyText(latestResponse, Logger);
+        ShowTransientButtonState(_copyLatestResponseButton, "Copied!");
+      }
+      catch (Exception ex)
+      {
+        Logger?.LogWarning(ex, "[JARVIS] Failed to copy latest response");
+        SfDialogHelper.ShowWarningDialog(FindForm(), "Copy failed", ex.Message, Logger);
+      }
+    }
+
+    private void OnCopyTranscriptClicked(object? sender, EventArgs e)
+    {
+      var transcript = GetConversationTranscriptText();
+      if (string.IsNullOrWhiteSpace(transcript))
+      {
+        return;
+      }
+
+      try
+      {
+        ClipboardHelper.CopyText(transcript, Logger);
+        ShowTransientButtonState(_copyTranscriptButton, "Copied!");
+      }
+      catch (Exception ex)
+      {
+        Logger?.LogWarning(ex, "[JARVIS] Failed to copy transcript");
+        SfDialogHelper.ShowWarningDialog(FindForm(), "Copy failed", ex.Message, Logger);
+      }
+    }
+
+    private async void OnExportTranscriptClicked(object? sender, EventArgs e)
+    {
+      var transcript = GetConversationTranscriptText();
+      if (string.IsNullOrWhiteSpace(transcript))
+      {
+        return;
+      }
+
+      var result = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+        FindForm(),
+        "JarvisChat.ExportTranscript",
+        "Export JARVIS Conversation",
+        "Text Files (*.txt)|*.txt|Markdown Files (*.md)|*.md|All Files (*.*)|*.*",
+        "txt",
+        $"JarvisChat_{DateTime.Now:yyyyMMdd_HHmmss}.txt",
+        (filePath, cancellationToken) => File.WriteAllTextAsync(filePath, transcript, Encoding.UTF8, cancellationToken),
+        logger: Logger,
+        cancellationToken: CancellationToken.None);
+
+      if (result.IsSuccess)
+      {
+        ShowTransientButtonState(_exportTranscriptButton, "Exported!");
+        return;
+      }
+
+      if (!result.IsCancelled && !result.IsSkipped && !string.IsNullOrWhiteSpace(result.ErrorMessage))
+      {
+        SfDialogHelper.ShowWarningDialog(FindForm(), "Export failed", result.ErrorMessage, Logger);
+      }
+    }
+
+    private void ShowTransientButtonState(SfButton? button, string temporaryText)
+    {
+      if (button == null || button.IsDisposed)
+      {
+        return;
+      }
+
+      var originalText = button.Text;
+      button.Text = temporaryText;
+      button.Enabled = false;
+
+      var timer = new System.Windows.Forms.Timer { Interval = 1500 };
+      timer.Tick += (_, _) =>
+      {
+        timer.Stop();
+        timer.Dispose();
+
+        if (!button.IsDisposed)
+        {
+          button.Text = originalText;
+          UpdateResponseActionStates();
+        }
+      };
+      timer.Start();
+    }
+
+    private void UpdateResponseActionStates()
+    {
+      var latestResponse = GetLatestAssistantResponseText();
+      var transcript = GetConversationTranscriptText();
+
+      var hasLatestResponse = !string.IsNullOrWhiteSpace(latestResponse);
+      var hasTranscript = !string.IsNullOrWhiteSpace(transcript);
+
+      if (_openResponseViewerButton != null)
+      {
+        _openResponseViewerButton.Enabled = hasLatestResponse || hasTranscript;
+      }
+
+      if (_copyLatestResponseButton != null)
+      {
+        _copyLatestResponseButton.Enabled = hasLatestResponse;
+      }
+
+      if (_copyTranscriptButton != null)
+      {
+        _copyTranscriptButton.Enabled = hasTranscript;
+      }
+
+      if (_exportTranscriptButton != null)
+      {
+        _exportTranscriptButton.Enabled = hasTranscript;
+      }
+    }
+
+    private string GetLatestAssistantResponseText()
+    {
+      if (_activeResponseMessage != null && !string.IsNullOrWhiteSpace(_activeResponseMessage.Text))
+      {
+        return _activeResponseMessage.Text;
+      }
+
+      return _messages
+        .OfType<TextMessage>()
+        .Where(message => string.Equals(message.Author?.Name, _assistantAuthor.Name, StringComparison.OrdinalIgnoreCase))
+        .Select(message => message.Text)
+        .LastOrDefault(text => !string.IsNullOrWhiteSpace(text))
+        ?? string.Empty;
+    }
+
+    private string GetConversationTranscriptText()
+    {
+      if (_messages.Count == 0)
+      {
+        return string.Empty;
+      }
+
+      var builder = new StringBuilder();
+      builder.AppendLine("JARVIS Conversation Transcript");
+      builder.AppendLine($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+      builder.AppendLine();
+
+      foreach (var message in _messages.OfType<TextMessage>())
+      {
+        var authorName = message.Author?.Name ?? "Unknown";
+        var timestamp = message.DateTime == default ? DateTime.Now : message.DateTime;
+        builder.AppendLine($"[{timestamp:yyyy-MM-dd HH:mm:ss}] {authorName}");
+        builder.AppendLine(message.Text ?? string.Empty);
+        builder.AppendLine();
+      }
+
+      return builder.ToString().TrimEnd();
+    }
+
+    private void ShowResponseViewer(string content, string subtitle)
+    {
+      using var viewer = new SfForm
+      {
+        Name = "JarvisResponseViewer",
+        Text = "JARVIS Response Viewer",
+        StartPosition = FormStartPosition.CenterParent,
+        Size = new Size(960, 720),
+        MinimumSize = new Size(700, 520),
+        ShowIcon = false,
+        ShowInTaskbar = false
+      };
+
+      try
+      {
+        viewer.ApplySyncfusionTheme(_themeService?.CurrentTheme ?? ThemeColors.DefaultTheme, Logger);
+      }
+      catch (Exception ex)
+      {
+        Logger?.LogDebug(ex, "[JARVIS] Failed to apply theme to response viewer");
+      }
+
+      var headerLabel = new Label
+      {
+        Name = "JarvisResponseViewerHeader",
+        Dock = DockStyle.Top,
+        Height = 36,
+        Padding = new Padding(12, 10, 12, 0),
+        Text = subtitle,
+        TextAlign = ContentAlignment.MiddleLeft
+      };
+
+      var responseTextBox = new TextBox
+      {
+        Name = "JarvisResponseViewerText",
+        Dock = DockStyle.Fill,
+        Multiline = true,
+        ReadOnly = true,
+        ScrollBars = ScrollBars.Both,
+        WordWrap = true,
+        ShortcutsEnabled = true,
+        Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+        Text = content
+      };
+
+      var buttonPanel = new Panel
+      {
+        Name = "JarvisResponseViewerButtonPanel",
+        Dock = DockStyle.Bottom,
+        Height = 48,
+        Padding = new Padding(12, 8, 12, 8)
+      };
+
+      var closeButton = _factory.CreateSfButton("Close", button =>
+      {
+        button.Name = "JarvisResponseViewerCloseButton";
+        button.Dock = DockStyle.Right;
+        button.Width = 100;
+      });
+      closeButton.Click += (_, _) => viewer.Close();
+
+      var exportButton = _factory.CreateSfButton("Export", button =>
+      {
+        button.Name = "JarvisResponseViewerExportButton";
+        button.Dock = DockStyle.Right;
+        button.Width = 100;
+      });
+      exportButton.Click += async (_, _) =>
+      {
+        var exportResult = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
+          viewer,
+          "JarvisChat.ExportViewerText",
+          "Export JARVIS Response",
+          "Text Files (*.txt)|*.txt|Markdown Files (*.md)|*.md|All Files (*.*)|*.*",
+          "txt",
+          $"JarvisReply_{DateTime.Now:yyyyMMdd_HHmmss}.txt",
+          (filePath, cancellationToken) => File.WriteAllTextAsync(filePath, responseTextBox.Text, Encoding.UTF8, cancellationToken),
+          logger: Logger,
+          cancellationToken: CancellationToken.None);
+
+        if (exportResult.IsSuccess)
+        {
+          ShowTransientButtonState(exportButton, "Exported!");
+        }
+      };
+
+      var copyButton = _factory.CreateSfButton("Copy", button =>
+      {
+        button.Name = "JarvisResponseViewerCopyButton";
+        button.Dock = DockStyle.Right;
+        button.Width = 100;
+      });
+      copyButton.Click += (_, _) =>
+      {
+        try
+        {
+          ClipboardHelper.CopyText(responseTextBox.Text, Logger);
+          ShowTransientButtonState(copyButton, "Copied!");
+        }
+        catch (Exception ex)
+        {
+          Logger?.LogWarning(ex, "[JARVIS] Failed to copy response viewer text");
+          SfDialogHelper.ShowWarningDialog(viewer, "Copy failed", ex.Message, Logger);
+        }
+      };
+
+      buttonPanel.Controls.Add(closeButton);
+      buttonPanel.Controls.Add(exportButton);
+      buttonPanel.Controls.Add(copyButton);
+
+      viewer.Controls.Add(responseTextBox);
+      viewer.Controls.Add(buttonPanel);
+      viewer.Controls.Add(headerLabel);
+
+      var owner = FindForm();
+      if (owner != null)
+      {
+        viewer.ShowDialog(owner);
+      }
+      else
+      {
+        viewer.ShowDialog();
+      }
     }
 
     private void TryScrollAssistViewToBottom()
@@ -572,7 +995,7 @@ namespace WileyWidget.WinForms.Controls.Panels
     {
       SuspendLayout();
       Name = "JARVISChatUserControl";
-      Size = new Size(400, 600);
+      Size = new Size(480, 720);
       MinimumSize = SidebarCompatibleMinimumSize;
       AutoScroll = false;
       Padding = Padding.Empty;

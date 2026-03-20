@@ -81,8 +81,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         ILogger<ScopedPanelBase<AnalyticsHubViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
         Dock = DockStyle.Fill;
         SafeSuspendAndLayout(InitializeControls);
     }
@@ -90,7 +88,6 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
         PerformLayout();
         Invalidate(true);
     }
@@ -107,7 +104,14 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);
         _toolTip = new ToolTip();
 
-        _panelHeader = new PanelHeader { Title = "Analytics Hub", Dock = DockStyle.Top };
+        _panelHeader = new PanelHeader
+        {
+            Title = "Analytics Hub",
+            Dock = DockStyle.Top,
+            ShowRefreshButton = false,
+            ShowHelpButton = false,
+            ShowPinButton = false
+        };
         _refreshClicked = async (s, e) => await (ViewModel?.RefreshAllCommand.ExecuteAsync(null) ?? Task.CompletedTask);
         _panelHeader.RefreshClicked += _refreshClicked;
         _closeClicked = (_, _) => ClosePanel();
@@ -134,7 +138,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _filtersPanel = new Panel
         {
             Dock = DockStyle.Fill,
-            Height = 52,
+            Height = 84,
             Padding = new Padding(12, 8, 12, 8),
             BorderStyle = BorderStyle.None
         };
@@ -151,7 +155,7 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80));
         table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 210));
+        table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
 
         table.Controls.Add(
             new Label { Text = "Fiscal Year:", TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Fill }, 0, 0);
@@ -183,7 +187,16 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _searchTextBox.TextChanged += _searchChanged;
         table.Controls.Add(_searchTextBox, 3, 0);
 
-        var btnPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, AutoSize = false };
+        var btnPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = true,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
+        };
         _refreshButton = ControlFactory.CreateSfButton("Refresh All", b => b.Width = 110);
         _refreshButton.AccessibleName = "Refresh analytics";
         _refreshButton.AccessibleDescription = "Refreshes all analytics tabs";
@@ -194,6 +207,8 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         _exportButton.AccessibleDescription = "Export analytics data to a file";
         _toolTip?.SetToolTip(_exportButton, "Export analytics data from the active section.");
         _exportButton.Click += (s, e) => ExportHub();
+        _refreshButton.Margin = new Padding(0, 0, 8, 8);
+        _exportButton.Margin = new Padding(0, 0, 0, 8);
         btnPanel.Controls.AddRange(new Control[] { _refreshButton, _exportButton });
         table.Controls.Add(btnPanel, 4, 0);
 

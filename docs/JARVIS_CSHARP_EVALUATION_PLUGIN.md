@@ -97,7 +97,7 @@ list_loaded_assemblies
 • WileyWidget.Models (v1.0.0.0)
 • WileyWidget.Services (v1.0.0.0)
 • WileyWidget.WinForms (v1.0.0.0)
-• Syncfusion.Core.WinForms (v32.2.3.0)
+• Syncfusion.Core.WinForms (v33.1.44.0)
 ...
 ```
 

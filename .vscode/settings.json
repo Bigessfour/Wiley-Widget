@@ -27,6 +27,7 @@
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
   "terminal.integrated.hideAgentShellProcesses": true,
+  "terminal.integrated.windowsUseConptyDll": true,
   "task.autoClose": true,
   "chat.tools.terminal.outputLocation": "terminal",
 
@@ -134,6 +135,7 @@
   "editor.bracketPairColorization.enabled": true,
   "editor.guides.bracketPairs": true,
   "editor.inlineSuggest.enabled": true,
+  "editor.find.closeOnResult": false,
 
   // ============================================================================
   // File Management
@@ -243,10 +245,11 @@
   // ============================================================================
   // Testing Configuration
   // ============================================================================
-  "testExplorer.useNativeTesting": true,
-  "dotnet-test-explorer.testProjectPath": "tests/**/*Tests.csproj",
-  "dotnet-test-explorer.autoWatch": false,
-  "dotnet-test-explorer.testArguments": "--no-restore --blame-hang --blame-hang-timeout 3m",
+  // Use the official Microsoft C# / C# Dev Kit test provider for VS Code's native
+  // Testing API. The legacy Test Explorer native bridge can surface tests in the UI,
+  // but it does not reliably preserve file-backed discovery for tooling that runs
+  // tests by C# source file.
+  "testExplorer.useNativeTesting": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
 
@@ -385,12 +388,14 @@
   // Performance & UI
   // ============================================================================
   "extensions.autoUpdate": true,
+  "extensions.autoCheckUpdates": true,
   "window.restoreWindows": "all",
   "workbench.editor.highlightModifiedTabs": true,
   "workbench.editor.limit.enabled": true,
   "workbench.editor.limit.value": 10,
   "workbench.iconTheme": "vs-seti",
   "workbench.colorTheme": "Default Dark+",
+  "workbench.browser.pageZoom": "Match Window",
   "search.maxResults": 5000,
   "editor.largeFileOptimizations": false,
 

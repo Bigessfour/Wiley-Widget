@@ -13,6 +13,7 @@ using Syncfusion.WinForms.Controls;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Factories;
 using System.Diagnostics;
+using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Themes;
@@ -42,6 +43,11 @@ namespace WileyWidget.WinForms.Controls.Base
         /// <summary>Logical pixel height floor for embedded / tab panels at 96 DPI.</summary>
         public const int RecommendedEmbeddedPanelMinimumLogicalHeight = 600;
 
+        /// <summary>Logical pixel width floor for narrow side-dock / utility panels at 96 DPI.</summary>
+        public const int RecommendedSideDockPanelMinimumLogicalWidth = 320;
+        /// <summary>Logical pixel height floor for narrow side-dock / utility panels at 96 DPI.</summary>
+        public const int RecommendedSideDockPanelMinimumLogicalHeight = 520;
+
         /// <summary>Minimum top padding (logical px) to prevent content clipping under docking captions.</summary>
         public const int RecommendedTopInsetLogical = 8;
 
@@ -63,7 +69,14 @@ namespace WileyWidget.WinForms.Controls.Base
         public static readonly Size RecommendedEmbeddedPanelMinimumLogicalSize =
             new(RecommendedEmbeddedPanelMinimumLogicalWidth, RecommendedEmbeddedPanelMinimumLogicalHeight);
 
+        /// <summary>Full logical minimum size for side-dock / utility panels.
+        /// Derived from <see cref="RecommendedSideDockPanelMinimumLogicalWidth"/> x
+        /// <see cref="RecommendedSideDockPanelMinimumLogicalHeight"/>.</summary>
+        public static readonly Size RecommendedSideDockPanelMinimumLogicalSize =
+            new(RecommendedSideDockPanelMinimumLogicalWidth, RecommendedSideDockPanelMinimumLogicalHeight);
+
         private bool _initialLayoutSuspended;
+        private bool _minimumSizeManagedByBase;
 
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
         public virtual object? UntypedViewModel => null;
@@ -103,10 +116,7 @@ namespace WileyWidget.WinForms.Controls.Base
                 Dock = DockStyle.Fill;
             }
 
-            if (MinimumSize == Size.Empty)
-            {
-                MinimumSize = GetRecommendedMinimumSize();
-            }
+            ApplyManagedMinimumSize();
 
             EnsureMinimumTopInset();
             ResetAutoScrollOffsets(this);
@@ -116,6 +126,13 @@ namespace WileyWidget.WinForms.Controls.Base
 
             var activeTheme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme;
             ApplyTheme(activeTheme);
+        }
+
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+
+            ApplyManagedMinimumSize();
         }
 
         /// <inheritdoc/>
@@ -152,6 +169,61 @@ namespace WileyWidget.WinForms.Controls.Base
         }
 
         protected virtual int GetMinimumTopInsetLogical() => RecommendedTopInsetLogical;
+
+        /// <summary>
+        /// Detects narrow side-dock hosts such as the persistent right-dock tabs.
+        /// </summary>
+        protected virtual bool IsSideDockPanel()
+        {
+            for (Control? current = this; current != null; current = current.Parent)
+            {
+                var currentName = current.Name;
+                if (!string.IsNullOrWhiteSpace(currentName)
+                    && (currentName.Contains("RightDockTab", StringComparison.OrdinalIgnoreCase)
+                        || currentName.Contains("RightDockPanel", StringComparison.OrdinalIgnoreCase)
+                        || currentName.Contains("DockTab", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
+            var hostForm = FindForm();
+            if (hostForm is not MainForm)
+            {
+                return false;
+            }
+
+            for (Control? current = Parent; current != null && current is not Form; current = current.Parent)
+            {
+                if (current.Width > 0 && current.Width < 600)
+                {
+                    return true;
+                }
+            }
+
+            return Width > 0 && Width < 600;
+        }
+
+        protected internal void ApplyManagedMinimumSize()
+        {
+            if (IsDisposed || Disposing)
+            {
+                return;
+            }
+
+            if (!_minimumSizeManagedByBase && MinimumSize != Size.Empty)
+            {
+                return;
+            }
+
+            var recommendedMinimumSize = GetRecommendedMinimumSize();
+            if (MinimumSize != recommendedMinimumSize)
+            {
+                MinimumSize = recommendedMinimumSize;
+            }
+
+            _minimumSizeManagedByBase = true;
+        }
 
         protected void EnsureMinimumTopInset()
         {
@@ -192,6 +264,11 @@ namespace WileyWidget.WinForms.Controls.Base
 
         protected virtual Size GetRecommendedMinimumSize()
         {
+            if (IsSideDockPanel())
+            {
+                return ScaleLogicalToDevice(RecommendedSideDockPanelMinimumLogicalSize);
+            }
+
             var hostForm = FindForm();
             var isDialogHost = hostForm?.Modal == true ||
                                hostForm?.FormBorderStyle == FormBorderStyle.FixedDialog ||
@@ -312,6 +389,8 @@ namespace WileyWidget.WinForms.Controls.Base
         private CancellationTokenSource? _operationCts;
         private System.Windows.Forms.Timer? _finalLayoutTimer;
         private bool _shownFired;
+        private DateTime _lastPanelLayoutAuditUtc;
+        private string? _lastPanelLayoutAuditSignature;
         private Form? _hostFormForClosing;
         private IThemeService? _themeService;
         private EventHandler<string>? _themeChangedHandler;
@@ -557,6 +636,7 @@ namespace WileyWidget.WinForms.Controls.Base
             }
 
             _logger?.LogDebug("[{Panel}] ForceFullLayout completed ({W}x{H})", GetType().Name, Width, Height);
+            AuditPanelLayout("ForceFullLayout", force: true);
         }
 
         /// <summary>
@@ -672,8 +752,10 @@ namespace WileyWidget.WinForms.Controls.Base
             _logger?.LogTrace("[{Panel}] Visibility → {Visible} ({W}x{H})", GetType().Name, Visible, Width, Height);
             if (Visible)
             {
+                ApplyManagedMinimumSize();
                 EnsureMinimumTopInset();
                 ResetAutoScrollOffsets(this);
+                AuditPanelLayout("VisibleChanged");
             }
             QueueDeferredLayoutPass(e);
         }
@@ -683,7 +765,112 @@ namespace WileyWidget.WinForms.Controls.Base
             base.OnSizeChanged(e);
             if (Visible)
             {
+                if (MinimumSize != Size.Empty && (ClientSize.Width < MinimumSize.Width || ClientSize.Height < MinimumSize.Height))
+                {
+                    AuditPanelLayout("SizeChanged");
+                }
+
                 QueueDeferredLayoutPass(e);
+            }
+        }
+
+        private void AuditPanelLayout(string trigger, bool force = false)
+        {
+            var audit = PanelLayoutDiagnostics.Capture(this);
+            var verbose = PanelLayoutDiagnostics.IsVerboseAuditEnabled();
+            var appearanceTrigger = string.Equals(trigger, "VisibleChanged", StringComparison.Ordinal)
+                || string.Equals(trigger, "ForceFullLayout", StringComparison.Ordinal);
+            var suppressTransientSideDockMinimumWarning = IsSideDockPanel()
+                && audit.HostBelowMinimum
+                && !force
+                && !string.Equals(trigger, "ForceFullLayout", StringComparison.Ordinal);
+            var hasReportableWarnings = audit.ZeroSizedVisibleControls.Count > 0
+                || audit.ClippedVisibleControls.Count > 0
+                || audit.HorizontalEdgeCrowdedVisibleControls.Count > 0
+                || (!suppressTransientSideDockMinimumWarning && audit.HostBelowMinimum);
+
+            if (!hasReportableWarnings && !verbose && !appearanceTrigger)
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            if (!force
+                && string.Equals(_lastPanelLayoutAuditSignature, audit.Signature, StringComparison.Ordinal)
+                && now - _lastPanelLayoutAuditUtc < TimeSpan.FromSeconds(2))
+            {
+                return;
+            }
+
+            _lastPanelLayoutAuditSignature = audit.Signature;
+            _lastPanelLayoutAuditUtc = now;
+
+            var summary = PanelLayoutDiagnostics.FormatSummary(audit, trigger);
+            if (hasReportableWarnings)
+            {
+                _logger.LogWarning("[PANEL-LAYOUT] {Summary}", summary);
+            }
+            else
+            {
+                _logger.LogInformation("[PANEL-LAYOUT] {Summary}", summary);
+            }
+
+            if (appearanceTrigger || audit.HasWarnings || verbose)
+            {
+                _logger.LogInformation(
+                    "[PANEL-LAYOUT] Appearance snapshot for {Panel}: {Snapshot}",
+                    audit.PanelIdentifier,
+                    PanelLayoutDiagnostics.FormatAppearanceSnapshot(audit));
+            }
+
+            if (audit.HostBelowMinimum && !suppressTransientSideDockMinimumWarning)
+            {
+                _logger.LogWarning(
+                    "[PANEL-LAYOUT] Host viewport below panel minimum for {Panel}: panelClient={PanelClient} minimum={Minimum} hostClient={HostClient}",
+                    audit.PanelIdentifier,
+                    audit.PanelClientSize,
+                    audit.MinimumSize,
+                    audit.HostClientSize);
+            }
+
+            if (audit.ZeroSizedVisibleControls.Count > 0)
+            {
+                _logger.LogWarning(
+                    "[PANEL-LAYOUT] Zero-sized visible controls for {Panel}: {Findings}",
+                    audit.PanelIdentifier,
+                    PanelLayoutDiagnostics.FormatFindings(audit.ZeroSizedVisibleControls));
+            }
+
+            if (audit.ClippedVisibleControls.Count > 0)
+            {
+                _logger.LogWarning(
+                    "[PANEL-LAYOUT] Potentially clipped visible controls for {Panel}: {Findings}",
+                    audit.PanelIdentifier,
+                    PanelLayoutDiagnostics.FormatFindings(audit.ClippedVisibleControls));
+            }
+
+            if (audit.HorizontalEdgeCrowdedVisibleControls.Count > 0)
+            {
+                _logger.LogWarning(
+                    "[PANEL-LAYOUT] Horizontally crowded visible controls for {Panel}: {Findings}",
+                    audit.PanelIdentifier,
+                    PanelLayoutDiagnostics.FormatFindings(audit.HorizontalEdgeCrowdedVisibleControls));
+            }
+
+            if (verbose && audit.ScrollReachableVisibleControls.Count > 0)
+            {
+                _logger.LogInformation(
+                    "[PANEL-LAYOUT] Controls currently outside a scrollable viewport for {Panel}: {Findings}",
+                    audit.PanelIdentifier,
+                    PanelLayoutDiagnostics.FormatFindings(audit.ScrollReachableVisibleControls));
+            }
+
+            if (verbose)
+            {
+                _logger.LogInformation(
+                    "[PANEL-LAYOUT] Named visible control inventory for {Panel}: {Findings}",
+                    audit.PanelIdentifier,
+                    PanelLayoutDiagnostics.FormatFindings(audit.AllNamedVisibleControls));
             }
         }
 

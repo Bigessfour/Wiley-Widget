@@ -118,8 +118,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         ILogger<ScopedPanelBase<RevenueTrendsViewModel>> logger)
         : base(scopeFactory, logger)
     {
-        Size = new Size(1400, 900);
-        MinimumSize = new Size(1024, 720);
+        Size = new Size(1024, 720);
         Dock = DockStyle.Fill;
 
         // Initialize UI once, then apply theme and subscribe to changes
@@ -134,7 +133,6 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = new Size(1024, 720);
         PerformLayout();
         Invalidate(true);
     }
@@ -145,11 +143,29 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
     {
         SuspendLayout();
 
+        var summaryPanelHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f);
+        var lastUpdatedHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(24f);
+        var rootLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 4,
+            AutoSize = false,
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+            AccessibleName = "Revenue Trends Layout"
+        };
+        rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, summaryPanelHeight));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, lastUpdatedHeight));
+
         // PANEL HEADER (Dock.Top, fixed height)
         // ══════════════════════════════════════════════════════════════
         _panelHeader = new PanelHeader
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             Title = "Revenue Trends",
             AccessibleName = "Revenue Trends panel header",
             AccessibleDescription = "Header with title, refresh, and close actions for the Revenue Trends panel"
@@ -160,7 +176,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _panelHeader.HelpClicked += _panelHeaderHelpClickedHandler;
         _panelHeaderCloseHandler = (s, e) => ClosePanel();
         _panelHeader.CloseClicked += _panelHeaderCloseHandler;
-        Controls.Add(_panelHeader);
+        rootLayout.Controls.Add(_panelHeader, 0, 0);
 
         // SUMMARY CARDS PANEL (Dock.Top, fixed height with minimum)
         // ══════════════════════════════════════════════════════════════
@@ -168,10 +184,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // Set explicit Height to prevent measurement loops
         _summaryPanel = new Panel
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             AutoSize = false, // CRITICAL: Explicit false prevents measurement loops
-            Height = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f),
-            MinimumSize = new Size(0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(110f)),
+            Height = summaryPanelHeight,
+            MinimumSize = new Size(0, summaryPanelHeight),
             // CHANGE 4: Added consistent padding (10px) to summary panel
             Padding = new Padding(10),
             AccessibleName = "Revenue summary metrics panel",
@@ -208,7 +224,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _lblGrowthRateValue = CreateSummaryCard(_summaryCardsPanel, "Growth Rate", "0%", 3, "Month-over-month revenue growth percentage");
 
         _summaryPanel.Controls.Add(_summaryCardsPanel);
-        Controls.Add(_summaryPanel);
+        rootLayout.Controls.Add(_summaryPanel, 0, 1);
 
         // SPLIT CONTAINER FOR CHART AND GRID (Dock.Fill, proportional)
         // ══════════════════════════════════════════════════════════════
@@ -216,7 +232,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         _mainSplit = ControlFactory.CreateSplitContainerAdv(splitter =>
         {
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = Orientation.Horizontal;
+            splitter.Orientation = Orientation.Vertical;
             splitter.SplitterWidth = 6;  // Slightly thicker splitter for better UX
             splitter.Padding = new Padding(0);
             splitter.AccessibleName = "Chart and grid split container";
@@ -271,14 +287,14 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         ConfigureGridStyling(_metricsGrid);
         _mainSplit.Panel2.Controls.Add(_metricsGrid);
 
-        Controls.Add(_mainSplit);
+        rootLayout.Controls.Add(_mainSplit, 0, 2);
 
         // LAST UPDATED TIMESTAMP (Dock.Bottom, fixed height)
         // ══════════════════════════════════════════════════════════════
         _lblLastUpdated = new Label
         {
-            Dock = DockStyle.Bottom,
-            Height = 24,
+            Dock = DockStyle.Fill,
+            Height = lastUpdatedHeight,
             TextAlign = ContentAlignment.MiddleRight,
             Text = "Last updated: --",
             // CHANGE 15: Updated padding on timestamp for consistent spacing
@@ -286,7 +302,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             AccessibleName = "Last data update timestamp",
             AccessibleDescription = "Shows the date and time when the revenue data was last refreshed"
         };
-        Controls.Add(_lblLastUpdated);
+        rootLayout.Controls.Add(_lblLastUpdated, 0, 3);
+
+        Controls.Add(rootLayout);
 
         // OVERLAYS (Absolute positioning via Controls.Add)
         // ══════════════════════════════════════════════════════════════
@@ -379,6 +397,9 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         // CHANGE 19: Rely on global SfSkinManager theme cascade - no per-control overrides
         // Chart area configuration - colors inherited from theme
         ChartControlDefaults.Apply(_chartControl, logger: _logger);
+        _chartControl.PrimaryXAxis.Title = "Month";
+        _chartControl.PrimaryXAxis.TitleFont = this.Font;
+        _chartControl.PrimaryXAxis.Font = this.Font;
         _chartControl.PrimaryXAxis.LabelRotate = true;
         _chartControl.PrimaryXAxis.LabelRotateAngle = 45;
         _chartControl.PrimaryXAxis.DrawGrid = true;
@@ -411,12 +432,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
         catch { }
 
-        // Enable legend per Syncfusion best practices
-        // CHANGE 20: Added accessibility info to legend
-        _chartControl.ShowLegend = true;
-        _chartControl.LegendsPlacement = Syncfusion.Windows.Forms.Chart.ChartPlacement.Outside;
-        _chartControl.Legend.Font = this.Font;
-        // Legend colors inherited from global theme
+        _chartControl.ShowLegend = false;
     }
 
     /// <summary>
@@ -719,7 +735,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
                 // Populate points directly (CategoryAxisDataBindModel unavailable in this assembly version)
                 for (int i = 0; i < revenuePoints.Count; i++)
                 {
-                    lineSeries.Points.Add(i, revenuePoints[i].Revenue);
+                    lineSeries.Points.Add(revenuePoints[i].Month.ToString("MMM yy", CultureInfo.CurrentCulture), revenuePoints[i].Revenue);
                 }
 
                 // Configure series style

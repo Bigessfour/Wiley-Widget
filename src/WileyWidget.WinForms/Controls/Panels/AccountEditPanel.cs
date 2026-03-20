@@ -427,7 +427,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             _toolTip = new ToolTip();
             this.Padding = new Padding(20);
             this.AutoScroll = true;
-            this.MinimumSize = new Size(1024, 720);
             this.Size = new Size(1100, 780);
 
             _panelHeader = new PanelHeader
@@ -879,11 +878,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            if (MinimumSize.Width < 1024 || MinimumSize.Height < 720)
-            {
-                MinimumSize = new Size(1024, 720);
-            }
-
             PerformLayout();
         }
 

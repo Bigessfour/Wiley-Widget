@@ -66,7 +66,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
 
             // Apply theme via SfSkinManager (single source of truth)
             try { var theme = SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme; Syncfusion.WinForms.Controls.SfSkinManager.SetVisualStyle(this, theme); } catch { }
@@ -80,20 +79,22 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             SuspendLayout();
 
+            var summaryPanelHeight = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(120.0f);
+
             // Create root TableLayoutPanel
             var rootTable = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 RowCount = 3,
                 ColumnCount = 1,
-                AutoSize = true,
+                AutoSize = false,
                 Padding = new Padding(8),
                 AccessibleName = "Department Summary Layout"
             };
 
             // Configure rows
             rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 1: Header
-            rootTable.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Row 2: Summary panel
+            rootTable.RowStyles.Add(new RowStyle(SizeType.Absolute, summaryPanelHeight + rootTable.Padding.Vertical)); // Row 2: Summary panel
             rootTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F)); // Row 3: Grid (fills remaining space)
 
             // Row 1: Panel header
@@ -115,7 +116,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _summaryPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Height = 120,
+                Height = summaryPanelHeight,
+                MinimumSize = new Size(0, summaryPanelHeight),
                 Padding = new Padding(8),
                 BorderStyle = BorderStyle.None,
                 AccessibleName = "Summary metrics panel"
@@ -128,7 +130,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 ColumnCount = 5,
                 RowCount = 1,
-                AutoSize = true,
+                AutoSize = false,
                 AccessibleName = "Summary cards"
             };
 
@@ -140,7 +142,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _summaryCardsPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             // Create summary cards
-            _lblTotalBudgetValue = CreateSummaryCard(_summaryCardsPanel, "Total Budget", "$0", 0, "Total budgeted amount");
+            _lblTotalBudgetValue = CreateSummaryCard(_summaryCardsPanel, "Total Budgeted", "$0", 0, "Total budgeted amount");
             _lblTotalActualValue = CreateSummaryCard(_summaryCardsPanel, "Total Actual", "$0", 1, "Total actual spending");
             _lblVarianceValue = CreateSummaryCard(_summaryCardsPanel, "Variance", "$0", 2, "Difference between budget and actual");
             _lblOverBudgetCountValue = CreateSummaryCard(_summaryCardsPanel, "Over Budget", "0", 3, "Number of departments over budget");
@@ -218,7 +220,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Dock = DockStyle.Fill,
                 Margin = new Padding(4),
                 Padding = new Padding(8),
-                AccessibleName = $"{title} card",
+                AccessibleName = title,
                 AccessibleDescription = description,
                 BorderStyle = BorderStyle.FixedSingle,
             };
@@ -232,7 +234,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                 Height = 24,
                 TextAlign = ContentAlignment.MiddleCenter,
                 AutoSize = false,
-                AccessibleName = $"{title} label"
+                AccessibleName = title
             };
             cardPanel.Controls.Add(lblTitle);
 

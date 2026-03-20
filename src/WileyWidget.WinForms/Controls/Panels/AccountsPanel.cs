@@ -79,9 +79,6 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
         AutoScaleMode = AutoScaleMode.Dpi;
         Padding = new Padding(12);
-        MinimumSize = new Size(
-            RecommendedDockedPanelMinimumLogicalWidth,
-            RecommendedDockedPanelMinimumLogicalHeight);
 
         SafeSuspendAndLayout(InitializeLayout);
         BindViewModel();
@@ -91,7 +88,6 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        MinimumSize = RecommendedDockedPanelMinimumLogicalSize;
         PerformLayout();
     }
 
@@ -432,7 +428,7 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         });
         _logger.LogDebug("[ACCOUNTS_PANEL] Toolbar has {Count} buttons and search box", _toolbarPanel.Controls.Count);
 
-        _content.Controls.Add(_toolbarPanel, 0, 0);
+        _layout.Controls.Add(_toolbarPanel, 0, 0);
         _toolbarPanel.BringToFront();
 
         // Accounts data grid
@@ -513,9 +509,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
 
         _errorProvider = new ErrorProvider(this);
 
-        _content.Controls.Add(_toolbarPanel, 0, 0);
-        _toolbarPanel.BringToFront();
-        _content.Controls.Add(_accountsGrid, 0, 1);
+        _layout.Controls.Add(_accountsGrid, 0, 1);
+        _content.Controls.Add(_layout, 0, 1);
 
         Controls.Add(_loader);
         _loader.BringToFront();

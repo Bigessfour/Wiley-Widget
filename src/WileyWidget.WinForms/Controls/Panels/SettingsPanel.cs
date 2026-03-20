@@ -169,7 +169,6 @@ namespace WileyWidget.WinForms.Controls.Panels
             _factory = controlFactory ?? throw new ArgumentNullException(nameof(controlFactory));
             // Set preferred size for proper docking display (matches PreferredDockSize extension)
             Size = new Size(1100, 760);
-            MinimumSize = new Size(1024, 720);
             EnsureControlsInitialized();
             CompleteDirectInitialization();
         }
@@ -225,7 +224,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            MinimumSize = new Size(1024, 720);
             PerformLayout();
         }
 
@@ -397,7 +395,6 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             AutoScaleMode = AutoScaleMode.Dpi;
             Padding = Padding.Empty;
-            MinimumSize = new Size(1024, 720);
 
             // Apply theme for cascade to all child controls
             SfSkinManager.SetVisualStyle(this, SfSkinManager.ApplicationVisualTheme ?? ThemeColors.DefaultTheme);

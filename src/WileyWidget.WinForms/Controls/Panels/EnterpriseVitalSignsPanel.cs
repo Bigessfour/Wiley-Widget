@@ -63,7 +63,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            MinimumSize = RecommendedDockedPanelMinimumLogicalSize;
             PerformLayout();
         }
 
@@ -71,9 +70,6 @@ namespace WileyWidget.WinForms.Controls.Panels
         {
             // ── Sacred Panel Skeleton layout properties ──────────────────────
             Dock = DockStyle.Fill;
-            MinimumSize = new Size(
-                RecommendedDockedPanelMinimumLogicalWidth,
-                RecommendedDockedPanelMinimumLogicalHeight);
             AutoScaleMode = AutoScaleMode.Dpi;
             Padding = new Padding(0);
 
@@ -81,7 +77,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             _header = new PanelHeader(_factory)
             {
                 Dock = DockStyle.Top,
-                Title = "Enterprise Vital Signs — FY 2026",
+                Title = "Enterprise Vital Signs",
                 AccessibleName = "Enterprise vital signs header",
                 ShowHelpButton = false,
                 ShowPinButton = false,

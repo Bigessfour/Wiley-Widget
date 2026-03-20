@@ -43,7 +43,8 @@ Current evidence as of 2026-03-19:
 - `PanelRegistryNavigationProofTests` passed 32/32.
 - `JarvisChatFlaUiTests.JarvisChat_RendersNativeAssistView_WhenTabSelected` passed 1/1 after restoring the automation status marker for `WILEYWIDGET_UI_AUTOMATION_JARVIS`.
 - Focused QuickBooks Desktop import proof passed 6/6 across `QuickBooksDesktopIifParserTests` and `QuickBooksDesktopImportServiceTests`.
-- `MainFormTests` still fails 2 tests and skips 2 tests, so shared-method and high-risk shell regression proof is still incomplete for sign-off.
+- A fresh focused MainForm lane still fails 2 tests and skips 2 tests, so shared-method and high-risk shell regression proof is still incomplete for sign-off.
+- Current focused MainForm failures are `MainFormIntegrationTests.RibbonBudgetButton_Click_ShowsInitializedBudgetPanel` and `MainFormIntegrationTests.UnifiedNavigationDropdown_SelectingJarvis_ActivatesRightDockTab`.
 
 ## 4. In-Scope Workflow Certification
 
@@ -56,7 +57,9 @@ Current evidence as of 2026-03-19:
 Current evidence as of 2026-03-19:
 
 - Startup proof is green: `MainFormStartupIntegrationTests.FullStartup_NormalConfig_SucceedsWithoutExceptions` passed 1/1.
-- Focused panel-registry proof is green: `PanelRegistryNavigationProofTests` passed 32/32, but a fresh explicit production-navigation rerun is still needed before checking the navigation item off strictly.
+- Focused panel-registry proof is green: `PanelRegistryNavigationProofTests` passed 32/32.
+- The Payments production-navigation blocker has current passing proof in the release lane: `PaymentsPanelFlaUiTests` passed 1/1 and `PanelRegistrySmokeTests.ShellPanel_CanBeActivatedFromMainWindow(displayName: "Payments")` passed 1/1.
+- A fresh explicit production-navigation rerun is still red for `QuickBooks`, so production navigation remains open for section sign-off.
 - Focused QuickBooks integration proof is green: `QuickBooksDesktopIifParserTests` and `QuickBooksDesktopImportServiceTests` passed 6/6.
 - `Done_Checklist.md` exists as the certification rubric, but the in-scope panel state tracking is not yet recorded there as Certified, Known Limitation, or Deferred.
 
@@ -92,8 +95,8 @@ Current gap as of 2026-03-18:
 
 Current gap as of 2026-03-19:
 
-- The dedicated JARVIS FlaUI blocker now has current passing proof, but the focused `MainFormTests` lane still has 2 failures: `LayoutPersistence_SavesOpenDocumentIdentity_WithoutPersistingNativeMdiGeometry` and `OnFirstChanceException_IgnoresThemeExceptions_AndLogsOthers`.
-- A fresh explicit production-navigation proof run is still needed if panel-construction proof is treated as insufficient for sign-off.
+- The dedicated JARVIS FlaUI blocker now has current passing proof, but the focused MainForm regression lane still has 2 failures: `MainFormIntegrationTests.RibbonBudgetButton_Click_ShowsInitializedBudgetPanel` and `MainFormIntegrationTests.UnifiedNavigationDropdown_SelectingJarvis_ActivatesRightDockTab`.
+- The Payments production-navigation blocker is cleared in the current rerun evidence, but `QuickBooks` still keeps production navigation blocked for sign-off.
 - Some previously defined VS Code proof tasks required repair because PowerShell was mis-parsing filter and logger arguments; do not treat older failed task runs as release evidence.
 
 ## Release Sign-Off Rule

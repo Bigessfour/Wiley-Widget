@@ -78,7 +78,6 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             this.Name = "WarRoomPanel";
             this.Size = new System.Drawing.Size(1100, 760);
-            this.MinimumSize = new System.Drawing.Size(900, 650);
 
             this._topPanel.ResumeLayout(false);
             this._contentPanel.ResumeLayout(false);

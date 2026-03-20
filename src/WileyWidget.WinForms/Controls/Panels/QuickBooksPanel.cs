@@ -180,8 +180,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 UpdateLoadingState();
                 UpdateNoDataOverlay();
 
-                // Check if QuickBooks is connected and prompt user if not
-                if (!ViewModel.IsConnected)
+                // UI automation and test harness runs must stay non-modal so shell smoke
+                // tests can prove the panel surface instead of blocking on OAuth prompts.
+                if (!ViewModel.IsConnected && !ShouldSkipAutoLoadForTestHarness())
                 {
                     await ShowConnectionPromptAsync(ct);
                 }
@@ -723,8 +724,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Determine available dimension based on orientation
         int availableDimension = splitter.Orientation == Orientation.Horizontal
-            ? splitter.Height
-            : splitter.Width;
+            ? splitter.Width
+            : splitter.Height;
 
         int min1 = splitter.Panel1MinSize;
         int min2 = splitter.Panel2MinSize;
@@ -732,7 +733,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         // Threshold: if container is very narrow, reduce min sizes
         // Horizontal splitters need less width threshold; vertical can handle more
-        int narrowThreshold = splitter.Orientation == Orientation.Horizontal ? 200 : 300;
+        int narrowThreshold = splitter.Orientation == Orientation.Horizontal ? 300 : 200;
 
         // Check if total minimum space exceeds available dimension
         int totalMinRequired = min1 + min2 + splitterWidth;
@@ -775,8 +776,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (splitter == null) return;
 
         int available = splitter.Orientation == Orientation.Horizontal
-            ? splitter.Height - splitter.SplitterWidth
-            : splitter.Width - splitter.SplitterWidth;
+            ? splitter.Width - splitter.SplitterWidth
+            : splitter.Height - splitter.SplitterWidth;
 
         int min1 = splitter.Panel1MinSize;
         int min2 = splitter.Panel2MinSize;
@@ -787,8 +788,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             splitter.Panel1MinSize = Math.Max(80, min1 / 2);
             splitter.Panel2MinSize = Math.Max(80, min2 / 2);
             available = splitter.Orientation == Orientation.Horizontal
-                ? splitter.Height - splitter.SplitterWidth
-                : splitter.Width - splitter.SplitterWidth;
+                ? splitter.Width - splitter.SplitterWidth
+                : splitter.Height - splitter.SplitterWidth;
         }
 
         if (splitter.SplitterDistance < min1)
@@ -906,7 +907,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (splitter == null || splitter.IsDisposed || !splitter.IsHandleCreated)
             return;
 
-        int containerDim = splitter.Orientation == Orientation.Horizontal ? splitter.Height : splitter.Width;
+        int containerDim = splitter.Orientation == Orientation.Horizontal ? splitter.Width : splitter.Height;
         int splitterThickness = Math.Max(0, splitter.SplitterWidth);
         int availableDim = Math.Max(0, containerDim - splitterThickness);
 
@@ -1057,7 +1058,6 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         Name = "QuickBooksPanel";
         Size = new Size(1400, 900);
-        MinimumSize = new Size((int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1024f), (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720f));
         Padding = Padding.Empty;
         Dock = DockStyle.Fill;
 
@@ -1111,7 +1111,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             splitter.Name = "SplitContainerTop";
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = System.Windows.Forms.Orientation.Vertical;
+            // Syncfusion SplitContainerAdv uses Horizontal for left/right panes.
+            splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
             splitter.IsSplitterFixed = true;  // Locked: top strip is a fixed two-column layout, not user-draggable
             splitter.SplitterWidth = 1;        // 1px — near-invisible divider, removes the grab-bar visual noise
             splitter.BorderStyle = BorderStyle.None;
@@ -1123,7 +1124,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             splitter.Name = "SplitContainerBottom";
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            // Syncfusion SplitContainerAdv uses Vertical for top/bottom panes.
+            splitter.Orientation = System.Windows.Forms.Orientation.Vertical;
             splitter.IsSplitterFixed = false;
             splitter.SplitterWidth = 5;
             splitter.BorderStyle = BorderStyle.None;
@@ -1135,7 +1137,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             splitter.Name = "SplitContainerMain";
             splitter.Dock = DockStyle.Fill;
-            splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            splitter.Orientation = System.Windows.Forms.Orientation.Vertical;
             splitter.IsSplitterFixed = false;
             splitter.SplitterWidth = 6;
             splitter.BorderStyle = BorderStyle.None;
