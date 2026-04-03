@@ -1150,19 +1150,6 @@ public partial class PaymentEditPanel : ScopedPanelBase<PaymentsViewModel>
     {
         if (disposing)
         {
-            _btnSave?.Dispose();
-            _btnCancel?.Dispose();
-            _btnDelete?.Dispose();
-            _txtCheckNumber?.Dispose();
-            _cmbPayee?.Dispose();
-            _btnAddVendor?.Dispose();
-            _txtDescription?.Dispose();
-            _txtMemo?.Dispose();
-            _dtpPaymentDate?.Dispose();
-            _numAmount?.Dispose();
-            _cmbStatus?.Dispose();
-            _cmbAccount?.Dispose();
-            _chkCleared?.Dispose();
             _toolTip?.Dispose();
         }
         base.Dispose(disposing);

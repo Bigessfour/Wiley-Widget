@@ -46,6 +46,21 @@ Current evidence as of 2026-03-19:
 - A fresh focused MainForm lane still fails 2 tests and skips 2 tests, so shared-method and high-risk shell regression proof is still incomplete for sign-off.
 - Current focused MainForm failures are `MainFormIntegrationTests.RibbonBudgetButton_Click_ShowsInitializedBudgetPanel` and `MainFormIntegrationTests.UnifiedNavigationDropdown_SelectingJarvis_ActivatesRightDockTab`.
 
+Additional current evidence as of 2026-03-21:
+
+- `dotnet test tests/WileyWidget.LayerProof.Tests/WileyWidget.LayerProof.Tests.csproj --logger "console;verbosity=minimal"` passed 39/39.
+- The Docker-backed data proof lane passed 2/2 through `ContainerizedSqlRepositoryProofTests`, using Testcontainers SQL Server rather than a developer-local database.
+- The data proof lane now covers the live query surface for `IAccountsRepository`, `IBudgetRepository`, `IDepartmentRepository`, `IEnterpriseRepository`, `IMunicipalAccountRepository`, `IPaymentRepository`, `IUtilityBillRepository`, and `IScenarioSnapshotRepository`, plus scenario snapshot persistence round-trip proof.
+- The abstractions proof lane passed 6/6 through `AbstractionsContractProofTests`, covering `Result`, `Result<T>`, `ResourceLoadResult`, `ResourceLoadException`, `RegionValidationResult`, interface contract signatures, and parity between `IErrorHandler` and `IExceptionHandler`.
+- `dotnet test tests/WileyWidget.LayerProof.Tests/WileyWidget.LayerProof.Tests.csproj --filter "Category=Business" --logger "console;verbosity=minimal"` passed 22/22.
+- The business proof lane now covers `AccountTypeValidator`, `GrokRecommendationOptions`, `RecommendationResult`, `AuditService`, `DepartmentExpenseService`, `GrokRecommendationService`, and `QuickBooksBudgetSyncService`.
+- The business proof lane now includes deterministic reauthorization and cancellation fallback coverage for `DepartmentExpenseService`, deterministic endpoint-normalization and HTTP health coverage for `GrokRecommendationService`, and real SQL-backed account-name fallback coverage for `QuickBooksBudgetSyncService`.
+- The Docker-backed business proof includes QuickBooks-to-budget actuals synchronization against SQL Server, including persisted `BudgetEntry.ActualAmount` updates, account-name fallback mapping, and `BudgetActualsUpdatedEvent` publication proof.
+- `dotnet test tests/WileyWidget.LayerProof.Tests/WileyWidget.LayerProof.Tests.csproj --filter "Category=Models" --logger "console;verbosity=minimal"` passed 9/9.
+- The models proof lane now covers `ChatMessage`, `EnterpriseSnapshot`, `EnterpriseMonthlyTrendPoint`, `AccountNumber`, `MunicipalAccount`, `Enterprise`, `BudgetEntry`, `BudgetInsights`, `ComplianceReport`, and the `AccountTypeValidator`, `BudgetDataValidator`, and `EnterpriseValidator` contracts.
+- `dotnet test tests/WileyWidget.WinForms.Tests/WileyWidget.WinForms.Tests.csproj --filter "Category=ServiceProof" --logger "console;verbosity=minimal"` passed 9/9.
+- The service proof lane now covers `AdaptiveTimeoutService`, `CorrelationIdService`, `CorrelatedAIServiceWrapper`, and `DataAnonymizerService`, including timeout percentile/bound behavior, correlation propagation and cleanup across async flows, and deterministic anonymization/cache behavior.
+
 ## 4. In-Scope Workflow Certification
 
 - [x] Main startup completes without exceptions.
@@ -98,6 +113,7 @@ Current gap as of 2026-03-19:
 - The dedicated JARVIS FlaUI blocker now has current passing proof, but the focused MainForm regression lane still has 2 failures: `MainFormIntegrationTests.RibbonBudgetButton_Click_ShowsInitializedBudgetPanel` and `MainFormIntegrationTests.UnifiedNavigationDropdown_SelectingJarvis_ActivatesRightDockTab`.
 - The Payments production-navigation blocker is cleared in the current rerun evidence, but `QuickBooks` still keeps production navigation blocked for sign-off.
 - Some previously defined VS Code proof tasks required repair because PowerShell was mis-parsing filter and logger arguments; do not treat older failed task runs as release evidence.
+- Data-layer, abstractions-layer, business-layer, models-layer, and focused service-layer proof are current and green as of 2026-03-21, so the remaining release risk is concentrated in shell and production-navigation lanes rather than these lower-level contracts.
 
 ## Release Sign-Off Rule
 

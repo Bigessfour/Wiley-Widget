@@ -29,6 +29,12 @@ namespace WileyWidget.Services.Abstractions
         void LogResponse(string query, string response, long responseTimeMs, int tokensUsed = 0);
 
         /// <summary>
+        /// Logs informational details about AI request lifecycle milestones.
+        /// </summary>
+        /// <param name="message">The lifecycle message to record</param>
+        void LogInformation(string message);
+
+        /// <summary>
         /// Logs an error that occurred during AI processing.
         /// </summary>
         /// <param name="query">The query that caused the error</param>

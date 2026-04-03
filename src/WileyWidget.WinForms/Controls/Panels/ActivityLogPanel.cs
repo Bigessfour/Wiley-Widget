@@ -66,8 +66,10 @@ namespace WileyWidget.WinForms.Controls.Panels
         private TableLayoutPanel? _content;
         private LoadingOverlay? _loader;
         private TableLayoutPanel? _mainTable;
+        private Label? _statusLabel;
         private ToolTip? _toolTip;
         private bool _gridInitialized = false;
+        private PropertyChangedEventHandler? _viewModelPropertyChangedHandler;
 
         [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
         public ActivityLogPanel(ActivityLogViewModel viewModel, SyncfusionControlFactory controlFactory)
@@ -77,8 +79,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             // Set AutoScaleMode for proper DPI scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
 
-            // Add padding for proper spacing
-            this.Padding = new Padding(12);
+            // Keep the root edge-to-edge so docked header/content do not clip inside narrow hosts.
+            this.Padding = Padding.Empty;
 
             // Create controls programmatically instead of using InitializeComponent
             SafeSuspendAndLayout(CreateControls);
@@ -104,6 +106,14 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 return;
             }
+
+            if (_viewModelPropertyChangedHandler == null)
+            {
+                _viewModelPropertyChangedHandler = OnViewModelPropertyChanged;
+                viewModel.PropertyChanged += _viewModelPropertyChangedHandler;
+            }
+
+            UpdateViewModelPresentation();
 
             if (!ShouldSkipAutoLoadForTestHarness())
             {
@@ -158,11 +168,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             Name = "ActivityLogPanel";
             Dock = DockStyle.Fill;
 
-            // Panel Header - added directly to Controls with Dock = Top
+            var headerHost = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                Margin = Padding.Empty,
+                Padding = new Padding(8, 8, 8, 0),
+                AccessibleName = "Activity Log Header Host"
+            };
+
+            // Panel Header - inset so narrow dock hosts do not clip it against the panel edge
             _panelHeader = new PanelHeader
             {
                 Title = "Recent Activity",
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 ShowRefreshButton = false,
                 ShowPinButton = false,
                 ShowHelpButton = false
@@ -170,7 +189,8 @@ namespace WileyWidget.WinForms.Controls.Panels
             _panelHeader.AccessibleName = "Activity Log Header";
             _panelHeader.AccessibleDescription = "Header for the activity log panel";
             _panelHeader.TabIndex = 0;
-            this.Controls.Add(_panelHeader);
+            headerHost.Controls.Add(_panelHeader);
+            this.Controls.Add(headerHost);
 
             // Wire PanelHeader events
             _panelHeader.RefreshClicked += (s, e) => { Logger?.LogDebug("Refresh clicked on ActivityLogPanel"); /* Refresh logic if needed */ };
@@ -191,26 +211,31 @@ namespace WileyWidget.WinForms.Controls.Panels
             {
                 Name = "MainTable",
                 Dock = DockStyle.Fill,
-                RowCount = 2,
-                ColumnCount = 1
+                RowCount = 3,
+                ColumnCount = 1,
+                Margin = Padding.Empty,
+                Padding = new Padding(8)
             };
             _content = mainTable;
+            mainTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
             // Row 0: Button controls
             mainTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             mainTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            mainTable.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             // Button panel (Row 0)
             var buttonPanel = new FlowLayoutPanel
             {
                 Name = "ButtonPanel",
-                Dock = DockStyle.Top,
+                Dock = DockStyle.Fill,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 Margin = Padding.Empty,
-                Padding = new Padding(8)
+                Padding = new Padding(0, 0, 0, 8),
+                AccessibleName = "Activity Log Actions"
             };
 
             // Control buttons - flow layout allows narrow right-dock hosts to wrap instead of clipping.
@@ -270,6 +295,20 @@ namespace WileyWidget.WinForms.Controls.Panels
             };
             mainTable.Controls.Add(placeholderPanel, 0, 1);
 
+            _statusLabel = new Label
+            {
+                Dock = DockStyle.Fill,
+                AutoEllipsis = true,
+                Margin = Padding.Empty,
+                Padding = new Padding(4, 4, 4, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Text = "Ready",
+                AccessibleName = "Activity Log Status",
+                AccessibleDescription = "Status and error message surface for the activity log panel"
+            };
+            _toolTip.SetToolTip(_statusLabel, "Displays the current activity log load status or any panel error.");
+            mainTable.Controls.Add(_statusLabel, 0, 2);
+
             Controls.Add(mainTable);
             _mainTable = mainTable;
 
@@ -325,6 +364,8 @@ namespace WileyWidget.WinForms.Controls.Panels
                 {
                     grid.Name = "ActivityGrid";
                     grid.Dock = DockStyle.Fill;
+                    grid.AutoGenerateColumns = false;
+                    grid.AllowEditing = false;
                     grid.AllowResizingColumns = true;
                     grid.AllowSorting = true;
                     grid.AllowFiltering = true;
@@ -373,6 +414,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 // Now that the grid is added and the parent is sized, setup UI bindings
                 SetupUI();
+                UpdateViewModelPresentation();
 
                 Logger?.LogDebug("ActivityLogPanel.OnShown: gridSplit initialized successfully");
             }
@@ -418,6 +460,7 @@ namespace WileyWidget.WinForms.Controls.Panels
                             DataMember = "ActivityEntries"
                         };
                         _activityGrid.DataSource = _bindingSource;
+                        UpdateViewModelPresentation();
                     }
                     else
                     {
@@ -582,6 +625,58 @@ namespace WileyWidget.WinForms.Controls.Panels
             if (_autoRefreshTimer != null && _chkAutoRefresh != null)
             {
                 _autoRefreshTimer.Enabled = _chkAutoRefresh.Checked;
+            }
+        }
+
+        private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke((System.Action)UpdateViewModelPresentation);
+                return;
+            }
+
+            UpdateViewModelPresentation();
+        }
+
+        private void UpdateViewModelPresentation()
+        {
+            if (ViewModel == null)
+            {
+                return;
+            }
+
+            if (_panelHeader != null)
+            {
+                _panelHeader.Title = string.IsNullOrWhiteSpace(ViewModel.Title)
+                    ? "Recent Activity"
+                    : ViewModel.Title;
+            }
+
+            if (_loader != null)
+            {
+                _loader.Visible = ViewModel.IsLoading;
+            }
+
+            if (_statusLabel != null)
+            {
+                if (!string.IsNullOrWhiteSpace(ViewModel.ErrorMessage))
+                {
+                    _statusLabel.Text = ViewModel.ErrorMessage;
+                    _statusLabel.ForeColor = ThemeColors.Error;
+                }
+                else
+                {
+                    _statusLabel.Text = string.IsNullOrWhiteSpace(ViewModel.StatusText)
+                        ? "Ready"
+                        : ViewModel.StatusText;
+                    _statusLabel.ResetForeColor();
+                }
             }
         }
 
@@ -784,11 +879,23 @@ namespace WileyWidget.WinForms.Controls.Panels
                     _loader = null;
                 }
 
+                if (_statusLabel != null)
+                {
+                    try { _statusLabel.Dispose(); } catch { }
+                    _statusLabel = null;
+                }
+
                 if (_activityGrid != null)
                 {
                     try { _activityGrid.DataSource = null; } catch { }
                     try { _activityGrid.Dispose(); } catch { }
                     _activityGrid = null;
+                }
+
+                if (ViewModel != null && _viewModelPropertyChangedHandler != null)
+                {
+                    try { ViewModel.PropertyChanged -= _viewModelPropertyChangedHandler; } catch { }
+                    _viewModelPropertyChangedHandler = null;
                 }
 
                 try { _panelHeader?.Dispose(); } catch { }

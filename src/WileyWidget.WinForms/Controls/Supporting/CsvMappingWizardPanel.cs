@@ -148,6 +148,15 @@ namespace WileyWidget.WinForms.Controls.Supporting
             this.PerformLayout();
 
             _logger?.LogDebug("[PANEL] {PanelName} content anchored and refreshed", this.Name);
+            _logger?.LogDebug(
+                "[LAYOUT] CsvMappingWizardPanel initialized | Size={W}x{H} | ClientSize={CW}x{CH} | Dock={Dock} | ParentSize={PW}x{PH}",
+                Width,
+                Height,
+                ClientSize.Width,
+                ClientSize.Height,
+                Dock,
+                Parent?.Size.Width ?? 0,
+                Parent?.Size.Height ?? 0);
         }
 
         public void ApplyTheme(string themeName)
@@ -214,6 +223,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
             btnPanel.Controls.Add(_btnApply);
             btnPanel.Controls.Add(_btnCancel);
             parent.Controls.Add(btnPanel);
+
+            _logger?.LogDebug(
+                "[LAYOUT] Preview grid & combos populated | GridSize={W}x{H} | ComboPanelWidth={PW}",
+                _previewGrid?.Width ?? 0,
+                _previewGrid?.Height ?? 0,
+                btnPanel.Width);
         }
 
         private void AddMappingField(FlowLayoutPanel parent, string label, Control field)
@@ -221,6 +236,16 @@ namespace WileyWidget.WinForms.Controls.Supporting
             parent.Controls.Add(new Label { Text = label, AutoSize = true, Margin = new Padding(0, 10, 0, 0) });
             field.Width = 320; // Consistent width
             parent.Controls.Add(field);
+        }
+
+        protected override void OnParentChanged(EventArgs e)
+        {
+            base.OnParentChanged(e);
+            _logger?.LogDebug(
+                "[LAYOUT] CsvMappingWizardPanel parent changed | Parent={ParentName} | HostSize={W}x{H}",
+                Parent?.GetType().Name ?? "null",
+                Parent?.Width ?? 0,
+                Parent?.Height ?? 0);
         }
 
         private void WireEvents()

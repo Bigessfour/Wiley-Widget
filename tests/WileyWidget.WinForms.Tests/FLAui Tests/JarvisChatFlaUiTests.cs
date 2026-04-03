@@ -46,7 +46,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     return;
                 }
 
-                Assert.True(status.BlazorReady, "Blazor did not signal readiness.");
+                Assert.True(status.ChatUiReady, "Chat UI did not signal readiness.");
                 Assert.True(status.AssistViewReady, "AssistView did not signal readiness.");
                 Assert.True(status.DiagnosticsReady, "Diagnostics did not complete.");
             }
@@ -92,7 +92,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     if (JarvisAutomationStatus.TryParse(statusText, out var status))
                     {
                         lastStatus = status;
-                        if (status.BlazorReady && status.AssistViewReady && status.DiagnosticsReady)
+                        if (status.ChatUiReady && status.AssistViewReady && status.DiagnosticsReady)
                         {
                             return status;
                         }

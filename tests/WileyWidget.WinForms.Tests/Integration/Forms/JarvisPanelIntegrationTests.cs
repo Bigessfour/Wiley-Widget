@@ -51,7 +51,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]
     public void SwitchRightPanelContent_SelectsJarvisTab()
     {
-        // Force headless mode to prevent BlazorWebView initialization hangs
+        // Force headless mode for deterministic native JARVIS initialization
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
@@ -70,7 +70,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]
     public void JarvisControl_AppliesThemeCorrectly()
     {
-        // Force headless mode to prevent BlazorWebView initialization hangs
+        // Force headless mode for deterministic native JARVIS initialization
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         TestThemeHelper.EnsureOffice2019Colorful();
@@ -90,7 +90,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]
     public void RightDockPanel_HasExpectedTabs()
     {
-        // Force headless mode to prevent BlazorWebView initialization hangs
+        // Force headless mode for deterministic native JARVIS initialization
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
@@ -108,7 +108,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]
     public void SwitchToActivityLog_SelectsActivityTab()
     {
-        // Force headless mode to prevent BlazorWebView initialization hangs
+        // Force headless mode for deterministic native JARVIS initialization
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
@@ -127,7 +127,7 @@ public sealed class JarvisPanelIntegrationTests(IntegrationTestFixture fixture) 
     [StaFact(Skip = "Obsolete: JARVIS is now a separate fixed sidebar, not part of right dock panel")]
     public void JarvisControl_IsProperlyDocked()
     {
-        // Force headless mode to prevent BlazorWebView initialization hangs
+        // Force headless mode for deterministic native JARVIS initialization
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();

@@ -92,7 +92,7 @@ namespace WileyWidget.WinForms.Tests.Unit
             {
                 var revenueChart = revenueChartField.GetValue(panel) as ChartControl;
                 revenueChart.Should().NotBeNull();
-                revenueChart!.Series.Count.Should().BeGreaterOrEqualTo(1, "Revenue chart should have at least one series after projections added");
+                revenueChart!.Series.Count.Should().BeGreaterThanOrEqualTo(1, "Revenue chart should have at least one series after projections added");
             }
 
             // Note: resultsPanel visual visibility can be flaky in headless/test hosts; skip strict visibility assertion.

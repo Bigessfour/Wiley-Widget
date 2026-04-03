@@ -32,10 +32,7 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Open a panel that isn't open by default
-                var budgetTab = window.FindFirstDescendant(cf => cf.ByName("Budget"));
-                budgetTab?.Click();
-
+                PanelActivationHelpers.ActivatePanel<BudgetPanel>(window, automation, TimeSpan.FromSeconds(15));
                 var budgetPanel = window.WaitForPanel<BudgetPanel>(TimeSpan.FromSeconds(10));
                 Assert.NotNull(budgetPanel);
 

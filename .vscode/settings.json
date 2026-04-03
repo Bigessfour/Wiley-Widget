@@ -98,6 +98,14 @@
   // ============================================================================
   // ============================================================================
   "xamlDiag.autoDetectCompiler": true,
+
+  // ============================================================================
+  // Docker Configuration
+  // ============================================================================
+  "docker.showExplorer": true,
+  "docker.containers.groupBy": "ImageName",
+  "docker.containers.showRunningContainers": true,
+  "docker.containers.showStoppedContainers": false,
   "xamlDiag.defaultObjDir": "obj/Debug/net10.0-windows10.0.26100.0/win-x64",
   "xml.format.enabled": true,
   "xml.format.splitAttributes": "preserve",
@@ -394,7 +402,7 @@
   "workbench.editor.limit.enabled": true,
   "workbench.editor.limit.value": 10,
   "workbench.iconTheme": "vs-seti",
-  "workbench.colorTheme": "Default Dark+",
+  "workbench.colorTheme": "Dark+",
   "workbench.browser.pageZoom": "Match Window",
   "search.maxResults": 5000,
   "editor.largeFileOptimizations": false,
@@ -443,6 +451,7 @@
       ],
       "icon": "terminal-cmd"
     }
-  }
+  },
+  "containers.containers.groupBy": "ImageName"
 }
 

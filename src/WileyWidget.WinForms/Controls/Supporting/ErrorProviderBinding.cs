@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace WileyWidget.WinForms.Controls.Supporting
@@ -31,6 +33,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
             if (_controlMap.TryGetValue(propertyName, out var control))
             {
                 _errorProvider.SetError(control, message ?? string.Empty);
+#if DEBUG
+                Debug.WriteLine($"[ERRORPROVIDER] SetError | Property={propertyName} | MessageLength={(message ?? string.Empty).Length} | Control={control.Name} | HostControlSize={control.Parent?.Size}");
+#endif
             }
         }
 
@@ -42,6 +47,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 var current = _errorProvider.GetError(control);
                 _errorProvider.SetError(control, current);
             }
+
+#if DEBUG
+            Debug.WriteLine($"[ERRORPROVIDER] RefreshAllErrors | ControlsMapped={_controlMap.Count} | HostControlSize={_controlMap.Values.FirstOrDefault()?.Parent?.Size}");
+#endif
         }
 
         public void ClearErrors()

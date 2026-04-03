@@ -226,6 +226,24 @@ public sealed partial class QuickBooksViewModel : ObservableObject, IQuickBooksV
 
             var status = await _quickBooksService.GetConnectionStatusAsync(cancellationToken);
 
+            if (status is null)
+            {
+                _logger.LogWarning("QuickBooks connection status service returned null");
+                IsConnected = false;
+                CompanyName = null;
+                LastSyncTime = null;
+                ConnectionStatus = "Not connected";
+                ConnectionStatusMessage = "Not connected";
+                StatusText = "Not connected. Click 'Connect' to establish connection.";
+                ErrorMessage = null;
+
+                ConnectCommand.NotifyCanExecuteChanged();
+                DisconnectCommand.NotifyCanExecuteChanged();
+                SyncDataCommand.NotifyCanExecuteChanged();
+                ImportAccountsCommand.NotifyCanExecuteChanged();
+                return;
+            }
+
             IsConnected = status.IsConnected;
             CompanyName = status.CompanyName;
             LastSyncTime = status.LastSyncTime;

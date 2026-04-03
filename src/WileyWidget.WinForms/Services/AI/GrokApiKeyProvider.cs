@@ -78,7 +78,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _apiKey = machineLegacyEnvKey.Trim().Trim('"');
                 _configurationSource = "environment variable (XAI_API_KEY - machine scope) [LEGACY ALIAS]";
                 _isFromUserSecrets = false;
-                _logger?.LogWarning(
+                _logger?.LogInformation(
                     "[Grok] API key loaded from legacy alias {Source}. Prefer machine-scoped XAI__ApiKey.",
                     _configurationSource);
                 return;
@@ -120,7 +120,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _apiKey = hierarchicalEnvKey.Trim().Trim('"');
                 _configurationSource = "environment variable (XAI__ApiKey - process scope) [COMPATIBILITY]";
                 _isFromUserSecrets = false;
-                _logger?.LogWarning("[Grok] API key loaded from process scope. Machine scope is canonical.");
+                _logger?.LogInformation("[Grok] API key loaded from process scope. Machine scope is canonical.");
                 _logger?.LogInformation(
                     "[Grok] API key loaded from {Source} (length: {Length})",
                     _configurationSource,
@@ -134,7 +134,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _apiKey = hierarchicalEnvKey.Trim().Trim('"');
                 _configurationSource = "environment variable (XAI__ApiKey - user scope) [COMPATIBILITY]";
                 _isFromUserSecrets = false;
-                _logger?.LogWarning("[Grok] API key loaded from user scope. Machine scope is canonical.");
+                _logger?.LogInformation("[Grok] API key loaded from user scope. Machine scope is canonical.");
                 _logger?.LogInformation(
                     "[Grok] API key loaded from {Source} (length: {Length})",
                     _configurationSource,
@@ -148,7 +148,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _apiKey = processLegacyEnvKey.Trim().Trim('"');
                 _configurationSource = "environment variable (XAI_API_KEY - process scope) [LEGACY ALIAS]";
                 _isFromUserSecrets = false;
-                _logger?.LogWarning("[Grok] API key loaded from legacy process alias. Prefer machine-scoped XAI__ApiKey.");
+                _logger?.LogInformation("[Grok] API key loaded from legacy process alias. Prefer machine-scoped XAI__ApiKey.");
                 _logger?.LogInformation(
                     "[Grok] API key loaded from {Source} (length: {Length})",
                     _configurationSource,
@@ -162,7 +162,7 @@ namespace WileyWidget.WinForms.Services.AI
                 _apiKey = userLegacyEnvKey.Trim().Trim('"');
                 _configurationSource = "environment variable (XAI_API_KEY - user scope) [LEGACY ALIAS]";
                 _isFromUserSecrets = false;
-                _logger?.LogWarning("[Grok] API key loaded from legacy user alias. Prefer machine-scoped XAI__ApiKey.");
+                _logger?.LogInformation("[Grok] API key loaded from legacy user alias. Prefer machine-scoped XAI__ApiKey.");
                 _logger?.LogInformation(
                     "[Grok] API key loaded from {Source} (length: {Length})",
                     _configurationSource,

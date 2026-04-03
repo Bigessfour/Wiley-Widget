@@ -53,13 +53,11 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Activate panel and wait for async init completion
                 PanelActivationHelpers.ActivatePanel<BudgetPanel>(window, automation, TimeSpan.FromSeconds(15));
 
-                // Assert panel is fully initialized (e.g., controls loaded)
-                var panelContent = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanelContent"));
-                Assert.NotNull(panelContent);
-                Assert.True(panelContent.IsEnabled);
+                var budgetPanel = window.WaitForPanel<BudgetPanel>(TimeSpan.FromSeconds(15));
+                Assert.NotNull(budgetPanel);
+                Assert.True(budgetPanel.IsEnabled);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally

@@ -95,6 +95,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private SfButton? _syncDataButton;
     private SfButton? _importAccountsButton;
     private SfButton? _importDesktopFileButton;
+    private SfButton? _importCsvExcelButton;
     private SfButton? _refreshHistoryButton;
     private SfButton? _clearHistoryButton;
     private SfButton? _exportHistoryButton;
@@ -122,6 +123,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     private EventHandler? _syncDataButtonClickHandler;
     private EventHandler? _importAccountsButtonClickHandler;
     private EventHandler? _importDesktopFileButtonClickHandler;
+    private EventHandler? _importCsvExcelButtonClickHandler;
     private EventHandler? _refreshHistoryButtonClickHandler;
     private EventHandler? _clearHistoryButtonClickHandler;
     private EventHandler? _exportHistoryButtonClickHandler;
@@ -330,8 +332,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         base.OnHandleCreated(e);
 
-        var dpiW = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(1024f);
-        var dpiH = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(720f);
+        var dpiW = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(832f);
+        var dpiH = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(600f);
         var newMin = new Size(
             Math.Max(MinimumSize.Width, dpiW),
             Math.Max(MinimumSize.Height, dpiH));
@@ -352,6 +354,28 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     protected override void OnVisibleChanged(EventArgs e)
     {
+        if (Visible)
+        {
+            try
+            {
+                EnforceMinimumContentHeight();
+                ConfigureSplitContainersSafely();
+
+                if (_splitContainerMain != null) { ClampSplitterSafely(_splitContainerMain); }
+                if (_splitContainerTop != null) { ClampSplitterSafely(_splitContainerTop); }
+                if (_splitContainerBottom != null) { ClampSplitterSafely(_splitContainerBottom); }
+
+                _mainPanel?.PerformLayout();
+                _splitContainerMain?.PerformLayout();
+                _splitContainerTop?.PerformLayout();
+                _splitContainerBottom?.PerformLayout();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "QuickBooksPanel: pre-visible stabilization skipped");
+            }
+        }
+
         base.OnVisibleChanged(e);
 
         if (!Visible) return;
@@ -684,10 +708,10 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Calculate absolute minimum needed for visual integrity (Summary + History Buffer)
         // Includes Connection/Operations height as well if they were visible
         int summaryHeight = CalculateSummaryPanelMinHeight();
-        int historyHeight = DpiHeight(320f); // lowered
+        int historyHeight = DpiHeight(120f);
         int headerHeight = _panelHeader?.Height ?? DpiHeight(50f);
         int footerHeight = _statusStrip?.Height ?? DpiHeight(25f);
-        int connectionHeight = DpiHeight(160f);
+        int connectionHeight = DpiHeight(120f);
 
         int minNeeded = headerHeight + connectionHeight + summaryHeight + historyHeight + footerHeight + Padding.Vertical * 4;
 
@@ -723,9 +747,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             return;
 
         // Determine available dimension based on orientation
-        int availableDimension = splitter.Orientation == Orientation.Horizontal
-            ? splitter.Width
-            : splitter.Height;
+        int availableDimension = GetSplitterAvailableDimension(splitter);
 
         int min1 = splitter.Panel1MinSize;
         int min2 = splitter.Panel2MinSize;
@@ -775,9 +797,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     {
         if (splitter == null) return;
 
-        int available = splitter.Orientation == Orientation.Horizontal
-            ? splitter.Width - splitter.SplitterWidth
-            : splitter.Height - splitter.SplitterWidth;
+        int available = Math.Max(0, GetSplitterAvailableDimension(splitter) - splitter.SplitterWidth);
 
         int min1 = splitter.Panel1MinSize;
         int min2 = splitter.Panel2MinSize;
@@ -907,7 +927,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         if (splitter == null || splitter.IsDisposed || !splitter.IsHandleCreated)
             return;
 
-        int containerDim = splitter.Orientation == Orientation.Horizontal ? splitter.Width : splitter.Height;
+        int containerDim = GetSplitterAvailableDimension(splitter);
         int splitterThickness = Math.Max(0, splitter.SplitterWidth);
         int availableDim = Math.Max(0, containerDim - splitterThickness);
 
@@ -1030,6 +1050,13 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         };
 
         HandleCreated += handleCreatedHandler;
+    }
+
+    private static int GetSplitterAvailableDimension(SplitContainerAdv splitter)
+    {
+        return splitter.Orientation == Orientation.Horizontal
+            ? splitter.Height
+            : splitter.Width;
     }
 
     #region Control Initialization
@@ -1242,7 +1269,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         {
             Text = "\u25cf Not Connected",  // ● Not Connected
             Name = "ConnectionBadge",
-            ForeColor = Color.OrangeRed,   // Semantic status color — exception to theme rule
+            ForeColor = ThemeColors.Warning,
             TextAlign = ContentAlignment.MiddleRight,
             AccessibleName = "Connection Badge",
             AccessibleDescription = "Shows current QuickBooks connection state"
@@ -1289,7 +1316,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "QuickBooks Summary",
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = DpiHeight(30f),
+            Height = DpiHeight(34f),
             TextAlign = ContentAlignment.MiddleLeft,
             Font = new Font(Font.FontFamily, 8.25f, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 4),
@@ -1545,7 +1572,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "Connection Status",
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = DpiHeight(30f),
+            Height = DpiHeight(34f),
             TextAlign = ContentAlignment.MiddleLeft,
             Font = new Font(Font.FontFamily, 8.25f, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 4),
@@ -1616,18 +1643,19 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Buttons in a FlowLayoutPanel for responsive button layout
         var buttonPanel = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             MinimumSize = new Size(0, DpiHeight(34f)),
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = true,
-            Padding = new Padding(0, 2, 0, 0)
+            Padding = new Padding(0, 2, 0, 0),
+            Margin = new Padding(0)
         };
 
         _connectButton = Factory.CreateSfButton("Connect", button =>
         {
-            button.Size = new Size(DpiHeight(85f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(85f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Connect to QuickBooks";
             button.AccessibleDescription = "Establishes connection to QuickBooks Online via OAuth";
@@ -1641,7 +1669,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _disconnectButton = Factory.CreateSfButton("Disconnect", button =>
         {
-            button.Size = new Size(DpiHeight(100f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(100f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Disconnect from QuickBooks";
             button.AccessibleDescription = "Terminates current QuickBooks Online connection";
@@ -1661,7 +1689,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _testConnectionButton = Factory.CreateSfButton("Test Connection", button =>
         {
-            button.Size = new Size(DpiHeight(120f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(120f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Test QuickBooks Connection";
             button.AccessibleDescription = "Verifies QuickBooks Online connection status";
@@ -1675,7 +1703,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _diagnosticsButton = Factory.CreateSfButton("Show Diagnostics", button =>
         {
-            button.Size = new Size(DpiHeight(130f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(130f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "QuickBooks Diagnostics";
             button.AccessibleDescription = "Displays sandbox connection diagnostics without exposing secret values";
@@ -1732,7 +1760,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "QuickBooks Operations",
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = DpiHeight(30f),
+            Height = DpiHeight(34f),
             TextAlign = ContentAlignment.MiddleLeft,
             Font = new Font(Font.FontFamily, 8.25f, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 4),
@@ -1764,7 +1792,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // Operations buttons in FlowLayoutPanel for responsive layout
         var buttonPanel = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            Dock = DockStyle.Top,
             AutoSize = true, // Allow panel to grow when buttons wrap
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.LeftToRight,
@@ -1775,7 +1803,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _syncDataButton = Factory.CreateSfButton("Sync Data", button =>
         {
-            button.Size = new Size(DpiHeight(110f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(110f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Sync Data with QuickBooks";
             button.AccessibleDescription = "Synchronizes financial data between Wiley Widget and QuickBooks Online";
@@ -1795,7 +1823,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _importAccountsButton = Factory.CreateSfButton("Import Accounts", button =>
         {
-            button.Size = new Size(DpiHeight(130f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(130f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Import Chart of Accounts";
             button.AccessibleDescription = "Imports complete chart of accounts from QuickBooks Online";
@@ -1809,7 +1837,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _importDesktopFileButton = Factory.CreateSfButton("Import Desktop File", button =>
         {
-            button.Size = new Size(DpiHeight(150f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(150f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Import QuickBooks Desktop Export";
             button.AccessibleDescription = "Imports a local QuickBooks Desktop chart of accounts export without requiring a cloud connection";
@@ -1820,6 +1848,20 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _importDesktopFileButtonClickHandler = async (s, e) => await ImportDesktopFileAsync();
         _importDesktopFileButton.Click += _importDesktopFileButtonClickHandler;
         buttonPanel.Controls.Add(_importDesktopFileButton);
+
+        _importCsvExcelButton = Factory.CreateSfButton("Import CSV/Excel", button =>
+        {
+            button.Size = new Size(DpiHeight(145f), DpiHeight(34f));
+            button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            button.AccessibleName = "Import QuickBooks CSV or Excel Export";
+            button.AccessibleDescription = "Imports a local QuickBooks Desktop CSV or Excel export without requiring a cloud connection";
+            button.TabIndex = 7;
+            button.TabStop = true;
+        });
+        _sharedTooltip?.SetToolTip(_importCsvExcelButton, "Import a local QuickBooks Desktop CSV or Excel export file");
+        _importCsvExcelButtonClickHandler = async (s, e) => await ImportCsvExcelFileAsync();
+        _importCsvExcelButton.Click += _importCsvExcelButtonClickHandler;
+        buttonPanel.Controls.Add(_importCsvExcelButton);
 
         tableLayout.Controls.Add(buttonPanel, 0, 0);
 
@@ -1876,7 +1918,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             Text = "Sync History",
             Dock = DockStyle.Top,
             AutoSize = false,
-            Height = DpiHeight(30f),
+            Height = DpiHeight(34f),
             TextAlign = ContentAlignment.MiddleLeft,
             Font = new Font(Font.FontFamily, 8.25f, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 4),
@@ -1938,11 +1980,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // History toolbar buttons with professional sizing
         _refreshHistoryButton = Factory.CreateSfButton("Refresh", button =>
         {
-            button.Size = new Size(DpiHeight(95f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(95f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Refresh Sync History";
             button.AccessibleDescription = "Reloads sync history from database";
-            button.TabIndex = 7;
+            button.TabIndex = 8;
             button.TabStop = true;
         });
         _sharedTooltip?.SetToolTip(_refreshHistoryButton, "Click to reload sync history from the database");
@@ -1952,11 +1994,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _clearHistoryButton = Factory.CreateSfButton("Clear", button =>
         {
-            button.Size = new Size(DpiHeight(75f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(75f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Clear Sync History";
             button.AccessibleDescription = "Removes all sync history records from the display";
-            button.TabIndex = 8;
+            button.TabIndex = 9;
             button.TabStop = true;
         });
         _sharedTooltip?.SetToolTip(_clearHistoryButton, "Click to clear all sync history (cannot be undone)");
@@ -1975,11 +2017,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         _exportHistoryButton = Factory.CreateSfButton("Export CSV", button =>
         {
-            button.Size = new Size(DpiHeight(105f), DpiHeight(30f));
+            button.Size = new Size(DpiHeight(105f), DpiHeight(34f));
             button.Anchor = AnchorStyles.Left | AnchorStyles.Top;
             button.AccessibleName = "Export History to CSV";
             button.AccessibleDescription = "Exports sync history data to CSV file";
-            button.TabIndex = 9;
+            button.TabIndex = 10;
             button.TabStop = true;
         });
         _sharedTooltip?.SetToolTip(_exportHistoryButton, "Click to export sync history as a CSV file");
@@ -2092,7 +2134,14 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 if (_statusLabel != null && !_statusLabel.IsDisposed)
                 {
                     _statusLabel.Text = message ?? string.Empty;
-                    _statusLabel.ForeColor = isError ? ThemeColors.Error : Color.Empty;
+                    if (isError)
+                    {
+                        _statusLabel.ForeColor = ThemeColors.Error;
+                    }
+                    else
+                    {
+                        _statusLabel.ResetForeColor();
+                    }
                     try { _statusLabel.Invalidate(); } catch { }
                 }
             }
@@ -2402,12 +2451,12 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
                 _statusConnectionBadge.Text = string.IsNullOrWhiteSpace(company)
                     ? "\u25cf Connected"
                     : $"\u25cf {company}";
-                _statusConnectionBadge.ForeColor = Color.Green;    // Semantic: connected = green
+                _statusConnectionBadge.ForeColor = ThemeColors.Success;
             }
             else
             {
                 _statusConnectionBadge.Text = "\u25cf Not Connected";
-                _statusConnectionBadge.ForeColor = Color.OrangeRed; // Semantic: disconnected = warning
+                _statusConnectionBadge.ForeColor = ThemeColors.Warning;
             }
         }
 
@@ -2428,6 +2477,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         if (_importDesktopFileButton != null)
             _importDesktopFileButton.Enabled = !ViewModel.IsLoading;
+
+        if (_importCsvExcelButton != null)
+            _importCsvExcelButton.Enabled = !ViewModel.IsLoading;
     }
 
     private void UpdateSyncingState()
@@ -2950,7 +3002,21 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
     #endregion
 
-    private async Task ImportDesktopFileAsync()
+    private Task ImportDesktopFileAsync()
+    {
+        return ImportQuickBooksExportAsync(
+            filter: "QuickBooks Desktop exports (*.csv;*.iif;*.xlsx;*.xls)|*.csv;*.iif;*.xlsx;*.xls|CSV files (*.csv)|*.csv|IIF files (*.iif)|*.iif|Excel files (*.xlsx;*.xls)|*.xlsx;*.xls|All files (*.*)|*.*",
+            title: "Import QuickBooks Desktop Export");
+    }
+
+    private Task ImportCsvExcelFileAsync()
+    {
+        return ImportQuickBooksExportAsync(
+            filter: "QuickBooks CSV/Excel exports (*.csv;*.xlsx;*.xls)|*.csv;*.xlsx;*.xls|CSV files (*.csv)|*.csv|Excel files (*.xlsx;*.xls)|*.xlsx;*.xls|All files (*.*)|*.*",
+            title: "Import QuickBooks CSV or Excel Export");
+    }
+
+    private async Task ImportQuickBooksExportAsync(string filter, string title)
     {
         if (ViewModel is null)
         {
@@ -2959,8 +3025,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
         using var openFileDialog = new OpenFileDialog
         {
-            Filter = "QuickBooks Desktop exports (*.csv;*.iif;*.xlsx;*.xls)|*.csv;*.iif;*.xlsx;*.xls|CSV files (*.csv)|*.csv|IIF files (*.iif)|*.iif|Excel files (*.xlsx;*.xls)|*.xlsx;*.xls|All files (*.*)|*.*",
-            Title = "Import QuickBooks Desktop Export"
+            Filter = filter,
+            Title = title
         };
 
         if (openFileDialog.ShowDialog(this) != DialogResult.OK)
@@ -2989,32 +3055,33 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             // ------------------------------------------------------------------
             // Main horizontal splitter (top section vs bottom section)
             // ------------------------------------------------------------------
-            int mainTopPreferred = DpiHeight(280f);
-            int mainPanel1Min = DpiHeight(180f);
-            int mainPanel2Min = DpiHeight(280f);
+            int mainTopPreferred = DpiHeight(360f);
+            int mainPanel1Min = DpiHeight(300f);
+            int mainPanel2Min = DpiHeight(240f);
 
             // Validate container can hold minimum sizes
-            int mainRequiredHeight = mainPanel1Min + mainPanel2Min + _splitContainerMain.SplitterWidth;
-            if (_splitContainerMain.Height >= mainRequiredHeight)
+            int mainContainerDim = GetSplitterAvailableDimension(_splitContainerMain);
+            int mainRequiredDim = mainPanel1Min + mainPanel2Min + _splitContainerMain.SplitterWidth;
+            if (mainContainerDim >= mainRequiredDim)
             {
                 _splitContainerMain.Panel1MinSize = mainPanel1Min;
                 _splitContainerMain.Panel2MinSize = mainPanel2Min;
 
                 // Set distance within validated bounds
                 int safeDistance = Math.Max(mainPanel1Min,
-                    Math.Min(mainTopPreferred, _splitContainerMain.Height - mainPanel2Min - _splitContainerMain.SplitterWidth));
+                    Math.Min(mainTopPreferred, mainContainerDim - mainPanel2Min - _splitContainerMain.SplitterWidth));
                 _splitContainerMain.SplitterDistance = safeDistance;
             }
             else
             {
                 // Fallback: use proportional min sizes when container is smaller than ideal
-                int fallbackMin1 = Math.Max(50, _splitContainerMain.Height / 3);
-                int fallbackMin2 = Math.Max(50, _splitContainerMain.Height / 3);
+                int fallbackMin1 = Math.Max(50, mainContainerDim / 3);
+                int fallbackMin2 = Math.Max(50, mainContainerDim / 3);
                 _splitContainerMain.Panel1MinSize = fallbackMin1;
                 _splitContainerMain.Panel2MinSize = fallbackMin2;
                 _splitContainerMain.SplitterDistance = fallbackMin1;
                 Logger.LogDebug("QuickBooksPanel: Using fallback main splitter sizes - container height {Height} < required {Required}",
-                    _splitContainerMain.Height, mainRequiredHeight);
+                    mainContainerDim, mainRequiredDim);
             }
         }
         catch (ArgumentOutOfRangeException ex)
@@ -3029,31 +3096,32 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             // ------------------------------------------------------------------
             // Top vertical splitter (connection panel | operations panel)
             // ------------------------------------------------------------------
-            int topPanel1Min = DpiHeight(260f);
-            int topPanel2Min = DpiHeight(260f);
+            int topPanel1Min = DpiHeight(220f);
+            int topPanel2Min = DpiHeight(340f);
 
-            int topRequiredWidth = topPanel1Min + topPanel2Min + _splitContainerTop.SplitterWidth;
-            if (_splitContainerTop.Width >= topRequiredWidth)
+            int topContainerDim = GetSplitterAvailableDimension(_splitContainerTop);
+            int topRequiredDim = topPanel1Min + topPanel2Min + _splitContainerTop.SplitterWidth;
+            if (topContainerDim >= topRequiredDim)
             {
                 _splitContainerTop.Panel1MinSize = topPanel1Min;
                 _splitContainerTop.Panel2MinSize = topPanel2Min;
 
-                // 45/55 split
-                int topDistance = (int)(_splitContainerTop.Width * 0.45f);
+                // Favor the operations pane; it hosts the longer action labels.
+                int topDistance = (int)(topContainerDim * 0.40f);
                 topDistance = Math.Max(topPanel1Min,
-                    Math.Min(topDistance, _splitContainerTop.Width - topPanel2Min - _splitContainerTop.SplitterWidth));
+                    Math.Min(topDistance, topContainerDim - topPanel2Min - _splitContainerTop.SplitterWidth));
                 _splitContainerTop.SplitterDistance = topDistance;
             }
             else
             {
                 // Fallback proportional
-                int fallbackMin1 = Math.Max(50, _splitContainerTop.Width / 3);
-                int fallbackMin2 = Math.Max(50, _splitContainerTop.Width / 3);
+                int fallbackMin1 = Math.Max(50, topContainerDim / 3);
+                int fallbackMin2 = Math.Max(50, topContainerDim / 3);
                 _splitContainerTop.Panel1MinSize = fallbackMin1;
                 _splitContainerTop.Panel2MinSize = fallbackMin2;
-                _splitContainerTop.SplitterDistance = (int)(_splitContainerTop.Width * 0.45f);
+                _splitContainerTop.SplitterDistance = (int)(topContainerDim * 0.40f);
                 Logger.LogDebug("QuickBooksPanel: Using fallback top splitter sizes - container width {Width} < required {Required}",
-                    _splitContainerTop.Width, topRequiredWidth);
+                    topContainerDim, topRequiredDim);
             }
         }
         catch (ArgumentOutOfRangeException ex)
@@ -3072,26 +3140,27 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             int bottomPanel1Min = Math.Max(DpiHeight(100f), summaryPreferred - DpiHeight(40f));
             int bottomPanel2Min = DpiHeight(220f);
 
-            int bottomRequiredHeight = bottomPanel1Min + bottomPanel2Min + _splitContainerBottom.SplitterWidth;
-            if (_splitContainerBottom.Height >= bottomRequiredHeight)
+            int bottomContainerDim = GetSplitterAvailableDimension(_splitContainerBottom);
+            int bottomRequiredDim = bottomPanel1Min + bottomPanel2Min + _splitContainerBottom.SplitterWidth;
+            if (bottomContainerDim >= bottomRequiredDim)
             {
                 _splitContainerBottom.Panel1MinSize = bottomPanel1Min;
                 _splitContainerBottom.Panel2MinSize = bottomPanel2Min;
 
                 int safeDistance = Math.Max(bottomPanel1Min,
-                    Math.Min(summaryPreferred, _splitContainerBottom.Height - bottomPanel2Min - _splitContainerBottom.SplitterWidth));
+                    Math.Min(summaryPreferred, bottomContainerDim - bottomPanel2Min - _splitContainerBottom.SplitterWidth));
                 _splitContainerBottom.SplitterDistance = safeDistance;
             }
             else
             {
                 // Fallback proportional
-                int fallbackMin1 = Math.Max(50, _splitContainerBottom.Height / 3);
-                int fallbackMin2 = Math.Max(50, _splitContainerBottom.Height / 3);
+                int fallbackMin1 = Math.Max(50, bottomContainerDim / 3);
+                int fallbackMin2 = Math.Max(50, bottomContainerDim / 3);
                 _splitContainerBottom.Panel1MinSize = fallbackMin1;
                 _splitContainerBottom.Panel2MinSize = fallbackMin2;
                 _splitContainerBottom.SplitterDistance = fallbackMin1;
                 Logger.LogDebug("QuickBooksPanel: Using fallback bottom splitter sizes - container height {Height} < required {Required}",
-                    _splitContainerBottom.Height, bottomRequiredHeight);
+                    bottomContainerDim, bottomRequiredDim);
             }
         }
         catch (ArgumentOutOfRangeException ex)
@@ -3708,6 +3777,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
 
             if (_importDesktopFileButton != null && _importDesktopFileButtonClickHandler != null)
                 _importDesktopFileButton.Click -= _importDesktopFileButtonClickHandler;
+            if (_importCsvExcelButton != null && _importCsvExcelButtonClickHandler != null)
+                _importCsvExcelButton.Click -= _importCsvExcelButtonClickHandler;
             if (_refreshHistoryButton != null && _refreshHistoryButtonClickHandler != null)
                 _refreshHistoryButton.Click -= _refreshHistoryButtonClickHandler;
             if (_clearHistoryButton != null && _clearHistoryButtonClickHandler != null)
@@ -3748,6 +3819,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             try { _syncDataButton?.Dispose(); } catch { }
             try { _importAccountsButton?.Dispose(); } catch { }
             try { _importDesktopFileButton?.Dispose(); } catch { }
+            try { _importCsvExcelButton?.Dispose(); } catch { }
             try { _refreshHistoryButton?.Dispose(); } catch { }
             try { _clearHistoryButton?.Dispose(); } catch { }
             try { _exportHistoryButton?.Dispose(); } catch { }

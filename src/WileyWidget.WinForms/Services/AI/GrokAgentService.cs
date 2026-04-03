@@ -1602,7 +1602,7 @@ namespace WileyWidget.WinForms.Services.AI
 
         /// <summary>
         /// Runs an agentic chat session with streaming via ChatBridgeService.
-        /// Sends chunks back to Blazor as they arrive.
+        /// Sends chunks back to the native chat surface as they arrive.
         /// Sends initial "JARVIS is thinking..." message.
         /// </summary>
         private async Task RunAgentToChatBridgeAsync(string userRequest, string? conversationId, CancellationToken ct)

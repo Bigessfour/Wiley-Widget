@@ -1,8 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using FlaUI.Core.AutomationElements;
+using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
 using FlaUI.Core.Tools;
 using FlaUI.Core.WindowsAPI;
@@ -96,52 +100,45 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         /// is visible within the timeout. Returns <c>false</c> if not found — callers should
         /// <c>return</c> immediately to skip the test rather than failing with a timeout exception.
         /// </summary>
-        public static bool EnsurePanelVisibleOrHostGated(Window window, string panelName, TimeSpan timeout)
+        public static bool EnsurePanelVisibleOrHostGated(Window window, string panelName, TimeSpan timeout, UIA2Automation? automation = null)
         {
             if (window == null) return false;
 
             // Handle-ready guard before starting expensive element searches.
             SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
+            EnsureWindowReadyForInteraction(window);
+            WaitForShellReady(window, automation, TimeSpan.FromSeconds(Math.Min(timeout.TotalSeconds, 15)));
 
             // Try to navigate to the panel before polling — without this the test would
             // spin for the full timeout on a panel that simply hasn't been activated yet.
-            TryActivatePanel(window, new[] { panelName }, TimeSpan.FromSeconds(3));
+            TryActivatePanel(window, new[] { panelName }, TimeSpan.FromSeconds(3), automation);
 
             var visibilityCandidates = GetVisibilityCandidates(panelName);
+            var requireConcreteEvidence = visibilityCandidates.Length > 0;
+            var nextActivationAttempt = TimeSpan.FromSeconds(3);
 
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
-                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation: null);
-                    if (navigationStatus != null && navigationStatus.Contains($"navigated:{panelName}", StringComparison.OrdinalIgnoreCase))
+                    EnsureWindowReadyForInteraction(window);
+
+                    if (TryFindPanelEvidence(window, automation, panelName, visibilityCandidates) != null)
                     {
                         return true;
                     }
 
-                    var byName = window.FindFirstDescendant(cf => cf.ByName(panelName));
-                    if (byName != null) return true;
-
-                    var byId = window.FindFirstDescendant(cf => cf.ByAutomationId(panelName));
-                    if (byId != null) return true;
-
-                    foreach (var candidate in visibilityCandidates)
+                    var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
+                    if (!requireConcreteEvidence && IsNavigationStatusMatch(navigationStatus, panelName))
                     {
-                        var marker = window.FindFirstDescendant(cf => cf.ByName(candidate).Or(cf.ByAutomationId(candidate)));
-                        if (marker != null)
-                        {
-                            return true;
-                        }
+                        return true;
                     }
 
-                    if (string.Equals(panelName, "Analytics Hub", StringComparison.OrdinalIgnoreCase))
+                    if (sw.Elapsed >= nextActivationAttempt)
                     {
-                        var analyticsElement = window.FindFirstDescendant(cf =>
-                            cf.ByName("Analytics search")
-                                .Or(cf.ByName("Analytics sections"))
-                                .Or(cf.ByName("Analytics fiscal year selector")));
-                        if (analyticsElement != null) return true;
+                        TryActivatePanel(window, new[] { panelName }, TimeSpan.FromSeconds(2), automation);
+                        nextActivationAttempt += TimeSpan.FromSeconds(3);
                     }
                 }
                 catch
@@ -152,6 +149,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 Thread.Sleep(250);
             }
 
+            WriteVisibilityTimeoutDiagnostic(window, automation, panelName, visibilityCandidates);
             return false;
         }
 
@@ -168,6 +166,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             if (window == null) return false;
 
             SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
+            WaitForShellReady(window, automation, TimeSpan.FromSeconds(Math.Min(timeout.TotalSeconds, 15)));
 
             // Click the navigation button first so the panel is actually shown before we poll.
             // Candidates cover both the full display name used by the navstrip and the compact
@@ -205,6 +204,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 Thread.Sleep(250);
             }
 
+            WriteVisibilityTimeoutDiagnostic(
+                window,
+                automation,
+                "Municipal Accounts",
+                UiTestConstants.AccountsPanelTitles.Concat(new[] { "dataGridAccounts", "Accounts Grid", "Chart of Accounts Panel Header" }));
             return false;
         }
 
@@ -219,6 +223,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             if (window == null) return false;
 
             SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
+            WaitForShellReady(window, automation: null, TimeSpan.FromSeconds(Math.Min(timeout.TotalSeconds, 15)));
 
             // Click the navigation button first so the panel is actually shown before we poll.
             TryActivatePanel(window,
@@ -247,6 +252,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 Thread.Sleep(250);
             }
 
+            WriteVisibilityTimeoutDiagnostic(
+                window,
+                automation: null,
+                "Budget Management & Analysis",
+                new[] { "Budget Entries Grid", "Load Budgets", "BudgetManagementPanel" });
             return false;
         }
 
@@ -262,6 +272,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             if (window == null) return false;
 
             SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
+            WaitForShellReady(window, automation, TimeSpan.FromSeconds(Math.Min(timeout.TotalSeconds, 15)));
 
             // Click the navigation button first.
             TryActivatePanel(window,
@@ -269,11 +280,14 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             TimeSpan.FromSeconds(3),
             automation);
 
+            var nextActivationAttempt = TimeSpan.FromSeconds(3);
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
                 try
                 {
+                    EnsureWindowReadyForInteraction(window);
+
                     var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
                     if (navigationStatus != null && navigationStatus.Contains("navigated:QuickBooks", StringComparison.OrdinalIgnoreCase))
                     {
@@ -295,11 +309,20 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                         var el = window.FindFirstDescendant(cf => cf.ByName(hint));
                         if (el != null) return true;
 
-                        if (el == null && automation != null)
+                        if (automation != null)
                         {
-                            el = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(hint));
-                            if (el != null) return true;
+                            var desktopElement = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(hint));
+                            if (desktopElement != null) return true;
                         }
+                    }
+
+                    if (sw.Elapsed >= nextActivationAttempt)
+                    {
+                        TryActivatePanel(window,
+                            new[] { UiTestConstants.QuickBooksPanelTitle, "QuickBooks", "QBO", "Connect to QuickBooks" },
+                            TimeSpan.FromSeconds(2),
+                            automation);
+                        nextActivationAttempt += TimeSpan.FromSeconds(3);
                     }
                 }
                 catch { }
@@ -307,6 +330,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 Thread.Sleep(250);
             }
 
+            WriteVisibilityTimeoutDiagnostic(
+                window,
+                automation,
+                "QuickBooks",
+                new[] { "QuickBooks Panel Header", "Connect to QuickBooks", "Import QuickBooks Desktop Export", "Sync History Grid" });
             return false;
         }
 
@@ -320,6 +348,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             if (window == null) return false;
 
             SpinWaitForWindowReady(window, TimeSpan.FromMilliseconds(500));
+            WaitForShellReady(window, automation, TimeSpan.FromSeconds(Math.Min(timeout.TotalSeconds, 15)));
 
             TryActivatePanel(window,
                 new[] { "Nav_Payments", "Menu_View_Payments", "Payments" },
@@ -363,6 +392,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 Thread.Sleep(250);
             }
 
+            WriteVisibilityTimeoutDiagnostic(
+                window,
+                automation,
+                "Payments",
+                new[] { "Payments Grid", "Add Payment", "Refresh Payments", "Payments Status", "PaymentsPanel" });
             return false;
         }
 
@@ -540,7 +574,6 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     || string.Equals(candidate, "Analytics", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(candidate, "Charts", StringComparison.OrdinalIgnoreCase)))
                 {
-                    SendAltChord(VirtualKeyShort.KEY_C);
                     SendCtrlChord(VirtualKeyShort.KEY_H);
                     return true;
                 }
@@ -563,7 +596,6 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
                 if (buttonCandidates.Any(candidate => candidate.Contains("Enterprise Vital Signs", StringComparison.OrdinalIgnoreCase)))
                 {
-                    SendAltChord(VirtualKeyShort.KEY_D);
                     SendCtrlChord(VirtualKeyShort.KEY_D);
                     return true;
                 }
@@ -582,7 +614,6 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
                 if (buttonCandidates.Any(candidate => candidate.Contains("Settings", StringComparison.OrdinalIgnoreCase)))
                 {
-                    SendAltChord(VirtualKeyShort.KEY_S);
                     SendCtrlAltChord(VirtualKeyShort.KEY_S);
                     return true;
                 }
@@ -1025,6 +1056,224 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 .ToArray();
         }
 
+        private static bool WaitForShellReady(Window window, UIA2Automation? automation, TimeSpan timeout)
+        {
+            EnsureWindowReadyForInteraction(window);
+            var sw = Stopwatch.StartNew();
+            var initialDashboardCandidates = GetPanelLookupCandidates("Enterprise Vital Signs")
+                .Concat(GetVisibilityCandidates("Enterprise Vital Signs"))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            EnsureWindowReadyForInteraction(window);
+            while (sw.Elapsed < timeout)
+            {
+                try
+                {
+                    var shellAnchor = TryFindAcrossSurfaces(window, automation, "NavAutomationStatus")
+                        ?? TryFindAcrossSurfaces(window, automation, "Nav_UnifiedDropdown")
+                        ?? TryFindAcrossSurfaces(window, automation, "Ribbon_Main");
+
+                    if (shellAnchor != null)
+                    {
+                        var navigationStatus = TryGetNavigationAutomationStatus(window, automation);
+                        if (!string.IsNullOrWhiteSpace(navigationStatus)
+                            && !string.Equals(navigationStatus, "pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+
+                        if (initialDashboardCandidates.Any(candidate => TryFindAcrossSurfaces(window, automation, candidate) != null))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                catch
+                {
+                }
+
+                Thread.Sleep(250);
+            }
+
+            return false;
+        }
+
+        private static bool IsNavigationStatusMatch(string? navigationStatus, string panelName)
+        {
+            return !string.IsNullOrWhiteSpace(navigationStatus)
+                && navigationStatus.Contains($"navigated:{panelName}", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static AutomationElement? TryFindPanelEvidence(
+            Window window,
+            UIA2Automation? automation,
+            string panelName,
+            IEnumerable<string> visibilityCandidates)
+        {
+            foreach (var candidate in GetPanelLookupCandidates(panelName)
+                .Concat(visibilityCandidates)
+                .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+                .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var element = TryFindAcrossSurfaces(window, automation, candidate);
+                if (element != null)
+                {
+                    return element;
+                }
+            }
+
+            return null;
+        }
+
+        private static string[] GetPanelLookupCandidates(string panelName)
+        {
+            if (string.IsNullOrWhiteSpace(panelName))
+            {
+                return Array.Empty<string>();
+            }
+
+            var candidates = new List<string> { panelName };
+
+            if (string.Equals(panelName, "Municipal Accounts", StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.AddRange(UiTestConstants.AccountsPanelTitles);
+            }
+            else if (string.Equals(panelName, "Budget Management & Analysis", StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.Add(UiTestConstants.BudgetPanelTitle);
+            }
+            else if (string.Equals(panelName, "QuickBooks", StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.Add(UiTestConstants.QuickBooksPanelTitle);
+                candidates.AddRange(UiTestConstants.QuickBooksNavigationHints);
+            }
+
+            return candidates
+                .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        private static AutomationElement? TryFindAcrossSurfaces(Window window, UIA2Automation? automation, string candidate)
+        {
+            return TryFindInWindow(window, candidate) ?? TryFindOnDesktop(automation, candidate);
+        }
+
+        private static AutomationElement? TryFindInWindow(Window window, string candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return null;
+            }
+
+            try
+            {
+                var exact = window.FindFirstDescendant(cf => cf.ByName(candidate).Or(cf.ByAutomationId(candidate)));
+                if (exact != null)
+                {
+                    return exact;
+                }
+
+                var normalizedTarget = NormalizeAutomationText(candidate);
+                if (string.IsNullOrWhiteSpace(normalizedTarget))
+                {
+                    return null;
+                }
+
+                return window.FindAllDescendants().FirstOrDefault(element =>
+                    string.Equals(NormalizeAutomationText(FlaUiHelpers.TryGetName(element) ?? string.Empty), normalizedTarget, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(FlaUiHelpers.TryGetAutomationId(element) ?? string.Empty, candidate, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static AutomationElement? TryFindOnDesktop(UIA2Automation? automation, string candidate)
+        {
+            if (automation == null || string.IsNullOrWhiteSpace(candidate))
+            {
+                return null;
+            }
+
+            try
+            {
+                var exact = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(candidate).Or(cf.ByAutomationId(candidate)));
+                if (exact != null)
+                {
+                    return exact;
+                }
+
+                var normalizedTarget = NormalizeAutomationText(candidate);
+                if (string.IsNullOrWhiteSpace(normalizedTarget))
+                {
+                    return null;
+                }
+
+                return automation.GetDesktop().FindAllDescendants().FirstOrDefault(element =>
+                    string.Equals(NormalizeAutomationText(FlaUiHelpers.TryGetName(element) ?? string.Empty), normalizedTarget, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(FlaUiHelpers.TryGetAutomationId(element) ?? string.Empty, candidate, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string NormalizeAutomationText(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Replace("&", string.Empty, StringComparison.Ordinal).Trim();
+        }
+
+        private static void WriteVisibilityTimeoutDiagnostic(
+            Window window,
+            UIA2Automation? automation,
+            string panelName,
+            IEnumerable<string> visibilityCandidates)
+        {
+            try
+            {
+                var timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                var safePanelName = SanitizeAutomationName(panelName);
+                var resultsDir = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
+                Directory.CreateDirectory(resultsDir);
+
+                var logPath = Path.Combine(resultsDir, $"panel-timeout-{safePanelName}-{timestamp}.log");
+                var dumpPath = $"ui-tree-{safePanelName}-{timestamp}.log";
+                var navigationStatus = TryGetNavigationAutomationStatus(window, automation) ?? "<null>";
+                var allCandidates = GetPanelLookupCandidates(panelName)
+                    .Concat(visibilityCandidates)
+                    .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"Panel visibility timeout: {panelName}");
+                sb.AppendLine($"Timestamp: {DateTime.Now:O}");
+                sb.AppendLine($"NavigationStatus: {navigationStatus}");
+                sb.AppendLine($"WindowName: {FlaUiHelpers.TryGetName(window) ?? "<null>"}");
+                sb.AppendLine($"WindowAutomationId: {FlaUiHelpers.TryGetAutomationId(window) ?? "<null>"}");
+                sb.AppendLine("Candidates:");
+
+                foreach (var candidate in allCandidates)
+                {
+                    var inWindow = TryFindInWindow(window, candidate) != null;
+                    var onDesktop = TryFindOnDesktop(automation, candidate) != null;
+                    sb.AppendLine($"- {candidate}: window={inWindow}, desktop={onDesktop}");
+                }
+
+                File.WriteAllText(logPath, sb.ToString());
+                FlaUiHelpers.DumpUiTree(window, dumpPath);
+            }
+            catch
+            {
+            }
+        }
+
         private static string? TryGetNavigationAutomationStatus(Window window, UIA2Automation? automation)
         {
             AutomationElement? statusElement = null;
@@ -1088,6 +1337,8 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         /// </summary>
         private static void SpinWaitForWindowReady(Window window, TimeSpan timeout)
         {
+            EnsureWindowReadyForInteraction(window);
+
             var sw = Stopwatch.StartNew();
             while (sw.Elapsed < timeout)
             {
@@ -1103,6 +1354,38 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 }
 
                 Thread.Sleep(50);
+            }
+        }
+
+        private static void EnsureWindowReadyForInteraction(Window window)
+        {
+            try
+            {
+                if (!window.Patterns.Window.IsSupported)
+                {
+                    return;
+                }
+
+                var pattern = window.Patterns.Window.Pattern;
+                var visualState = pattern.WindowVisualState.Value;
+
+                if (visualState == WindowVisualState.Minimized)
+                {
+                    pattern.SetWindowVisualState(WindowVisualState.Normal);
+                    Wait.UntilInputIsProcessed();
+                }
+
+                var bounds = window.BoundingRectangle;
+                if (bounds.Left <= -30000 || bounds.Top <= -30000 || bounds.Width < 400 || bounds.Height < 200)
+                {
+                    pattern.SetWindowVisualState(WindowVisualState.Maximized);
+                    Wait.UntilInputIsProcessed();
+                }
+
+                window.Focus();
+            }
+            catch
+            {
             }
         }
     }

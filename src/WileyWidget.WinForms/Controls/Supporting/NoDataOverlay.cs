@@ -117,6 +117,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
             // Make overlay accessible
             AccessibleName = "No data overlay";
             AccessibleDescription = "Indicates there is currently no data to display in this panel";
+
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"[OVERLAY] {GetType().Name} initialized | Size={Width}x{Height} | Dock={Dock} | Visible={Visible} | Parent={Parent?.GetType().Name ?? "null"}");
+#endif
         }
 
         [Browsable(false)]
@@ -152,6 +156,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     BringToFront();
                 // If becoming visible, attempt to set accessibility focus
                 try { if (value && _actionButton?.Visible == true) _actionButton?.Focus(); else _messageLabel?.Focus(); } catch { }
+
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[OVERLAY] {GetType().Name} Visible={value} | Size={Width}x{Height} | ParentHostSize={Parent?.Width ?? 0}x{Parent?.Height ?? 0} | ZOrder=Top");
+#endif
             }
         }
 

@@ -784,10 +784,14 @@ namespace WileyWidget.WinForms.Controls.Base
                 && audit.HostBelowMinimum
                 && !force
                 && !string.Equals(trigger, "ForceFullLayout", StringComparison.Ordinal);
+            var suppressScrollableHostMinimumWarning = audit.HostBelowMinimum
+                && audit.RootAutoScroll;
+            var shouldWarnForHostBelowMinimum = audit.HostBelowMinimum
+                && !suppressTransientSideDockMinimumWarning
+                && !suppressScrollableHostMinimumWarning;
             var hasReportableWarnings = audit.ZeroSizedVisibleControls.Count > 0
                 || audit.ClippedVisibleControls.Count > 0
-                || audit.HorizontalEdgeCrowdedVisibleControls.Count > 0
-                || (!suppressTransientSideDockMinimumWarning && audit.HostBelowMinimum);
+                || shouldWarnForHostBelowMinimum;
 
             if (!hasReportableWarnings && !verbose && !appearanceTrigger)
             {
@@ -823,10 +827,19 @@ namespace WileyWidget.WinForms.Controls.Base
                     PanelLayoutDiagnostics.FormatAppearanceSnapshot(audit));
             }
 
-            if (audit.HostBelowMinimum && !suppressTransientSideDockMinimumWarning)
+            if (shouldWarnForHostBelowMinimum)
             {
                 _logger.LogWarning(
                     "[PANEL-LAYOUT] Host viewport below panel minimum for {Panel}: panelClient={PanelClient} minimum={Minimum} hostClient={HostClient}",
+                    audit.PanelIdentifier,
+                    audit.PanelClientSize,
+                    audit.MinimumSize,
+                    audit.HostClientSize);
+            }
+            else if (audit.HostBelowMinimum && (verbose || appearanceTrigger))
+            {
+                _logger.LogInformation(
+                    "[PANEL-LAYOUT] Host viewport below panel minimum but panel is scroll-safe for {Panel}: panelClient={PanelClient} minimum={Minimum} hostClient={HostClient}",
                     audit.PanelIdentifier,
                     audit.PanelClientSize,
                     audit.MinimumSize,
@@ -851,7 +864,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
             if (audit.HorizontalEdgeCrowdedVisibleControls.Count > 0)
             {
-                _logger.LogWarning(
+                _logger.LogInformation(
                     "[PANEL-LAYOUT] Horizontally crowded visible controls for {Panel}: {Findings}",
                     audit.PanelIdentifier,
                     PanelLayoutDiagnostics.FormatFindings(audit.HorizontalEdgeCrowdedVisibleControls));

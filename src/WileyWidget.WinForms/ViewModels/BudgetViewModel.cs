@@ -32,6 +32,7 @@ namespace WileyWidget.WinForms.ViewModels
         private readonly IEnterpriseRepository _enterpriseRepository;
         private readonly WileyWidget.Services.Abstractions.IAppEventBus? _eventBus;
         private readonly Action<WileyWidget.Services.Abstractions.BudgetActualsUpdatedEvent>? _budgetUpdatedHandler;
+        private readonly Action<WileyWidget.Services.Abstractions.QuickBooksDesktopImportCompletedEvent>? _quickBooksImportCompletedHandler;
         private readonly SynchronizationContext? _uiSynchronizationContext;
 
         /// <summary>Gets or sets the collection of all budget entries.</summary>
@@ -263,6 +264,22 @@ namespace WileyWidget.WinForms.ViewModels
                 };
 
                 try { _eventBus.Subscribe(_budgetUpdatedHandler); } catch { /* best-effort subscribe */ }
+
+                _quickBooksImportCompletedHandler = ev =>
+                {
+                    RunOnUiThread(() =>
+                    {
+                        var entityType = string.IsNullOrWhiteSpace(ev.ImportEntityType) ? "records" : ev.ImportEntityType;
+                        _logger.LogInformation(
+                            "BudgetViewModel: QuickBooks Desktop import completed for {EntityType}; refreshing budget data",
+                            entityType);
+
+                        _ = LoadBudgetsCommand.ExecuteAsync(null);
+                        StatusText = $"QuickBooks Desktop import completed: {ev.RecordsImported} {entityType.ToLowerInvariant()} imported";
+                    });
+                };
+
+                try { _eventBus.Subscribe(_quickBooksImportCompletedHandler); } catch { /* best-effort subscribe */ }
             }
         }
 
@@ -1270,6 +1287,11 @@ namespace WileyWidget.WinForms.ViewModels
                 if (_eventBus != null && _budgetUpdatedHandler != null)
                 {
                     try { _eventBus.Unsubscribe(_budgetUpdatedHandler); } catch { }
+                }
+
+                if (_eventBus != null && _quickBooksImportCompletedHandler != null)
+                {
+                    try { _eventBus.Unsubscribe(_quickBooksImportCompletedHandler); } catch { }
                 }
             }
             // Clean up unmanaged resources if any

@@ -22,4 +22,33 @@ namespace WileyWidget.Services.Abstractions
 
         public BudgetActualsUpdatedEvent(int fiscalYear, int updatedCount) => (FiscalYear, UpdatedCount) = (fiscalYear, updatedCount);
     }
+
+    /// <summary>
+    /// Event published when a QuickBooks Desktop import completes successfully.
+    /// </summary>
+    public record QuickBooksDesktopImportCompletedEvent
+    {
+        public string FilePath { get; init; }
+        public string? ImportEntityType { get; init; }
+        public int RecordsImported { get; init; }
+        public int RecordsUpdated { get; init; }
+        public int RecordsSkipped { get; init; }
+        public TimeSpan Duration { get; init; }
+
+        public QuickBooksDesktopImportCompletedEvent(
+            string filePath,
+            string? importEntityType,
+            int recordsImported,
+            int recordsUpdated,
+            int recordsSkipped,
+            TimeSpan duration)
+        {
+            FilePath = filePath;
+            ImportEntityType = importEntityType;
+            RecordsImported = recordsImported;
+            RecordsUpdated = recordsUpdated;
+            RecordsSkipped = recordsSkipped;
+            Duration = duration;
+        }
+    }
 }

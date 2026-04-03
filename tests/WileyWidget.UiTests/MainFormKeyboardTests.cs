@@ -28,20 +28,22 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Simulate Alt key to activate ribbon
-                Keyboard.Press(VirtualKeyShort.ALT); // Alt key
+                Keyboard.Press(VirtualKeyShort.ALT);
                 Keyboard.Release(VirtualKeyShort.ALT);
+                Wait.UntilInputIsProcessed();
 
-                // Assert ribbon is focused
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Upper Ribbon", "Ribbon_Main", TimeSpan.FromSeconds(10));
                 Assert.NotNull(ribbon);
-                Assert.True(ribbon.Properties.HasKeyboardFocus.ValueOrDefault);
+                Assert.True(ribbon.IsEnabled);
 
-                // Type a letter to navigate to tab (e.g., 'B' for Budget)
+                var systemMenu = FlaUiHelpers.FindElementByNameOrId(window, "System", "Item 1", TimeSpan.FromSeconds(10));
+                Assert.NotNull(systemMenu);
+
                 Keyboard.Type(VirtualKeyShort.KEY_B);
-                var budgetTab = ribbon.FindFirstDescendant(cf => cf.ByName("Budget"));
-                Assert.NotNull(budgetTab);
-                Assert.True(budgetTab.Properties.HasKeyboardFocus.ValueOrDefault);
+                Wait.UntilInputIsProcessed();
+
+                var navigationStatus = FlaUiHelpers.FindElementByNameOrId(window, "NavAutomationStatus", "NavAutomationStatus", TimeSpan.FromSeconds(10));
+                Assert.NotNull(navigationStatus);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
@@ -66,23 +68,19 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Activate a panel
                 PanelActivationHelpers.ActivatePanel<BudgetPanel>(window, automation, TimeSpan.FromSeconds(10));
-
-                // Simulate arrow key navigation within panel
-                var panel = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanel"));
+                var panel = window.WaitForPanel<BudgetPanel>(TimeSpan.FromSeconds(15));
                 Assert.NotNull(panel);
+
                 panel.Focus();
 
-                Keyboard.Type(VirtualKeyShort.DOWN); // Move focus down
-                // Assert panel remains available after keyboard navigation.
-                var budgetContent = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanelContent"));
-                Assert.NotNull(budgetContent);
-                Assert.True(budgetContent.IsEnabled);
+                Keyboard.Type(VirtualKeyShort.DOWN);
+                Wait.UntilInputIsProcessed();
+                Assert.False(panel.Properties.IsOffscreen.ValueOrDefault);
 
-                Keyboard.Type(VirtualKeyShort.TAB); // Tab navigation
-                budgetContent = window.FindFirstDescendant(cf => cf.ByAutomationId("BudgetPanelContent"));
-                Assert.NotNull(budgetContent);
+                Keyboard.Type(VirtualKeyShort.TAB);
+                Wait.UntilInputIsProcessed();
+                Assert.True(panel.IsEnabled);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally

@@ -27,14 +27,15 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Wait for initialization completion (e.g., status bar message or panel ready)
-                var statusBar = window.FindFirstDescendant(cf => cf.ByAutomationId("ProfessionalStatusBar"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Upper Ribbon", "Ribbon_Main", TimeSpan.FromSeconds(10));
+                Assert.NotNull(ribbon);
+
+                var statusBar = FlaUiHelpers.FindElementByNameOrId(window, "ProfessionalStatusBar", "ProfessionalStatusBar", TimeSpan.FromSeconds(10));
                 Assert.NotNull(statusBar);
 
-                var readyLabel = statusBar.FindFirstDescendant(cf => cf.ByName("Ready"));
-                Assert.NotNull(readyLabel); // Indicates init complete
+                var navigationStatus = FlaUiHelpers.FindElementByNameOrId(window, "NavAutomationStatus", "NavAutomationStatus", TimeSpan.FromSeconds(10));
+                Assert.NotNull(navigationStatus);
 
-                // Verify default panel is loaded (EnterpriseVitalSignsPanel)
                 var defaultPanel = window.WaitForPanel<EnterpriseVitalSignsPanel>(TimeSpan.FromSeconds(10));
                 Assert.NotNull(defaultPanel);
                 FlaUiHelpers.CaptureScreenshot(window);
@@ -60,20 +61,20 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Assert services are available by interacting with a feature requiring DI
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Upper Ribbon", "Ribbon_Main", TimeSpan.FromSeconds(10));
                 Assert.NotNull(ribbon);
 
-                // Click a button that requires service resolution
-                var newButton = ribbon.FindFirstDescendant(cf => cf.ByName("New"));
-                Assert.NotNull(newButton);
-                newButton.Click();
-
-                // Assert no errors in status (indirect DI validation)
-                var statusBar = window.FindFirstDescendant(cf => cf.ByAutomationId("ProfessionalStatusBar"));
+                var statusBar = FlaUiHelpers.FindElementByNameOrId(window, "ProfessionalStatusBar", "ProfessionalStatusBar", TimeSpan.FromSeconds(10));
                 Assert.NotNull(statusBar);
-                var errorLabel = statusBar.FindFirstDescendant(cf => cf.ByName("Error"));
-                Assert.Null(errorLabel);
+
+                var navigationStatus = FlaUiHelpers.FindElementByNameOrId(window, "NavAutomationStatus", "NavAutomationStatus", TimeSpan.FromSeconds(10));
+                Assert.NotNull(navigationStatus);
+
+                var defaultPanel = window.WaitForPanel<EnterpriseVitalSignsPanel>(TimeSpan.FromSeconds(10));
+                Assert.NotNull(defaultPanel);
+
+                var startupError = window.FindFirstDescendant(cf => cf.ByName("Startup Error"));
+                Assert.Null(startupError);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally

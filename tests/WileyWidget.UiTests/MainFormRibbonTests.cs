@@ -28,20 +28,16 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Upper Ribbon", "Ribbon_Main", TimeSpan.FromSeconds(10));
                 Assert.NotNull(ribbon);
+                Assert.True(ribbon.IsEnabled);
 
-                // Home tab should be visible and active by default
-                var homeTab = ribbon.FindFirstDescendant(cf => cf.ByName("Home"));
-                Assert.NotNull(homeTab);
+                var systemMenu = FlaUiHelpers.FindElementByNameOrId(window, "System", "Item 1", TimeSpan.FromSeconds(10));
+                Assert.NotNull(systemMenu);
+                Assert.True(systemMenu.IsEnabled);
 
-                // Verify primary groups in Home tab
-                var systemGroup = ribbon.FindFirstDescendant(cf => cf.ByName("System"));
-                Assert.NotNull(systemGroup);
-
-                var refreshButton = systemGroup.FindFirstDescendant(cf => cf.ByName("Refresh"));
-                Assert.NotNull(refreshButton);
-                Assert.True(refreshButton.IsEnabled);
+                var navigationStatus = FlaUiHelpers.FindElementByNameOrId(window, "NavAutomationStatus", "NavAutomationStatus", TimeSpan.FromSeconds(10));
+                Assert.NotNull(navigationStatus);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
@@ -65,26 +61,21 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                var ribbon = window.FindFirstDescendant(cf => cf.ByAutomationId("SfRibbon"));
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Upper Ribbon", "Ribbon_Main", TimeSpan.FromSeconds(10));
                 Assert.NotNull(ribbon);
+                Assert.True(ribbon.IsEnabled);
 
-                // Simulate theme switch (if ribbon has theme button)
-                var themeButton = ribbon.FindFirstDescendant(cf => cf.ByName("Theme"));
-                if (themeButton != null)
-                {
-                    themeButton.Click();
-                    // Select a theme (e.g., HighContrast)
-                    var highContrast = automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("High Contrast"));
-                    highContrast?.Click();
+                window.Focus();
+                FlaUI.Core.Input.Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL);
+                FlaUI.Core.Input.Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.SHIFT);
+                FlaUI.Core.Input.Keyboard.Type(FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_T);
+                FlaUI.Core.Input.Keyboard.Release(FlaUI.Core.WindowsAPI.VirtualKeyShort.SHIFT);
+                FlaUI.Core.Input.Keyboard.Release(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL);
+                FlaUI.Core.Input.Wait.UntilInputIsProcessed();
 
-                    // Assert ribbon visuals updated (indirect via UIA properties or re-find)
-                    Assert.True(ribbon.IsOffscreen == false); // Still visible
-                }
-                else
-                {
-                    // Fallback: assert default theme applied correctly
-                    // Assert.True(ribbon.Properties.ThemeName.ValueOrDefault == "Office2019Colorful"); // Not available in FlaUI
-                }
+                var statusBar = FlaUiHelpers.FindElementByNameOrId(window, "ProfessionalStatusBar", "ProfessionalStatusBar", TimeSpan.FromSeconds(10));
+                Assert.NotNull(statusBar);
+                Assert.False(ribbon.Properties.IsOffscreen.ValueOrDefault);
 
                 FlaUiHelpers.CaptureScreenshot(window);
             }

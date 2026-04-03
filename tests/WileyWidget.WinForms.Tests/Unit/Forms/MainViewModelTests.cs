@@ -48,7 +48,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Forms
             vm.TotalActual.Should().Be(800m);
             vm.Variance.Should().Be(200m);
             vm.Metrics.Should().NotBeNull();
-            vm.Metrics.Count.Should().BeGreaterOrEqualTo(2);
+            vm.Metrics.Count.Should().BeGreaterThanOrEqualTo(2);
         }
 
         [Fact]

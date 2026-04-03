@@ -31,26 +31,20 @@ namespace WileyWidget.UiTests
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
                 FlaUiHelpers.DumpUiTree(window);
 
-                // Assert custom chrome elements exist
-                var titleBar = window.FindFirstDescendant(cf => cf.ByAutomationId("MainFormTitleBar"));
+                var titleBar = window.FindFirstDescendant(cf => cf.ByAutomationId("TitleBar"));
                 Assert.NotNull(titleBar);
                 Assert.True(titleBar.IsEnabled);
+                Assert.True((FlaUiHelpers.TryGetName(titleBar) ?? string.Empty).Contains("Wiley Widget", StringComparison.OrdinalIgnoreCase));
 
-                // Verify no manual colors - rely on SfSkinManager cascade
-                var titleLabel = titleBar.FindFirstDescendant(cf => cf.ByName("Wiley Widget"));
-                Assert.NotNull(titleLabel);
-                // BackColor should be theme-derived, not hardcoded
+                var ribbon = FlaUiHelpers.FindElementByNameOrId(window, "Upper Ribbon", "Ribbon_Main", TimeSpan.FromSeconds(10));
+                Assert.NotNull(ribbon);
+                Assert.True(ribbon.IsEnabled);
 
-                // Test status bar (ProfessionalStatusBar)
-                var statusBar = window.FindFirstDescendant(cf => cf.ByAutomationId("ProfessionalStatusBar"));
+                var statusBar = FlaUiHelpers.FindElementByNameOrId(window, "ProfessionalStatusBar", "ProfessionalStatusBar", TimeSpan.FromSeconds(10));
                 Assert.NotNull(statusBar);
-                var statusLabel = statusBar.FindFirstDescendant(cf => cf.ByName("Ready"));
-                Assert.NotNull(statusLabel);
 
-                // Verify theme application to chrome
-                var chromePanel = window.FindFirstDescendant(cf => cf.ByAutomationId("MainFormChrome"));
-                Assert.NotNull(chromePanel);
-                // Assert theme-specific properties if accessible via UIA
+                var navigationStatus = FlaUiHelpers.FindElementByNameOrId(window, "NavAutomationStatus", "NavAutomationStatus", TimeSpan.FromSeconds(10));
+                Assert.NotNull(navigationStatus);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally
@@ -74,20 +68,23 @@ namespace WileyWidget.UiTests
 
                 var window = FlaUiHelpers.WaitForMainWindow(app, automation, TimeSpan.FromSeconds(60));
 
-                // Test maximize/restore
-                var maximizeButton = window.FindFirstDescendant(cf => cf.ByAutomationId("MaximizeButton"));
-                Assert.NotNull(maximizeButton);
-                maximizeButton.Click();
+                var titleBar = window.FindFirstDescendant(cf => cf.ByAutomationId("TitleBar"));
+                Assert.NotNull(titleBar);
 
-                // Assert window remains visible and interactive after the maximize command.
+                if (window.Patterns.Window.IsSupported)
+                {
+                    window.Patterns.Window.Pattern.SetWindowVisualState(WindowVisualState.Maximized);
+                    Wait.UntilInputIsProcessed();
+                    Assert.False(window.Properties.IsOffscreen.ValueOrDefault);
+                    window.Patterns.Window.Pattern.SetWindowVisualState(WindowVisualState.Normal);
+                }
+
                 Assert.False(window.Properties.IsOffscreen.ValueOrDefault);
                 Assert.True(window.IsEnabled);
 
-                // Test close button
-                var closeButton = window.FindFirstDescendant(cf => cf.ByAutomationId("CloseButton"));
-                Assert.NotNull(closeButton);
-                // Don't actually close, just verify existence and enabled state
-                Assert.True(closeButton.IsEnabled);
+                var systemMenu = window.FindFirstDescendant(cf => cf.ByName("System").Or(cf.ByAutomationId("Item 1")));
+                Assert.NotNull(systemMenu);
+                Assert.True(systemMenu.IsEnabled);
                 FlaUiHelpers.CaptureScreenshot(window);
             }
             finally

@@ -626,7 +626,7 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25f));
-        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20f));
+        filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         filterTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15f));
 
         _searchTextBox = Factory.CreateTextBoxExt(textBox =>
@@ -656,7 +656,8 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
 
         _overdueOnlyCheckBox = Factory.CreateCheckBoxAdv("Overdue Only", checkBox =>
         {
-            checkBox.Dock = DockStyle.Fill;
+            checkBox.Dock = DockStyle.Left;
+            checkBox.AutoSize = true;
             checkBox.TabIndex = 11;
             checkBox.AccessibleName = "Show Overdue Only";
             checkBox.AccessibleDescription = "Show only overdue bills";

@@ -326,7 +326,7 @@ public sealed class MainFormIntegrationTests(IntegrationTestFixture fixture) : I
             FindToolStripItem<ToolStripDropDownButton>(ribbon, "Nav_UnifiedDropdown").Should().NotBeNull("the unified navigation dropdown should be available on the Home tab");
 
             var homeStrips = homeTab!.Panel!.Controls.OfType<ToolStripEx>().ToList();
-            homeStrips.Count.Should().BeGreaterOrEqualTo(4);
+            homeStrips.Count.Should().BeGreaterThanOrEqualTo(4);
             homeStrips.Should().OnlyContain(strip => !string.IsNullOrWhiteSpace(strip.CollapsedDropDownButtonText), "simplified ribbon navigation needs collapsed dropdown labels for every group");
 
             form.Text.Should().Contain("Wiley Widget");

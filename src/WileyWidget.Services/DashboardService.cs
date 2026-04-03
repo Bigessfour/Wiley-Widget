@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -483,6 +484,8 @@ namespace WileyWidget.Services
             var raw = await _budgetRepository.GetTownOfWileyBudgetDataAsync(ct);
             if (!raw.Any()) return new List<EnterpriseSnapshot>();
 
+            var fiscalMonths = BuildFiscalMonths(GetCurrentFiscalYear(), GetFiscalYearStartMonth());
+
             var mapping = new Dictionary<string, string>
             {
                 { "Water", "Water" },
@@ -507,7 +510,9 @@ namespace WileyWidget.Services
                 {
                     Name = enterprise,
                     Revenue = rev,
-                    Expenses = exp
+                    Expenses = exp,
+                    MonthlyTrend = BuildEnterpriseMonthlyTrend(rows, fiscalMonths),
+                    TrendNarrative = BuildTrendNarrative(rows, fiscalMonths)
                 };
 
                 if (!snap.IsSelfSustaining && results.Any(r => r.IsSelfSustaining))
@@ -520,6 +525,155 @@ namespace WileyWidget.Services
             }
 
             return results;
+        }
+
+        private int GetFiscalYearStartMonth()
+        {
+            var configuredMonth = _configuration?.GetValue<int?>("AppSettings:FiscalYearStartMonth")
+                ?? _configuration?.GetValue<int?>("FiscalYearStartMonth")
+                ?? _configuration?.GetValue<int?>("UI:FiscalYearStartMonth")
+                ?? 7;
+
+            return Math.Clamp(configuredMonth, 1, 12);
+        }
+
+        private static List<DateTime> BuildFiscalMonths(int fiscalYear, int fiscalYearStartMonth)
+        {
+            int startYear = fiscalYearStartMonth == 1 ? fiscalYear : fiscalYear - 1;
+            var fiscalStart = new DateTime(startYear, fiscalYearStartMonth, 1);
+
+            return Enumerable.Range(0, 12)
+                .Select(offset => fiscalStart.AddMonths(offset))
+                .ToList();
+        }
+
+        private List<EnterpriseMonthlyTrendPoint> BuildEnterpriseMonthlyTrend(
+            List<TownOfWileyBudget2026> rows,
+            IReadOnlyList<DateTime> fiscalMonths)
+        {
+            var monthlyRevenue = AggregateMonthlySeries(rows, "Revenue");
+            var monthlyExpenses = AggregateMonthlySeries(rows, "Expense");
+
+            return fiscalMonths
+                .Select((monthStart, index) => new EnterpriseMonthlyTrendPoint
+                {
+                    MonthStart = monthStart,
+                    Revenue = monthlyRevenue[index],
+                    Expenses = monthlyExpenses[index]
+                })
+                .ToList();
+        }
+
+        private decimal[] AggregateMonthlySeries(IEnumerable<TownOfWileyBudget2026> rows, string category)
+        {
+            var totals = new decimal[12];
+
+            foreach (var row in rows.Where(r => string.Equals(r.Category, category, StringComparison.OrdinalIgnoreCase)))
+            {
+                var distribution = DistributeAnnualAmount(row);
+                for (int monthIndex = 0; monthIndex < totals.Length; monthIndex++)
+                {
+                    totals[monthIndex] += distribution[monthIndex];
+                }
+            }
+
+            return totals;
+        }
+
+        private decimal[] DistributeAnnualAmount(TownOfWileyBudget2026 row)
+        {
+            var distribution = new decimal[12];
+            var actualAmount = row.SevenMonthActual ?? row.ActualYTD ?? 0m;
+            var annualAmount = row.EstimateCurrentYr ?? row.BudgetYear ?? actualAmount;
+            var reportedMonths = ResolveReportedMonthCount(row);
+
+            if (reportedMonths <= 0)
+            {
+                AddDistributedAmount(distribution, startIndex: 0, count: 12, totalAmount: annualAmount);
+                return distribution;
+            }
+
+            AddDistributedAmount(distribution, startIndex: 0, count: reportedMonths, totalAmount: actualAmount);
+
+            if (reportedMonths < 12)
+            {
+                AddDistributedAmount(
+                    distribution,
+                    startIndex: reportedMonths,
+                    count: 12 - reportedMonths,
+                    totalAmount: Math.Max(0m, annualAmount - actualAmount));
+            }
+
+            return distribution;
+        }
+
+        private void AddDistributedAmount(decimal[] target, int startIndex, int count, decimal totalAmount)
+        {
+            if (count <= 0)
+            {
+                return;
+            }
+
+            var amountPerMonth = totalAmount / count;
+            for (int offset = 0; offset < count - 1; offset++)
+            {
+                target[startIndex + offset] += amountPerMonth;
+            }
+
+            var assigned = amountPerMonth * Math.Max(0, count - 1);
+            target[startIndex + count - 1] += totalAmount - assigned;
+        }
+
+        private int ResolveReportedMonthCount(TownOfWileyBudget2026 row)
+        {
+            if (row.SevenMonthActual.HasValue)
+            {
+                return 7;
+            }
+
+            if (row.ActualYTD.HasValue)
+            {
+                return GetCurrentFiscalMonthIndex(GetFiscalYearStartMonth());
+            }
+
+            return 0;
+        }
+
+        private static int GetCurrentFiscalMonthIndex(int fiscalYearStartMonth)
+        {
+            return ((DateTime.Today.Month - fiscalYearStartMonth + 12) % 12) + 1;
+        }
+
+        private string BuildTrendNarrative(List<TownOfWileyBudget2026> rows, IReadOnlyList<DateTime> fiscalMonths)
+        {
+            int reportedMonths = rows.Select(ResolveReportedMonthCount).DefaultIfEmpty(0).Max();
+            bool hasEstimate = rows.Any(row => row.EstimateCurrentYr.HasValue || row.BudgetYear.HasValue);
+
+            if (reportedMonths >= 12)
+            {
+                return "All 12 months use available actuals.";
+            }
+
+            if (reportedMonths > 0 && hasEstimate)
+            {
+                string actualStart = fiscalMonths[0].ToString("MMM", CultureInfo.CurrentCulture);
+                string actualEnd = fiscalMonths[reportedMonths - 1].ToString("MMM", CultureInfo.CurrentCulture);
+                string projectedStart = fiscalMonths[reportedMonths].ToString("MMM", CultureInfo.CurrentCulture);
+                string projectedEnd = fiscalMonths[^1].ToString("MMM", CultureInfo.CurrentCulture);
+                return $"{actualStart}-{actualEnd} uses available actuals; {projectedStart}-{projectedEnd} is projected from the current-year estimate.";
+            }
+
+            if (reportedMonths > 0)
+            {
+                return $"{reportedMonths} months of actuals are available; remaining months are held flat because no annual estimate was provided.";
+            }
+
+            if (hasEstimate)
+            {
+                return "Twelve-point trend is distributed from annual estimates because the Wiley source file does not store raw monthly amounts.";
+            }
+
+            return "Twelve-point trend is distributed evenly from annual totals because monthly source data is unavailable.";
         }
     }
 }

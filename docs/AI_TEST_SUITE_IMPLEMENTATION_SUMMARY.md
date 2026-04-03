@@ -17,7 +17,7 @@ This comprehensive test suite validates all AI functionality in Wiley Widget, in
 - **Conversation Management** - Chat history persistence, caching
 - **Semantic Kernel Plugins** - Function calling, tool execution
 - **Resilience Patterns** - Retry logic, circuit breakers, timeout handling
-- **UI Integration** - JARVISChatUserControl with WebView2
+- **UI Integration** - JARVISChatUserControl with native SfAIAssistView
 
 **Test Strategy:** Hybrid approach with mostly mocked tests (fast, free) plus gated real API tests (manual trigger).
 
@@ -483,7 +483,8 @@ dotnet build WileyWidget.sln
    - Theme switching during active chat
    - Initial prompt parameter handling
    - Multiple concurrent panels
-   - WebView2 navigation
+
+- Assist view initialization and chat workflow
 
 4. **JarvisChatFlaUiTests Extensions** (8 tests)
    - Full chat workflow (type prompt → receive response)

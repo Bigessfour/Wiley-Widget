@@ -63,6 +63,7 @@ namespace WileyWidget.WinForms.Services.AI
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var responseBuilder = new System.Text.StringBuilder();
+            var firstChunkLogged = false;
 
             try
             {
@@ -75,6 +76,13 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     if (!string.IsNullOrWhiteSpace(delta))
                     {
+                        if (!firstChunkLogged)
+                        {
+                            firstChunkLogged = true;
+                            _aiLoggingService.LogInformation($"JARVIS first response chunk after {sw.ElapsedMilliseconds}ms | Query Length: {actualPrompt.Length}");
+                            _logger.LogInformation("[JARVIS-GROK] First response chunk received after {Ms}ms", sw.ElapsedMilliseconds);
+                        }
+
                         responseBuilder.Append(delta);
                         await _bridge.SendResponseChunkAsync(delta);
                     }

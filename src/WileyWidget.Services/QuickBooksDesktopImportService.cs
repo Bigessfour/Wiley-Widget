@@ -4,11 +4,13 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Intuit.Ipp.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Syncfusion.XlsIO;
 using WileyWidget.Business.Interfaces;
 using WileyWidget.Models;
 using WileyWidget.Services.Abstractions;
@@ -24,20 +26,24 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
     private readonly ILogger<QuickBooksDesktopImportService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly QuickBooksDesktopIifParser _iifParser;
+    private readonly IAppEventBus? _eventBus;
 
     public QuickBooksDesktopImportService(
         ILogger<QuickBooksDesktopImportService> logger,
         IServiceProvider serviceProvider,
-        QuickBooksDesktopIifParser iifParser)
+        QuickBooksDesktopIifParser iifParser,
+        IAppEventBus? eventBus = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _iifParser = iifParser ?? throw new ArgumentNullException(nameof(iifParser));
+        _eventBus = eventBus;
     }
 
     public async Task<ImportResult> ImportDesktopFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
         var startedAt = DateTime.UtcNow;
+        var importId = BuildImportCorrelationId(filePath);
 
         try
         {
@@ -51,6 +57,12 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
                 return Failure($"QuickBooks Desktop file not found: {filePath}", startedAt);
             }
 
+            _logger.LogInformation(
+                "QuickBooks Desktop import {ImportId} started for {FileName} ({FileType})",
+                importId,
+                Path.GetFileName(filePath),
+                Path.GetExtension(filePath).ToLowerInvariant());
+
             var extension = Path.GetExtension(filePath);
             if (string.IsNullOrWhiteSpace(extension))
             {
@@ -60,18 +72,31 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             using var scope = _serviceProvider.CreateScope();
             var services = scope.ServiceProvider;
 
-            return extension.ToLowerInvariant() switch
+            var result = extension.ToLowerInvariant() switch
             {
-                ".csv" => await ImportCsvAsync(filePath, services, startedAt, cancellationToken).ConfigureAwait(false),
-                ".iif" => await ImportIifAsync(filePath, services, startedAt, cancellationToken).ConfigureAwait(false),
-                ".xls" or ".xlsx" => Failure(
-                    "Excel QuickBooks Desktop imports are not available in this build. Export the file as CSV or IIF and import that export instead.",
-                    startedAt,
-                    importEntityType: "Excel"),
+                ".csv" => await ImportCsvAsync(filePath, importId, services, startedAt, cancellationToken).ConfigureAwait(false),
+                ".iif" => await ImportIifAsync(filePath, importId, services, startedAt, cancellationToken).ConfigureAwait(false),
+                ".xls" or ".xlsx" => await ImportExcelAsync(filePath, importId, services, startedAt, cancellationToken).ConfigureAwait(false),
                 _ => Failure(
                     $"Unsupported QuickBooks Desktop file type '{extension}'. Supported types are .csv, .iif, .xls, and .xlsx.",
                     startedAt)
             };
+
+            if (result.Success)
+            {
+                _logger.LogInformation(
+                    "QuickBooks Desktop import {ImportId} completed for {FileName}: entity={ImportEntityType}, imported={Imported}, updated={Updated}, skipped={Skipped}",
+                    importId,
+                    Path.GetFileName(filePath),
+                    result.ImportEntityType,
+                    result.RecordsImported > 0 ? result.RecordsImported : result.AccountsImported,
+                    result.RecordsUpdated > 0 ? result.RecordsUpdated : result.AccountsUpdated,
+                    result.RecordsSkipped > 0 ? result.RecordsSkipped : result.AccountsSkipped);
+
+                PublishImportCompletedEvent(filePath, result);
+            }
+
+            return result;
         }
         catch (OperationCanceledException)
         {
@@ -86,46 +111,120 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
 
     private async Task<ImportResult> ImportCsvAsync(
         string filePath,
+        string importId,
         IServiceProvider services,
         DateTime startedAt,
         CancellationToken cancellationToken)
     {
-        var parsedFile = await ReadDelimitedFileAsync(filePath, ',', cancellationToken).ConfigureAwait(false);
+        var rawRows = await ReadDelimitedRowsAsync(filePath, ',', cancellationToken).ConfigureAwait(false);
+        var parsedFile = NormalizeTabularRows(rawRows);
+        return await ImportStructuredTabularFileAsync(filePath, importId, parsedFile, services, startedAt, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ImportResult> ImportExcelAsync(
+        string filePath,
+        string importId,
+        IServiceProvider services,
+        DateTime startedAt,
+        CancellationToken cancellationToken)
+    {
+        var rawRows = await ReadExcelRowsAsync(filePath, cancellationToken).ConfigureAwait(false);
+        var parsedFile = NormalizeTabularRows(rawRows);
+        return await ImportStructuredTabularFileAsync(filePath, importId, parsedFile, services, startedAt, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ImportResult> ImportStructuredTabularFileAsync(
+        string filePath,
+        string importId,
+        ParsedTabularFile parsedFile,
+        IServiceProvider services,
+        DateTime startedAt,
+        CancellationToken cancellationToken)
+    {
         if (parsedFile.Rows.Count == 0)
         {
-            return Failure("The CSV file does not contain any importable rows.", startedAt);
+            _logger.LogWarning(
+                "QuickBooks Desktop import {ImportId} found no importable rows in {FileName}",
+                importId,
+                Path.GetFileName(filePath));
+
+            return Failure("The file does not contain any importable rows.", startedAt);
         }
+
+        _logger.LogDebug(
+            "QuickBooks Desktop import {ImportId} normalized {RowCount} rows and {HeaderCount} headers for {FileName}",
+            importId,
+            parsedFile.Rows.Count,
+            parsedFile.Headers.Count,
+            Path.GetFileName(filePath));
 
         if (IsAccountExport(parsedFile.Headers))
         {
-            return await ImportAccountsAsync(filePath, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation(
+                "QuickBooks Desktop import {ImportId} classified {FileName} as Accounts export",
+                importId,
+                Path.GetFileName(filePath));
+
+            return await ImportAccountsAsync(filePath, importId, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
         }
 
         if (IsCustomerExport(parsedFile.Headers))
         {
-            return await ImportCustomersAsync(filePath, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation(
+                "QuickBooks Desktop import {ImportId} classified {FileName} as Customers export",
+                importId,
+                Path.GetFileName(filePath));
+
+            return await ImportCustomersAsync(filePath, importId, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
         }
 
         if (IsVendorExport(parsedFile.Headers))
         {
-            return await ImportVendorsAsync(filePath, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation(
+                "QuickBooks Desktop import {ImportId} classified {FileName} as Vendors export",
+                importId,
+                Path.GetFileName(filePath));
+
+            return await ImportVendorsAsync(filePath, importId, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (IsTransactionExport(parsedFile.Headers))
+        {
+            _logger.LogInformation(
+                "QuickBooks Desktop import {ImportId} classified {FileName} as Payments export",
+                importId,
+                Path.GetFileName(filePath));
+
+            return await ImportPaymentsAsync(filePath, importId, parsedFile.Rows, services, startedAt, cancellationToken).ConfigureAwait(false);
         }
 
         if (IsItemExport(parsedFile.Headers))
         {
+            _logger.LogWarning(
+                "QuickBooks Desktop import {ImportId} classified {FileName} as unsupported Items export",
+                importId,
+                Path.GetFileName(filePath));
+
             return Failure(
                 "QuickBooks Desktop item import target is not yet supported in Wiley Widget.",
                 startedAt,
                 importEntityType: "Items");
         }
 
+        _logger.LogWarning(
+            "QuickBooks Desktop import {ImportId} could not classify {FileName} from headers: {Headers}",
+            importId,
+            Path.GetFileName(filePath),
+            string.Join("|", parsedFile.Headers));
+
         return Failure(
-            "The CSV file does not match a supported QuickBooks Desktop export profile.",
+            $"The file '{Path.GetFileName(filePath)}' does not match a supported QuickBooks Desktop export profile.",
             startedAt);
     }
 
     private async Task<ImportResult> ImportIifAsync(
         string filePath,
+        string importId,
         IServiceProvider services,
         DateTime startedAt,
         CancellationToken cancellationToken)
@@ -133,8 +232,19 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
         var table = await _iifParser.ParseAsync(filePath, cancellationToken).ConfigureAwait(false);
         if (table.Rows.Count == 0)
         {
+            _logger.LogWarning(
+                "QuickBooks Desktop import {ImportId} found no importable rows in IIF file {FileName}",
+                importId,
+                Path.GetFileName(filePath));
+
             return Failure("The IIF file does not contain any importable rows.", startedAt);
         }
+
+        _logger.LogInformation(
+            "QuickBooks Desktop import {ImportId} classified {FileName} as IIF payments export with {RowCount} rows",
+            importId,
+            Path.GetFileName(filePath),
+            table.Rows.Count);
 
         var paymentRepository = services.GetRequiredService<IPaymentRepository>();
         var vendorRepository = services.GetRequiredService<IVendorRepository>();
@@ -149,6 +259,11 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
 
             if (!string.Equals(GetRowValue(row, "_RecordType"), "TRNS", StringComparison.OrdinalIgnoreCase))
             {
+                _logger.LogDebug(
+                    "QuickBooks Desktop import {ImportId} skipped IIF row because _RecordType was {RecordType}",
+                    importId,
+                    GetRowValue(row, "_RecordType"));
+
                 continue;
             }
 
@@ -156,6 +271,11 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             if (!string.Equals(transactionType, "CHECK", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(transactionType, "PAYMENT", StringComparison.OrdinalIgnoreCase))
             {
+                _logger.LogDebug(
+                    "QuickBooks Desktop import {ImportId} skipped IIF payment row because TRNSTYPE was {TransactionType}",
+                    importId,
+                    transactionType);
+
                 skipped++;
                 continue;
             }
@@ -163,6 +283,10 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             var checkNumber = GetRowValue(row, "DOCNUM");
             if (string.IsNullOrWhiteSpace(checkNumber))
             {
+                _logger.LogDebug(
+                    "QuickBooks Desktop import {ImportId} skipped IIF payment row because DOCNUM was blank",
+                    importId);
+
                 skipped++;
                 continue;
             }
@@ -170,6 +294,11 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             var existingPayments = await paymentRepository.GetByCheckNumberAsync(checkNumber, cancellationToken).ConfigureAwait(false);
             if (existingPayments.Count > 0)
             {
+                _logger.LogDebug(
+                    "QuickBooks Desktop import {ImportId} skipped IIF payment row because check number {CheckNumber} already exists",
+                    importId,
+                    checkNumber);
+
                 skipped++;
                 continue;
             }
@@ -201,6 +330,13 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             imported++;
         }
 
+        _logger.LogInformation(
+            "QuickBooks Desktop import {ImportId} completed IIF payments import for {FileName}: imported={Imported}, skipped={Skipped}",
+            importId,
+            Path.GetFileName(filePath),
+            imported,
+            skipped);
+
         await AuditAsync(services, filePath, "Payments", imported, skipped, cancellationToken).ConfigureAwait(false);
 
         return new ImportResult
@@ -215,6 +351,7 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
 
     private async Task<ImportResult> ImportAccountsAsync(
         string filePath,
+        string importId,
         IReadOnlyList<Dictionary<string, string>> rows,
         IServiceProvider services,
         DateTime startedAt,
@@ -237,6 +374,12 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             });
         }
 
+        _logger.LogInformation(
+            "QuickBooks Desktop import {ImportId} completed Accounts import for {FileName}: imported={Imported}",
+            importId,
+            Path.GetFileName(filePath),
+            accounts.Count);
+
         await repository.ImportChartOfAccountsAsync(accounts, cancellationToken).ConfigureAwait(false);
         await AuditAsync(services, filePath, "Accounts", accounts.Count, 0, cancellationToken).ConfigureAwait(false);
 
@@ -252,6 +395,7 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
 
     private async Task<ImportResult> ImportCustomersAsync(
         string filePath,
+        string importId,
         IReadOnlyList<Dictionary<string, string>> rows,
         IServiceProvider services,
         DateTime startedAt,
@@ -268,6 +412,10 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             var accountNumber = GetValue(row, "AccountNumber");
             if (string.IsNullOrWhiteSpace(accountNumber))
             {
+                _logger.LogDebug(
+                    "QuickBooks Desktop import {ImportId} skipped customer row because AccountNumber was blank",
+                    importId);
+
                 continue;
             }
 
@@ -305,6 +453,13 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             updated++;
         }
 
+        _logger.LogInformation(
+            "QuickBooks Desktop import {ImportId} completed Customers import for {FileName}: imported={Imported}, updated={Updated}",
+            importId,
+            Path.GetFileName(filePath),
+            imported,
+            updated);
+
         await AuditAsync(services, filePath, "Customers", imported, 0, cancellationToken).ConfigureAwait(false);
 
         return new ImportResult
@@ -319,6 +474,7 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
 
     private async Task<ImportResult> ImportVendorsAsync(
         string filePath,
+        string importId,
         IReadOnlyList<Dictionary<string, string>> rows,
         IServiceProvider services,
         DateTime startedAt,
@@ -335,6 +491,10 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             var name = GetValue(row, "VendorName");
             if (string.IsNullOrWhiteSpace(name))
             {
+                _logger.LogDebug(
+                    "QuickBooks Desktop import {ImportId} skipped vendor row because VendorName was blank",
+                    importId);
+
                 continue;
             }
 
@@ -368,6 +528,13 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             updated++;
         }
 
+        _logger.LogInformation(
+            "QuickBooks Desktop import {ImportId} completed Vendors import for {FileName}: imported={Imported}, updated={Updated}",
+            importId,
+            Path.GetFileName(filePath),
+            imported,
+            updated);
+
         await AuditAsync(services, filePath, "Vendors", imported, 0, cancellationToken).ConfigureAwait(false);
 
         return new ImportResult
@@ -380,45 +547,267 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
         };
     }
 
-    private static async Task<ParsedDelimitedFile> ReadDelimitedFileAsync(string filePath, char delimiter, CancellationToken cancellationToken)
+    private async Task<ImportResult> ImportPaymentsAsync(
+        string filePath,
+        string importId,
+        IReadOnlyList<Dictionary<string, string>> rows,
+        IServiceProvider services,
+        DateTime startedAt,
+        CancellationToken cancellationToken)
+    {
+        var paymentRepository = services.GetRequiredService<IPaymentRepository>();
+        var vendorRepository = services.GetRequiredService<IVendorRepository>();
+        var accountRepository = services.GetRequiredService<IMunicipalAccountRepository>();
+
+        var imported = 0;
+        var skipped = 0;
+        var usedCheckNumbers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+        {
+            var row = rows[rowIndex];
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var transactionType = FirstNonEmpty(GetValue(row, "Type"), GetValue(row, "TRNSTYPE"), "QuickBooks Desktop import");
+            var checkNumber = await ResolvePaymentCheckNumberAsync(
+                filePath,
+                importId,
+                rowIndex,
+                FirstNonEmpty(GetValue(row, "Num"), GetValue(row, "DOCNUM"), GetValue(row, "CheckNumber")),
+                usedCheckNumbers,
+                paymentRepository,
+                cancellationToken).ConfigureAwait(false);
+
+            if (checkNumber == null)
+            {
+                _logger.LogWarning(
+                    "QuickBooks Desktop import {ImportId} skipped payment row {RowNumber} in {FileName} because no unique check number could be resolved",
+                    importId,
+                    rowIndex + 1,
+                    Path.GetFileName(filePath));
+
+                skipped++;
+                continue;
+            }
+
+            _logger.LogDebug(
+                "QuickBooks Desktop import {ImportId} accepted payment row {RowNumber} in {FileName}: transactionType={TransactionType}, checkNumber={CheckNumber}, payee={Payee}",
+                importId,
+                rowIndex + 1,
+                Path.GetFileName(filePath),
+                transactionType,
+                checkNumber,
+                FirstNonEmpty(GetValue(row, "Name"), GetValue(row, "Payee"), GetValue(row, "Memo"), transactionType, "QuickBooks Desktop import"));
+
+            var payee = FirstNonEmpty(GetValue(row, "Name"), GetValue(row, "Payee"), GetValue(row, "Memo"), transactionType, "QuickBooks Desktop import");
+
+            var accountText = FirstNonEmpty(GetValue(row, "Split"), GetValue(row, "Account"), GetValue(row, "ACCNT"), GetValue(row, "Memo"));
+            var accountNumber = ExtractLeadingAccountNumber(accountText);
+            var vendor = string.IsNullOrWhiteSpace(payee)
+                ? null
+                : await vendorRepository.GetByNameAsync(payee, cancellationToken).ConfigureAwait(false);
+            var account = string.IsNullOrWhiteSpace(accountNumber)
+                ? null
+                : await accountRepository.GetByAccountNumberAsync(accountNumber, cancellationToken).ConfigureAwait(false);
+
+            var payment = new WileyWidget.Models.Payment
+            {
+                CheckNumber = checkNumber,
+                PaymentDate = ParseDate(GetValue(row, "Date")) ?? DateTime.Today,
+                Payee = payee,
+                Amount = Math.Abs(ParseDecimal(GetValue(row, "Amount"))),
+                Description = FirstNonEmpty(GetValue(row, "Memo"), transactionType, accountText, "QuickBooks Desktop import"),
+                MunicipalAccountId = account?.Id,
+                VendorId = vendor?.Id,
+                Memo = GetValue(row, "Memo"),
+                Status = "Pending"
+            };
+
+            await paymentRepository.AddAsync(payment, cancellationToken).ConfigureAwait(false);
+            imported++;
+        }
+
+        _logger.LogInformation(
+            "QuickBooks Desktop import {ImportId} completed Payments import for {FileName}: imported={Imported}, skipped={Skipped}",
+            importId,
+            Path.GetFileName(filePath),
+            imported,
+            skipped);
+
+        await AuditAsync(services, filePath, "Payments", imported, skipped, cancellationToken).ConfigureAwait(false);
+
+        return new ImportResult
+        {
+            Success = true,
+            ImportEntityType = "Payments",
+            RecordsImported = imported,
+            RecordsSkipped = skipped,
+            Duration = DateTime.UtcNow - startedAt
+        };
+    }
+
+    private static async System.Threading.Tasks.Task<IReadOnlyList<IReadOnlyList<string>>> ReadDelimitedRowsAsync(string filePath, char delimiter, CancellationToken cancellationToken)
     {
         await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         using var reader = new StreamReader(stream);
 
-        var lines = new List<string>();
-        while (!reader.EndOfStream)
+        var rows = new List<IReadOnlyList<string>>();
+        while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            if (line is null)
+            {
+                break;
+            }
+
             if (!string.IsNullOrWhiteSpace(line))
             {
-                lines.Add(line);
+                rows.Add(ParseDelimitedLine(line, delimiter));
             }
         }
 
-        if (lines.Count == 0)
+        return rows;
+    }
+
+    private static System.Threading.Tasks.Task<IReadOnlyList<IReadOnlyList<string>>> ReadExcelRowsAsync(string filePath, CancellationToken cancellationToken)
+    {
+        return System.Threading.Tasks.Task.Run(() =>
         {
-            return new ParsedDelimitedFile(Array.Empty<string>(), Array.Empty<Dictionary<string, string>>());
+            var rows = new List<IReadOnlyList<string>>();
+
+            using var excelEngine = new ExcelEngine();
+            var application = excelEngine.Excel;
+            application.DefaultVersion = Path.GetExtension(filePath).Equals(".xls", StringComparison.OrdinalIgnoreCase)
+                ? ExcelVersion.Excel97to2003
+                : ExcelVersion.Xlsx;
+
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var workbook = application.Workbooks.Open(stream);
+
+            try
+            {
+                var worksheet = workbook.Worksheets[0];
+                var usedRange = worksheet.UsedRange;
+                if (usedRange == null)
+                {
+                    return (IReadOnlyList<IReadOnlyList<string>>)rows;
+                }
+
+                for (var rowIndex = usedRange.Row; rowIndex <= usedRange.LastRow; rowIndex++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var values = new List<string>(usedRange.LastColumn - usedRange.Column + 1);
+                    for (var columnIndex = usedRange.Column; columnIndex <= usedRange.LastColumn; columnIndex++)
+                    {
+                        values.Add(NormalizeCellValue(worksheet.Range[rowIndex, columnIndex].DisplayText));
+                    }
+
+                    rows.Add(values);
+                }
+
+                return (IReadOnlyList<IReadOnlyList<string>>)rows;
+            }
+            finally
+            {
+                workbook.Close();
+            }
+        }, cancellationToken);
+    }
+
+    private static ParsedTabularFile NormalizeTabularRows(IReadOnlyList<IReadOnlyList<string>> rawRows)
+    {
+        if (rawRows.Count == 0)
+        {
+            return new ParsedTabularFile(Array.Empty<string>(), Array.Empty<Dictionary<string, string>>());
         }
 
-        var headers = ParseDelimitedLine(lines[0], delimiter)
-            .Select(header => header.Trim())
+        var headerRowIndex = FindHeaderRowIndex(rawRows);
+        if (headerRowIndex < 0)
+        {
+            return new ParsedTabularFile(Array.Empty<string>(), Array.Empty<Dictionary<string, string>>());
+        }
+
+        var headers = rawRows[headerRowIndex]
+            .Select(NormalizeCellValue)
             .ToArray();
 
         var rows = new List<Dictionary<string, string>>();
-        for (var index = 1; index < lines.Count; index++)
+        for (var rowIndex = headerRowIndex + 1; rowIndex < rawRows.Count; rowIndex++)
         {
-            var values = ParseDelimitedLine(lines[index], delimiter);
+            var sourceRow = rawRows[rowIndex];
             var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            for (var column = 0; column < headers.Length; column++)
+            var hasAnyValue = false;
+
+            for (var columnIndex = 0; columnIndex < headers.Length; columnIndex++)
             {
-                row[headers[column]] = column < values.Count ? values[column].Trim() : string.Empty;
+                var header = headers[columnIndex];
+                if (string.IsNullOrWhiteSpace(header))
+                {
+                    continue;
+                }
+
+                var value = columnIndex < sourceRow.Count ? NormalizeCellValue(sourceRow[columnIndex]) : string.Empty;
+                row[header] = value;
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    hasAnyValue = true;
+                }
             }
 
-            rows.Add(row);
+            if (hasAnyValue)
+            {
+                rows.Add(row);
+            }
         }
 
-        return new ParsedDelimitedFile(headers, rows);
+        return new ParsedTabularFile(headers, rows);
+    }
+
+    private static int FindHeaderRowIndex(IReadOnlyList<IReadOnlyList<string>> rawRows)
+    {
+        for (var index = 0; index < Math.Min(rawRows.Count, 12); index++)
+        {
+            if (IsSupportedHeaderRow(rawRows[index]))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool IsSupportedHeaderRow(IReadOnlyList<string> row)
+    {
+        var headerSet = row
+            .Select(NormalizeCellValue)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return headerSet.Contains("AccountNumber")
+            || headerSet.Contains("VendorName")
+            || headerSet.Contains("FirstName")
+            || headerSet.Contains("TRNSTYPE")
+            || (headerSet.Contains("Type") && headerSet.Contains("Date") && headerSet.Contains("Num"))
+            || (headerSet.Contains("AccountType") && headerSet.Contains("Balance"))
+            || (headerSet.Contains("ItemName") && headerSet.Contains("ItemType"));
+    }
+
+    private static bool IsTransactionExport(IEnumerable<string> headers)
+    {
+        var headerSet = ToHeaderSet(headers);
+        return headerSet.Contains("Type")
+            && headerSet.Contains("Date")
+            && headerSet.Contains("Num")
+            && headerSet.Contains("Name")
+            && headerSet.Contains("Amount")
+            && (headerSet.Contains("Split") || headerSet.Contains("Account") || headerSet.Contains("ACCNT"));
+    }
+
+    private static string NormalizeCellValue(string? value)
+    {
+        return value?.Trim() ?? string.Empty;
     }
 
     private static List<string> ParseDelimitedLine(string line, char delimiter)
@@ -540,6 +929,87 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
         return token ?? string.Empty;
     }
 
+    private async Task<string?> ResolvePaymentCheckNumberAsync(
+        string filePath,
+        string importId,
+        int rowIndex,
+        string sourceCheckNumber,
+        ISet<string> usedCheckNumbers,
+        IPaymentRepository paymentRepository,
+        CancellationToken cancellationToken)
+    {
+        var normalizedSourceCheckNumber = NormalizeCheckNumber(sourceCheckNumber);
+        if (!string.IsNullOrWhiteSpace(normalizedSourceCheckNumber)
+            && normalizedSourceCheckNumber.Length <= 20
+            && !usedCheckNumbers.Contains(normalizedSourceCheckNumber)
+            && !await paymentRepository.CheckNumberExistsAsync(normalizedSourceCheckNumber, cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            usedCheckNumbers.Add(normalizedSourceCheckNumber);
+            _logger.LogDebug(
+                "QuickBooks Desktop import {ImportId} row {RowNumber} in {FileName} resolved source check number {CheckNumber}",
+                importId,
+                rowIndex + 1,
+                Path.GetFileName(filePath),
+                normalizedSourceCheckNumber);
+            return normalizedSourceCheckNumber;
+        }
+
+        var syntheticCheckNumber = BuildSyntheticCheckNumber(filePath, rowIndex);
+        if (usedCheckNumbers.Contains(syntheticCheckNumber)
+            || await paymentRepository.CheckNumberExistsAsync(syntheticCheckNumber, cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            _logger.LogWarning(
+                "QuickBooks Desktop import {ImportId} row {RowNumber} in {FileName} could not resolve a unique check number (source={SourceCheckNumber}, synthetic={SyntheticCheckNumber})",
+                importId,
+                rowIndex + 1,
+                Path.GetFileName(filePath),
+                string.IsNullOrWhiteSpace(normalizedSourceCheckNumber) ? "<blank>" : normalizedSourceCheckNumber,
+                syntheticCheckNumber);
+
+            return null;
+        }
+
+        usedCheckNumbers.Add(syntheticCheckNumber);
+        _logger.LogDebug(
+            "QuickBooks Desktop import {ImportId} row {RowNumber} in {FileName} assigned synthetic check number {SyntheticCheckNumber} from source {SourceCheckNumber}",
+            importId,
+            rowIndex + 1,
+            Path.GetFileName(filePath),
+            syntheticCheckNumber,
+            string.IsNullOrWhiteSpace(normalizedSourceCheckNumber) ? "<blank>" : normalizedSourceCheckNumber);
+        return syntheticCheckNumber;
+    }
+
+    private static string NormalizeCheckNumber(string? checkNumber)
+    {
+        var value = checkNumber?.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        if (value.Length <= 20)
+        {
+            return value;
+        }
+
+        var hash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value)));
+        return $"{value[..15]}-{hash[..4]}";
+    }
+
+    private static string BuildSyntheticCheckNumber(string filePath, int rowIndex)
+    {
+        var fileToken = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Path.GetFileName(filePath)))).Substring(0, 8);
+        return $"QB-{fileToken}-{rowIndex + 1:000000}";
+    }
+
+    private static string BuildImportCorrelationId(string filePath)
+    {
+        var fileName = Path.GetFileName(filePath);
+        var token = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(fileName))).Substring(0, 8);
+        return $"QBIMP-{token}";
+    }
+
     private static string FirstNonEmpty(params string[] values)
     {
         foreach (var value in values)
@@ -551,6 +1021,33 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
         }
 
         return string.Empty;
+    }
+
+    private void PublishImportCompletedEvent(string filePath, ImportResult result)
+    {
+        if (_eventBus == null)
+        {
+            return;
+        }
+
+        var recordsImported = result.RecordsImported > 0 ? result.RecordsImported : result.AccountsImported;
+        var recordsUpdated = result.RecordsUpdated > 0 ? result.RecordsUpdated : result.AccountsUpdated;
+        var recordsSkipped = result.RecordsSkipped > 0 ? result.RecordsSkipped : result.AccountsSkipped;
+
+        try
+        {
+            _eventBus.Publish(new QuickBooksDesktopImportCompletedEvent(
+                filePath,
+                result.ImportEntityType,
+                recordsImported,
+                recordsUpdated,
+                recordsSkipped,
+                result.Duration));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to publish QuickBooksDesktopImportCompletedEvent for {FilePath}", filePath);
+        }
     }
 
     private static string? NullIfWhiteSpace(string? value)
@@ -597,7 +1094,7 @@ public sealed class QuickBooksDesktopImportService : IQuickBooksDesktopImportSer
             cancellationToken).ConfigureAwait(false);
     }
 
-    private sealed record ParsedDelimitedFile(
+    private sealed record ParsedTabularFile(
         IReadOnlyList<string> Headers,
         IReadOnlyList<Dictionary<string, string>> Rows);
 }

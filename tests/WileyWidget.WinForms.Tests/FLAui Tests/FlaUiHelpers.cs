@@ -116,8 +116,16 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             }
         }
 
+        private static string NormalizeAutomationText(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Replace("&", string.Empty, StringComparison.Ordinal).Trim();
+        }
+
         public static AutomationElement? FindElementByName(Window window, string name, TimeSpan timeout)
         {
+            var normalizedTarget = NormalizeAutomationText(name);
             var stopwatch = Stopwatch.StartNew();
             while (stopwatch.Elapsed < timeout)
             {
@@ -127,6 +135,20 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     if (element != null)
                     {
                         return element;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(normalizedTarget))
+                    {
+                        element = window.FindAllDescendants()
+                            .FirstOrDefault(candidate => string.Equals(
+                                NormalizeAutomationText(TryGetName(candidate) ?? string.Empty),
+                                normalizedTarget,
+                                StringComparison.OrdinalIgnoreCase));
+
+                        if (element != null)
+                        {
+                            return element;
+                        }
                     }
                 }
                 catch
@@ -141,6 +163,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
         public static AutomationElement? FindElementByNameOrId(Window window, string name, string automationId, TimeSpan timeout)
         {
+            var normalizedTarget = NormalizeAutomationText(name);
             var stopwatch = Stopwatch.StartNew();
             while (stopwatch.Elapsed < timeout)
             {
@@ -150,6 +173,19 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                     if (element != null)
                     {
                         return element;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(normalizedTarget))
+                    {
+                        element = window.FindAllDescendants()
+                            .FirstOrDefault(candidate =>
+                                string.Equals(NormalizeAutomationText(TryGetName(candidate) ?? string.Empty), normalizedTarget, StringComparison.OrdinalIgnoreCase)
+                                || string.Equals(TryGetAutomationId(candidate) ?? string.Empty, automationId, StringComparison.OrdinalIgnoreCase));
+
+                        if (element != null)
+                        {
+                            return element;
+                        }
                     }
                 }
                 catch

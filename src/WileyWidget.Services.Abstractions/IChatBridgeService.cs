@@ -6,8 +6,8 @@ using WileyWidget.Models;
 namespace WileyWidget.Services.Abstractions;
 
 /// <summary>
-/// Service for bridging communication between Blazor chat components and WinForms backend.
-/// Carries prompts from Blazor to the backend and streams responses back.
+/// Service for bridging communication between the JARVIS chat surface and backend services.
+/// Carries prompts from the native chat UI to the backend and streams responses back.
 /// </summary>
 public interface IChatBridgeService
 {
@@ -17,13 +17,13 @@ public interface IChatBridgeService
     event EventHandler<ChatMessage> OnMessageReceived;
 
     /// <summary>
-    /// Raised when a prompt is submitted from the Blazor chat component.
+    /// Raised when a prompt is submitted from the chat UI.
     /// </summary>
     event EventHandler<ChatPromptSubmittedEventArgs> PromptSubmitted;
 
     /// <summary>
     /// Raised when a response chunk is received from the backend service.
-    /// Used for streaming responses back to Blazor.
+    /// Used for streaming responses back to the active chat surface.
     /// </summary>
     event EventHandler<ChatResponseChunkEventArgs> ResponseChunkReceived;
 
@@ -49,14 +49,14 @@ public interface IChatBridgeService
     Task NotifyMessageReceivedAsync(ChatMessage message, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Submit a prompt from the Blazor component to the backend.
+    /// Submit a prompt from the chat UI to the backend.
     /// </summary>
     /// <param name="prompt">The user prompt text</param>
     /// <param name="conversationId">The target conversation ID for persistence</param>
     Task SubmitPromptAsync(string prompt, string? conversationId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Send a response chunk back to the Blazor component.
+    /// Send a response chunk back to the chat UI.
     /// </summary>
     /// <param name="chunk">The response chunk to send</param>
     Task SendResponseChunkAsync(string chunk, CancellationToken cancellationToken = default);

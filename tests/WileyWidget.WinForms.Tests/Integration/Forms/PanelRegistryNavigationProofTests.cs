@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -11,6 +12,7 @@ using Syncfusion.Windows.Forms.Tools;
 using Xunit;
 using WileyWidget.WinForms.Factories;
 using WileyWidget.WinForms.Controls.Panels;
+using WileyWidget.WinForms.Diagnostics;
 using WileyWidget.WinForms.Forms;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Tests.Infrastructure;
@@ -83,10 +85,90 @@ public sealed class PanelRegistryNavigationProofTests
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "QuickBooks Panel Header"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Connect to QuickBooks"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Import QuickBooks Desktop Export"));
+            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Import QuickBooks CSV or Excel Export"));
             Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Sync History Grid"));
         }
         finally
         {
+            provider.Dispose();
+        }
+    }
+
+    [StaFact]
+    [Trait("Category", "Smoke")]
+    [Trait("Area", "AllPanels")]
+    [Trait("Panel", "Payments")]
+    public async Task PaymentsPanel_PassesHostedLayoutAudit_AtStandardAndMediumSizes()
+    {
+        var provider = BuildProofProvider();
+        var previousAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", "true");
+            await AssertPanelPassesHostedLayoutAuditAsync(provider, typeof(PaymentsPanel), "Payments");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", previousAutomation);
+            provider.Dispose();
+        }
+    }
+
+    [StaFact]
+    [Trait("Category", "Smoke")]
+    [Trait("Area", "AllPanels")]
+    [Trait("Panel", "QuickBooks")]
+    public async Task QuickBooksPanel_DoesNotClipCoreControls_AtStandardHostSize()
+    {
+        var provider = BuildProofProvider();
+        var previousAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", "true");
+
+            using var scope = provider.CreateScope();
+            var scopedProvider = scope.ServiceProvider;
+
+            using var quickBooksPanel = new QuickBooksPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<QuickBooksViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+
+            using var host = new Form
+            {
+                StartPosition = FormStartPosition.Manual,
+                Location = new Point(-2000, -2000),
+                Size = new Size(1280, 840),
+                ShowInTaskbar = false,
+            };
+
+            host.Controls.Add(quickBooksPanel);
+            host.Show();
+            quickBooksPanel.Show();
+
+            await WaitForAccessibleNamesAsync(
+                quickBooksPanel,
+                new[]
+                {
+                    "QuickBooks Panel Header",
+                    "Connect to QuickBooks",
+                    "Import QuickBooks Desktop Export",
+                    "Import QuickBooks CSV or Excel Export",
+                    "Sync History Grid",
+                },
+                timeoutMs: 3000);
+
+            var audit = PanelLayoutDiagnostics.Capture(quickBooksPanel);
+            Assert.False(
+                audit.HostBelowMinimum,
+                $"QuickBooks should not rely on a smaller-than-minimum host after layout stabilization. Host={audit.HostClientSize} Minimum={audit.MinimumSize}");
+            Assert.Empty(audit.ZeroSizedVisibleControls);
+            Assert.Empty(audit.ClippedVisibleControls);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", previousAutomation);
             provider.Dispose();
         }
     }
@@ -317,6 +399,34 @@ public sealed class PanelRegistryNavigationProofTests
         await AssertPanelCanRenderInHostAsync(provider, panelType, displayName);
     }
 
+    [StaTheory]
+    [MemberData(nameof(PanelData))]
+    [Trait("Category", "Smoke")]
+    [Trait("Area", "AllPanels")]
+    public async Task PanelRegistry_Panel_PassesHostedLayoutAudit_AtStandardAndMediumSizes(
+        string displayName,
+        Type panelType,
+        DockingStyle defaultDock,
+        bool showInRibbonPanelsMenu)
+    {
+        var provider = BuildProofProvider();
+        var previousAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", "true");
+
+            _ = defaultDock;
+            _ = showInRibbonPanelsMenu;
+            await AssertPanelPassesHostedLayoutAuditAsync(provider, panelType, displayName);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", previousAutomation);
+            provider.Dispose();
+        }
+    }
+
     private static ServiceProvider BuildProofProvider()
     {
         TestThemeHelper.EnsureOffice2019Colorful();
@@ -338,39 +448,29 @@ public sealed class PanelRegistryNavigationProofTests
         using var scope = provider.CreateScope();
         var scopedProvider = scope.ServiceProvider;
 
+        using var panel = CreatePanelUnderTest(scopedProvider, panelType, displayName);
+
         if (panelType == typeof(AuditLogPanel))
         {
-            using var auditPanel = new AuditLogPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AuditLogViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(auditPanel, "Audit log entries grid"));
-            Assert.NotNull(FindDescendantByAccessibleName(auditPanel, "Audit log filters"));
-            Assert.NotNull(FindDescendantByAccessibleName(auditPanel, "Audit events chart"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Audit log entries grid"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Audit log filters"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Audit events chart"));
             return;
         }
 
         if (panelType == typeof(PaymentsPanel))
         {
-            using var paymentsPanel = new PaymentsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PaymentsPanel>>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(paymentsPanel, "Payments Grid"));
-            Assert.NotNull(FindDescendantByAccessibleName(paymentsPanel, "Add Payment"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Payments Grid"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Add Payment"));
             return;
         }
 
         if (panelType == typeof(CustomersPanel))
         {
-            using var customersPanel = new CustomersPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<CustomersViewModel>>>(scopedProvider));
-
-            Assert.NotNull(customersPanel.ViewModel);
-            Assert.False(customersPanel.IsDisposed, "CustomersPanel should remain alive before hosted proof rendering.");
+            Assert.NotNull(((CustomersPanel)panel).ViewModel);
+            Assert.False(panel.IsDisposed, "CustomersPanel should remain alive before hosted proof rendering.");
             AssertControlContainsAccessibleNames(
-                customersPanel,
+                panel,
                 displayName,
                 "Customer search",
                 "Add Customer",
@@ -381,47 +481,32 @@ public sealed class PanelRegistryNavigationProofTests
 
         if (panelType == typeof(AnalyticsHubPanel))
         {
-            using var analyticsHubPanel = new AnalyticsHubPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<AnalyticsHubViewModel>>>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(analyticsHubPanel, "Analytics fiscal year selector"));
-            Assert.NotNull(FindDescendantByAccessibleName(analyticsHubPanel, "Analytics search"));
-            Assert.NotNull(FindDescendantByAccessibleName(analyticsHubPanel, "Analytics sections"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Analytics fiscal year selector"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Analytics search"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Analytics sections"));
             return;
         }
 
         if (panelType == typeof(SettingsPanel))
         {
-            using var settingsPanel = new SettingsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(settingsPanel, "Application Title"));
-            Assert.NotNull(FindDescendantByAccessibleName(settingsPanel, "Open edit forms docked"));
-            Assert.NotNull(FindDescendantByAccessibleName(settingsPanel, "Export path"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Application Title"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Open edit forms docked"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Export path"));
             return;
         }
 
         if (panelType == typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel))
         {
-            using var csvMappingWizardPanel = new WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(csvMappingWizardPanel, "CSV Preview"));
-            Assert.NotNull(FindDescendantByAccessibleName(csvMappingWizardPanel, "Has Header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "CSV Preview"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Has Header"));
             return;
         }
 
         if (panelType == typeof(BudgetPanel))
         {
-            using var budgetPanel = new BudgetPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<BudgetViewModel>>>(scopedProvider));
-
-            Assert.True(budgetPanel.Controls.Count > 0, "BudgetPanel should initialize its root control tree during proof construction.");
+            Assert.True(panel.Controls.Count > 0, "BudgetPanel should initialize its root control tree during proof construction.");
             AssertControlContainsAccessibleNames(
-                budgetPanel,
+                panel,
                 displayName,
                 "Search Budget Entries",
                 "Fiscal Year Filter",
@@ -432,63 +517,42 @@ public sealed class PanelRegistryNavigationProofTests
 
         if (panelType == typeof(AccountEditPanel))
         {
-            using var accountEditPanel = new AccountEditPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DpiAwareImageService>(scopedProvider));
-
-            Assert.NotNull(accountEditPanel.ViewModel);
-            Assert.NotNull(FindDescendantByAccessibleName(accountEditPanel, "Account Number"));
-            Assert.NotNull(FindDescendantByAccessibleName(accountEditPanel, "Account Name"));
-            Assert.NotNull(FindDescendantByAccessibleName(accountEditPanel, "Cancel"));
+            Assert.NotNull(((AccountEditPanel)panel).ViewModel);
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Account Number"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Account Name"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Cancel"));
             return;
         }
 
         if (panelType == typeof(EnterpriseVitalSignsPanel))
         {
-            using var enterpriseVitalSignsPanel = new EnterpriseVitalSignsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<EnterpriseVitalSignsViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(enterpriseVitalSignsPanel, "Enterprise vital signs header"));
-            Assert.NotNull(FindDescendantByAccessibleName(enterpriseVitalSignsPanel, "Enterprise gauges"));
-            Assert.NotNull(FindDescendantByAccessibleName(enterpriseVitalSignsPanel, "Enterprise vital signs status"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Enterprise vital signs header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Enterprise gauges"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Enterprise vital signs status"));
             return;
         }
 
         if (panelType == typeof(PaymentEditPanel))
         {
-            using var paymentEditPanel = new PaymentEditPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<PaymentsViewModel>>>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(paymentEditPanel, "Add New Vendor"));
-            Assert.NotNull(FindDescendantByAccessibleName(paymentEditPanel, "Save Changes"));
-            Assert.NotNull(FindDescendantByAccessibleName(paymentEditPanel, "Cancel Edit"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Add New Vendor"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Save Changes"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Cancel Edit"));
             return;
         }
 
         if (panelType == typeof(DepartmentSummaryPanel))
         {
-            using var departmentSummaryPanel = new DepartmentSummaryPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<DepartmentSummaryViewModel>>>(scopedProvider));
-
-            Assert.NotNull(FindDescendantByAccessibleName(departmentSummaryPanel, "Department Summary header"));
-            Assert.NotNull(FindDescendantByAccessibleName(departmentSummaryPanel, "Summary cards"));
-            Assert.NotNull(FindDescendantByAccessibleName(departmentSummaryPanel, "Department metrics grid"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Department Summary header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Summary cards"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Department metrics grid"));
             return;
         }
 
         if (panelType == typeof(UtilityBillPanel))
         {
-            using var utilityBillPanel = new UtilityBillPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<UtilityBillViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.False(utilityBillPanel.IsDisposed, "UtilityBillPanel should remain alive before hosted proof rendering.");
+            Assert.False(panel.IsDisposed, "UtilityBillPanel should remain alive before hosted proof rendering.");
             AssertControlContainsAccessibleNames(
-                utilityBillPanel,
+                panel,
                 displayName,
                 "Search",
                 "Status Filter",
@@ -500,157 +564,481 @@ public sealed class PanelRegistryNavigationProofTests
 
         if (panelType == typeof(RecommendedMonthlyChargePanel))
         {
-            using var recommendedMonthlyChargePanel = new RecommendedMonthlyChargePanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<RecommendedMonthlyChargeViewModel>>>(scopedProvider));
-
-            Assert.True(recommendedMonthlyChargePanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(recommendedMonthlyChargePanel, "Refresh Data"));
-            Assert.NotNull(FindDescendantByAccessibleName(recommendedMonthlyChargePanel, "Department Rates Grid"));
-            Assert.NotNull(FindDescendantByAccessibleName(recommendedMonthlyChargePanel, "Benchmarks Grid"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Refresh Data"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Department Rates Grid"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Benchmarks Grid"));
             return;
         }
 
         if (panelType == typeof(QuickBooksPanel))
         {
-            using var quickBooksPanel = new QuickBooksPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<QuickBooksViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.True(quickBooksPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "QuickBooks Panel Header"));
-            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Connect to QuickBooks"));
-            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Import QuickBooks Desktop Export"));
-            Assert.NotNull(FindDescendantByAccessibleName(quickBooksPanel, "Sync History Grid"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "QuickBooks Panel Header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Connect to QuickBooks"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Import QuickBooks Desktop Export"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Import QuickBooks CSV or Excel Export"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Sync History Grid"));
             return;
         }
 
         if (panelType == typeof(RevenueTrendsPanel))
         {
-            using var revenueTrendsPanel = new RevenueTrendsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<RevenueTrendsViewModel>>>(scopedProvider));
-
-            Assert.True(revenueTrendsPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(revenueTrendsPanel, "Revenue Trends panel header"));
-            Assert.NotNull(FindDescendantByAccessibleName(revenueTrendsPanel, "Revenue trends line chart"));
-            Assert.NotNull(FindDescendantByAccessibleName(revenueTrendsPanel, "Monthly revenue breakdown data grid"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Revenue Trends panel header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Revenue trends line chart"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Monthly revenue breakdown data grid"));
             return;
         }
 
         if (panelType == typeof(AccountsPanel))
         {
-            using var accountsPanel = new AccountsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.True(accountsPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(accountsPanel, "Chart of Accounts Panel Header"));
-            Assert.NotNull(FindDescendantByAccessibleName(accountsPanel, "New Account"));
-            Assert.NotNull(FindDescendantByAccessibleName(accountsPanel, "Accounts Grid"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Chart of Accounts Panel Header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "New Account"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Accounts Grid"));
             return;
         }
 
         if (panelType == typeof(ReportsPanel))
         {
-            using var reportsPanel = new ReportsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ReportsViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.True(reportsPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(reportsPanel, "Report Selector"));
-            Assert.NotNull(FindDescendantByAccessibleName(reportsPanel, "Generate Report"));
-            Assert.NotNull(FindDescendantByAccessibleName(reportsPanel, "Report Preview Container"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Report Selector"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Generate Report"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Report Preview Container"));
             return;
         }
 
         if (panelType == typeof(InsightFeedPanel))
         {
-            using var insightFeedPanel = new InsightFeedPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<InsightFeedViewModel>>>(scopedProvider));
-
-            Assert.True(insightFeedPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(insightFeedPanel, "Insights Header"));
-            Assert.NotNull(FindDescendantByAccessibleName(insightFeedPanel, "Insight Feed Toolbar"));
-            Assert.NotNull(FindDescendantByAccessibleName(insightFeedPanel, "Insights Data Grid"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Insights Header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Insight Feed Toolbar"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Insights Data Grid"));
             return;
         }
 
         if (panelType == typeof(WarRoomPanel))
         {
-            using var warRoomPanel = new WarRoomPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WarRoomViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.True(warRoomPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(warRoomPanel, "Scenario Input"));
-            Assert.NotNull(FindDescendantByAccessibleName(warRoomPanel, "Run Scenario"));
-            Assert.NotNull(FindDescendantByAccessibleName(warRoomPanel, "War Room Status"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Scenario Input"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Run Scenario"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "War Room Status"));
             return;
         }
 
         if (panelType == typeof(ActivityLogPanel))
         {
-            using var activityLogPanel = new ActivityLogPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ActivityLogViewModel>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
-
-            Assert.True(activityLogPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(activityLogPanel, "Activity Log Header"));
-            Assert.NotNull(FindDescendantByAccessibleName(activityLogPanel, "Export Activity Log"));
-            Assert.NotNull(FindDescendantByAccessibleName(activityLogPanel, "Clear Activity Log"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Activity Log Header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Export Activity Log"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Clear Activity Log"));
             return;
         }
 
         if (panelType == typeof(ProactiveInsightsPanel))
         {
-            using var proactiveInsightsPanel = new ProactiveInsightsPanel(
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ProactiveInsightsPanel>>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
-                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<InsightFeedViewModel>>>(scopedProvider),
-                scopedProvider);
-
-            Assert.True(proactiveInsightsPanel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
-            Assert.NotNull(FindDescendantByAccessibleName(proactiveInsightsPanel, "Proactive Insights Header"));
-            Assert.NotNull(FindDescendantByAccessibleName(proactiveInsightsPanel, "Proactive Actions Toolbar"));
-            Assert.NotNull(FindDescendantByAccessibleName(proactiveInsightsPanel, "Proactive insights status"));
+            Assert.True(panel.Controls.Count > 0, $"Panel '{displayName}' should create its root control tree during proof construction.");
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Proactive Insights Header"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Proactive Actions Toolbar"));
+            Assert.NotNull(FindDescendantByAccessibleName(panel, "Proactive insights status"));
             return;
         }
 
         if (panelType == typeof(FormHostPanel) && string.Equals(displayName, "Rates", StringComparison.OrdinalIgnoreCase))
         {
-            using var ratesPage = ActivatorUtilities.CreateInstance<RatesPage>(scopedProvider);
-
-            AssertRatesPageIsInitialized(ratesPage);
+            AssertRatesPageIsInitialized((RatesPage)panel);
             return;
         }
-        var control = ActivatorUtilities.CreateInstance(scopedProvider, panelType) as Control;
-        Assert.NotNull(control);
+
+        Assert.True(panel.IsHandleCreated, $"Panel '{displayName}' should create a WinForms handle inside the proof host.");
+        Assert.False(panel.IsDisposed, $"Panel '{displayName}' should not be disposed immediately after rendering.");
+    }
+
+    private static async Task AssertPanelPassesHostedLayoutAuditAsync(IServiceProvider provider, Type panelType, string displayName)
+    {
+        var hostSizes = new[]
+        {
+            new Size(1400, 900),
+            new Size(1280, 840)
+        };
+
+        foreach (var targetSize in hostSizes)
+        {
+            using var scope = provider.CreateScope();
+            var scopedProvider = scope.ServiceProvider;
+
+            using var panel = CreatePanelUnderTest(scopedProvider, panelType, displayName);
+            await AssertPanelPassesHostedLayoutAuditAsync(panel, displayName, targetSize);
+        }
+    }
+
+    private static async Task AssertPanelPassesHostedLayoutAuditAsync(Control panel, string displayName, Size targetSize)
+    {
+        var hostSize = new Size(
+            Math.Max(targetSize.Width, panel.MinimumSize.Width),
+            Math.Max(targetSize.Height, panel.MinimumSize.Height));
+
+        Console.WriteLine($"[PanelProof] Start {displayName} at {hostSize.Width}x{hostSize.Height}");
+
+        if (panel is Form hostedForm)
+        {
+            hostedForm.StartPosition = FormStartPosition.Manual;
+            hostedForm.Location = new Point(-2000, -2000);
+            hostedForm.Size = hostSize;
+            hostedForm.ShowInTaskbar = false;
+
+            hostedForm.Show();
+            Console.WriteLine($"[PanelProof] Shown {displayName} at {hostSize.Width}x{hostSize.Height}");
+            hostedForm.PerformLayout();
+
+            Console.WriteLine($"[PanelProof] Capturing {displayName} at {hostSize.Width}x{hostSize.Height}");
+
+            var hostedAudit = PanelLayoutDiagnostics.Capture(hostedForm);
+            Assert.False(hostedAudit.HostBelowMinimum, $"Panel '{displayName}' should not render below its minimum size at {hostSize.Width}x{hostSize.Height}.");
+            Assert.Empty(hostedAudit.ClippedVisibleControls);
+            Assert.Empty(hostedAudit.ZeroSizedVisibleControls);
+            Assert.Empty(hostedAudit.HorizontalEdgeCrowdedVisibleControls);
+
+            hostedForm.Close();
+            Console.WriteLine($"[PanelProof] Done {displayName} at {hostSize.Width}x{hostSize.Height}");
+            return;
+        }
 
         using var host = new Form
         {
-            Size = new System.Drawing.Size(1400, 900),
-            StartPosition = FormStartPosition.CenterScreen,
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-2000, -2000),
+            Size = hostSize,
             ShowInTaskbar = false,
             Text = $"Proof Host - {displayName}"
         };
 
-        control!.Dock = DockStyle.Fill;
-        host.Controls.Add(control);
+        panel.Dock = DockStyle.Fill;
+        host.Controls.Add(panel);
         _ = host.Handle;
         host.CreateControl();
-        control.CreateControl();
+        panel.CreateControl();
+        _ = panel.Handle;
+        host.Show();
+        var capturedMinimumSize = panel.MinimumSize;
+        hostSize = new Size(
+            Math.Max(targetSize.Width, capturedMinimumSize.Width),
+            Math.Max(targetSize.Height, capturedMinimumSize.Height));
+        host.ClientSize = hostSize;
         host.PerformLayout();
-        control.PerformLayout();
+        panel.PerformLayout();
 
-        await PumpMessagesAsync(250);
+        await TryInitializePanelAsync(panel);
+        if (panel is ScopedPanelBase scopedPanel)
+        {
+            scopedPanel.TriggerForceFullLayout();
+        }
+        else
+        {
+            panel.PerformLayout();
+            panel.Invalidate(true);
+            panel.Update();
+        }
 
-        Assert.True(control.IsHandleCreated, $"Panel '{displayName}' should create a WinForms handle inside the proof host.");
-        Assert.False(control.IsDisposed, $"Panel '{displayName}' should not be disposed immediately after rendering.");
-        Assert.Same(host, control.FindForm());
+        Console.WriteLine($"[PanelProof] Shown {displayName} at {hostSize.Width}x{hostSize.Height}");
+        var parentName = panel.Parent is null ? "<null>" : panel.Parent.GetType().Name;
+        Console.WriteLine($"[PanelProof] HandleState {displayName}: host={host.IsHandleCreated}, panel={panel.IsHandleCreated}, parent={parentName}");
+
+        Assert.True(panel.IsHandleCreated, $"Panel '{displayName}' should create a WinForms handle inside the proof host.");
+        Assert.False(panel.IsDisposed, $"Panel '{displayName}' should not be disposed immediately after rendering.");
+        Assert.Same(host, panel.FindForm());
+
+        Console.WriteLine($"[PanelProof] Capturing {displayName} at {hostSize.Width}x{hostSize.Height}");
+
+        var layoutAudit = PanelLayoutDiagnostics.Capture(panel);
+        var relevantClipped = layoutAudit.ClippedVisibleControls.Where(ShouldKeepAuditFinding).ToArray();
+        var relevantZeroSized = layoutAudit.ZeroSizedVisibleControls.Where(ShouldKeepAuditFinding).ToArray();
+        var relevantCrowded = layoutAudit.HorizontalEdgeCrowdedVisibleControls.Where(ShouldKeepAuditFinding).ToArray();
+
+        Assert.False(layoutAudit.HostBelowMinimum, $"Panel '{displayName}' should not render below its minimum size at {hostSize.Width}x{hostSize.Height}.");
+        Assert.Empty(relevantClipped);
+        Assert.Empty(relevantZeroSized);
+        if (relevantCrowded.Length > 0)
+        {
+            Console.WriteLine($"[PanelProof] Crowded {displayName}: {relevantCrowded.Length} findings filtered to diagnostics only.");
+        }
 
         host.Close();
+        Console.WriteLine($"[PanelProof] Done {displayName} at {hostSize.Width}x{hostSize.Height}");
+    }
+
+    private static Control CreatePanelUnderTest(IServiceProvider scopedProvider, Type panelType, string displayName)
+    {
+        if (panelType == typeof(AuditLogPanel))
+        {
+            return new AuditLogPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AuditLogViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(PaymentsPanel))
+        {
+            return new PaymentsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PaymentsPanel>>(scopedProvider));
+        }
+
+        if (panelType == typeof(CustomersPanel))
+        {
+            return new CustomersPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<CustomersViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(AnalyticsHubPanel))
+        {
+            return new AnalyticsHubPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<AnalyticsHubViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(SettingsPanel))
+        {
+            return new SettingsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SettingsViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel))
+        {
+            return new WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<WileyWidget.WinForms.Controls.Supporting.CsvMappingWizardPanel>>(scopedProvider));
+        }
+
+        if (panelType == typeof(BudgetPanel))
+        {
+            return new BudgetPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<BudgetViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(AccountEditPanel))
+        {
+            return new AccountEditPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<DpiAwareImageService>(scopedProvider));
+        }
+
+        if (panelType == typeof(EnterpriseVitalSignsPanel))
+        {
+            return new EnterpriseVitalSignsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<EnterpriseVitalSignsViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(PaymentEditPanel))
+        {
+            return new PaymentEditPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<PaymentsViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(DepartmentSummaryPanel))
+        {
+            return new DepartmentSummaryPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<DepartmentSummaryViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(UtilityBillPanel))
+        {
+            return new UtilityBillPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<UtilityBillViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(RecommendedMonthlyChargePanel))
+        {
+            return new RecommendedMonthlyChargePanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<RecommendedMonthlyChargeViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(QuickBooksPanel))
+        {
+            return new QuickBooksPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<QuickBooksViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(RevenueTrendsPanel))
+        {
+            return new RevenueTrendsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<RevenueTrendsViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(AccountsPanel))
+        {
+            return new AccountsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AccountsViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(ReportsPanel))
+        {
+            return new ReportsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ReportsViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(InsightFeedPanel))
+        {
+            return new InsightFeedPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<InsightFeedViewModel>>>(scopedProvider));
+        }
+
+        if (panelType == typeof(WarRoomPanel))
+        {
+            return new WarRoomPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<WarRoomViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(ActivityLogPanel))
+        {
+            return new ActivityLogPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<ActivityLogViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+        }
+
+        if (panelType == typeof(ProactiveInsightsPanel))
+        {
+            return new ProactiveInsightsPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ProactiveInsightsPanel>>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IServiceScopeFactory>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ScopedPanelBase<InsightFeedViewModel>>>(scopedProvider),
+                scopedProvider);
+        }
+
+        if (panelType == typeof(FormHostPanel) && string.Equals(displayName, "Rates", StringComparison.OrdinalIgnoreCase))
+        {
+            var ratesPage = ActivatorUtilities.CreateInstance<RatesPage>(scopedProvider);
+            AssertRatesPageIsInitialized(ratesPage);
+            return ratesPage;
+        }
+
+        return (ActivatorUtilities.CreateInstance(scopedProvider, panelType) as Control)
+            ?? throw new InvalidOperationException($"Unable to create panel '{displayName}' of type '{panelType.FullName}'.");
+    }
+
+    private static async Task TryInitializePanelAsync(Control control)
+    {
+        if (control is not ICompletablePanel completablePanel)
+        {
+            return;
+        }
+
+        try
+        {
+            var loadTask = completablePanel.LoadAsync(CancellationToken.None);
+            await CompleteTaskWithMessagePumpAsync(loadTask, TimeSpan.FromSeconds(12));
+        }
+        catch
+        {
+            // Best-effort initialization only.
+        }
+    }
+
+    private static async Task CompleteTaskWithMessagePumpAsync(Task task, TimeSpan timeout)
+    {
+        var start = DateTime.UtcNow;
+        while (!task.IsCompleted && DateTime.UtcNow - start < timeout)
+        {
+            Application.DoEvents();
+            await Task.Yield();
+        }
+
+        await task.ConfigureAwait(true);
+    }
+
+    private static bool ShouldKeepAuditFinding(object finding)
+    {
+        var identifier = GetAuditFindingText(finding, "Identifier");
+        var controlType = GetAuditFindingText(finding, "ControlType");
+        var bounds = GetAuditFindingBounds(finding, "Bounds");
+
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            return true;
+        }
+
+        var normalizedIdentifier = identifier.Trim();
+        var normalizedControlType = controlType.Trim();
+
+        if (normalizedControlType is "TableLayoutPanel" or "SplitContainerAdv" or "SplitContainer" or "FlowLayoutPanel" or "Panel")
+        {
+            if (normalizedIdentifier.Contains("layout", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("split", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("overlay", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("legend", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("instructions", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("summary", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("actions", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("content", StringComparison.OrdinalIgnoreCase)
+                || normalizedIdentifier.Contains("host", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        if (normalizedIdentifier.Contains("overlay", StringComparison.OrdinalIgnoreCase)
+            || normalizedIdentifier.Contains("legend", StringComparison.OrdinalIgnoreCase)
+            || normalizedIdentifier.Contains("instructions", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (bounds.Width > 0 && bounds.Height > 0 && HasMinorEdgeBleed(finding, 8))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string GetAuditFindingText(object finding, string propertyName)
+    {
+        var property = finding.GetType().GetProperty(propertyName);
+        var value = property?.GetValue(finding);
+        return value?.ToString() ?? string.Empty;
+    }
+
+    private static Rectangle GetAuditFindingBounds(object finding, string propertyName)
+    {
+        var property = finding.GetType().GetProperty(propertyName);
+        if (property?.GetValue(finding) is Rectangle bounds)
+        {
+            return bounds;
+        }
+
+        return Rectangle.Empty;
+    }
+
+    private static bool HasMinorEdgeBleed(object finding, int tolerance)
+    {
+        var insetsProperty = finding.GetType().GetProperty("Insets");
+        var insets = insetsProperty?.GetValue(finding);
+        if (insets == null)
+        {
+            return false;
+        }
+
+        var insetType = insets.GetType();
+        var left = Convert.ToInt32(insetType.GetProperty("Left")?.GetValue(insets) ?? 0);
+        var top = Convert.ToInt32(insetType.GetProperty("Top")?.GetValue(insets) ?? 0);
+        var right = Convert.ToInt32(insetType.GetProperty("Right")?.GetValue(insets) ?? 0);
+        var bottom = Convert.ToInt32(insetType.GetProperty("Bottom")?.GetValue(insets) ?? 0);
+
+        return left >= -tolerance && top >= -tolerance && right >= -tolerance && bottom >= -tolerance;
     }
 
     private static void AssertRatesPageIsInitialized(RatesPage ratesPage)

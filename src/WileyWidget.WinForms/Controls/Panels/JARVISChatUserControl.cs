@@ -25,6 +25,8 @@ using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Services.AI;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.UI.Helpers;
+using ProgressBarAdv = Syncfusion.Windows.Forms.Tools.ProgressBarAdv;
+using ProgressBarStyles = Syncfusion.Windows.Forms.Tools.ProgressBarStyles;
 
 namespace WileyWidget.WinForms.Controls.Panels
 {
@@ -43,7 +45,11 @@ namespace WileyWidget.WinForms.Controls.Panels
     private readonly Author _assistantAuthor = new() { Name = "JARVIS" };
     private readonly Author _userAuthor = new() { Name = "You" };
     private SfAIAssistView? _assistView;
+    private Panel? _assistHost;
     private Panel? _toolbarPanel;
+    private TableLayoutPanel? _responseStatusPanel;
+    private Label? _responseStatusLabel;
+    private ProgressBarAdv? _responseStatusProgressBar;
     private SfButton? _openResponseViewerButton;
     private SfButton? _copyLatestResponseButton;
     private SfButton? _copyTranscriptButton;
@@ -149,7 +155,7 @@ namespace WileyWidget.WinForms.Controls.Panels
           };
 
           // Preserve the existing automation contract while the UI host is now native.
-          automationState.MarkBlazorReady(assistViewReady: true);
+          automationState.MarkChatUiReady(assistViewReady: true);
           AutomationStatusBox.Text = automationState.Snapshot.ToStatusString();
         }
 
@@ -266,10 +272,66 @@ namespace WileyWidget.WinForms.Controls.Panels
       toolbarLayout.Controls.Add(toolbarActionsPanel, 0, 1);
       _toolbarPanel.Controls.Add(toolbarLayout);
 
+      _assistHost = new Panel
+      {
+        Name = "JarvisAssistHost",
+        AccessibleName = "JARVIS assist host",
+        Dock = DockStyle.Fill,
+        Margin = Padding.Empty,
+        Padding = new Padding(0, 0, 0, (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(24.0f))
+      };
+
+      _responseStatusPanel = new TableLayoutPanel
+      {
+        Name = "JarvisResponseStatusPanel",
+        AccessibleName = "JARVIS response status",
+        Dock = DockStyle.Top,
+        Height = 28,
+        ColumnCount = 2,
+        RowCount = 1,
+        Margin = Padding.Empty,
+        Padding = new Padding(12, 4, 12, 4),
+        Visible = false
+      };
+      _responseStatusPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+      _responseStatusPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+      _responseStatusPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+      _responseStatusProgressBar = _factory.CreateProgressBarAdv(progressBar =>
+      {
+        progressBar.Name = "JarvisResponseStatusProgress";
+        progressBar.AccessibleName = "JARVIS response progress";
+        progressBar.AutoSize = false;
+        progressBar.Size = new Size(96, 12);
+        progressBar.MinimumSize = new Size(96, 12);
+        progressBar.Margin = new Padding(0, 4, 8, 0);
+        progressBar.ProgressStyle = ProgressBarStyles.WaitingGradient;
+        progressBar.WaitingGradientWidth = 10;
+        progressBar.Value = 50;
+        progressBar.TextVisible = false;
+        progressBar.TextShadow = false;
+        progressBar.Visible = false;
+      });
+
+      _responseStatusLabel = new Label
+      {
+        Name = "JarvisResponseStatusLabel",
+        AccessibleName = "JARVIS response status text",
+        Dock = DockStyle.Fill,
+        AutoEllipsis = true,
+        Margin = Padding.Empty,
+        TextAlign = ContentAlignment.MiddleLeft,
+        Text = "JARVIS is thinking..."
+      };
+
+      _responseStatusPanel.Controls.Add(_responseStatusProgressBar, 0, 0);
+      _responseStatusPanel.Controls.Add(_responseStatusLabel, 1, 0);
+
       _assistView = _factory.CreateSfAIAssistView(control =>
       {
         control.Name = "JarvisAssistView";
         control.AccessibleName = "JARVIS Assistant";
+        control.AccessibleDescription = "Native Syncfusion AI Assist chat surface for JARVIS conversations";
         control.Dock = DockStyle.Fill;
         control.Margin = Padding.Empty;
         control.Padding = Padding.Empty;
@@ -294,9 +356,11 @@ namespace WileyWidget.WinForms.Controls.Panels
       _suggestions.Add("Show likely budget risks this month");
 
       Controls.Clear();
-      Controls.Add(_assistView);
+      _assistHost.Controls.Add(_assistView);
+      _assistHost.Controls.Add(_responseStatusPanel);
+      Controls.Add(_assistHost);
       Controls.Add(_toolbarPanel);
-      _assistView.BringToFront();
+      _responseStatusPanel.BringToFront();
       UpdateResponseActionStates();
     }
 
@@ -306,10 +370,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       {
         control.Name = name;
         control.AutoSize = false;
-        control.MinimumSize = new Size(88, 32);
-        control.Size = new Size(88, 32);
-        control.Margin = new Padding(0, 0, 6, 6);
-      });
+      }, SyncfusionControlFactory.SfButtonLayoutProfile.Toolbar);
 
       button.AccessibleName = text;
       button.AccessibleDescription = accessibleDescription;
@@ -337,6 +398,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         GetAutomationStateService()?.NotifyPrompt(prompt);
         BeginResponse();
+        await FlushPendingStateAsync();
         await _chatBridge!.RequestExternalPromptAsync(prompt);
       }
       catch (Exception ex)
@@ -400,6 +462,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       {
         _activeResponseMessage = CreateMessage(string.Empty, _assistantAuthor);
         _messages.Add(_activeResponseMessage);
+        SetPendingStateVisible(false);
       }
 
       _streamingResponse.Append(e.Chunk);
@@ -462,6 +525,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       UpdateResponseActionStates();
       GetAutomationStateService()?.NotifyPrompt(prompt.Trim());
       BeginResponse();
+      await FlushPendingStateAsync().ConfigureAwait(true);
       await _chatBridge!.RequestExternalPromptAsync(prompt.Trim(), cancellationToken).ConfigureAwait(true);
     }
 
@@ -486,10 +550,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       _isResponseCancelled = false;
       _streamingResponse.Clear();
       _activeResponseMessage = null;
-      if (_assistView != null)
-      {
-        _assistView.ShowTypingIndicator = true;
-      }
+      SetPendingStateVisible(true, "JARVIS is thinking...");
     }
 
     private void EndResponse()
@@ -497,13 +558,59 @@ namespace WileyWidget.WinForms.Controls.Panels
       _isAwaitingResponse = false;
       _activeResponseMessage = null;
       _streamingResponse.Clear();
+      SetPendingStateVisible(false);
       if (_assistView != null)
       {
-        _assistView.ShowTypingIndicator = false;
         TryScrollAssistViewToBottom();
       }
 
       UpdateResponseActionStates();
+    }
+
+    private void SetPendingStateVisible(bool isVisible, string statusText = "JARVIS is thinking...")
+    {
+      if (_responseStatusLabel != null)
+      {
+        _responseStatusLabel.Text = statusText;
+      }
+
+      if (_responseStatusPanel != null)
+      {
+        _responseStatusPanel.Visible = isVisible;
+      }
+
+      if (_responseStatusProgressBar != null)
+      {
+        _responseStatusProgressBar.Visible = isVisible;
+      }
+
+      if (_assistView != null)
+      {
+        _assistView.ShowTypingIndicator = isVisible;
+      }
+
+      _responseStatusPanel?.PerformLayout();
+      _responseStatusPanel?.Invalidate(true);
+      _responseStatusPanel?.Update();
+      _assistHost?.PerformLayout();
+      _assistHost?.Invalidate(true);
+      _assistHost?.Update();
+      _assistView?.Invalidate(true);
+      _assistView?.Update();
+    }
+
+    private async Task FlushPendingStateAsync()
+    {
+      if (IsDisposed)
+      {
+        return;
+      }
+
+      _responseStatusPanel?.Refresh();
+      _assistHost?.Refresh();
+      _assistView?.Refresh();
+      Refresh();
+      await Task.Yield();
     }
 
     private void AppendAssistantMessage(string content)
@@ -765,16 +872,14 @@ namespace WileyWidget.WinForms.Controls.Panels
       {
         button.Name = "JarvisResponseViewerCloseButton";
         button.Dock = DockStyle.Right;
-        button.Width = 100;
-      });
+      }, SyncfusionControlFactory.SfButtonLayoutProfile.Toolbar);
       closeButton.Click += (_, _) => viewer.Close();
 
       var exportButton = _factory.CreateSfButton("Export", button =>
       {
         button.Name = "JarvisResponseViewerExportButton";
         button.Dock = DockStyle.Right;
-        button.Width = 100;
-      });
+      }, SyncfusionControlFactory.SfButtonLayoutProfile.Toolbar);
       exportButton.Click += async (_, _) =>
       {
         var exportResult = await ExportWorkflowService.ExecuteWithSaveDialogAsync(
@@ -798,8 +903,7 @@ namespace WileyWidget.WinForms.Controls.Panels
       {
         button.Name = "JarvisResponseViewerCopyButton";
         button.Dock = DockStyle.Right;
-        button.Width = 100;
-      });
+      }, SyncfusionControlFactory.SfButtonLayoutProfile.Toolbar);
       copyButton.Click += (_, _) =>
       {
         try

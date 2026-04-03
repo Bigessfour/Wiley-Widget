@@ -99,7 +99,9 @@ Examples:
 
 1. Open Wiley Widget.
 2. Go to the QuickBooks area.
-3. Choose the QuickBooks Desktop import action.
+3. Choose the import action that matches your export:
+   - Import CSV/Excel for report exports in `.csv`, `.xlsx`, or `.xls`
+   - Import Desktop File for the broader desktop import flow, including IIF files
 4. Select the file you exported.
 5. Wait while Wiley Widget auto-detects the export type and imports the records.
 6. Review the completion message before closing the panel.

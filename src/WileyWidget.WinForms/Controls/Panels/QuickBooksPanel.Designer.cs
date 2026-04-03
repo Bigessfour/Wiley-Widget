@@ -69,7 +69,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._splitContainerTop.Orientation = System.Windows.Forms.Orientation.Vertical;
             this._splitContainerTop.SplitterWidth = 6;
             this._splitContainerTop.Dock = DockStyle.Fill;
-            this._splitContainerTop.IsSplitterFixed = true; // Connection/Ops are always 50/50 — drag Main and Bottom splitters to resize content areas
+            this._splitContainerTop.IsSplitterFixed = false; // Allow runtime sizing to favor the operations pane when buttons need more space
 
             // Bottom split (summary / history)
             this._splitContainerBottom.Name = "splitContainerBottom";

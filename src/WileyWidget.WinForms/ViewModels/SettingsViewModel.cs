@@ -64,7 +64,7 @@ namespace WileyWidget.WinForms.ViewModels
         /// Available Syncfusion WinForms themes. User selection is applied globally via SfSkinManager.ApplicationVisualTheme.
         /// Each theme cascades to all controls in the application automatically.
         /// Per Syncfusion documentation: Only Office2016Theme, Office2019Theme, and HighContrastTheme are supported.
-        /// FluentTheme and MaterialTheme are NOT available in Windows Forms (Web/Blazor only).
+        /// FluentTheme and MaterialTheme are not available in Syncfusion WinForms.
         /// </summary>
         public IReadOnlyList<string> Themes { get; } = new List<string>
         {

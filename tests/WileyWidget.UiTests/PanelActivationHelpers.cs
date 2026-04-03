@@ -662,8 +662,34 @@ namespace WileyWidget.UiTests
         /// </summary>
         public static void ActivatePanel<T>(Window window, UIA2Automation automation, TimeSpan timeout) where T : class
         {
-            var panelName = typeof(T).Name.Replace("Panel", ""); // e.g., BudgetPanel -> Budget
-            TryActivatePanel(window, new[] { panelName }, timeout, automation);
+            TryActivatePanel(window, GetActivationCandidates(typeof(T)), timeout, automation);
+        }
+
+        private static string[] GetActivationCandidates(Type panelType)
+        {
+            return panelType.Name switch
+            {
+                "BudgetPanel" =>
+                [
+                    UiTestConstants.BudgetPanelTitle,
+                    "Budget\nMgmt",
+                    "Budget Mgmt",
+                    "Budget"
+                ],
+                "EnterpriseVitalSignsPanel" =>
+                [
+                    "Enterprise Vital Signs",
+                    "Dashboard",
+                    "Home"
+                ],
+                "AccountsPanel" =>
+                [
+                    "Municipal Accounts",
+                    "Chart of Accounts",
+                    "Accounts"
+                ],
+                _ => [panelType.Name.Replace("Panel", string.Empty, StringComparison.Ordinal)]
+            };
         }
     }
 }

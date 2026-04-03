@@ -183,17 +183,40 @@ namespace WileyWidget.WinForms.Forms
 
         private void QueueRightDockJarvisInitialization()
         {
-            if (_rightDockJarvisPanel is not IAsyncInitializable asyncInitializable || _rightDockJarvisPanel.IsDisposed)
+            void queueCore()
+            {
+                if (_rightDockJarvisPanel is not IAsyncInitializable asyncInitializable || _rightDockJarvisPanel.IsDisposed)
+                {
+                    return;
+                }
+
+                if (_rightDockJarvisInitializationTask != null && !_rightDockJarvisInitializationTask.IsCompleted)
+                {
+                    return;
+                }
+
+                _rightDockJarvisInitializationTask = InitializeRightDockJarvisPanelAsync(asyncInitializable);
+            }
+
+            if (IsDisposed || Disposing)
             {
                 return;
             }
 
-            if (_rightDockJarvisInitializationTask != null && !_rightDockJarvisInitializationTask.IsCompleted)
+            if (IsHandleCreated)
             {
-                return;
+                try
+                {
+                    BeginInvoke((MethodInvoker)queueCore);
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    // Fall back to direct invocation while the handle is being recreated.
+                }
             }
 
-            _rightDockJarvisInitializationTask = InitializeRightDockJarvisPanelAsync(asyncInitializable);
+            queueCore();
         }
 
         private async Task InitializeRightDockJarvisPanelAsync(IAsyncInitializable asyncInitializable)
@@ -253,41 +276,61 @@ namespace WileyWidget.WinForms.Forms
             _rightDockJarvisPanel = jarvisChatPanel;
             _rightDockJarvisInitializationTask = null;
 
-            // Remove the old temporary panel that was created by InitializeLayoutComponents.
-            // If we don't do this, both the stub and the real panel sit in host.Controls with
-            // DockStyle.Right and steal ~740 px of horizontal space from the MDI client area.
-            if (oldPanel != null && !oldPanel.IsDisposed && !ReferenceEquals(oldPanel, rightDockPanel))
-            {
-                oldPanel.Parent?.Controls.Remove(oldPanel);
-                _logger?.LogDebug("[NAV] Removed previous right dock panel '{PanelName}' before adding real panel", oldPanel.Name);
-            }
-
-            // Add the real panel to the form so the native WinForms MDI client can continue to own
-            // the remaining DockStyle.Fill area.
             var host = (Control)this;
-            if (_rightDockPanel.Parent != host)
+            var redrawSuspended = TrySuspendRedraw("RIGHT_DOCK_INIT");
+            host.SuspendLayout();
+
+            try
             {
-                _rightDockPanel.Parent?.Controls.Remove(_rightDockPanel);
-                host.Controls.Add(_rightDockPanel);
+                _rightDockPanel.SuspendLayout();
+
+                try
+                {
+                    // Remove the old temporary panel that was created by InitializeLayoutComponents.
+                    // If we don't do this, both the stub and the real panel sit in host.Controls with
+                    // DockStyle.Right and steal ~740 px of horizontal space from the MDI client area.
+                    if (oldPanel != null && !oldPanel.IsDisposed && !ReferenceEquals(oldPanel, rightDockPanel))
+                    {
+                        oldPanel.Parent?.Controls.Remove(oldPanel);
+                        _logger?.LogDebug("[NAV] Removed previous right dock panel '{PanelName}' before adding real panel", oldPanel.Name);
+                    }
+
+                    // Add the real panel to the form so the native WinForms MDI client can continue to own
+                    // the remaining DockStyle.Fill area.
+                    if (_rightDockPanel.Parent != host)
+                    {
+                        _rightDockPanel.Parent?.Controls.Remove(_rightDockPanel);
+                        host.Controls.Add(_rightDockPanel);
+                    }
+                    _rightDockPanel.Dock = DockStyle.Right;
+                    // 350 px minimum; no MaximumSize so the user can resize via the splitter.
+                    // Width is already 420 from the factory; re-assert here in case re-init is called.
+                    _rightDockPanel.MinimumSize = new Size(350, 0);
+                    _rightDockPanel.MaximumSize = new Size(0, 0);   // 0,0 = no maximum constraint
+                    if (_rightDockPanel.Width < 350) _rightDockPanel.Width = 500;
+                    _rightDockPanel.Visible = true;  // explicit: sidebar is always shown once initialized
+
+                    EnsureRightDockSplitter(host);
+                    EnsureJarvisAutoHideStrip(host);
+
+                    _logger?.LogDebug(
+                        "[NAV] Right dock panel configured — Dock={Dock}, Width={Width}, Host={Host}, ControlsInHost={ControlCount}",
+                        _rightDockPanel.Dock, _rightDockPanel.Width,
+                        host.Name, host.Controls.Count);
+
+                    _rightDockPanel.BringToFront();
+                }
+                finally
+                {
+                    _rightDockPanel.ResumeLayout(false);
+                }
             }
-            _rightDockPanel.Dock = DockStyle.Right;
-            // 350 px minimum; no MaximumSize so the user can resize via the splitter.
-            // Width is already 420 from the factory; re-assert here in case re-init is called.
-            _rightDockPanel.MinimumSize = new Size(350, 0);
-            _rightDockPanel.MaximumSize = new Size(0, 0);   // 0,0 = no maximum constraint
-            if (_rightDockPanel.Width < 350) _rightDockPanel.Width = 500;
-            _rightDockPanel.Visible = true;  // explicit: sidebar is always shown once initialized
+            finally
+            {
+                host.ResumeLayout(true);
+                ResumeRedraw(redrawSuspended, "RIGHT_DOCK_INIT");
+            }
 
-            EnsureRightDockSplitter(host);
-            EnsureJarvisAutoHideStrip(host);
-
-            _logger?.LogDebug(
-                "[NAV] Right dock panel configured — Dock={Dock}, Width={Width}, Host={Host}, ControlsInHost={ControlCount}",
-                _rightDockPanel.Dock, _rightDockPanel.Width,
-                host.Name, host.Controls.Count);
-
-            _rightDockPanel.BringToFront();
-            PerformLayout();
             RequestMdiConstrain("EnsureRightDockPanelInitialized", force: true);
 
             _logger?.LogInformation(

@@ -18,6 +18,7 @@ using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Extensions;
+using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.ViewModels;
 using WileyWidget.WinForms.Services;
@@ -53,8 +54,33 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
     private async void PaymentsPanel_Load(object? sender, EventArgs e)
     {
+        if (ShouldSkipAutoLoadForTestHarness())
+        {
+            Logger?.LogDebug("PaymentsPanel: Skipping load for UI test harness");
+            return;
+        }
+
         Logger?.LogDebug("PaymentsPanel: Load event fired, loading payment data");
         await LoadDataAsync();
+    }
+
+    private bool ShouldSkipAutoLoadForTestHarness()
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable("WILEY_TESTMODE"), "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            return Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+                .GetService<UIConfiguration>(ServiceProvider)?.IsUiTestHarness == true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public async Task LoadDataAsync(CancellationToken cancellationToken = default)

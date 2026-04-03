@@ -145,6 +145,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
 
             table.Controls.Add(container, 1, 1);
             Controls.Add(table);
+
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine($"[LOADINGOVERLAY] {GetType().Name} initialized | Size={Width}x{Height} | Dock={Dock} | Visible={Visible} | Parent={Parent?.GetType().Name ?? "null"}");
+#endif
         }
 
         /// <summary>
@@ -180,6 +184,10 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     BringToFront();
                 }
+
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[LOADINGOVERLAY] {GetType().Name} Visible={value} | Size={Width}x{Height} | ParentHostSize={Parent?.Width ?? 0}x{Parent?.Height ?? 0} | ZOrder=Top");
+#endif
             }
         }
     }

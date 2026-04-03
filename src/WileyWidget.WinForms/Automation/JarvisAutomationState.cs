@@ -25,11 +25,11 @@ namespace WileyWidget.WinForms.Automation
             UpdateState(_ => JarvisAutomationSnapshot.Empty);
         }
 
-        public void MarkBlazorReady(bool assistViewReady)
+        public void MarkChatUiReady(bool assistViewReady)
         {
             UpdateState(current => current with
             {
-                BlazorReady = true,
+                ChatUiReady = true,
                 AssistViewReady = current.AssistViewReady || assistViewReady
             });
         }
@@ -86,7 +86,7 @@ namespace WileyWidget.WinForms.Automation
     }
 
     public sealed record JarvisAutomationSnapshot(
-        bool BlazorReady,
+        bool ChatUiReady,
         bool AssistViewReady,
         bool DiagnosticsReady,
         int PromptCount,
@@ -96,7 +96,7 @@ namespace WileyWidget.WinForms.Automation
         DateTime LastUpdatedUtc)
     {
         public static JarvisAutomationSnapshot Empty { get; } = new(
-            BlazorReady: false,
+            ChatUiReady: false,
             AssistViewReady: false,
             DiagnosticsReady: false,
             PromptCount: 0,
@@ -108,7 +108,7 @@ namespace WileyWidget.WinForms.Automation
         public string ToStatusString()
         {
             return string.Join(";",
-                $"BlazorReady={BlazorReady}",
+                $"ChatUiReady={ChatUiReady}",
                 $"AssistViewReady={AssistViewReady}",
                 $"DiagnosticsReady={DiagnosticsReady}",
                 $"PromptCount={PromptCount}",

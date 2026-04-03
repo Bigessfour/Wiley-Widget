@@ -21,8 +21,9 @@ public sealed class MainViewModelIntegrationTests(IntegrationTestFixture fixture
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
+        using var scope = provider.CreateScope();
 
-        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(provider);
+        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scope.ServiceProvider);
 
         viewModel.Should().NotBeNull();
         viewModel.Title.Should().Contain("Wiley Widget");
@@ -35,8 +36,9 @@ public sealed class MainViewModelIntegrationTests(IntegrationTestFixture fixture
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
+        using var scope = provider.CreateScope();
 
-        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(provider);
+        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scope.ServiceProvider);
 
         var propertyChangedCalled = false;
         string? changedProperty = null;
@@ -61,8 +63,9 @@ public sealed class MainViewModelIntegrationTests(IntegrationTestFixture fixture
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
+        using var scope = provider.CreateScope();
 
-        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(provider);
+        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scope.ServiceProvider);
 
         // Initially not loaded
         viewModel.IsDataLoaded.Should().BeFalse();
@@ -81,8 +84,9 @@ public sealed class MainViewModelIntegrationTests(IntegrationTestFixture fixture
         Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
 
         using var provider = IntegrationTestServices.BuildProvider();
+        using var scope = provider.CreateScope();
 
-        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(provider);
+        var viewModel = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<MainViewModel>(scope.ServiceProvider);
 
         // Dispose
         viewModel.Dispose();

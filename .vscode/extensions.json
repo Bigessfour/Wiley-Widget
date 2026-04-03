@@ -21,6 +21,8 @@
     "ms-mssql.sql",
     "mtxr.sqltools",
     "mtxr.sqltools-driver-mssql",
+    "ms-azuretools.vscode-docker",
+    "ms-vscode-remote.remote-containers",
 
     // === PowerShell & Scripting ===
     "ms-vscode.PowerShell",

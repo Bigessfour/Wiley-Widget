@@ -9,20 +9,20 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         public JarvisAutomationStatus() : this(false, false, false, 0, 0) { }
 
         private JarvisAutomationStatus(
-            bool blazorReady,
+            bool chatUiReady,
             bool assistViewReady,
             bool diagnosticsReady,
             int promptCount,
             int responseCount)
         {
-            BlazorReady = blazorReady;
+            ChatUiReady = chatUiReady;
             AssistViewReady = assistViewReady;
             DiagnosticsReady = diagnosticsReady;
             PromptCount = promptCount;
             ResponseCount = responseCount;
         }
 
-        public bool BlazorReady { get; }
+        public bool ChatUiReady { get; }
         public bool AssistViewReady { get; }
         public bool DiagnosticsReady { get; }
         public int PromptCount { get; }
@@ -31,7 +31,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
         public string ToStatusString()
         {
             return string.Join(";",
-                $"BlazorReady={BlazorReady}",
+                $"ChatUiReady={ChatUiReady}",
                 $"AssistViewReady={AssistViewReady}",
                 $"DiagnosticsReady={DiagnosticsReady}",
                 $"PromptCount={PromptCount}",
@@ -47,7 +47,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
             }
 
             var parts = statusText.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var blazorReady = false;
+            var chatUiReady = false;
             var assistViewReady = false;
             var diagnosticsReady = false;
             var promptCount = 0;
@@ -64,11 +64,11 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 var key = pair[0];
                 var value = pair[1];
 
-                if (key.Equals("BlazorReady", StringComparison.OrdinalIgnoreCase))
+                if (key.Equals("ChatUiReady", StringComparison.OrdinalIgnoreCase))
                 {
                     if (bool.TryParse(value, out var parsed))
                     {
-                        blazorReady = parsed;
+                        chatUiReady = parsed;
                     }
                 }
                 else if (key.Equals("AssistViewReady", StringComparison.OrdinalIgnoreCase))
@@ -101,7 +101,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 }
             }
 
-            status = new JarvisAutomationStatus(blazorReady, assistViewReady, diagnosticsReady, promptCount, responseCount);
+            status = new JarvisAutomationStatus(chatUiReady, assistViewReady, diagnosticsReady, promptCount, responseCount);
             return true;
         }
     }

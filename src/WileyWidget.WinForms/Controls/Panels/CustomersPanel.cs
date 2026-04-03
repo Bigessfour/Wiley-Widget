@@ -651,23 +651,18 @@ public partial class CustomersPanel : ScopedPanelBase<CustomersViewModel>
     private Label CreateSummaryLabel(string text)
     {
         var currentTheme = SfSkinManager.ApplicationVisualTheme ?? WileyWidget.WinForms.Themes.ThemeColors.DefaultTheme;
-        var cardPanel = new Panel
-        {
-            Width = 180,
-            Height = 40,
-            BorderStyle = BorderStyle.FixedSingle,
-            Margin = new Padding(5),
-            AutoSize = false
-        };
-        SfSkinManager.SetVisualStyle(cardPanel, currentTheme);
-
         var label = new Label
         {
             Text = text,
-            Dock = DockStyle.Fill,
+            AutoSize = false,
+            Width = 180,
+            Height = 40,
+            MinimumSize = new Size(180, 40),
+            BorderStyle = BorderStyle.FixedSingle,
+            Margin = new Padding(5),
             TextAlign = ContentAlignment.MiddleCenter
         };
-        cardPanel.Controls.Add(label);
+        SfSkinManager.SetVisualStyle(label, currentTheme);
 
         return label;
     }

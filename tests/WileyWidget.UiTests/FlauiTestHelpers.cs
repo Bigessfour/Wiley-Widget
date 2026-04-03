@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
@@ -60,11 +62,12 @@ namespace WileyWidget.UiTests
         public static AutomationElement WaitForPanel<T>(this Window window, TimeSpan timeout = default) where T : ScopedPanelBase
         {
             timeout = timeout == default ? TimeSpan.FromSeconds(10) : timeout;
+            var candidates = GetPanelLookupCandidates(typeof(T));
             var result = Retry.WhileNull(() =>
             {
                 try
                 {
-                    return window.FindFirstDescendant(cf => cf.ByAutomationId(typeof(T).Name));
+                    return FindFirstMatchingDescendant(window, candidates);
                 }
                 catch
                 {
@@ -78,7 +81,53 @@ namespace WileyWidget.UiTests
                 return result.Result;
             }
 
-            throw new TimeoutException($"Panel {typeof(T).Name} not found within {timeout.TotalSeconds}s");
+            throw new TimeoutException($"Panel {typeof(T).Name} not found within {timeout.TotalSeconds}s using markers: {string.Join(", ", candidates)}");
+        }
+
+        private static AutomationElement? FindFirstMatchingDescendant(AutomationElement root, IReadOnlyList<string> candidates)
+        {
+            foreach (var candidate in candidates)
+            {
+                var exact = root.FindFirstDescendant(cf => cf.ByAutomationId(candidate).Or(cf.ByName(candidate)));
+                if (exact != null)
+                {
+                    return exact;
+                }
+            }
+
+            return root.FindAllDescendants().FirstOrDefault(element =>
+            {
+                var automationId = FlaUiHelpers.TryGetAutomationId(element);
+                var name = FlaUiHelpers.TryGetName(element);
+
+                return candidates.Any(candidate =>
+                    string.Equals(automationId, candidate, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, candidate, StringComparison.OrdinalIgnoreCase)
+                    || (!string.IsNullOrWhiteSpace(name) && name.Contains(candidate, StringComparison.OrdinalIgnoreCase)));
+            });
+        }
+
+        private static string[] GetPanelLookupCandidates(Type panelType)
+        {
+            return panelType.Name switch
+            {
+                "BudgetPanel" =>
+                [
+                    panelType.Name,
+                    UiTestConstants.BudgetPanelTitle,
+                    "BudgetManagementPanel",
+                    "Load Budgets",
+                    "Budget Entries"
+                ],
+                "EnterpriseVitalSignsPanel" =>
+                [
+                    panelType.Name,
+                    "Enterprise Vital Signs",
+                    "financial snapshot",
+                    "monthly narrative"
+                ],
+                _ => [panelType.Name, panelType.Name.Replace("Panel", string.Empty, StringComparison.Ordinal)]
+            };
         }
 
         public static void ClickSfButton(this AutomationElement element, string buttonAutomationId)

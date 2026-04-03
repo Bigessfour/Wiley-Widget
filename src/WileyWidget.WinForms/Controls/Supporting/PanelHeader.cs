@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows.Forms;
 using Syncfusion.Windows.Forms.Tools;
 using Syncfusion.Drawing;
@@ -32,7 +33,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// </summary>
     public partial class PanelHeader : UserControl
     {
-        private const int HEADER_HEIGHT = 52;
+        private const int HEADER_HEIGHT = 60;
         private const int HEADER_MIN_WIDTH = 320;
         private const int BUTTON_MARGIN_H = 6;
         private const int BUTTON_MARGIN_V = 6;
@@ -60,6 +61,12 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private bool _refreshButtonVisible = true;
         private bool _pinButtonVisible = true;
         private bool _closeButtonVisible = true;
+
+        [Conditional("DEBUG")]
+        private static void WriteLayoutTrace(string message)
+        {
+            Debug.WriteLine(message);
+        }
 
         /// <summary>Raised when the user clicks Refresh.</summary>
         public event EventHandler? RefreshClicked;
@@ -140,6 +147,8 @@ namespace WileyWidget.WinForms.Controls.Supporting
                 {
                     _loadingSpinner.Visible = value;
                 }
+
+                WriteLayoutTrace($"[PANELHEADER] IsLoading={value} | Size={Width}x{Height} | ParentHostSize={Parent?.Width ?? 0}x{Parent?.Height ?? 0}");
             }
         }
 
@@ -338,7 +347,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
                     btn.TabStop = true;
                     btn.TextImageRelation = TextImageRelation.ImageBeforeText;
                     btn.ImageAlign = ContentAlignment.MiddleCenter;
-                });
+                }, SyncfusionControlFactory.SfButtonLayoutProfile.HeaderAction);
             }
 
             return new SfButton
@@ -404,7 +413,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             Height = HEADER_HEIGHT;
             MinimumSize = new Size(HEADER_MIN_WIDTH, HEADER_HEIGHT);
             AutoSize = false; // Explicit false - we control the height
-            Padding = new Padding(8);
+            Padding = new Padding(8, 12, 8, 8);
             Dock = DockStyle.Top;
 
             // Compute button sizing based on header height and padding
@@ -522,6 +531,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             headerLayout.Controls.Add(_titleLabel, 0, 0);
             headerLayout.Controls.Add(actionsPanel, 1, 0);
             Controls.Add(headerLayout);
+            WriteLayoutTrace($"[PANELHEADER] Initialized | Title={Title} | HeaderSize={Width}x{Height} | ActionsPanelWidth={actionsPanel.Width} | CollapseThreshold={ACTION_COLLAPSE_THRESHOLD_WIDTH}");
             SizeChanged += PanelHeader_SizeChanged;
             UpdateResponsiveButtonLayout();
 
@@ -533,6 +543,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
         private void PanelHeader_SizeChanged(object? sender, EventArgs e)
         {
             UpdateResponsiveButtonLayout();
+            WriteLayoutTrace($"[PANELHEADER] SizeChanged | Size={Width}x{Height} | ParentHostSize={Parent?.Width ?? 0}x{Parent?.Height ?? 0} | Collapsed={_collapseActionButtons}");
         }
 
         private void RefreshButton_Click(object? sender, EventArgs e)
@@ -659,6 +670,7 @@ namespace WileyWidget.WinForms.Controls.Supporting
             UpdatePinButtonAppearance();
             UpdateButtonLayout(_btnHelp, "Help");
             UpdateButtonLayout(_btnClose, "Close");
+            WriteLayoutTrace($"[PANELHEADER] ResponsiveLayout | Size={Width}x{Height} | Collapsed={_collapseActionButtons} | RefreshWidth={_btnRefresh?.Width ?? 0} | CloseWidth={_btnClose?.Width ?? 0}");
         }
 
         private void UpdateButtonLayout(SfButton? button, string text)

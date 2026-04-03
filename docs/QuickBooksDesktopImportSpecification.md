@@ -108,6 +108,7 @@ Implementation consequence:
 - Extend `QuickBooksPanel` instead of creating a disconnected panel type.
 - Keep `RibbonControlAdv` and the existing QuickBooks panel as the user entry point.
 - If a ribbon shortcut is added later, it must navigate to the same QuickBooks panel action and not create a parallel workflow.
+  z- The panel now exposes both a legacy desktop import action and a dedicated CSV/Excel import action so clerk exports can stay on the same shell surface without duplicating import logic.
 
 ### Syncfusion 33.1.44 controls to use
 

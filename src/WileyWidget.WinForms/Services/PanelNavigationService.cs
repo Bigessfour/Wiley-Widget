@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -46,6 +47,12 @@ namespace WileyWidget.WinForms.Services
     public sealed class PanelNavigationService : IPanelNavigationService
     {
         private const int MinimumPanelTopInsetLogical = 8;
+        private const int WM_SETREDRAW = 0x000B;
+        private const uint RDW_INVALIDATE = 0x0001;
+        private const uint RDW_ERASE = 0x0004;
+        private const uint RDW_ALLCHILDREN = 0x0080;
+        private const uint RDW_UPDATENOW = 0x0100;
+        private const uint RDW_FRAME = 0x0400;
 
         private readonly Form _owner;
         private readonly IServiceProvider _serviceProvider;
@@ -409,6 +416,7 @@ namespace WileyWidget.WinForms.Services
 
             EnsureTrackedHost(panelName, host);
 
+            var suspendedRedraw = SuspendRedraw(_owner, host, hostedPanel);
             var suspendedControls = SuspendLayouts(_owner, host, hostedPanel);
             var panelAttached = false;
 
@@ -440,6 +448,7 @@ namespace WileyWidget.WinForms.Services
             finally
             {
                 ResumeLayouts(suspendedControls, performLayout: false);
+                ResumeRedraw(suspendedRedraw);
             }
         }
 
@@ -1133,6 +1142,29 @@ namespace WileyWidget.WinForms.Services
             return suspended;
         }
 
+        private static List<Control> SuspendRedraw(params Control?[] controls)
+        {
+            var suspended = new List<Control>();
+
+            foreach (var control in controls)
+            {
+                if (control == null || control.IsDisposed || !control.IsHandleCreated)
+                {
+                    continue;
+                }
+
+                if (suspended.Contains(control))
+                {
+                    continue;
+                }
+
+                SendMessage(control.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
+                suspended.Add(control);
+            }
+
+            return suspended;
+        }
+
         private static void ResumeLayouts(List<Control> controls, bool performLayout)
         {
             for (var index = controls.Count - 1; index >= 0; index--)
@@ -1146,6 +1178,31 @@ namespace WileyWidget.WinForms.Services
                 control.ResumeLayout(performLayout);
             }
         }
+
+        private static void ResumeRedraw(List<Control> controls)
+        {
+            for (var index = controls.Count - 1; index >= 0; index--)
+            {
+                var control = controls[index];
+                if (control.IsDisposed || !control.IsHandleCreated)
+                {
+                    continue;
+                }
+
+                SendMessage(control.Handle, WM_SETREDRAW, new IntPtr(1), IntPtr.Zero);
+                RedrawWindow(
+                    control.Handle,
+                    IntPtr.Zero,
+                    IntPtr.Zero,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME);
+            }
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RedrawWindow(IntPtr hWnd, IntPtr lprcUpdate, IntPtr hrgnUpdate, uint flags);
     }
 
     public class PanelActivatedEventArgs : EventArgs

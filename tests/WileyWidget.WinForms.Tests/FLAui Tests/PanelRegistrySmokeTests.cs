@@ -101,10 +101,10 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
 
                 case "Reports":
                     Assert.True(
-                        FlaUiHelpers.FindElementByName(window, "Report Selector", TimeSpan.FromSeconds(10)) != null,
+                        FlaUiHelpers.FindElementByNameOrId(window, "Report Selector", "reportSelector", TimeSpan.FromSeconds(10)) != null,
                         "Reports panel should expose the report selector.");
                     Assert.True(
-                        FlaUiHelpers.FindElementByName(window, "Generate", TimeSpan.FromSeconds(10)) != null,
+                        FlaUiHelpers.FindElementByNameOrId(window, "Generate Report", "Toolbar_Generate", TimeSpan.FromSeconds(10)) != null,
                         "Reports panel should expose the Generate action.");
                     break;
 
@@ -139,7 +139,7 @@ namespace WileyWidget.WinForms.Tests.Integration.Ui
                 "Municipal Accounts" => PanelActivationHelpers.EnsureAccountsPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
                 "Payments" => PanelActivationHelpers.EnsurePaymentsPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
                 "QuickBooks" => PanelActivationHelpers.EnsureQuickBooksPanelVisibleOrHostGated(window, EnsureAutomation(), timeout),
-                _ => PanelActivationHelpers.EnsurePanelVisibleOrHostGated(window, displayName, timeout)
+                _ => PanelActivationHelpers.EnsurePanelVisibleOrHostGated(window, displayName, timeout, EnsureAutomation())
             };
         }
     }

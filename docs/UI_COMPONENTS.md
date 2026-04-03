@@ -12,7 +12,7 @@ Wiley-Widget uses a **N-tier MVVM architecture** with Syncfusion Windows Forms c
 src/WileyWidget.WinForms/
 ├── Forms/
 │   ├── MainForm.cs                 # Primary application window
-│   ├── RightPanel.cs               # Blazor WebView host for JARVIS chat
+│   ├── RightPanel.cs               # Legacy placeholder; JARVIS now lives in native panel navigation
 │   ├── SplashForm.cs               # Startup splash screen
 │   └── ...
 ├── Controls/
@@ -26,9 +26,6 @@ src/WileyWidget.WinForms/
 │   │   ├── MainForm.RibbonHelpers.cs # Ribbon helper methods
 │   │   ├── StatusBarFactory.cs     # Status bar setup
 │   │   └── PanelRegistry.cs        # Panel registration and defaults
-│   ├── Components/
-│   │   ├── JARVISAssist.razor      # Blazor chat component
-│   │   └── ...
 │   └── Panels/
 │       ├── EnterpriseVitalSignsPanel.cs # Core navigation financial overview
 │       ├── QuickBooksPanel.cs      # QuickBooks integration UI
@@ -137,99 +134,53 @@ public override void OnActivate()
 - Cancellation token support
 - Audit trail for all sync events (via ActivityLogPanel)
 
-### **RightPanel** (Blazor WebView - JARVIS Chat)
+### **JARVISChatUserControl** (Native SfAIAssistView)
 
-**File:** `src/WileyWidget.WinForms/Forms/RightPanel.cs`
+**File:** `src/WileyWidget.WinForms/Controls/Panels/JARVISChatUserControl.cs`
 
 **Architecture:**
 
 ```csharp
-public class RightPanel : Form
+public sealed partial class JARVISChatUserControl : ScopedPanelBase<JARVISChatViewModel>, IAsyncInitializable
 {
-    private WindowsFormsBlazorWebView _blazorWebView;
-    private RootComponent _rootComponent;
+    private SfAIAssistView? _assistView;
+    private Panel? _assistHost;
 
-    public RightPanel(IServiceProvider serviceProvider)
+    private void BuildPanelUi()
     {
-        // 1. Create BlazorWebView
-        _blazorWebView = new WindowsFormsBlazorWebView
+        _assistHost = new Panel
         {
-            Dock = DockStyle.Fill
+            Name = "JarvisAssistHost",
+            Dock = DockStyle.Fill,
+            Padding = new Padding(0, 0, 0, 24)
         };
 
-        // 2. Register Blazor DI services (WebView scope)
-        _blazorWebView.Services.AddWindowsFormsBlazorWebView();
-        _blazorWebView.Services.AddSyncfusionBlazor();
-        _blazorWebView.Services.AddScoped<IUserContext, UserContext>();
-
-        // 3. Set root component
-        _blazorWebView.RootComponents.Add(new RootComponent
+        _assistView = _factory.CreateSfAIAssistView(control =>
         {
-            ComponentType = typeof(JARVISAssist),
-            Selector = "#app"
+            control.Name = "JarvisAssistView";
+            control.Dock = DockStyle.Fill;
         });
+
+        _assistView.PromptRequest += OnPromptRequest;
+        _assistHost.Controls.Add(_assistView);
+        Controls.Add(_assistHost);
     }
 }
 ```
 
-**Blazor Component:** `src/WileyWidget.WinForms/UI/Components/JARVISAssist.razor`
+**Runtime Responsibilities:**
 
-```razor
-@inject IUserContext UserContext
-@inject IChatBridgeService ChatBridge
-
-<div class="jarvis-container">
-    <div class="chat-messages" @ref="messagesDiv">
-        @foreach (var msg in messages)
-        {
-            @if (msg.IsUserMessage)
-            {
-                <div class="user-msg">@msg.Text</div>
-            }
-            else
-            {
-                <div class="bot-msg">@msg.Text</div>
-                @if (msg.IsLoading)
-                {
-                    <div class="typing-indicator">
-                        <span></span><span></span><span></span>
-                    </div>
-                }
-            }
-        }
-    </div>
-    <textarea @bind="userInput" placeholder="Ask JARVIS..." />
-    <button @onclick="SendMessage">Send</button>
-</div>
-
-<style>
-.typing-indicator {
-    display: flex;
-    gap: 4px;
-}
-.typing-indicator span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
-    animation: bounce 1.4s infinite;
-}
-.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes bounce {
-    0%, 80%, 100% { opacity: 0.4; }
-    40% { opacity: 1; }
-}
-</style>
-```
+- Native prompt and response rendering through `SfAIAssistView`
+- Suggestions and typing indicator configuration in WinForms code
+- Prompt/response exchange through `IChatBridgeService` and `JarvisGrokBridgeHandler`
+- Automation readiness surfaced through `JarvisAutomationState`
 
 **Lifecycle:**
 
-1. `RightPanel.OnLoad` → Creates BlazorWebView
-2. `JARVISAssist.OnInitialized()` → Injects `IUserContext`, subscribes to chat bridge
-3. `SendMessage()` → Calls xAI Grok API via `IChatBridgeService`
-4. Response flows back via `IChatBridgeService.OnMessageReceived` event
+1. `JARVISChatUserControl.InitializeAsync()` resolves bridge and theme services
+2. `BuildPanelUi()` creates the assist host and `SfAIAssistView`
+3. `OnPromptRequest()` forwards prompts through `IChatBridgeService`
+4. Responses flow back through `IChatBridgeService.OnMessageReceived` and chunk events
 
 ---
 
@@ -483,43 +434,19 @@ public partial class MainForm : Form
 
 ### **Typing Indicator**
 
-Located in: `src/WileyWidget.WinForms/UI/Components/JARVISAssist.razor`
+Located in: `src/WileyWidget.WinForms/Controls/Panels/JARVISChatUserControl.cs`
 
 **Implementation:**
 
-```razor
-<div class="typing-indicator" @if(isLoading)>
-    <span></span>
-    <span></span>
-    <span></span>
-</div>
-
-<style>
-.typing-indicator {
-    display: flex;
-    gap: 4px;
-}
-
-.typing-indicator span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
-    animation: bounce 1.4s infinite;
-}
-
-.typing-indicator span:nth-child(1) { animation-delay: 0s; }
-.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes bounce {
-    0%, 80%, 100% { opacity: 0.4; transform: translateY(0); }
-    40% { opacity: 1; transform: translateY(-8px); }
-}
-</style>
+```csharp
+_assistView.TypingIndicator = new TypingIndicator
+{
+    Author = _assistantAuthor,
+    DisplayText = "JARVIS is thinking..."
+};
 ```
 
-**Performance:** CSS animations run at 60fps on GPU; no JavaScript overhead.
+**Performance:** Native control rendering avoids web-host overhead and keeps animation/state changes inside the WinForms message loop.
 
 ### **Message Fade-In**
 
@@ -573,7 +500,7 @@ Before committing UI changes:
 - [ ] **DPI Scaling**: Test at 100%, 125%, 150% DPI
 - [ ] **Accessibility**: Semantic colors for status (not custom colors)
 - [ ] **Animation Performance**: No jank at 60fps on standard hardware
-- [ ] **Blazor Interop**: Chat messages update without flicker
+- [ ] **Native Chat Updates**: Chat messages stream into the assist view without flicker
 - [ ] **Layout Persistence**: Saved/restored docking layouts match user expectations
 
 ### **Run Tests**
@@ -670,6 +597,5 @@ protected override void OnResize(EventArgs e)
 ## References
 
 - **Syncfusion WinForms**: <https://help.syncfusion.com/windowsforms/overview>
-- **Blazor Integration**: [BLAZOR_INTEGRATION.md](BLAZOR_INTEGRATION.md)
 - **Docking Manager API**: <https://help.syncfusion.com/windowsforms/docking-manager/getting-started>
 - **Theme Management**: [Approved Workflow - Theme Enforcement](./.vscode/copilot-instructions.md#sfskinmanager-theme-enforcement)

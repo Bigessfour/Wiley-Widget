@@ -8,8 +8,8 @@ using WileyWidget.Services.Abstractions;
 namespace WileyWidget.Services;
 
 /// <summary>
-/// Implementation of chat bridge service for Blazor-to-WinForms communication.
-/// Handles bidirectional event flow between Blazor chat components and backend services.
+/// Implementation of the JARVIS chat bridge service.
+/// Handles bidirectional event flow between the native chat surface and backend services.
 /// </summary>
 public class ChatBridgeService : IChatBridgeService
 {
@@ -68,7 +68,7 @@ public class ChatBridgeService : IChatBridgeService
     }
 
     /// <summary>
-    /// Submit a prompt from the Blazor component to the backend.
+    /// Submit a prompt from the chat UI to the backend.
     /// </summary>
     public Task SubmitPromptAsync(string prompt, string? conversationId = null, CancellationToken cancellationToken = default)
     {
@@ -99,7 +99,7 @@ public class ChatBridgeService : IChatBridgeService
     }
 
     /// <summary>
-    /// Send a response chunk back to the Blazor component.
+    /// Send a response chunk back to the chat UI.
     /// </summary>
     public Task SendResponseChunkAsync(string chunk, CancellationToken cancellationToken = default)
     {

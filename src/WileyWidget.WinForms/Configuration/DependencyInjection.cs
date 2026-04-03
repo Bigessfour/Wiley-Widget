@@ -568,7 +568,7 @@ namespace WileyWidget.WinForms.Configuration
             // Unified status/progress service for status bar integration
             services.AddSingleton<IStatusProgressService, StatusProgressService>();
 
-            // Chat Bridge Service (Singleton - event-based communication between Blazor and WinForms)
+            // Chat Bridge Service (Singleton - event-based communication between the JARVIS UI and backend services)
             services.AddSingleton<IChatBridgeService, ChatBridgeService>();
 
             // DPI-Aware Image Service (Singleton - manages DPI-scaled images for Syncfusion controls)

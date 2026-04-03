@@ -57,7 +57,7 @@ public sealed class BudgetPanelIntegrationTests(IntegrationTestFixture fixture) 
         splitContainer.Should().NotBeNull();
 
         summaryPanel!.Top.Should().BeLessThan(filterPanel!.Top);
-        splitContainer!.Panel1MinSize.Should().BeGreaterOrEqualTo(summaryPanel.Height + filterPanel.Height);
+        splitContainer!.Panel1MinSize.Should().BeGreaterThanOrEqualTo(summaryPanel.Height + filterPanel.Height);
     }
 
     private static TControl? FindControl<TControl>(Control root, string name)

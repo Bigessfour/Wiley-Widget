@@ -50,6 +50,29 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
     }
 
     [StaFact]
+    public async Task JARVISChatUserControl_InitializeAsync_HostsAssistViewInRaisedInsetPanel()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        TestThemeHelper.EnsureOffice2019Colorful();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var provider = IntegrationTestServices.BuildProvider();
+        using var control = CreateControl(provider);
+
+        await control.InitializeAsync(cts.Token);
+
+        var assistHost = FindNamedControl<System.Windows.Forms.Panel>(control, "JarvisAssistHost");
+        var assistView = FindControl<SfAIAssistView>(control);
+        var expectedBottomInset = (int)Syncfusion.Windows.Forms.DpiAware.LogicalToDeviceUnits(24.0f);
+
+        assistHost.Should().NotBeNull();
+        assistHost!.Dock.Should().Be(System.Windows.Forms.DockStyle.Fill);
+        assistHost.Padding.Bottom.Should().Be(expectedBottomInset);
+        assistView.Should().NotBeNull();
+        assistView!.Parent.Should().BeSameAs(assistHost);
+    }
+
+    [StaFact]
     public void JARVISChatUserControl_RuntimeHost_HidesAutomationStatusPanel()
     {
         var originalUiTests = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_TESTS");
@@ -92,14 +115,14 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
 
         var (rightDockPanel, _, _, jarvisControl) = RightDockPanelFactory.CreateRightDockPanel(form, scopedProvider, logger);
 
-        jarvisControl.MinimumSize.Width.Should().BeLessOrEqualTo(rightDockPanel.MinimumSize.Width);
+        jarvisControl.MinimumSize.Width.Should().BeLessThanOrEqualTo(rightDockPanel.MinimumSize.Width);
         jarvisControl.Dock.Should().Be(System.Windows.Forms.DockStyle.Fill);
 
         var assistView = FindControl<SfAIAssistView>(jarvisControl);
         assistView.Should().NotBeNull();
         assistView!.Dock.Should().Be(System.Windows.Forms.DockStyle.Fill);
         assistView.Margin.Should().Be(System.Windows.Forms.Padding.Empty);
-        jarvisControl.MinimumSize.Height.Should().BeGreaterOrEqualTo(520);
+        jarvisControl.MinimumSize.Height.Should().BeGreaterThanOrEqualTo(520);
     }
 
     [StaFact]
@@ -115,6 +138,104 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
         FindNamedControl<SfButton>(control, "JarvisCopyLatestResponseButton").Should().NotBeNull();
         FindNamedControl<SfButton>(control, "JarvisCopyTranscriptButton").Should().NotBeNull();
         FindNamedControl<SfButton>(control, "JarvisExportTranscriptButton").Should().NotBeNull();
+    }
+
+    [StaFact]
+    public void JARVISChatUserControl_ResponseToolbarButtons_UseSharedToolbarBoundaries()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        TestThemeHelper.EnsureOffice2019Colorful();
+
+        using var provider = IntegrationTestServices.BuildProvider();
+        using var control = CreateControl(provider);
+
+        var openButton = FindNamedControl<SfButton>(control, "JarvisOpenResponseViewerButton");
+        var copyButton = FindNamedControl<SfButton>(control, "JarvisCopyLatestResponseButton");
+        var transcriptButton = FindNamedControl<SfButton>(control, "JarvisCopyTranscriptButton");
+        var exportButton = FindNamedControl<SfButton>(control, "JarvisExportTranscriptButton");
+
+        openButton.Should().NotBeNull();
+        copyButton.Should().NotBeNull();
+        transcriptButton.Should().NotBeNull();
+        exportButton.Should().NotBeNull();
+
+        openButton!.MinimumSize.Should().Be(new System.Drawing.Size(104, 32));
+        copyButton!.MinimumSize.Should().Be(new System.Drawing.Size(104, 32));
+        transcriptButton!.MinimumSize.Should().Be(new System.Drawing.Size(104, 32));
+        exportButton!.MinimumSize.Should().Be(new System.Drawing.Size(104, 32));
+        openButton.Width.Should().BeGreaterThanOrEqualTo(104);
+        exportButton.Width.Should().BeGreaterThanOrEqualTo(104);
+    }
+
+    [StaFact]
+    public void JARVISChatUserControl_BeginResponse_ShowsVisibleThinkingState()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        TestThemeHelper.EnsureOffice2019Colorful();
+
+        using var provider = IntegrationTestServices.BuildProvider();
+        using var control = CreateControl(provider);
+
+        var beginResponse = typeof(JARVISChatUserControl).GetMethod(
+            "BeginResponse",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var endResponse = typeof(JARVISChatUserControl).GetMethod(
+            "EndResponse",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        beginResponse.Should().NotBeNull();
+        endResponse.Should().NotBeNull();
+        beginResponse!.Invoke(control, Array.Empty<object>());
+
+        var assistView = FindControl<SfAIAssistView>(control);
+        var statusPanel = FindNamedControl<System.Windows.Forms.TableLayoutPanel>(control, "JarvisResponseStatusPanel");
+        var statusLabel = FindNamedControl<System.Windows.Forms.Label>(control, "JarvisResponseStatusLabel");
+        var progressBar = FindNamedControl<Syncfusion.Windows.Forms.Tools.ProgressBarAdv>(control, "JarvisResponseStatusProgress");
+
+        assistView.Should().NotBeNull();
+        assistView!.ShowTypingIndicator.Should().BeTrue();
+        statusPanel.Should().NotBeNull();
+        statusPanel!.Visible.Should().BeTrue();
+        statusLabel.Should().NotBeNull();
+        statusLabel!.Text.Should().Contain("thinking");
+        progressBar.Should().NotBeNull();
+        progressBar!.Visible.Should().BeTrue();
+
+        endResponse!.Invoke(control, Array.Empty<object>());
+    }
+
+    [StaFact]
+    public void JARVISChatUserControl_EndResponse_HidesVisibleThinkingState()
+    {
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        TestThemeHelper.EnsureOffice2019Colorful();
+
+        using var provider = IntegrationTestServices.BuildProvider();
+        using var control = CreateControl(provider);
+
+        var beginResponse = typeof(JARVISChatUserControl).GetMethod(
+            "BeginResponse",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var endResponse = typeof(JARVISChatUserControl).GetMethod(
+            "EndResponse",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        beginResponse.Should().NotBeNull();
+        endResponse.Should().NotBeNull();
+
+        beginResponse!.Invoke(control, Array.Empty<object>());
+        endResponse!.Invoke(control, Array.Empty<object>());
+
+        var assistView = FindControl<SfAIAssistView>(control);
+        var statusPanel = FindNamedControl<System.Windows.Forms.TableLayoutPanel>(control, "JarvisResponseStatusPanel");
+        var progressBar = FindNamedControl<Syncfusion.Windows.Forms.Tools.ProgressBarAdv>(control, "JarvisResponseStatusProgress");
+
+        assistView.Should().NotBeNull();
+        assistView!.ShowTypingIndicator.Should().BeFalse();
+        statusPanel.Should().NotBeNull();
+        statusPanel!.Visible.Should().BeFalse();
+        progressBar.Should().NotBeNull();
+        progressBar!.Visible.Should().BeFalse();
     }
 
     [StaFact]
@@ -201,7 +322,7 @@ public sealed class JARVISChatUserControlIntegrationTests(IntegrationTestFixture
         await control.InitializeAsync(CancellationToken.None);
 
         var automationText = control.AutomationStatusBox!.Text;
-        automationText.Should().Contain("BlazorReady=True");
+        automationText.Should().Contain("ChatUiReady=True");
         automationText.Should().Contain("AssistViewReady=True");
     }
 

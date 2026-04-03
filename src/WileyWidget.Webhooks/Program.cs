@@ -99,3 +99,7 @@ app.MapPost("/qbo/webhooks", async (HttpRequest req) =>
 });
 
 app.Run();
+
+public partial class Program
+{
+}
