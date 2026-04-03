@@ -48,6 +48,11 @@ public sealed class BudgetPanelIntegrationTests(IntegrationTestFixture fixture) 
         panel.Show();
         Application.DoEvents();
 
+        panel.MinimumSize.Width.Should().BeLessThanOrEqualTo(form.ClientSize.Width,
+            because: "BudgetPanel must not force the host wider than the available viewport");
+        panel.MinimumSize.Height.Should().BeLessThanOrEqualTo(form.ClientSize.Height,
+            because: "BudgetPanel must not force the host below a typical 1440p viewport height");
+
         var summaryPanel = FindControl<Panel>(panel, "BudgetSummaryPanel");
         var filterPanel = FindControl<Panel>(panel, "BudgetFilterPanel");
         var splitContainer = FindControl<SplitContainerAdv>(panel, "BudgetMainSplitContainer");

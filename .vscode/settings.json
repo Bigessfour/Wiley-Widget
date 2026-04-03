@@ -17,12 +17,68 @@
   "github.copilot.chat.tools.changes.enabled": true,
   "github.copilot.editor.enableAutoCompletions": true,
   "github.copilot.chat.agent.autoStartMcpServers": true,
-
   // ============================================================================
   // Custom Copilot Agents Configuration
   // ============================================================================
+  // Task Explorer configuration based on the extension documentation.
+  // Keep VS Code's built-in task providers from competing with Task Explorer
+  // so the extension can index the workspace consistently.
+  "taskexplorer.enableExplorerView": true,
+  "taskexplorer.enableSideBar": true,
+  "taskexplorer.enabledTasks": {
+    "ant": false,
+    "apppublisher": false,
+    "bash": true,
+    "batch": true,
+    "composer": false,
+    "eslint": false,
+    "gradle": false,
+    "grunt": false,
+    "gulp": false,
+    "jenkins": false,
+    "laravel": false,
+    "make": false,
+    "maven": false,
+    "nodejs": false,
+    "npm": true,
+    "nsis": false,
+    "perl": false,
+    "pipenv": false,
+    "powershell": true,
+    "python": true,
+    "ruby": false,
+    "tsc": true,
+    "webpack": false,
+    "workspace": true
+  },
+  "npm.autoDetect": "off",
+  "gradle.autoDetect": "off",
+  "grunt.autoDetect": "off",
+  "gulp.autoDetect": "off",
+  "taskexplorer.useNpmProvider": true,
+  "taskexplorer.useTscProvider": true,
+  "taskexplorer.useGradleProvider": false,
+  "taskexplorer.useAnt": false,
+  "taskexplorer.useGulp": false,
+  "taskexplorer.useVscWatcherExclude": true,
+  "taskexplorer.groupWithSeparator": true,
+  "taskexplorer.groupSeparator": "-",
+  "taskexplorer.groupMaxLevel": 5,
+  "taskexplorer.exclude": [
+    "**/bin/**",
+    "**/obj/**",
+    "**/coverage/**",
+    "**/CoverageReport/**",
+    "**/TestResults/**",
+    "**/tests/.archive/**",
+    "**/.venv/**",
+    "**/logs/**",
+    "**/tmp/**",
+    "**/publish/**"
+  ],
+  "taskexplorer.globPatternsAnt": [],
+  "taskexplorer.globPatternsBash": [],
   "github.copilot.chat.agentDirectory": "${workspaceFolder}/.vscode/agents",
-
   // ============================================================================
   // Terminal Configuration - Agent Terminals Disabled
   // ============================================================================
@@ -30,7 +86,6 @@
   "terminal.integrated.windowsUseConptyDll": true,
   "task.autoClose": true,
   "chat.tools.terminal.outputLocation": "terminal",
-
   // ============================================================================
   // MCP (Model Context Protocol) Server Configuration
   // ============================================================================
@@ -62,14 +117,20 @@
     },
     "sequential-thinking": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
       "env": {
         "DISABLE_THOUGHT_LOGGING": "false"
       }
     },
     "mssql": {
       "command": "npx",
-      "args": ["-y", "mssql-mcp"],
+      "args": [
+        "-y",
+        "mssql-mcp"
+      ],
       "env": {
         "MSSQL_CONNECTION_STRING": "${env:MSSQL_CONNECTION_STRING}"
       },
@@ -77,28 +138,40 @@
     },
     "syncfusion-winforms-assistant": {
       "command": "npx",
-      "args": ["-y", "@syncfusion/winforms-assistant@latest"],
+      "args": [
+        "-y",
+        "@syncfusion/winforms-assistant@latest"
+      ],
       "env": {
         "Syncfusion_API_Key": "${env:SYNCFUSION_API_KEY}"
       }
     },
     "mcp-debugger": {
       "command": "npx",
-      "args": ["-y", "@debugmcp/mcp-debugger@0.17.0", "stdio", "--log-level", "info", "--log-file", "${workspaceFolder}\\logs\\mcp-debugger.log"]
+      "args": [
+        "-y",
+        "@debugmcp/mcp-debugger@0.17.0",
+        "stdio",
+        "--log-level",
+        "info",
+        "--log-file",
+        "${workspaceFolder}\\logs\\mcp-debugger.log"
+      ]
     },
     "github": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_PERSONAL_ACCESS_TOKEN}"
       }
     }
   },
-
   // ============================================================================
   // ============================================================================
   "xamlDiag.autoDetectCompiler": true,
-
   // ============================================================================
   // Docker Configuration
   // ============================================================================
@@ -111,12 +184,13 @@
   "xml.format.splitAttributes": "preserve",
   "xml.format.maxLineWidth": 120,
   "xml.format.splitAttributesIndentSize": 2,
-  "xml.format.preserveSpace": ["*"],
+  "xml.format.preserveSpace": [
+    "*"
+  ],
   "xml.codeLens.enabled": true,
   "xml.validation.enabled": true,
   "xml.validation.noGrammar": "ignore",
   "xml.completion.autoCloseTags": true,
-
   // ============================================================================
   // Editor Configuration
   // ============================================================================
@@ -144,7 +218,6 @@
   "editor.guides.bracketPairs": true,
   "editor.inlineSuggest.enabled": true,
   "editor.find.closeOnResult": false,
-
   // ============================================================================
   // File Management
   // ============================================================================
@@ -186,7 +259,6 @@
     "**/tests/.archive/**": true
   },
   "search.followSymlinks": false,
-
   // ============================================================================
   // .NET & C# Configuration
   // ============================================================================
@@ -211,45 +283,39 @@
   ],
   "omnisharp.enableAsyncCompletion": true,
   "omnisharp.analyzeOpenDocumentsOnly": false,
-
   "csharp.suppressDotnetRestoreNotification": true,
   "csharp.semanticHighlighting.enabled": true,
-
   // Real-time IntelliSense — run Roslyn analyzers and compiler diagnostics on all
   // open files (not just the active tab). This eliminates stale squiggles and
   // Problems-panel entries when switching between files.
   // Docs: https://learn.microsoft.com/visualstudio/code-quality/configure-live-code-analysis-scope-managed-code
   "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "openFiles",
   "dotnet.backgroundAnalysis.compilerDiagnosticsScope": "openFiles",
-
   "[csharp]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "ms-dotnettools.csharp",
     "editor.formatOnSaveMode": "file"
   },
-
   "[python]": {
     "editor.defaultFormatter": "trunk.io",
     "editor.formatOnSave": true
   },
-
   "[markdown]": {
     "editor.defaultFormatter": "trunk.io",
     "editor.formatOnSave": false
   },
-
   "[json]": {
     "editor.defaultFormatter": "trunk.io"
   },
-
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
   "[yaml]": {
     "editor.defaultFormatter": "trunk.io"
   },
-
   "[powershell]": {
     "editor.defaultFormatter": "ms-vscode.powershell"
   },
-
   // ============================================================================
   // Testing Configuration
   // ============================================================================
@@ -260,7 +326,6 @@
   "testExplorer.useNativeTesting": false,
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
-
   // ============================================================================
   // Extension Configuration
   // ============================================================================
@@ -275,11 +340,9 @@
     "**/*.trx"
   ],
   "codeReview.enableDebugOutput": false,
-
   // Disable Python Test Adapter (primarily a .NET project)
   "pythonTestExplorer.testFramework": null,
   "python.testing.autoTestDiscoverOnSaveEnabled": false,
-
   // ============================================================================
   // Git & Version Control
   // ============================================================================
@@ -291,11 +354,10 @@
   "gitlens.currentLine.enabled": true,
   "gitlens.statusBar.enabled": true,
   "gitlens.views.repositories.files.layout": "tree",
-
   // ============================================================================
   // Python Configuration
   // ============================================================================
-  "python.defaultInterpreterPath": ".venv",
+  "python.defaultInterpreterPath": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
   "python.formatting.provider": "none",
   "python.linting.enabled": true,
   "python.linting.ruffEnabled": true,
@@ -310,7 +372,6 @@
   ],
   "python.testing.unittestEnabled": true,
   "python.testing.pytestEnabled": false,
-
   // ============================================================================
   // PowerShell Configuration
   // ============================================================================
@@ -320,15 +381,12 @@
     "PowerShell 7.5.4 (Repo)": "C:/Program Files/PowerShell/7/pwsh.exe"
   },
   "powershell.powerShellDefaultVersion": "PowerShell 7.5.4 (Repo)",
-
   "powershell.scriptAnalysis.enable": true,
   "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
   "powershell.codeFormatting.preset": "OTBS",
   "powershell.codeFormatting.autoCorrectAliases": true,
   "powershell.integratedConsole.showOnStartup": false,
-
   // SonarLint removed from workspace per request
-
   // ============================================================================
   // TODO Highlighting
   // ============================================================================
@@ -341,6 +399,11 @@
     "[ ]",
     "[x]"
   ],
+  "todo-tree.regex.regex": "(//|#|<!--|;|/\\*|^|^[ \\t]*(-|\\d+.))\\s*($TAGS)",
+  "todo-tree.tree.scanMode": "workspace",
+  "todo-tree.tree.showCountsInTree": true,
+  "todo-tree.general.statusBar": "total",
+  "todo-tree.filtering.useBuiltInExcludes": "file and search excludes",
   "todo-tree.highlights.defaultHighlight": {
     "icon": "alert",
     "type": "text",
@@ -348,7 +411,20 @@
     "background": "#ff0000",
     "opacity": 50
   },
-
+  "todo-tree.highlights.customHighlight": {
+    "[ ]": {
+      "background": "#ff0000",
+      "foreground": "#ffffff",
+      "type": "text",
+      "icon": "circle-slash"
+    },
+    "[x]": {
+      "background": "#00aa00",
+      "foreground": "#ffffff",
+      "type": "text",
+      "icon": "check"
+    }
+  },
   // ============================================================================
   // Spell Checker Configuration
   // ============================================================================
@@ -367,31 +443,26 @@
     "markdown": false,
     "xml": true
   },
-
   // ============================================================================
   // Markdown Linting - Disabled (MD lint clutters Problems panel)
   // ============================================================================
   "markdownlint.enable": false,
-
   // ============================================================================
   // Debugging Configuration
   // ============================================================================
   "debug.toolBarLocation": "docked",
   "debug.openDebug": "openOnDebugBreak",
   "debug.internalConsoleOptions": "openOnSessionStart",
-
   // ============================================================================
   // Docker Configuration
   // ============================================================================
   "docker.showStartPage": false,
-
   // ============================================================================
   // Trunk Integration (Full)
   // ============================================================================
   "trunk.checkOnSave": true,
   "trunk.formatOnSave": true,
   "trunk.addToolsToPath": true,
-
   // ============================================================================
   // Performance & UI
   // ============================================================================
@@ -406,7 +477,6 @@
   "workbench.browser.pageZoom": "Match Window",
   "search.maxResults": 5000,
   "editor.largeFileOptimizations": false,
-
   // ============================================================================
   // Terminal Configuration
   // ============================================================================
@@ -454,4 +524,3 @@
   },
   "containers.containers.groupBy": "ImageName"
 }
-

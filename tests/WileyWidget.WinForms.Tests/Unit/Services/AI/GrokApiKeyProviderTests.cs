@@ -16,7 +16,7 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
     /// Unit tests for GrokApiKeyProvider - validates configuration hierarchy and consistency.
     /// Tests ensure that xAI API keys are correctly resolved from:
     /// 1. User Secrets (highest priority)
-    /// 2. Environment Variables (XAI__ApiKey or XAI_API_KEY)
+    /// 2. Environment Variables (XAI_API_KEY)
     /// 3. appsettings.json (lowest priority)
     ///
     /// These tests prevent regression of the xAI API key presentation issue where
@@ -74,20 +74,19 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
         }
 
         /// <summary>
-        /// Test: Environment variables (XAI__ApiKey) are resolved when config key not present.
-        /// Tests the double-underscore hierarchical format per Microsoft convention.
+        /// Test: Environment variables (XAI_API_KEY) are resolved when config key not present.
         /// </summary>
         [Fact]
-        public void Constructor_WhenEnvironmentVariableXaiDoubleUnderscoreSet_UsesEnvVarApiKey()
+        public void Constructor_WhenEnvironmentVariableXaiSingleUnderscoreSet_UsesEnvVarApiKey()
         {
             // Arrange
             const string expectedKey = "env-var-key-67890";
-            var originalEnvVar = Environment.GetEnvironmentVariable("XAI__ApiKey");
+            var originalEnvVar = Environment.GetEnvironmentVariable("XAI_API_KEY");
 
             try
             {
-                // Set process-scoped env var with double underscore (Microsoft hierarchical format)
-                Environment.SetEnvironmentVariable("XAI__ApiKey", expectedKey, EnvironmentVariableTarget.Process);
+                // Set process-scoped env var with the supported single-underscore alias
+                Environment.SetEnvironmentVariable("XAI_API_KEY", expectedKey, EnvironmentVariableTarget.Process);
 
                 var config = new ConfigurationBuilder()
                     .AddEnvironmentVariables()
@@ -109,11 +108,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 // Cleanup
                 if (originalEnvVar != null)
                 {
-                    Environment.SetEnvironmentVariable("XAI__ApiKey", originalEnvVar, EnvironmentVariableTarget.Process);
+                    Environment.SetEnvironmentVariable("XAI_API_KEY", originalEnvVar, EnvironmentVariableTarget.Process);
                 }
                 else
                 {
-                    Environment.SetEnvironmentVariable("XAI__ApiKey", null, EnvironmentVariableTarget.Process);
+                    Environment.SetEnvironmentVariable("XAI_API_KEY", null, EnvironmentVariableTarget.Process);
                 }
             }
         }
@@ -508,15 +507,15 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
         /// Test: GetConfigurationSource returns the correct diagnostic string for environment variables.
         /// </summary>
         [Fact]
-        public void GetConfigurationSource_WithDoubleUnderscoreEnvVar_ReturnsCorrectSource()
+        public void GetConfigurationSource_WithSingleUnderscoreEnvVar_ReturnsCorrectSource()
         {
             // Arrange
             const string testKey = "env-var-source-test-key";
-            var originalEnvVar = Environment.GetEnvironmentVariable("XAI__ApiKey");
+            var originalEnvVar = Environment.GetEnvironmentVariable("XAI_API_KEY");
 
             try
             {
-                Environment.SetEnvironmentVariable("XAI__ApiKey", testKey, EnvironmentVariableTarget.Process);
+                Environment.SetEnvironmentVariable("XAI_API_KEY", testKey, EnvironmentVariableTarget.Process);
 
                 var config = new ConfigurationBuilder()
                     .AddEnvironmentVariables()
@@ -537,11 +536,11 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                 // Cleanup
                 if (originalEnvVar != null)
                 {
-                    Environment.SetEnvironmentVariable("XAI__ApiKey", originalEnvVar, EnvironmentVariableTarget.Process);
+                    Environment.SetEnvironmentVariable("XAI_API_KEY", originalEnvVar, EnvironmentVariableTarget.Process);
                 }
                 else
                 {
-                    Environment.SetEnvironmentVariable("XAI__ApiKey", null, EnvironmentVariableTarget.Process);
+                    Environment.SetEnvironmentVariable("XAI_API_KEY", null, EnvironmentVariableTarget.Process);
                 }
             }
         }
@@ -624,21 +623,18 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
         }
 
         /// <summary>
-        /// Test: Multiple environment variables - XAI__ApiKey (double underscore) should take precedence over XAI_API_KEY (single underscore).
+        /// Test: Multiple environment variables - XAI_API_KEY should be resolved consistently.
         /// </summary>
         [Fact]
-        public void Constructor_WhenBothEnvVarsSet_PrioritizesDoubleUnderscore()
+        public void Constructor_WhenBothEnvVarsSet_PrioritizesSingleUnderscore()
         {
             // Arrange
-            const string doubleUnderscoreKey = "double-underscore-key";
             const string singleUnderscoreKey = "single-underscore-key";
 
-            var originalDoubleEnvVar = Environment.GetEnvironmentVariable("XAI__ApiKey");
             var originalSingleEnvVar = Environment.GetEnvironmentVariable("XAI_API_KEY");
 
             try
             {
-                Environment.SetEnvironmentVariable("XAI__ApiKey", doubleUnderscoreKey, EnvironmentVariableTarget.Process);
                 Environment.SetEnvironmentVariable("XAI_API_KEY", singleUnderscoreKey, EnvironmentVariableTarget.Process);
 
                 var config = new ConfigurationBuilder()
@@ -647,22 +643,13 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
 
                 var provider = CreateProvider(config);
 
-                // Act & Assert - Should use double underscore (Microsoft convention)
+                // Act & Assert - Should use the supported single underscore alias
                 Assert.NotNull(provider.ApiKey);
-                Assert.Equal(doubleUnderscoreKey, provider.ApiKey);
+                Assert.Equal(singleUnderscoreKey, provider.ApiKey);
             }
             finally
             {
                 // Cleanup
-                if (originalDoubleEnvVar != null)
-                {
-                    Environment.SetEnvironmentVariable("XAI__ApiKey", originalDoubleEnvVar, EnvironmentVariableTarget.Process);
-                }
-                else
-                {
-                    Environment.SetEnvironmentVariable("XAI__ApiKey", null, EnvironmentVariableTarget.Process);
-                }
-
                 if (originalSingleEnvVar != null)
                 {
                     Environment.SetEnvironmentVariable("XAI_API_KEY", originalSingleEnvVar, EnvironmentVariableTarget.Process);
@@ -672,6 +659,46 @@ namespace WileyWidget.WinForms.Tests.Unit.Services.AI
                     Environment.SetEnvironmentVariable("XAI_API_KEY", null, EnvironmentVariableTarget.Process);
                 }
             }
+        }
+
+        /// <summary>
+        /// Test: Machine legacy environment variables must not override a resolved configuration key.
+        /// This prevents stale machine-scope aliases from hijacking the active xAI key.
+        /// </summary>
+        [Fact]
+        public void Constructor_WhenMachineLegacyDiffersFromConfig_UsesConfigurationBeforeMachineLegacy()
+        {
+            // Arrange
+            const string configKey = "config-xai-key-1234567890";
+            const string machineLegacyKey = "machine-legacy-xai-key-0987654321";
+
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["XAI:ApiKey"] = configKey
+                })
+                .Build();
+
+            string? EnvironmentGetter(string key, EnvironmentVariableTarget target)
+            {
+                if (target == EnvironmentVariableTarget.Machine && key == "XAI_API_KEY")
+                {
+                    return machineLegacyKey;
+                }
+
+                return null;
+            }
+
+            var provider = new GrokApiKeyProvider(
+                config,
+                _mockLogger.Object,
+                _mockHttpClientFactory.Object,
+                EnvironmentGetter);
+
+            // Assert
+            Assert.NotNull(provider.ApiKey);
+            Assert.Equal(configKey, provider.ApiKey);
+            Assert.Contains("configuration", provider.GetConfigurationSource(), StringComparison.OrdinalIgnoreCase);
         }
     }
 }

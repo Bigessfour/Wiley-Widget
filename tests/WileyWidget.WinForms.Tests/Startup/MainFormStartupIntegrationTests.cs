@@ -8,11 +8,14 @@ using System.Windows.Forms;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Syncfusion.WinForms.Controls;
+using Syncfusion.Windows.Forms.Gauge;
 using Syncfusion.Windows.Forms.Tools;
 using WileyWidget.WinForms.Controls;
 using WileyWidget.WinForms.Controls.Panels;
 using WileyWidget.WinForms.Forms;
+using WileyWidget.WinForms.Controls.Supporting;
 using WileyWidget.WinForms.Tests.Infrastructure;
 using WileyWidget.WinForms.Tests.Integration;
 using Xunit;
@@ -166,6 +169,98 @@ public sealed class MainFormStartupIntegrationTests
         }
     }
 
+    [WinFormsFact]
+    [Trait("Category", "Smoke")]
+    [Trait("Area", "Theme")]
+    public async Task ThemeToggle_ReThemesOpenEnterpriseVitalSignsPanel_AndHostedControls()
+    {
+        var previousJarvisAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS");
+        var previousAccountsAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_ACCOUNTS");
+
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_TESTS", "true");
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS", "false");
+        Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_ACCOUNTS", "false");
+        TestThemeHelper.EnsureOffice2019Colorful();
+        SfSkinManager.ApplicationVisualTheme = "Office2019Colorful";
+
+        var configOverrides = new Dictionary<string, string?>
+        {
+            ["UI:IsUiTestHarness"] = "true",
+            ["UI:UseSyncfusionDocking"] = "true",
+            ["UI:ShowRibbon"] = "true",
+            ["UI:ShowStatusBar"] = "true",
+            ["UI:AutoShowDashboard"] = "true",
+            ["UI:MinimalMode"] = "false",
+            ["UI:AutoShowPanels"] = "true"
+        };
+
+        try
+        {
+            using var provider = IntegrationTestServices.BuildProvider(configOverrides);
+            var themeService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IThemeService>(provider);
+            var themeMock = Mock.Get(themeService);
+
+            var currentTheme = "Office2019Colorful";
+            themeMock.SetupGet(service => service.CurrentTheme).Returns(() => currentTheme);
+            themeMock.Setup(service => service.ApplyTheme(It.IsAny<string>())).Callback<string>(theme =>
+            {
+                currentTheme = theme;
+                themeMock.Raise(service => service.ThemeChanged += null, themeMock.Object, theme);
+            });
+
+            using var form = IntegrationTestServices.CreateMainForm(provider);
+
+            form.Size = new System.Drawing.Size(1400, 900);
+            form.StartPosition = FormStartPosition.CenterScreen;
+            form.Show();
+            _ = form.Handle;
+            Application.DoEvents();
+
+            await PumpMessagesAsync(2000);
+
+            var deferred = await WaitForDeferredInitializationAsync(form, TimeSpan.FromSeconds(5));
+            if (deferred != null)
+            {
+                var completed = await Task.WhenAny(deferred, Task.Delay(TimeSpan.FromSeconds(5)));
+                if (completed != deferred)
+                {
+                    throw new TimeoutException("Deferred initialization timed out");
+                }
+            }
+
+            await form.InitializeAsync(CancellationToken.None);
+            await PumpMessagesAsync(1500);
+
+            var enterprisePanel = FindControl<EnterpriseVitalSignsPanel>(form);
+            enterprisePanel.Should().NotBeNull("Enterprise Vital Signs should be open during startup");
+
+            var gauge = FindControl<RadialGauge>(enterprisePanel!);
+            var loadingOverlay = FindControl<LoadingOverlay>(enterprisePanel!);
+            var loadingProgress = FindControl<ProgressBarAdv>(enterprisePanel!);
+            var chart = FindDescendantControlByTypeName(enterprisePanel!, "ChartControl");
+            gauge.Should().NotBeNull("the panel should contain a factory-created gauge");
+            loadingOverlay.Should().NotBeNull("the panel should contain its loading overlay");
+            loadingProgress.Should().NotBeNull("the panel should contain a themed loading progress indicator");
+            chart.Should().NotBeNull("the panel should contain a factory-created chart");
+
+            gauge!.ThemeName.Should().Be("Office2019Colorful");
+            loadingProgress!.ThemeName.Should().Be("Office2019Colorful");
+
+            form.ToggleTheme();
+            await PumpMessagesAsync(1500);
+
+            currentTheme.Should().Be("Office2019Dark", "the ribbon theme toggle should advance to the next theme");
+            gauge.ThemeName.Should().Be("Office2019Dark", "the open gauge should re-theme after the global theme changes");
+            loadingProgress.ThemeName.Should().Be("Office2019Dark", "the hosted loading indicator should re-theme after the global theme changes");
+            chart.Should().NotBeNull("the dashboard chart should remain present after the theme toggle");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_JARVIS", previousJarvisAutomation);
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION_ACCOUNTS", previousAccountsAutomation);
+        }
+    }
+
     private static async Task<Task?> WaitForDeferredInitializationAsync(MainForm form, TimeSpan timeout)
     {
         var start = DateTime.UtcNow;
@@ -224,6 +319,25 @@ public sealed class MainFormStartupIntegrationTests
                 {
                     return matchItem;
                 }
+            }
+        }
+
+        return null;
+    }
+
+    private static Control? FindDescendantControlByTypeName(Control root, string typeName)
+    {
+        foreach (Control child in root.Controls)
+        {
+            if (child.GetType().Name.Contains(typeName, StringComparison.OrdinalIgnoreCase))
+            {
+                return child;
+            }
+
+            var nested = FindDescendantControlByTypeName(child, typeName);
+            if (nested != null)
+            {
+                return nested;
             }
         }
 

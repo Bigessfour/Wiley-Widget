@@ -46,7 +46,7 @@ namespace WileyWidget.WinForms.Services
 
     public sealed class PanelNavigationService : IPanelNavigationService
     {
-        private const int MinimumPanelTopInsetLogical = 8;
+        private const int MinimumPanelTopInsetLogical = 20;
         private const int WM_SETREDRAW = 0x000B;
         private const uint RDW_INVALIDATE = 0x0001;
         private const uint RDW_ERASE = 0x0004;

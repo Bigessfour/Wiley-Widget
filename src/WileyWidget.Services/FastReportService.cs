@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -10,6 +11,7 @@ using System.Threading.Tasks;
 using FastReport;
 using FastReport.Export;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
@@ -137,8 +139,18 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            using var operationScope = LogContext.PushProperty("ReportOperation", "LoadReport");
+            using var reportPathScope = LogContext.PushProperty("ReportPath", Path.GetFileName(reportPath));
+            using var dataSourceCountScope = LogContext.PushProperty("DataSourceCount", dataSources?.Count ?? 0);
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
+                _logger.LogInformation(
+                    "Loading report template {ReportPath} with {DataSourceCount} data sources",
+                    Path.GetFileName(reportPath),
+                    dataSources?.Count ?? 0);
+
                 cancellationToken.ThrowIfCancellationRequested();
                 progress?.Report(0.1);
 
@@ -154,6 +166,9 @@ namespace WileyWidget.Services
                     {
                         try
                         {
+                            using var dataSourceScope = LogContext.PushProperty("DataSourceName", kvp.Key);
+                            using var dataTypeScope = LogContext.PushProperty("DataSourceType", kvp.Value?.GetType().FullName ?? "null");
+
                             if (kvp.Value is DataSet ds)
                             {
                                 report.RegisterData(ds, kvp.Key);
@@ -190,16 +205,19 @@ namespace WileyWidget.Services
                 report.Prepare();
 
                 progress?.Report(1.0);
-                _logger.LogInformation("Report loaded successfully: {ReportPath}", reportPath);
+                stopwatch.Stop();
+                _logger.LogInformation("Report loaded successfully: {ReportPath} in {ElapsedMilliseconds}ms", reportPath, stopwatch.ElapsedMilliseconds);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Report load canceled for {ReportPath}", reportPath);
+                stopwatch.Stop();
+                _logger.LogDebug("Report load canceled for {ReportPath} after {ElapsedMilliseconds}ms", reportPath, stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to load report: {ReportPath}", reportPath);
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to load report: {ReportPath} after {ElapsedMilliseconds}ms", reportPath, stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }
@@ -218,6 +236,9 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            using var operationScope = LogContext.PushProperty("ReportOperation", "RefreshReport");
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -225,16 +246,19 @@ namespace WileyWidget.Services
 
                 report.Prepare();
 
-                _logger.LogDebug("Report refreshed");
+                stopwatch.Stop();
+                _logger.LogDebug("Report refreshed in {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Refresh canceled");
+                stopwatch.Stop();
+                _logger.LogDebug("Refresh canceled after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to refresh report");
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to refresh report after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }
@@ -260,6 +284,10 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            using var operationScope = LogContext.PushProperty("ReportOperation", "ExportToPdf");
+            using var reportPathScope = LogContext.PushProperty("OutputPath", Path.GetFileName(filePath));
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -279,12 +307,14 @@ namespace WileyWidget.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("PDF export canceled");
+                stopwatch.Stop();
+                _logger.LogDebug("PDF export canceled after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to export report to PDF: {FilePath}", filePath);
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to export report to PDF: {FilePath} after {ElapsedMilliseconds}ms", filePath, stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }
@@ -310,6 +340,10 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            using var operationScope = LogContext.PushProperty("ReportOperation", "ExportToExcel");
+            using var reportPathScope = LogContext.PushProperty("OutputPath", Path.GetFileName(filePath));
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -329,12 +363,14 @@ namespace WileyWidget.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Excel export canceled");
+                stopwatch.Stop();
+                _logger.LogDebug("Excel export canceled after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to export report to Excel: {FilePath}", filePath);
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to export report to Excel: {FilePath} after {ElapsedMilliseconds}ms", filePath, stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }
@@ -358,6 +394,10 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            using var operationScope = LogContext.PushProperty("ReportOperation", "SetParameters");
+            using var parameterCountScope = LogContext.PushProperty("ParameterCount", parameters.Count);
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -371,16 +411,19 @@ namespace WileyWidget.Services
                 // Re-prepare the report with new parameters
                 report.Prepare();
 
-                _logger.LogDebug("Report parameters set: {Count} parameters", parameters.Count);
+                stopwatch.Stop();
+                _logger.LogDebug("Report parameters set: {Count} parameters in {ElapsedMilliseconds}ms", parameters.Count, stopwatch.ElapsedMilliseconds);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Set parameters canceled");
+                stopwatch.Stop();
+                _logger.LogDebug("Set parameters canceled after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to set report parameters");
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to set report parameters after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }
@@ -399,6 +442,9 @@ namespace WileyWidget.Services
                 throw new ArgumentException("ReportViewer must be of type FastReport.Report", nameof(reportViewer));
             }
 
+            using var operationScope = LogContext.PushProperty("ReportOperation", "Print");
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -410,12 +456,14 @@ namespace WileyWidget.Services
             }
             catch (OperationCanceledException)
             {
-                _logger.LogDebug("Print canceled");
+                stopwatch.Stop();
+                _logger.LogDebug("Print canceled after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to print report");
+                stopwatch.Stop();
+                _logger.LogError(ex, "Failed to print report after {ElapsedMilliseconds}ms", stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }

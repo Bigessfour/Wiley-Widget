@@ -21,9 +21,9 @@ namespace WileyWidget.WinForms.Tests.Integration.RealAPI;
 
 /// <summary>
 /// Real API integration tests for GrokAgentService - hits actual xAI Grok API.
-/// IMPORTANT: These tests are automatically skipped if XAI__ApiKey environment variable is not set.
+/// IMPORTANT: These tests are automatically skipped if XAI_API_KEY environment variable is not set.
 /// To enable: dotnet user-secrets set "XAI:ApiKey" "YOUR_KEY_HERE"
-/// Or: setx XAI__ApiKey "YOUR_KEY_HERE"
+/// Or: setx XAI_API_KEY "YOUR_KEY_HERE"
 ///
 /// These tests consume real API tokens and should be run sparingly (manual trigger or nightly builds).
 /// Use: dotnet test --filter "Category=RealAPI"

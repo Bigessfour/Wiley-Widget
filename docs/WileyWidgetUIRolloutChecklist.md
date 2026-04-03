@@ -12,15 +12,15 @@ This checklist operationalizes `docs/WileyWidgetUIStandards.md` across all user-
 
 ## Required Checks per Surface
 
-- [ ] Inherits/uses `ScopedPanelBase` lifecycle pattern and `SafeSuspendAndLayout`.
+- [x] Inherits/uses `ScopedPanelBase` lifecycle pattern and `SafeSuspendAndLayout`.
 - [ ] Includes `PanelHeader` with consistent refresh/help/close behavior where applicable.
 - [ ] Uses sensible `MinimumSize` and resize-safe layout (no clipping/cutoff).
 - [ ] Uses non-disruptive feedback (`IsBusy`, overlay/status text, no surprise modal interruptions).
 - [ ] Primary actions are clear and first-class (verb-first labels, keyboard shortcuts).
 - [ ] All primary controls include tooltips and accessible names.
 - [ ] Uses approved icons/resources only.
-- [ ] No competing color/theme systems; `SfSkinManager` remains authoritative.
-- [ ] Syncfusion controls are created via `SyncfusionControlFactory` unless documented exception applies.
+- [x] No competing color/theme systems; `SfSkinManager` remains authoritative.
+- [x] Syncfusion controls are created via `SyncfusionControlFactory` unless documented exception applies.
 - [ ] Syncfusion API usage validated against current docs/samples for modified controls.
 
 ## User-Facing Panels Audit Queue

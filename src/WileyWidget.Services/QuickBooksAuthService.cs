@@ -14,6 +14,7 @@ using Polly;
 using Polly.CircuitBreaker;
 using Polly.Retry;
 using Polly.Timeout;
+using Serilog.Context;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services;
@@ -220,6 +221,9 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
 
     private async Task EnsureInitializedAsync(CancellationToken cancellationToken = default)
     {
+        using var initScope = LogContext.PushProperty("Integration", "QuickBooks");
+        using var operationScope = LogContext.PushProperty("Operation", "InitializeCredentials");
+
         if (_initialized) return;
         await _initSemaphore.WaitAsync().ConfigureAwait(false);
         try
@@ -281,8 +285,11 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
                        ?? _environment;
 
             _logger.LogInformation(
-                "QuickBooks auth service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}",
-                _clientId.Substring(0, Math.Min(8, _clientId.Length)), _realmId ?? "<not set>", _environment);
+                "QuickBooks auth service initialized - ClientId: {ClientIdPrefix}..., RealmId: {RealmId}, Environment: {Environment}, Source: {Source}",
+                _clientId.Substring(0, Math.Min(8, _clientId.Length)),
+                _realmId ?? "<not set>",
+                _environment,
+                _oauthOptions != null ? "configuration + vault/env" : "vault/env");
 
             // Sync RealmId to TokenStore if available
             if (!string.IsNullOrEmpty(_realmId) && _tokenStore != null)
@@ -362,9 +369,18 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
             return Abstractions.TokenResult.Failure("Refresh token is null or empty");
         }
 
+        using var refreshScope = LogContext.PushProperty("Integration", "QuickBooks");
+        using var operationScope = LogContext.PushProperty("Operation", "RefreshToken");
+
         try
         {
             await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(_reauthorizationRequiredMessage))
+            {
+                _logger.LogWarning("Skipping QuickBooks token refresh because re-authorization is already required.");
+                return Abstractions.TokenResult.Failure(_reauthorizationRequiredMessage);
+            }
 
             using var activity = _activitySource.StartActivity("RefreshToken");
             activity?.SetTag("realm_id", _realmId);
@@ -392,6 +408,9 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
         {
             return Abstractions.TokenResult.Failure("Authorization code is null or empty");
         }
+
+        using var exchangeScope = LogContext.PushProperty("Integration", "QuickBooks");
+        using var operationScope = LogContext.PushProperty("Operation", "ExchangeAuthorizationCode");
 
         await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
 
@@ -492,6 +511,9 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     /// <inheritdoc/>
     public async Task<string> GenerateAuthorizationUrlAsync(CancellationToken cancellationToken = default)
     {
+        using var authScope = LogContext.PushProperty("Integration", "QuickBooks");
+        using var operationScope = LogContext.PushProperty("Operation", "GenerateAuthorizationUrl");
+
         _logger.LogInformation("Generating QuickBooks OAuth authorization URL");
 
         await EnsureInitializedAsync(cancellationToken).ConfigureAwait(false);
@@ -545,6 +567,9 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     /// <inheritdoc/>
     public async Task RevokeTokenAsync(CancellationToken cancellationToken = default)
     {
+        using var revokeScope = LogContext.PushProperty("Integration", "QuickBooks");
+        using var operationScope = LogContext.PushProperty("Operation", "RevokeToken");
+
         try
         {
             var token = await GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
@@ -720,6 +745,9 @@ public sealed class QuickBooksAuthService : IQuickBooksAuthService, IDisposable
     /// </summary>
     private async Task<TokenResult> PerformTokenRefreshAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
+        using var refreshScope = LogContext.PushProperty("Integration", "QuickBooks");
+        using var operationScope = LogContext.PushProperty("Operation", "PerformTokenRefresh");
+
         using var req = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
         var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_clientId}:{_clientSecret}"));
         req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);

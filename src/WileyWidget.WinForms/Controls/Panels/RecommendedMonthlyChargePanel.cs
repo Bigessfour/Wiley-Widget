@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using Syncfusion.Drawing;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -100,12 +101,20 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
     {
         if (IsLoaded) return;
 
+        using var loadScope = LogContext.PushProperty("Panel", nameof(RecommendedMonthlyChargePanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "Load");
+
         try
         {
             IsBusy = true;
             if (ViewModel != null && !DesignMode && ViewModel.RefreshDataCommand.CanExecute(null))
             {
+                _logger?.LogInformation("RecommendedMonthlyChargePanel load requested");
                 await ViewModel.RefreshDataCommand.ExecuteAsync(null);
+                _logger?.LogInformation(
+                    "RecommendedMonthlyChargePanel load completed: Departments={DepartmentCount}, Benchmarks={BenchmarkCount}",
+                    ViewModel.Departments?.Count ?? 0,
+                    ViewModel.Benchmarks?.Count ?? 0);
             }
             _logger?.LogDebug("RecommendedMonthlyChargePanel loaded successfully");
         }
@@ -972,14 +981,22 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
         try
         {
+            using var refreshScope = LogContext.PushProperty("Panel", nameof(RecommendedMonthlyChargePanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "RefreshData");
+
             var token = RegisterOperation();
             IsBusy = true;
             UpdateStatus("Loading department expense data...");
 
             if (ViewModel.RefreshDataCommand.CanExecute(null))
             {
+                _logger?.LogInformation("RecommendedMonthlyChargePanel refresh requested");
                 await ViewModel.RefreshDataCommand.ExecuteAsync(null);
                 UpdateChart();
+                _logger?.LogInformation(
+                    "RecommendedMonthlyChargePanel refresh completed: Departments={DepartmentCount}, Benchmarks={BenchmarkCount}",
+                    ViewModel.Departments?.Count ?? 0,
+                    ViewModel.Benchmarks?.Count ?? 0);
                 UpdateStatus("Data refreshed successfully");
             }
         }
@@ -1003,15 +1020,22 @@ public partial class RecommendedMonthlyChargePanel : ScopedPanelBase<Recommended
 
         try
         {
+            using var aiScope = LogContext.PushProperty("Panel", nameof(RecommendedMonthlyChargePanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "QueryGrok");
+
             var token = RegisterOperation();
             IsBusy = true;
             UpdateStatus("Querying Grok AI for rate recommendations...");
 
             if (ViewModel.QueryGrokCommand.CanExecute(null))
             {
+                _logger?.LogInformation("RecommendedMonthlyChargePanel AI query requested");
                 await ViewModel.QueryGrokCommand.ExecuteAsync(null);
                 UpdateChart();
                 SetHasUnsavedChanges(true);
+                _logger?.LogInformation(
+                    "RecommendedMonthlyChargePanel AI query completed: Departments={DepartmentCount}",
+                    ViewModel.Departments?.Count ?? 0);
                 UpdateStatus("AI recommendations applied successfully");
             }
         }

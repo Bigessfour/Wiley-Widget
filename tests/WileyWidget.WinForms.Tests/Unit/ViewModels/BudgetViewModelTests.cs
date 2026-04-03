@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -16,6 +17,87 @@ namespace WileyWidget.WinForms.Tests.Unit.ViewModels;
 
 public sealed class BudgetViewModelTests
 {
+    [Fact]
+    public async Task ApplyFiltersCommand_DoesNotThrow_WhenSelectedFundTypeIsNull()
+    {
+        var budgetRepository = new Mock<IBudgetRepository>(MockBehavior.Strict);
+        var reportExportService = new Mock<IReportExportService>(MockBehavior.Strict);
+        var enterpriseRepository = new Mock<IEnterpriseRepository>(MockBehavior.Strict);
+        var logger = new Mock<ILogger<BudgetViewModel>>();
+        var eventBus = new AppEventBus();
+
+        using var viewModel = new BudgetViewModel(
+            logger.Object,
+            budgetRepository.Object,
+            reportExportService.Object,
+            enterpriseRepository.Object,
+            eventBus);
+
+        viewModel.BudgetEntries = new ObservableCollection<BudgetEntry>
+        {
+            new()
+            {
+                AccountNumber = "101",
+                Description = "General fund test entry",
+                FiscalYear = 2026,
+                StartPeriod = new DateTime(2026, 1, 1),
+                EndPeriod = new DateTime(2026, 12, 31),
+                FundType = FundType.GeneralFund,
+                DepartmentId = 1,
+                BudgetedAmount = 100m,
+                ActualAmount = 50m
+            }
+        };
+
+        viewModel.SelectedFundType = null;
+
+        await viewModel.ApplyFiltersCommand.ExecuteAsync(null);
+
+        viewModel.FilteredBudgetEntries.Should().HaveCount(1);
+        viewModel.FilteredBudgetEntries[0].AccountNumber.Should().Be("101");
+    }
+
+    [Fact]
+    public async Task ApplyFiltersCommand_DoesNotThrow_WhenNullableDepartmentAndVarianceFiltersAreNull()
+    {
+        var budgetRepository = new Mock<IBudgetRepository>(MockBehavior.Strict);
+        var reportExportService = new Mock<IReportExportService>(MockBehavior.Strict);
+        var enterpriseRepository = new Mock<IEnterpriseRepository>(MockBehavior.Strict);
+        var logger = new Mock<ILogger<BudgetViewModel>>();
+        var eventBus = new AppEventBus();
+
+        using var viewModel = new BudgetViewModel(
+            logger.Object,
+            budgetRepository.Object,
+            reportExportService.Object,
+            enterpriseRepository.Object,
+            eventBus);
+
+        viewModel.BudgetEntries = new ObservableCollection<BudgetEntry>
+        {
+            new()
+            {
+                AccountNumber = "202",
+                Description = "Nullable filter regression entry",
+                FiscalYear = 2026,
+                StartPeriod = new DateTime(2026, 1, 1),
+                EndPeriod = new DateTime(2026, 12, 31),
+                FundType = FundType.GeneralFund,
+                DepartmentId = 1,
+                BudgetedAmount = 100m,
+                ActualAmount = 50m
+            }
+        };
+
+        viewModel.SelectedDepartmentId = null;
+        viewModel.VarianceThreshold = null;
+
+        await viewModel.ApplyFiltersCommand.ExecuteAsync(null);
+
+        viewModel.FilteredBudgetEntries.Should().HaveCount(1);
+        viewModel.FilteredBudgetEntries[0].AccountNumber.Should().Be("202");
+    }
+
     [Fact]
     public async Task QuickBooksDesktopImportCompletedEvent_TriggersBudgetReload()
     {

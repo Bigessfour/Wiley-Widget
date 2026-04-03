@@ -37,9 +37,9 @@
         </Sort>
       </DataBand>
       <GroupFooterBand Name="GroupFooter1" Top="201" Width="1047.06" Height="37.8">
-        <TextObject Name="Text11" Left="198.45" Top="9.45" Width="94.5" Height="18.9" Text="[Sum([LineItems.CurrentAmount],[LineItems.Category])]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
-        <TextObject Name="Text12" Left="302.4" Top="9.45" Width="94.5" Height="18.9" Text="[Sum([LineItems.ProposedAmount],[LineItems.Category])]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold" TextFill.Color="Green"/>
-        <TextObject Name="Text13" Left="406.35" Top="9.45" Width="75.6" Height="18.9" Text="[Sum([LineItems.Increase],[LineItems.Category])]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold" TextFill.Color="Red"/>
+        <TextObject Name="Text11" Left="198.45" Top="9.45" Width="94.5" Height="18.9" Text="[LineItems.CategoryCurrentTotal]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold"/>
+        <TextObject Name="Text12" Left="302.4" Top="9.45" Width="94.5" Height="18.9" Text="[LineItems.CategoryProposedTotal]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold" TextFill.Color="Green"/>
+        <TextObject Name="Text13" Left="406.35" Top="9.45" Width="75.6" Height="18.9" Text="[LineItems.CategoryIncreaseTotal]" Format="Currency" Format.UseLocale="true" Format.DecimalDigits="2" HorzAlign="Right" Font="Arial, 9pt, style=Bold" TextFill.Color="Red"/>
         <TextObject Name="Text14" Left="18.9" Top="9.45" Width="170.1" Height="18.9" Text="[LineItems.Category] Total:" Font="Arial, 9pt, style=Bold"/>
         <ShapeObject Name="Shape1" Left="18.9" Top="0" Width="1009.8" Height="1.89" Border.Color="Navy"/>
       </GroupFooterBand>

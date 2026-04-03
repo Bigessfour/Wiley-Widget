@@ -41,7 +41,7 @@ namespace WileyWidget.WinForms.Utilities
         public const int PanelPadding = 12;
 
         /// <summary>Standard panel / section header height.</summary>
-        public const int HeaderHeight = 48;
+        public const int HeaderHeight = 60;
 
         /// <summary>Standard action button height.</summary>
         public const int ButtonHeight = 32;

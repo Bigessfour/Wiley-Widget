@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using ChartControl = Syncfusion.Windows.Forms.Chart.ChartControl;
 using ChartSeries = Syncfusion.Windows.Forms.Chart.ChartSeries;
 using ChartSeriesType = Syncfusion.Windows.Forms.Chart.ChartSeriesType;
@@ -747,6 +748,10 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
                 _chartControl.Series.Add(lineSeries);
                 _monthlyRevenueSeries = lineSeries;
+
+                _logger?.LogInformation(
+                    "RevenueTrendsPanel chart updated with {PointCount} points",
+                    revenuePoints.Count);
             }
             finally
             {
@@ -755,7 +760,7 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"RevenueTrendsPanel: UpdateChartData failed: {ex.Message}");
+            _logger?.LogError(ex, "RevenueTrendsPanel: UpdateChartData failed");
         }
     }
 
@@ -771,11 +776,15 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
             var snapshot = ViewModel.MonthlyData.ToList();
             _metricsGrid.DataSource = snapshot;
 
+            _logger?.LogInformation(
+                "RevenueTrendsPanel grid updated with {RowCount} rows",
+                snapshot.Count);
+
             _metricsGrid.ResumeLayout();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"RevenueTrendsPanel: UpdateGridData failed: {ex.Message}");
+            _logger?.LogError(ex, "RevenueTrendsPanel: UpdateGridData failed");
         }
     }
 
@@ -826,15 +835,23 @@ public partial class RevenueTrendsPanel : ScopedPanelBase<RevenueTrendsViewModel
 
     private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
     {
+        using var refreshScope = LogContext.PushProperty("Panel", nameof(RevenueTrendsPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "RefreshData");
+
         try
         {
             if (ViewModel != null)
             {
+                _logger?.LogInformation("RevenueTrendsPanel refresh requested");
                 await ViewModel.LoadDataAsync();
+                _logger?.LogInformation(
+                    "RevenueTrendsPanel refresh completed: RevenuePoints={RevenuePoints}",
+                    ViewModel.MonthlyData.Count);
             }
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "RevenueTrendsPanel refresh failed");
             MessageBox.Show(
                 $"Failed to refresh data: {ex.Message}",
                 "Error",

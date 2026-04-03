@@ -3,6 +3,7 @@
     "ms-dotnettools.csdevkit",
     "ms-dotnettools.csharp",
     "ms-dotnettools.vscode-dotnet-runtime",
+    "spmeesseman.vscode-taskexplorer",
 
     // === Testing & Quality ===
     "ryanluker.vscode-coverage-gutters",

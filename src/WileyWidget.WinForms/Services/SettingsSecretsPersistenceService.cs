@@ -51,7 +51,7 @@ internal sealed class SettingsSecretsPersistenceService
 
     private static readonly string[] XaiEnvironmentAliases =
     {
-        "XAI__ApiKey",
+        "XAI_API_KEY",
         "XAI_API_KEY"
     };
 
@@ -98,7 +98,7 @@ internal sealed class SettingsSecretsPersistenceService
                     if (string.IsNullOrWhiteSpace(xaiApiKey))
                     {
                         xaiApiKey = NormalizeSecret(await _secretVaultService.GetSecretAsync("XAI:ApiKey", cancellationToken).ConfigureAwait(false))
-                            ?? NormalizeSecret(await _secretVaultService.GetSecretAsync("XAI__ApiKey", cancellationToken).ConfigureAwait(false));
+                            ?? NormalizeSecret(await _secretVaultService.GetSecretAsync("XAI_API_KEY", cancellationToken).ConfigureAwait(false));
                     }
                 }
             }
@@ -136,7 +136,7 @@ internal sealed class SettingsSecretsPersistenceService
                 await PersistToUserSecretsAsync(XaiUserSecretAliases, normalizedXai, cancellationToken).ConfigureAwait(false);
                 PersistToEnvironmentScopes(XaiEnvironmentAliases, normalizedXai, result.Warnings);
                 await PersistToSecretVaultAsync("XAI:ApiKey", normalizedXai, cancellationToken).ConfigureAwait(false);
-                await PersistToSecretVaultAsync("XAI__ApiKey", normalizedXai, cancellationToken).ConfigureAwait(false);
+                await PersistToSecretVaultAsync("XAI_API_KEY", normalizedXai, cancellationToken).ConfigureAwait(false);
             }
 
             var userSecretsConfiguration = BuildUserSecretsConfiguration();

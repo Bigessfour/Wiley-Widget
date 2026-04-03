@@ -8,6 +8,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using Microsoft.EntityFrameworkCore;
 using GridCheckBoxColumn = Syncfusion.WinForms.DataGrid.GridCheckBoxColumn;
 using GridNumericColumn = Syncfusion.WinForms.DataGrid.GridNumericColumn;
@@ -130,6 +131,31 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
         this.VisibleChanged += BudgetPanel_VisibleChanged;
 
         Logger.LogInformation("BudgetPanel constructor completed — waiting for OnViewModelResolved");
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        ApplyViewportAwareMinimumSize();
+    }
+
+    private void ApplyViewportAwareMinimumSize()
+    {
+        var hostClientSize = FindForm()?.ClientSize ?? Parent?.ClientSize ?? Size.Empty;
+
+        var minimumWidth = hostClientSize.Width > 0
+            ? Math.Min(1280, Math.Max(1024, hostClientSize.Width - 100))
+            : 1024;
+
+        var minimumHeight = hostClientSize.Height > 0
+            ? Math.Min(900, Math.Max(720, hostClientSize.Height - 100))
+            : 720;
+
+        var safeMinimumSize = new Size(minimumWidth, minimumHeight);
+        if (MinimumSize != safeMinimumSize)
+        {
+            MinimumSize = safeMinimumSize;
+        }
     }
 
     private void DeferSizeValidation()
@@ -2459,6 +2485,9 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
     {
         if (ViewModel == null) return;
 
+        using var refreshScope = LogContext.PushProperty("Panel", nameof(BudgetPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "RefreshData");
+
         try
         {
             Logger.LogInformation("Refreshing budget data");
@@ -2466,6 +2495,11 @@ public partial class BudgetPanel : ScopedPanelBase<BudgetViewModel>
 
             await ViewModel.LoadBudgetsCommand.ExecuteAsync(null);
             await ViewModel.RefreshAnalysisCommand.ExecuteAsync(null);
+
+            Logger.LogInformation(
+                "Budget data refreshed: Entries={EntryCount}, FiscalYear={FiscalYear}",
+                ViewModel.BudgetEntries?.Count ?? 0,
+                ViewModel.SelectedFiscalYear);
 
             UpdateStatus("Data refreshed successfully");
         }

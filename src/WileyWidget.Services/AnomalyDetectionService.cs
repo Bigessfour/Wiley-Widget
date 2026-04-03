@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog.Context;
 using WileyWidget.Services.Abstractions;
 
 namespace WileyWidget.Services
@@ -20,14 +21,17 @@ namespace WileyWidget.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<AnomalyDetectionService> _logger;
+        private readonly IGrokApiKeyProvider? _apiKeyProvider;
         private readonly Lazy<IChatCompletionService?> _chatService;
 
         public AnomalyDetectionService(
             IConfiguration configuration,
-            ILogger<AnomalyDetectionService> logger)
+            ILogger<AnomalyDetectionService> logger,
+            IGrokApiKeyProvider? apiKeyProvider = null)
         {
             _configuration = configuration;
             _logger = logger;
+            _apiKeyProvider = apiKeyProvider;
             _chatService = new Lazy<IChatCompletionService?>(() => InitializeChatService());
         }
 
@@ -35,10 +39,18 @@ namespace WileyWidget.Services
         {
             try
             {
-                var apiKey = _configuration["XAI_API_KEY"] ?? _configuration["XAI:ApiKey"];
+                using var serviceScope = LogContext.PushProperty("Component", nameof(AnomalyDetectionService));
+                using var operationScope = LogContext.PushProperty("Operation", "InitializeChatService");
+
+                var apiKey = _apiKeyProvider?.ApiKey
+                    ?? _configuration["XAI:ApiKey"]
+                    ?? _configuration["xAI:ApiKey"]
+                    ?? _configuration["XAI_API_KEY"];
                 if (string.IsNullOrWhiteSpace(apiKey))
                 {
-                    _logger.LogWarning("[ANOMALY_DETECTION] API key not configured");
+                    _logger.LogWarning(
+                        "[ANOMALY_DETECTION] API key not configured (source: {ApiKeySource})",
+                        _apiKeyProvider?.GetConfigurationSource() ?? "configuration");
                     return null;
                 }
 
@@ -55,7 +67,10 @@ namespace WileyWidget.Services
                 kernelBuilder.Plugins.AddFromType<Plugins.AnomalyDetectionPlugin>();
 
                 var kernel = kernelBuilder.Build();
-                _logger.LogInformation("[ANOMALY_DETECTION] Chat service initialized successfully");
+                _logger.LogInformation(
+                    "[ANOMALY_DETECTION] Chat service initialized successfully (model: {Model}, apiKeySource: {ApiKeySource})",
+                    model,
+                    _apiKeyProvider?.GetConfigurationSource() ?? "configuration");
                 return kernel.GetRequiredService<IChatCompletionService>();
             }
             catch (Exception ex)
@@ -71,6 +86,9 @@ namespace WileyWidget.Services
             Func<T, string> contextExtractor,
             CancellationToken cancellationToken = default) where T : class
         {
+            using var detectionScope = LogContext.PushProperty("Component", nameof(AnomalyDetectionService));
+            using var operationScope = LogContext.PushProperty("Operation", "DetectAnomalies");
+
             var chatService = _chatService.Value;
             if (chatService == null)
             {
@@ -132,6 +150,9 @@ namespace WileyWidget.Services
             string period,
             CancellationToken cancellationToken = default)
         {
+            using var varianceScope = LogContext.PushProperty("Component", nameof(AnomalyDetectionService));
+            using var operationScope = LogContext.PushProperty("Operation", "AnalyzeBudgetVariance");
+
             var variance = actualAmount - budgetedAmount;
             var variancePercent = budgetedAmount != 0 ? (variance / budgetedAmount) * 100 : 0;
 

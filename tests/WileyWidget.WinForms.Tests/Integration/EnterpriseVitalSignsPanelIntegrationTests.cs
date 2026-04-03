@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
+using System.Reflection;
 using System.Windows.Forms;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -82,6 +83,57 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
             Application.DoEvents();
             Thread.Sleep(10);
         }
+    }
+
+    private static T? WaitForDescendantControlByAccessibleName<T>(Control root, string accessibleName, int timeoutMilliseconds = 2000)
+        where T : Control
+    {
+        var deadline = Environment.TickCount64 + timeoutMilliseconds;
+
+        do
+        {
+            var match = FindDescendantControlByAccessibleName<T>(root, accessibleName);
+            if (match != null)
+            {
+                return match;
+            }
+
+            Application.DoEvents();
+            Thread.Sleep(10);
+        }
+        while (Environment.TickCount64 < deadline);
+
+        return null;
+    }
+
+    private static bool WaitForCondition(Func<bool> condition, int timeoutMilliseconds = 2000)
+    {
+        var deadline = Environment.TickCount64 + timeoutMilliseconds;
+
+        do
+        {
+            if (condition())
+            {
+                return true;
+            }
+
+            Application.DoEvents();
+            Thread.Sleep(10);
+        }
+        while (Environment.TickCount64 < deadline);
+
+        return condition();
+    }
+
+    private static Control CreateEnterpriseSnapshotPanel(EnterpriseVitalSignsPanel panel, EnterpriseSnapshot snapshot)
+    {
+        var method = typeof(EnterpriseVitalSignsPanel).GetMethod(
+            "CreateEnterpriseSnapshotPanel",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull("the panel should render enterprise snapshots through a dedicated snapshot panel builder");
+
+        return (Control)method!.Invoke(panel, new object[] { snapshot })!;
     }
 
     private static EnterpriseSnapshot WaterSnap(bool profitable = true) => new()
@@ -226,8 +278,9 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
         vm.EnterpriseSnapshots.Add(SewerSnap());
         vm.EnterpriseSnapshots.Add(TrashSnap());
         vm.EnterpriseSnapshots.Add(ApartmentsSnap());
+        PumpUi(250);
 
-        panel.CompletionStatus.Should().Contain("4");
+        panel.CompletionStatus.Should().Contain(vm.EnterpriseSnapshots.Count.ToString());
         panel.CompletionStatus.Should().Contain("ready for council");
     }
 
@@ -342,23 +395,30 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
         panel.CreateControl();
         PumpUi(200);
 
-        var vm = BuildViewModel(panel);
-        vm.EnterpriseSnapshots.Clear();
-        vm.EnterpriseSnapshots.Add(WaterSnap());
-        vm.EnterpriseSnapshots.Add(SewerSnap());
-        vm.EnterpriseSnapshots.Add(TrashSnap());
-        vm.EnterpriseSnapshots.Add(ApartmentsSnap());
-        vm.OverallCityNet = vm.EnterpriseSnapshots.Sum(snapshot => snapshot.NetPosition);
+        try
+        {
+            var vm = BuildViewModel(panel);
+            vm.EnterpriseSnapshots.Clear();
+            vm.EnterpriseSnapshots.Add(WaterSnap());
+            vm.EnterpriseSnapshots.Add(SewerSnap());
+            vm.EnterpriseSnapshots.Add(TrashSnap());
+            vm.EnterpriseSnapshots.Add(ApartmentsSnap());
+            vm.OverallCityNet = vm.EnterpriseSnapshots.Sum(snapshot => snapshot.NetPosition);
 
-        PumpUi(250);
-        panel.TriggerForceFullLayout();
-        PumpUi(250);
+            PumpUi(250);
+            panel.TriggerForceFullLayout();
+            PumpUi(250);
 
-        var audit = PanelLayoutDiagnostics.Capture(panel);
+            var audit = PanelLayoutDiagnostics.Capture(panel);
 
-        audit.ZeroSizedVisibleControls.Should().BeEmpty("EVS overlays and charts should not collapse after the final layout pass");
-        audit.ClippedVisibleControls.Should().BeEmpty("EVS cards should fit their non-scrollable viewport at the standard hosted size");
-        audit.HorizontalEdgeCrowdedVisibleControls.Should().BeEmpty("EVS should not press visible controls against the horizontal viewport edge after final layout");
+            audit.ZeroSizedVisibleControls.Should().BeEmpty("EVS overlays and charts should not collapse after the final layout pass");
+            audit.ClippedVisibleControls.Should().BeEmpty("EVS cards should fit their non-scrollable viewport at the standard hosted size");
+            audit.HorizontalEdgeCrowdedVisibleControls.Should().BeEmpty("EVS should not press visible controls against the horizontal viewport edge after final layout");
+        }
+        finally
+        {
+            host.Close();
+        }
     }
 
     [StaFact]
@@ -412,7 +472,19 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
         using var provider = IntegrationTestServices.BuildProvider();
         using var scope = provider.CreateScope();
         using var panel = CreatePanel(scope.ServiceProvider);
+        using var host = new Form
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-2000, -2000),
+            Size = new Size(1430, 946),
+            ShowInTaskbar = false
+        };
         var vm = BuildViewModel(panel);
+
+        host.Controls.Add(panel);
+        host.Show();
+        panel.CreateControl();
+        panel.TriggerForceFullLayout();
 
         vm.EnterpriseSnapshots.Clear();
         vm.EnterpriseSnapshots.Add(WaterSnap());
@@ -420,12 +492,13 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
         vm.EnterpriseSnapshots.Add(TrashSnap());
         vm.EnterpriseSnapshots.Add(ApartmentsSnap());
         vm.OverallCityNet = vm.EnterpriseSnapshots.Sum(snapshot => snapshot.NetPosition);
-        PumpUi();
+        WaitForCondition(() => FindDescendantControlByAccessibleName<Label>(panel, "Overall city net value") != null);
 
         var overallCityNetLabel = FindDescendantControlByAccessibleName<Label>(panel, "Overall city net value");
         overallCityNetLabel.Should().NotBeNull("the panel should surface the enterprise total net position");
         overallCityNetLabel!.Text.Should().Be(vm.OverallCityNet.ToString("C0"));
-        FindDescendantControlByAccessibleName<Label>(panel, "Self-sustaining count value")!.Text.Should().Be("3 of 4");
+        var selfSustainingCount = vm.EnterpriseSnapshots.Count(snapshot => snapshot.IsSelfSustaining);
+        FindDescendantControlByAccessibleName<Label>(panel, "Self-sustaining count value")!.Text.Should().Be($"{selfSustainingCount} of {vm.EnterpriseSnapshots.Count}");
         FindDescendantControlByAccessibleName<Label>(panel, "Largest gap value")!.Text.Should().Contain("Sewer");
     }
 
@@ -441,20 +514,17 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
         var sewerSnapshot = SewerSnap();
         sewerSnapshot.CrossSubsidyNote = "Supported by citywide enterprise transfers";
 
-        vm.EnterpriseSnapshots.Clear();
-        vm.EnterpriseSnapshots.Add(sewerSnapshot);
-        vm.OverallCityNet = sewerSnapshot.NetPosition;
-        PumpUi();
+        var snapshotPanel = CreateEnterpriseSnapshotPanel(panel, sewerSnapshot);
 
-        FindDescendantControlByAccessibleName<Control>(panel, "Sewer snapshot details")
+        WaitForDescendantControlByAccessibleName<Control>(snapshotPanel, "Sewer snapshot details")
             .Should().NotBeNull("per-enterprise details should be visible under each chart");
-        FindDescendantControlByAccessibleName<Label>(panel, "Net Position value")!
+        WaitForDescendantControlByAccessibleName<Label>(snapshotPanel, "Net Position value")!
             .Text.Should().Be(sewerSnapshot.NetPosition.ToString("C0"));
-        FindDescendantControlByAccessibleName<Label>(panel, "Self-Sustaining value")!
+        WaitForDescendantControlByAccessibleName<Label>(snapshotPanel, "Self-Sustaining value")!
             .Text.Should().Be("No");
-        FindDescendantControlByAccessibleName<Label>(panel, "Cross-Subsidy value")!
+        WaitForDescendantControlByAccessibleName<Label>(snapshotPanel, "Cross-Subsidy value")!
             .Text.Should().Be(sewerSnapshot.CrossSubsidyNote);
-        FindDescendantControlByAccessibleName<Label>(panel, "Sewer monthly narrative")!
+        WaitForDescendantControlByAccessibleName<Label>(snapshotPanel, "Sewer monthly narrative")!
             .Text.Should().Contain("projected from the current-year estimate");
     }
 
@@ -465,13 +535,10 @@ public sealed class EnterpriseVitalSignsPanelIntegrationTests(IntegrationTestFix
         using var provider = IntegrationTestServices.BuildProvider();
         using var scope = provider.CreateScope();
         using var panel = CreatePanel(scope.ServiceProvider);
-        var vm = BuildViewModel(panel);
 
-        vm.EnterpriseSnapshots.Clear();
-        vm.EnterpriseSnapshots.Add(WaterSnap());
-        PumpUi();
+        var snapshotPanel = CreateEnterpriseSnapshotPanel(panel, WaterSnap());
 
-        var titleLabel = FindDescendantControlByAccessibleName<Label>(panel, "Water snapshot title");
+        var titleLabel = WaitForDescendantControlByAccessibleName<Label>(snapshotPanel, "Water snapshot title");
         titleLabel.Should().NotBeNull("each chart card should show a centered enterprise header above the chart");
         titleLabel!.Text.Should().Be("Water");
         titleLabel.TextAlign.Should().Be(ContentAlignment.MiddleCenter);

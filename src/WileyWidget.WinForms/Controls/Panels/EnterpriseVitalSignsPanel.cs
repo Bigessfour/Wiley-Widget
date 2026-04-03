@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using WileyWidget.Models;
 using WileyWidget.WinForms.Controls.Base;
 using WileyWidget.WinForms.Controls.Supporting;
@@ -80,6 +81,9 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void InitializeLayout()
         {
+            using var layoutScope = LogContext.PushProperty("Panel", nameof(EnterpriseVitalSignsPanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "InitializeLayout");
+
             int gaugeRowHeight = GetGaugeRowHeight();
 
             // ── Sacred Panel Skeleton layout properties ──────────────────────
@@ -442,17 +446,10 @@ namespace WileyWidget.WinForms.Controls.Panels
                     {
                         RefreshAllVisuals();
                     }
-                    else
-                    {
-                        _contentHost?.PerformLayout();
-                    }
-
-                    _header?.PerformLayout();
-                    _content?.PerformLayout();
-                    _contentHost?.PerformLayout();
                 }
                 catch
                 {
+                    // Layout stabilization continues in base.OnVisibleChanged
                 }
             }
 
@@ -489,6 +486,9 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private void RefreshAllVisuals()
         {
+            using var refreshScope = LogContext.PushProperty("Panel", nameof(EnterpriseVitalSignsPanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "RefreshAllVisuals");
+
             SuspendLayout();
             _content.SuspendLayout();
             _contentHost.SuspendLayout();
@@ -506,6 +506,7 @@ namespace WileyWidget.WinForms.Controls.Panels
 
                 if (_vm.EnterpriseSnapshots.Count == 0)
                 {
+                    _logger?.LogInformation("EnterpriseVitalSignsPanel refresh: no snapshots available");
                     _chartTable.RowCount = 1;
                     _chartTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
                     UpdateLoadingState();
@@ -518,6 +519,13 @@ namespace WileyWidget.WinForms.Controls.Panels
                 int rowCount = (_vm.EnterpriseSnapshots.Count + columnCount - 1) / columnCount;
                 int chartCardHeight = GetSnapshotCardHeight();
                 Size gaugeCardSize = GetGaugeCardSize();
+
+                _logger?.LogInformation(
+                    "EnterpriseVitalSignsPanel refresh: Snapshots={SnapshotCount}, Columns={ColumnCount}, Rows={RowCount}, GaugeCards={GaugeCards}",
+                    _vm.EnterpriseSnapshots.Count,
+                    columnCount,
+                    rowCount,
+                    _gaugeFlow.Controls.Count);
 
                 _chartTable.ColumnCount = columnCount;
                 _chartTable.RowCount = rowCount;
@@ -600,23 +608,31 @@ namespace WileyWidget.WinForms.Controls.Panels
             container.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             container.RowStyles.Add(new RowStyle(SizeType.Absolute, snapshotDetailsHeight));
 
-            var titleLabel = new Label
+            container.SuspendLayout();
+            try
             {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                Margin = new Padding(0, 0, 0, 6),
-                Text = snapshot.Name,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
-                AccessibleName = $"{snapshot.Name} snapshot title"
-            };
+                var titleLabel = new Label
+                {
+                    Dock = DockStyle.Fill,
+                    AutoSize = true,
+                    Margin = new Padding(0, 0, 0, 6),
+                    Text = snapshot.Name,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Font = new Font("Segoe UI", 10.5F, FontStyle.Bold),
+                    AccessibleName = $"{snapshot.Name} snapshot title"
+                };
 
-            var chart = _factory.CreateEnterpriseChart(snapshot);
-            chart.Dock = DockStyle.Fill;
-            chart.MinimumSize = new Size(0, GetSnapshotChartMinimumHeight());
-            container.Controls.Add(titleLabel, 0, 0);
-            container.Controls.Add(chart, 0, 1);
-            container.Controls.Add(CreateSnapshotDetailsPanel(snapshot), 0, 2);
+                var chart = _factory.CreateEnterpriseChart(snapshot);
+                chart.Dock = DockStyle.Fill;
+                chart.MinimumSize = new Size(0, GetSnapshotChartMinimumHeight());
+                container.Controls.Add(titleLabel, 0, 0);
+                container.Controls.Add(chart, 0, 1);
+                container.Controls.Add(CreateSnapshotDetailsPanel(snapshot), 0, 2);
+            }
+            finally
+            {
+                container.ResumeLayout(true);
+            }
             return container;
         }
 
@@ -809,11 +825,18 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         public override async Task LoadAsync(CancellationToken ct = default)
         {
+            using var loadScope = LogContext.PushProperty("Panel", nameof(EnterpriseVitalSignsPanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "Load");
+
             try
             {
                 _loader.Visible = true;
                 _loader.BringToFront();
                 await _vm.OnVisibilityChangedAsync(true);
+                _logger?.LogInformation(
+                    "EnterpriseVitalSignsPanel loaded: SnapshotCount={SnapshotCount}, IsLoading={IsLoading}",
+                    _vm.EnterpriseSnapshots.Count,
+                    _vm.IsLoading);
             }
             finally
             {

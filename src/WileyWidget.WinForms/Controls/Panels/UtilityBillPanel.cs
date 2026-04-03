@@ -951,6 +951,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
     {
         if (IsLoaded) return; // Prevent double-load
 
+        using var loadScope = Serilog.Context.LogContext.PushProperty("Panel", nameof(UtilityBillPanel));
+        using var operationScope = Serilog.Context.LogContext.PushProperty("PanelOperation", "Load");
+
         try
         {
             IsBusy = true;
@@ -961,6 +964,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
             await (ViewModel.LoadCustomersCommand?.ExecuteAsync(null) ?? Task.CompletedTask);
 
             SetHasUnsavedChanges(false);
+            Logger.LogInformation(
+                "UtilityBillPanel load completed: Bills={BillCount}, Customers={CustomerCount}",
+                ViewModel.FilteredBills?.Count() ?? 0,
+                ViewModel.Customers?.Count ?? 0);
             UpdateStatus("Utility bill data loaded successfully");
         }
         catch (OperationCanceledException)
@@ -1311,6 +1318,9 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
         {
             if (ViewModel == null) return;
 
+            using var refreshScope = Serilog.Context.LogContext.PushProperty("Panel", nameof(UtilityBillPanel));
+            using var operationScope = Serilog.Context.LogContext.PushProperty("PanelOperation", "RefreshData");
+
             Logger.LogInformation("Refreshing utility bill data");
             UpdateStatus("Refreshing data...");
 
@@ -1318,6 +1328,10 @@ public partial class UtilityBillPanel : ScopedPanelBase<UtilityBillViewModel>
                 ViewModel.LoadBillsCommand.ExecuteAsync(null),
                 ViewModel.LoadCustomersCommand.ExecuteAsync(null));
 
+            Logger.LogInformation(
+                "UtilityBillPanel refresh completed: Bills={BillCount}, Customers={CustomerCount}",
+                ViewModel.FilteredBills?.Count() ?? 0,
+                ViewModel.Customers?.Count ?? 0);
             UpdateStatus("Data refreshed successfully");
             UpdateExportButtonState();
         }

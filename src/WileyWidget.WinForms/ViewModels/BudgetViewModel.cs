@@ -935,13 +935,15 @@ namespace WileyWidget.WinForms.ViewModels
                 // Department filter
                 if (SelectedDepartmentId.HasValue)
                 {
-                    filtered = filtered.Where(e => e.DepartmentId == SelectedDepartmentId.Value);
+                    var selectedDepartmentId = SelectedDepartmentId.Value;
+                    filtered = filtered.Where(e => e.DepartmentId == selectedDepartmentId);
                 }
 
                 // Fund type filter
                 if (SelectedFundType.HasValue)
                 {
-                    filtered = filtered.Where(e => e.FundType == SelectedFundType.Value);
+                    var selectedFundType = SelectedFundType.Value;
+                    filtered = filtered.Where(e => e.FundType == selectedFundType);
                 }
 
                 // Entity filter (by Fund.Name or via heuristics for Sanitation/Utility)
@@ -969,7 +971,8 @@ namespace WileyWidget.WinForms.ViewModels
                 // Variance threshold filter
                 if (VarianceThreshold.HasValue)
                 {
-                    filtered = filtered.Where(e => Math.Abs(e.BudgetedAmount - e.ActualAmount) >= VarianceThreshold.Value);
+                    var varianceThreshold = VarianceThreshold.Value;
+                    filtered = filtered.Where(e => Math.Abs(e.BudgetedAmount - e.ActualAmount) >= varianceThreshold);
                 }
 
                 return filtered.ToList();

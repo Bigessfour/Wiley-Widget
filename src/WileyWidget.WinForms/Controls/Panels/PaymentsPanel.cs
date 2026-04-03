@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using Syncfusion.Data;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
@@ -54,6 +55,9 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
     private async void PaymentsPanel_Load(object? sender, EventArgs e)
     {
+        using var loadScope = LogContext.PushProperty("Panel", nameof(PaymentsPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "Load");
+
         if (ShouldSkipAutoLoadForTestHarness())
         {
             Logger?.LogDebug("PaymentsPanel: Skipping load for UI test harness");
@@ -85,6 +89,9 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
 
     public async Task LoadDataAsync(CancellationToken cancellationToken = default)
     {
+        using var loadScope = LogContext.PushProperty("Panel", nameof(PaymentsPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "LoadData");
+
         try
         {
             SetBusyState(isBusy: true, statusMessage: "Loading payments…");
@@ -122,6 +129,7 @@ public partial class PaymentsPanel : ScopedPanelBase<PaymentsViewModel>
             }
 
             var loadedCount = ViewModel.Payments.Count;
+            Logger?.LogInformation("PaymentsPanel load completed: Payments={PaymentCount}", loadedCount);
             SetStatusMessage(loadedCount == 1 ? "Loaded 1 payment." : $"Loaded {loadedCount} payments.");
         }
         catch (Exception ex)

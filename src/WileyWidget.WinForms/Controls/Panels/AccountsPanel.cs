@@ -183,8 +183,8 @@ public partial class AccountsPanel : ScopedPanelBase<AccountsViewModel>, IComple
         {
             Dock = DockStyle.Top,
             Title = "Chart of Accounts",
-            MinimumSize = new Size(0, 52),
-            Height = 52
+            MinimumSize = new Size(0, PanelHeader.DefaultHeight),
+            Height = PanelHeader.DefaultHeight
         };
         _header.AccessibleName = "Chart of Accounts Panel Header";
         _header.AccessibleDescription = "Municipal Chart of Accounts management panel with CRUD operations and filtering";

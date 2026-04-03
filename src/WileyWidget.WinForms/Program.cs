@@ -21,6 +21,7 @@ using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
 using Serilog;
+using Serilog.Context;
 using WileyWidget.Services.Logging;
 using AppThemeColors = WileyWidget.WinForms.Themes.ThemeColors;
 
@@ -206,22 +207,43 @@ namespace WileyWidget.WinForms
                 .ReadFrom.Configuration(configuration)
                 .CreateLogger();
 
+            using var correlationScope = LogContext.PushProperty("CorrelationId", Guid.NewGuid().ToString("n"));
+            using var applicationScope = LogContext.PushProperty("ApplicationName", "WileyWidget");
+
             Log.Information("Program.Main: Starting WileyWidget application");
             Log.Debug("Program.Main: Working directory set to {WorkingDirectory}", Directory.GetCurrentDirectory());
             Log.Information("Program.Main: Syncfusion license registration confirmed before UI/bootstrap initialization: {Registered}", IsSyncfusionLicenseRegistered);
 
-            // DEBUG: Log masked API key to verify configuration loading chain
+            // DEBUG: Compare the configuration-chain key with the machine-legacy environment key.
+            // The AI stack resolves keys centrally; this check exists to surface drift between scopes.
             var apiKeyFromConfig = configuration["xAI:ApiKey"] ?? configuration["XAI:ApiKey"];
-            if (!string.IsNullOrWhiteSpace(apiKeyFromConfig))
+            var machineLegacyApiKey = Environment.GetEnvironmentVariable("XAI_API_KEY", EnvironmentVariableTarget.Machine);
+
+            if (!string.IsNullOrWhiteSpace(apiKeyFromConfig) && !string.IsNullOrWhiteSpace(machineLegacyApiKey))
             {
-                var maskedKey = apiKeyFromConfig.Length > 8
-                    ? apiKeyFromConfig.Substring(0, 4) + "***" + apiKeyFromConfig.Substring(apiKeyFromConfig.Length - 4)
-                    : "***";
-                Log.Debug("[CONFIG DEBUG] xAI:ApiKey found in configuration chain: {MaskedKey} (length: {Length})", maskedKey, apiKeyFromConfig.Length);
+                if (string.Equals(apiKeyFromConfig.Trim(), machineLegacyApiKey.Trim(), StringComparison.Ordinal))
+                {
+                    Log.Debug("[CONFIG DEBUG] xAI config-chain value matches machine legacy env var (length: {Length})", apiKeyFromConfig.Length);
+                }
+                else
+                {
+                    Log.Warning(
+                        "[CONFIG DEBUG] xAI config-chain value differs from machine legacy env var (config length: {ConfigLength}, machine length: {MachineLength}). The runtime will use the centralized provider, not this startup-only comparison.",
+                        apiKeyFromConfig.Length,
+                        machineLegacyApiKey.Length);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(apiKeyFromConfig))
+            {
+                Log.Debug("[CONFIG DEBUG] xAI config-chain value found (length: {Length})", apiKeyFromConfig.Length);
+            }
+            else if (!string.IsNullOrWhiteSpace(machineLegacyApiKey))
+            {
+                Log.Warning("[CONFIG DEBUG] machine legacy xAI env var is present but the config chain does not expose xAI:ApiKey/XAI:ApiKey");
             }
             else
             {
-                Log.Warning("[CONFIG DEBUG] xAI:ApiKey NOT found in configuration chain (checked: appsettings.json, user secrets, environment variables)");
+                Log.Warning("[CONFIG DEBUG] xAI key not found in config chain or machine legacy env var (checked: appsettings.json, user secrets, environment variables)");
             }
             Log.Information("Program.Main: Syncfusion license registration was attempted before UI/bootstrap initialization");
 

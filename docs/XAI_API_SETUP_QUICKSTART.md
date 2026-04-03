@@ -33,14 +33,14 @@ dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
 #### PowerShell (Current Session Only)
 
 ```powershell
-$Env:XAI__ApiKey = "xai-xxxxxxxxxxxxxxxx"
+$Env:XAI_API_KEY = "xai-xxxxxxxxxxxxxxxx"
 dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
 ```
 
 #### PowerShell (Permanent - User Level)
 
 ```powershell
-[Environment]::SetEnvironmentVariable("XAI__ApiKey", "xai-xxxxxxxxxxxxxxxx", "User")
+[Environment]::SetEnvironmentVariable("XAI_API_KEY", "xai-xxxxxxxxxxxxxxxx", "User")
 # Restart terminal/IDE for changes to take effect
 ```
 
@@ -49,14 +49,14 @@ dotnet run --project src/WileyWidget.WinForms/WileyWidget.WinForms.csproj
 1. Press `Win + X` → "Edit environment variables"
 2. Click "Environment Variables"
 3. Under "System variables", click "New"
-4. Variable name: `XAI__ApiKey` (note: double underscore)
+4. Variable name: `XAI_API_KEY`
 5. Variable value: `xai-xxxxxxxxxxxxxxxx`
 6. Click "OK", restart application
 
 #### CMD (Permanent)
 
 ```cmd
-setx XAI__ApiKey "xai-xxxxxxxxxxxxxxxx"
+setx XAI_API_KEY "xai-xxxxxxxxxxxxxxxx"
 ```
 
 ---
@@ -71,7 +71,7 @@ setx XAI__ApiKey "xai-xxxxxxxxxxxxxxxx"
 .\scripts\verify-xai-api-key.ps1 -TestApi
 
 # Expected output:
-# ✅ XAI__ApiKey found
+# ✅ XAI_API_KEY found
 # ✅ appsettings.json ApiKey properly empty
 # ✅ API connectivity test passed
 ```
@@ -88,8 +88,7 @@ setx XAI__ApiKey "xai-xxxxxxxxxxxxxxxx"
 │    dotnet user-secrets set "XAI:ApiKey" "key"       │
 ├─────────────────────────────────────────────────────┤
 │ 2. Environment Variable (System-Wide)               │
-│    XAI__ApiKey = "key"  (double underscore)         │
-│    or XAI_API_KEY = "key" (legacy, deprecated)      │
+│    XAI_API_KEY = "key"                              │
 ├─────────────────────────────────────────────────────┤
 │ 3. appsettings.json (NEVER USE - Public!)           │
 │    ApiKey field intentionally empty for security    │
@@ -119,7 +118,7 @@ setx XAI__ApiKey "xai-xxxxxxxxxxxxxxxx"
 
 # 2. Check current configuration
 dotnet user-secrets list
-$Env:XAI__ApiKey  # or check Windows env vars
+$Env:XAI_API_KEY  # or check Windows env vars
 
 # 3. Clear and reset
 dotnet user-secrets remove "XAI:ApiKey"
@@ -140,7 +139,7 @@ dotnet user-secrets set "XAI:ApiKey" "your-actual-key-here"
 dotnet user-secrets set "XAI:ApiKey" "xai-xxxxx"
 
 # Option 2: Environment Variable
-$Env:XAI__ApiKey = "xai-xxxxx"
+$Env:XAI_API_KEY = "xai-xxxxx"
 
 # Verify with script
 .\scripts\verify-xai-api-key.ps1

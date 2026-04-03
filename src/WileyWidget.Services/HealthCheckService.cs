@@ -8,6 +8,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using WileyWidget.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog.Context;
 
 namespace WileyWidget.Services;
 
@@ -40,6 +41,9 @@ public class HealthCheckService
     /// </summary>
     public async Task<Models.HealthCheckReport> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
+        using var runScope = LogContext.PushProperty("HealthCheckRunId", Guid.NewGuid().ToString("n"));
+        using var componentScope = LogContext.PushProperty("Component", nameof(HealthCheckService));
+
         var stopwatch = Stopwatch.StartNew();
         var results = new List<Models.HealthCheckResult>();
 
@@ -57,6 +61,25 @@ public class HealthCheckService
                 microsoftReport = await microsoftHealth.CheckHealthAsync(cancellationToken);
             }
 
+            _logger.LogInformation(
+                "Microsoft health checks completed with {EntryCount} entries and overall status {Status}",
+                microsoftReport.Entries.Count,
+                microsoftReport.Status);
+
+            foreach (var entry in microsoftReport.Entries)
+            {
+                _logger.LogInformation(
+                    "Health check {Service} returned {Status} in {Duration}ms",
+                    entry.Key,
+                    entry.Value.Status,
+                    entry.Value.Duration.TotalMilliseconds);
+
+                if (entry.Value.Exception != null)
+                {
+                    _logger.LogDebug(entry.Value.Exception, "Health check exception for {Service}", entry.Key);
+                }
+            }
+
             // Convert Microsoft health check results to custom format
             foreach (var entry in microsoftReport.Entries)
             {
@@ -67,6 +90,8 @@ public class HealthCheckService
             // Run custom health checks
             var customResults = await RunCustomHealthChecksAsync(cancellationToken);
             results.AddRange(customResults);
+
+            _logger.LogInformation("Custom health checks returned {Count} entries", customResults.Count);
 
             var report = new Models.HealthCheckReport
             {

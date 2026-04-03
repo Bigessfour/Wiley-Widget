@@ -6,7 +6,7 @@ namespace WileyWidget.WinForms.Tests.Infrastructure;
 
 /// <summary>
 /// Base class for tests that hit the real xAI Grok API.
-/// Automatically skips tests if XAI__ApiKey environment variable is not set.
+/// Automatically skips tests if XAI_API_KEY environment variable is not set.
 /// Tracks token usage to prevent excessive costs.
 /// </summary>
 public abstract class RealApiTestBase : IDisposable
@@ -30,18 +30,17 @@ public abstract class RealApiTestBase : IDisposable
             .AddUserSecrets<RealApiTestBase>()
             .Build();
 
-        // Check for API key (double underscore takes precedence per Microsoft conventions)
+        // Check for API key from user secrets and the supported environment variable alias
         ApiKey = Configuration["XAI:ApiKey"]
-                 ?? Environment.GetEnvironmentVariable("XAI__ApiKey")
                  ?? Environment.GetEnvironmentVariable("XAI_API_KEY");
 
         IsRealApiAvailable = !string.IsNullOrWhiteSpace(ApiKey) && !ApiKey.Contains("YOUR_");
 
         if (!IsRealApiAvailable)
         {
-            Output.WriteLine("⚠️ Real API tests skipped - No valid XAI__ApiKey found in environment or user secrets.");
+            Output.WriteLine("⚠️ Real API tests skipped - No valid XAI_API_KEY found in environment or user secrets.");
             Output.WriteLine("   To enable: dotnet user-secrets set \"XAI:ApiKey\" \"YOUR_KEY_HERE\"");
-            Output.WriteLine("   Or: setx XAI__ApiKey \"YOUR_KEY_HERE\"");
+            Output.WriteLine("   Or: setx XAI_API_KEY \"YOUR_KEY_HERE\"");
         }
         else
         {
@@ -57,7 +56,7 @@ public abstract class RealApiTestBase : IDisposable
     {
         if (!IsRealApiAvailable)
         {
-            Output.WriteLine("SKIP: Real xAI API key not configured. Set XAI__ApiKey environment variable or user secret.");
+            Output.WriteLine("SKIP: Real xAI API key not configured. Set XAI_API_KEY environment variable or user secret.");
             return true;
         }
 

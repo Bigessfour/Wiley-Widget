@@ -10,6 +10,7 @@ using Syncfusion.Licensing;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.Themes;
 using Syncfusion.Windows.Forms;
+using Serilog.Context;
 using WileyWidget.Abstractions;
 using WileyWidget.WinForms.Configuration;
 using WileyWidget.WinForms.Diagnostics;
@@ -147,6 +148,8 @@ namespace WileyWidget.WinForms.Services
 
         public async Task ValidateServicesAsync(IServiceProvider serviceProvider)
         {
+            using var validationScope = LogContext.PushProperty("StartupPhase", "DIValidation");
+
 #if !DEBUG
             // Full 87-service DI scan is expensive and targets developer feedback only.
             // Skip entirely in Release builds; run only on Debug or CI.
@@ -270,6 +273,8 @@ namespace WileyWidget.WinForms.Services
 
         public void RunApplication(IServiceProvider serviceProvider)
         {
+            using var runScope = LogContext.PushProperty("StartupPhase", "RunApplication");
+
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] StartupOrchestrator.RunApplicationAsync ENTRY");
             _logger.LogInformation("Starting WinForms application main loop...");
 
@@ -348,6 +353,7 @@ namespace WileyWidget.WinForms.Services
         private async Task Phase6_LoadAndActivateLayout(MainForm mainForm)
         {
             var stopwatch = Stopwatch.StartNew();
+            using var phaseScope = LogContext.PushProperty("StartupPhase", "Phase6_LoadAndActivateLayout");
 
             try
             {

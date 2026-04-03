@@ -53,7 +53,7 @@ namespace WileyWidget.WinForms.Controls.Panels
             this._panelHeader.AccessibleDescription = "QuickBooks Integration Panel Header";
             this._panelHeader.AccessibleName = "QuickBooks Header";
             this._panelHeader.Dock = DockStyle.Top;
-            this._panelHeader.Height = 52;
+            this._panelHeader.Height = PanelHeader.DefaultHeight;
             this._panelHeader.Name = "panelHeader";
             this._panelHeader.Title = "QuickBooks Integration";
 

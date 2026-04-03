@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using ProgressBarAdv = Syncfusion.Windows.Forms.Tools.ProgressBarAdv;
 using ProgressBarStyles = Syncfusion.Windows.Forms.Tools.ProgressBarStyles;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
@@ -450,6 +451,10 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         CreateHistoryPanel();
 
         BindViewModel();
+        UpdateConnectionStatus();
+        UpdateSummaryPanel();
+        RefreshSyncHistoryDisplay();
+        UpdateNoDataOverlay();
         ApplySyncfusionTheme();
         ConfigureSplitterVisualAffordance();
 
@@ -1059,6 +1064,62 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             : splitter.Width;
     }
 
+    private static bool TryConfigureSplitContainer(
+        SplitContainerAdv splitter,
+        int containerDim,
+        int desiredPanel1Min,
+        int desiredPanel2Min,
+        int desiredDistance)
+    {
+        if (splitter == null)
+        {
+            return false;
+        }
+
+        splitter.SuspendLayout();
+        try
+        {
+            var availableDim = Math.Max(0, containerDim - splitter.SplitterWidth);
+            if (availableDim < 2)
+            {
+                return false;
+            }
+
+            int safePanel1Min = Math.Max(100, Math.Min(desiredPanel1Min, availableDim - desiredPanel2Min - 20));
+            splitter.Panel1MinSize = safePanel1Min;
+
+            var maxPanel1Min = Math.Max(100, availableDim - 120);
+            if (safePanel1Min > maxPanel1Min)
+            {
+                safePanel1Min = maxPanel1Min;
+                splitter.Panel1MinSize = safePanel1Min;
+            }
+
+            var safePanel2Min = Math.Max(100, Math.Min(desiredPanel2Min, availableDim - safePanel1Min - 20));
+            if (safePanel1Min + safePanel2Min > availableDim)
+            {
+                safePanel2Min = Math.Max(100, availableDim - safePanel1Min - 10);
+            }
+
+            if (safePanel1Min + safePanel2Min > availableDim)
+            {
+                return false;
+            }
+
+            var maxDistance = Math.Max(safePanel1Min, availableDim - safePanel2Min);
+            var safeDistance = Math.Max(safePanel1Min, Math.Min(desiredDistance, maxDistance));
+
+            splitter.Panel1MinSize = safePanel1Min;
+            splitter.Panel2MinSize = safePanel2Min;
+            splitter.SplitterDistance = safeDistance;
+            return true;
+        }
+        finally
+        {
+            splitter.ResumeLayout(performLayout: true);
+        }
+    }
+
     #region Control Initialization
 
     /// <summary>
@@ -1101,7 +1162,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         _panelHeader = new PanelHeader
         {
             Dock = DockStyle.Top,
-            Height = DpiHeight(50f),
+            Height = PanelHeader.DefaultHeight,
             Title = "QuickBooks Integration",
             AccessibleName = "QuickBooks Panel Header",
             AccessibleDescription = "Header for QuickBooks integration panel"
@@ -1140,8 +1201,8 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             splitter.Dock = DockStyle.Fill;
             // Syncfusion SplitContainerAdv uses Horizontal for left/right panes.
             splitter.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            splitter.IsSplitterFixed = true;  // Locked: top strip is a fixed two-column layout, not user-draggable
-            splitter.SplitterWidth = 1;        // 1px — near-invisible divider, removes the grab-bar visual noise
+            splitter.IsSplitterFixed = false;
+            splitter.SplitterWidth = DpiHeight(6f);
             splitter.BorderStyle = BorderStyle.None;
         });
         _splitContainerTop.Panel1.Controls.Add(_connectionPanel!);
@@ -1215,7 +1276,7 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // These are modest starting sizes; responsive scaling kicks in during OnResize for narrow containers
         _splitContainerTop!.Panel1MinSize = 110;
         _splitContainerTop!.Panel2MinSize = 110;
-        _splitContainerTop!.SplitterDistance = DpiHeight(400f);
+        _splitContainerTop!.SplitterDistance = DpiHeight(320f);
 
         _splitContainerBottom!.Panel1MinSize = 100;
         _splitContainerBottom!.Panel2MinSize = 100;
@@ -1590,8 +1651,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // TableLayoutPanel for organized content layout
         var tableLayout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            AutoSize = false, // CRITICAL: Explicit false prevents undersizing
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1,
             RowCount = 4,
             Padding = new Padding(0, 5, 0, 0)
@@ -1778,8 +1840,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
         // TableLayoutPanel for organized operations layout
         var tableLayout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            AutoSize = false, // CRITICAL: Explicit false prevents undersizing
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             ColumnCount = 1,
             RowCount = 2,
             Padding = new Padding(0, 5, 0, 0)
@@ -2660,6 +2723,11 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private async Task InitiateQuickBooksOAuthFlowAsync(CancellationToken cancellationToken = default)
     {
+        using var authScope = LogContext.PushProperty("Panel", nameof(QuickBooksPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "QuickBooksOAuthFlow");
+        using var sizeScope = LogContext.PushProperty("PanelSize", $"{Width}x{Height}");
+        using var connectionScope = LogContext.PushProperty("IsConnected", ViewModel?.IsConnected == true);
+
         try
         {
             Logger.LogInformation("Starting QuickBooks OAuth 2.0 authorization flow");
@@ -3047,6 +3115,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
     /// </summary>
     private void ConfigureSplitContainersSafely()
     {
+        using var layoutScope = LogContext.PushProperty("Panel", nameof(QuickBooksPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "ConfigureSplitContainers");
+
         if (_splitContainerMain == null || _splitContainerTop == null || _splitContainerBottom == null)
             return;
 
@@ -3059,29 +3130,10 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             int mainPanel1Min = DpiHeight(300f);
             int mainPanel2Min = DpiHeight(240f);
 
-            // Validate container can hold minimum sizes
             int mainContainerDim = GetSplitterAvailableDimension(_splitContainerMain);
-            int mainRequiredDim = mainPanel1Min + mainPanel2Min + _splitContainerMain.SplitterWidth;
-            if (mainContainerDim >= mainRequiredDim)
+            if (!TryConfigureSplitContainer(_splitContainerMain, mainContainerDim, mainPanel1Min, mainPanel2Min, mainTopPreferred))
             {
-                _splitContainerMain.Panel1MinSize = mainPanel1Min;
-                _splitContainerMain.Panel2MinSize = mainPanel2Min;
-
-                // Set distance within validated bounds
-                int safeDistance = Math.Max(mainPanel1Min,
-                    Math.Min(mainTopPreferred, mainContainerDim - mainPanel2Min - _splitContainerMain.SplitterWidth));
-                _splitContainerMain.SplitterDistance = safeDistance;
-            }
-            else
-            {
-                // Fallback: use proportional min sizes when container is smaller than ideal
-                int fallbackMin1 = Math.Max(50, mainContainerDim / 3);
-                int fallbackMin2 = Math.Max(50, mainContainerDim / 3);
-                _splitContainerMain.Panel1MinSize = fallbackMin1;
-                _splitContainerMain.Panel2MinSize = fallbackMin2;
-                _splitContainerMain.SplitterDistance = fallbackMin1;
-                Logger.LogDebug("QuickBooksPanel: Using fallback main splitter sizes - container height {Height} < required {Required}",
-                    mainContainerDim, mainRequiredDim);
+                Logger.LogDebug("QuickBooksPanel: Using fallback main splitter sizes - container height {Height}", mainContainerDim);
             }
         }
         catch (ArgumentOutOfRangeException ex)
@@ -3100,28 +3152,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             int topPanel2Min = DpiHeight(340f);
 
             int topContainerDim = GetSplitterAvailableDimension(_splitContainerTop);
-            int topRequiredDim = topPanel1Min + topPanel2Min + _splitContainerTop.SplitterWidth;
-            if (topContainerDim >= topRequiredDim)
+            if (!TryConfigureSplitContainer(_splitContainerTop, topContainerDim, topPanel1Min, topPanel2Min, (int)(topContainerDim * 0.40f)))
             {
-                _splitContainerTop.Panel1MinSize = topPanel1Min;
-                _splitContainerTop.Panel2MinSize = topPanel2Min;
-
-                // Favor the operations pane; it hosts the longer action labels.
-                int topDistance = (int)(topContainerDim * 0.40f);
-                topDistance = Math.Max(topPanel1Min,
-                    Math.Min(topDistance, topContainerDim - topPanel2Min - _splitContainerTop.SplitterWidth));
-                _splitContainerTop.SplitterDistance = topDistance;
-            }
-            else
-            {
-                // Fallback proportional
-                int fallbackMin1 = Math.Max(50, topContainerDim / 3);
-                int fallbackMin2 = Math.Max(50, topContainerDim / 3);
-                _splitContainerTop.Panel1MinSize = fallbackMin1;
-                _splitContainerTop.Panel2MinSize = fallbackMin2;
-                _splitContainerTop.SplitterDistance = (int)(topContainerDim * 0.40f);
-                Logger.LogDebug("QuickBooksPanel: Using fallback top splitter sizes - container width {Width} < required {Required}",
-                    topContainerDim, topRequiredDim);
+                Logger.LogDebug("QuickBooksPanel: Using fallback top splitter sizes - container width {Width}", topContainerDim);
             }
         }
         catch (ArgumentOutOfRangeException ex)
@@ -3141,26 +3174,9 @@ public partial class QuickBooksPanel : ScopedPanelBase<QuickBooksViewModel>
             int bottomPanel2Min = DpiHeight(220f);
 
             int bottomContainerDim = GetSplitterAvailableDimension(_splitContainerBottom);
-            int bottomRequiredDim = bottomPanel1Min + bottomPanel2Min + _splitContainerBottom.SplitterWidth;
-            if (bottomContainerDim >= bottomRequiredDim)
+            if (!TryConfigureSplitContainer(_splitContainerBottom, bottomContainerDim, bottomPanel1Min, bottomPanel2Min, summaryPreferred))
             {
-                _splitContainerBottom.Panel1MinSize = bottomPanel1Min;
-                _splitContainerBottom.Panel2MinSize = bottomPanel2Min;
-
-                int safeDistance = Math.Max(bottomPanel1Min,
-                    Math.Min(summaryPreferred, bottomContainerDim - bottomPanel2Min - _splitContainerBottom.SplitterWidth));
-                _splitContainerBottom.SplitterDistance = safeDistance;
-            }
-            else
-            {
-                // Fallback proportional
-                int fallbackMin1 = Math.Max(50, bottomContainerDim / 3);
-                int fallbackMin2 = Math.Max(50, bottomContainerDim / 3);
-                _splitContainerBottom.Panel1MinSize = fallbackMin1;
-                _splitContainerBottom.Panel2MinSize = fallbackMin2;
-                _splitContainerBottom.SplitterDistance = fallbackMin1;
-                Logger.LogDebug("QuickBooksPanel: Using fallback bottom splitter sizes - container height {Height} < required {Required}",
-                    bottomContainerDim, bottomRequiredDim);
+                Logger.LogDebug("QuickBooksPanel: Using fallback bottom splitter sizes - container height {Height}", bottomContainerDim);
             }
         }
         catch (ArgumentOutOfRangeException ex)

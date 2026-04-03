@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.Windows.Forms.Tools;
 using SfButton = Syncfusion.WinForms.Controls.SfButton;
@@ -83,6 +84,11 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         Dock = DockStyle.Fill;
         SafeSuspendAndLayout(InitializeControls);
+
+        if (ViewModel != null)
+        {
+            WireViewModel();
+        }
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -333,6 +339,11 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     {
         if (ViewModel == null) return;
 
+        if (_vmChanged != null)
+        {
+            ViewModel.PropertyChanged -= _vmChanged;
+        }
+
         _vmChanged = (s, e) =>
         {
             if (e.PropertyName == nameof(ViewModel.FiscalYears))
@@ -346,6 +357,16 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         UpdateSelectedFiscalYear();
         UpdateRecordCount();
         UpdateLastRefreshLabel();
+    }
+
+    protected override void OnViewModelResolved(AnalyticsHubViewModel? viewModel)
+    {
+        base.OnViewModelResolved(viewModel);
+
+        if (viewModel != null && _tabControl != null)
+        {
+            WireViewModel();
+        }
     }
 
     private void BindFiscalYears()
@@ -395,6 +416,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
         if (IsLoaded) return;
         ct.ThrowIfCancellationRequested();
 
+        using var loadScope = LogContext.PushProperty("Panel", nameof(AnalyticsHubPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "Load");
+
         try
         {
             IsBusy = true;
@@ -412,6 +436,15 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
             UpdateLastRefreshLabel();
             UpdateRecordCount();
             UpdateNoDataOverlayVisibility();
+
+            _logger?.LogInformation(
+                "AnalyticsHubPanel loaded: SelectedTab={SelectedTab}, LastRefresh={LastRefresh}, HasOverview={HasOverview}, HasTrends={HasTrends}, HasScenarios={HasScenarios}, HasVariances={HasVariances}",
+                _tabControl?.SelectedIndex ?? -1,
+                _lastRefreshAt,
+                ViewModel?.Overview != null,
+                ViewModel?.Trends != null,
+                ViewModel?.Scenarios != null,
+                ViewModel?.Variances != null);
 
             _logger?.LogDebug("AnalyticsHubPanel loaded successfully");
             UpdateStatus("Ready");
@@ -485,6 +518,9 @@ public partial class AnalyticsHubPanel : ScopedPanelBase<AnalyticsHubViewModel>
     protected virtual async Task LoadCurrentTabAsync(CancellationToken ct)
     {
         if (_tabControl == null || ViewModel == null) return;
+
+        using var tabScope = LogContext.PushProperty("Panel", nameof(AnalyticsHubPanel));
+        using var operationScope = LogContext.PushProperty("PanelOperation", "LoadCurrentTab");
 
         var overlayShown = false;
         try

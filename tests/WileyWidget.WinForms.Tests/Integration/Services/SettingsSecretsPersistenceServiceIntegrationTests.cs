@@ -22,7 +22,7 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
 {
     private const string AppDataEnvironmentVariable = "APPDATA";
     private const string SyncfusionEnvironmentVariable = "SYNCFUSION_LICENSE_KEY";
-    private const string XaiPrimaryEnvironmentVariable = "XAI__ApiKey";
+    private const string XaiPrimaryEnvironmentVariable = "XAI_API_KEY";
     private const string XaiSecondaryEnvironmentVariable = "XAI_API_KEY";
 
     [Fact]
@@ -169,7 +169,7 @@ public sealed class SettingsSecretsPersistenceServiceIntegrationTests(Integratio
         Assert.Equal("sync-persist-key", await vault.GetSecretAsync("SYNCFUSION_LICENSE_KEY"));
         Assert.Equal("sync-persist-key", await vault.GetSecretAsync("Syncfusion:LicenseKey"));
         Assert.Equal("xai-persist-key", await vault.GetSecretAsync("XAI:ApiKey"));
-        Assert.Equal("xai-persist-key", await vault.GetSecretAsync("XAI__ApiKey"));
+        Assert.Equal("xai-persist-key", await vault.GetSecretAsync("XAI_API_KEY"));
 
         var secretsFilePath = ResolveSecretsFilePath(appDataRoot);
         Assert.True(File.Exists(secretsFilePath));

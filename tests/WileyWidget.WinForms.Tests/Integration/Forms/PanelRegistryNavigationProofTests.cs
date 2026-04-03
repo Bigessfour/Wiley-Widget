@@ -68,7 +68,7 @@ public sealed class PanelRegistryNavigationProofTests
     [Trait("Category", "Smoke")]
     [Trait("Area", "AllPanels")]
     [Trait("Panel", "QuickBooks")]
-    public async Task QuickBooksPanel_CanBeCreatedAndDisplayed()
+    public void QuickBooksPanel_CanBeCreatedAndDisplayed()
     {
         var provider = BuildProofProvider();
 
@@ -143,9 +143,15 @@ public sealed class PanelRegistryNavigationProofTests
                 ShowInTaskbar = false,
             };
 
+            quickBooksPanel.Dock = DockStyle.Fill;
             host.Controls.Add(quickBooksPanel);
+            _ = host.Handle;
+            host.CreateControl();
+            quickBooksPanel.CreateControl();
+            _ = quickBooksPanel.Handle;
             host.Show();
-            quickBooksPanel.Show();
+            host.PerformLayout();
+            quickBooksPanel.PerformLayout();
 
             await WaitForAccessibleNamesAsync(
                 quickBooksPanel,
@@ -163,6 +169,67 @@ public sealed class PanelRegistryNavigationProofTests
             Assert.False(
                 audit.HostBelowMinimum,
                 $"QuickBooks should not rely on a smaller-than-minimum host after layout stabilization. Host={audit.HostClientSize} Minimum={audit.MinimumSize}");
+            Assert.Empty(audit.ZeroSizedVisibleControls);
+            Assert.Empty(audit.ClippedVisibleControls);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", previousAutomation);
+            provider.Dispose();
+        }
+    }
+
+    [StaFact]
+    [Trait("Category", "Smoke")]
+    [Trait("Area", "AllPanels")]
+    [Trait("Panel", "QuickBooks")]
+    public async Task QuickBooksPanel_DoesNotClipCoreControls_AtRightDockWidth()
+    {
+        var provider = BuildProofProvider();
+        var previousAutomation = Environment.GetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("WILEYWIDGET_UI_AUTOMATION", "true");
+
+            using var scope = provider.CreateScope();
+            var scopedProvider = scope.ServiceProvider;
+
+            using var quickBooksPanel = new QuickBooksPanel(
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<QuickBooksViewModel>(scopedProvider),
+                Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<SyncfusionControlFactory>(scopedProvider));
+
+            using var host = new Form
+            {
+                StartPosition = FormStartPosition.Manual,
+                Location = new Point(-2000, -2000),
+                Size = new Size(760, 840),
+                ShowInTaskbar = false,
+            };
+
+            quickBooksPanel.Dock = DockStyle.Fill;
+            host.Controls.Add(quickBooksPanel);
+            _ = host.Handle;
+            host.CreateControl();
+            quickBooksPanel.CreateControl();
+            _ = quickBooksPanel.Handle;
+            host.Show();
+            host.PerformLayout();
+            quickBooksPanel.PerformLayout();
+
+            await WaitForAccessibleNamesAsync(
+                quickBooksPanel,
+                new[]
+                {
+                    "QuickBooks Panel Header",
+                    "Connect to QuickBooks",
+                    "Show Diagnostics",
+                    "Import QuickBooks CSV or Excel Export",
+                    "Sync History Grid",
+                },
+                timeoutMs: 3000);
+
+            var audit = PanelLayoutDiagnostics.Capture(quickBooksPanel);
             Assert.Empty(audit.ZeroSizedVisibleControls);
             Assert.Empty(audit.ClippedVisibleControls);
         }

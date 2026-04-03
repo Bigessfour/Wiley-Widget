@@ -34,4 +34,26 @@ public sealed class PanelNavigationServiceTests
         host.MinimizeBox.Should().BeFalse();
         host.MaximizeBox.Should().BeFalse();
     }
+
+    [StaFact]
+    public void ApplyMinimumTopInset_ReservesEnoughTopPadding_ForRibbonHosts()
+    {
+        var panel = new Panel
+        {
+            Padding = Padding.Empty
+        };
+
+        var applyMinimumTopInset = typeof(PanelNavigationService).GetMethod(
+            "ApplyMinimumTopInset",
+            BindingFlags.Static | BindingFlags.NonPublic);
+
+        applyMinimumTopInset.Should().NotBeNull();
+
+        applyMinimumTopInset!.Invoke(null, new object[] { panel });
+
+        panel.Padding.Top.Should().BeGreaterThanOrEqualTo(20);
+        panel.Padding.Left.Should().Be(0);
+        panel.Padding.Right.Should().Be(0);
+        panel.Padding.Bottom.Should().Be(0);
+    }
 }

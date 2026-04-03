@@ -143,7 +143,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     _budgetRepository = budgetRepository;
 
     // Set reports folder path relative to application
-    ReportsFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Reports");
+    ReportsFolder = ResolveReportsFolder();
 
     // Populate available templates from disk if present
     try
@@ -204,6 +204,31 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
     if (string.IsNullOrWhiteSpace(input)) return string.Empty;
     var chars = input.Where(c => char.IsLetterOrDigit(c)).Select(char.ToLowerInvariant).ToArray();
     return new string(chars);
+  }
+
+  private static string ResolveReportsFolder()
+  {
+    var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+    var directPath = Path.Combine(baseDirectory, "Reports");
+
+    if (Directory.Exists(directPath) && Directory.EnumerateFiles(directPath, "*.frx", SearchOption.TopDirectoryOnly).Any())
+    {
+      return directPath;
+    }
+
+    var current = new DirectoryInfo(baseDirectory);
+    for (int depth = 0; depth < 6 && current != null; depth++)
+    {
+      var candidate = Path.Combine(current.FullName, "Reports");
+      if (Directory.Exists(candidate) && Directory.EnumerateFiles(candidate, "*.frx", SearchOption.TopDirectoryOnly).Any())
+      {
+        return candidate;
+      }
+
+      current = current.Parent;
+    }
+
+    return directPath;
   }
 
   private static string SplitCamelCase(string input)
@@ -869,7 +894,17 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
 
   private IReadOnlyList<ForecastLineItem> BuildForecastLineItems(IEnumerable<BudgetEntry> entries)
   {
-    return (entries ?? Enumerable.Empty<BudgetEntry>())
+    var entryList = (entries ?? Enumerable.Empty<BudgetEntry>()).ToList();
+    var categoryTotals = entryList
+      .GroupBy(entry => !string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.DepartmentName : entry.FundTypeDescription)
+      .ToDictionary(
+        group => group.Key,
+        group => (
+          CurrentTotal: group.Sum(item => item.ActualAmount),
+          ProposedTotal: group.Sum(item => item.BudgetedAmount),
+          IncreaseTotal: group.Sum(item => item.BudgetedAmount - item.ActualAmount)));
+
+    return entryList
         .OrderBy(entry => string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.FundTypeDescription : entry.DepartmentName)
         .ThenBy(entry => entry.AccountNumber)
         .Select(entry =>
@@ -880,6 +915,7 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
           var increasePercent = currentAmount == 0m ? 0m : Math.Round((increase / currentAmount) * 100m, 2);
           var category = !string.IsNullOrWhiteSpace(entry.DepartmentName) ? entry.DepartmentName : entry.FundTypeDescription;
           var justification = BuildForecastJustification(entry);
+          var categoryTotal = categoryTotals[category];
 
           return new ForecastLineItem(
                   category,
@@ -889,7 +925,10 @@ public partial class ReportsViewModel : ObservableObject, IDisposable
                   increase,
                   increasePercent,
                   justification,
-                  !string.IsNullOrWhiteSpace(entry.ActivityCode));
+            !string.IsNullOrWhiteSpace(entry.ActivityCode),
+            categoryTotal.CurrentTotal,
+            categoryTotal.ProposedTotal,
+            categoryTotal.IncreaseTotal);
         })
         .ToList();
   }
@@ -1085,7 +1124,10 @@ public record ForecastLineItem(
     decimal Increase,
     decimal IncreasePercent,
     string Justification,
-    bool IsGoalDriven);
+  bool IsGoalDriven,
+  decimal CategoryCurrentTotal,
+  decimal CategoryProposedTotal,
+  decimal CategoryIncreaseTotal);
 
 /// <summary>
 /// Account list report data.

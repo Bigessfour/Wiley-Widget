@@ -9,6 +9,7 @@ using Syncfusion.WinForms.Controls;
 using WileyWidget.WinForms.Themes;
 using WileyWidget.WinForms.Services;
 using WileyWidget.WinForms.Factories;
+using WileyWidget.WinForms.Utilities;
 
 namespace WileyWidget.WinForms.Controls.Supporting
 {
@@ -33,7 +34,9 @@ namespace WileyWidget.WinForms.Controls.Supporting
     /// </summary>
     public partial class PanelHeader : UserControl
     {
-        private const int HEADER_HEIGHT = 60;
+        public const int DefaultHeight = LayoutTokens.HeaderHeight;
+
+        private const int HEADER_HEIGHT = DefaultHeight;
         private const int HEADER_MIN_WIDTH = 320;
         private const int BUTTON_MARGIN_H = 6;
         private const int BUTTON_MARGIN_V = 6;

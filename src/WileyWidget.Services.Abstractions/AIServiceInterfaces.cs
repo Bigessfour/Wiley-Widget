@@ -152,7 +152,7 @@ namespace WileyWidget.Services.Abstractions
     /// CONFIGURATION HIERARCHY (highest to lowest priority):
     /// 1. User Secrets: dotnet user-secrets set "XAI:ApiKey" "your-key-here"
     /// 2. Environment Variables (any scope):
-    ///    - Recommended: XAI__ApiKey (double underscore per Microsoft convention)
+    ///    - Recommended: XAI_API_KEY (single underscore environment variable)
     ///    - Legacy: XAI_API_KEY (single underscore - still supported)
     /// 3. appsettings.json: "XAI": { "ApiKey": "..." } (lowest priority - DO NOT use for secrets!)
     ///

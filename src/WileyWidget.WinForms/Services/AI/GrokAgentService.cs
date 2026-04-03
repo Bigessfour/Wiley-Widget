@@ -116,10 +116,10 @@ namespace WileyWidget.WinForms.Services.AI
         private const string ChatCompletionSuffix = "/chat/completions"; // Legacy, deprecated
 
         // API Key environment variables (per Microsoft configuration conventions):
-        // - XAI__ApiKey (recommended, double underscore - maps to XAI:ApiKey in configuration)
+        // - XAI_API_KEY (recommended single-underscore environment variable)
         // - XAI_API_KEY (legacy single underscore - still supported for backward compatibility)
         private const string ApiKeyEnvironmentVariable = "XAI_API_KEY";
-        private const string ApiKeyHierarchicalEnvironmentVariable = "XAI__ApiKey";
+        private const string ApiKeyHierarchicalEnvironmentVariable = "XAI_API_KEY";
         private static readonly (EnvironmentVariableTarget Target, string Source)[] ApiKeyEnvironmentTargets =
         {
             (EnvironmentVariableTarget.Process, "process env"),

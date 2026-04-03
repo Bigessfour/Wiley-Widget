@@ -45,7 +45,7 @@ namespace WileyWidget.WinForms.Services.AI
                 {
                     var msg = "Grok API key not configured. JARVIS Chat will not function. " +
                               "Set via: dotnet user-secrets set XAI:ApiKey <your-key> " +
-                              "OR environment variable: setx XAI__ApiKey <your-key>";
+                              "OR environment variable: setx XAI_API_KEY <your-key>";
                     _logger?.LogError("[HealthCheck] {Message}", msg);
                     return HealthCheckResult.Unhealthy(
                         description: "API key not configured",
@@ -97,7 +97,7 @@ namespace WileyWidget.WinForms.Services.AI
                             ["message"] = failMsg,
                             ["apiKey"] = safeMaskedKey,
                             ["configSource"] = safeConfigSource,
-                            ["recommendation"] = "Update via: dotnet user-secrets set XAI:ApiKey <your-key> OR setx XAI__ApiKey <your-key>"
+                            ["recommendation"] = "Update via: dotnet user-secrets set XAI:ApiKey <your-key> OR setx XAI_API_KEY <your-key>"
                         });
                 }
 

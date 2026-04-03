@@ -68,7 +68,7 @@ var httpClient = new HttpClient(mockHandler);
 
 **Features:**
 
-- **Auto-Skip** - Tests skip if `XAI__ApiKey` not configured
+- **Auto-Skip** - Tests skip if `XAI_API_KEY` not configured
 - **Token Budget Tracking** - Prevents excessive API costs (50,000 token limit)
 - **Configuration Hierarchy** - Checks User Secrets → Environment Variables
 - **Masked Logging** - API keys logged as `xai-***...***abcd`
@@ -231,7 +231,7 @@ var provider = IntegrationTestServices.BuildAITestProvider(
 
 **Location:** `tests/WileyWidget.WinForms.Tests/Integration/RealAPI/`
 
-**Tests:** (All auto-skip if `XAI__ApiKey` not set)
+**Tests:** (All auto-skip if `XAI_API_KEY` not set)
 
 - `ValidateApiKey_WithRealKey_ReturnsTrue` - Real API key validation
 - `GetSimpleResponse_WithSimplePrompt_ReturnsValidResponse` - Simple prompt ("What is 2+2?")
@@ -255,7 +255,7 @@ var provider = IntegrationTestServices.BuildAITestProvider(
 dotnet user-secrets set "XAI:ApiKey" "YOUR_KEY_HERE" --project tests/WileyWidget.WinForms.Tests
 
 # Or Environment Variable
-setx XAI__ApiKey "YOUR_KEY_HERE"
+setx XAI_API_KEY "YOUR_KEY_HERE"
 ```
 
 **To Run:**
@@ -407,7 +407,7 @@ jobs:
 
       - name: Run Real API Tests
         env:
-          XAI__ApiKey: ${{ secrets.XAI_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
         run: dotnet test --filter "Category=RealAPI" --logger trx
 ```
 
@@ -417,7 +417,7 @@ jobs:
 
 ### **Tests Skipped: "Real xAI API key not configured"**
 
-**Cause:** `XAI__ApiKey` environment variable not set.
+**Cause:** `XAI_API_KEY` environment variable not set.
 
 **Fix:**
 
@@ -426,7 +426,7 @@ jobs:
 dotnet user-secrets set "XAI:ApiKey" "YOUR_KEY_HERE" --project tests/WileyWidget.WinForms.Tests
 
 # Or environment variable
-setx XAI__ApiKey "YOUR_KEY_HERE"
+setx XAI_API_KEY "YOUR_KEY_HERE"
 
 # Restart terminal/IDE after setting
 ```

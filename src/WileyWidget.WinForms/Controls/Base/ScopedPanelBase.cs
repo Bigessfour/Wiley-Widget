@@ -77,6 +77,7 @@ namespace WileyWidget.WinForms.Controls.Base
 
         private bool _initialLayoutSuspended;
         private bool _minimumSizeManagedByBase;
+        protected bool _layoutStabilized;
 
         /// <summary>Type-erased ViewModel for runtime reflection access.</summary>
         public virtual object? UntypedViewModel => null;
@@ -613,10 +614,10 @@ namespace WileyWidget.WinForms.Controls.Base
         }
 
         /// <summary>
-        /// Forces a recursive layout pass on this panel and its first two levels of children.
+        /// Forces a recursive layout pass on this panel and its child hierarchy.
         /// Called via <see cref="BeginInvoke"/> after the Syncfusion DockingManager finishes
-        /// sizing the hosted <see cref="UserControl"/>, so that content controls render at their
-        /// correct positions instead of collapsing to 0×0 during the initial docking pass.
+        /// sizing the hosted <see cref="UserControl"/>, so that the layout engine can apply
+        /// the normal Dock/Anchor/AutoSize/MinimumSize contract before diagnostics run.
         /// Override in derived panels to target deeper containers (e.g., SplitContainerAdv inner panels).
         /// </summary>
         protected virtual void ForceFullLayout()
@@ -637,6 +638,15 @@ namespace WileyWidget.WinForms.Controls.Base
 
             _logger?.LogDebug("[{Panel}] ForceFullLayout completed ({W}x{H})", GetType().Name, Width, Height);
             AuditPanelLayout("ForceFullLayout", force: true);
+            _layoutStabilized = true;
+        }
+
+        private void PerformFullLayoutSafely()
+        {
+            ApplyManagedMinimumSize();
+            EnsureMinimumTopInset();
+            ResetAutoScrollOffsets(this);
+            ForceFullLayout();
         }
 
         /// <summary>
@@ -749,15 +759,26 @@ namespace WileyWidget.WinForms.Controls.Base
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
-            _logger?.LogTrace("[{Panel}] Visibility → {Visible} ({W}x{H})", GetType().Name, Visible, Width, Height);
-            if (Visible)
+            if (Visible && !DesignMode)
             {
-                ApplyManagedMinimumSize();
-                EnsureMinimumTopInset();
-                ResetAutoScrollOffsets(this);
-                AuditPanelLayout("VisibleChanged");
+                this.SuspendLayout();           // Prevent thrashing
+                PerformFullLayoutSafely();      // Your existing method
+                AdjustZeroSizeControls();       // New helper
+                this.ResumeLayout(true);
             }
-            QueueDeferredLayoutPass(e);
+        }
+
+        private void AdjustZeroSizeControls()
+        {
+            foreach (Control c in this.Controls)
+            {
+                if (c.Visible && (c.MinimumSize.Width == 0 || c.MinimumSize.Height == 0))
+                {
+                    c.MinimumSize = new Size(
+                        Math.Max(30, c.PreferredSize.Width),
+                        Math.Max(20, c.PreferredSize.Height));
+                }
+            }
         }
 
         protected override void OnSizeChanged(EventArgs e)
@@ -767,7 +788,7 @@ namespace WileyWidget.WinForms.Controls.Base
             {
                 if (MinimumSize != Size.Empty && (ClientSize.Width < MinimumSize.Width || ClientSize.Height < MinimumSize.Height))
                 {
-                    AuditPanelLayout("SizeChanged");
+                    // ℹ️ Audit is deferred to ForceFullLayout for initial sizing noise.
                 }
 
                 QueueDeferredLayoutPass(e);
@@ -780,6 +801,7 @@ namespace WileyWidget.WinForms.Controls.Base
             var verbose = PanelLayoutDiagnostics.IsVerboseAuditEnabled();
             var appearanceTrigger = string.Equals(trigger, "VisibleChanged", StringComparison.Ordinal)
                 || string.Equals(trigger, "ForceFullLayout", StringComparison.Ordinal);
+            var suppressTransientZeroSizedWarnings = !_layoutStabilized && !force;
             var suppressTransientSideDockMinimumWarning = IsSideDockPanel()
                 && audit.HostBelowMinimum
                 && !force
@@ -789,7 +811,7 @@ namespace WileyWidget.WinForms.Controls.Base
             var shouldWarnForHostBelowMinimum = audit.HostBelowMinimum
                 && !suppressTransientSideDockMinimumWarning
                 && !suppressScrollableHostMinimumWarning;
-            var hasReportableWarnings = audit.ZeroSizedVisibleControls.Count > 0
+            var hasReportableWarnings = !suppressTransientZeroSizedWarnings && audit.ZeroSizedVisibleControls.Count > 0
                 || audit.ClippedVisibleControls.Count > 0
                 || shouldWarnForHostBelowMinimum;
 
@@ -846,7 +868,7 @@ namespace WileyWidget.WinForms.Controls.Base
                     audit.HostClientSize);
             }
 
-            if (audit.ZeroSizedVisibleControls.Count > 0)
+            if (!suppressTransientZeroSizedWarnings && audit.ZeroSizedVisibleControls.Count > 0)
             {
                 _logger.LogWarning(
                     "[PANEL-LAYOUT] Zero-sized visible controls for {Panel}: {Findings}",
@@ -899,6 +921,12 @@ namespace WileyWidget.WinForms.Controls.Base
             if (!_shownFired)
             {
                 _shownFired = true;
+                OnShown(e);
+            }
+            else
+            {
+                // Re-arm the layout timer if we've already been shown once (e.g. repeated visibility changes).
+                // This ensures that splitters and grids are stabilized even on subsequent activations.
                 OnShown(e);
             }
 

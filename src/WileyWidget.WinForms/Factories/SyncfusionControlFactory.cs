@@ -585,42 +585,58 @@ public class SyncfusionControlFactory
             AccessibleName = $"{enterpriseName} gauge summary",
         };
 
-        var titleLabel = new Label
+        container.SuspendLayout();
+        try
         {
-            Text = enterpriseName,
-            Dock = DockStyle.Top,
-            Height = 28,
-            Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-            TextAlign = ContentAlignment.MiddleCenter,
-        };
+            var titleLabel = new Label
+            {
+                Text = enterpriseName,
+                Dock = DockStyle.Top,
+                Height = 28,
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+            };
 
-        var subtitleLabel = new Label
+            var subtitleLabel = new Label
+            {
+                Text = "Break-even ratio",
+                Dock = DockStyle.Top,
+                Height = 20,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+                TextAlign = ContentAlignment.MiddleCenter,
+                AccessibleName = $"{enterpriseName} gauge subtitle",
+            };
+
+            var valueLabel = new Label
+            {
+                Text = $"{currentRatio:F1}%",
+                Dock = DockStyle.Bottom,
+                Height = 32,
+                Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = currentRatio >= 100 ? ThemeColors.Success : ThemeColors.Error,
+            };
+
+            var gauge = CreateCircularGauge(currentRatio, enterpriseName);
+
+            gauge.SuspendLayout();
+            try
+            {
+                container.Controls.Add(gauge);
+                container.Controls.Add(valueLabel);
+                container.Controls.Add(subtitleLabel);
+                container.Controls.Add(titleLabel);
+                container.ApplySyncfusionTheme(CurrentTheme, _logger);
+            }
+            finally
+            {
+                gauge.ResumeLayout(true);
+            }
+        }
+        finally
         {
-            Text = "Break-even ratio",
-            Dock = DockStyle.Top,
-            Height = 20,
-            Font = new Font("Segoe UI", 8.5f, FontStyle.Regular),
-            TextAlign = ContentAlignment.MiddleCenter,
-            AccessibleName = $"{enterpriseName} gauge subtitle",
-        };
-
-        var valueLabel = new Label
-        {
-            Text = $"{currentRatio:F1}%",
-            Dock = DockStyle.Bottom,
-            Height = 32,
-            Font = new Font("Segoe UI", 12f, FontStyle.Bold),
-            TextAlign = ContentAlignment.MiddleCenter,
-            ForeColor = currentRatio >= 100 ? ThemeColors.Success : ThemeColors.Error,
-        };
-
-        var gauge = CreateCircularGauge(currentRatio, enterpriseName);
-
-        container.Controls.Add(gauge);
-        container.Controls.Add(valueLabel);
-        container.Controls.Add(subtitleLabel);
-        container.Controls.Add(titleLabel);
-        container.ApplySyncfusionTheme(CurrentTheme, _logger);
+            container.ResumeLayout(true);
+        }
 
         _logger.LogDebug("Created enterprise gauge container for {Enterprise}", enterpriseName);
         return container;
@@ -635,93 +651,101 @@ public class SyncfusionControlFactory
         _logger.LogDebug("Creating EnterpriseChart: {Enterprise}", snapshot.Name);
 
         var chart = new ChartControl();
-        ChartControlDefaults.Apply(chart, new ChartControlDefaults.Options
+        chart.SuspendLayout();
+        try
         {
-            TransparentChartArea = true,
-            EnableZooming = false,
-            EnableAxisScrollBar = false,
-        }, _logger);
-        ApplyChartDefaults(
-            chart,
-            $"{snapshot.Name} — Current FY Snapshot",
-            "Fiscal Year",
-            "Amount",
-            showLegend: false,
-            accessibleName: $"{snapshot.Name} current fiscal year chart",
-            accessibleDescription: "Chart showing current fiscal year revenue, expenses, net position, and break-even reference");
-
-        var monthlyTrend = snapshot.MonthlyTrend
-            .OrderBy(point => point.MonthStart)
-            .ToList();
-
-        if (monthlyTrend.Count > 0)
-        {
-            chart.Title.Text = $"{snapshot.Name} — 12-Month Fiscal Trend";
-            chart.PrimaryXAxis.Title = "Month";
-            chart.PrimaryYAxis.Title = "Amount";
-            chart.PrimaryXAxis.LabelRotate = true;
-            chart.PrimaryXAxis.LabelRotateAngle = 45;
-            chart.PrimaryXAxis.DrawGrid = true;
-            chart.PrimaryYAxis.DrawGrid = true;
-
-            var revenueSeries = new ChartSeries("Revenue", ChartSeriesType.Line);
-            revenueSeries.Style.Border.Width = 2;
-            revenueSeries.Style.Symbol.Size = new Size(8, 8);
-            revenueSeries.PointsToolTipFormat = "{1:C0}";
-
-            var expenseSeries = new ChartSeries("Expenses", ChartSeriesType.Line);
-            expenseSeries.Style.Border.Width = 2;
-            expenseSeries.Style.Border.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
-            expenseSeries.Style.Symbol.Size = new Size(8, 8);
-            expenseSeries.PointsToolTipFormat = "{1:C0}";
-
-            var monthlyNetSeries = new ChartSeries("Net Position", ChartSeriesType.Column);
-            monthlyNetSeries.PointsToolTipFormat = "{1:C0}";
-
-            for (int index = 0; index < monthlyTrend.Count; index++)
+            ChartControlDefaults.Apply(chart, new ChartControlDefaults.Options
             {
-                var point = monthlyTrend[index];
-                var chartLabel = $"{index + 1:00} {point.MonthStart:MMM}";
+                TransparentChartArea = true,
+                EnableZooming = false,
+                EnableAxisScrollBar = false,
+            }, _logger);
+            ApplyChartDefaults(
+                chart,
+                $"{snapshot.Name} — Current FY Snapshot",
+                "Fiscal Year",
+                "Amount",
+                showLegend: false,
+                accessibleName: $"{snapshot.Name} current fiscal year chart",
+                accessibleDescription: "Chart showing current fiscal year revenue, expenses, net position, and break-even reference");
 
-                revenueSeries.Points.Add(chartLabel, (double)point.Revenue);
-                expenseSeries.Points.Add(chartLabel, (double)point.Expenses);
-                monthlyNetSeries.Points.Add(chartLabel, (double)point.NetPosition);
+            var monthlyTrend = snapshot.MonthlyTrend
+                .OrderBy(point => point.MonthStart)
+                .ToList();
+
+            if (monthlyTrend.Count > 0)
+            {
+                chart.Title.Text = $"{snapshot.Name} — 12-Month Fiscal Trend";
+                chart.PrimaryXAxis.Title = "Month";
+                chart.PrimaryYAxis.Title = "Amount";
+                chart.PrimaryXAxis.LabelRotate = true;
+                chart.PrimaryXAxis.LabelRotateAngle = 45;
+                chart.PrimaryXAxis.DrawGrid = true;
+                chart.PrimaryYAxis.DrawGrid = true;
+
+                var revenueSeries = new ChartSeries("Revenue", ChartSeriesType.Line);
+                revenueSeries.Style.Border.Width = 2;
+                revenueSeries.Style.Symbol.Size = new Size(8, 8);
+                revenueSeries.PointsToolTipFormat = "{1:C0}";
+
+                var expenseSeries = new ChartSeries("Expenses", ChartSeriesType.Line);
+                expenseSeries.Style.Border.Width = 2;
+                expenseSeries.Style.Border.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+                expenseSeries.Style.Symbol.Size = new Size(8, 8);
+                expenseSeries.PointsToolTipFormat = "{1:C0}";
+
+                var monthlyNetSeries = new ChartSeries("Net Position", ChartSeriesType.Column);
+                monthlyNetSeries.PointsToolTipFormat = "{1:C0}";
+
+                for (int index = 0; index < monthlyTrend.Count; index++)
+                {
+                    var point = monthlyTrend[index];
+                    var chartLabel = $"{index + 1:00} {point.MonthStart:MMM}";
+
+                    revenueSeries.Points.Add(chartLabel, (double)point.Revenue);
+                    expenseSeries.Points.Add(chartLabel, (double)point.Expenses);
+                    monthlyNetSeries.Points.Add(chartLabel, (double)point.NetPosition);
+                }
+
+                chart.Series.Add(revenueSeries);
+                chart.Series.Add(expenseSeries);
+                chart.Series.Add(monthlyNetSeries);
+
+                chart.ApplySyncfusionTheme(CurrentTheme, _logger);
+
+                _logger.LogInformation("EnterpriseChart created for {Enterprise} using 12-point fiscal trend", snapshot.Name);
+                return chart;
             }
 
-            chart.Series.Add(revenueSeries);
-            chart.Series.Add(expenseSeries);
-            chart.Series.Add(monthlyNetSeries);
+            var fiscalYear = DateTime.Now.Year;
+
+            var revSeries = new ChartSeries("Revenue", ChartSeriesType.Column);
+            revSeries.Points.Add(fiscalYear, (double)snapshot.Revenue);
+            chart.Series.Add(revSeries);
+
+            var expSeries = new ChartSeries("Expenses", ChartSeriesType.Column);
+            expSeries.Points.Add(fiscalYear, (double)snapshot.Expenses);
+            chart.Series.Add(expSeries);
+
+            var netSeries = new ChartSeries("Net Position", ChartSeriesType.Area);
+            netSeries.Points.Add(fiscalYear, (double)snapshot.NetPosition);
+            chart.Series.Add(netSeries);
+
+            var breakEvenSeries = new ChartSeries("Break Even", ChartSeriesType.Line);
+            breakEvenSeries.Points.Add(fiscalYear, (double)snapshot.Expenses);
+            breakEvenSeries.Style.Border.Width = 3;
+            breakEvenSeries.Style.Border.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+            chart.Series.Add(breakEvenSeries);
 
             chart.ApplySyncfusionTheme(CurrentTheme, _logger);
 
-            _logger.LogInformation("EnterpriseChart created for {Enterprise} using 12-point fiscal trend", snapshot.Name);
+            _logger.LogInformation("EnterpriseChart created for {Enterprise}", snapshot.Name);
             return chart;
         }
-
-        var fiscalYear = DateTime.Now.Year;
-
-        var revSeries = new ChartSeries("Revenue", ChartSeriesType.Column);
-        revSeries.Points.Add(fiscalYear, (double)snapshot.Revenue);
-        chart.Series.Add(revSeries);
-
-        var expSeries = new ChartSeries("Expenses", ChartSeriesType.Column);
-        expSeries.Points.Add(fiscalYear, (double)snapshot.Expenses);
-        chart.Series.Add(expSeries);
-
-        var netSeries = new ChartSeries("Net Position", ChartSeriesType.Area);
-        netSeries.Points.Add(fiscalYear, (double)snapshot.NetPosition);
-        chart.Series.Add(netSeries);
-
-        var breakEvenSeries = new ChartSeries("Break Even", ChartSeriesType.Line);
-        breakEvenSeries.Points.Add(fiscalYear, (double)snapshot.Expenses);
-        breakEvenSeries.Style.Border.Width = 3;
-        breakEvenSeries.Style.Border.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
-        chart.Series.Add(breakEvenSeries);
-
-        chart.ApplySyncfusionTheme(CurrentTheme, _logger);
-
-        _logger.LogInformation("EnterpriseChart created for {Enterprise}", snapshot.Name);
-        return chart;
+        finally
+        {
+            chart.ResumeLayout(true);
+        }
     }
 
     /// <summary>
@@ -754,7 +778,9 @@ public class SyncfusionControlFactory
         grid.FilterRowPosition = RowPosition.Top;
         grid.HeaderRowHeight = 32;
         grid.NavigationMode = Syncfusion.WinForms.DataGrid.Enums.NavigationMode.Cell;
-        grid.EnableDataVirtualization = true;
+        // Keep row content visible while users live-resize columns.
+        // Panels with very large data sets can opt back in explicitly where the performance tradeoff is worth it.
+        grid.EnableDataVirtualization = false;
         grid.LiveDataUpdateMode = LiveDataUpdateMode.AllowDataShaping;
         grid.NotificationSubscriptionMode = NotificationSubscriptionMode.CollectionChange;
         grid.ValidationMode = GridValidationMode.InView;
@@ -929,7 +955,7 @@ public class SyncfusionControlFactory
         textBox.BorderStyle = BorderStyle.FixedSingle;
         textBox.Size = new Size(200, 28);
         textBox.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
-        textBox.CanOverrideStyle = false;
+        SetOptionalProperty(textBox, "CanOverrideStyle", true);
     }
 
     private void ApplySfComboBoxDefaults(SfComboBox comboBox)
@@ -942,6 +968,7 @@ public class SyncfusionControlFactory
         comboBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
         comboBox.MaxDropDownItems = 10;
         comboBox.AllowDropDownResize = false;
+        SetOptionalProperty(comboBox, "CanOverrideStyle", true);
         comboBox.ThemeName = CurrentTheme;
     }
 
@@ -951,6 +978,7 @@ public class SyncfusionControlFactory
         dateTimeEdit.AccessibleDescription = "Date and time selection control";
         dateTimeEdit.Width = 140;
         dateTimeEdit.DateTimePattern = Syncfusion.WinForms.Input.Enums.DateTimePattern.ShortDate;
+        SetOptionalProperty(dateTimeEdit, "CanOverrideStyle", true);
         dateTimeEdit.ThemeName = CurrentTheme;
     }
 
@@ -962,6 +990,7 @@ public class SyncfusionControlFactory
         numericTextBox.FormatMode = Syncfusion.WinForms.Input.Enums.FormatMode.Numeric;
         numericTextBox.MinValue = 0D;
         numericTextBox.Value = 0D;
+        SetOptionalProperty(numericTextBox, "CanOverrideStyle", true);
         numericTextBox.ThemeName = CurrentTheme;
     }
 
@@ -972,6 +1001,7 @@ public class SyncfusionControlFactory
         checkBox.Text = text;
         checkBox.AutoSize = true;
         checkBox.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+        SetOptionalProperty(checkBox, "CanOverrideStyle", true);
         checkBox.ThemeName = CurrentTheme;
     }
 

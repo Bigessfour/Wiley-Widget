@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
 using Syncfusion.WinForms.Controls;
 using Syncfusion.WinForms.DataGrid;
 using Syncfusion.WinForms.DataGrid.Enums;
@@ -365,12 +366,21 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private async Task LoadDataSafeAsync(CancellationToken cancellationToken = default)
         {
+            using var loadScope = LogContext.PushProperty("Panel", nameof(DepartmentSummaryPanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "LoadDataSafe");
+
             try
             {
                 UpdateStatus("Loading department data...");
                 if (ViewModel != null)
                 {
+                    Logger?.LogInformation("DepartmentSummaryPanel starting data load");
                     await ViewModel.LoadDataAsync();
+                    Logger?.LogInformation(
+                        "DepartmentSummaryPanel data load completed: Metrics={MetricCount}, OverBudget={OverBudget}, UnderBudget={UnderBudget}",
+                        ViewModel.Metrics.Count,
+                        ViewModel.DepartmentsOverBudget,
+                        ViewModel.DepartmentsUnderBudget);
                 }
                 UpdateStatus("Department data loaded");
             }
@@ -457,6 +467,10 @@ namespace WileyWidget.WinForms.Controls.Panels
 
             try
             {
+                Logger?.LogDebug(
+                    "DepartmentSummaryPanel updating UI (Metrics={MetricCount}, Loading={IsLoading})",
+                    ViewModel.Metrics.Count,
+                    ViewModel.IsLoading);
                 UpdateSummaryCards();
                 UpdateGridData();
                 UpdateNoDataOverlay();
@@ -497,11 +511,17 @@ namespace WileyWidget.WinForms.Controls.Panels
                     _lblUnderBudgetCountValue.Text = ViewModel.DepartmentsUnderBudget.ToString(CultureInfo.CurrentCulture);
                     _lblUnderBudgetCountValue.ForeColor = ThemeColors.Success;
                 }
+
+                Logger?.LogDebug(
+                    "DepartmentSummaryPanel summary cards updated: Budget={Budget:C0}, Actual={Actual:C0}, Variance={Variance:C0}",
+                    ViewModel.TotalBudget,
+                    ViewModel.TotalActual,
+                    ViewModel.Variance);
             }
             catch (Exception ex)
             {
                 // Log but don't crash on UI update failure
-                Console.WriteLine($"DepartmentSummaryPanel: UpdateSummaryCards failed: {ex.Message}");
+                Logger?.LogError(ex, "DepartmentSummaryPanel: UpdateSummaryCards failed");
             }
         }
 
@@ -517,11 +537,15 @@ namespace WileyWidget.WinForms.Controls.Panels
                 var snapshot = ViewModel.Metrics.ToList();
                 _metricsGrid.DataSource = snapshot;
 
+                Logger?.LogInformation(
+                    "DepartmentSummaryPanel metrics grid updated with {MetricCount} rows",
+                    snapshot.Count);
+
                 _metricsGrid.ResumeLayout();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"DepartmentSummaryPanel: UpdateGridData failed: {ex.Message}");
+                Logger?.LogError(ex, "DepartmentSummaryPanel: UpdateGridData failed");
             }
         }
 
@@ -541,12 +565,17 @@ namespace WileyWidget.WinForms.Controls.Panels
 
         private async Task RefreshDataAsync(CancellationToken cancellationToken = default)
         {
+            using var refreshScope = LogContext.PushProperty("Panel", nameof(DepartmentSummaryPanel));
+            using var operationScope = LogContext.PushProperty("PanelOperation", "RefreshData");
+
             try
             {
                 UpdateStatus("Refreshing department data...");
                 if (ViewModel != null)
                 {
+                    Logger?.LogInformation("DepartmentSummaryPanel refresh requested");
                     await ViewModel.LoadDataAsync();
+                    Logger?.LogInformation("DepartmentSummaryPanel refresh completed");
                 }
                 UpdateStatus("Department data refreshed");
             }

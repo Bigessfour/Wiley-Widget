@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
+using Serilog.Context;
 using WileyWidget.Services;
 using WileyWidget.Services.Abstractions;
 using WileyWidget.Services.Telemetry;
@@ -56,7 +57,8 @@ public class XAIService : IAIService, IDisposable
         IAILoggingService aiLoggingService,
         IMemoryCache memoryCache,
         ITelemetryService? telemetryService = null,
-        IJARVISPersonalityService? jarvisPersonality = null
+        IJARVISPersonalityService? jarvisPersonality = null,
+        IGrokApiKeyProvider? grokApiKeyProvider = null
         // TelemetryClient telemetryClient = null // Commented out until Azure is configured
         )
     {
@@ -69,11 +71,9 @@ public class XAIService : IAIService, IDisposable
         _jarvisPersonality = jarvisPersonality;
         // _telemetryClient = telemetryClient; // Commented out until Azure is configured
 
-        _apiKey = configuration["XAI:ApiKey"];
-
-        // DEBUG: Log what configuration sees
-        Console.WriteLine($"[XAISERVICE DEBUG] XAI:ApiKey from config = {(_apiKey != null ? _apiKey.Substring(0, Math.Min(15, _apiKey.Length)) + "..." : "NULL")} ({_apiKey?.Length ?? 0} chars)");
-        Console.WriteLine($"[XAISERVICE DEBUG] Config type = {configuration.GetType().FullName}");
+        _apiKey = grokApiKeyProvider?.ApiKey
+            ?? configuration["XAI:ApiKey"]
+            ?? configuration["xAI:ApiKey"];
 
         _enabled = bool.Parse(configuration["XAI:Enabled"] ?? "false");
         _endpoint = NormalizeResponsesEndpoint(configuration["XAI:Endpoint"]);
@@ -128,8 +128,22 @@ public class XAIService : IAIService, IDisposable
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }
 
-        _logger.LogInformation("✓ XAIService initialized with resilient HttpClient (timeout: {Timeout}s)",
-            timeoutSeconds);
+        using var serviceScope = LogContext.PushProperty("Integration", "xAI");
+        using var operationScope = LogContext.PushProperty("Operation", "InitializeService");
+        using var enabledScope = LogContext.PushProperty("Enabled", _enabled);
+        using var modelScope = LogContext.PushProperty("Model", _model);
+        using var endpointScope = LogContext.PushProperty("Endpoint", _endpoint);
+        using var apiKeySourceScope = LogContext.PushProperty("ApiKeySource", grokApiKeyProvider?.GetConfigurationSource() ?? "configuration");
+
+        _logger.LogInformation(
+            "XAIService initialized with resilient HttpClient (timeout: {TimeoutSeconds}s, maxTokens: {MaxTokens}, concurrency: {MaxConcurrentRequests}, enabled: {Enabled}, model: {Model}, endpoint: {Endpoint}, apiKeySource: {ApiKeySource})",
+            timeoutSeconds,
+            _maxTokens,
+            maxConcurrentRequests,
+            _enabled,
+            _model,
+            _endpoint,
+            grokApiKeyProvider?.GetConfigurationSource() ?? "configuration");
     }
 
     /// <summary>
@@ -198,6 +212,11 @@ public class XAIService : IAIService, IDisposable
     /// </summary>
     public async Task<string> GetInsightsAsync(string context, string question, CancellationToken cancellationToken = default)
     {
+        using var requestScope = LogContext.PushProperty("Integration", "xAI");
+        using var operationScope = LogContext.PushProperty("Operation", "GetInsights");
+        using var requestIdScope = LogContext.PushProperty("RequestId", Guid.NewGuid().ToString("n"));
+        using var modelScope = LogContext.PushProperty("Model", _model);
+
         // Start telemetry tracking for AI API call
         using var apiCallSpan = _telemetryService?.StartActivity("ai.xai.get_insights",
             ("ai.model", _model),

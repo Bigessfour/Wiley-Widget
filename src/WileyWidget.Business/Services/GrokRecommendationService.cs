@@ -85,7 +85,7 @@ public class GrokRecommendationService : IGrokRecommendationService, IHealthChec
         _cacheDuration = options?.Value.CacheDuration ?? TimeSpan.FromHours(2);
 
         // Load xAI configuration - use centralized IGrokApiKeyProvider for consistent env var handling
-        // This ensures XAI__ApiKey (double underscore) is properly resolved from environment
+        // This ensures XAI_API_KEY is properly resolved from environment
         _apiKey = apiKeyProvider.ApiKey;
         _apiEndpoint = NormalizeChatCompletionsEndpoint(_configuration["XAI:Endpoint"]);
         _model = _configuration["XAI:Model"] ?? "grok-4.1";

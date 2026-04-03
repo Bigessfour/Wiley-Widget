@@ -90,6 +90,7 @@ public class SyncfusionControlFactoryTests
         grid.PasteOption.Should().Be(PasteOptions.PasteData);
         grid.ShowBusyIndicator.Should().BeTrue();
         grid.UsePLINQ.Should().BeTrue();
+        grid.EnableDataVirtualization.Should().BeFalse();
         grid.LiveDataUpdateMode.Should().Be(LiveDataUpdateMode.AllowDataShaping);
         grid.NotificationSubscriptionMode.Should().Be(NotificationSubscriptionMode.CollectionChange);
         grid.ShowToolTip.Should().BeTrue();
@@ -99,6 +100,24 @@ public class SyncfusionControlFactoryTests
         GetOptionalProperty<bool>(grid, "ShowPreviewRow")?.Should().BeFalse();
         GetOptionalProperty<int>(grid, "IndentColumnWidth")?.Should().Be(20);
         GetOptionalProperty<bool>(grid, "HideEmptyGridViewDefinition")?.Should().BeFalse();
+    }
+
+    [StaFact]
+    public void CreateFieldControls_Defaults_AllowThemeOverridesForReadableDarkThemes()
+    {
+        var factory = new SyncfusionControlFactory(NullLogger<SyncfusionControlFactory>.Instance);
+
+        using var textBox = factory.CreateTextBoxExt();
+        using var comboBox = factory.CreateSfComboBox();
+        using var dateTimeEdit = factory.CreateSfDateTimeEdit();
+        using var numericTextBox = factory.CreateSfNumericTextBox();
+        using var checkBox = factory.CreateCheckBoxAdv("Theme override check");
+
+        GetOptionalProperty<bool>(textBox, "CanOverrideStyle")?.Should().BeTrue();
+        GetOptionalProperty<bool>(comboBox, "CanOverrideStyle")?.Should().BeTrue();
+        GetOptionalProperty<bool>(dateTimeEdit, "CanOverrideStyle")?.Should().BeTrue();
+        GetOptionalProperty<bool>(numericTextBox, "CanOverrideStyle")?.Should().BeTrue();
+        GetOptionalProperty<bool>(checkBox, "CanOverrideStyle")?.Should().BeTrue();
     }
 
     [StaFact]
